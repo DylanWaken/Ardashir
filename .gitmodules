@@ -1,0 +1,9 @@
+[submodule "ThirdParty/NVRHI"]
+	path = ThirdParty/NVRHI
+	url = https://github.com/NVIDIA-RTX/NVRHI.git
+[submodule "ThirdParty/GoogleTest"]
+	path = ThirdParty/GoogleTest
+	url = https://github.com/google/googletest.git
+[submodule "ThirdParty/ImGui"]
+	path = ThirdParty/ImGui
+	url = https://github.com/ocornut/imgui.git

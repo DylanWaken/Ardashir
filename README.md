@@ -1,0 +1,98 @@
+# Ardashir
+
+*Advanced Rendering, Shading and Inferencing Runtime*
+
+Ardashir is a modular C++ research and development runtime for real-time
+rendering, ray-traced global illumination, GPU physics, and deep-learning
+systems. Its GPU-facing modules are built on NVIDIA's Rendering Hardware
+Interface (NVRHI), allowing the project to share graphics abstractions and
+resources across rendering, simulation, and inference workloads.
+
+## Modules
+
+- **ArdaRenderGraph** — A foundational render dependency graph implementation
+  on top of NVRHI. It will schedule rendering work and manage resource
+  dependencies, transitions, and lifetimes.
+
+- **ArdaGI** — A library for real-time, ray-tracing-based global illumination.
+
+- **ArdaPhys** — A GPU physics library for AVBD, acceleration structures,
+  solvers, and related simulation systems.
+
+- **ArdaDL** — Deep-learning subsystems designed to integrate with the
+  rendering and simulation runtime.
+
+## Dependencies
+
+- [NVRHI](https://github.com/NVIDIA-RTX/NVRHI) for graphics API abstraction
+- [GoogleTest](https://github.com/google/googletest) for module tests
+- [GLFW](https://github.com/glfw/glfw) for cross-platform windows and surfaces
+- CMake 3.16 or newer
+- A C++17 compiler
+
+The root build downloads pinned GLFW and DirectX Shader Compiler releases.
+DXC compiles the triangle shaders to DXIL and SPIR-V. NVRHI fetches the
+required DirectX and Vulkan headers, so a separately installed Vulkan SDK is
+not required.
+
+## Building
+
+Initialize the git submodules before configuring either platform:
+
+```sh
+git submodule update --init --recursive
+```
+
+### Windows
+
+```powershell
+cmake -S . -B build
+cmake --build build --config Debug
+ctest --test-dir build -C Debug --output-on-failure
+```
+
+### Linux
+
+Install a compiler, CMake, Ninja, Git, and the X11 development packages. On
+Ubuntu:
+
+```sh
+sudo apt install build-essential cmake ninja-build git pkg-config \
+  libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+  libvulkan1 mesa-vulkan-drivers
+
+cmake -S . -B build-linux -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-linux
+ctest --test-dir build-linux --output-on-failure
+```
+
+Set `ARDASHIR_BUILD_TESTS=OFF` to omit GoogleTest and the module test targets.
+Set `ARDASHIR_BUILD_NVRHI_TEST=OFF` to omit the graphics integration test.
+
+## NVRHI triangle
+
+`NVRHITest` is a minimal indexed, vertex-colored triangle application. It
+supports D3D12 and Vulkan on Windows and Vulkan on Linux. D3D12 is the Windows
+default:
+
+```powershell
+.\build\Source\ArdaTests\NVRHITest\Debug\NVRHITest.exe
+.\build\Source\ArdaTests\NVRHITest\Debug\NVRHITest.exe --backend vulkan
+```
+
+Linux uses Vulkan by default:
+
+```sh
+./build-linux/Source/ArdaTests/NVRHITest/NVRHITest
+```
+
+Use `--frames N` to close after a fixed number of frames and `--hidden` for a
+non-interactive smoke run. The available one-frame GPU tests are registered
+with CTest:
+
+```sh
+ctest --test-dir build -C Debug -L gpu --output-on-failure
+```
+
+A missing graphics backend returns CTest's skip code; rendering, presentation,
+shader, or NVRHI validation failures fail the test.
