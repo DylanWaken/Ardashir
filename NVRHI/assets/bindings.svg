@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="430" viewBox="0 0 1000 430" role="img" aria-labelledby="title desc">
+  <title id="title">NVRHI binding relationship</title>
+  <desc id="desc">Shader declarations correspond to binding layout items; a pipeline stores the layout, a binding set supplies resources, and command state combines pipeline and sets.</desc>
+  <defs><marker id="a" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L9 4 0 8Z" fill="#67e8f9"/></marker>
+  <style>.b{rx:13;stroke-width:2}.t{font:600 17px system-ui,sans-serif;fill:#f8fafc;text-anchor:middle}.s{font:13px ui-monospace,monospace;fill:#cbd5e1;text-anchor:middle}.p{fill:none;stroke:#67e8f9;stroke-width:3;marker-end:url(#a)}</style></defs>
+  <rect width="1000" height="430" rx="20" fill="#0f172a"/>
+  <text x="500" y="34" class="t" font-size="22">Bindings: declaration, concrete resources, then command state</text>
+  <rect class="b" x="35" y="70" width="265" height="145" fill="#312e81" stroke="#818cf8"/>
+  <text x="168" y="102" class="t">HLSL / SPIR-V interface</text><text x="168" y="133" class="s">Texture2D t0, space0</text><text x="168" y="158" class="s">SamplerState s0, space0</text><text x="168" y="183" class="s">ConstantBuffer b0, space0</text>
+  <rect class="b" x="365" y="70" width="270" height="145" fill="#164e63" stroke="#22d3ee"/>
+  <text x="500" y="102" class="t">BindingLayout</text><text x="500" y="133" class="s">Texture_SRV(0)</text><text x="500" y="158" class="s">Sampler(0)</text><text x="500" y="183" class="s">VolatileConstantBuffer(0)</text>
+  <rect class="b" x="700" y="70" width="265" height="145" fill="#14532d" stroke="#4ade80"/>
+  <text x="833" y="102" class="t">BindingSet</text><text x="833" y="133" class="s">Texture_SRV(0, albedo)</text><text x="833" y="158" class="s">Sampler(0, linear)</text><text x="833" y="183" class="s">ConstantBuffer(0, frameCB)</text>
+  <path class="p" d="M300 142H357"/><path class="p" d="M635 142H692"/>
+  <rect class="b" x="255" y="275" width="220" height="95" fill="#3f2b1b" stroke="#fb923c"/>
+  <text x="365" y="310" class="t">Pipeline</text><text x="365" y="339" class="s">stores layout(s)</text>
+  <rect class="b" x="525" y="275" width="220" height="95" fill="#3f2b1b" stroke="#fb923c"/>
+  <text x="635" y="310" class="t">Graphics/Compute State</text><text x="635" y="339" class="s">pipeline + set(s)</text>
+  <path class="p" d="M500 215V245H365V267"/><path class="p" d="M833 215V245H635V267"/><path class="p" d="M475 323H517"/>
+  <text x="500" y="407" class="s">Layout order in the pipeline must equal binding-set order in state.</text>
+</svg>
