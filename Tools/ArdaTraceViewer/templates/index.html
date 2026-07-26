@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arda Trace Viewer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">ARDASHADER TOOLS</p>
+      <h1>Trace Viewer</h1>
+    </div>
+    <form id="upload-form">
+      <label class="file-button">
+        <span>Open capture</span>
+        <input id="trace-file" name="trace" type="file" accept=".ardatrace,.trace,.bin">
+      </label>
+    </form>
+  </header>
+
+  <main>
+    <section id="empty-state" class="empty-state">
+      <div>
+        <h2>Open a trace capture</h2>
+        <p>Choose a local ArdaTrace binary file. The capture is sent only to this local viewer.</p>
+      </div>
+    </section>
+
+    <div id="error-banner" class="error-banner" role="alert" hidden></div>
+
+    <div id="workspace" hidden>
+      <section class="session-heading">
+        <div>
+          <p class="eyebrow">ACTIVE CAPTURE</p>
+          <h2 id="filename">Capture</h2>
+        </div>
+        <div id="time-window" class="time-window"></div>
+      </section>
+
+      <section id="summary" class="summary-grid" aria-label="Capture summary"></section>
+
+      <section class="panel controls">
+        <label>
+          <span>Thread</span>
+          <select id="thread-filter"><option value="">All threads</option></select>
+        </label>
+        <label>
+          <span>Name filter</span>
+          <input id="name-filter" type="search" placeholder="Filter scopes, counters, markers">
+        </label>
+        <button id="reset-view" type="button">Reset view</button>
+        <p class="interaction-hint">Wheel to zoom, drag to pan, hover for details</p>
+      </section>
+
+      <section class="panel timeline-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">TIMELINE</p>
+            <h3>Thread lanes</h3>
+          </div>
+        </div>
+        <div id="timeline-wrap" class="canvas-wrap">
+          <canvas id="timeline" aria-label="Trace timeline"></canvas>
+          <div id="tooltip" class="tooltip" hidden></div>
+        </div>
+      </section>
+
+      <section class="lower-grid">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">METRICS</p>
+              <h3>Counters</h3>
+            </div>
+          </div>
+          <div class="canvas-wrap counter-wrap">
+            <canvas id="counters" aria-label="Counter plots"></canvas>
+          </div>
+          <p id="counter-empty" class="empty-note" hidden>No counters in the current filter.</p>
+        </section>
+
+        <section class="panel aggregate-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">AGGREGATES</p>
+              <h3>Scope statistics</h3>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th><th>Count</th><th>Total</th><th>Average</th><th>Min</th><th>Max</th>
+                </tr>
+              </thead>
+              <tbody id="aggregate-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

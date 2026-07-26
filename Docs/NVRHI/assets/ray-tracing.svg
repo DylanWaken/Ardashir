@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="500" viewBox="0 0 1080 500" role="img" aria-labelledby="title desc">
+  <title id="title">NVRHI ray tracing data and execution flow</title>
+  <desc id="desc">Geometry buffers build bottom-level acceleration structures, instances build a top-level structure, shaders and hit groups form a pipeline and shader table, and dispatch rays writes a UAV output.</desc>
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4 0 8Z" fill="#f0abfc"/></marker>
+  <style>.b{rx:12;stroke-width:2}.h{font:600 17px system-ui,sans-serif;fill:#fff;text-anchor:middle}.t{font:13px system-ui,sans-serif;fill:#e2e8f0;text-anchor:middle}.p{fill:none;stroke:#f0abfc;stroke-width:3;marker-end:url(#a)}</style></defs>
+  <rect width="1080" height="500" rx="20" fill="#0f172a"/><text class="h" x="540" y="35" font-size="22">Ray-tracing setup and dispatch</text>
+  <rect class="b" x="35" y="75" width="210" height="85" fill="#1e3a8a" stroke="#60a5fa"/><text class="h" x="140" y="108">Geometry buffers</text><text class="t" x="140" y="135">triangles, AABBs, spheres, LSS</text>
+  <rect class="b" x="300" y="75" width="190" height="85" fill="#4c1d95" stroke="#a78bfa"/><text class="h" x="395" y="108">BLAS</text><text class="t" x="395" y="135">build / update / compact</text>
+  <rect class="b" x="555" y="75" width="190" height="85" fill="#4c1d95" stroke="#a78bfa"/><text class="h" x="650" y="108">TLAS</text><text class="t" x="650" y="135">instances + transforms</text>
+  <path class="p" d="M245 117H292"/><path class="p" d="M490 117H547"/>
+  <rect class="b" x="35" y="225" width="250" height="105" fill="#164e63" stroke="#22d3ee"/><text class="h" x="160" y="258">Shader library</text><text class="t" x="160" y="285">raygen, miss, closest/any hit</text><text class="t" x="160" y="307">intersection, callable</text>
+  <rect class="b" x="345" y="225" width="210" height="105" fill="#14532d" stroke="#4ade80"/><text class="h" x="450" y="258">RT pipeline</text><text class="t" x="450" y="285">exports, hit groups</text><text class="t" x="450" y="307">payload, attributes, recursion</text>
+  <rect class="b" x="615" y="225" width="205" height="105" fill="#713f12" stroke="#facc15"/><text class="h" x="718" y="258">Shader table</text><text class="t" x="718" y="285">raygen + miss + hit</text><text class="t" x="718" y="307">optional local bindings</text>
+  <path class="p" d="M285 277H337"/><path class="p" d="M555 277H607"/>
+  <rect class="b" x="865" y="180" width="180" height="90" fill="#172554" stroke="#60a5fa"/><text class="h" x="955" y="213">Global bindings</text><text class="t" x="955" y="240">TLAS, SRVs, UAVs, CBs</text>
+  <rect class="b" x="865" y="315" width="180" height="90" fill="#7c2d12" stroke="#fb923c"/><text class="h" x="955" y="348">dispatchRays</text><text class="t" x="955" y="375">writes output UAV</text>
+  <path class="p" d="M745 117H835V202H857"/><path class="p" d="M820 277H840V340H857"/><path class="p" d="M955 270V307"/>
+  <text class="t" x="540" y="460">Ray queries use the same TLAS inside graphics, compute, or mesh shaders; no RT pipeline or shader table.</text>
+</svg>

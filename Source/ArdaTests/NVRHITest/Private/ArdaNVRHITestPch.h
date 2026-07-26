@@ -9,22 +9,13 @@
     #endif
 
     #include <Windows.h>
-    #include <wrl/client.h>
-    #include <d3d12.h>
-    #include <dxgi1_6.h>
 #endif
 
-#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
 #include <nvrhi/nvrhi.h>
 #include <nvrhi/utils.h>
-#include <nvrhi/validation.h>
-#include <nvrhi/vulkan.h>
-#if defined(_WIN32)
-    #include <nvrhi/d3d12.h>
-#endif
 
 #include <algorithm>
 #include <array>

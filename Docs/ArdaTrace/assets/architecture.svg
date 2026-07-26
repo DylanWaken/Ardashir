@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="500" viewBox="0 0 1080 500" role="img" aria-labelledby="title desc">
+  <title id="title">ArdaTrace recording and analysis architecture</title>
+  <desc id="desc">C++ instrumentation appends events to per-thread chunks, the recorder streams a binary capture, and a Flask server parses it for a local browser viewer.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#7dd3fc"/>
+    </marker>
+    <style>
+      .title{font:700 23px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:650 17px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:14px system-ui,sans-serif;fill:#b9c8dc;text-anchor:middle}
+      .box{rx:14;stroke-width:2}
+      .flow{stroke:#7dd3fc;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1080" height="500" rx="22" fill="url(#bg)"/>
+  <text x="540" y="42" class="title">Record cheaply in C++, analyze outside the process</text>
+
+  <rect class="box" x="55" y="95" width="205" height="130" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="157" y="130" class="label">C++ instrumentation</text>
+  <text x="157" y="159" class="small">scope timers</text>
+  <text x="157" y="182" class="small">counter samples</text>
+  <text x="157" y="205" class="small">markers and thread names</text>
+
+  <path class="flow" d="M260 160 H318"/>
+
+  <rect class="box" x="322" y="78" width="205" height="164" fill="#214b45" stroke="#34d399"/>
+  <text x="424" y="113" class="label">Per-thread chunks</text>
+  <text x="424" y="142" class="small">steady-clock timestamps</text>
+  <text x="424" y="165" class="small">name and parent IDs</text>
+  <text x="424" y="188" class="small">append on owning thread</text>
+  <text x="424" y="217" class="small">publish when full</text>
+
+  <path class="flow" d="M527 160 H585"/>
+
+  <rect class="box" x="589" y="95" width="205" height="130" fill="#3a294d" stroke="#c084fc"/>
+  <text x="691" y="130" class="label">.ardatrace file</text>
+  <text x="691" y="159" class="small">versioned binary records</text>
+  <text x="691" y="182" class="small">little-endian</text>
+  <text x="691" y="205" class="small">explicit completion marker</text>
+
+  <path class="flow" d="M794 160 H852"/>
+
+  <rect class="box" x="856" y="95" width="170" height="130" fill="#4a3425" stroke="#f59e0b"/>
+  <text x="941" y="130" class="label">Flask parser</text>
+  <text x="941" y="159" class="small">strict validation</text>
+  <text x="941" y="182" class="small">normalized JSON</text>
+  <text x="941" y="205" class="small">loopback server</text>
+
+  <path class="flow" d="M941 225 V294"/>
+
+  <rect class="box" x="322" y="298" width="704" height="140" fill="#20364b" stroke="#38bdf8"/>
+  <text x="674" y="335" class="label">Browser viewer</text>
+  <text x="674" y="367" class="small">thread lanes and nested scope rectangles</text>
+  <text x="674" y="392" class="small">zoom, pan, hover details, thread and name filters</text>
+  <text x="674" y="417" class="small">counter plots, markers, and aggregate duration statistics</text>
+
+  <path d="M55 298 H260 V438 H55 Z" fill="#172536" stroke="#475569" stroke-width="2" rx="14"/>
+  <text x="157" y="337" class="label">Measured process</text>
+  <text x="157" y="369" class="small">does not format paths</text>
+  <text x="157" y="393" class="small">does not host the UI</text>
+  <text x="157" y="417" class="small">does not parse captures</text>
+</svg>

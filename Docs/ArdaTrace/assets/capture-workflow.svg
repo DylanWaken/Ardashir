@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="470" viewBox="0 0 1080 470" role="img" aria-labelledby="title desc">
+  <title id="title">Safe ArdaTrace capture lifecycle</title>
+  <desc id="desc">Start capture before instrumented workers, record while workers run, quiesce or join workers, stop capture, and then inspect the completed file.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#7dd3fc"/>
+    </marker>
+    <style>
+      .title{font:700 23px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:650 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:13px system-ui,sans-serif;fill:#b9c8dc;text-anchor:middle}
+      .step{rx:14;stroke-width:2}
+      .flow{stroke:#7dd3fc;stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .warning{font:600 14px system-ui,sans-serif;fill:#fcd34d;text-anchor:middle}
+    </style>
+  </defs>
+  <rect width="1080" height="470" rx="22" fill="url(#bg)"/>
+  <text x="540" y="42" class="title">Capture lifecycle must bracket instrumented worker activity</text>
+
+  <rect class="step" x="35" y="100" width="165" height="115" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="117" y="137" class="label">1 - Start capture</text>
+  <text x="117" y="168" class="small">open file</text>
+  <text x="117" y="190" class="small">write header and names</text>
+
+  <path class="flow" d="M200 157 H236"/>
+
+  <rect class="step" x="240" y="100" width="165" height="115" fill="#214b45" stroke="#34d399"/>
+  <text x="322" y="137" class="label">2 - Start workers</text>
+  <text x="322" y="168" class="small">name each thread</text>
+  <text x="322" y="190" class="small">enter root scopes</text>
+
+  <path class="flow" d="M405 157 H441"/>
+
+  <rect class="step" x="445" y="80" width="190" height="155" fill="#3a294d" stroke="#c084fc"/>
+  <text x="540" y="120" class="label">3 - Record events</text>
+  <text x="540" y="151" class="small">nested scopes</text>
+  <text x="540" y="174" class="small">counter samples</text>
+  <text x="540" y="197" class="small">instant markers</text>
+  <text x="540" y="220" class="small">publish full chunks</text>
+
+  <path class="flow" d="M635 157 H671"/>
+
+  <rect class="step" x="675" y="100" width="165" height="115" fill="#4a3425" stroke="#f59e0b"/>
+  <text x="757" y="137" class="label">4 - Quiesce</text>
+  <text x="757" y="168" class="small">join or pause every</text>
+  <text x="757" y="190" class="small">instrumented worker</text>
+
+  <path class="flow" d="M840 157 H876"/>
+
+  <rect class="step" x="880" y="100" width="165" height="115" fill="#1f4353" stroke="#38bdf8"/>
+  <text x="962" y="137" class="label">5 - Stop capture</text>
+  <text x="962" y="168" class="small">flush partial chunks</text>
+  <text x="962" y="190" class="small">write completion record</text>
+
+  <path class="flow" d="M962 215 V286 H540 V318"/>
+
+  <rect class="step" x="365" y="322" width="350" height="90" fill="#20364b" stroke="#38bdf8"/>
+  <text x="540" y="357" class="label">6 - Open the completed .ardatrace file</text>
+  <text x="540" y="385" class="small">Flask validates it, then the browser displays timelines and statistics</text>
+
+  <text x="540" y="447" class="warning">Do not call start or stop concurrently with instrumented worker threads.</text>
+</svg>

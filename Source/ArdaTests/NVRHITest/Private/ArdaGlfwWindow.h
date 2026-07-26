@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ArdaBackend.h"
+
 #include <cstdint>
 #include <string>
 
@@ -7,10 +9,10 @@ struct GLFWwindow;
 
 namespace arda::tests::nvrhi_test
 {
-    class GlfwWindow
+    class FArdaGlfwWindow final : public backend::IArdaWindowSurface
     {
     public:
-        ~GlfwWindow();
+        ~FArdaGlfwWindow();
 
         bool Create(const char* title, uint32_t width, uint32_t height, bool visible);
         bool PumpMessages();
@@ -21,6 +23,12 @@ namespace arda::tests::nvrhi_test
         [[nodiscard]] uint32_t GetWidth() const { return m_width; }
         [[nodiscard]] uint32_t GetHeight() const { return m_height; }
         [[nodiscard]] const std::string& GetError() const { return m_error; }
+
+        [[nodiscard]] nvrhi::Object GetD3D12WindowHandle() const noexcept override;
+        [[nodiscard]] std::vector<const char*> GetVulkanInstanceExtensions() const override;
+        [[nodiscard]] nvrhi::Object CreateVulkanSurface(
+            nvrhi::Object VulkanInstance,
+            std::string& OutError) override;
 
     private:
         static void FramebufferSizeCallback(GLFWwindow* window, int width, int height);

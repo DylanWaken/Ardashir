@@ -1,21 +1,21 @@
 #pragma once
 
-#include "Backend.h"
+#include "ArdaBackend.h"
 
 #include <filesystem>
 #include <string>
 
 namespace arda::tests::nvrhi_test
 {
-    class TriangleRenderer
+    class FArdaTriangleRenderer
     {
     public:
         bool Initialize(
             nvrhi::DeviceHandle device,
             nvrhi::Format swapChainFormat,
-            BackendKind backendKind,
+            backend::EArdaBackendType backendType,
             const std::filesystem::path& shaderDirectory);
-        bool RenderFrame(Backend& backend);
+        bool RenderFrame(backend::IArdaSwapChain& swapChain);
 
         [[nodiscard]] const std::string& GetError() const { return m_error; }
 

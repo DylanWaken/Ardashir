@@ -1,18 +1,18 @@
-#include "NVRHITestPch.h"
+#include "ArdaNVRHITestPch.h"
 
-#include "TriangleRenderer.h"
+#include "ArdaTriangleRenderer.h"
 
 namespace arda::tests::nvrhi_test
 {
     namespace
     {
-        struct Vertex
+        struct FArdaVertex
         {
             float position[2];
             float color[3];
         };
 
-        constexpr Vertex Vertices[] = {
+        constexpr FArdaVertex Vertices[] = {
             { {  0.0f,  0.6f }, { 1.0f, 0.1f, 0.1f } },
             { {  0.6f, -0.6f }, { 0.1f, 1.0f, 0.1f } },
             { { -0.6f, -0.6f }, { 0.1f, 0.2f, 1.0f } }
@@ -21,17 +21,17 @@ namespace arda::tests::nvrhi_test
         constexpr uint16_t Indices[] = { 0, 1, 2 };
     }
 
-    bool TriangleRenderer::Initialize(
+    bool FArdaTriangleRenderer::Initialize(
         nvrhi::DeviceHandle device,
         nvrhi::Format swapChainFormat,
-        BackendKind backendKind,
+        backend::EArdaBackendType backendType,
         const std::filesystem::path& shaderDirectory)
     {
         m_device = std::move(device);
 
         try
         {
-            const bool vulkan = backendKind == BackendKind::Vulkan;
+            const bool vulkan = backendType == backend::EArdaBackendType::Vulkan;
             const auto vertexBinary = LoadBinary(shaderDirectory / (vulkan ? "TriangleVS.spv" : "TriangleVS.dxil"));
             const auto pixelBinary = LoadBinary(shaderDirectory / (vulkan ? "TrianglePS.spv" : "TrianglePS.dxil"));
 
@@ -62,14 +62,14 @@ namespace arda::tests::nvrhi_test
                     .setName("POSITION")
                     .setFormat(nvrhi::Format::RG32_FLOAT)
                     .setBufferIndex(0)
-                    .setOffset(offsetof(Vertex, position))
-                    .setElementStride(sizeof(Vertex)),
+                    .setOffset(offsetof(FArdaVertex, position))
+                    .setElementStride(sizeof(FArdaVertex)),
                 nvrhi::VertexAttributeDesc()
                     .setName("COLOR")
                     .setFormat(nvrhi::Format::RGB32_FLOAT)
                     .setBufferIndex(0)
-                    .setOffset(offsetof(Vertex, color))
-                    .setElementStride(sizeof(Vertex))
+                    .setOffset(offsetof(FArdaVertex, color))
+                    .setElementStride(sizeof(FArdaVertex))
             };
 
             m_inputLayout = m_device->createInputLayout(
@@ -146,12 +146,12 @@ namespace arda::tests::nvrhi_test
         return true;
     }
 
-    bool TriangleRenderer::RenderFrame(Backend& backend)
+    bool FArdaTriangleRenderer::RenderFrame(backend::IArdaSwapChain& swapChain)
     {
         nvrhi::FramebufferHandle framebuffer;
-        if (!backend.AcquireFrame(framebuffer))
+        if (!swapChain.AcquireFrame(framebuffer))
         {
-            m_error = backend.GetError();
+            m_error = swapChain.GetError();
             return false;
         }
 
@@ -164,8 +164,8 @@ namespace arda::tests::nvrhi_test
 
         const auto viewport = nvrhi::ViewportState().addViewportAndScissorRect(
             nvrhi::Viewport(
-                static_cast<float>(backend.GetWidth()),
-                static_cast<float>(backend.GetHeight())));
+                static_cast<float>(swapChain.GetWidth()),
+                static_cast<float>(swapChain.GetHeight())));
         const auto graphicsState = nvrhi::GraphicsState()
             .setPipeline(m_pipeline)
             .setFramebuffer(framebuffer)
@@ -185,20 +185,20 @@ namespace arda::tests::nvrhi_test
         m_commandList->drawIndexed(nvrhi::DrawArguments().setVertexCount(3));
         m_commandList->close();
 
-        backend.PrepareSubmit();
+        swapChain.PrepareSubmit();
         m_device->executeCommandList(m_commandList);
         m_device->runGarbageCollection();
 
-        if (!backend.Present())
+        if (!swapChain.Present())
         {
-            m_error = backend.GetError();
+            m_error = swapChain.GetError();
             return false;
         }
 
         return true;
     }
 
-    std::vector<uint8_t> TriangleRenderer::LoadBinary(const std::filesystem::path& path)
+    std::vector<uint8_t> FArdaTriangleRenderer::LoadBinary(const std::filesystem::path& path)
     {
         std::ifstream stream(path, std::ios::binary | std::ios::ate);
         if (!stream)

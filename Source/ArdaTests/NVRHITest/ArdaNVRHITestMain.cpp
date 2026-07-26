@@ -1,11 +1,8 @@
-#include "NVRHITestPch.h"
+#include "ArdaNVRHITestPch.h"
 
-#if ARDASHIR_HAS_D3D12
-    #include "D3D12Backend.h"
-#endif
-#include "GlfwWindow.h"
-#include "TriangleRenderer.h"
-#include "VulkanBackend.h"
+#include "ArdaBackend.h"
+#include "ArdaGlfwWindow.h"
+#include "ArdaTriangleRenderer.h"
 
 #include <cstdio>
 
@@ -15,18 +12,14 @@ namespace arda::tests::nvrhi_test
     {
         constexpr int SkippedExitCode = 77;
 
-        struct Options
+        struct FArdaOptions
         {
-#if ARDASHIR_HAS_D3D12
-            BackendKind backend = BackendKind::D3D12;
-#else
-            BackendKind backend = BackendKind::Vulkan;
-#endif
+            backend::EArdaBackendType backend = backend::DefaultBackend;
             uint32_t frameLimit = 0;
             bool hidden = false;
         };
 
-        class MessageCallback final : public nvrhi::IMessageCallback
+        class FArdaMessageCallback final : public nvrhi::IMessageCallback
         {
         public:
             void message(nvrhi::MessageSeverity severity, const char* messageText) override
@@ -61,7 +54,33 @@ namespace arda::tests::nvrhi_test
             uint32_t m_errorCount = 0;
         };
 
-        bool ParseOptions(int argumentCount, char** arguments, Options& options, std::string& error)
+        class FArdaBackendShutdownGuard final
+        {
+        public:
+            explicit FArdaBackendShutdownGuard(
+                std::unique_ptr<backend::IArdaSwapChain>& swapChain)
+                : m_swapChain(swapChain)
+            {
+            }
+
+            ~FArdaBackendShutdownGuard()
+            {
+                if (m_swapChain)
+                {
+                    m_swapChain->WaitForIdle();
+                    m_swapChain.reset();
+                }
+                if (backend::IsBackendInitialized())
+                {
+                    backend::ShutdownBackend();
+                }
+            }
+
+        private:
+            std::unique_ptr<backend::IArdaSwapChain>& m_swapChain;
+        };
+
+        bool ParseOptions(int argumentCount, char** arguments, FArdaOptions& options, std::string& error)
         {
             for (int index = 1; index < argumentCount; ++index)
             {
@@ -72,14 +91,14 @@ namespace arda::tests::nvrhi_test
                 }
                 else if (argument == "--backend" && index + 1 < argumentCount)
                 {
-                    const std::string_view backend(arguments[++index]);
-                    if (backend == "d3d12")
+                    const std::string_view backendArgument(arguments[++index]);
+                    if (backendArgument == "d3d12")
                     {
-                        options.backend = BackendKind::D3D12;
+                        options.backend = backend::EArdaBackendType::D3D12;
                     }
-                    else if (backend == "vulkan")
+                    else if (backendArgument == "vulkan")
                     {
-                        options.backend = BackendKind::Vulkan;
+                        options.backend = backend::EArdaBackendType::Vulkan;
                     }
                     else
                     {
@@ -116,7 +135,7 @@ namespace arda::tests::nvrhi_test
 
         int Run(int argumentCount, char** arguments)
         {
-            Options options;
+            FArdaOptions options;
             std::string error;
             if (!ParseOptions(argumentCount, arguments, options, error))
             {
@@ -124,45 +143,49 @@ namespace arda::tests::nvrhi_test
                 return EXIT_FAILURE;
             }
 
-            GlfwWindow window;
+            FArdaGlfwWindow window;
             if (!window.Create("Ardashir - NVRHI Triangle", 1280, 720, !options.hidden))
             {
                 std::fprintf(stderr, "%s\n", window.GetError().c_str());
                 return options.hidden ? SkippedExitCode : EXIT_FAILURE;
             }
 
-            std::unique_ptr<Backend> backend;
-            if (options.backend == BackendKind::D3D12)
+            FArdaMessageCallback messageCallback;
+            backend::FArdaBackendConfiguration configuration;
+            configuration.backend = options.backend;
+            configuration.enableValidation = true;
+            configuration.messageCallback = &messageCallback;
+            if (!backend::ConfigureBackend(configuration))
             {
-#if ARDASHIR_HAS_D3D12
-                backend = std::make_unique<D3D12Backend>();
-#else
-                std::fprintf(stderr, "The D3D12 backend is only available on Windows.\n");
-                return SkippedExitCode;
-#endif
-            }
-            else
-            {
-                backend = std::make_unique<VulkanBackend>();
+                const std::string backendError = backend::GetBackendError();
+                std::fprintf(stderr, "%s\n", backendError.c_str());
+                return options.backend == backend::EArdaBackendType::D3D12
+                    ? SkippedExitCode
+                    : EXIT_FAILURE;
             }
 
-            MessageCallback messageCallback;
-            const InitializeResult result = backend->Initialize(
-                window.GetHandle(),
+            std::unique_ptr<backend::IArdaSwapChain> swapChain;
+            FArdaBackendShutdownGuard shutdownGuard(swapChain);
+            const backend::EArdaInitializeResult result =
+                backend::InitializeBackendForPresentation(
+                window,
                 window.GetWidth(),
                 window.GetHeight(),
-                &messageCallback);
-            if (result != InitializeResult::Success)
+                swapChain);
+            if (result != backend::EArdaInitializeResult::Success)
             {
-                std::fprintf(stderr, "%s\n", backend->GetError().c_str());
-                return result == InitializeResult::Unavailable ? SkippedExitCode : EXIT_FAILURE;
+                const std::string backendError = backend::GetBackendError();
+                std::fprintf(stderr, "%s\n", backendError.c_str());
+                return result == backend::EArdaInitializeResult::Unavailable
+                    ? SkippedExitCode
+                    : EXIT_FAILURE;
             }
 
-            TriangleRenderer renderer;
+            FArdaTriangleRenderer renderer;
             if (!renderer.Initialize(
-                backend->GetDevice(),
-                backend->GetSwapChainFormat(),
-                backend->GetKind(),
+                backend::GetDevice(),
+                swapChain->GetFormat(),
+                options.backend,
                 GetExecutableDirectory(arguments[0])))
             {
                 std::fprintf(stderr, "%s\n", renderer.GetError().c_str());
@@ -174,13 +197,13 @@ namespace arda::tests::nvrhi_test
             {
                 uint32_t width = 0;
                 uint32_t height = 0;
-                if (window.ConsumeResize(width, height) && !backend->Resize(width, height))
+                if (window.ConsumeResize(width, height) && !swapChain->Resize(width, height))
                 {
-                    std::fprintf(stderr, "%s\n", backend->GetError().c_str());
+                    std::fprintf(stderr, "%s\n", swapChain->GetError().c_str());
                     return EXIT_FAILURE;
                 }
 
-                if (!renderer.RenderFrame(*backend))
+                if (!renderer.RenderFrame(*swapChain))
                 {
                     std::fprintf(stderr, "%s\n", renderer.GetError().c_str());
                     return EXIT_FAILURE;
@@ -193,7 +216,6 @@ namespace arda::tests::nvrhi_test
                 }
             }
 
-            backend->WaitForIdle();
             return messageCallback.GetErrorCount() == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
         }
     }

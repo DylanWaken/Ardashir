@@ -22,6 +22,9 @@ resources across rendering, simulation, and inference workloads.
 - **ArdaDL** — Deep-learning subsystems designed to integrate with the
   rendering and simulation runtime.
 
+- **[ArdaTrace](Docs/ArdaTrace/README.md)** — Low-overhead CPU scope, counter,
+  and marker recording for offline performance analysis.
+
 ## Dependencies
 
 - [NVRHI](https://github.com/NVIDIA-RTX/NVRHI) for graphics API abstraction
@@ -68,6 +71,31 @@ ctest --test-dir build-linux --output-on-failure
 
 Set `ARDASHIR_BUILD_TESTS=OFF` to omit GoogleTest and the module test targets.
 Set `ARDASHIR_BUILD_NVRHI_TEST=OFF` to omit the graphics integration test.
+Set `ARDASHIR_ENABLE_TRACE=OFF` to compile trace instrumentation to no-ops.
+
+## Trace captures
+
+Include `ArdaScopeTimer.h` and `ArdaTrace.h`, then bracket the work to capture:
+
+```cpp
+arda::trace::StartTraceCapture("frame.ardatrace");
+{
+    ARDA_NAMED_SCOPE_TIMER("Rendering");
+    ARDA_TRACE_COUNTER("Visible Objects", VisibleObjectCount);
+    RenderFrame();
+}
+arda::trace::StopTraceCapture();
+```
+
+Install Flask and launch the local offline viewer:
+
+```powershell
+python -m pip install -r Tools\ArdaTraceViewer\requirements.txt
+.\Scripts\RunTraceViewer.bat frame.ardatrace
+```
+
+The viewer binds to loopback by default. Open the displayed URL to inspect
+thread timelines, nested scopes, counters, markers, and aggregate statistics.
 
 ## NVRHI triangle
 

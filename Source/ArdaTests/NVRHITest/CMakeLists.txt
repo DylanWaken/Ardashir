@@ -2,7 +2,7 @@ if(NOT ARDASHIR_DXC_EXECUTABLE)
     message(FATAL_ERROR "ARDASHIR_DXC_EXECUTABLE must be configured by the root project.")
 endif()
 
-set(SHADER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Shaders/Triangle.hlsl")
+set(SHADER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/Shaders/ArdaTriangle.hlsl")
 set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/Shaders")
 set(SHADER_OUTPUTS
     "${SHADER_OUTPUT_DIR}/TriangleVS.dxil"
@@ -31,51 +31,27 @@ add_custom_target(NVRHITestShaders DEPENDS ${SHADER_OUTPUTS})
 set_target_properties(NVRHITestShaders PROPERTIES FOLDER "Ardashir/Tests/NVRHI")
 
 add_executable(NVRHITest
-    Main.cpp
-    Private/Backend.h
-    Private/GlfwWindow.cpp
-    Private/GlfwWindow.h
-    Private/NVRHITestPch.h
-    Private/TriangleRenderer.cpp
-    Private/TriangleRenderer.h
-    Private/VulkanBackend.cpp
-    Private/VulkanBackend.h
+    ArdaNVRHITestMain.cpp
+    Private/ArdaGlfwWindow.cpp
+    Private/ArdaGlfwWindow.h
+    Private/ArdaNVRHITestPch.h
+    Private/ArdaTriangleRenderer.cpp
+    Private/ArdaTriangleRenderer.h
 )
-
-if(WIN32)
-    target_sources(NVRHITest PRIVATE
-        Private/D3D12Backend.cpp
-        Private/D3D12Backend.h
-    )
-endif()
 
 add_dependencies(NVRHITest NVRHITestShaders)
 target_compile_features(NVRHITest PRIVATE cxx_std_17)
-target_compile_definitions(NVRHITest PRIVATE
-    GLFW_INCLUDE_NONE
-    $<$<BOOL:${WIN32}>:ARDASHIR_HAS_D3D12=1>
-    $<$<NOT:$<BOOL:${WIN32}>>:ARDASHIR_HAS_D3D12=0>
-)
+target_compile_definitions(NVRHITest PRIVATE GLFW_INCLUDE_NONE)
 target_include_directories(NVRHITest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
-target_precompile_headers(NVRHITest PRIVATE Private/NVRHITestPch.h)
+target_precompile_headers(NVRHITest PRIVATE Private/ArdaNVRHITestPch.h)
 target_link_libraries(NVRHITest PRIVATE
-    ${CMAKE_DL_LIBS}
+    Ardashir::ArdaBackend
     glfw
-    nvrhi_vk
 )
 
 if(WIN32)
     target_compile_definitions(NVRHITest PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
-    target_link_libraries(NVRHITest PRIVATE
-        nvrhi_d3d12
-        d3d12
-        dxgi
-        dxguid
-    )
 endif()
-
-# Keep the common NVRHI archive after its static backend archives for GNU ld.
-target_link_libraries(NVRHITest PRIVATE nvrhi)
 
 if(TARGET Vulkan::Headers)
     target_link_libraries(NVRHITest PRIVATE Vulkan::Headers)

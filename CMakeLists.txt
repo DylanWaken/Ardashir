@@ -13,6 +13,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 option(ARDASHIR_BUILD_TESTS "Build the Ardashir module tests" ON)
 option(ARDASHIR_BUILD_NVRHI_TEST "Build the dual-backend NVRHI triangle application" ON)
+option(ARDASHIR_ENABLE_TRACE "Enable Ardashir CPU trace instrumentation" ON)
 
 list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/Cmake")
 include(Platform)
@@ -24,6 +25,8 @@ if(ARDASHIR_BUILD_TESTS)
     include(GoogleTest)
 endif()
 
+add_subdirectory(Source/ArdaTrace)
+add_subdirectory(Source/ArdaBackend)
 add_subdirectory(Source/ArdaRenderGraph)
 add_subdirectory(Source/ArdaGI)
 add_subdirectory(Source/ArdaPhys)
