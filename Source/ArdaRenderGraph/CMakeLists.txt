@@ -1,8 +1,10 @@
-add_library(ArdaRenderGraph STATIC
-    Public/ArdaRenderGraph.h
-    Private/ArdaRenderGraph.cpp
-    Private/ArdaRenderGraphPch.h
+file(GLOB_RECURSE ARDA_RENDER_GRAPH_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/Public/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.cpp"
 )
+
+add_library(ArdaRenderGraph STATIC ${ARDA_RENDER_GRAPH_SOURCES})
 add_library(Ardashir::ArdaRenderGraph ALIAS ArdaRenderGraph)
 
 target_compile_features(ArdaRenderGraph PUBLIC cxx_std_17)
@@ -16,7 +18,11 @@ target_precompile_headers(ArdaRenderGraph PRIVATE Private/ArdaRenderGraphPch.h)
 set_target_properties(ArdaRenderGraph PROPERTIES FOLDER "Ardashir")
 
 if(ARDASHIR_BUILD_TESTS)
-    add_executable(ArdaGraphTests Tests/ArdaGraphTests.cpp)
+    file(GLOB_RECURSE ARDA_RENDER_GRAPH_TEST_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.cpp"
+    )
+    add_executable(ArdaGraphTests ${ARDA_RENDER_GRAPH_TEST_SOURCES})
     target_link_libraries(ArdaGraphTests PRIVATE Ardashir::ArdaRenderGraph GTest::gtest_main)
     set_target_properties(ArdaGraphTests PROPERTIES FOLDER "Ardashir/Tests")
     gtest_discover_tests(ArdaGraphTests)

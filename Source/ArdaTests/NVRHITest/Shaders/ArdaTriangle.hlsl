@@ -1,24 +1,24 @@
 struct VertexInput
 {
-    float2 position : POSITION;
-    float3 color : COLOR;
+    float2 mPosition : POSITION;
+    float3 mColor : COLOR;
 };
 
 struct VertexOutput
 {
-    float4 position : SV_Position;
-    float3 color : COLOR;
+    float4 mPosition : SV_Position;
+    float3 mColor : COLOR;
 };
 
 VertexOutput VSMain(VertexInput input)
 {
     VertexOutput output;
-    output.position = float4(input.position, 0.0, 1.0);
-    output.color = input.color;
+    output.mPosition = float4(input.mPosition, 0.0, 1.0);
+    output.mColor = input.mColor;
     return output;
 }
 
 float4 PSMain(VertexOutput input) : SV_Target
 {
-    return float4(input.color, 1.0);
+    return float4(input.mColor, 1.0);
 }

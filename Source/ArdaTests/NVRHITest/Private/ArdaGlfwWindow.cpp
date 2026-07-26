@@ -11,11 +11,11 @@ namespace arda::tests::nvrhi_test
 {
     FArdaGlfwWindow::~FArdaGlfwWindow()
     {
-        if (m_window)
+        if (mWindow)
         {
-            glfwDestroyWindow(m_window);
+            glfwDestroyWindow(mWindow);
         }
-        if (m_glfwInitialized)
+        if (mbGlfwInitialized)
         {
             glfwTerminate();
         }
@@ -30,67 +30,67 @@ namespace arda::tests::nvrhi_test
 
         if (!glfwInit())
         {
-            m_error = "GLFW initialization failed. A desktop display server may be unavailable.";
+            mError = "GLFW initialization failed. A desktop display server may be unavailable.";
             return false;
         }
-        m_glfwInitialized = true;
+        mbGlfwInitialized = true;
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_VISIBLE, visible ? GLFW_TRUE : GLFW_FALSE);
-        m_window = glfwCreateWindow(
+        mWindow = glfwCreateWindow(
             static_cast<int>(width),
             static_cast<int>(height),
             title,
             nullptr,
             nullptr);
-        if (!m_window)
+        if (!mWindow)
         {
-            m_error = "GLFW window creation failed.";
+            mError = "GLFW window creation failed.";
             return false;
         }
 
-        glfwSetWindowUserPointer(m_window, this);
-        glfwSetFramebufferSizeCallback(m_window, FramebufferSizeCallback);
+        glfwSetWindowUserPointer(mWindow, this);
+        glfwSetFramebufferSizeCallback(mWindow, FramebufferSizeCallback);
 
         int framebufferWidth = 0;
         int framebufferHeight = 0;
-        glfwGetFramebufferSize(m_window, &framebufferWidth, &framebufferHeight);
-        m_width = static_cast<uint32_t>(std::max(framebufferWidth, 1));
-        m_height = static_cast<uint32_t>(std::max(framebufferHeight, 1));
+        glfwGetFramebufferSize(mWindow, &framebufferWidth, &framebufferHeight);
+        mWidth = static_cast<uint32_t>(std::max(framebufferWidth, 1));
+        mHeight = static_cast<uint32_t>(std::max(framebufferHeight, 1));
         return true;
     }
 
     bool FArdaGlfwWindow::PumpMessages()
     {
         glfwPollEvents();
-        return m_window && !glfwWindowShouldClose(m_window);
+        return mWindow && !glfwWindowShouldClose(mWindow);
     }
 
     void FArdaGlfwWindow::Close()
     {
-        if (m_window)
+        if (mWindow)
         {
-            glfwSetWindowShouldClose(m_window, GLFW_TRUE);
+            glfwSetWindowShouldClose(mWindow, GLFW_TRUE);
         }
     }
 
     bool FArdaGlfwWindow::ConsumeResize(uint32_t& width, uint32_t& height)
     {
-        if (!m_resizePending)
+        if (!mbResizePending)
         {
             return false;
         }
 
-        m_resizePending = false;
-        width = m_width;
-        height = m_height;
+        mbResizePending = false;
+        width = mWidth;
+        height = mHeight;
         return true;
     }
 
     nvrhi::Object FArdaGlfwWindow::GetD3D12WindowHandle() const noexcept
     {
 #if defined(_WIN32)
-        return nvrhi::Object(m_window ? glfwGetWin32Window(m_window) : nullptr);
+        return nvrhi::Object(mWindow ? glfwGetWin32Window(mWindow) : nullptr);
 #else
         return nvrhi::Object(nullptr);
 #endif
@@ -113,7 +113,7 @@ namespace arda::tests::nvrhi_test
         std::string& OutError)
     {
         OutError.clear();
-        if (!m_window)
+        if (!mWindow)
         {
             OutError = "GLFW cannot create a Vulkan surface without a window.";
             return nvrhi::Object(nullptr);
@@ -127,7 +127,7 @@ namespace arda::tests::nvrhi_test
         }
 
         VkSurfaceKHR Surface = VK_NULL_HANDLE;
-        const VkResult Result = glfwCreateWindowSurface(Instance, m_window, nullptr, &Surface);
+        const VkResult Result = glfwCreateWindowSurface(Instance, mWindow, nullptr, &Surface);
         if (Result != VK_SUCCESS)
         {
             const char* GlfwError = nullptr;
@@ -154,9 +154,9 @@ namespace arda::tests::nvrhi_test
         auto* self = static_cast<FArdaGlfwWindow*>(glfwGetWindowUserPointer(window));
         if (self && width > 0 && height > 0)
         {
-            self->m_width = static_cast<uint32_t>(width);
-            self->m_height = static_cast<uint32_t>(height);
-            self->m_resizePending = true;
+            self->mWidth = static_cast<uint32_t>(width);
+            self->mHeight = static_cast<uint32_t>(height);
+            self->mbResizePending = true;
         }
     }
 }

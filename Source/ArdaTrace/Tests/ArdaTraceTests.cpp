@@ -37,16 +37,16 @@ TEST(ArdaTrace, RecordsNestedScopesCountersAndMarkers)
     FArdaTraceSession Session;
     std::string Error;
     ASSERT_TRUE(ReadTraceCapture(CapturePath, Session, Error)) << Error;
-    ASSERT_EQ(Session.Scopes.size(), 2u);
-    ASSERT_EQ(Session.Counters.size(), 1u);
-    ASSERT_EQ(Session.Markers.size(), 1u);
-    EXPECT_EQ(Session.Threads.at(Session.Scopes.front().ThreadId), "Test Thread");
+    ASSERT_EQ(Session.mScopes.size(), 2u);
+    ASSERT_EQ(Session.mCounters.size(), 1u);
+    ASSERT_EQ(Session.mMarkers.size(), 1u);
+    EXPECT_EQ(Session.mThreads.at(Session.mScopes.front().mThreadId), "Test Thread");
 
     const FArdaTraceScope* RenderingScope = nullptr;
     const FArdaTraceScope* RaytracerScope = nullptr;
-    for (const FArdaTraceScope& Scope : Session.Scopes)
+    for (const FArdaTraceScope& Scope : Session.mScopes)
     {
-        const std::string& Name = Session.Names.at(Scope.NameId);
+        const std::string& Name = Session.mNames.at(Scope.mNameId);
         if (Name == "Rendering")
         {
             RenderingScope = &Scope;
@@ -59,12 +59,12 @@ TEST(ArdaTrace, RecordsNestedScopesCountersAndMarkers)
 
     ASSERT_NE(RenderingScope, nullptr);
     ASSERT_NE(RaytracerScope, nullptr);
-    EXPECT_EQ(RenderingScope->ParentScopeId, 0u);
-    EXPECT_EQ(RaytracerScope->ParentScopeId, RenderingScope->ScopeId);
-    EXPECT_GE(RenderingScope->EndNanoseconds, RenderingScope->StartNanoseconds);
-    EXPECT_EQ(Session.Names.at(Session.Counters.front().NameId), "Visible Objects");
-    EXPECT_DOUBLE_EQ(Session.Counters.front().Value, 42.0);
-    EXPECT_EQ(Session.Names.at(Session.Markers.front().NameId), "Dispatch");
+    EXPECT_EQ(RenderingScope->mParentScopeId, 0u);
+    EXPECT_EQ(RaytracerScope->mParentScopeId, RenderingScope->mScopeId);
+    EXPECT_GE(RenderingScope->mEndNanoseconds, RenderingScope->mStartNanoseconds);
+    EXPECT_EQ(Session.mNames.at(Session.mCounters.front().mNameId), "Visible Objects");
+    EXPECT_DOUBLE_EQ(Session.mCounters.front().mValue, 42.0);
+    EXPECT_EQ(Session.mNames.at(Session.mMarkers.front().mNameId), "Dispatch");
 
     std::filesystem::remove(CapturePath);
 }
@@ -112,11 +112,11 @@ TEST(ArdaTrace, StreamsFullChunksFromIndependentThreads)
     FArdaTraceSession Session;
     std::string Error;
     ASSERT_TRUE(ReadTraceCapture(CapturePath, Session, Error)) << Error;
-    EXPECT_EQ(Session.Scopes.size(), 2200u);
+    EXPECT_EQ(Session.mScopes.size(), 2200u);
 
     bool bFoundWorkerA = false;
     bool bFoundWorkerB = false;
-    for (const auto& [ThreadId, ThreadName] : Session.Threads)
+    for (const auto& [ThreadId, ThreadName] : Session.mThreads)
     {
         (void)ThreadId;
         bFoundWorkerA = bFoundWorkerA || ThreadName == "Worker A";

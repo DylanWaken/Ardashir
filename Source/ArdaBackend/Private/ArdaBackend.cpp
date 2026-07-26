@@ -40,12 +40,12 @@ namespace arda::backend
 
         struct FArdaBackendState
         {
-            std::mutex mutex;
-            FArdaBackendConfiguration configuration;
-            FArdaDeviceContext context;
-            FArdaDefaultMessageCallback defaultMessageCallback;
-            std::unique_ptr<IArdaBackendDevice> backendDevice;
-            std::string error;
+            std::mutex mMutex;
+            FArdaBackendConfiguration mConfiguration;
+            FArdaDeviceContext mContext;
+            FArdaDefaultMessageCallback mDefaultMessageCallback;
+            std::unique_ptr<IArdaBackendDevice> mBackendDevice;
+            std::string mError;
         };
 
         FArdaBackendState& GetState()
@@ -58,24 +58,24 @@ namespace arda::backend
             FArdaBackendState& State,
             const FArdaBackendConfiguration& Configuration)
         {
-            switch (Configuration.backend)
+            switch (Configuration.mBackend)
             {
             case EArdaBackendType::D3D12:
 #if defined(_WIN32)
-                State.backendDevice = CreateD3D12BackendDevice();
+                State.mBackendDevice = CreateD3D12BackendDevice();
 #else
-                State.error = "D3D12 is only supported on Windows.";
+                State.mError = "D3D12 is only supported on Windows.";
                 return false;
 #endif
                 break;
             case EArdaBackendType::Vulkan:
-                State.backendDevice = CreateVulkanBackendDevice();
+                State.mBackendDevice = CreateVulkanBackendDevice();
                 break;
             }
 
-            if (!State.backendDevice)
+            if (!State.mBackendDevice)
             {
-                State.error = "Failed to create the requested backend.";
+                State.mError = "Failed to create the requested backend.";
                 return false;
             }
 
@@ -86,10 +86,10 @@ namespace arda::backend
             FArdaBackendState& State,
             const FArdaBackendConfiguration& Configuration)
         {
-            State.context.device = State.backendDevice->GetDevice();
-            State.context.backend = Configuration.backend;
-            currentBackend = Configuration.backend;
-            State.error.clear();
+            State.mContext.mDevice = State.mBackendDevice->GetDevice();
+            State.mContext.mBackend = Configuration.mBackend;
+            currentBackend = Configuration.mBackend;
+            State.mError.clear();
         }
     }
 
@@ -98,53 +98,53 @@ namespace arda::backend
     bool ConfigureBackend(const FArdaBackendConfiguration& configuration)
     {
         auto& state = GetState();
-        std::lock_guard<std::mutex> lock(state.mutex);
-        if (state.backendDevice)
+        std::lock_guard<std::mutex> lock(state.mMutex);
+        if (state.mBackendDevice)
         {
-            state.error = "The backend cannot be reconfigured after initialization.";
+            state.mError = "The backend cannot be reconfigured after initialization.";
             return false;
         }
 
 #if !defined(_WIN32)
-        if (configuration.backend == EArdaBackendType::D3D12)
+        if (configuration.mBackend == EArdaBackendType::D3D12)
         {
-            state.error = "D3D12 is only supported on Windows.";
+            state.mError = "D3D12 is only supported on Windows.";
             return false;
         }
 #endif
 
-        state.configuration = configuration;
-        state.context.backend = configuration.backend;
-        currentBackend = configuration.backend;
-        state.error.clear();
+        state.mConfiguration = configuration;
+        state.mContext.mBackend = configuration.mBackend;
+        currentBackend = configuration.mBackend;
+        state.mError.clear();
         return true;
     }
 
     bool ConfigureBackend(EArdaBackendType backend)
     {
         auto configuration = GetBackendConfiguration();
-        configuration.backend = backend;
+        configuration.mBackend = backend;
         return ConfigureBackend(configuration);
     }
 
     const FArdaBackendConfiguration& GetBackendConfiguration() noexcept
     {
-        return GetState().configuration;
+        return GetState().mConfiguration;
     }
 
     bool InitializeBackend()
     {
         auto& state = GetState();
-        std::lock_guard<std::mutex> lock(state.mutex);
-        if (state.backendDevice)
+        std::lock_guard<std::mutex> lock(state.mMutex);
+        if (state.mBackendDevice)
         {
-            return state.context.device != nullptr;
+            return state.mContext.mDevice != nullptr;
         }
 
-        FArdaBackendConfiguration runtimeConfiguration = state.configuration;
-        if (!runtimeConfiguration.messageCallback)
+        FArdaBackendConfiguration runtimeConfiguration = state.mConfiguration;
+        if (!runtimeConfiguration.mMessageCallback)
         {
-            runtimeConfiguration.messageCallback = &state.defaultMessageCallback;
+            runtimeConfiguration.mMessageCallback = &state.mDefaultMessageCallback;
         }
 
         if (!CreateConfiguredDevice(state, runtimeConfiguration))
@@ -152,11 +152,11 @@ namespace arda::backend
             return false;
         }
 
-        if (state.backendDevice->Initialize(runtimeConfiguration, nullptr) !=
+        if (state.mBackendDevice->Initialize(runtimeConfiguration, nullptr) !=
             EArdaInitializeResult::Success)
         {
-            state.error = state.backendDevice->GetError();
-            state.backendDevice.reset();
+            state.mError = state.mBackendDevice->GetError();
+            state.mBackendDevice.reset();
             return false;
         }
 
@@ -173,45 +173,45 @@ namespace arda::backend
         OutSwapChain.reset();
 
         auto& state = GetState();
-        std::lock_guard<std::mutex> lock(state.mutex);
-        if (state.backendDevice)
+        std::lock_guard<std::mutex> lock(state.mMutex);
+        if (state.mBackendDevice)
         {
-            state.error = "The backend is already initialized.";
+            state.mError = "The backend is already initialized.";
             return EArdaInitializeResult::Failure;
         }
         if (Width == 0 || Height == 0)
         {
-            state.error = "Presentation dimensions must be non-zero.";
+            state.mError = "Presentation dimensions must be non-zero.";
             return EArdaInitializeResult::Failure;
         }
 
-        FArdaBackendConfiguration runtimeConfiguration = state.configuration;
-        if (!runtimeConfiguration.messageCallback)
+        FArdaBackendConfiguration runtimeConfiguration = state.mConfiguration;
+        if (!runtimeConfiguration.mMessageCallback)
         {
-            runtimeConfiguration.messageCallback = &state.defaultMessageCallback;
+            runtimeConfiguration.mMessageCallback = &state.mDefaultMessageCallback;
         }
 
         if (!CreateConfiguredDevice(state, runtimeConfiguration))
         {
-            return runtimeConfiguration.backend == EArdaBackendType::D3D12
+            return runtimeConfiguration.mBackend == EArdaBackendType::D3D12
                 ? EArdaInitializeResult::Unavailable
                 : EArdaInitializeResult::Failure;
         }
 
         const EArdaInitializeResult result =
-            state.backendDevice->Initialize(runtimeConfiguration, &WindowSurface);
+            state.mBackendDevice->Initialize(runtimeConfiguration, &WindowSurface);
         if (result != EArdaInitializeResult::Success)
         {
-            state.error = state.backendDevice->GetError();
-            state.backendDevice.reset();
+            state.mError = state.mBackendDevice->GetError();
+            state.mBackendDevice.reset();
             return result;
         }
 
-        OutSwapChain = state.backendDevice->CreateSwapChain(Width, Height);
+        OutSwapChain = state.mBackendDevice->CreateSwapChain(Width, Height);
         if (!OutSwapChain)
         {
-            state.error = state.backendDevice->GetError();
-            state.backendDevice.reset();
+            state.mError = state.mBackendDevice->GetError();
+            state.mBackendDevice.reset();
             return EArdaInitializeResult::Failure;
         }
 
@@ -222,35 +222,35 @@ namespace arda::backend
     void ShutdownBackend() noexcept
     {
         auto& state = GetState();
-        std::lock_guard<std::mutex> lock(state.mutex);
-        if (state.backendDevice)
+        std::lock_guard<std::mutex> lock(state.mMutex);
+        if (state.mBackendDevice)
         {
-            state.backendDevice->WaitForIdle();
+            state.mBackendDevice->WaitForIdle();
         }
-        state.context.device = nullptr;
-        state.backendDevice.reset();
+        state.mContext.mDevice = nullptr;
+        state.mBackendDevice.reset();
     }
 
     bool IsBackendInitialized() noexcept
     {
-        return GetState().context.device != nullptr;
+        return GetState().mContext.mDevice != nullptr;
     }
 
     const FArdaDeviceContext& GetDeviceContext() noexcept
     {
-        return GetState().context;
+        return GetState().mContext;
     }
 
     nvrhi::DeviceHandle GetDevice() noexcept
     {
-        return GetState().context.device;
+        return GetState().mContext.mDevice;
     }
 
     std::string GetBackendError()
     {
         auto& state = GetState();
-        std::lock_guard<std::mutex> lock(state.mutex);
-        return state.error;
+        std::lock_guard<std::mutex> lock(state.mMutex);
+        return state.mError;
     }
 
     const char* ToString(EArdaBackendType backend) noexcept

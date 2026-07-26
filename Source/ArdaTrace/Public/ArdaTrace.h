@@ -21,7 +21,7 @@ namespace arda::trace
         [[nodiscard]] std::uint32_t GetId() const noexcept;
 
     private:
-        std::uint32_t Id;
+        std::uint32_t mId;
     };
 
     /**

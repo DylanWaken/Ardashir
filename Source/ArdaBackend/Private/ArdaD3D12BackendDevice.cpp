@@ -18,12 +18,12 @@ namespace arda::backend
                 HWND Window,
                 uint32_t Width,
                 uint32_t Height)
-                : Factory(std::move(Factory))
-                , GraphicsQueue(std::move(GraphicsQueue))
-                , Device(std::move(Device))
-                , Window(Window)
-                , Width(Width)
-                , Height(Height)
+                : mFactory(std::move(Factory))
+                , mGraphicsQueue(std::move(GraphicsQueue))
+                , mDevice(std::move(Device))
+                , mWindow(Window)
+                , mWidth(Width)
+                , mHeight(Height)
             {
             }
 
@@ -36,31 +36,31 @@ namespace arda::backend
             [[nodiscard]] bool Initialize()
             {
                 DXGI_SWAP_CHAIN_DESC1 Description{};
-                Description.Width = Width;
-                Description.Height = Height;
+                Description.Width = mWidth;
+                Description.Height = mHeight;
                 Description.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
                 Description.SampleDesc.Count = 1;
                 Description.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-                Description.BufferCount = BufferCount;
+                Description.BufferCount = mBufferCount;
                 Description.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
                 Microsoft::WRL::ComPtr<IDXGISwapChain1> BaseSwapChain;
-                if (FAILED(Factory->CreateSwapChainForHwnd(
-                    GraphicsQueue.Get(),
-                    Window,
+                if (FAILED(mFactory->CreateSwapChainForHwnd(
+                    mGraphicsQueue.Get(),
+                    mWindow,
                     &Description,
                     nullptr,
                     nullptr,
                     &BaseSwapChain)))
                 {
-                    Error = "IDXGIFactory::CreateSwapChainForHwnd failed.";
+                    mError = "IDXGIFactory::CreateSwapChainForHwnd failed.";
                     return false;
                 }
 
-                Factory->MakeWindowAssociation(Window, DXGI_MWA_NO_ALT_ENTER);
-                if (FAILED(BaseSwapChain.As(&SwapChain)))
+                mFactory->MakeWindowAssociation(mWindow, DXGI_MWA_NO_ALT_ENTER);
+                if (FAILED(BaseSwapChain.As(&mSwapChain)))
                 {
-                    Error = "The D3D12 swap chain does not expose IDXGISwapChain3.";
+                    mError = "The D3D12 swap chain does not expose IDXGISwapChain3.";
                     return false;
                 }
 
@@ -69,40 +69,40 @@ namespace arda::backend
 
             bool Resize(uint32_t NewWidth, uint32_t NewHeight) override
             {
-                if (!SwapChain || NewWidth == 0 || NewHeight == 0 ||
-                    (NewWidth == Width && NewHeight == Height))
+                if (!mSwapChain || NewWidth == 0 || NewHeight == 0 ||
+                    (NewWidth == mWidth && NewHeight == mHeight))
                 {
                     return true;
                 }
 
                 WaitForIdle();
                 ReleaseResources();
-                if (FAILED(SwapChain->ResizeBuffers(
-                    BufferCount,
+                if (FAILED(mSwapChain->ResizeBuffers(
+                    mBufferCount,
                     NewWidth,
                     NewHeight,
                     DXGI_FORMAT_B8G8R8A8_UNORM,
                     0)))
                 {
-                    Error = "IDXGISwapChain::ResizeBuffers failed.";
+                    mError = "IDXGISwapChain::ResizeBuffers failed.";
                     return false;
                 }
 
-                Width = NewWidth;
-                Height = NewHeight;
+                mWidth = NewWidth;
+                mHeight = NewHeight;
                 return CreateResources();
             }
 
             bool AcquireFrame(nvrhi::FramebufferHandle& OutFramebuffer) override
             {
-                if (!SwapChain)
+                if (!mSwapChain)
                 {
-                    Error = "The D3D12 swap chain is not initialized.";
+                    mError = "The D3D12 swap chain is not initialized.";
                     OutFramebuffer = nullptr;
                     return false;
                 }
 
-                OutFramebuffer = Framebuffers[SwapChain->GetCurrentBackBufferIndex()];
+                OutFramebuffer = mFramebuffers[mSwapChain->GetCurrentBackBufferIndex()];
                 return OutFramebuffer != nullptr;
             }
 
@@ -112,19 +112,19 @@ namespace arda::backend
 
             bool Present() override
             {
-                if (!Device || !SwapChain)
+                if (!mDevice || !mSwapChain)
                 {
-                    Error = "The D3D12 swap chain is not initialized.";
+                    mError = "The D3D12 swap chain is not initialized.";
                     return false;
                 }
-                if (!Device->waitForIdle())
+                if (!mDevice->waitForIdle())
                 {
-                    Error = "NVRHI reported a D3D12 device failure while waiting for the frame.";
+                    mError = "NVRHI reported a D3D12 device failure while waiting for the frame.";
                     return false;
                 }
-                if (FAILED(SwapChain->Present(1, 0)))
+                if (FAILED(mSwapChain->Present(1, 0)))
                 {
-                    Error = "IDXGISwapChain::Present failed.";
+                    mError = "IDXGISwapChain::Present failed.";
                     return false;
                 }
 
@@ -133,9 +133,9 @@ namespace arda::backend
 
             void WaitForIdle() noexcept override
             {
-                if (Device)
+                if (mDevice)
                 {
-                    Device->waitForIdle();
+                    mDevice->waitForIdle();
                 }
             }
 
@@ -146,94 +146,94 @@ namespace arda::backend
 
             uint32_t GetWidth() const noexcept override
             {
-                return Width;
+                return mWidth;
             }
 
             uint32_t GetHeight() const noexcept override
             {
-                return Height;
+                return mHeight;
             }
 
             const std::string& GetError() const noexcept override
             {
-                return Error;
+                return mError;
             }
 
         private:
-            static constexpr uint32_t BufferCount = 2;
+            static constexpr uint32_t mBufferCount = 2;
 
             bool CreateResources()
             {
-                for (uint32_t Index = 0; Index < BufferCount; ++Index)
+                for (uint32_t Index = 0; Index < mBufferCount; ++Index)
                 {
                     Microsoft::WRL::ComPtr<ID3D12Resource> Resource;
-                    if (FAILED(SwapChain->GetBuffer(Index, IID_PPV_ARGS(&Resource))))
+                    if (FAILED(mSwapChain->GetBuffer(Index, IID_PPV_ARGS(&Resource))))
                     {
-                        Error = "IDXGISwapChain::GetBuffer failed.";
+                        mError = "IDXGISwapChain::GetBuffer failed.";
                         ReleaseResources();
                         return false;
                     }
 
                     const auto Description = nvrhi::TextureDesc()
                         .setDimension(nvrhi::TextureDimension::Texture2D)
-                        .setWidth(Width)
-                        .setHeight(Height)
+                        .setWidth(mWidth)
+                        .setHeight(mHeight)
                         .setFormat(nvrhi::Format::BGRA8_UNORM)
                         .setIsRenderTarget(true)
                         .setDebugName("D3D12 swap-chain image")
                         .enableAutomaticStateTracking(nvrhi::ResourceStates::Present);
 
-                    Textures[Index] = Device->createHandleForNativeTexture(
+                    mTextures[Index] = mDevice->createHandleForNativeTexture(
                         nvrhi::ObjectTypes::D3D12_Resource,
                         nvrhi::Object(Resource.Get()),
                         Description);
-                    if (!Textures[Index])
+                    if (!mTextures[Index])
                     {
-                        Error = "NVRHI failed to wrap a D3D12 swap-chain image.";
+                        mError = "NVRHI failed to wrap a D3D12 swap-chain image.";
                         ReleaseResources();
                         return false;
                     }
 
-                    Framebuffers[Index] = Device->createFramebuffer(
-                        nvrhi::FramebufferDesc().addColorAttachment(Textures[Index]));
-                    if (!Framebuffers[Index])
+                    mFramebuffers[Index] = mDevice->createFramebuffer(
+                        nvrhi::FramebufferDesc().addColorAttachment(mTextures[Index]));
+                    if (!mFramebuffers[Index])
                     {
-                        Error = "NVRHI failed to create a D3D12 framebuffer.";
+                        mError = "NVRHI failed to create a D3D12 framebuffer.";
                         ReleaseResources();
                         return false;
                     }
                 }
 
-                Error.clear();
+                mError.clear();
                 return true;
             }
 
             void ReleaseResources()
             {
-                for (auto& Framebuffer : Framebuffers)
+                for (auto& Framebuffer : mFramebuffers)
                 {
                     Framebuffer = nullptr;
                 }
-                for (auto& Texture : Textures)
+                for (auto& Texture : mTextures)
                 {
                     Texture = nullptr;
                 }
-                if (Device)
+                if (mDevice)
                 {
-                    Device->runGarbageCollection();
+                    mDevice->runGarbageCollection();
                 }
             }
 
-            Microsoft::WRL::ComPtr<IDXGIFactory6> Factory;
-            Microsoft::WRL::ComPtr<ID3D12CommandQueue> GraphicsQueue;
-            nvrhi::DeviceHandle Device;
-            HWND Window = nullptr;
-            uint32_t Width = 0;
-            uint32_t Height = 0;
-            std::string Error;
-            Microsoft::WRL::ComPtr<IDXGISwapChain3> SwapChain;
-            std::array<nvrhi::TextureHandle, BufferCount> Textures;
-            std::array<nvrhi::FramebufferHandle, BufferCount> Framebuffers;
+            Microsoft::WRL::ComPtr<IDXGIFactory6> mFactory;
+            Microsoft::WRL::ComPtr<ID3D12CommandQueue> mGraphicsQueue;
+            nvrhi::DeviceHandle mDevice;
+            HWND mWindow = nullptr;
+            uint32_t mWidth = 0;
+            uint32_t mHeight = 0;
+            std::string mError;
+            Microsoft::WRL::ComPtr<IDXGISwapChain3> mSwapChain;
+            std::array<nvrhi::TextureHandle, mBufferCount> mTextures;
+            std::array<nvrhi::FramebufferHandle, mBufferCount> mFramebuffers;
         };
 
         class FArdaD3D12BackendDevice final : public IArdaBackendDevice
@@ -242,8 +242,8 @@ namespace arda::backend
             ~FArdaD3D12BackendDevice() override
             {
                 WaitForIdle();
-                Device = nullptr;
-                NativeDevice = nullptr;
+                mDevice = nullptr;
+                mNativeDevice = nullptr;
             }
 
             EArdaInitializeResult Initialize(
@@ -252,23 +252,23 @@ namespace arda::backend
             {
                 if (WindowSurface)
                 {
-                    Window = WindowSurface->GetD3D12WindowHandle();
-                    if (!Window)
+                    mWindow = WindowSurface->GetD3D12WindowHandle();
+                    if (!mWindow)
                     {
-                        Error = "The window surface did not provide a Win32 window handle.";
+                        mError = "The window surface did not provide a Win32 window handle.";
                         return EArdaInitializeResult::Failure;
                     }
                 }
 
-                if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&Factory))))
+                if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&mFactory))))
                 {
-                    Error = "CreateDXGIFactory2 failed; D3D12 is unavailable.";
+                    mError = "CreateDXGIFactory2 failed; D3D12 is unavailable.";
                     return EArdaInitializeResult::Unavailable;
                 }
 
                 Microsoft::WRL::ComPtr<IDXGIAdapter1> Adapter;
                 for (UINT Index = 0;
-                     Factory->EnumAdapterByGpuPreference(
+                     mFactory->EnumAdapterByGpuPreference(
                          Index,
                          DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
                          IID_PPV_ARGS(&Adapter)) != DXGI_ERROR_NOT_FOUND;
@@ -288,52 +288,52 @@ namespace arda::backend
                     Adapter.Reset();
                 }
 
-                if (!Adapter && FAILED(Factory->EnumWarpAdapter(IID_PPV_ARGS(&Adapter))))
+                if (!Adapter && FAILED(mFactory->EnumWarpAdapter(IID_PPV_ARGS(&Adapter))))
                 {
-                    Error = "No D3D12 adapter or WARP adapter is available.";
+                    mError = "No D3D12 adapter or WARP adapter is available.";
                     return EArdaInitializeResult::Unavailable;
                 }
 
                 if (FAILED(D3D12CreateDevice(
                     Adapter.Get(),
                     D3D_FEATURE_LEVEL_12_0,
-                    IID_PPV_ARGS(&D3DDevice))))
+                    IID_PPV_ARGS(&mD3DDevice))))
                 {
-                    Error = "D3D12CreateDevice failed.";
+                    mError = "D3D12CreateDevice failed.";
                     return EArdaInitializeResult::Unavailable;
                 }
 
                 D3D12_COMMAND_QUEUE_DESC QueueDescription{};
                 QueueDescription.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-                if (FAILED(D3DDevice->CreateCommandQueue(
+                if (FAILED(mD3DDevice->CreateCommandQueue(
                     &QueueDescription,
-                    IID_PPV_ARGS(&GraphicsQueue))))
+                    IID_PPV_ARGS(&mGraphicsQueue))))
                 {
-                    Error = "ID3D12Device::CreateCommandQueue failed.";
+                    mError = "ID3D12Device::CreateCommandQueue failed.";
                     return EArdaInitializeResult::Failure;
                 }
 
                 nvrhi::d3d12::DeviceDesc Description;
-                Description.errorCB = Configuration.messageCallback;
-                Description.pDevice = D3DDevice.Get();
-                Description.pGraphicsCommandQueue = GraphicsQueue.Get();
-                NativeDevice = nvrhi::d3d12::createDevice(Description);
-                if (!NativeDevice)
+                Description.errorCB = Configuration.mMessageCallback;
+                Description.pDevice = mD3DDevice.Get();
+                Description.pGraphicsCommandQueue = mGraphicsQueue.Get();
+                mNativeDevice = nvrhi::d3d12::createDevice(Description);
+                if (!mNativeDevice)
                 {
-                    Error = "nvrhi::d3d12::createDevice failed.";
+                    mError = "nvrhi::d3d12::createDevice failed.";
                     return EArdaInitializeResult::Failure;
                 }
 
-                Device = Configuration.enableValidation
-                    ? nvrhi::validation::createValidationLayer(NativeDevice)
-                    : nvrhi::DeviceHandle(NativeDevice);
-                if (!Device)
+                mDevice = Configuration.mbEnableValidation
+                    ? nvrhi::validation::createValidationLayer(mNativeDevice)
+                    : nvrhi::DeviceHandle(mNativeDevice);
+                if (!mDevice)
                 {
-                    Error = "Failed to create the NVRHI D3D12 device.";
+                    mError = "Failed to create the NVRHI D3D12 device.";
                     return EArdaInitializeResult::Failure;
                 }
 
-                Error.clear();
+                mError.clear();
                 return EArdaInitializeResult::Success;
             }
 
@@ -341,22 +341,22 @@ namespace arda::backend
                 uint32_t Width,
                 uint32_t Height) override
             {
-                if (!Window)
+                if (!mWindow)
                 {
-                    Error = "D3D12 presentation was not initialized with a window surface.";
+                    mError = "D3D12 presentation was not initialized with a window surface.";
                     return nullptr;
                 }
 
                 auto SwapChain = std::make_unique<FArdaD3D12SwapChain>(
-                    Factory,
-                    GraphicsQueue,
-                    Device,
-                    Window,
+                    mFactory,
+                    mGraphicsQueue,
+                    mDevice,
+                    mWindow,
                     Width,
                     Height);
                 if (!SwapChain->Initialize())
                 {
-                    Error = SwapChain->GetError();
+                    mError = SwapChain->GetError();
                     return nullptr;
                 }
 
@@ -365,30 +365,30 @@ namespace arda::backend
 
             void WaitForIdle() noexcept override
             {
-                if (Device)
+                if (mDevice)
                 {
-                    Device->waitForIdle();
+                    mDevice->waitForIdle();
                 }
             }
 
             nvrhi::DeviceHandle GetDevice() const noexcept override
             {
-                return Device;
+                return mDevice;
             }
 
             const std::string& GetError() const noexcept override
             {
-                return Error;
+                return mError;
             }
 
         private:
-            HWND Window = nullptr;
-            std::string Error;
-            Microsoft::WRL::ComPtr<IDXGIFactory6> Factory;
-            Microsoft::WRL::ComPtr<ID3D12Device> D3DDevice;
-            Microsoft::WRL::ComPtr<ID3D12CommandQueue> GraphicsQueue;
-            nvrhi::d3d12::DeviceHandle NativeDevice;
-            nvrhi::DeviceHandle Device;
+            HWND mWindow = nullptr;
+            std::string mError;
+            Microsoft::WRL::ComPtr<IDXGIFactory6> mFactory;
+            Microsoft::WRL::ComPtr<ID3D12Device> mD3DDevice;
+            Microsoft::WRL::ComPtr<ID3D12CommandQueue> mGraphicsQueue;
+            nvrhi::d3d12::DeviceHandle mNativeDevice;
+            nvrhi::DeviceHandle mDevice;
         };
     }
 

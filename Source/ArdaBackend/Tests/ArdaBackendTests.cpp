@@ -10,8 +10,8 @@ TEST(ArdaBackend, ExposesProcessWideConfigurationAndContext)
     ASSERT_TRUE(ConfigureBackend(DefaultBackend));
 
     EXPECT_EQ(gCurrentBackend, DefaultBackend);
-    EXPECT_EQ(GetBackendConfiguration().backend, DefaultBackend);
-    EXPECT_EQ(GetDeviceContext().backend, DefaultBackend);
+    EXPECT_EQ(GetBackendConfiguration().mBackend, DefaultBackend);
+    EXPECT_EQ(GetDeviceContext().mBackend, DefaultBackend);
     EXPECT_EQ(&GetDeviceContext(), &GetDeviceContext());
     EXPECT_FALSE(IsBackendInitialized());
     EXPECT_EQ(GetDevice(), nullptr);
@@ -35,8 +35,8 @@ namespace
 
         EXPECT_TRUE(IsBackendInitialized());
         EXPECT_NE(GetDevice(), nullptr);
-        EXPECT_NE(GetDeviceContext().device, nullptr);
-        EXPECT_EQ(GetDeviceContext().backend, backend);
+        EXPECT_NE(GetDeviceContext().mDevice, nullptr);
+        EXPECT_EQ(GetDeviceContext().mBackend, backend);
         EXPECT_EQ(gCurrentBackend, backend);
         ShutdownBackend();
         EXPECT_FALSE(IsBackendInitialized());

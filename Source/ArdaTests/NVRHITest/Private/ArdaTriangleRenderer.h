@@ -17,19 +17,19 @@ namespace arda::tests::nvrhi_test
             const std::filesystem::path& shaderDirectory);
         bool RenderFrame(backend::IArdaSwapChain& swapChain);
 
-        [[nodiscard]] const std::string& GetError() const { return m_error; }
+        [[nodiscard]] const std::string& GetError() const { return mError; }
 
     private:
         static std::vector<uint8_t> LoadBinary(const std::filesystem::path& path);
 
-        nvrhi::DeviceHandle m_device;
-        nvrhi::ShaderHandle m_vertexShader;
-        nvrhi::ShaderHandle m_pixelShader;
-        nvrhi::InputLayoutHandle m_inputLayout;
-        nvrhi::GraphicsPipelineHandle m_pipeline;
-        nvrhi::BufferHandle m_vertexBuffer;
-        nvrhi::BufferHandle m_indexBuffer;
-        nvrhi::CommandListHandle m_commandList;
-        std::string m_error;
+        nvrhi::DeviceHandle mDevice;
+        nvrhi::ShaderHandle mVertexShader;
+        nvrhi::ShaderHandle mPixelShader;
+        nvrhi::InputLayoutHandle mInputLayout;
+        nvrhi::GraphicsPipelineHandle mPipeline;
+        nvrhi::BufferHandle mVertexBuffer;
+        nvrhi::BufferHandle mIndexBuffer;
+        nvrhi::CommandListHandle mCommandList;
+        std::string mError;
     };
 }

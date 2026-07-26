@@ -10,7 +10,7 @@ project stem in type names and as the prefix for filenames.
 - Use descriptive names and avoid abbreviations unless they are established
   domain terms, such as `GPU`, `D3D12`, or `NVRHI`.
 - Use `PascalCase` without underscores for types, functions, variables,
-  constants, and enum values.
+  constants, and enum values, except for required variable prefixes.
 - Use lowercase names for namespaces, for example `arda::backend`.
 - Name types and variables with nouns.
 - Name functions with verbs that describe their effect or result.
@@ -52,6 +52,11 @@ This rule applies to classes, structs, enums, unions, aliases, interfaces, and
 class or alias templates. It does not apply to fundamental types, template
 parameters, or third-party types.
 
+Module-specific conventions may replace the `Arda` stem for types in their
+module and take precedence over this section:
+
+- [ArdaRenderGraph Coding Conventions](Modules/ArdaRenderGraph.md)
+
 ## Files
 
 Every project-owned source filename must begin with `Arda` and use PascalCase.
@@ -72,8 +77,12 @@ third-party files.
 ## Variables and Constants
 
 - Use PascalCase for local variables, parameters, data members, and constants.
-- Prefix booleans with `b`: `bEnableValidation`, `bIsInitialized`.
-- Do not encode ownership, scope, or pointer/reference status in a name.
+- Prefix every class or struct data member with `m`, followed by a PascalCase
+  name: `mDevice`, `mFrameCount`.
+- Prefix booleans with `b`: `bEnableValidation`, `bIsInitialized`. Boolean data
+  members use both required prefixes: `mbEnableValidation`, `mbIsInitialized`.
+- Except for the required `m` data-member prefix, do not encode ownership,
+  scope, or pointer/reference status in a name.
 - Declare one variable per line.
 - Give variables the narrowest practical scope.
 - Prefer initialization at declaration.
@@ -84,6 +93,12 @@ third-party files.
 ```cpp
 bool bEnableValidation = true;
 constexpr uint32_t MaxFrameCount = 3;
+
+struct FArdaFrameState
+{
+    uint32_t mFrameCount = 0;
+    bool mbIsInitialized = false;
+};
 
 template <typename InElementType>
 class TArdaContainer

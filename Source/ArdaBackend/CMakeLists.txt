@@ -1,17 +1,15 @@
-add_library(ArdaBackend STATIC
-    Public/ArdaBackend.h
-    Public/ArdaDevice.h
-    Public/ArdaSwapChain.h
-    Private/ArdaBackend.cpp
-    Private/ArdaBackendPch.h
-    Private/ArdaBackendDevice.h
-    Private/ArdaVulkanBackendDevice.cpp
+file(GLOB_RECURSE ARDA_BACKEND_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/Public/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.cpp"
 )
-add_library(Ardashir::ArdaBackend ALIAS ArdaBackend)
 
-if(WIN32)
-    target_sources(ArdaBackend PRIVATE Private/ArdaD3D12BackendDevice.cpp)
+if(NOT WIN32)
+    list(FILTER ARDA_BACKEND_SOURCES EXCLUDE REGEX "ArdaD3D12BackendDevice\\.cpp$")
 endif()
+
+add_library(ArdaBackend STATIC ${ARDA_BACKEND_SOURCES})
+add_library(Ardashir::ArdaBackend ALIAS ArdaBackend)
 
 target_compile_features(ArdaBackend PUBLIC cxx_std_17)
 target_compile_definitions(ArdaBackend PRIVATE
@@ -49,7 +47,11 @@ endif()
 set_target_properties(ArdaBackend PROPERTIES FOLDER "Ardashir")
 
 if(ARDASHIR_BUILD_TESTS)
-    add_executable(ArdaBackendTests Tests/ArdaBackendTests.cpp)
+    file(GLOB_RECURSE ARDA_BACKEND_TEST_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.cpp"
+    )
+    add_executable(ArdaBackendTests ${ARDA_BACKEND_TEST_SOURCES})
     target_link_libraries(ArdaBackendTests PRIVATE Ardashir::ArdaBackend GTest::gtest_main)
     set_target_properties(ArdaBackendTests PROPERTIES FOLDER "Ardashir/Tests")
     gtest_discover_tests(ArdaBackendTests)

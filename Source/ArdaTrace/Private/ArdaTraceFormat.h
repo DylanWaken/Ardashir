@@ -28,13 +28,13 @@ namespace arda::trace::detail
 
     struct FArdaBufferedEvent
     {
-        EArdaBufferedEventType Type = EArdaBufferedEventType::Marker;
-        std::uint32_t ThreadId = 0;
-        std::uint32_t NameId = 0;
-        std::uint64_t PrimaryId = 0;
-        std::uint64_t SecondaryId = 0;
-        std::uint64_t StartNanoseconds = 0;
-        std::uint64_t EndNanoseconds = 0;
-        double Value = 0.0;
+        EArdaBufferedEventType mType = EArdaBufferedEventType::Marker;
+        std::uint32_t mThreadId = 0;
+        std::uint32_t mNameId = 0;
+        std::uint64_t mPrimaryId = 0;
+        std::uint64_t mSecondaryId = 0;
+        std::uint64_t mStartNanoseconds = 0;
+        std::uint64_t mEndNanoseconds = 0;
+        double mValue = 0.0;
     };
 }

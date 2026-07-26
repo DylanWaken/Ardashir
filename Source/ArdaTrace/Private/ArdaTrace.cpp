@@ -14,26 +14,26 @@ namespace arda::trace
 
         struct FArdaThreadBuffer
         {
-            std::uint32_t ThreadId = 0;
-            std::uint64_t Generation = 0;
-            std::string Name;
-            std::vector<detail::FArdaBufferedEvent> Events;
+            std::uint32_t mThreadId = 0;
+            std::uint64_t mGeneration = 0;
+            std::string mName;
+            std::vector<detail::FArdaBufferedEvent> mEvents;
         };
 
         struct FArdaTraceState
         {
-            std::mutex Mutex;
-            std::ofstream Stream;
-            std::atomic<bool> bActive = false;
-            std::atomic<std::uint64_t> Generation = 0;
-            std::atomic<std::uint32_t> NextNameId = 1;
-            std::atomic<std::uint32_t> NextThreadId = 1;
-            std::atomic<std::uint64_t> NextScopeId = 1;
-            std::unordered_map<std::string, std::uint32_t> NameIds;
-            std::unordered_map<std::uint32_t, std::string> Names;
-            std::vector<std::shared_ptr<FArdaThreadBuffer>> ThreadBuffers;
-            std::string Error;
-            std::uint64_t OriginNanoseconds = 0;
+            std::mutex mMutex;
+            std::ofstream mStream;
+            std::atomic<bool> mbActive = false;
+            std::atomic<std::uint64_t> mGeneration = 0;
+            std::atomic<std::uint32_t> mNextNameId = 1;
+            std::atomic<std::uint32_t> mNextThreadId = 1;
+            std::atomic<std::uint64_t> mNextScopeId = 1;
+            std::unordered_map<std::string, std::uint32_t> mNameIds;
+            std::unordered_map<std::uint32_t, std::string> mNames;
+            std::vector<std::shared_ptr<FArdaThreadBuffer>> mThreadBuffers;
+            std::string mError;
+            std::uint64_t mOriginNanoseconds = 0;
         };
 
         FArdaTraceState& GetState()
@@ -83,37 +83,37 @@ namespace arda::trace
 
         void WriteEvent(std::ofstream& Stream, const detail::FArdaBufferedEvent& Event)
         {
-            switch (Event.Type)
+            switch (Event.mType)
             {
             case detail::EArdaBufferedEventType::Scope:
             {
                 const detail::EArdaTraceRecordType Type = detail::EArdaTraceRecordType::Scope;
                 WriteValue(Stream, Type);
-                WriteValue(Stream, Event.ThreadId);
-                WriteValue(Stream, Event.NameId);
-                WriteValue(Stream, Event.PrimaryId);
-                WriteValue(Stream, Event.SecondaryId);
-                WriteValue(Stream, Event.StartNanoseconds);
-                WriteValue(Stream, Event.EndNanoseconds);
+                WriteValue(Stream, Event.mThreadId);
+                WriteValue(Stream, Event.mNameId);
+                WriteValue(Stream, Event.mPrimaryId);
+                WriteValue(Stream, Event.mSecondaryId);
+                WriteValue(Stream, Event.mStartNanoseconds);
+                WriteValue(Stream, Event.mEndNanoseconds);
                 break;
             }
             case detail::EArdaBufferedEventType::Counter:
             {
                 const detail::EArdaTraceRecordType Type = detail::EArdaTraceRecordType::Counter;
                 WriteValue(Stream, Type);
-                WriteValue(Stream, Event.ThreadId);
-                WriteValue(Stream, Event.NameId);
-                WriteValue(Stream, Event.StartNanoseconds);
-                WriteValue(Stream, Event.Value);
+                WriteValue(Stream, Event.mThreadId);
+                WriteValue(Stream, Event.mNameId);
+                WriteValue(Stream, Event.mStartNanoseconds);
+                WriteValue(Stream, Event.mValue);
                 break;
             }
             case detail::EArdaBufferedEventType::Marker:
             {
                 const detail::EArdaTraceRecordType Type = detail::EArdaTraceRecordType::Marker;
                 WriteValue(Stream, Type);
-                WriteValue(Stream, Event.ThreadId);
-                WriteValue(Stream, Event.NameId);
-                WriteValue(Stream, Event.StartNanoseconds);
+                WriteValue(Stream, Event.mThreadId);
+                WriteValue(Stream, Event.mNameId);
+                WriteValue(Stream, Event.mStartNanoseconds);
                 break;
             }
             }
@@ -129,9 +129,9 @@ namespace arda::trace
 
             FArdaTraceState& State = GetState();
             ThreadBuffer = std::make_shared<FArdaThreadBuffer>();
-            ThreadBuffer->ThreadId = State.NextThreadId.fetch_add(1, std::memory_order_relaxed);
-            ThreadBuffer->Name = "Thread " + std::to_string(ThreadBuffer->ThreadId);
-            ThreadBuffer->Events.reserve(EventChunkCapacity);
+            ThreadBuffer->mThreadId = State.mNextThreadId.fetch_add(1, std::memory_order_relaxed);
+            ThreadBuffer->mName = "Thread " + std::to_string(ThreadBuffer->mThreadId);
+            ThreadBuffer->mEvents.reserve(EventChunkCapacity);
             return ThreadBuffer;
         }
 
@@ -139,57 +139,57 @@ namespace arda::trace
             const std::shared_ptr<FArdaThreadBuffer>& ThreadBuffer,
             std::uint64_t Generation)
         {
-            if (ThreadBuffer->Generation == Generation)
+            if (ThreadBuffer->mGeneration == Generation)
             {
                 return true;
             }
 
-            ThreadBuffer->Events.clear();
-            ThreadBuffer->Generation = Generation;
+            ThreadBuffer->mEvents.clear();
+            ThreadBuffer->mGeneration = Generation;
 
             FArdaTraceState& State = GetState();
-            std::lock_guard<std::mutex> Lock(State.Mutex);
-            if (!State.bActive.load(std::memory_order_relaxed)
-                || State.Generation.load(std::memory_order_relaxed) != Generation)
+            std::lock_guard<std::mutex> Lock(State.mMutex);
+            if (!State.mbActive.load(std::memory_order_relaxed)
+                || State.mGeneration.load(std::memory_order_relaxed) != Generation)
             {
                 return false;
             }
 
-            State.ThreadBuffers.push_back(ThreadBuffer);
-            WriteThreadRecord(State.Stream, ThreadBuffer->ThreadId, ThreadBuffer->Name);
-            return static_cast<bool>(State.Stream);
+            State.mThreadBuffers.push_back(ThreadBuffer);
+            WriteThreadRecord(State.mStream, ThreadBuffer->mThreadId, ThreadBuffer->mName);
+            return static_cast<bool>(State.mStream);
         }
 
         void PublishThreadEvents(FArdaThreadBuffer& ThreadBuffer)
         {
-            if (ThreadBuffer.Events.empty())
+            if (ThreadBuffer.mEvents.empty())
             {
                 return;
             }
 
             FArdaTraceState& State = GetState();
-            std::lock_guard<std::mutex> Lock(State.Mutex);
-            if (State.bActive.load(std::memory_order_relaxed)
-                && State.Generation.load(std::memory_order_relaxed) == ThreadBuffer.Generation)
+            std::lock_guard<std::mutex> Lock(State.mMutex);
+            if (State.mbActive.load(std::memory_order_relaxed)
+                && State.mGeneration.load(std::memory_order_relaxed) == ThreadBuffer.mGeneration)
             {
-                for (const detail::FArdaBufferedEvent& Event : ThreadBuffer.Events)
+                for (const detail::FArdaBufferedEvent& Event : ThreadBuffer.mEvents)
                 {
-                    WriteEvent(State.Stream, Event);
+                    WriteEvent(State.mStream, Event);
                 }
 
-                if (!State.Stream)
+                if (!State.mStream)
                 {
-                    State.Error = "Failed while writing trace events.";
-                    State.bActive.store(false, std::memory_order_release);
+                    State.mError = "Failed while writing trace events.";
+                    State.mbActive.store(false, std::memory_order_release);
                 }
             }
-            ThreadBuffer.Events.clear();
+            ThreadBuffer.mEvents.clear();
         }
 
         void BufferEvent(detail::FArdaBufferedEvent Event) noexcept
         {
             FArdaTraceState& State = GetState();
-            if (!State.bActive.load(std::memory_order_acquire))
+            if (!State.mbActive.load(std::memory_order_acquire))
             {
                 return;
             }
@@ -197,23 +197,23 @@ namespace arda::trace
             try
             {
                 const std::uint64_t Generation =
-                    State.Generation.load(std::memory_order_acquire);
+                    State.mGeneration.load(std::memory_order_acquire);
                 const std::shared_ptr<FArdaThreadBuffer> ThreadBuffer = GetThreadBuffer();
                 if (!PrepareThreadBuffer(ThreadBuffer, Generation))
                 {
                     return;
                 }
 
-                Event.ThreadId = ThreadBuffer->ThreadId;
-                ThreadBuffer->Events.push_back(Event);
-                if (ThreadBuffer->Events.size() >= EventChunkCapacity)
+                Event.mThreadId = ThreadBuffer->mThreadId;
+                ThreadBuffer->mEvents.push_back(Event);
+                if (ThreadBuffer->mEvents.size() >= EventChunkCapacity)
                 {
                     PublishThreadEvents(*ThreadBuffer);
                 }
             }
             catch (...)
             {
-                State.bActive.store(false, std::memory_order_release);
+                State.mbActive.store(false, std::memory_order_release);
             }
         }
 
@@ -221,156 +221,156 @@ namespace arda::trace
         {
             FArdaTraceState& State = GetState();
             const std::string StableName = Name != nullptr ? Name : "<unnamed>";
-            std::lock_guard<std::mutex> Lock(State.Mutex);
+            std::lock_guard<std::mutex> Lock(State.mMutex);
 
-            const auto ExistingName = State.NameIds.find(StableName);
-            if (ExistingName != State.NameIds.end())
+            const auto ExistingName = State.mNameIds.find(StableName);
+            if (ExistingName != State.mNameIds.end())
             {
                 return ExistingName->second;
             }
 
             const std::uint32_t NameId =
-                State.NextNameId.fetch_add(1, std::memory_order_relaxed);
-            State.NameIds.emplace(StableName, NameId);
-            State.Names.emplace(NameId, StableName);
-            if (State.bActive.load(std::memory_order_relaxed))
+                State.mNextNameId.fetch_add(1, std::memory_order_relaxed);
+            State.mNameIds.emplace(StableName, NameId);
+            State.mNames.emplace(NameId, StableName);
+            if (State.mbActive.load(std::memory_order_relaxed))
             {
-                WriteNameRecord(State.Stream, NameId, StableName);
+                WriteNameRecord(State.mStream, NameId, StableName);
             }
             return NameId;
         }
     }
 
     FArdaTraceName::FArdaTraceName(const char* Name)
-        : Id(RegisterName(Name))
+        : mId(RegisterName(Name))
     {
     }
 
     std::uint32_t FArdaTraceName::GetId() const noexcept
     {
-        return Id;
+        return mId;
     }
 
     bool StartTraceCapture(const std::filesystem::path& FilePath)
     {
         FArdaTraceState& State = GetState();
-        std::lock_guard<std::mutex> Lock(State.Mutex);
-        if (State.bActive.load(std::memory_order_relaxed))
+        std::lock_guard<std::mutex> Lock(State.mMutex);
+        if (State.mbActive.load(std::memory_order_relaxed))
         {
-            State.Error = "A trace capture is already active.";
+            State.mError = "A trace capture is already active.";
             return false;
         }
 
-        State.Stream.close();
-        State.Stream.clear();
-        State.Stream.open(FilePath, std::ios::binary | std::ios::trunc);
-        if (!State.Stream)
+        State.mStream.close();
+        State.mStream.clear();
+        State.mStream.open(FilePath, std::ios::binary | std::ios::trunc);
+        if (!State.mStream)
         {
-            State.Error = "Could not open the trace capture file.";
+            State.mError = "Could not open the trace capture file.";
             return false;
         }
 
-        State.Error.clear();
-        State.OriginNanoseconds = detail::GetTraceTimestampNanoseconds();
+        State.mError.clear();
+        State.mOriginNanoseconds = detail::GetTraceTimestampNanoseconds();
         const std::uint64_t Generation =
-            State.Generation.fetch_add(1, std::memory_order_relaxed) + 1;
+            State.mGeneration.fetch_add(1, std::memory_order_relaxed) + 1;
         (void)Generation;
 
-        WriteBytes(State.Stream, detail::TraceMagic.data(), detail::TraceMagic.size());
-        WriteValue(State.Stream, detail::TraceVersion);
-        WriteValue(State.Stream, detail::TraceEndianMarker);
-        WriteValue(State.Stream, State.OriginNanoseconds);
-        for (const auto& [NameId, Name] : State.Names)
+        WriteBytes(State.mStream, detail::TraceMagic.data(), detail::TraceMagic.size());
+        WriteValue(State.mStream, detail::TraceVersion);
+        WriteValue(State.mStream, detail::TraceEndianMarker);
+        WriteValue(State.mStream, State.mOriginNanoseconds);
+        for (const auto& [NameId, Name] : State.mNames)
         {
-            WriteNameRecord(State.Stream, NameId, Name);
+            WriteNameRecord(State.mStream, NameId, Name);
         }
 
-        if (!State.Stream)
+        if (!State.mStream)
         {
-            State.Error = "Could not write the trace capture header.";
-            State.Stream.close();
+            State.mError = "Could not write the trace capture header.";
+            State.mStream.close();
             return false;
         }
 
-        State.bActive.store(true, std::memory_order_release);
+        State.mbActive.store(true, std::memory_order_release);
         return true;
     }
 
     bool StopTraceCapture()
     {
         FArdaTraceState& State = GetState();
-        const bool bWasActive = State.bActive.exchange(false, std::memory_order_acq_rel);
-        if (!bWasActive && !State.Stream.is_open())
+        const bool bWasActive = State.mbActive.exchange(false, std::memory_order_acq_rel);
+        if (!bWasActive && !State.mStream.is_open())
         {
-            std::lock_guard<std::mutex> Lock(State.Mutex);
-            if (State.Error.empty())
+            std::lock_guard<std::mutex> Lock(State.mMutex);
+            if (State.mError.empty())
             {
-                State.Error = "No trace capture is active.";
+                State.mError = "No trace capture is active.";
             }
             return false;
         }
 
-        std::lock_guard<std::mutex> Lock(State.Mutex);
-        const std::uint64_t Generation = State.Generation.load(std::memory_order_relaxed);
-        for (const std::shared_ptr<FArdaThreadBuffer>& ThreadBuffer : State.ThreadBuffers)
+        std::lock_guard<std::mutex> Lock(State.mMutex);
+        const std::uint64_t Generation = State.mGeneration.load(std::memory_order_relaxed);
+        for (const std::shared_ptr<FArdaThreadBuffer>& ThreadBuffer : State.mThreadBuffers)
         {
-            if (ThreadBuffer->Generation != Generation)
+            if (ThreadBuffer->mGeneration != Generation)
             {
                 continue;
             }
-            for (const detail::FArdaBufferedEvent& Event : ThreadBuffer->Events)
+            for (const detail::FArdaBufferedEvent& Event : ThreadBuffer->mEvents)
             {
-                WriteEvent(State.Stream, Event);
+                WriteEvent(State.mStream, Event);
             }
-            ThreadBuffer->Events.clear();
+            ThreadBuffer->mEvents.clear();
         }
-        State.ThreadBuffers.clear();
+        State.mThreadBuffers.clear();
 
         const detail::EArdaTraceRecordType EndType = detail::EArdaTraceRecordType::CaptureEnd;
-        WriteValue(State.Stream, EndType);
-        State.Stream.flush();
-        const bool bSucceeded = static_cast<bool>(State.Stream);
-        State.Stream.close();
-        if (!bSucceeded && State.Error.empty())
+        WriteValue(State.mStream, EndType);
+        State.mStream.flush();
+        const bool bSucceeded = static_cast<bool>(State.mStream);
+        State.mStream.close();
+        if (!bSucceeded && State.mError.empty())
         {
-            State.Error = "Failed while finalizing the trace capture.";
+            State.mError = "Failed while finalizing the trace capture.";
         }
         return bSucceeded;
     }
 
     bool IsTraceCaptureActive() noexcept
     {
-        return GetState().bActive.load(std::memory_order_acquire);
+        return GetState().mbActive.load(std::memory_order_acquire);
     }
 
     std::string GetTraceError()
     {
         FArdaTraceState& State = GetState();
-        std::lock_guard<std::mutex> Lock(State.Mutex);
-        return State.Error;
+        std::lock_guard<std::mutex> Lock(State.mMutex);
+        return State.mError;
     }
 
     void SetCurrentTraceThreadName(const char* ThreadName)
     {
         const std::shared_ptr<FArdaThreadBuffer> ThreadBuffer = GetThreadBuffer();
-        ThreadBuffer->Name = ThreadName != nullptr ? ThreadName : "<unnamed thread>";
+        ThreadBuffer->mName = ThreadName != nullptr ? ThreadName : "<unnamed thread>";
 
         FArdaTraceState& State = GetState();
-        if (!State.bActive.load(std::memory_order_acquire))
+        if (!State.mbActive.load(std::memory_order_acquire))
         {
             return;
         }
 
-        const std::uint64_t Generation = State.Generation.load(std::memory_order_acquire);
+        const std::uint64_t Generation = State.mGeneration.load(std::memory_order_acquire);
         if (!PrepareThreadBuffer(ThreadBuffer, Generation))
         {
             return;
         }
 
-        std::lock_guard<std::mutex> Lock(State.Mutex);
-        if (State.bActive.load(std::memory_order_relaxed))
+        std::lock_guard<std::mutex> Lock(State.mMutex);
+        if (State.mbActive.load(std::memory_order_relaxed))
         {
-            WriteThreadRecord(State.Stream, ThreadBuffer->ThreadId, ThreadBuffer->Name);
+            WriteThreadRecord(State.mStream, ThreadBuffer->mThreadId, ThreadBuffer->mName);
         }
     }
 
@@ -382,10 +382,10 @@ namespace arda::trace
         }
 
         detail::FArdaBufferedEvent Event;
-        Event.Type = detail::EArdaBufferedEventType::Counter;
-        Event.NameId = Name.GetId();
-        Event.StartNanoseconds = detail::GetTraceTimestampNanoseconds();
-        Event.Value = Value;
+        Event.mType = detail::EArdaBufferedEventType::Counter;
+        Event.mNameId = Name.GetId();
+        Event.mStartNanoseconds = detail::GetTraceTimestampNanoseconds();
+        Event.mValue = Value;
         BufferEvent(Event);
     }
 
@@ -397,9 +397,9 @@ namespace arda::trace
         }
 
         detail::FArdaBufferedEvent Event;
-        Event.Type = detail::EArdaBufferedEventType::Marker;
-        Event.NameId = Name.GetId();
-        Event.StartNanoseconds = detail::GetTraceTimestampNanoseconds();
+        Event.mType = detail::EArdaBufferedEventType::Marker;
+        Event.mNameId = Name.GetId();
+        Event.mStartNanoseconds = detail::GetTraceTimestampNanoseconds();
         BufferEvent(Event);
     }
 
@@ -407,7 +407,7 @@ namespace arda::trace
     {
         std::uint64_t AllocateScopeId() noexcept
         {
-            return GetState().NextScopeId.fetch_add(1, std::memory_order_relaxed);
+            return GetState().mNextScopeId.fetch_add(1, std::memory_order_relaxed);
         }
 
         void RecordScope(
@@ -418,12 +418,12 @@ namespace arda::trace
             std::uint64_t EndNanoseconds) noexcept
         {
             FArdaBufferedEvent Event;
-            Event.Type = EArdaBufferedEventType::Scope;
-            Event.NameId = NameId;
-            Event.PrimaryId = ScopeId;
-            Event.SecondaryId = ParentScopeId;
-            Event.StartNanoseconds = StartNanoseconds;
-            Event.EndNanoseconds = EndNanoseconds;
+            Event.mType = EArdaBufferedEventType::Scope;
+            Event.mNameId = NameId;
+            Event.mPrimaryId = ScopeId;
+            Event.mSecondaryId = ParentScopeId;
+            Event.mStartNanoseconds = StartNanoseconds;
+            Event.mEndNanoseconds = EndNanoseconds;
             BufferEvent(Event);
         }
 

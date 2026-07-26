@@ -8,7 +8,7 @@ namespace arda::dl
     struct FArdaDLContext
     {
         /** The NVRHI device used to execute deep-learning workloads. */
-        nvrhi::DeviceHandle device;
+        nvrhi::DeviceHandle mDevice;
     };
 
     /** Returns the stable name of the deep-learning module. */

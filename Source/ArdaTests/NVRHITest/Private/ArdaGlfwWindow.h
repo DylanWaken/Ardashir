@@ -19,10 +19,10 @@ namespace arda::tests::nvrhi_test
         void Close();
         bool ConsumeResize(uint32_t& width, uint32_t& height);
 
-        [[nodiscard]] GLFWwindow* GetHandle() const { return m_window; }
-        [[nodiscard]] uint32_t GetWidth() const { return m_width; }
-        [[nodiscard]] uint32_t GetHeight() const { return m_height; }
-        [[nodiscard]] const std::string& GetError() const { return m_error; }
+        [[nodiscard]] GLFWwindow* GetHandle() const { return mWindow; }
+        [[nodiscard]] uint32_t GetWidth() const { return mWidth; }
+        [[nodiscard]] uint32_t GetHeight() const { return mHeight; }
+        [[nodiscard]] const std::string& GetError() const { return mError; }
 
         [[nodiscard]] nvrhi::Object GetD3D12WindowHandle() const noexcept override;
         [[nodiscard]] std::vector<const char*> GetVulkanInstanceExtensions() const override;
@@ -33,11 +33,11 @@ namespace arda::tests::nvrhi_test
     private:
         static void FramebufferSizeCallback(GLFWwindow* window, int width, int height);
 
-        GLFWwindow* m_window = nullptr;
-        uint32_t m_width = 0;
-        uint32_t m_height = 0;
-        bool m_resizePending = false;
-        bool m_glfwInitialized = false;
-        std::string m_error;
+        GLFWwindow* mWindow = nullptr;
+        uint32_t mWidth = 0;
+        uint32_t mHeight = 0;
+        bool mbResizePending = false;
+        bool mbGlfwInitialized = false;
+        std::string mError;
     };
 }

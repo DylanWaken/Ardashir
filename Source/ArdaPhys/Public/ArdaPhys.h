@@ -8,7 +8,7 @@ namespace arda::phys
     struct FArdaPhysContext
     {
         /** The NVRHI device used to execute physics workloads. */
-        nvrhi::DeviceHandle device;
+        nvrhi::DeviceHandle mDevice;
     };
 
     /** Returns the stable name of the physics module. */

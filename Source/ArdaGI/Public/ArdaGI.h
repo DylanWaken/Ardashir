@@ -8,7 +8,7 @@ namespace arda::gi
     struct FArdaGIContext
     {
         /** The NVRHI device used to execute global-illumination workloads. */
-        nvrhi::DeviceHandle device;
+        nvrhi::DeviceHandle mDevice;
     };
 
     /** Returns the stable name of the global-illumination module. */

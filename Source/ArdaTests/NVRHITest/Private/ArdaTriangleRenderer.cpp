@@ -8,8 +8,8 @@ namespace arda::tests::nvrhi_test
     {
         struct FArdaVertex
         {
-            float position[2];
-            float color[3];
+            float mPosition[2];
+            float mColor[3];
         };
 
         constexpr FArdaVertex Vertices[] = {
@@ -27,7 +27,7 @@ namespace arda::tests::nvrhi_test
         backend::EArdaBackendType backendType,
         const std::filesystem::path& shaderDirectory)
     {
-        m_device = std::move(device);
+        mDevice = std::move(device);
 
         try
         {
@@ -35,7 +35,7 @@ namespace arda::tests::nvrhi_test
             const auto vertexBinary = LoadBinary(shaderDirectory / (vulkan ? "TriangleVS.spv" : "TriangleVS.dxil"));
             const auto pixelBinary = LoadBinary(shaderDirectory / (vulkan ? "TrianglePS.spv" : "TrianglePS.dxil"));
 
-            m_vertexShader = m_device->createShader(
+            mVertexShader = mDevice->createShader(
                 nvrhi::ShaderDesc()
                     .setShaderType(nvrhi::ShaderType::Vertex)
                     .setEntryName("VSMain")
@@ -43,7 +43,7 @@ namespace arda::tests::nvrhi_test
                 vertexBinary.data(),
                 vertexBinary.size());
 
-            m_pixelShader = m_device->createShader(
+            mPixelShader = mDevice->createShader(
                 nvrhi::ShaderDesc()
                     .setShaderType(nvrhi::ShaderType::Pixel)
                     .setEntryName("PSMain")
@@ -51,9 +51,9 @@ namespace arda::tests::nvrhi_test
                 pixelBinary.data(),
                 pixelBinary.size());
 
-            if (!m_vertexShader || !m_pixelShader)
+            if (!mVertexShader || !mPixelShader)
             {
-                m_error = "NVRHI failed to create the triangle shaders.";
+                mError = "NVRHI failed to create the triangle shaders.";
                 return false;
             }
 
@@ -62,23 +62,23 @@ namespace arda::tests::nvrhi_test
                     .setName("POSITION")
                     .setFormat(nvrhi::Format::RG32_FLOAT)
                     .setBufferIndex(0)
-                    .setOffset(offsetof(FArdaVertex, position))
+                    .setOffset(offsetof(FArdaVertex, mPosition))
                     .setElementStride(sizeof(FArdaVertex)),
                 nvrhi::VertexAttributeDesc()
                     .setName("COLOR")
                     .setFormat(nvrhi::Format::RGB32_FLOAT)
                     .setBufferIndex(0)
-                    .setOffset(offsetof(FArdaVertex, color))
+                    .setOffset(offsetof(FArdaVertex, mColor))
                     .setElementStride(sizeof(FArdaVertex))
             };
 
-            m_inputLayout = m_device->createInputLayout(
+            mInputLayout = mDevice->createInputLayout(
                 attributes,
                 static_cast<uint32_t>(std::size(attributes)),
-                m_vertexShader);
-            if (!m_inputLayout)
+                mVertexShader);
+            if (!mInputLayout)
             {
-                m_error = "NVRHI failed to create the triangle input layout.";
+                mError = "NVRHI failed to create the triangle input layout.";
                 return false;
             }
 
@@ -87,59 +87,59 @@ namespace arda::tests::nvrhi_test
             renderState.rasterState.setCullNone();
 
             const auto pipelineDesc = nvrhi::GraphicsPipelineDesc()
-                .setInputLayout(m_inputLayout)
-                .setVertexShader(m_vertexShader)
-                .setPixelShader(m_pixelShader)
+                .setInputLayout(mInputLayout)
+                .setVertexShader(mVertexShader)
+                .setPixelShader(mPixelShader)
                 .setRenderState(renderState);
             const auto framebufferInfo = nvrhi::FramebufferInfo().addColorFormat(swapChainFormat);
 
-            m_pipeline = m_device->createGraphicsPipeline(pipelineDesc, framebufferInfo);
-            if (!m_pipeline)
+            mPipeline = mDevice->createGraphicsPipeline(pipelineDesc, framebufferInfo);
+            if (!mPipeline)
             {
-                m_error = "NVRHI failed to create the triangle graphics pipeline.";
+                mError = "NVRHI failed to create the triangle graphics pipeline.";
                 return false;
             }
 
-            m_vertexBuffer = m_device->createBuffer(
+            mVertexBuffer = mDevice->createBuffer(
                 nvrhi::BufferDesc()
                     .setByteSize(sizeof(Vertices))
                     .setIsVertexBuffer(true)
                     .setDebugName("Triangle vertex buffer")
                     .enableAutomaticStateTracking(nvrhi::ResourceStates::VertexBuffer));
-            m_indexBuffer = m_device->createBuffer(
+            mIndexBuffer = mDevice->createBuffer(
                 nvrhi::BufferDesc()
                     .setByteSize(sizeof(Indices))
                     .setIsIndexBuffer(true)
                     .setDebugName("Triangle index buffer")
                     .enableAutomaticStateTracking(nvrhi::ResourceStates::IndexBuffer));
 
-            if (!m_vertexBuffer || !m_indexBuffer)
+            if (!mVertexBuffer || !mIndexBuffer)
             {
-                m_error = "NVRHI failed to create the triangle geometry buffers.";
+                mError = "NVRHI failed to create the triangle geometry buffers.";
                 return false;
             }
 
-            m_commandList = m_device->createCommandList();
-            if (!m_commandList)
+            mCommandList = mDevice->createCommandList();
+            if (!mCommandList)
             {
-                m_error = "NVRHI failed to create a graphics command list.";
+                mError = "NVRHI failed to create a graphics command list.";
                 return false;
             }
 
-            m_commandList->open();
-            m_commandList->writeBuffer(m_vertexBuffer, Vertices, sizeof(Vertices));
-            m_commandList->writeBuffer(m_indexBuffer, Indices, sizeof(Indices));
-            m_commandList->close();
-            m_device->executeCommandList(m_commandList);
-            if (!m_device->waitForIdle())
+            mCommandList->open();
+            mCommandList->writeBuffer(mVertexBuffer, Vertices, sizeof(Vertices));
+            mCommandList->writeBuffer(mIndexBuffer, Indices, sizeof(Indices));
+            mCommandList->close();
+            mDevice->executeCommandList(mCommandList);
+            if (!mDevice->waitForIdle())
             {
-                m_error = "The GPU failed while uploading triangle geometry.";
+                mError = "The GPU failed while uploading triangle geometry.";
                 return false;
             }
         }
         catch (const std::exception& error)
         {
-            m_error = error.what();
+            mError = error.what();
             return false;
         }
 
@@ -151,13 +151,13 @@ namespace arda::tests::nvrhi_test
         nvrhi::FramebufferHandle framebuffer;
         if (!swapChain.AcquireFrame(framebuffer))
         {
-            m_error = swapChain.GetError();
+            mError = swapChain.GetError();
             return false;
         }
 
-        m_commandList->open();
+        mCommandList->open();
         nvrhi::utils::ClearColorAttachment(
-            m_commandList,
+            mCommandList,
             framebuffer,
             0,
             nvrhi::Color(0.025f, 0.035f, 0.06f, 1.f));
@@ -167,31 +167,31 @@ namespace arda::tests::nvrhi_test
                 static_cast<float>(swapChain.GetWidth()),
                 static_cast<float>(swapChain.GetHeight())));
         const auto graphicsState = nvrhi::GraphicsState()
-            .setPipeline(m_pipeline)
+            .setPipeline(mPipeline)
             .setFramebuffer(framebuffer)
             .setViewport(viewport)
             .addVertexBuffer(
                 nvrhi::VertexBufferBinding()
-                    .setBuffer(m_vertexBuffer)
+                    .setBuffer(mVertexBuffer)
                     .setSlot(0)
                     .setOffset(0))
             .setIndexBuffer(
                 nvrhi::IndexBufferBinding()
-                    .setBuffer(m_indexBuffer)
+                    .setBuffer(mIndexBuffer)
                     .setFormat(nvrhi::Format::R16_UINT)
                     .setOffset(0));
 
-        m_commandList->setGraphicsState(graphicsState);
-        m_commandList->drawIndexed(nvrhi::DrawArguments().setVertexCount(3));
-        m_commandList->close();
+        mCommandList->setGraphicsState(graphicsState);
+        mCommandList->drawIndexed(nvrhi::DrawArguments().setVertexCount(3));
+        mCommandList->close();
 
         swapChain.PrepareSubmit();
-        m_device->executeCommandList(m_commandList);
-        m_device->runGarbageCollection();
+        mDevice->executeCommandList(mCommandList);
+        mDevice->runGarbageCollection();
 
         if (!swapChain.Present())
         {
-            m_error = swapChain.GetError();
+            mError = swapChain.GetError();
             return false;
         }
 

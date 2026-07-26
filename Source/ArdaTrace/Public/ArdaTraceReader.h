@@ -12,58 +12,58 @@ namespace arda::trace
     struct FArdaTraceScope
     {
         /** Identifier unique within the process. */
-        std::uint64_t ScopeId = 0;
+        std::uint64_t mScopeId = 0;
         /** Parent identifier, or zero for a root scope. */
-        std::uint64_t ParentScopeId = 0;
+        std::uint64_t mParentScopeId = 0;
         /** Identifier of the thread that executed the scope. */
-        std::uint32_t ThreadId = 0;
+        std::uint32_t mThreadId = 0;
         /** Identifier of the scope label. */
-        std::uint32_t NameId = 0;
+        std::uint32_t mNameId = 0;
         /** Scope start relative to the capture clock epoch. */
-        std::uint64_t StartNanoseconds = 0;
+        std::uint64_t mStartNanoseconds = 0;
         /** Scope end relative to the capture clock epoch. */
-        std::uint64_t EndNanoseconds = 0;
+        std::uint64_t mEndNanoseconds = 0;
     };
 
     /** Describes one sampled numeric counter. */
     struct FArdaTraceCounter
     {
         /** Identifier of the thread that sampled the counter. */
-        std::uint32_t ThreadId = 0;
+        std::uint32_t mThreadId = 0;
         /** Identifier of the counter label. */
-        std::uint32_t NameId = 0;
+        std::uint32_t mNameId = 0;
         /** Sample timestamp relative to the capture clock epoch. */
-        std::uint64_t TimestampNanoseconds = 0;
+        std::uint64_t mTimestampNanoseconds = 0;
         /** Sampled numeric value. */
-        double Value = 0.0;
+        double mValue = 0.0;
     };
 
     /** Describes one instantaneous marker. */
     struct FArdaTraceMarker
     {
         /** Identifier of the thread that emitted the marker. */
-        std::uint32_t ThreadId = 0;
+        std::uint32_t mThreadId = 0;
         /** Identifier of the marker label. */
-        std::uint32_t NameId = 0;
+        std::uint32_t mNameId = 0;
         /** Marker timestamp relative to the capture clock epoch. */
-        std::uint64_t TimestampNanoseconds = 0;
+        std::uint64_t mTimestampNanoseconds = 0;
     };
 
     /** Contains the decoded data required by an offline trace viewer. */
     struct FArdaTraceSession
     {
         /** Steady-clock timestamp captured when recording began. */
-        std::uint64_t OriginNanoseconds = 0;
+        std::uint64_t mOriginNanoseconds = 0;
         /** Registered labels keyed by trace name identifier. */
-        std::unordered_map<std::uint32_t, std::string> Names;
+        std::unordered_map<std::uint32_t, std::string> mNames;
         /** Display names keyed by trace thread identifier. */
-        std::unordered_map<std::uint32_t, std::string> Threads;
+        std::unordered_map<std::uint32_t, std::string> mThreads;
         /** Completed CPU scopes. */
-        std::vector<FArdaTraceScope> Scopes;
+        std::vector<FArdaTraceScope> mScopes;
         /** Numeric counter samples. */
-        std::vector<FArdaTraceCounter> Counters;
+        std::vector<FArdaTraceCounter> mCounters;
         /** Instantaneous markers. */
-        std::vector<FArdaTraceMarker> Markers;
+        std::vector<FArdaTraceMarker> mMarkers;
     };
 
     /**

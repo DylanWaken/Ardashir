@@ -68,14 +68,14 @@ namespace arda::backend
                 nvrhi::DeviceHandle Device,
                 uint32_t Width,
                 uint32_t Height)
-                : PhysicalDevice(PhysicalDevice)
-                , VulkanDevice(VulkanDevice)
-                , GraphicsQueue(GraphicsQueue)
-                , Surface(Surface)
-                , NativeDevice(std::move(NativeDevice))
-                , Device(std::move(Device))
-                , Width(Width)
-                , Height(Height)
+                : mPhysicalDevice(PhysicalDevice)
+                , mVulkanDevice(VulkanDevice)
+                , mGraphicsQueue(GraphicsQueue)
+                , mSurface(Surface)
+                , mNativeDevice(std::move(NativeDevice))
+                , mDevice(std::move(Device))
+                , mWidth(Width)
+                , mHeight(Height)
             {
             }
 
@@ -83,20 +83,20 @@ namespace arda::backend
             {
                 WaitForIdle();
                 ReleaseSwapChain();
-                if (VulkanDevice)
+                if (mVulkanDevice)
                 {
-                    for (const auto Semaphore : ImageAvailable)
+                    for (const auto Semaphore : mImageAvailable)
                     {
                         if (Semaphore)
                         {
-                            VulkanDevice.destroySemaphore(Semaphore);
+                            mVulkanDevice.destroySemaphore(Semaphore);
                         }
                     }
-                    for (const auto Semaphore : RenderFinished)
+                    for (const auto Semaphore : mRenderFinished)
                     {
                         if (Semaphore)
                         {
-                            VulkanDevice.destroySemaphore(Semaphore);
+                            mVulkanDevice.destroySemaphore(Semaphore);
                         }
                     }
                 }
@@ -104,13 +104,13 @@ namespace arda::backend
 
             [[nodiscard]] bool Initialize()
             {
-                return CreateFrameSyncObjects() && CreateSwapChain(Width, Height);
+                return CreateFrameSyncObjects() && CreateSwapChain(mWidth, mHeight);
             }
 
             bool Resize(uint32_t NewWidth, uint32_t NewHeight) override
             {
                 if (NewWidth == 0 || NewHeight == 0 ||
-                    (NewWidth == Width && NewHeight == Height))
+                    (NewWidth == mWidth && NewHeight == mHeight))
                 {
                     return true;
                 }
@@ -123,31 +123,31 @@ namespace arda::backend
             bool AcquireFrame(nvrhi::FramebufferHandle& OutFramebuffer) override
             {
                 OutFramebuffer = nullptr;
-                if (!SwapChain)
+                if (!mSwapChain)
                 {
-                    Error = "The Vulkan swap chain is not initialized.";
+                    mError = "The Vulkan swap chain is not initialized.";
                     return false;
                 }
 
                 try
                 {
-                    const auto Result = VulkanDevice.acquireNextImageKHR(
-                        SwapChain,
+                    const auto Result = mVulkanDevice.acquireNextImageKHR(
+                        mSwapChain,
                         std::numeric_limits<uint64_t>::max(),
-                        ImageAvailable[FrameIndex]);
+                        mImageAvailable[mFrameIndex]);
                     if (Result.result != vk::Result::eSuccess &&
                         Result.result != vk::Result::eSuboptimalKHR)
                     {
-                        Error = "vkAcquireNextImageKHR failed.";
+                        mError = "vkAcquireNextImageKHR failed.";
                         return false;
                     }
 
-                    ImageIndex = Result.value;
-                    NativeDevice->queueWaitForSemaphore(
+                    mImageIndex = Result.value;
+                    mNativeDevice->queueWaitForSemaphore(
                         nvrhi::CommandQueue::Graphics,
-                        ImageAvailable[FrameIndex],
+                        mImageAvailable[mFrameIndex],
                         0);
-                    OutFramebuffer = Framebuffers[ImageIndex];
+                    OutFramebuffer = mFramebuffers[mImageIndex];
                     return OutFramebuffer != nullptr;
                 }
                 catch (const vk::OutOfDateKHRError&)
@@ -160,47 +160,47 @@ namespace arda::backend
                 }
                 catch (const vk::SystemError& Exception)
                 {
-                    Error = std::string("Vulkan image acquisition failed: ") + Exception.what();
+                    mError = std::string("Vulkan image acquisition failed: ") + Exception.what();
                     return false;
                 }
             }
 
             void PrepareSubmit() override
             {
-                if (NativeDevice)
+                if (mNativeDevice)
                 {
-                    NativeDevice->queueSignalSemaphore(
+                    mNativeDevice->queueSignalSemaphore(
                         nvrhi::CommandQueue::Graphics,
-                        RenderFinished[FrameIndex],
+                        mRenderFinished[mFrameIndex],
                         0);
                 }
             }
 
             bool Present() override
             {
-                if (!SwapChain)
+                if (!mSwapChain)
                 {
-                    Error = "The Vulkan swap chain is not initialized.";
+                    mError = "The Vulkan swap chain is not initialized.";
                     return false;
                 }
 
                 try
                 {
-                    const vk::Semaphore WaitSemaphore = RenderFinished[FrameIndex];
+                    const vk::Semaphore WaitSemaphore = mRenderFinished[mFrameIndex];
                     vk::PresentInfoKHR Description;
                     Description.setWaitSemaphores(WaitSemaphore);
-                    Description.setSwapchains(SwapChain);
-                    Description.setImageIndices(ImageIndex);
+                    Description.setSwapchains(mSwapChain);
+                    Description.setImageIndices(mImageIndex);
 
-                    const vk::Result Result = GraphicsQueue.presentKHR(Description);
+                    const vk::Result Result = mGraphicsQueue.presentKHR(Description);
                     if (Result != vk::Result::eSuccess &&
                         Result != vk::Result::eSuboptimalKHR)
                     {
-                        Error = "vkQueuePresentKHR failed.";
+                        mError = "vkQueuePresentKHR failed.";
                         return false;
                     }
 
-                    FrameIndex = (FrameIndex + 1) % FramesInFlight;
+                    mFrameIndex = (mFrameIndex + 1) % mFramesInFlight;
                     return true;
                 }
                 catch (const vk::OutOfDateKHRError&)
@@ -209,22 +209,22 @@ namespace arda::backend
                 }
                 catch (const vk::SystemError& Exception)
                 {
-                    Error = std::string("Vulkan presentation failed: ") + Exception.what();
+                    mError = std::string("Vulkan presentation failed: ") + Exception.what();
                     return false;
                 }
             }
 
             void WaitForIdle() noexcept override
             {
-                if (Device)
+                if (mDevice)
                 {
-                    Device->waitForIdle();
+                    mDevice->waitForIdle();
                 }
-                if (VulkanDevice)
+                if (mVulkanDevice)
                 {
                     try
                     {
-                        VulkanDevice.waitIdle();
+                        mVulkanDevice.waitIdle();
                     }
                     catch (const vk::SystemError&)
                     {
@@ -239,39 +239,39 @@ namespace arda::backend
 
             uint32_t GetWidth() const noexcept override
             {
-                return Width;
+                return mWidth;
             }
 
             uint32_t GetHeight() const noexcept override
             {
-                return Height;
+                return mHeight;
             }
 
             const std::string& GetError() const noexcept override
             {
-                return Error;
+                return mError;
             }
 
         private:
-            static constexpr uint32_t FramesInFlight = 2;
+            static constexpr uint32_t mFramesInFlight = 2;
 
             bool CreateSwapChain(uint32_t RequestedWidth, uint32_t RequestedHeight)
             {
                 try
                 {
                     const auto Capabilities =
-                        PhysicalDevice.getSurfaceCapabilitiesKHR(Surface);
-                    const auto Formats = PhysicalDevice.getSurfaceFormatsKHR(Surface);
+                        mPhysicalDevice.getSurfaceCapabilitiesKHR(mSurface);
+                    const auto Formats = mPhysicalDevice.getSurfaceFormatsKHR(mSurface);
                     if (Formats.empty())
                     {
-                        Error = "The Vulkan surface exposes no formats.";
+                        mError = "The Vulkan surface exposes no formats.";
                         return false;
                     }
 
                     const auto Format = SelectSurfaceFormat(Formats);
                     if (Format.format != vk::Format::eB8G8R8A8Unorm)
                     {
-                        Error = "The Vulkan surface does not support BGRA8_UNORM.";
+                        mError = "The Vulkan surface does not support BGRA8_UNORM.";
                         return false;
                     }
 
@@ -300,7 +300,7 @@ namespace arda::backend
                     }
 
                     vk::SwapchainCreateInfoKHR Description;
-                    Description.setSurface(Surface);
+                    Description.setSurface(mSurface);
                     Description.setMinImageCount(ImageCount);
                     Description.setImageFormat(Format.format);
                     Description.setImageColorSpace(Format.colorSpace);
@@ -314,19 +314,19 @@ namespace arda::backend
                     Description.setPresentMode(vk::PresentModeKHR::eFifo);
                     Description.setClipped(true);
 
-                    SwapChain = VulkanDevice.createSwapchainKHR(Description);
-                    const auto Images = VulkanDevice.getSwapchainImagesKHR(SwapChain);
-                    Width = Extent.width;
-                    Height = Extent.height;
-                    Textures.resize(Images.size());
-                    Framebuffers.resize(Images.size());
+                    mSwapChain = mVulkanDevice.createSwapchainKHR(Description);
+                    const auto Images = mVulkanDevice.getSwapchainImagesKHR(mSwapChain);
+                    mWidth = Extent.width;
+                    mHeight = Extent.height;
+                    mTextures.resize(Images.size());
+                    mFramebuffers.resize(Images.size());
 
                     for (size_t Index = 0; Index < Images.size(); ++Index)
                     {
                         const auto TextureDescription = nvrhi::TextureDesc()
                             .setDimension(nvrhi::TextureDimension::Texture2D)
-                            .setWidth(Width)
-                            .setHeight(Height)
+                            .setWidth(mWidth)
+                            .setHeight(mHeight)
                             .setFormat(nvrhi::Format::BGRA8_UNORM)
                             .setIsRenderTarget(true)
                             .setDebugName("Vulkan swap-chain image")
@@ -334,22 +334,22 @@ namespace arda::backend
 
                         const auto NativeImage =
                             reinterpret_cast<uint64_t>(static_cast<VkImage>(Images[Index]));
-                        Textures[Index] = Device->createHandleForNativeTexture(
+                        mTextures[Index] = mDevice->createHandleForNativeTexture(
                             nvrhi::ObjectTypes::VK_Image,
                             nvrhi::Object(NativeImage),
                             TextureDescription);
-                        if (!Textures[Index])
+                        if (!mTextures[Index])
                         {
-                            Error = "NVRHI failed to wrap a Vulkan swap-chain image.";
+                            mError = "NVRHI failed to wrap a Vulkan swap-chain image.";
                             ReleaseSwapChain();
                             return false;
                         }
 
-                        Framebuffers[Index] = Device->createFramebuffer(
-                            nvrhi::FramebufferDesc().addColorAttachment(Textures[Index]));
-                        if (!Framebuffers[Index])
+                        mFramebuffers[Index] = mDevice->createFramebuffer(
+                            nvrhi::FramebufferDesc().addColorAttachment(mTextures[Index]));
+                        if (!mFramebuffers[Index])
                         {
-                            Error = "NVRHI failed to create a Vulkan framebuffer.";
+                            mError = "NVRHI failed to create a Vulkan framebuffer.";
                             ReleaseSwapChain();
                             return false;
                         }
@@ -357,27 +357,27 @@ namespace arda::backend
                 }
                 catch (const vk::SystemError& Exception)
                 {
-                    Error = std::string("Vulkan swap-chain creation failed: ") + Exception.what();
+                    mError = std::string("Vulkan swap-chain creation failed: ") + Exception.what();
                     ReleaseSwapChain();
                     return false;
                 }
 
-                Error.clear();
+                mError.clear();
                 return true;
             }
 
             void ReleaseSwapChain()
             {
-                Framebuffers.clear();
-                Textures.clear();
-                if (Device)
+                mFramebuffers.clear();
+                mTextures.clear();
+                if (mDevice)
                 {
-                    Device->runGarbageCollection();
+                    mDevice->runGarbageCollection();
                 }
-                if (SwapChain && VulkanDevice)
+                if (mSwapChain && mVulkanDevice)
                 {
-                    VulkanDevice.destroySwapchainKHR(SwapChain);
-                    SwapChain = nullptr;
+                    mVulkanDevice.destroySwapchainKHR(mSwapChain);
+                    mSwapChain = nullptr;
                 }
             }
 
@@ -386,15 +386,15 @@ namespace arda::backend
                 try
                 {
                     const vk::SemaphoreCreateInfo Description;
-                    for (uint32_t Index = 0; Index < FramesInFlight; ++Index)
+                    for (uint32_t Index = 0; Index < mFramesInFlight; ++Index)
                     {
-                        ImageAvailable[Index] = VulkanDevice.createSemaphore(Description);
-                        RenderFinished[Index] = VulkanDevice.createSemaphore(Description);
+                        mImageAvailable[Index] = mVulkanDevice.createSemaphore(Description);
+                        mRenderFinished[Index] = mVulkanDevice.createSemaphore(Description);
                     }
                 }
                 catch (const vk::SystemError& Exception)
                 {
-                    Error = std::string("Vulkan semaphore creation failed: ") + Exception.what();
+                    mError = std::string("Vulkan semaphore creation failed: ") + Exception.what();
                     return false;
                 }
 
@@ -405,25 +405,25 @@ namespace arda::backend
             {
                 WaitForIdle();
                 ReleaseSwapChain();
-                return CreateSwapChain(Width, Height);
+                return CreateSwapChain(mWidth, mHeight);
             }
 
-            vk::PhysicalDevice PhysicalDevice;
-            vk::Device VulkanDevice;
-            vk::Queue GraphicsQueue;
-            vk::SurfaceKHR Surface;
-            nvrhi::vulkan::DeviceHandle NativeDevice;
-            nvrhi::DeviceHandle Device;
-            uint32_t Width = 0;
-            uint32_t Height = 0;
-            uint32_t ImageIndex = 0;
-            uint32_t FrameIndex = 0;
-            std::string Error;
-            vk::SwapchainKHR SwapChain;
-            std::vector<nvrhi::TextureHandle> Textures;
-            std::vector<nvrhi::FramebufferHandle> Framebuffers;
-            std::array<vk::Semaphore, FramesInFlight> ImageAvailable;
-            std::array<vk::Semaphore, FramesInFlight> RenderFinished;
+            vk::PhysicalDevice mPhysicalDevice;
+            vk::Device mVulkanDevice;
+            vk::Queue mGraphicsQueue;
+            vk::SurfaceKHR mSurface;
+            nvrhi::vulkan::DeviceHandle mNativeDevice;
+            nvrhi::DeviceHandle mDevice;
+            uint32_t mWidth = 0;
+            uint32_t mHeight = 0;
+            uint32_t mImageIndex = 0;
+            uint32_t mFrameIndex = 0;
+            std::string mError;
+            vk::SwapchainKHR mSwapChain;
+            std::vector<nvrhi::TextureHandle> mTextures;
+            std::vector<nvrhi::FramebufferHandle> mFramebuffers;
+            std::array<vk::Semaphore, mFramesInFlight> mImageAvailable;
+            std::array<vk::Semaphore, mFramesInFlight> mRenderFinished;
         };
 
         class FArdaVulkanBackendDevice final : public IArdaBackendDevice
@@ -432,20 +432,20 @@ namespace arda::backend
             ~FArdaVulkanBackendDevice() override
             {
                 WaitForIdle();
-                Device = nullptr;
-                NativeDevice = nullptr;
+                mDevice = nullptr;
+                mNativeDevice = nullptr;
 
-                if (VulkanDevice)
+                if (mVulkanDevice)
                 {
-                    VulkanDevice.destroy();
+                    mVulkanDevice.destroy();
                 }
-                if (Surface && Instance)
+                if (mSurface && mInstance)
                 {
-                    Instance.destroySurfaceKHR(Surface);
+                    mInstance.destroySurfaceKHR(mSurface);
                 }
-                if (Instance)
+                if (mInstance)
                 {
-                    Instance.destroy();
+                    mInstance.destroy();
                 }
             }
 
@@ -456,20 +456,20 @@ namespace arda::backend
                 try
                 {
                     const auto GetInstanceProcAddress =
-                        Loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+                        mLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
                     if (!GetInstanceProcAddress)
                     {
-                        Error = "The Vulkan loader is not installed.";
+                        mError = "The Vulkan loader is not installed.";
                         return EArdaInitializeResult::Unavailable;
                     }
                     VULKAN_HPP_DEFAULT_DISPATCHER.init(GetInstanceProcAddress);
 
                     if (WindowSurface)
                     {
-                        InstanceExtensions = WindowSurface->GetVulkanInstanceExtensions();
-                        if (InstanceExtensions.empty())
+                        mInstanceExtensions = WindowSurface->GetVulkanInstanceExtensions();
+                        if (mInstanceExtensions.empty())
                         {
-                            Error =
+                            mError =
                                 "The window surface did not provide Vulkan instance extensions.";
                             return EArdaInitializeResult::Unavailable;
                         }
@@ -483,30 +483,30 @@ namespace arda::backend
                         VK_API_VERSION_1_3);
                     vk::InstanceCreateInfo InstanceDescription;
                     InstanceDescription.setPApplicationInfo(&ApplicationInfo);
-                    InstanceDescription.setPEnabledExtensionNames(InstanceExtensions);
-                    Instance = vk::createInstance(InstanceDescription);
-                    VULKAN_HPP_DEFAULT_DISPATCHER.init(Instance);
+                    InstanceDescription.setPEnabledExtensionNames(mInstanceExtensions);
+                    mInstance = vk::createInstance(InstanceDescription);
+                    VULKAN_HPP_DEFAULT_DISPATCHER.init(mInstance);
 
                     if (WindowSurface)
                     {
                         std::string SurfaceError;
                         const nvrhi::Object SurfaceObject = WindowSurface->CreateVulkanSurface(
-                            nvrhi::Object(static_cast<VkInstance>(Instance)),
+                            nvrhi::Object(static_cast<VkInstance>(mInstance)),
                             SurfaceError);
                         const VkSurfaceKHR NativeSurface = DecodeVulkanSurface(SurfaceObject);
                         if (NativeSurface == VK_NULL_HANDLE)
                         {
-                            Error = SurfaceError.empty()
+                            mError = SurfaceError.empty()
                                 ? "The window surface failed to create a Vulkan surface."
                                 : SurfaceError;
                             return EArdaInitializeResult::Unavailable;
                         }
-                        Surface = NativeSurface;
+                        mSurface = NativeSurface;
                     }
 
                     if (!SelectPhysicalDevice())
                     {
-                        Error = Surface
+                        mError = mSurface
                             ? "No Vulkan 1.3 device with required graphics and presentation "
                               "features is available."
                             : "No Vulkan 1.3 device with graphics, dynamic rendering, "
@@ -516,7 +516,7 @@ namespace arda::backend
 
                     const float QueuePriority = 1.f;
                     vk::DeviceQueueCreateInfo QueueDescription;
-                    QueueDescription.setQueueFamilyIndex(GraphicsQueueFamily);
+                    QueueDescription.setQueueFamilyIndex(mGraphicsQueueFamily);
                     QueueDescription.setQueueCount(1);
                     QueueDescription.setPQueuePriorities(&QueuePriority);
 
@@ -529,7 +529,7 @@ namespace arda::backend
                     Features12.setPNext(&Features13);
 
                     std::vector<const char*> DeviceExtensions;
-                    if (Surface)
+                    if (mSurface)
                     {
                         DeviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
                     }
@@ -538,53 +538,53 @@ namespace arda::backend
                     DeviceDescription.setPNext(&Features12);
                     DeviceDescription.setQueueCreateInfos(QueueDescription);
                     DeviceDescription.setPEnabledExtensionNames(DeviceExtensions);
-                    VulkanDevice = PhysicalDevice.createDevice(DeviceDescription);
-                    VULKAN_HPP_DEFAULT_DISPATCHER.init(VulkanDevice);
-                    GraphicsQueue = VulkanDevice.getQueue(GraphicsQueueFamily, 0);
+                    mVulkanDevice = mPhysicalDevice.createDevice(DeviceDescription);
+                    VULKAN_HPP_DEFAULT_DISPATCHER.init(mVulkanDevice);
+                    mGraphicsQueue = mVulkanDevice.getQueue(mGraphicsQueueFamily, 0);
 
                     nvrhi::vulkan::DeviceDesc Description;
-                    Description.errorCB = Configuration.messageCallback;
-                    Description.instance = Instance;
-                    Description.physicalDevice = PhysicalDevice;
-                    Description.device = VulkanDevice;
-                    Description.graphicsQueue = GraphicsQueue;
+                    Description.errorCB = Configuration.mMessageCallback;
+                    Description.instance = mInstance;
+                    Description.physicalDevice = mPhysicalDevice;
+                    Description.device = mVulkanDevice;
+                    Description.graphicsQueue = mGraphicsQueue;
                     Description.graphicsQueueIndex =
-                        static_cast<int>(GraphicsQueueFamily);
-                    Description.instanceExtensions = InstanceExtensions.data();
+                        static_cast<int>(mGraphicsQueueFamily);
+                    Description.instanceExtensions = mInstanceExtensions.data();
                     Description.numInstanceExtensions =
-                        static_cast<uint32_t>(InstanceExtensions.size());
+                        static_cast<uint32_t>(mInstanceExtensions.size());
                     Description.deviceExtensions = DeviceExtensions.data();
                     Description.numDeviceExtensions =
                         static_cast<uint32_t>(DeviceExtensions.size());
-                    NativeDevice = nvrhi::vulkan::createDevice(Description);
-                    if (!NativeDevice)
+                    mNativeDevice = nvrhi::vulkan::createDevice(Description);
+                    if (!mNativeDevice)
                     {
-                        Error = "nvrhi::vulkan::createDevice failed.";
+                        mError = "nvrhi::vulkan::createDevice failed.";
                         return EArdaInitializeResult::Failure;
                     }
 
-                    Device = Configuration.enableValidation
-                        ? nvrhi::validation::createValidationLayer(NativeDevice)
-                        : nvrhi::DeviceHandle(NativeDevice);
-                    if (!Device)
+                    mDevice = Configuration.mbEnableValidation
+                        ? nvrhi::validation::createValidationLayer(mNativeDevice)
+                        : nvrhi::DeviceHandle(mNativeDevice);
+                    if (!mDevice)
                     {
-                        Error = "Failed to create the NVRHI Vulkan device.";
+                        mError = "Failed to create the NVRHI Vulkan device.";
                         return EArdaInitializeResult::Failure;
                     }
                 }
                 catch (const vk::SystemError& Exception)
                 {
-                    Error = std::string("Vulkan initialization failed: ") + Exception.what();
+                    mError = std::string("Vulkan initialization failed: ") + Exception.what();
                     return EArdaInitializeResult::Unavailable;
                 }
                 catch (const std::exception& Exception)
                 {
-                    Error = std::string("Window-surface initialization failed: ") +
+                    mError = std::string("Window-surface initialization failed: ") +
                         Exception.what();
                     return EArdaInitializeResult::Failure;
                 }
 
-                Error.clear();
+                mError.clear();
                 return EArdaInitializeResult::Success;
             }
 
@@ -592,24 +592,24 @@ namespace arda::backend
                 uint32_t Width,
                 uint32_t Height) override
             {
-                if (!Surface)
+                if (!mSurface)
                 {
-                    Error = "Vulkan presentation was not initialized with a window surface.";
+                    mError = "Vulkan presentation was not initialized with a window surface.";
                     return nullptr;
                 }
 
                 auto SwapChain = std::make_unique<FArdaVulkanSwapChain>(
-                    PhysicalDevice,
-                    VulkanDevice,
-                    GraphicsQueue,
-                    Surface,
-                    NativeDevice,
-                    Device,
+                    mPhysicalDevice,
+                    mVulkanDevice,
+                    mGraphicsQueue,
+                    mSurface,
+                    mNativeDevice,
+                    mDevice,
                     Width,
                     Height);
                 if (!SwapChain->Initialize())
                 {
-                    Error = SwapChain->GetError();
+                    mError = SwapChain->GetError();
                     return nullptr;
                 }
 
@@ -618,15 +618,15 @@ namespace arda::backend
 
             void WaitForIdle() noexcept override
             {
-                if (Device)
+                if (mDevice)
                 {
-                    Device->waitForIdle();
+                    mDevice->waitForIdle();
                 }
-                if (VulkanDevice)
+                if (mVulkanDevice)
                 {
                     try
                     {
-                        VulkanDevice.waitIdle();
+                        mVulkanDevice.waitIdle();
                     }
                     catch (const vk::SystemError&)
                     {
@@ -636,18 +636,18 @@ namespace arda::backend
 
             nvrhi::DeviceHandle GetDevice() const noexcept override
             {
-                return Device;
+                return mDevice;
             }
 
             const std::string& GetError() const noexcept override
             {
-                return Error;
+                return mError;
             }
 
         private:
             bool SelectPhysicalDevice()
             {
-                for (const auto Candidate : Instance.enumeratePhysicalDevices())
+                for (const auto Candidate : mInstance.enumeratePhysicalDevices())
                 {
                     if (Candidate.getProperties().apiVersion < VK_API_VERSION_1_3)
                     {
@@ -667,7 +667,7 @@ namespace arda::backend
                         continue;
                     }
 
-                    if (Surface)
+                    if (mSurface)
                     {
                         bool bHasSwapChain = false;
                         for (const auto& Extension :
@@ -695,13 +695,13 @@ namespace arda::backend
                         {
                             continue;
                         }
-                        if (Surface && !Candidate.getSurfaceSupportKHR(Index, Surface))
+                        if (mSurface && !Candidate.getSurfaceSupportKHR(Index, mSurface))
                         {
                             continue;
                         }
 
-                        PhysicalDevice = Candidate;
-                        GraphicsQueueFamily = Index;
+                        mPhysicalDevice = Candidate;
+                        mGraphicsQueueFamily = Index;
                         return true;
                     }
                 }
@@ -709,17 +709,17 @@ namespace arda::backend
                 return false;
             }
 
-            std::string Error;
-            vk::detail::DynamicLoader Loader;
-            std::vector<const char*> InstanceExtensions;
-            vk::Instance Instance;
-            vk::SurfaceKHR Surface;
-            vk::PhysicalDevice PhysicalDevice;
-            vk::Device VulkanDevice;
-            vk::Queue GraphicsQueue;
-            uint32_t GraphicsQueueFamily = 0;
-            nvrhi::vulkan::DeviceHandle NativeDevice;
-            nvrhi::DeviceHandle Device;
+            std::string mError;
+            vk::detail::DynamicLoader mLoader;
+            std::vector<const char*> mInstanceExtensions;
+            vk::Instance mInstance;
+            vk::SurfaceKHR mSurface;
+            vk::PhysicalDevice mPhysicalDevice;
+            vk::Device mVulkanDevice;
+            vk::Queue mGraphicsQueue;
+            uint32_t mGraphicsQueueFamily = 0;
+            nvrhi::vulkan::DeviceHandle mNativeDevice;
+            nvrhi::DeviceHandle mDevice;
         };
     }
 

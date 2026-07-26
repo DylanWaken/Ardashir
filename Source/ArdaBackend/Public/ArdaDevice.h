@@ -38,20 +38,20 @@ namespace arda::backend
     struct FArdaBackendConfiguration
     {
         /** The graphics API to initialize. */
-        EArdaBackendType backend = DefaultBackend;
+        EArdaBackendType mBackend = DefaultBackend;
         /** Whether graphics API validation layers are enabled. */
-        bool enableValidation = true;
+        bool mbEnableValidation = true;
         /** Receives NVRHI diagnostic messages, or null to use no callback. */
-        nvrhi::IMessageCallback* messageCallback = nullptr;
+        nvrhi::IMessageCallback* mMessageCallback = nullptr;
     };
 
     /** Provides the initialized NVRHI device and its backend type. */
     struct FArdaDeviceContext
     {
         /** The initialized NVRHI device handle. */
-        nvrhi::DeviceHandle device;
+        nvrhi::DeviceHandle mDevice;
         /** The graphics API that owns the device. */
-        EArdaBackendType backend = DefaultBackend;
+        EArdaBackendType mBackend = DefaultBackend;
     };
 
     /** Read-only process-wide view of the configured backend type. */

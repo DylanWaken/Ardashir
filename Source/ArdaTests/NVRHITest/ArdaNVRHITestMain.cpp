@@ -14,9 +14,9 @@ namespace arda::tests::nvrhi_test
 
         struct FArdaOptions
         {
-            backend::EArdaBackendType backend = backend::DefaultBackend;
-            uint32_t frameLimit = 0;
-            bool hidden = false;
+            backend::EArdaBackendType mBackend = backend::DefaultBackend;
+            uint32_t mFrameLimit = 0;
+            bool mbHidden = false;
         };
 
         class FArdaMessageCallback final : public nvrhi::IMessageCallback
@@ -32,12 +32,12 @@ namespace arda::tests::nvrhi_test
                 else if (severity == nvrhi::MessageSeverity::Error)
                 {
                     prefix = "ERROR";
-                    ++m_errorCount;
+                    ++mErrorCount;
                 }
                 else if (severity == nvrhi::MessageSeverity::Fatal)
                 {
                     prefix = "FATAL";
-                    ++m_errorCount;
+                    ++mErrorCount;
                 }
 
                 std::fprintf(stderr, "[NVRHI %s] %s\n", prefix, messageText);
@@ -48,10 +48,10 @@ namespace arda::tests::nvrhi_test
 #endif
             }
 
-            [[nodiscard]] uint32_t GetErrorCount() const { return m_errorCount; }
+            [[nodiscard]] uint32_t GetErrorCount() const { return mErrorCount; }
 
         private:
-            uint32_t m_errorCount = 0;
+            uint32_t mErrorCount = 0;
         };
 
         class FArdaBackendShutdownGuard final
@@ -59,16 +59,16 @@ namespace arda::tests::nvrhi_test
         public:
             explicit FArdaBackendShutdownGuard(
                 std::unique_ptr<backend::IArdaSwapChain>& swapChain)
-                : m_swapChain(swapChain)
+                : mSwapChain(swapChain)
             {
             }
 
             ~FArdaBackendShutdownGuard()
             {
-                if (m_swapChain)
+                if (mSwapChain)
                 {
-                    m_swapChain->WaitForIdle();
-                    m_swapChain.reset();
+                    mSwapChain->WaitForIdle();
+                    mSwapChain.reset();
                 }
                 if (backend::IsBackendInitialized())
                 {
@@ -77,7 +77,7 @@ namespace arda::tests::nvrhi_test
             }
 
         private:
-            std::unique_ptr<backend::IArdaSwapChain>& m_swapChain;
+            std::unique_ptr<backend::IArdaSwapChain>& mSwapChain;
         };
 
         bool ParseOptions(int argumentCount, char** arguments, FArdaOptions& options, std::string& error)
@@ -87,18 +87,18 @@ namespace arda::tests::nvrhi_test
                 const std::string_view argument(arguments[index]);
                 if (argument == "--hidden")
                 {
-                    options.hidden = true;
+                    options.mbHidden = true;
                 }
                 else if (argument == "--backend" && index + 1 < argumentCount)
                 {
                     const std::string_view backendArgument(arguments[++index]);
                     if (backendArgument == "d3d12")
                     {
-                        options.backend = backend::EArdaBackendType::D3D12;
+                        options.mBackend = backend::EArdaBackendType::D3D12;
                     }
                     else if (backendArgument == "vulkan")
                     {
-                        options.backend = backend::EArdaBackendType::Vulkan;
+                        options.mBackend = backend::EArdaBackendType::Vulkan;
                     }
                     else
                     {
@@ -110,7 +110,7 @@ namespace arda::tests::nvrhi_test
                 {
                     try
                     {
-                        options.frameLimit = static_cast<uint32_t>(std::stoul(arguments[++index]));
+                        options.mFrameLimit = static_cast<uint32_t>(std::stoul(arguments[++index]));
                     }
                     catch (const std::exception&)
                     {
@@ -144,22 +144,22 @@ namespace arda::tests::nvrhi_test
             }
 
             FArdaGlfwWindow window;
-            if (!window.Create("Ardashir - NVRHI Triangle", 1280, 720, !options.hidden))
+            if (!window.Create("Ardashir - NVRHI Triangle", 1280, 720, !options.mbHidden))
             {
                 std::fprintf(stderr, "%s\n", window.GetError().c_str());
-                return options.hidden ? SkippedExitCode : EXIT_FAILURE;
+                return options.mbHidden ? SkippedExitCode : EXIT_FAILURE;
             }
 
             FArdaMessageCallback messageCallback;
             backend::FArdaBackendConfiguration configuration;
-            configuration.backend = options.backend;
-            configuration.enableValidation = true;
-            configuration.messageCallback = &messageCallback;
+            configuration.mBackend = options.mBackend;
+            configuration.mbEnableValidation = true;
+            configuration.mMessageCallback = &messageCallback;
             if (!backend::ConfigureBackend(configuration))
             {
                 const std::string backendError = backend::GetBackendError();
                 std::fprintf(stderr, "%s\n", backendError.c_str());
-                return options.backend == backend::EArdaBackendType::D3D12
+                return options.mBackend == backend::EArdaBackendType::D3D12
                     ? SkippedExitCode
                     : EXIT_FAILURE;
             }
@@ -185,7 +185,7 @@ namespace arda::tests::nvrhi_test
             if (!renderer.Initialize(
                 backend::GetDevice(),
                 swapChain->GetFormat(),
-                options.backend,
+                options.mBackend,
                 GetExecutableDirectory(arguments[0])))
             {
                 std::fprintf(stderr, "%s\n", renderer.GetError().c_str());
@@ -210,7 +210,7 @@ namespace arda::tests::nvrhi_test
                 }
 
                 ++renderedFrames;
-                if (options.frameLimit > 0 && renderedFrames >= options.frameLimit)
+                if (options.mFrameLimit > 0 && renderedFrames >= options.mFrameLimit)
                 {
                     break;
                 }

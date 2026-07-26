@@ -15,33 +15,33 @@ namespace arda::trace
          * @param Name Registered name used by the offline viewer.
          */
         explicit FArdaScopeTimer(const FArdaTraceName& Name) noexcept
-            : bRecording(IsTraceCaptureActive())
-            , NameId(Name.GetId())
-            , ScopeId(bRecording ? detail::AllocateScopeId() : 0)
-            , ParentScopeId(bRecording ? ActiveScopeId : 0)
-            , StartNanoseconds(bRecording ? detail::GetTraceTimestampNanoseconds() : 0)
+            : mbRecording(IsTraceCaptureActive())
+            , mNameId(Name.GetId())
+            , mScopeId(mbRecording ? detail::AllocateScopeId() : 0)
+            , mParentScopeId(mbRecording ? mActiveScopeId : 0)
+            , mStartNanoseconds(mbRecording ? detail::GetTraceTimestampNanoseconds() : 0)
         {
-            if (bRecording)
+            if (mbRecording)
             {
-                ActiveScopeId = ScopeId;
+                mActiveScopeId = mScopeId;
             }
         }
 
         /** Completes and records the scope before restoring its parent scope. */
         ~FArdaScopeTimer() noexcept
         {
-            if (!bRecording)
+            if (!mbRecording)
             {
                 return;
             }
 
             const std::uint64_t EndNanoseconds = detail::GetTraceTimestampNanoseconds();
-            ActiveScopeId = ParentScopeId;
+            mActiveScopeId = mParentScopeId;
             detail::RecordScope(
-                NameId,
-                ScopeId,
-                ParentScopeId,
-                StartNanoseconds,
+                mNameId,
+                mScopeId,
+                mParentScopeId,
+                mStartNanoseconds,
                 EndNanoseconds);
         }
 
@@ -55,13 +55,13 @@ namespace arda::trace
         FArdaScopeTimer& operator=(FArdaScopeTimer&&) = delete;
 
     private:
-        inline static thread_local std::uint64_t ActiveScopeId = 0;
+        inline static thread_local std::uint64_t mActiveScopeId = 0;
 
-        bool bRecording;
-        std::uint32_t NameId;
-        std::uint64_t ScopeId;
-        std::uint64_t ParentScopeId;
-        std::uint64_t StartNanoseconds;
+        bool mbRecording;
+        std::uint32_t mNameId;
+        std::uint64_t mScopeId;
+        std::uint64_t mParentScopeId;
+        std::uint64_t mStartNanoseconds;
     };
 }
 

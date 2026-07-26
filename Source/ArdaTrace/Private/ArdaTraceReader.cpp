@@ -38,39 +38,39 @@ namespace arda::trace
         bool ValidateReferences(const FArdaTraceSession& Session, std::string& OutError)
         {
             std::unordered_map<std::uint64_t, const FArdaTraceScope*> ScopesById;
-            for (const FArdaTraceScope& Scope : Session.Scopes)
+            for (const FArdaTraceScope& Scope : Session.mScopes)
             {
-                if (Session.Names.count(Scope.NameId) == 0
-                    || Session.Threads.count(Scope.ThreadId) == 0)
+                if (Session.mNames.count(Scope.mNameId) == 0
+                    || Session.mThreads.count(Scope.mThreadId) == 0)
                 {
                     OutError = "A scope references undefined trace metadata.";
                     return false;
                 }
-                if (Scope.EndNanoseconds < Scope.StartNanoseconds)
+                if (Scope.mEndNanoseconds < Scope.mStartNanoseconds)
                 {
                     OutError = "A scope ends before it begins.";
                     return false;
                 }
-                if (Scope.ScopeId == 0
-                    || !ScopesById.emplace(Scope.ScopeId, &Scope).second)
+                if (Scope.mScopeId == 0
+                    || !ScopesById.emplace(Scope.mScopeId, &Scope).second)
                 {
                     OutError = "The trace capture contains duplicate scope identifiers.";
                     return false;
                 }
             }
 
-            for (const FArdaTraceScope& Scope : Session.Scopes)
+            for (const FArdaTraceScope& Scope : Session.mScopes)
             {
-                std::unordered_set<std::uint64_t> VisitedScopeIds = {Scope.ScopeId};
+                std::unordered_set<std::uint64_t> VisitedScopeIds = {Scope.mScopeId};
                 const FArdaTraceScope* CurrentScope = &Scope;
-                while (CurrentScope->ParentScopeId != 0)
+                while (CurrentScope->mParentScopeId != 0)
                 {
-                    const auto Parent = ScopesById.find(CurrentScope->ParentScopeId);
+                    const auto Parent = ScopesById.find(CurrentScope->mParentScopeId);
                     if (Parent == ScopesById.end()
-                        || Parent->second->ThreadId != Scope.ThreadId
-                        || Scope.StartNanoseconds < Parent->second->StartNanoseconds
-                        || Scope.EndNanoseconds > Parent->second->EndNanoseconds
-                        || !VisitedScopeIds.insert(Parent->second->ScopeId).second)
+                        || Parent->second->mThreadId != Scope.mThreadId
+                        || Scope.mStartNanoseconds < Parent->second->mStartNanoseconds
+                        || Scope.mEndNanoseconds > Parent->second->mEndNanoseconds
+                        || !VisitedScopeIds.insert(Parent->second->mScopeId).second)
                     {
                         OutError = "A scope has an invalid parent relationship.";
                         return false;
@@ -79,21 +79,21 @@ namespace arda::trace
                 }
             }
 
-            for (const FArdaTraceCounter& Counter : Session.Counters)
+            for (const FArdaTraceCounter& Counter : Session.mCounters)
             {
-                if (Session.Names.count(Counter.NameId) == 0
-                    || Session.Threads.count(Counter.ThreadId) == 0
-                    || !std::isfinite(Counter.Value))
+                if (Session.mNames.count(Counter.mNameId) == 0
+                    || Session.mThreads.count(Counter.mThreadId) == 0
+                    || !std::isfinite(Counter.mValue))
                 {
                     OutError = "A counter references undefined trace metadata.";
                     return false;
                 }
             }
 
-            for (const FArdaTraceMarker& Marker : Session.Markers)
+            for (const FArdaTraceMarker& Marker : Session.mMarkers)
             {
-                if (Session.Names.count(Marker.NameId) == 0
-                    || Session.Threads.count(Marker.ThreadId) == 0)
+                if (Session.mNames.count(Marker.mNameId) == 0
+                    || Session.mThreads.count(Marker.mThreadId) == 0)
                 {
                     OutError = "A marker references undefined trace metadata.";
                     return false;
@@ -122,7 +122,7 @@ namespace arda::trace
         if (!Stream.read(Magic.data(), static_cast<std::streamsize>(Magic.size()))
             || !ReadValue(Stream, Version)
             || !ReadValue(Stream, EndianMarker)
-            || !ReadValue(Stream, Session.OriginNanoseconds))
+            || !ReadValue(Stream, Session.mOriginNanoseconds))
         {
             OutError = "The trace capture header is truncated.";
             return false;
@@ -164,7 +164,7 @@ namespace arda::trace
                     OutError = "A trace name record is malformed.";
                     return false;
                 }
-                if (!Session.Names.emplace(NameId, std::move(Name)).second)
+                if (!Session.mNames.emplace(NameId, std::move(Name)).second)
                 {
                     OutError = "The trace capture contains a duplicate name identifier.";
                     return false;
@@ -180,50 +180,50 @@ namespace arda::trace
                     OutError = "A trace thread record is malformed.";
                     return false;
                 }
-                Session.Threads[ThreadId] = std::move(Name);
+                Session.mThreads[ThreadId] = std::move(Name);
                 break;
             }
             case detail::EArdaTraceRecordType::Scope:
             {
                 FArdaTraceScope Scope;
-                if (!ReadValue(Stream, Scope.ThreadId)
-                    || !ReadValue(Stream, Scope.NameId)
-                    || !ReadValue(Stream, Scope.ScopeId)
-                    || !ReadValue(Stream, Scope.ParentScopeId)
-                    || !ReadValue(Stream, Scope.StartNanoseconds)
-                    || !ReadValue(Stream, Scope.EndNanoseconds))
+                if (!ReadValue(Stream, Scope.mThreadId)
+                    || !ReadValue(Stream, Scope.mNameId)
+                    || !ReadValue(Stream, Scope.mScopeId)
+                    || !ReadValue(Stream, Scope.mParentScopeId)
+                    || !ReadValue(Stream, Scope.mStartNanoseconds)
+                    || !ReadValue(Stream, Scope.mEndNanoseconds))
                 {
                     OutError = "A trace scope record is malformed.";
                     return false;
                 }
-                Session.Scopes.push_back(Scope);
+                Session.mScopes.push_back(Scope);
                 break;
             }
             case detail::EArdaTraceRecordType::Counter:
             {
                 FArdaTraceCounter Counter;
-                if (!ReadValue(Stream, Counter.ThreadId)
-                    || !ReadValue(Stream, Counter.NameId)
-                    || !ReadValue(Stream, Counter.TimestampNanoseconds)
-                    || !ReadValue(Stream, Counter.Value))
+                if (!ReadValue(Stream, Counter.mThreadId)
+                    || !ReadValue(Stream, Counter.mNameId)
+                    || !ReadValue(Stream, Counter.mTimestampNanoseconds)
+                    || !ReadValue(Stream, Counter.mValue))
                 {
                     OutError = "A trace counter record is malformed.";
                     return false;
                 }
-                Session.Counters.push_back(Counter);
+                Session.mCounters.push_back(Counter);
                 break;
             }
             case detail::EArdaTraceRecordType::Marker:
             {
                 FArdaTraceMarker Marker;
-                if (!ReadValue(Stream, Marker.ThreadId)
-                    || !ReadValue(Stream, Marker.NameId)
-                    || !ReadValue(Stream, Marker.TimestampNanoseconds))
+                if (!ReadValue(Stream, Marker.mThreadId)
+                    || !ReadValue(Stream, Marker.mNameId)
+                    || !ReadValue(Stream, Marker.mTimestampNanoseconds))
                 {
                     OutError = "A trace marker record is malformed.";
                     return false;
                 }
-                Session.Markers.push_back(Marker);
+                Session.mMarkers.push_back(Marker);
                 break;
             }
             case detail::EArdaTraceRecordType::CaptureEnd:

@@ -30,14 +30,12 @@ add_custom_command(
 add_custom_target(NVRHITestShaders DEPENDS ${SHADER_OUTPUTS})
 set_target_properties(NVRHITestShaders PROPERTIES FOLDER "Ardashir/Tests/NVRHI")
 
-add_executable(NVRHITest
-    ArdaNVRHITestMain.cpp
-    Private/ArdaGlfwWindow.cpp
-    Private/ArdaGlfwWindow.h
-    Private/ArdaNVRHITestPch.h
-    Private/ArdaTriangleRenderer.cpp
-    Private/ArdaTriangleRenderer.h
+file(GLOB_RECURSE ARDA_NVRHI_TEST_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
+
+add_executable(NVRHITest ${ARDA_NVRHI_TEST_SOURCES})
 
 add_dependencies(NVRHITest NVRHITestShaders)
 target_compile_features(NVRHITest PRIVATE cxx_std_17)
