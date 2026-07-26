@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1050" height="430" viewBox="0 0 1050 430" role="img" aria-labelledby="title desc">
+  <title id="title">ArdaRenderGraph lifecycle</title>
+  <desc id="desc">A graph moves once from building to compiled to executed. Topology and resource declarations are mutable only while building.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#7dd3fc"/>
+    </marker>
+    <style>
+      .box{rx:14;stroke-width:2}.title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:600 18px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .good{font:600 14px system-ui,sans-serif;fill:#6ee7b7;text-anchor:middle}
+      .bad{font:600 14px system-ui,sans-serif;fill:#fca5a5;text-anchor:middle}
+      .flow{stroke:#7dd3fc;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1050" height="430" rx="22" fill="url(#bg)"/>
+  <text x="525" y="42" class="title">Each builder has a one-way lifecycle</text>
+
+  <rect class="box" x="55" y="92" width="270" height="225" fill="#214b45" stroke="#34d399"/>
+  <text x="190" y="128" class="label">1. Building</text>
+  <text x="190" y="160" class="good">Topology mutations allowed</text>
+  <text x="190" y="191" class="small">CreateTexture / CreateBuffer</text>
+  <text x="190" y="216" class="small">CreateSRV / CreateUAV</text>
+  <text x="190" y="241" class="small">AllocateParameters / AddPass</text>
+  <text x="190" y="266" class="small">RegisterExternal / QueueExtraction</text>
+  <text x="190" y="291" class="small">write graph blackboard values</text>
+
+  <path class="flow" d="M325 204 H385"/>
+  <text x="355" y="190" class="small">Compile()</text>
+
+  <rect class="box" x="390" y="92" width="270" height="225" fill="#493720" stroke="#fbbf24"/>
+  <text x="525" y="128" class="label">2. Compiled</text>
+  <text x="525" y="160" class="bad">Topology is immutable</text>
+  <text x="525" y="191" class="small">dead passes are marked culled</text>
+  <text x="525" y="216" class="small">queues and fork/join are selected</text>
+  <text x="525" y="241" class="small">lifetimes and transitions exist</text>
+  <text x="525" y="266" class="small">DumpGraph is deterministic</text>
+  <text x="525" y="291" class="small">no GPU command has run yet</text>
+
+  <path class="flow" d="M660 204 H720"/>
+  <text x="690" y="190" class="small">Execute()</text>
+
+  <rect class="box" x="725" y="92" width="270" height="225" fill="#3a294d" stroke="#c084fc"/>
+  <text x="860" y="128" class="label">3. Executed</text>
+  <text x="860" y="160" class="bad">Builder cannot execute again</text>
+  <text x="860" y="191" class="small">resources are materialized</text>
+  <text x="860" y="216" class="small">pass command lists are recorded</text>
+  <text x="860" y="241" class="small">queue waits and submissions occur</text>
+  <text x="860" y="266" class="small">extracted handles are returned</text>
+  <text x="860" y="291" class="small">garbage collection is advanced</text>
+
+  <rect x="145" y="354" width="760" height="48" rx="12" fill="#20364a" stroke="#38bdf8" stroke-width="2"/>
+  <text x="525" y="383" class="small">Execute() compiles automatically when Compile() was not called explicitly.</text>
+</svg>

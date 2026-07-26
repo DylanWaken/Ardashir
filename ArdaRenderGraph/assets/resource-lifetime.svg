@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="500" viewBox="0 0 1080 500" role="img" aria-labelledby="title desc">
+  <title id="title">Logical resource lifetimes and pool reuse</title>
+  <desc id="desc">The compiler identifies first and last uses. Compatible resources with non-overlapping intervals can reuse a pooled NVRHI allocation. Overlapping resources require different physical storage.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <style>
+      .title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:600 16px system-ui,sans-serif;fill:#eef6ff}
+      .small{font:14px system-ui,sans-serif;fill:#c5d2e3}
+      .center{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .axis{stroke:#94a3b8;stroke-width:2}.tick{stroke:#64748b;stroke-width:1}
+    </style>
+  </defs>
+  <rect width="1080" height="500" rx="22" fill="url(#bg)"/>
+  <text x="540" y="40" class="title">The compiler turns pass use into allocation intervals</text>
+
+  <line x1="220" y1="105" x2="1010" y2="105" class="axis"/>
+  <g class="center">
+    <line x1="260" y1="96" x2="260" y2="410" class="tick"/><text x="260" y="88">P0</text>
+    <line x1="395" y1="96" x2="395" y2="410" class="tick"/><text x="395" y="88">P1</text>
+    <line x1="530" y1="96" x2="530" y2="410" class="tick"/><text x="530" y="88">P2</text>
+    <line x1="665" y1="96" x2="665" y2="410" class="tick"/><text x="665" y="88">P3</text>
+    <line x1="800" y1="96" x2="800" y2="410" class="tick"/><text x="800" y="88">P4</text>
+    <line x1="935" y1="96" x2="935" y2="410" class="tick"/><text x="935" y="88">P5</text>
+  </g>
+
+  <text x="35" y="162" class="label">Texture A</text>
+  <rect x="260" y="132" width="405" height="52" rx="10" fill="#1f5b78" stroke="#38bdf8" stroke-width="2"/>
+  <text x="462" y="163" class="center">first use P0 ? last use P3</text>
+
+  <text x="35" y="247" class="label">Texture B</text>
+  <rect x="800" y="217" width="135" height="52" rx="10" fill="#1f5b78" stroke="#38bdf8" stroke-width="2"/>
+  <text x="867" y="248" class="center">P4 ? P5</text>
+
+  <text x="35" y="332" class="label">Texture C</text>
+  <rect x="395" y="302" width="405" height="52" rx="10" fill="#4a2b63" stroke="#c084fc" stroke-width="2"/>
+  <text x="597" y="333" class="center">overlaps A and B</text>
+
+  <rect x="85" y="405" width="910" height="62" rx="12" fill="#20364a" stroke="#34d399" stroke-width="2"/>
+  <text x="110" y="431" class="small">A and B may reuse one descriptor-compatible pooled allocation because A ends before B starts.</text>
+  <text x="110" y="453" class="small">C needs separate storage. Virtual-heap aliasing falls back to committed resources when portable safety cannot be proven.</text>
+</svg>
