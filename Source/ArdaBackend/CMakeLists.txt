@@ -52,6 +52,7 @@ if(ARDASHIR_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.cpp"
     )
     add_executable(ArdaBackendTests ${ARDA_BACKEND_TEST_SOURCES})
+    target_compile_definitions(ArdaBackendTests PRIVATE ARDA_ENABLE_CHECKS)
     target_link_libraries(ArdaBackendTests PRIVATE Ardashir::ArdaBackend GTest::gtest_main)
     set_target_properties(ArdaBackendTests PROPERTIES FOLDER "Ardashir/Tests")
     gtest_discover_tests(ArdaBackendTests)

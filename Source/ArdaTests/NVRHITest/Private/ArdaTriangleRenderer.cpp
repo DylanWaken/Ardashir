@@ -19,23 +19,55 @@ namespace arda::tests::nvrhi_test
         };
 
         constexpr uint16_t Indices[] = { 0, 1, 2 };
+
+        ARDG_BEGIN_PARAMETER_STRUCT(FArdaTriangleUploadParameters)
+            ARDG_BUFFER_ACCESS(mVertexBuffer)
+            ARDG_BUFFER_ACCESS(mIndexBuffer)
+        ARDG_END_PARAMETER_STRUCT()
+
+        ARDG_BEGIN_PARAMETER_STRUCT(FArdaTriangleRasterParameters)
+            ARDG_BUFFER_ACCESS(mVertexBuffer)
+            ARDG_BUFFER_ACCESS(mIndexBuffer)
+            ARDG_RENDER_TARGET_BINDING_SLOTS(mRenderTargets)
+        ARDG_END_PARAMETER_STRUCT()
     }
 
     bool FArdaTriangleRenderer::Initialize(
-        nvrhi::DeviceHandle device,
+        const backend::FArdaDeviceContext& deviceContext,
         nvrhi::Format swapChainFormat,
-        backend::EArdaBackendType backendType,
         const std::filesystem::path& shaderDirectory)
     {
-        mDevice = std::move(device);
+        mDevice = deviceContext.mDevice;
+        mQueueCapabilities.mbGraphics =
+            deviceContext.mQueueCapabilities.mbGraphics;
+        mQueueCapabilities.mbCompute =
+            deviceContext.mQueueCapabilities.mbCompute;
+        mQueueCapabilities.mbCopy =
+            deviceContext.mQueueCapabilities.mbCopy;
 
-        try
+        if (!mDevice || !mQueueCapabilities.mbGraphics)
         {
-            const bool vulkan = backendType == backend::EArdaBackendType::Vulkan;
-            const auto vertexBinary = LoadBinary(shaderDirectory / (vulkan ? "TriangleVS.spv" : "TriangleVS.dxil"));
-            const auto pixelBinary = LoadBinary(shaderDirectory / (vulkan ? "TrianglePS.spv" : "TrianglePS.dxil"));
+            mError = "The initialized backend does not expose a graphics device.";
+            return false;
+        }
 
-            mVertexShader = mDevice->createShader(
+        const bool vulkan =
+            deviceContext.mBackend == backend::EArdaBackendType::Vulkan;
+        std::vector<uint8_t> vertexBinary;
+        std::vector<uint8_t> pixelBinary;
+        if (!LoadBinary(
+                shaderDirectory / (vulkan ? "TriangleVS.spv" : "TriangleVS.dxil"),
+                vertexBinary,
+                mError) ||
+            !LoadBinary(
+                shaderDirectory / (vulkan ? "TrianglePS.spv" : "TrianglePS.dxil"),
+                pixelBinary,
+                mError))
+        {
+            return false;
+        }
+
+        mVertexShader = mDevice->createShader(
                 nvrhi::ShaderDesc()
                     .setShaderType(nvrhi::ShaderType::Vertex)
                     .setEntryName("VSMain")
@@ -119,30 +151,51 @@ namespace arda::tests::nvrhi_test
                 return false;
             }
 
-            mCommandList = mDevice->createCommandList();
-            if (!mCommandList)
-            {
-                mError = "NVRHI failed to create a graphics command list.";
-                return false;
-            }
+            render_graph::FARDGBuilder graph(CreateGraphContext());
+            render_graph::FARDGBufferRef vertexBuffer =
+                graph.RegisterExternalBuffer(
+                    mVertexBuffer,
+                    nvrhi::ResourceStates::VertexBuffer,
+                    "Triangle vertex buffer");
+            render_graph::FARDGBufferRef indexBuffer =
+                graph.RegisterExternalBuffer(
+                    mIndexBuffer,
+                    nvrhi::ResourceStates::IndexBuffer,
+                    "Triangle index buffer");
 
-            mCommandList->open();
-            mCommandList->writeBuffer(mVertexBuffer, Vertices, sizeof(Vertices));
-            mCommandList->writeBuffer(mIndexBuffer, Indices, sizeof(Indices));
-            mCommandList->close();
-            mDevice->executeCommandList(mCommandList);
-            if (!mDevice->waitForIdle())
-            {
-                mError = "The GPU failed while uploading triangle geometry.";
-                return false;
-            }
-        }
-        catch (const std::exception& error)
+            FArdaTriangleUploadParameters parameters;
+            parameters.mVertexBuffer = {
+                vertexBuffer,
+                nvrhi::ResourceStates::CopyDest,
+                nvrhi::EntireBuffer};
+            parameters.mIndexBuffer = {
+                indexBuffer,
+                nvrhi::ResourceStates::CopyDest,
+                nvrhi::EntireBuffer};
+            (void)graph.AddPass(
+                "Upload triangle geometry",
+                &parameters,
+                render_graph::EARDGPassFlags::None,
+                [](render_graph::FARDGPassExecutionContext& context,
+                   const FArdaTriangleUploadParameters& frozen)
+                {
+                    context.mCommandList.writeBuffer(
+                        context.GetBuffer(frozen.mVertexBuffer.mBuffer),
+                        Vertices,
+                        sizeof(Vertices));
+                    context.mCommandList.writeBuffer(
+                        context.GetBuffer(frozen.mIndexBuffer.mBuffer),
+                        Indices,
+                        sizeof(Indices));
+                });
+            (void)graph.Execute();
+        if (!mDevice->waitForIdle())
         {
-            mError = error.what();
+            mError = "The GPU failed while uploading triangle geometry.";
             return false;
         }
 
+        mError.clear();
         return true;
     }
 
@@ -155,39 +208,95 @@ namespace arda::tests::nvrhi_test
             return false;
         }
 
-        mCommandList->open();
-        nvrhi::utils::ClearColorAttachment(
-            mCommandList,
-            framebuffer,
-            0,
-            nvrhi::Color(0.025f, 0.035f, 0.06f, 1.f));
+        const nvrhi::FramebufferDesc& framebufferDesc = framebuffer->getDesc();
+        if (framebufferDesc.colorAttachments.empty() ||
+            !framebufferDesc.colorAttachments[0].valid())
+        {
+            mError = "The acquired swap-chain framebuffer has no color attachment.";
+            return false;
+        }
 
-        const auto viewport = nvrhi::ViewportState().addViewportAndScissorRect(
-            nvrhi::Viewport(
-                static_cast<float>(swapChain.GetWidth()),
-                static_cast<float>(swapChain.GetHeight())));
-        const auto graphicsState = nvrhi::GraphicsState()
-            .setPipeline(mPipeline)
-            .setFramebuffer(framebuffer)
-            .setViewport(viewport)
-            .addVertexBuffer(
-                nvrhi::VertexBufferBinding()
-                    .setBuffer(mVertexBuffer)
-                    .setSlot(0)
-                    .setOffset(0))
-            .setIndexBuffer(
-                nvrhi::IndexBufferBinding()
-                    .setBuffer(mIndexBuffer)
-                    .setFormat(nvrhi::Format::R16_UINT)
-                    .setOffset(0));
+        const nvrhi::FramebufferAttachment colorAttachment =
+            framebufferDesc.colorAttachments[0];
+        nvrhi::TextureHandle renderTarget = colorAttachment.texture;
 
-        mCommandList->setGraphicsState(graphicsState);
-        mCommandList->drawIndexed(nvrhi::DrawArguments().setVertexCount(3));
-        mCommandList->close();
+        render_graph::FARDGBuilder graph(CreateGraphContext());
+            render_graph::FARDGTextureRef graphRenderTarget =
+                graph.RegisterExternalTexture(
+                    renderTarget,
+                    nvrhi::ResourceStates::Present,
+                    "Swap-chain color");
+            render_graph::FARDGBufferRef graphVertexBuffer =
+                graph.RegisterExternalBuffer(
+                    mVertexBuffer,
+                    nvrhi::ResourceStates::VertexBuffer,
+                    "Triangle vertex buffer");
+            render_graph::FARDGBufferRef graphIndexBuffer =
+                graph.RegisterExternalBuffer(
+                    mIndexBuffer,
+                    nvrhi::ResourceStates::IndexBuffer,
+                    "Triangle index buffer");
+
+            FArdaTriangleRasterParameters parameters;
+            parameters.mVertexBuffer = {
+                graphVertexBuffer,
+                nvrhi::ResourceStates::VertexBuffer,
+                nvrhi::EntireBuffer};
+            parameters.mIndexBuffer = {
+                graphIndexBuffer,
+                nvrhi::ResourceStates::IndexBuffer,
+                nvrhi::EntireBuffer};
+            parameters.mRenderTargets.mColor[0] = {
+                graphRenderTarget,
+                colorAttachment.subresources};
+
+            const uint32_t width = swapChain.GetWidth();
+            const uint32_t height = swapChain.GetHeight();
+            (void)graph.AddPass(
+                "Render triangle",
+                &parameters,
+                render_graph::EARDGPassFlags::Raster,
+                [this, framebuffer, width, height](
+                    render_graph::FARDGPassExecutionContext& context,
+                    const FArdaTriangleRasterParameters& frozen)
+                {
+                    (void)context.GetTexture(
+                        frozen.mRenderTargets.mColor[0].mTexture);
+                    nvrhi::utils::ClearColorAttachment(
+                        &context.mCommandList,
+                        framebuffer,
+                        0,
+                        nvrhi::Color(0.025f, 0.035f, 0.06f, 1.f));
+
+                    const auto viewport =
+                        nvrhi::ViewportState().addViewportAndScissorRect(
+                            nvrhi::Viewport(
+                                static_cast<float>(width),
+                                static_cast<float>(height)));
+                    const auto graphicsState = nvrhi::GraphicsState()
+                        .setPipeline(mPipeline)
+                        .setFramebuffer(framebuffer)
+                        .setViewport(viewport)
+                        .addVertexBuffer(
+                            nvrhi::VertexBufferBinding()
+                                .setBuffer(context.GetBuffer(
+                                    frozen.mVertexBuffer.mBuffer))
+                                .setSlot(0)
+                                .setOffset(0))
+                        .setIndexBuffer(
+                            nvrhi::IndexBufferBinding()
+                                .setBuffer(context.GetBuffer(
+                                    frozen.mIndexBuffer.mBuffer))
+                                .setFormat(nvrhi::Format::R16_UINT)
+                                .setOffset(0));
+
+                    context.mCommandList.setGraphicsState(graphicsState);
+                    context.mCommandList.drawIndexed(
+                        nvrhi::DrawArguments().setVertexCount(3));
+                });
 
         swapChain.PrepareSubmit();
-        mDevice->executeCommandList(mCommandList);
-        mDevice->runGarbageCollection();
+        (void)graph.Execute();
 
         if (!swapChain.Present())
         {
@@ -195,30 +304,47 @@ namespace arda::tests::nvrhi_test
             return false;
         }
 
+        mError.clear();
         return true;
     }
 
-    std::vector<uint8_t> FArdaTriangleRenderer::LoadBinary(const std::filesystem::path& path)
+    render_graph::FARDGRenderGraphContext
+    FArdaTriangleRenderer::CreateGraphContext() const
+    {
+        render_graph::FARDGRenderGraphContext context;
+        context.mDevice = mDevice;
+        context.mQueueCapabilities = mQueueCapabilities;
+        return context;
+    }
+
+    bool FArdaTriangleRenderer::LoadBinary(
+        const std::filesystem::path& path,
+        std::vector<uint8_t>& binary,
+        std::string& error)
     {
         std::ifstream stream(path, std::ios::binary | std::ios::ate);
         if (!stream)
         {
-            throw std::runtime_error("Unable to open shader: " + path.string());
+            error = "Unable to open shader: " + path.string();
+            return false;
         }
 
         const auto size = stream.tellg();
         if (size <= 0)
         {
-            throw std::runtime_error("Shader is empty: " + path.string());
+            error = "Shader is empty: " + path.string();
+            return false;
         }
 
-        std::vector<uint8_t> binary(static_cast<size_t>(size));
+        binary.resize(static_cast<size_t>(size));
         stream.seekg(0);
         stream.read(reinterpret_cast<char*>(binary.data()), size);
         if (!stream)
         {
-            throw std::runtime_error("Unable to read shader: " + path.string());
+            error = "Unable to read shader: " + path.string();
+            binary.clear();
+            return false;
         }
-        return binary;
+        return true;
     }
 }

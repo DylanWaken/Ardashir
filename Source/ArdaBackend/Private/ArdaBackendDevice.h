@@ -20,6 +20,7 @@ namespace arda::backend
             uint32_t Height) = 0;
         virtual void WaitForIdle() noexcept = 0;
         [[nodiscard]] virtual nvrhi::DeviceHandle GetDevice() const noexcept = 0;
+        [[nodiscard]] virtual FArdaQueueCapabilities GetQueueCapabilities() const noexcept = 0;
         [[nodiscard]] virtual const std::string& GetError() const noexcept = 0;
     };
 

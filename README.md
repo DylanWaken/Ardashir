@@ -1,6 +1,6 @@
 # Ardashir
 
-*Advanced Rendering, Shading and Inferencing Runtime*
+*ARithmetic and DAta-driven SHading and Inferencing Runtime*
 
 Ardashir is a modular C++ research and development runtime for real-time
 rendering, ray-traced global illumination, GPU physics, and deep-learning
@@ -10,9 +10,9 @@ resources across rendering, simulation, and inference workloads.
 
 ## Modules
 
-- **ArdaRenderGraph** — A foundational render dependency graph implementation
-  on top of NVRHI. It will schedule rendering work and manage resource
-  dependencies, transitions, and lifetimes.
+- **[ArdaRenderGraph](Docs/ArdaRenderGraph/README.md)** — A foundational render
+  dependency graph implementation on top of NVRHI. It schedules rendering work
+  and manages resource dependencies, transitions, queues, and lifetimes.
 
 - **ArdaGI** — A library for real-time, ray-tracing-based global illumination.
 

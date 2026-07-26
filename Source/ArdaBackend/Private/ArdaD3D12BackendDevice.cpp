@@ -117,11 +117,6 @@ namespace arda::backend
                     mError = "The D3D12 swap chain is not initialized.";
                     return false;
                 }
-                if (!mDevice->waitForIdle())
-                {
-                    mError = "NVRHI reported a D3D12 device failure while waiting for the frame.";
-                    return false;
-                }
                 if (FAILED(mSwapChain->Present(1, 0)))
                 {
                     mError = "IDXGISwapChain::Present failed.";
@@ -309,7 +304,25 @@ namespace arda::backend
                     &QueueDescription,
                     IID_PPV_ARGS(&mGraphicsQueue))))
                 {
-                    mError = "ID3D12Device::CreateCommandQueue failed.";
+                    mError = "ID3D12Device::CreateCommandQueue failed for the graphics queue.";
+                    return EArdaInitializeResult::Failure;
+                }
+
+                QueueDescription.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+                if (FAILED(mD3DDevice->CreateCommandQueue(
+                    &QueueDescription,
+                    IID_PPV_ARGS(&mComputeQueue))))
+                {
+                    mError = "ID3D12Device::CreateCommandQueue failed for the compute queue.";
+                    return EArdaInitializeResult::Failure;
+                }
+
+                QueueDescription.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+                if (FAILED(mD3DDevice->CreateCommandQueue(
+                    &QueueDescription,
+                    IID_PPV_ARGS(&mCopyQueue))))
+                {
+                    mError = "ID3D12Device::CreateCommandQueue failed for the copy queue.";
                     return EArdaInitializeResult::Failure;
                 }
 
@@ -317,6 +330,8 @@ namespace arda::backend
                 Description.errorCB = Configuration.mMessageCallback;
                 Description.pDevice = mD3DDevice.Get();
                 Description.pGraphicsCommandQueue = mGraphicsQueue.Get();
+                Description.pComputeCommandQueue = mComputeQueue.Get();
+                Description.pCopyCommandQueue = mCopyQueue.Get();
                 mNativeDevice = nvrhi::d3d12::createDevice(Description);
                 if (!mNativeDevice)
                 {
@@ -333,6 +348,11 @@ namespace arda::backend
                     return EArdaInitializeResult::Failure;
                 }
 
+                mQueueCapabilities.mbGraphics = true;
+                mQueueCapabilities.mbCompute =
+                    mDevice->queryFeatureSupport(nvrhi::Feature::ComputeQueue);
+                mQueueCapabilities.mbCopy =
+                    mDevice->queryFeatureSupport(nvrhi::Feature::CopyQueue);
                 mError.clear();
                 return EArdaInitializeResult::Success;
             }
@@ -376,6 +396,11 @@ namespace arda::backend
                 return mDevice;
             }
 
+            FArdaQueueCapabilities GetQueueCapabilities() const noexcept override
+            {
+                return mQueueCapabilities;
+            }
+
             const std::string& GetError() const noexcept override
             {
                 return mError;
@@ -387,8 +412,11 @@ namespace arda::backend
             Microsoft::WRL::ComPtr<IDXGIFactory6> mFactory;
             Microsoft::WRL::ComPtr<ID3D12Device> mD3DDevice;
             Microsoft::WRL::ComPtr<ID3D12CommandQueue> mGraphicsQueue;
+            Microsoft::WRL::ComPtr<ID3D12CommandQueue> mComputeQueue;
+            Microsoft::WRL::ComPtr<ID3D12CommandQueue> mCopyQueue;
             nvrhi::d3d12::DeviceHandle mNativeDevice;
             nvrhi::DeviceHandle mDevice;
+            FArdaQueueCapabilities mQueueCapabilities;
         };
     }
 

@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620" role="img" aria-labelledby="title desc">
+  <title id="title">ArdaRenderGraph architecture</title>
+  <desc id="desc">Application code declares logical resources and passes through a builder. The compiler derives dependencies, culling, lifetimes, queues, and transitions. The executor materializes NVRHI resources, records command lists, and submits them through ArdaBackend.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#7dd3fc"/>
+    </marker>
+    <style>
+      .box{rx:13;stroke-width:2}.title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:600 17px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .flow{stroke:#7dd3fc;stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .side{stroke:#94a3b8;stroke-width:2;stroke-dasharray:7 6;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1100" height="620" rx="22" fill="url(#bg)"/>
+  <text x="550" y="38" class="title">Declare intent first; create and submit GPU work later</text>
+
+  <rect class="box" x="330" y="65" width="440" height="75" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="550" y="95" class="label">Application rendering code</text>
+  <text x="550" y="120" class="small">descriptors, parameter structs, pass lambdas, extraction requests</text>
+  <path class="flow" d="M550 140 V174"/>
+
+  <rect class="box" x="300" y="178" width="500" height="88" fill="#214b45" stroke="#34d399"/>
+  <text x="550" y="209" class="label">FARDGBuilder - Building phase</text>
+  <text x="550" y="234" class="small">logical textures, buffers, views, passes, blackboard</text>
+  <text x="550" y="255" class="small">parameter metadata discovers every declared resource access</text>
+  <path class="flow" d="M550 266 V300"/>
+
+  <rect class="box" x="300" y="304" width="500" height="108" fill="#493720" stroke="#fbbf24"/>
+  <text x="550" y="335" class="label">Compiler - Compile phase</text>
+  <text x="550" y="360" class="small">producer edges | dead-pass culling | queue assignment</text>
+  <text x="550" y="382" class="small">resource lifetimes | raster groups | state transitions</text>
+  <text x="550" y="403" class="small">prologue and epilogue sentinels anchor graph boundaries</text>
+  <path class="flow" d="M550 412 V446"/>
+
+  <rect class="box" x="300" y="450" width="500" height="92" fill="#3a294d" stroke="#c084fc"/>
+  <text x="550" y="481" class="label">Executor - Execute phase</text>
+  <text x="550" y="506" class="small">materialize/pool resources | record command lists | insert waits</text>
+  <text x="550" y="528" class="small">submit to graphics/compute/copy queues | complete extraction</text>
+  <path class="flow" d="M550 542 V571"/>
+
+  <rect class="box" x="300" y="575" width="500" height="32" fill="#20364a" stroke="#38bdf8"/>
+  <text x="550" y="597" class="small">NVRHI device and queues supplied by ArdaBackend</text>
+
+  <rect class="box" x="35" y="206" width="210" height="146" fill="#253247" stroke="#94a3b8"/>
+  <text x="140" y="238" class="label">Logical domain</text>
+  <text x="140" y="265" class="small">stable typed handles</text>
+  <text x="140" y="287" class="small">no GPU allocation required</text>
+  <text x="140" y="309" class="small">safe to cull and analyze</text>
+  <text x="140" y="331" class="small">graph-arena lifetime</text>
+  <path class="side" d="M245 278 H297"/>
+
+  <rect class="box" x="855" y="408" width="210" height="146" fill="#253247" stroke="#94a3b8"/>
+  <text x="960" y="440" class="label">Physical domain</text>
+  <text x="960" y="467" class="small">nvrhi::TextureHandle</text>
+  <text x="960" y="489" class="small">nvrhi::BufferHandle</text>
+  <text x="960" y="511" class="small">command lists and states</text>
+  <text x="960" y="533" class="small">GPU-safe destruction</text>
+  <path class="side" d="M802 480 H852"/>
+</svg>

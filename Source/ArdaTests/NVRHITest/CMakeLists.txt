@@ -44,6 +44,7 @@ target_include_directories(NVRHITest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Privat
 target_precompile_headers(NVRHITest PRIVATE Private/ArdaNVRHITestPch.h)
 target_link_libraries(NVRHITest PRIVATE
     Ardashir::ArdaBackend
+    Ardashir::ArdaRenderGraph
     glfw
 )
 

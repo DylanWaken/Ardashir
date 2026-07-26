@@ -1,6 +1,9 @@
 #include "ArdaNVRHITestPch.h"
 
 #include "ArdaGlfwWindow.h"
+#include "ArdaLog.h"
+
+ARDA_DECLARE_LOG_CATEGORY_EXTERN(LogNVRHITest);
 
 #if defined(_WIN32)
     #define GLFW_EXPOSE_NATIVE_WIN32
@@ -25,7 +28,11 @@ namespace arda::tests::nvrhi_test
     {
         glfwSetErrorCallback([](int, const char* description)
         {
-            std::fprintf(stderr, "[GLFW] %s\n", description);
+            ARDA_LOG(
+                LogNVRHITest,
+                Error,
+                "%s",
+                description ? description : "");
         });
 
         if (!glfwInit())

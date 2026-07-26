@@ -5,6 +5,8 @@
 
 namespace arda::backend
 {
+    ARDA_DEFINE_LOG_CATEGORY_NAMED(LogArdaBackend, "ArdaBackend", Log);
+
     namespace
     {
         class FArdaDefaultMessageCallback final : public nvrhi::IMessageCallback
@@ -12,27 +14,37 @@ namespace arda::backend
         public:
             void message(nvrhi::MessageSeverity severity, const char* messageText) override
             {
-                const char* severityText = "Info";
                 switch (severity)
                 {
                 case nvrhi::MessageSeverity::Warning:
-                    severityText = "Warning";
+                    ARDA_LOG(
+                        LogArdaBackend,
+                        Warning,
+                        "%s",
+                        messageText ? messageText : "");
                     break;
                 case nvrhi::MessageSeverity::Error:
-                    severityText = "Error";
+                    ARDA_LOG(
+                        LogArdaBackend,
+                        Error,
+                        "%s",
+                        messageText ? messageText : "");
                     break;
                 case nvrhi::MessageSeverity::Fatal:
-                    severityText = "Fatal";
+                    ARDA_LOG(
+                        LogArdaBackend,
+                        Fatal,
+                        "%s",
+                        messageText ? messageText : "");
                     break;
                 default:
+                    ARDA_LOG(
+                        LogArdaBackend,
+                        Log,
+                        "%s",
+                        messageText ? messageText : "");
                     break;
                 }
-
-                std::fprintf(
-                    stderr,
-                    "[ArdaBackend][%s] %s\n",
-                    severityText,
-                    messageText ? messageText : "");
             }
         };
 
@@ -88,12 +100,30 @@ namespace arda::backend
         {
             State.mContext.mDevice = State.mBackendDevice->GetDevice();
             State.mContext.mBackend = Configuration.mBackend;
+            State.mContext.mQueueCapabilities =
+                State.mBackendDevice->GetQueueCapabilities();
             currentBackend = Configuration.mBackend;
             State.mError.clear();
         }
     }
 
     const EArdaBackendType& gCurrentBackend = currentBackend;
+
+    bool FArdaQueueCapabilities::IsQueueAvailable(nvrhi::CommandQueue Queue) const noexcept
+    {
+        switch (Queue)
+        {
+        case nvrhi::CommandQueue::Graphics:
+            return mbGraphics;
+        case nvrhi::CommandQueue::Compute:
+            return mbCompute;
+        case nvrhi::CommandQueue::Copy:
+            return mbCopy;
+        case nvrhi::CommandQueue::Count:
+            return false;
+        }
+        return false;
+    }
 
     bool ConfigureBackend(const FArdaBackendConfiguration& configuration)
     {
@@ -228,6 +258,7 @@ namespace arda::backend
             state.mBackendDevice->WaitForIdle();
         }
         state.mContext.mDevice = nullptr;
+        state.mContext.mQueueCapabilities = {};
         state.mBackendDevice.reset();
     }
 
@@ -239,6 +270,11 @@ namespace arda::backend
     const FArdaDeviceContext& GetDeviceContext() noexcept
     {
         return GetState().mContext;
+    }
+
+    const FArdaQueueCapabilities& GetQueueCapabilities() noexcept
+    {
+        return GetState().mContext.mQueueCapabilities;
     }
 
     nvrhi::DeviceHandle GetDevice() noexcept

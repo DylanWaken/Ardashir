@@ -45,6 +45,24 @@ namespace arda::backend
         nvrhi::IMessageCallback* mMessageCallback = nullptr;
     };
 
+    /** Describes which NVRHI command queues are available on a backend device. */
+    struct FArdaQueueCapabilities
+    {
+        /** Whether the required graphics queue is available. */
+        bool mbGraphics = false;
+        /** Whether a distinct compute queue is available. */
+        bool mbCompute = false;
+        /** Whether a distinct copy queue is available. */
+        bool mbCopy = false;
+
+        /**
+         * Returns whether a command queue is available.
+         * @param Queue The NVRHI queue type to inspect.
+         * @return True when commands can be submitted to the requested queue.
+         */
+        [[nodiscard]] bool IsQueueAvailable(nvrhi::CommandQueue Queue) const noexcept;
+    };
+
     /** Provides the initialized NVRHI device and its backend type. */
     struct FArdaDeviceContext
     {
@@ -52,6 +70,8 @@ namespace arda::backend
         nvrhi::DeviceHandle mDevice;
         /** The graphics API that owns the device. */
         EArdaBackendType mBackend = DefaultBackend;
+        /** The command queues exposed by the initialized NVRHI device. */
+        FArdaQueueCapabilities mQueueCapabilities;
     };
 
     /** Read-only process-wide view of the configured backend type. */
@@ -78,12 +98,15 @@ namespace arda::backend
 
     /** Releases the process-wide backend and its device resources. */
     void ShutdownBackend() noexcept;
-    
+
     /** Returns whether the process-wide backend is initialized. */
     [[nodiscard]] bool IsBackendInitialized() noexcept;
 
     /** Returns the stable process-wide device context. */
     [[nodiscard]] const FArdaDeviceContext& GetDeviceContext() noexcept;
+
+    /** Returns the command queues exposed by the initialized backend. */
+    [[nodiscard]] const FArdaQueueCapabilities& GetQueueCapabilities() noexcept;
 
     /** Returns the initialized NVRHI device, or an empty handle if unavailable. */
     [[nodiscard]] nvrhi::DeviceHandle GetDevice() noexcept;

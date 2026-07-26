@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="520" viewBox="0 0 1080 520" role="img" aria-labelledby="title desc">
+  <title id="title">Pass dependencies and culling</title>
+  <desc id="desc">Resource writes create producer edges to later readers or writers. Compilation walks backward from observable roots and culls disconnected work. Synchronization-only edges order passes without keeping them alive.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="syncArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#fbbf24"/>
+    </marker>
+    <style>
+      .box{rx:13;stroke-width:2}.title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:600 17px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .data{stroke:#7dd3fc;stroke-width:3;fill:none;marker-end:url(#arrow)}
+      .sync{stroke:#fbbf24;stroke-width:3;stroke-dasharray:8 6;fill:none;marker-end:url(#syncArrow)}
+    </style>
+  </defs>
+  <rect width="1080" height="520" rx="22" fill="url(#bg)"/>
+  <text x="540" y="40" class="title">Dependencies answer two different questions</text>
+
+  <rect class="box" x="60" y="105" width="220" height="100" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="170" y="143" class="label">Pass A: Produce</text>
+  <text x="170" y="170" class="small">writes Texture X</text>
+  <text x="170" y="191" class="small">UAV state</text>
+
+  <rect class="box" x="430" y="105" width="220" height="100" fill="#214b45" stroke="#34d399"/>
+  <text x="540" y="143" class="label">Pass B: Process</text>
+  <text x="540" y="170" class="small">reads X, writes Y</text>
+  <text x="540" y="191" class="small">compute pass</text>
+
+  <rect class="box" x="800" y="105" width="220" height="100" fill="#3a294d" stroke="#c084fc"/>
+  <text x="910" y="143" class="label">Pass C: Present</text>
+  <text x="910" y="170" class="small">reads Y</text>
+  <text x="910" y="191" class="small">writes external target</text>
+
+  <path class="data" d="M280 155 H425"/>
+  <path class="data" d="M650 155 H795"/>
+  <text x="352" y="140" class="small">producer edge</text>
+  <text x="722" y="140" class="small">producer edge</text>
+
+  <rect class="box" x="155" y="300" width="220" height="100" fill="#2c3442" stroke="#64748b" opacity="0.62"/>
+  <text x="265" y="338" class="label" opacity="0.72">Pass D: DebugCopy</text>
+  <text x="265" y="365" class="small" opacity="0.72">writes unused Texture Z</text>
+  <text x="265" y="387" class="small" opacity="0.72">culled: no observable root</text>
+
+  <rect class="box" x="600" y="300" width="260" height="100" fill="#493720" stroke="#fbbf24"/>
+  <text x="730" y="338" class="label">Pass E: Timing Marker</text>
+  <text x="730" y="365" class="small">ordering only</text>
+  <text x="730" y="387" class="small">NeverCull keeps it observable</text>
+
+  <path class="sync" d="M375 350 H595"/>
+  <text x="485" y="335" class="small">synchronization edge</text>
+
+  <rect x="120" y="445" width="840" height="48" rx="12" fill="#20364a" stroke="#38bdf8" stroke-width="2"/>
+  <text x="540" y="474" class="small">Culling follows producer edges backward from external, extracted, sentinel, and NeverCull roots.</text>
+</svg>

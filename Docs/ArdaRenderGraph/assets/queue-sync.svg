@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="520" viewBox="0 0 1100 520" role="img" aria-labelledby="title desc">
+  <title id="title">Graphics, compute, and copy queue synchronization</title>
+  <desc id="desc">A copy pass produces a buffer, an async compute pass waits for it and produces a texture, and a graphics pass waits for compute before drawing. Unsupported queues fall back to graphics.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#fbbf24"/>
+    </marker>
+    <style>
+      .box{rx:12;stroke-width:2}.title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:600 16px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .lane{stroke:#64748b;stroke-width:2}.wait{stroke:#fbbf24;stroke-width:3;stroke-dasharray:8 5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1100" height="520" rx="22" fill="url(#bg)"/>
+  <text x="550" y="40" class="title">Cross-queue resource edges become explicit queue waits</text>
+
+  <text x="105" y="115" class="label">Copy queue</text>
+  <text x="105" y="245" class="label">Compute queue</text>
+  <text x="105" y="375" class="label">Graphics queue</text>
+  <line x1="190" y1="110" x2="1030" y2="110" class="lane"/>
+  <line x1="190" y1="240" x2="1030" y2="240" class="lane"/>
+  <line x1="190" y1="370" x2="1030" y2="370" class="lane"/>
+
+  <rect class="box" x="235" y="75" width="210" height="70" fill="#493720" stroke="#fbbf24"/>
+  <text x="340" y="104" class="label">Upload pass</text>
+  <text x="340" y="128" class="small">writes Buffer A</text>
+
+  <rect class="box" x="500" y="205" width="235" height="70" fill="#214b45" stroke="#34d399"/>
+  <text x="617" y="234" class="label">Async compute pass</text>
+  <text x="617" y="258" class="small">reads A, writes Texture B</text>
+
+  <rect class="box" x="800" y="335" width="205" height="70" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="902" y="364" class="label">Raster pass</text>
+  <text x="902" y="388" class="small">reads B, draws</text>
+
+  <path class="wait" d="M445 110 C480 110 465 240 495 240"/>
+  <text x="480" y="164" class="small">wait for copy instance</text>
+  <path class="wait" d="M735 240 C780 240 755 370 795 370"/>
+  <text x="780" y="294" class="small">wait for compute instance</text>
+
+  <rect x="145" y="445" width="810" height="48" rx="12" fill="#20364a" stroke="#38bdf8" stroke-width="2"/>
+  <text x="550" y="474" class="small">Unavailable queues and pixel-only async reads fall back to graphics; illegal queue states fail validation.</text>
+</svg>

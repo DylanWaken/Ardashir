@@ -4,7 +4,9 @@
 #include "ArdaGlfwWindow.h"
 #include "ArdaTriangleRenderer.h"
 
-#include <cstdio>
+#include <cstdlib>
+
+ARDA_DEFINE_LOG_CATEGORY_NAMED(LogNVRHITest, "NVRHITest", Log);
 
 namespace arda::tests::nvrhi_test
 {
@@ -24,28 +26,39 @@ namespace arda::tests::nvrhi_test
         public:
             void message(nvrhi::MessageSeverity severity, const char* messageText) override
             {
-                const char* prefix = "INFO";
-                if (severity == nvrhi::MessageSeverity::Warning)
+                switch (severity)
                 {
-                    prefix = "WARNING";
-                }
-                else if (severity == nvrhi::MessageSeverity::Error)
-                {
-                    prefix = "ERROR";
+                case nvrhi::MessageSeverity::Warning:
+                    ARDA_LOG(
+                        LogNVRHITest,
+                        Warning,
+                        "%s",
+                        messageText ? messageText : "");
+                    break;
+                case nvrhi::MessageSeverity::Error:
                     ++mErrorCount;
-                }
-                else if (severity == nvrhi::MessageSeverity::Fatal)
-                {
-                    prefix = "FATAL";
+                    ARDA_LOG(
+                        LogNVRHITest,
+                        Error,
+                        "%s",
+                        messageText ? messageText : "");
+                    break;
+                case nvrhi::MessageSeverity::Fatal:
                     ++mErrorCount;
+                    ARDA_LOG(
+                        LogNVRHITest,
+                        Fatal,
+                        "%s",
+                        messageText ? messageText : "");
+                    break;
+                default:
+                    ARDA_LOG(
+                        LogNVRHITest,
+                        Log,
+                        "%s",
+                        messageText ? messageText : "");
+                    break;
                 }
-
-                std::fprintf(stderr, "[NVRHI %s] %s\n", prefix, messageText);
-#if defined(_WIN32)
-                OutputDebugStringA("[NVRHI] ");
-                OutputDebugStringA(messageText);
-                OutputDebugStringA("\n");
-#endif
             }
 
             [[nodiscard]] uint32_t GetErrorCount() const { return mErrorCount; }
@@ -108,15 +121,16 @@ namespace arda::tests::nvrhi_test
                 }
                 else if (argument == "--frames" && index + 1 < argumentCount)
                 {
-                    try
-                    {
-                        options.mFrameLimit = static_cast<uint32_t>(std::stoul(arguments[++index]));
-                    }
-                    catch (const std::exception&)
+                    const char* framesText = arguments[++index];
+                    char* end = nullptr;
+                    const unsigned long parsed =
+                        std::strtoul(framesText, &end, 10);
+                    if (framesText[0] == '\0' || (end != nullptr && *end != '\0'))
                     {
                         error = "--frames requires a non-negative integer.";
                         return false;
                     }
+                    options.mFrameLimit = static_cast<uint32_t>(parsed);
                 }
                 else
                 {
@@ -139,14 +153,14 @@ namespace arda::tests::nvrhi_test
             std::string error;
             if (!ParseOptions(argumentCount, arguments, options, error))
             {
-                std::fprintf(stderr, "%s\n", error.c_str());
+                ARDA_LOG(LogNVRHITest, Error, "%s", error.c_str());
                 return EXIT_FAILURE;
             }
 
             FArdaGlfwWindow window;
             if (!window.Create("Ardashir - NVRHI Triangle", 1280, 720, !options.mbHidden))
             {
-                std::fprintf(stderr, "%s\n", window.GetError().c_str());
+                ARDA_LOG(LogNVRHITest, Error, "%s", window.GetError().c_str());
                 return options.mbHidden ? SkippedExitCode : EXIT_FAILURE;
             }
 
@@ -158,7 +172,7 @@ namespace arda::tests::nvrhi_test
             if (!backend::ConfigureBackend(configuration))
             {
                 const std::string backendError = backend::GetBackendError();
-                std::fprintf(stderr, "%s\n", backendError.c_str());
+                ARDA_LOG(LogNVRHITest, Error, "%s", backendError.c_str());
                 return options.mBackend == backend::EArdaBackendType::D3D12
                     ? SkippedExitCode
                     : EXIT_FAILURE;
@@ -175,7 +189,7 @@ namespace arda::tests::nvrhi_test
             if (result != backend::EArdaInitializeResult::Success)
             {
                 const std::string backendError = backend::GetBackendError();
-                std::fprintf(stderr, "%s\n", backendError.c_str());
+                ARDA_LOG(LogNVRHITest, Error, "%s", backendError.c_str());
                 return result == backend::EArdaInitializeResult::Unavailable
                     ? SkippedExitCode
                     : EXIT_FAILURE;
@@ -183,12 +197,11 @@ namespace arda::tests::nvrhi_test
 
             FArdaTriangleRenderer renderer;
             if (!renderer.Initialize(
-                backend::GetDevice(),
+                backend::GetDeviceContext(),
                 swapChain->GetFormat(),
-                options.mBackend,
                 GetExecutableDirectory(arguments[0])))
             {
-                std::fprintf(stderr, "%s\n", renderer.GetError().c_str());
+                ARDA_LOG(LogNVRHITest, Error, "%s", renderer.GetError().c_str());
                 return EXIT_FAILURE;
             }
 
@@ -199,13 +212,13 @@ namespace arda::tests::nvrhi_test
                 uint32_t height = 0;
                 if (window.ConsumeResize(width, height) && !swapChain->Resize(width, height))
                 {
-                    std::fprintf(stderr, "%s\n", swapChain->GetError().c_str());
+                    ARDA_LOG(LogNVRHITest, Error, "%s", swapChain->GetError().c_str());
                     return EXIT_FAILURE;
                 }
 
                 if (!renderer.RenderFrame(*swapChain))
                 {
-                    std::fprintf(stderr, "%s\n", renderer.GetError().c_str());
+                    ARDA_LOG(LogNVRHITest, Error, "%s", renderer.GetError().c_str());
                     return EXIT_FAILURE;
                 }
 
@@ -223,13 +236,5 @@ namespace arda::tests::nvrhi_test
 
 int main(int argumentCount, char** arguments)
 {
-    try
-    {
-        return arda::tests::nvrhi_test::Run(argumentCount, arguments);
-    }
-    catch (const std::exception& error)
-    {
-        std::fprintf(stderr, "%s\n", error.what());
-        return EXIT_FAILURE;
-    }
+    return arda::tests::nvrhi_test::Run(argumentCount, arguments);
 }

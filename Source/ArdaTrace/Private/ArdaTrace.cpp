@@ -194,26 +194,19 @@ namespace arda::trace
                 return;
             }
 
-            try
+            const std::uint64_t Generation =
+                State.mGeneration.load(std::memory_order_acquire);
+            const std::shared_ptr<FArdaThreadBuffer> ThreadBuffer = GetThreadBuffer();
+            if (!PrepareThreadBuffer(ThreadBuffer, Generation))
             {
-                const std::uint64_t Generation =
-                    State.mGeneration.load(std::memory_order_acquire);
-                const std::shared_ptr<FArdaThreadBuffer> ThreadBuffer = GetThreadBuffer();
-                if (!PrepareThreadBuffer(ThreadBuffer, Generation))
-                {
-                    return;
-                }
-
-                Event.mThreadId = ThreadBuffer->mThreadId;
-                ThreadBuffer->mEvents.push_back(Event);
-                if (ThreadBuffer->mEvents.size() >= EventChunkCapacity)
-                {
-                    PublishThreadEvents(*ThreadBuffer);
-                }
+                return;
             }
-            catch (...)
+
+            Event.mThreadId = ThreadBuffer->mThreadId;
+            ThreadBuffer->mEvents.push_back(Event);
+            if (ThreadBuffer->mEvents.size() >= EventChunkCapacity)
             {
-                State.mbActive.store(false, std::memory_order_release);
+                PublishThreadEvents(*ThreadBuffer);
             }
         }
 
