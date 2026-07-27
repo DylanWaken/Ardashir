@@ -2,12 +2,12 @@
 
 #include "ArdaRenderGraphDefinitions.h"
 
-#include <algorithm>
-#include <array>
+#include <EASTL/algorithm.h>
+#include <EASTL/array.h>
 #include <cstddef>
-#include <string>
-#include <utility>
-#include <vector>
+#include <EASTL/string.h>
+#include <EASTL/utility.h>
+#include <EASTL/vector.h>
 
 #include <nvrhi/nvrhi.h>
 
@@ -25,8 +25,8 @@ namespace arda::render_graph
          * @param Name The diagnostic resource name.
          * @param Type The concrete resource kind.
          */
-        FARDGResource(std::string Name, EARDGResourceType Type)
-            : mName(std::move(Name))
+        FARDGResource(eastl::string Name, EARDGResourceType Type)
+            : mName(eastl::move(Name))
             , mType(Type)
         {
         }
@@ -35,7 +35,7 @@ namespace arda::render_graph
         virtual ~FARDGResource() = default;
 
         /** Returns the diagnostic resource name. */
-        [[nodiscard]] const std::string& GetName() const noexcept
+        [[nodiscard]] const eastl::string& GetName() const noexcept
         {
             return mName;
         }
@@ -47,7 +47,7 @@ namespace arda::render_graph
         }
 
     private:
-        std::string mName;
+        eastl::string mName;
         EARDGResourceType mType;
     };
 
@@ -64,11 +64,11 @@ namespace arda::render_graph
          * @param Flags The graph ownership flags.
          */
         FARDGViewableResource(
-            std::string Name,
+            eastl::string Name,
             EARDGResourceType Type,
             nvrhi::ResourceStates InitialState,
             EARDGResourceFlags Flags)
-            : FARDGResource(std::move(Name), Type)
+            : FARDGResource(eastl::move(Name), Type)
             , mInitialState(InitialState)
             , mFinalState(InitialState)
             , mFlags(Flags)
@@ -130,7 +130,7 @@ namespace arda::render_graph
         }
 
         /** Returns readers since the latest write, in registration order. */
-        [[nodiscard]] const std::vector<FARDGPassHandle>& GetReaders() const noexcept
+        [[nodiscard]] const eastl::vector<FARDGPassHandle>& GetReaders() const noexcept
         {
             return mReaders;
         }
@@ -139,7 +139,7 @@ namespace arda::render_graph
         void AddReader(FARDGPassHandle Reader)
         {
             if (Reader.IsValid() &&
-                std::find(mReaders.begin(), mReaders.end(), Reader) ==
+                eastl::find(mReaders.begin(), mReaders.end(), Reader) ==
                     mReaders.end())
             {
                 mReaders.push_back(Reader);
@@ -193,7 +193,7 @@ namespace arda::render_graph
         nvrhi::ResourceStates mFinalState;
         EARDGResourceFlags mFlags;
         FARDGPassHandle mLastProducer;
-        std::vector<FARDGPassHandle> mReaders;
+        eastl::vector<FARDGPassHandle> mReaders;
         FARDGPassHandle mFirstUse;
         FARDGPassHandle mLastUse;
     };
@@ -216,13 +216,13 @@ namespace arda::render_graph
             EARDGResourceFlags Flags = EARDGResourceFlags::Transient,
             nvrhi::TextureHandle Texture = nullptr)
             : FARDGViewableResource(
-                  Desc.debugName,
+                  eastl::string(Desc.debugName.data(), Desc.debugName.size()),
                   EARDGResourceType::Texture,
                   Desc.initialState,
                   Flags)
             , mHandle(Handle)
-            , mDesc(std::move(Desc))
-            , mTexture(std::move(Texture))
+            , mDesc(eastl::move(Desc))
+            , mTexture(eastl::move(Texture))
         {
         }
 
@@ -251,7 +251,7 @@ namespace arda::render_graph
         /** Binds a materialized or imported NVRHI texture to this logical record. */
         void BindTexture(nvrhi::TextureHandle Texture) noexcept
         {
-            mTexture = std::move(Texture);
+            mTexture = eastl::move(Texture);
         }
 
     private:
@@ -278,13 +278,13 @@ namespace arda::render_graph
             EARDGResourceFlags Flags = EARDGResourceFlags::Transient,
             nvrhi::BufferHandle Buffer = nullptr)
             : FARDGViewableResource(
-                  Desc.debugName,
+                  eastl::string(Desc.debugName.data(), Desc.debugName.size()),
                   EARDGResourceType::Buffer,
                   Desc.initialState,
                   Flags)
             , mHandle(Handle)
-            , mDesc(std::move(Desc))
-            , mBuffer(std::move(Buffer))
+            , mDesc(eastl::move(Desc))
+            , mBuffer(eastl::move(Buffer))
         {
         }
 
@@ -313,7 +313,7 @@ namespace arda::render_graph
         /** Binds a materialized or imported NVRHI buffer to this logical record. */
         void BindBuffer(nvrhi::BufferHandle Buffer) noexcept
         {
-            mBuffer = std::move(Buffer);
+            mBuffer = eastl::move(Buffer);
         }
 
     private:
@@ -362,8 +362,8 @@ namespace arda::render_graph
          * @param Name The diagnostic view name.
          * @param Type The concrete view kind.
          */
-        FARDGView(FARDGViewHandle Handle, std::string Name, EARDGResourceType Type)
-            : FARDGResource(std::move(Name), Type)
+        FARDGView(FARDGViewHandle Handle, eastl::string Name, EARDGResourceType Type)
+            : FARDGResource(eastl::move(Name), Type)
             , mHandle(Handle)
         {
         }
@@ -383,9 +383,9 @@ namespace arda::render_graph
     {
     public:
         /** Constructs a texture SRV from its stable handle, name, and descriptor. */
-        FARDGTextureSRV(FARDGViewHandle Handle, std::string Name, FARDGTextureViewDesc Desc)
-            : FARDGView(Handle, std::move(Name), EARDGResourceType::TextureShaderResourceView)
-            , mDesc(std::move(Desc))
+        FARDGTextureSRV(FARDGViewHandle Handle, eastl::string Name, FARDGTextureViewDesc Desc)
+            : FARDGView(Handle, eastl::move(Name), EARDGResourceType::TextureShaderResourceView)
+            , mDesc(eastl::move(Desc))
         {
         }
 
@@ -404,9 +404,9 @@ namespace arda::render_graph
     {
     public:
         /** Constructs a texture UAV from its stable handle, name, and descriptor. */
-        FARDGTextureUAV(FARDGViewHandle Handle, std::string Name, FARDGTextureViewDesc Desc)
-            : FARDGView(Handle, std::move(Name), EARDGResourceType::TextureUnorderedAccessView)
-            , mDesc(std::move(Desc))
+        FARDGTextureUAV(FARDGViewHandle Handle, eastl::string Name, FARDGTextureViewDesc Desc)
+            : FARDGView(Handle, eastl::move(Name), EARDGResourceType::TextureUnorderedAccessView)
+            , mDesc(eastl::move(Desc))
         {
         }
 
@@ -425,9 +425,9 @@ namespace arda::render_graph
     {
     public:
         /** Constructs a buffer SRV from its stable handle, name, and descriptor. */
-        FARDGBufferSRV(FARDGViewHandle Handle, std::string Name, FARDGBufferViewDesc Desc)
-            : FARDGView(Handle, std::move(Name), EARDGResourceType::BufferShaderResourceView)
-            , mDesc(std::move(Desc))
+        FARDGBufferSRV(FARDGViewHandle Handle, eastl::string Name, FARDGBufferViewDesc Desc)
+            : FARDGView(Handle, eastl::move(Name), EARDGResourceType::BufferShaderResourceView)
+            , mDesc(eastl::move(Desc))
         {
         }
 
@@ -446,9 +446,9 @@ namespace arda::render_graph
     {
     public:
         /** Constructs a buffer UAV from its stable handle, name, and descriptor. */
-        FARDGBufferUAV(FARDGViewHandle Handle, std::string Name, FARDGBufferViewDesc Desc)
-            : FARDGView(Handle, std::move(Name), EARDGResourceType::BufferUnorderedAccessView)
-            , mDesc(std::move(Desc))
+        FARDGBufferUAV(FARDGViewHandle Handle, eastl::string Name, FARDGBufferViewDesc Desc)
+            : FARDGView(Handle, eastl::move(Name), EARDGResourceType::BufferUnorderedAccessView)
+            , mDesc(eastl::move(Desc))
         {
         }
 
@@ -477,13 +477,13 @@ namespace arda::render_graph
          */
         FARDGUniformBuffer(
             FARDGUniformBufferHandle Handle,
-            std::string Name,
+            eastl::string Name,
             nvrhi::BufferDesc Desc,
             const FARDGParameterMetadata* Metadata,
             const void* Contents)
-            : FARDGResource(std::move(Name), EARDGResourceType::UniformBuffer)
+            : FARDGResource(eastl::move(Name), EARDGResourceType::UniformBuffer)
             , mHandle(Handle)
-            , mDesc(std::move(Desc))
+            , mDesc(eastl::move(Desc))
             , mMetadata(Metadata)
             , mContents(Contents)
         {
@@ -526,7 +526,7 @@ namespace arda::render_graph
         /** Binds a materialized NVRHI constant buffer to this logical record. */
         void BindBuffer(nvrhi::BufferHandle Buffer) noexcept
         {
-            mBuffer = std::move(Buffer);
+            mBuffer = eastl::move(Buffer);
         }
 
     private:
@@ -577,7 +577,7 @@ namespace arda::render_graph
     struct FARDGRenderTargetBindingSlots
     {
         /** The logical color attachments, indexed by render-target slot. */
-        std::array<FARDGRenderTargetBinding, nvrhi::c_MaxRenderTargets> mColor;
+        eastl::array<FARDGRenderTargetBinding, nvrhi::c_MaxRenderTargets> mColor;
 
         /** The logical depth-stencil attachment, or an empty binding when unused. */
         FARDGRenderTargetBinding mDepthStencil;

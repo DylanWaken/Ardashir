@@ -56,8 +56,8 @@ namespace arda::backend
             FArdaBackendConfiguration mConfiguration;
             FArdaDeviceContext mContext;
             FArdaDefaultMessageCallback mDefaultMessageCallback;
-            std::unique_ptr<IArdaBackendDevice> mBackendDevice;
-            std::string mError;
+            eastl::unique_ptr<IArdaBackendDevice> mBackendDevice;
+            eastl::string mError;
         };
 
         FArdaBackendState& GetState()
@@ -198,7 +198,7 @@ namespace arda::backend
         IArdaWindowSurface& WindowSurface,
         uint32_t Width,
         uint32_t Height,
-        std::unique_ptr<IArdaSwapChain>& OutSwapChain)
+        eastl::unique_ptr<IArdaSwapChain>& OutSwapChain)
     {
         OutSwapChain.reset();
 
@@ -282,7 +282,7 @@ namespace arda::backend
         return GetState().mContext.mDevice;
     }
 
-    std::string GetBackendError()
+    eastl::string GetBackendError()
     {
         auto& state = GetState();
         std::lock_guard<std::mutex> lock(state.mMutex);

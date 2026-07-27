@@ -3,13 +3,14 @@
 #include "ArdaRenderGraphLog.h"
 #include "ArdaRenderGraphResources.h"
 
-#include <array>
+#include <EASTL/array.h>
 #include <cstddef>
-#include <functional>
-#include <string>
-#include <type_traits>
-#include <utility>
-#include <vector>
+#include <cstdio>
+#include <EASTL/functional.h>
+#include <EASTL/string.h>
+#include <EASTL/type_traits.h>
+#include <EASTL/utility.h>
+#include <EASTL/vector.h>
 
 namespace arda::render_graph
 {
@@ -94,7 +95,7 @@ namespace arda::render_graph
         const void* mValue = nullptr;
 
         /** The dotted member path, including array indices. */
-        std::string mPath;
+        eastl::string mPath;
 
         /** The zero-based array index, or zero for a scalar member. */
         size_t mArrayIndex = 0;
@@ -112,7 +113,7 @@ namespace arda::render_graph
     };
 
     /** Receives one resolved leaf or requested nested-container parameter. */
-    using FARDGParameterVisitor = std::function<void(const FARDGParameter&)>;
+    using FARDGParameterVisitor = eastl::function<void(const FARDGParameter&)>;
 
     /** Immutable static metadata generated for an ARDG parameter struct. */
     class FARDGParameterMetadata final
@@ -130,11 +131,11 @@ namespace arda::render_graph
             const char* Name,
             size_t Size,
             size_t Alignment,
-            std::vector<FARDGParameterMember> Members)
+            eastl::vector<FARDGParameterMember> Members)
             : mName(Name)
             , mSize(Size)
             , mAlignment(Alignment)
-            , mMembers(std::move(Members))
+            , mMembers(eastl::move(Members))
         {
             if (mName == nullptr || mSize == 0 || mAlignment == 0)
             {
@@ -179,13 +180,13 @@ namespace arda::render_graph
         }
 
         /** Returns generated member descriptions in declaration order. */
-        [[nodiscard]] const std::vector<FARDGParameterMember>& GetMembers() const noexcept
+        [[nodiscard]] const eastl::vector<FARDGParameterMember>& GetMembers() const noexcept
         {
             return mMembers;
         }
 
         /** Finds a direct member by source name, or returns null if it is absent. */
-        [[nodiscard]] const FARDGParameterMember* FindMember(const std::string& Name) const noexcept
+        [[nodiscard]] const FARDGParameterMember* FindMember(const eastl::string& Name) const noexcept
         {
             for (const FARDGParameterMember& Member : mMembers)
             {
@@ -220,7 +221,7 @@ namespace arda::render_graph
 
             EnumerateInternal(
                 static_cast<const std::byte*>(Parameters),
-                std::string(),
+                eastl::string(),
                 Visitor,
                 bIncludeNestedContainers);
         }
@@ -228,23 +229,32 @@ namespace arda::render_graph
     private:
         void EnumerateInternal(
             const std::byte* Parameters,
-            const std::string& Prefix,
+            const eastl::string& Prefix,
             const FARDGParameterVisitor& Visitor,
             bool bIncludeNestedContainers) const
         {
             for (const FARDGParameterMember& Member : mMembers)
             {
-                const std::string MemberPath =
+                const eastl::string MemberPath =
                     Prefix.empty() ? Member.mName : Prefix + "." + Member.mName;
 
                 for (size_t ElementIndex = 0; ElementIndex < Member.mElementCount; ++ElementIndex)
                 {
                     const void* Value =
                         Parameters + Member.mOffset + ElementIndex * Member.mElementStride;
-                    const std::string ElementPath =
-                        Member.mElementCount == 1
-                            ? MemberPath
-                            : MemberPath + "[" + std::to_string(ElementIndex) + "]";
+                    eastl::string ElementPath = MemberPath;
+                    if (Member.mElementCount != 1)
+                    {
+                        char ElementIndexText[32];
+                        std::snprintf(
+                            ElementIndexText,
+                            sizeof(ElementIndexText),
+                            "%zu",
+                            ElementIndex);
+                        ElementPath += "[";
+                        ElementPath += ElementIndexText;
+                        ElementPath += "]";
+                    }
 
                     FARDGParameter Parameter;
                     Parameter.mMember = &Member;
@@ -275,7 +285,7 @@ namespace arda::render_graph
         const char* mName = nullptr;
         size_t mSize = 0;
         size_t mAlignment = 0;
-        std::vector<FARDGParameterMember> mMembers;
+        eastl::vector<FARDGParameterMember> mMembers;
     };
 }
 
@@ -289,7 +299,7 @@ namespace arda::render_graph
         };                                                                                               \
         static void FARDGAppendMembers(                                                                  \
             FARDGNextMemberId##MemberName,                                                               \
-            std::vector<::arda::render_graph::FARDGParameterMember>& Members)                           \
+            eastl::vector<::arda::render_graph::FARDGParameterMember>& Members)                           \
         {                                                                                                \
             FARDGAppendMembers(FARDGMemberId##MemberName{}, Members);                                    \
             Members.push_back({                                                                          \
@@ -308,22 +318,22 @@ namespace arda::render_graph
 #define ARDG_INTERNAL_PARAMETER_ARRAY(MemberKind, CppType, MemberName, Count, DefaultState)            \
         FARDGMemberId##MemberName;                                                                       \
     public:                                                                                              \
-        std::array<CppType, Count> MemberName{};                                                         \
+        eastl::array<CppType, Count> MemberName{};                                                         \
     private:                                                                                             \
         struct FARDGNextMemberId##MemberName                                                             \
         {                                                                                                 \
         };                                                                                                \
         static void FARDGAppendMembers(                                                                   \
             FARDGNextMemberId##MemberName,                                                                \
-            std::vector<::arda::render_graph::FARDGParameterMember>& Members)                            \
+            eastl::vector<::arda::render_graph::FARDGParameterMember>& Members)                            \
         {                                                                                                 \
             FARDGAppendMembers(FARDGMemberId##MemberName{}, Members);                                     \
             Members.push_back({                                                                           \
                 #MemberName,                                                                               \
                 MemberKind,                                                                                \
                 offsetof(FARDGThisStruct, MemberName),                                                     \
-                sizeof(std::array<CppType, Count>),                                                        \
-                alignof(std::array<CppType, Count>),                                                       \
+                sizeof(eastl::array<CppType, Count>),                                                        \
+                alignof(eastl::array<CppType, Count>),                                                       \
                 Count,                                                                                     \
                 sizeof(CppType),                                                                           \
                 DefaultState,                                                                              \
@@ -341,7 +351,7 @@ namespace arda::render_graph
         };                                                                                                 \
         static void FARDGAppendMembers(                                                                    \
             FARDGNextMemberId##MemberName,                                                                 \
-            std::vector<::arda::render_graph::FARDGParameterMember>& Members)                             \
+            eastl::vector<::arda::render_graph::FARDGParameterMember>& Members)                             \
         {                                                                                                  \
             FARDGAppendMembers(FARDGMemberId##MemberName{}, Members);                                      \
             Members.push_back({                                                                            \
@@ -360,22 +370,22 @@ namespace arda::render_graph
 #define ARDG_INTERNAL_NESTED_PARAMETER_ARRAY(StructType, MemberName, Count)                              \
         FARDGMemberId##MemberName;                                                                        \
     public:                                                                                               \
-        std::array<StructType, Count> MemberName{};                                                       \
+        eastl::array<StructType, Count> MemberName{};                                                       \
     private:                                                                                              \
         struct FARDGNextMemberId##MemberName                                                              \
         {                                                                                                  \
         };                                                                                                 \
         static void FARDGAppendMembers(                                                                    \
             FARDGNextMemberId##MemberName,                                                                 \
-            std::vector<::arda::render_graph::FARDGParameterMember>& Members)                             \
+            eastl::vector<::arda::render_graph::FARDGParameterMember>& Members)                             \
         {                                                                                                  \
             FARDGAppendMembers(FARDGMemberId##MemberName{}, Members);                                      \
             Members.push_back({                                                                            \
                 #MemberName,                                                                                \
                 ::arda::render_graph::EARDGParameterType::NestedStruct,                                    \
                 offsetof(FARDGThisStruct, MemberName),                                                      \
-                sizeof(std::array<StructType, Count>),                                                       \
-                alignof(std::array<StructType, Count>),                                                      \
+                sizeof(eastl::array<StructType, Count>),                                                       \
+                alignof(eastl::array<StructType, Count>),                                                      \
                 Count,                                                                                      \
                 sizeof(StructType),                                                                         \
                 nvrhi::ResourceStates::Unknown,                                                             \
@@ -397,7 +407,7 @@ namespace arda::render_graph
         };                                                                                                 \
         static void FARDGAppendMembers(                                                                    \
             FARDGFirstMemberId,                                                                            \
-            std::vector<::arda::render_graph::FARDGParameterMember>&)                                     \
+            eastl::vector<::arda::render_graph::FARDGParameterMember>&)                                     \
         {                                                                                                  \
         }                                                                                                  \
         typedef FARDGFirstMemberId
@@ -408,17 +418,17 @@ namespace arda::render_graph
     public:                                                                                                \
         static const ::arda::render_graph::FARDGParameterMetadata& GetStaticMetadata()                    \
         {                                                                                                  \
-            static_assert(std::is_standard_layout_v<FARDGThisStruct>,                                     \
+            static_assert(eastl::is_standard_layout_v<FARDGThisStruct>,                                     \
                 "ARDG parameter structs must use standard layout.");                                      \
             static const ::arda::render_graph::FARDGParameterMetadata Metadata = []                       \
             {                                                                                              \
-                std::vector<::arda::render_graph::FARDGParameterMember> Members;                          \
+                eastl::vector<::arda::render_graph::FARDGParameterMember> Members;                          \
                 FARDGAppendMembers(FARDGLastMemberId{}, Members);                                          \
                 return ::arda::render_graph::FARDGParameterMetadata(                                      \
                     FARDGStructName,                                                                        \
                     sizeof(FARDGThisStruct),                                                                \
                     alignof(FARDGThisStruct),                                                               \
-                    std::move(Members));                                                                    \
+                    eastl::move(Members));                                                                    \
             }();                                                                                           \
             return Metadata;                                                                               \
         }                                                                                                  \

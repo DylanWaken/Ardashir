@@ -2,7 +2,7 @@
 
 #include "ArdaAssert.h"
 
-#include <atomic>
+#include <EASTL/atomic.h>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -20,7 +20,7 @@ namespace arda::backend
 {
     namespace
     {
-        std::atomic<EArdaEnsureBehavior> gEnsureBehavior{
+        eastl::atomic<EArdaEnsureBehavior> gEnsureBehavior{
             EArdaEnsureBehavior::Break};
 
         void DebugBreakIfAttached() noexcept
@@ -43,7 +43,7 @@ namespace arda::backend
             std::abort();
         }
 
-        std::string FormatAssertMessage(
+        eastl::string FormatAssertMessage(
             const char* format,
             std::va_list arguments)
         {
@@ -63,7 +63,7 @@ namespace arda::backend
                 return "Assertion message formatting failed.";
             }
 
-            std::string message(
+            eastl::string message(
                 static_cast<std::size_t>(requiredLength) + 1,
                 '\0');
             std::va_list formatArguments;
@@ -87,12 +87,12 @@ namespace arda::backend
 
     void SetEnsureBehavior(EArdaEnsureBehavior behavior) noexcept
     {
-        gEnsureBehavior.store(behavior, std::memory_order_relaxed);
+        gEnsureBehavior.store(behavior, eastl::memory_order_relaxed);
     }
 
     EArdaEnsureBehavior GetEnsureBehavior() noexcept
     {
-        return gEnsureBehavior.load(std::memory_order_relaxed);
+        return gEnsureBehavior.load(eastl::memory_order_relaxed);
     }
 
     void ReportFatalCheck(
@@ -127,7 +127,7 @@ namespace arda::backend
     {
         std::va_list arguments;
         va_start(arguments, format);
-        const std::string message = FormatAssertMessage(format, arguments);
+        const eastl::string message = FormatAssertMessage(format, arguments);
         va_end(arguments);
 
         ARDA_LOG(
@@ -188,7 +188,7 @@ namespace arda::backend
     {
         std::va_list arguments;
         va_start(arguments, format);
-        const std::string message = FormatAssertMessage(format, arguments);
+        const eastl::string message = FormatAssertMessage(format, arguments);
         va_end(arguments);
 
         ARDA_LOG(

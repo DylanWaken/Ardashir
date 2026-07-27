@@ -36,7 +36,7 @@ if(WIN32)
 endif()
 
 # Keep the common NVRHI archive after its static backend archives for GNU ld.
-target_link_libraries(ArdaBackend PUBLIC nvrhi)
+target_link_libraries(ArdaBackend PUBLIC nvrhi Ardashir::EASTL)
 
 if(TARGET Vulkan::Headers)
     target_link_libraries(ArdaBackend PRIVATE Vulkan::Headers)

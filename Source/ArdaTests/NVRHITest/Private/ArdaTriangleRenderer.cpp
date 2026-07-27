@@ -2,6 +2,8 @@
 
 #include "ArdaTriangleRenderer.h"
 
+#include <EASTL/iterator.h>
+
 namespace arda::tests::nvrhi_test
 {
     namespace
@@ -53,8 +55,8 @@ namespace arda::tests::nvrhi_test
 
         const bool vulkan =
             deviceContext.mBackend == backend::EArdaBackendType::Vulkan;
-        std::vector<uint8_t> vertexBinary;
-        std::vector<uint8_t> pixelBinary;
+        eastl::vector<uint8_t> vertexBinary;
+        eastl::vector<uint8_t> pixelBinary;
         if (!LoadBinary(
                 shaderDirectory / (vulkan ? "TriangleVS.spv" : "TriangleVS.dxil"),
                 vertexBinary,
@@ -106,7 +108,7 @@ namespace arda::tests::nvrhi_test
 
             mInputLayout = mDevice->createInputLayout(
                 attributes,
-                static_cast<uint32_t>(std::size(attributes)),
+                static_cast<uint32_t>(eastl::size(attributes)),
                 mVertexShader);
             if (!mInputLayout)
             {
@@ -319,20 +321,22 @@ namespace arda::tests::nvrhi_test
 
     bool FArdaTriangleRenderer::LoadBinary(
         const std::filesystem::path& path,
-        std::vector<uint8_t>& binary,
-        std::string& error)
+        eastl::vector<uint8_t>& binary,
+        eastl::string& error)
     {
+        const std::string pathString = path.string();
+        const eastl::string displayPath(pathString.data(), pathString.size());
         std::ifstream stream(path, std::ios::binary | std::ios::ate);
         if (!stream)
         {
-            error = "Unable to open shader: " + path.string();
+            error = "Unable to open shader: " + displayPath;
             return false;
         }
 
         const auto size = stream.tellg();
         if (size <= 0)
         {
-            error = "Shader is empty: " + path.string();
+            error = "Shader is empty: " + displayPath;
             return false;
         }
 
@@ -341,7 +345,7 @@ namespace arda::tests::nvrhi_test
         stream.read(reinterpret_cast<char*>(binary.data()), size);
         if (!stream)
         {
-            error = "Unable to read shader: " + path.string();
+            error = "Unable to read shader: " + displayPath;
             binary.clear();
             return false;
         }

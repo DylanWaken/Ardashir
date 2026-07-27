@@ -3,8 +3,9 @@
 #include "ArdaRenderGraphAllocator.h"
 #include "ArdaRenderGraphLog.h"
 
-#include <algorithm>
-#include <limits>
+#include <EASTL/algorithm.h>
+#include <EASTL/numeric_limits.h>
+#include <EASTL/sort.h>
 
 namespace arda::render_graph
 {
@@ -17,7 +18,7 @@ namespace arda::render_graph
 
         [[nodiscard]] uint64_t AlignUp(uint64_t Value, uint64_t Alignment)
         {
-            if (Value > std::numeric_limits<uint64_t>::max() - (Alignment - 1u))
+            if (Value > eastl::numeric_limits<uint64_t>::max() - (Alignment - 1u))
             {
                 ARDA_CHECK_MSG("Render-graph memory allocation failed.");
             }
@@ -26,7 +27,7 @@ namespace arda::render_graph
     }
 
     FARDGTransientHeapLayout FARDGTransientHeapAllocator::Allocate(
-        const std::vector<FARDGTransientAllocationRequest>& Requests,
+        const eastl::vector<FARDGTransientAllocationRequest>& Requests,
         bool bAllowAliasing)
     {
         struct FARDGActiveAllocation
@@ -41,8 +42,8 @@ namespace arda::render_graph
             uint64_t mSize = 0;
         };
 
-        std::vector<FARDGTransientAllocationRequest> Sorted = Requests;
-        std::sort(
+        eastl::vector<FARDGTransientAllocationRequest> Sorted = Requests;
+        eastl::sort(
             Sorted.begin(),
             Sorted.end(),
             [](const auto& Left, const auto& Right)
@@ -54,8 +55,8 @@ namespace arda::render_graph
                 return Left.mIdentifier < Right.mIdentifier;
             });
 
-        std::vector<FARDGActiveAllocation> Active;
-        std::vector<FARDGFreeRange> FreeRanges;
+        eastl::vector<FARDGActiveAllocation> Active;
+        eastl::vector<FARDGFreeRange> FreeRanges;
         FARDGTransientHeapLayout Layout;
         Layout.mAllocations.reserve(Requests.size());
 
@@ -85,14 +86,14 @@ namespace arda::render_graph
                     }
                 }
 
-                std::sort(
+                eastl::sort(
                     FreeRanges.begin(),
                     FreeRanges.end(),
                     [](const auto& Left, const auto& Right)
                     {
                         return Left.mOffset < Right.mOffset;
                     });
-                std::vector<FARDGFreeRange> Merged;
+                eastl::vector<FARDGFreeRange> Merged;
                 for (const FARDGFreeRange& Range : FreeRanges)
                 {
                     if (!Merged.empty() &&
@@ -106,7 +107,7 @@ namespace arda::render_graph
                         Merged.push_back(Range);
                     }
                 }
-                FreeRanges = std::move(Merged);
+                FreeRanges = eastl::move(Merged);
             }
 
             uint64_t Offset = 0;
@@ -146,12 +147,12 @@ namespace arda::render_graph
             {
                 Offset = AlignUp(Layout.mCapacity, Request.mAlignment);
             }
-            if (Offset > std::numeric_limits<uint64_t>::max() - Request.mSize)
+            if (Offset > eastl::numeric_limits<uint64_t>::max() - Request.mSize)
             {
                 ARDA_CHECK_MSG("Render-graph memory allocation failed.");
             }
             Layout.mCapacity =
-                std::max(Layout.mCapacity, Offset + Request.mSize);
+                eastl::max(Layout.mCapacity, Offset + Request.mSize);
             Layout.mbContainsAliases |= bReused;
             Layout.mAllocations.push_back(
                 {Request.mIdentifier, Offset, Request.mSize, bReused});
@@ -159,7 +160,7 @@ namespace arda::render_graph
                 {Request.mLastUse, Offset, Request.mSize});
         }
 
-        std::sort(
+        eastl::sort(
             Layout.mAllocations.begin(),
             Layout.mAllocations.end(),
             [](const auto& Left, const auto& Right)
@@ -190,7 +191,7 @@ namespace arda::render_graph
             ARDA_CHECK_MSG("A render-graph arena alignment must be a non-zero power of two.");
         }
 
-        Size = std::max<size_t>(Size, 1u);
+        Size = eastl::max<size_t>(Size, 1u);
 
         for (auto BlockIterator = mBlocks.rbegin(); BlockIterator != mBlocks.rend(); ++BlockIterator)
         {
@@ -202,7 +203,7 @@ namespace arda::render_graph
 
             const uintptr_t BaseAddress = reinterpret_cast<uintptr_t>(Block.mMemory);
             const uintptr_t CurrentAddress = BaseAddress + Block.mOffset;
-            if (CurrentAddress > std::numeric_limits<uintptr_t>::max() - (Alignment - 1u))
+            if (CurrentAddress > eastl::numeric_limits<uintptr_t>::max() - (Alignment - 1u))
             {
                 ARDA_CHECK_MSG("Render-graph memory allocation failed.");
             }
@@ -254,8 +255,8 @@ namespace arda::render_graph
     FARDGArena::FARDGBlock& FARDGArena::AddBlock(size_t MinimumSize, size_t Alignment)
     {
         FARDGBlock Block;
-        Block.mCapacity = std::max(mDefaultBlockSize, MinimumSize);
-        Block.mAlignment = std::max(alignof(std::max_align_t), Alignment);
+        Block.mCapacity = eastl::max(mDefaultBlockSize, MinimumSize);
+        Block.mAlignment = eastl::max(alignof(std::max_align_t), Alignment);
         Block.mMemory = static_cast<std::byte*>(
             ::operator new(Block.mCapacity, std::align_val_t(Block.mAlignment)));
 

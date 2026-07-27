@@ -5,14 +5,20 @@
 #include "ArdaRenderGraphExecutor.h"
 #include "ArdaRenderGraphLog.h"
 
-#include <algorithm>
+#include <EASTL/algorithm.h>
 #include <sstream>
-#include <unordered_set>
+#include <string>
+#include <EASTL/unordered_set.h>
 
 namespace arda::render_graph
 {
     namespace
     {
+        [[nodiscard]] std::string ToStdString(const eastl::string& Value)
+        {
+            return std::string(Value.data(), Value.size());
+        }
+
         [[nodiscard]] bool IsWriteState(nvrhi::ResourceStates State) noexcept
         {
             constexpr uint32_t WriteMask =
@@ -114,7 +120,7 @@ namespace arda::render_graph
             TARDGHandleRegistry<FARDGView, FARDGViewHandle>& mViews;
             TARDGHandleRegistry<FARDGUniformBuffer, FARDGUniformBufferHandle>& mUniformBuffers;
             FARDGPass& mPass;
-            std::unordered_set<uint32_t> mVisitedUniformBuffers;
+            eastl::unordered_set<uint32_t> mVisitedUniformBuffers;
 
             void AddProducer(FARDGPassHandle Producer)
             {
@@ -126,7 +132,7 @@ namespace arda::render_graph
 
             void AddView(FARDGViewHandle View)
             {
-                if (std::find(
+                if (eastl::find(
                         mPass.GetState().mViews.begin(),
                         mPass.GetState().mViews.end(),
                         View) == mPass.GetState().mViews.end())
@@ -451,7 +457,7 @@ namespace arda::render_graph
     }
 
     FARDGBuilder::FARDGBuilder(FARDGRenderGraphContext Context)
-        : mImpl(std::make_unique<FImpl>(std::move(Context)))
+        : mImpl(eastl::make_unique<FImpl>(eastl::move(Context)))
     {
         if (!mImpl->mContext.mQueueCapabilities.mbGraphics)
         {
@@ -565,7 +571,7 @@ namespace arda::render_graph
             ARDA_CHECK_MSG(
                 "A pass requested an unavailable render-graph texture.");
         }
-        const bool bDeclared = std::any_of(
+        const bool bDeclared = eastl::any_of(
             PassRecord->GetState().mTextureStates.begin(),
             PassRecord->GetState().mTextureStates.end(),
             [Texture](const FARDGPassTextureState& State)
@@ -596,7 +602,7 @@ namespace arda::render_graph
             if (PassRecord == nullptr ||
                 mImpl->mActivePassAccess.find(Pass.GetIndex()) ==
                     mImpl->mActivePassAccess.end() ||
-                std::find(
+                eastl::find(
                     PassRecord->GetState().mViews.begin(),
                     PassRecord->GetState().mViews.end(),
                     View->GetHandle()) ==
@@ -642,7 +648,7 @@ namespace arda::render_graph
             ARDA_CHECK_MSG(
                 "A pass requested an unavailable render-graph buffer.");
         }
-        const bool bDeclared = std::any_of(
+        const bool bDeclared = eastl::any_of(
             PassRecord->GetState().mBufferStates.begin(),
             PassRecord->GetState().mBufferStates.end(),
             [Buffer](const FARDGPassBufferState& State)
@@ -673,7 +679,7 @@ namespace arda::render_graph
             if (PassRecord == nullptr ||
                 mImpl->mActivePassAccess.find(Pass.GetIndex()) ==
                     mImpl->mActivePassAccess.end() ||
-                std::find(
+                eastl::find(
                     PassRecord->GetState().mViews.begin(),
                     PassRecord->GetState().mViews.end(),
                     View->GetHandle()) ==
@@ -720,7 +726,7 @@ namespace arda::render_graph
             ARDA_CHECK_MSG(
                 "A pass requested an unavailable graph uniform buffer.");
         }
-        const bool bDeclared = std::find(
+        const bool bDeclared = eastl::find(
             PassRecord->GetState().mUniformBuffers.begin(),
             PassRecord->GetState().mUniformBuffers.end(),
             UniformBuffer->GetHandle()) !=
@@ -781,7 +787,7 @@ namespace arda::render_graph
         {
             ARDA_CHECK_MSG("Invalid logical texture declaration.");
         }
-        return &mImpl->mTextures.Get(mImpl->mTextures.Emplace(std::move(Desc), Flags));
+        return &mImpl->mTextures.Get(mImpl->mTextures.Emplace(eastl::move(Desc), Flags));
     }
 
     FARDGBufferRef FARDGBuilder::CreateBuffer(
@@ -801,11 +807,11 @@ namespace arda::render_graph
         {
             ARDA_CHECK_MSG("Invalid logical buffer declaration.");
         }
-        return &mImpl->mBuffers.Get(mImpl->mBuffers.Emplace(std::move(Desc), Flags));
+        return &mImpl->mBuffers.Get(mImpl->mBuffers.Emplace(eastl::move(Desc), Flags));
     }
 
     FARDGTextureSRVRef FARDGBuilder::CreateTextureSRV(
-        std::string Name,
+        eastl::string Name,
         FARDGTextureViewDesc Desc)
     {
         if (!IsBuilding(*mImpl))
@@ -817,12 +823,12 @@ namespace arda::render_graph
             ARDA_CHECK_MSG("Invalid logical texture SRV declaration.");
         }
         const FARDGViewHandle Handle =
-            mImpl->mViews.Emplace<FARDGTextureSRV>(std::move(Name), std::move(Desc));
+            mImpl->mViews.Emplace<FARDGTextureSRV>(eastl::move(Name), eastl::move(Desc));
         return static_cast<FARDGTextureSRV*>(mImpl->mViews.TryGet(Handle));
     }
 
     FARDGTextureUAVRef FARDGBuilder::CreateTextureUAV(
-        std::string Name,
+        eastl::string Name,
         FARDGTextureViewDesc Desc)
     {
         if (!IsBuilding(*mImpl))
@@ -834,12 +840,12 @@ namespace arda::render_graph
             ARDA_CHECK_MSG("Invalid logical texture UAV declaration.");
         }
         const FARDGViewHandle Handle =
-            mImpl->mViews.Emplace<FARDGTextureUAV>(std::move(Name), std::move(Desc));
+            mImpl->mViews.Emplace<FARDGTextureUAV>(eastl::move(Name), eastl::move(Desc));
         return static_cast<FARDGTextureUAV*>(mImpl->mViews.TryGet(Handle));
     }
 
     FARDGBufferSRVRef FARDGBuilder::CreateBufferSRV(
-        std::string Name,
+        eastl::string Name,
         FARDGBufferViewDesc Desc)
     {
         if (!IsBuilding(*mImpl))
@@ -851,12 +857,12 @@ namespace arda::render_graph
             ARDA_CHECK_MSG("Invalid logical buffer SRV declaration.");
         }
         const FARDGViewHandle Handle =
-            mImpl->mViews.Emplace<FARDGBufferSRV>(std::move(Name), std::move(Desc));
+            mImpl->mViews.Emplace<FARDGBufferSRV>(eastl::move(Name), eastl::move(Desc));
         return static_cast<FARDGBufferSRV*>(mImpl->mViews.TryGet(Handle));
     }
 
     FARDGBufferUAVRef FARDGBuilder::CreateBufferUAV(
-        std::string Name,
+        eastl::string Name,
         FARDGBufferViewDesc Desc)
     {
         if (!IsBuilding(*mImpl))
@@ -868,14 +874,14 @@ namespace arda::render_graph
             ARDA_CHECK_MSG("Invalid logical buffer UAV declaration.");
         }
         const FARDGViewHandle Handle =
-            mImpl->mViews.Emplace<FARDGBufferUAV>(std::move(Name), std::move(Desc));
+            mImpl->mViews.Emplace<FARDGBufferUAV>(eastl::move(Name), eastl::move(Desc));
         return static_cast<FARDGBufferUAV*>(mImpl->mViews.TryGet(Handle));
     }
 
     FARDGTextureRef FARDGBuilder::RegisterExternalTexture(
         nvrhi::TextureHandle Texture,
         nvrhi::ResourceStates InitialState,
-        std::string Name)
+        eastl::string Name)
     {
         if (!IsBuilding(*mImpl))
         {
@@ -900,7 +906,7 @@ namespace arda::render_graph
         nvrhi::TextureDesc Desc = Texture->getDesc();
         if (!Name.empty())
         {
-            Desc.debugName = std::move(Name);
+            Desc.debugName = ToStdString(Name);
         }
         if (Desc.debugName.empty())
         {
@@ -908,7 +914,7 @@ namespace arda::render_graph
         }
         Desc.initialState = InitialState;
         const FARDGTextureHandle Handle = mImpl->mTextures.Emplace(
-            std::move(Desc),
+            eastl::move(Desc),
             EARDGResourceFlags::External,
             Texture);
         FARDGTextureRef Resource = mImpl->mTextures.TryGet(Handle);
@@ -920,7 +926,7 @@ namespace arda::render_graph
     FARDGBufferRef FARDGBuilder::RegisterExternalBuffer(
         nvrhi::BufferHandle Buffer,
         nvrhi::ResourceStates InitialState,
-        std::string Name)
+        eastl::string Name)
     {
         if (!IsBuilding(*mImpl))
         {
@@ -945,7 +951,7 @@ namespace arda::render_graph
         nvrhi::BufferDesc Desc = Buffer->getDesc();
         if (!Name.empty())
         {
-            Desc.debugName = std::move(Name);
+            Desc.debugName = ToStdString(Name);
         }
         if (Desc.debugName.empty())
         {
@@ -953,7 +959,7 @@ namespace arda::render_graph
         }
         Desc.initialState = InitialState;
         const FARDGBufferHandle Handle = mImpl->mBuffers.Emplace(
-            std::move(Desc),
+            eastl::move(Desc),
             EARDGResourceFlags::External,
             Buffer);
         FARDGBufferRef Resource = mImpl->mBuffers.TryGet(Handle);
@@ -963,7 +969,7 @@ namespace arda::render_graph
     }
 
     FARDGUniformBufferRef FARDGBuilder::CreateUniformBufferInternal(
-        std::string Name,
+        eastl::string Name,
         size_t ByteSize,
         const FARDGParameterMetadata* Metadata,
         const void* Contents)
@@ -976,13 +982,13 @@ namespace arda::render_graph
             ARDA_CHECK_MSG("Invalid logical uniform-buffer declaration.");
         }
         nvrhi::BufferDesc Desc;
-        Desc.setDebugName(Name)
+        Desc.setDebugName(ToStdString(Name))
             .setByteSize(ByteSize)
             .setIsConstantBuffer(true)
             .setInitialState(nvrhi::ResourceStates::ConstantBuffer);
         const FARDGUniformBufferHandle Handle = mImpl->mUniformBuffers.Emplace(
             Name,
-            std::move(Desc),
+            eastl::move(Desc),
             Metadata,
             Contents);
         return mImpl->mUniformBuffers.TryGet(Handle);
@@ -1001,7 +1007,7 @@ namespace arda::render_graph
         {
             ARDA_CHECK_MSG("Invalid logical texture extraction.");
         }
-        const auto Existing = std::find_if(
+        const auto Existing = eastl::find_if(
             mImpl->mTextureExtractions.begin(),
             mImpl->mTextureExtractions.end(),
             [Texture, Output](const FARDGTextureExtraction& Extraction)
@@ -1032,7 +1038,7 @@ namespace arda::render_graph
         {
             ARDA_CHECK_MSG("Invalid logical buffer extraction.");
         }
-        const auto Existing = std::find_if(
+        const auto Existing = eastl::find_if(
             mImpl->mBufferExtractions.begin(),
             mImpl->mBufferExtractions.end(),
             [Buffer, Output](const FARDGBufferExtraction& Extraction)
@@ -1051,7 +1057,7 @@ namespace arda::render_graph
     }
 
     FARDGPassHandle FARDGBuilder::AddPassInternal(
-        std::string Name,
+        eastl::string Name,
         EARDGPassFlags Flags,
         const void* Parameters,
         const FARDGParameterMetadata* Metadata,
@@ -1068,11 +1074,11 @@ namespace arda::render_graph
         ValidatePassFlags(Flags);
 
         const FARDGPassHandle Handle = mImpl->mPasses.Emplace<FARDGLambdaPass>(
-            std::move(Name),
+            eastl::move(Name),
             Flags,
             Parameters,
             Metadata,
-            std::move(Execute));
+            eastl::move(Execute));
         FARDGPass& Pass = mImpl->mPasses.Get(Handle);
         if (Metadata != nullptr)
         {
@@ -1229,19 +1235,19 @@ namespace arda::render_graph
         return mImpl->mUniformBuffers.TryGet(Handle);
     }
 
-    const std::vector<FARDGTextureExtraction>&
+    const eastl::vector<FARDGTextureExtraction>&
     FARDGBuilder::GetTextureExtractions() const noexcept
     {
         return mImpl->mTextureExtractions;
     }
 
-    const std::vector<FARDGBufferExtraction>&
+    const eastl::vector<FARDGBufferExtraction>&
     FARDGBuilder::GetBufferExtractions() const noexcept
     {
         return mImpl->mBufferExtractions;
     }
 
-    std::string FARDGBuilder::DumpGraph() const
+    eastl::string FARDGBuilder::DumpGraph() const
     {
         if (!mImpl->mbCompiled)
         {
@@ -1280,7 +1286,7 @@ namespace arda::render_graph
         for (const FARDGTexture* Texture : mImpl->mTextures.GetEntries())
         {
             Stream << " T" << Texture->GetHandle().GetIndex()
-                   << " \"" << Texture->GetName() << "\""
+                   << " \"" << Texture->GetName().c_str() << "\""
                    << " external=" << Texture->IsExternal()
                    << " extracted=" << Texture->IsExtracted()
                    << " producer=" << Texture->GetLastProducer().GetIndex()
@@ -1291,7 +1297,7 @@ namespace arda::render_graph
         for (const FARDGBuffer* Buffer : mImpl->mBuffers.GetEntries())
         {
             Stream << " B" << Buffer->GetHandle().GetIndex()
-                   << " \"" << Buffer->GetName() << "\""
+                   << " \"" << Buffer->GetName().c_str() << "\""
                    << " external=" << Buffer->IsExternal()
                    << " extracted=" << Buffer->IsExtracted()
                    << " producer=" << Buffer->GetLastProducer().GetIndex()
@@ -1303,7 +1309,7 @@ namespace arda::render_graph
         {
             const FARDGPassState& State = Pass->GetState();
             Stream << " P" << Pass->GetHandle().GetIndex()
-                   << " \"" << Pass->GetName() << "\""
+                   << " \"" << Pass->GetName().c_str() << "\""
                    << " flags=" << static_cast<uint16_t>(Pass->GetFlags())
                    << " pipeline=" << GetPipelineName(State.mPipeline)
                    << " culled=" << State.mbCulled
@@ -1388,6 +1394,7 @@ namespace arda::render_graph
                    << "->" << GetPipelineName(Dependency.mConsumerPipeline)
                    << "\n";
         }
-        return Stream.str();
+        const std::string Result = Stream.str();
+        return eastl::string(Result.data(), Result.size());
     }
 }

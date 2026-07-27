@@ -2,13 +2,13 @@
 
 #include "ArdaRenderGraphDefinitions.h"
 
-#include <algorithm>
-#include <array>
-#include <functional>
-#include <limits>
-#include <string>
-#include <utility>
-#include <vector>
+#include <EASTL/algorithm.h>
+#include <EASTL/array.h>
+#include <EASTL/functional.h>
+#include <EASTL/numeric_limits.h>
+#include <EASTL/string.h>
+#include <EASTL/utility.h>
+#include <EASTL/vector.h>
 
 #include <nvrhi/nvrhi.h>
 
@@ -101,10 +101,10 @@ namespace arda::render_graph
     struct FARDGRasterBindingSignature
     {
         /** Color attachment handles indexed by render-target slot. */
-        std::array<FARDGTextureHandle, nvrhi::c_MaxRenderTargets> mColor;
+        eastl::array<FARDGTextureHandle, nvrhi::c_MaxRenderTargets> mColor;
 
         /** Color attachment subresources indexed by render-target slot. */
-        std::array<nvrhi::TextureSubresourceSet, nvrhi::c_MaxRenderTargets>
+        eastl::array<nvrhi::TextureSubresourceSet, nvrhi::c_MaxRenderTargets>
             mColorSubresources;
 
         /** The depth-stencil attachment handle. */
@@ -138,34 +138,34 @@ namespace arda::render_graph
     struct FARDGPassState
     {
         /** Handles of passes that must execute before this pass. */
-        std::vector<FARDGPassHandle> mProducers;
+        eastl::vector<FARDGPassHandle> mProducers;
 
         /** Handles of passes that directly consume this pass. */
-        std::vector<FARDGPassHandle> mConsumers;
+        eastl::vector<FARDGPassHandle> mConsumers;
 
         /** Ordering-only predecessors that do not affect culling reachability. */
-        std::vector<FARDGPassHandle> mSynchronizationProducers;
+        eastl::vector<FARDGPassHandle> mSynchronizationProducers;
 
         /** Ordering-only successors that do not affect culling reachability. */
-        std::vector<FARDGPassHandle> mSynchronizationConsumers;
+        eastl::vector<FARDGPassHandle> mSynchronizationConsumers;
 
         /** Texture-state requirements derived from parameter metadata. */
-        std::vector<FARDGPassTextureState> mTextureStates;
+        eastl::vector<FARDGPassTextureState> mTextureStates;
 
         /** Buffer-state requirements derived from parameter metadata. */
-        std::vector<FARDGPassBufferState> mBufferStates;
+        eastl::vector<FARDGPassBufferState> mBufferStates;
 
         /** Uniform buffers declared through parameter metadata. */
-        std::vector<FARDGUniformBufferHandle> mUniformBuffers;
+        eastl::vector<FARDGUniformBufferHandle> mUniformBuffers;
 
         /** Logical views declared directly through parameter metadata. */
-        std::vector<FARDGViewHandle> mViews;
+        eastl::vector<FARDGViewHandle> mViews;
 
         /** Texture transitions lowered by graph compilation. */
-        std::vector<FARDGTextureTransition> mTextureTransitions;
+        eastl::vector<FARDGTextureTransition> mTextureTransitions;
 
         /** Whole-buffer transitions lowered by graph compilation. */
-        std::vector<FARDGBufferTransition> mBufferTransitions;
+        eastl::vector<FARDGBufferTransition> mBufferTransitions;
 
         /** The pipeline selected from the pass flags or by later compilation. */
         EARDGPipeline mPipeline = EARDGPipeline::Graphics;
@@ -177,7 +177,7 @@ namespace arda::render_graph
         FARDGPassHandle mAsyncJoin;
 
         /** Raster compatibility-group index, or UINT32_MAX when not grouped. */
-        uint32_t mRasterGroup = std::numeric_limits<uint32_t>::max();
+        uint32_t mRasterGroup = eastl::numeric_limits<uint32_t>::max();
 
         /** Logical attachments used to form raster compatibility groups. */
         FARDGRasterBindingSignature mRasterBindings;
@@ -266,7 +266,7 @@ namespace arda::render_graph
     };
 
     /** Type-erased execution body stored by a lambda pass. */
-    using FARDGPassExecuteFunction = std::function<void(FARDGPassExecutionContext&)>;
+    using FARDGPassExecuteFunction = eastl::function<void(FARDGPassExecutionContext&)>;
 
     /** Base record for a registered render-graph pass. */
     class FARDGPass
@@ -283,12 +283,12 @@ namespace arda::render_graph
          */
         FARDGPass(
             FARDGPassHandle Handle,
-            std::string Name,
+            eastl::string Name,
             EARDGPassFlags Flags,
             const void* Parameters = nullptr,
             const FARDGParameterMetadata* ParameterMetadata = nullptr)
             : mHandle(Handle)
-            , mName(std::move(Name))
+            , mName(eastl::move(Name))
             , mFlags(Flags)
             , mParameters(Parameters)
             , mParameterMetadata(ParameterMetadata)
@@ -313,7 +313,7 @@ namespace arda::render_graph
         }
 
         /** Returns the diagnostic pass name. */
-        [[nodiscard]] const std::string& GetName() const noexcept
+        [[nodiscard]] const eastl::string& GetName() const noexcept
         {
             return mName;
         }
@@ -360,7 +360,7 @@ namespace arda::render_graph
                 return;
             }
 
-            const auto Existing = std::find(
+            const auto Existing = eastl::find(
                 mState.mProducers.begin(),
                 mState.mProducers.end(),
                 Producer);
@@ -378,7 +378,7 @@ namespace arda::render_graph
                 return;
             }
 
-            const auto Existing = std::find(
+            const auto Existing = eastl::find(
                 mState.mConsumers.begin(),
                 mState.mConsumers.end(),
                 Consumer);
@@ -395,7 +395,7 @@ namespace arda::render_graph
             {
                 return;
             }
-            const auto Existing = std::find(
+            const auto Existing = eastl::find(
                 mState.mSynchronizationProducers.begin(),
                 mState.mSynchronizationProducers.end(),
                 Producer);
@@ -412,7 +412,7 @@ namespace arda::render_graph
             {
                 return;
             }
-            const auto Existing = std::find(
+            const auto Existing = eastl::find(
                 mState.mSynchronizationConsumers.begin(),
                 mState.mSynchronizationConsumers.end(),
                 Consumer);
@@ -430,18 +430,18 @@ namespace arda::render_graph
         /** Adds one texture-state requirement to this pass. */
         void AddTextureState(FARDGPassTextureState State)
         {
-            mState.mTextureStates.push_back(std::move(State));
+            mState.mTextureStates.push_back(eastl::move(State));
         }
 
         /** Adds one buffer-state requirement to this pass. */
         void AddBufferState(FARDGPassBufferState State)
         {
-            mState.mBufferStates.push_back(std::move(State));
+            mState.mBufferStates.push_back(eastl::move(State));
         }
 
     private:
         FARDGPassHandle mHandle;
-        std::string mName;
+        eastl::string mName;
         EARDGPassFlags mFlags = EARDGPassFlags::None;
         const void* mParameters = nullptr;
         const FARDGParameterMetadata* mParameterMetadata = nullptr;
@@ -464,18 +464,18 @@ namespace arda::render_graph
          */
         FARDGLambdaPass(
             FARDGPassHandle Handle,
-            std::string Name,
+            eastl::string Name,
             EARDGPassFlags Flags,
             const void* Parameters,
             const FARDGParameterMetadata* ParameterMetadata,
             FARDGPassExecuteFunction ExecuteFunction)
             : FARDGPass(
                   Handle,
-                  std::move(Name),
+                  eastl::move(Name),
                   Flags,
                   Parameters,
                   ParameterMetadata)
-            , mExecuteFunction(std::move(ExecuteFunction))
+            , mExecuteFunction(eastl::move(ExecuteFunction))
         {
         }
 
@@ -497,10 +497,10 @@ namespace arda::render_graph
     {
     public:
         /** Constructs a named synthetic boundary pass. */
-        FARDGSentinelPass(FARDGPassHandle Handle, std::string Name)
+        FARDGSentinelPass(FARDGPassHandle Handle, eastl::string Name)
             : FARDGPass(
                   Handle,
-                  std::move(Name),
+                  eastl::move(Name),
                   EARDGPassFlags::NeverCull)
         {
             GetState().mbSentinel = true;

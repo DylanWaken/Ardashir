@@ -17,16 +17,17 @@
 #include <nvrhi/nvrhi.h>
 #include <nvrhi/utils.h>
 
-#include <algorithm>
-#include <array>
+#include <EASTL/algorithm.h>
+#include <EASTL/array.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
-#include <limits>
-#include <memory>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <vector>
+#include <EASTL/numeric_limits.h>
+#include <EASTL/unique_ptr.h>
+#include <EASTL/shared_ptr.h>
+#include <EASTL/optional.h>
+#include <EASTL/string.h>
+#include <EASTL/string_view.h>
+#include <EASTL/vector.h>

@@ -6,14 +6,15 @@
 #include "ArdaRenderGraphPass.h"
 #include "ArdaRenderGraphResources.h"
 
-#include <array>
+#include <EASTL/array.h>
 #include <cstdint>
-#include <memory>
+#include <EASTL/unique_ptr.h>
+#include <EASTL/shared_ptr.h>
 #include <new>
-#include <string>
-#include <type_traits>
-#include <utility>
-#include <vector>
+#include <EASTL/string.h>
+#include <EASTL/type_traits.h>
+#include <EASTL/utility.h>
+#include <EASTL/vector.h>
 
 namespace arda::render_graph
 {
@@ -96,7 +97,7 @@ namespace arda::render_graph
         uint32_t mClobberedResourceCount = 0;
 
         /** Last submitted NVRHI instance for graphics, compute, and copy queues. */
-        std::array<uint64_t, 3> mLastSubmittedInstances{};
+        eastl::array<uint64_t, 3> mLastSubmittedInstances{};
     };
 
     /** Defines direct compute dispatch dimensions. */
@@ -148,16 +149,16 @@ namespace arda::render_graph
         FARDGPassHandle mEpilogue;
 
         /** Live passes in deterministic registration order, including sentinels. */
-        std::vector<FARDGPassHandle> mExecutionOrder;
+        eastl::vector<FARDGPassHandle> mExecutionOrder;
 
         /** Number of compatible raster groups formed by compilation. */
         uint32_t mRasterGroupCount = 0;
 
         /** Live texture and buffer intervals in deterministic registry order. */
-        std::vector<FARDGResourceLifetime> mResourceLifetimes;
+        eastl::vector<FARDGResourceLifetime> mResourceLifetimes;
 
         /** Cross-queue dependencies in consumer execution order. */
-        std::vector<FARDGQueueDependency> mQueueDependencies;
+        eastl::vector<FARDGQueueDependency> mQueueDependencies;
     };
 
     class FARDGCompiler;
@@ -186,15 +187,15 @@ namespace arda::render_graph
         [[nodiscard]] ParameterType* AllocateParameters(ArgumentTypes&&... Arguments)
         {
             static_assert(
-                std::is_standard_layout_v<ParameterType>,
+                eastl::is_standard_layout_v<ParameterType>,
                 "Render-graph parameters must use standard layout.");
 
             void* Storage = AllocateParameterStorage(
                 sizeof(ParameterType),
                 alignof(ParameterType));
             ParameterType* Parameters = new (Storage) ParameterType(
-                std::forward<ArgumentTypes>(Arguments)...);
-            if constexpr (!std::is_trivially_destructible_v<ParameterType>)
+                eastl::forward<ArgumentTypes>(Arguments)...);
+            if constexpr (!eastl::is_trivially_destructible_v<ParameterType>)
             {
                 RegisterParameterDestructor(
                     Parameters,
@@ -219,72 +220,72 @@ namespace arda::render_graph
 
         /** Creates a logical texture shader-resource view. */
         [[nodiscard]] FARDGTextureSRVRef CreateTextureSRV(
-            std::string Name,
+            eastl::string Name,
             FARDGTextureViewDesc Desc);
 
         /** Creates a logical texture unordered-access view. */
         [[nodiscard]] FARDGTextureUAVRef CreateTextureUAV(
-            std::string Name,
+            eastl::string Name,
             FARDGTextureViewDesc Desc);
 
         /** Creates a logical buffer shader-resource view. */
         [[nodiscard]] FARDGBufferSRVRef CreateBufferSRV(
-            std::string Name,
+            eastl::string Name,
             FARDGBufferViewDesc Desc);
 
         /** Creates a logical buffer unordered-access view. */
         [[nodiscard]] FARDGBufferUAVRef CreateBufferUAV(
-            std::string Name,
+            eastl::string Name,
             FARDGBufferViewDesc Desc);
 
         /** UE-style alias for creating a texture SRV. */
         [[nodiscard]] FARDGTextureSRVRef CreateSRV(
-            std::string Name,
+            eastl::string Name,
             FARDGTextureViewDesc Desc)
         {
-            return CreateTextureSRV(std::move(Name), std::move(Desc));
+            return CreateTextureSRV(eastl::move(Name), eastl::move(Desc));
         }
 
         /** UE-style alias for creating a buffer SRV. */
         [[nodiscard]] FARDGBufferSRVRef CreateSRV(
-            std::string Name,
+            eastl::string Name,
             FARDGBufferViewDesc Desc)
         {
-            return CreateBufferSRV(std::move(Name), std::move(Desc));
+            return CreateBufferSRV(eastl::move(Name), eastl::move(Desc));
         }
 
         /** UE-style alias for creating a texture UAV. */
         [[nodiscard]] FARDGTextureUAVRef CreateUAV(
-            std::string Name,
+            eastl::string Name,
             FARDGTextureViewDesc Desc)
         {
-            return CreateTextureUAV(std::move(Name), std::move(Desc));
+            return CreateTextureUAV(eastl::move(Name), eastl::move(Desc));
         }
 
         /** UE-style alias for creating a buffer UAV. */
         [[nodiscard]] FARDGBufferUAVRef CreateUAV(
-            std::string Name,
+            eastl::string Name,
             FARDGBufferViewDesc Desc)
         {
-            return CreateBufferUAV(std::move(Name), std::move(Desc));
+            return CreateBufferUAV(eastl::move(Name), eastl::move(Desc));
         }
 
         /** Imports an externally owned texture into the logical graph. */
         [[nodiscard]] FARDGTextureRef RegisterExternalTexture(
             nvrhi::TextureHandle Texture,
             nvrhi::ResourceStates InitialState,
-            std::string Name = {});
+            eastl::string Name = {});
 
         /** Imports an externally owned buffer into the logical graph. */
         [[nodiscard]] FARDGBufferRef RegisterExternalBuffer(
             nvrhi::BufferHandle Buffer,
             nvrhi::ResourceStates InitialState,
-            std::string Name = {});
+            eastl::string Name = {});
 
         /** Imports a texture using the initial state stored in its descriptor. */
         [[nodiscard]] FARDGTextureRef RegisterExternalTexture(
             nvrhi::TextureHandle Texture,
-            std::string Name = {})
+            eastl::string Name = {})
         {
             if (!Texture)
             {
@@ -293,13 +294,13 @@ namespace arda::render_graph
             return RegisterExternalTexture(
                 Texture,
                 Texture->getDesc().initialState,
-                std::move(Name));
+                eastl::move(Name));
         }
 
         /** Imports a buffer using the initial state stored in its descriptor. */
         [[nodiscard]] FARDGBufferRef RegisterExternalBuffer(
             nvrhi::BufferHandle Buffer,
-            std::string Name = {})
+            eastl::string Name = {})
         {
             if (!Buffer)
             {
@@ -308,13 +309,13 @@ namespace arda::render_graph
             return RegisterExternalBuffer(
                 Buffer,
                 Buffer->getDesc().initialState,
-                std::move(Name));
+                eastl::move(Name));
         }
 
         /** Creates a logical uniform buffer from graph-scoped parameter contents. */
         template <typename ParameterType>
         [[nodiscard]] FARDGUniformBufferRef CreateUniformBuffer(
-            std::string Name,
+            eastl::string Name,
             const ParameterType* Parameters)
         {
             if (Parameters == nullptr)
@@ -324,7 +325,7 @@ namespace arda::render_graph
             }
             const ParameterType* FrozenParameters = FreezeParameters(Parameters);
             return CreateUniformBufferInternal(
-                std::move(Name),
+                eastl::move(Name),
                 sizeof(ParameterType),
                 &ParameterType::GetStaticMetadata(),
                 FrozenParameters);
@@ -342,7 +343,7 @@ namespace arda::render_graph
             nvrhi::TextureHandle& Output,
             nvrhi::ResourceStates FinalState)
         {
-            QueueTextureExtraction(Texture, std::addressof(Output), FinalState);
+            QueueTextureExtraction(Texture, eastl::addressof(Output), FinalState);
         }
 
         /** Declares that a logical buffer must survive graph completion. */
@@ -357,7 +358,7 @@ namespace arda::render_graph
             nvrhi::BufferHandle& Output,
             nvrhi::ResourceStates FinalState)
         {
-            QueueBufferExtraction(Buffer, std::addressof(Output), FinalState);
+            QueueBufferExtraction(Buffer, eastl::addressof(Output), FinalState);
         }
 
         /**
@@ -371,7 +372,7 @@ namespace arda::render_graph
          */
         template <typename ParameterType, typename ExecuteType>
         [[nodiscard]] FARDGPassHandle AddPass(
-            std::string Name,
+            eastl::string Name,
             const ParameterType* Parameters,
             EARDGPassFlags Flags,
             ExecuteType&& Execute)
@@ -382,42 +383,42 @@ namespace arda::render_graph
                     "Cannot register a render-graph pass with null parameters.");
             }
             const ParameterType* FrozenParameters = FreezeParameters(Parameters);
-            using StoredExecuteType = std::decay_t<ExecuteType>;
+            using StoredExecuteType = eastl::decay_t<ExecuteType>;
             FARDGPassExecuteFunction ExecuteFunction =
-                [Function = StoredExecuteType(std::forward<ExecuteType>(Execute)),
+                [Function = StoredExecuteType(eastl::forward<ExecuteType>(Execute)),
                  FrozenParameters](FARDGPassExecutionContext& Context) mutable
                 {
                     InvokePassLambda(Function, Context, *FrozenParameters);
                 };
 
             return AddPassInternal(
-                std::move(Name),
+                eastl::move(Name),
                 Flags,
                 FrozenParameters,
                 &ParameterType::GetStaticMetadata(),
-                std::move(ExecuteFunction));
+                eastl::move(ExecuteFunction));
         }
 
         /** Registers a parameterless lambda pass. */
         template <typename ExecuteType>
         [[nodiscard]] FARDGPassHandle AddPass(
-            std::string Name,
+            eastl::string Name,
             EARDGPassFlags Flags,
             ExecuteType&& Execute)
         {
-            using StoredExecuteType = std::decay_t<ExecuteType>;
+            using StoredExecuteType = eastl::decay_t<ExecuteType>;
             FARDGPassExecuteFunction ExecuteFunction =
-                [Function = StoredExecuteType(std::forward<ExecuteType>(Execute))](
+                [Function = StoredExecuteType(eastl::forward<ExecuteType>(Execute))](
                     FARDGPassExecutionContext& Context) mutable
                 {
                     InvokeParameterlessPassLambda(Function, Context);
                 };
             return AddPassInternal(
-                std::move(Name),
+                eastl::move(Name),
                 Flags,
                 nullptr,
                 nullptr,
-                std::move(ExecuteFunction));
+                eastl::move(ExecuteFunction));
         }
 
         /**
@@ -428,7 +429,7 @@ namespace arda::render_graph
          */
         template <typename ParameterType, typename ExecuteType>
         [[nodiscard]] FARDGPassHandle AddDispatchPass(
-            std::string Name,
+            eastl::string Name,
             const ParameterType* Parameters,
             FARDGDispatchArguments Dispatch,
             ExecuteType&& Setup,
@@ -436,11 +437,11 @@ namespace arda::render_graph
         {
             Flags |= EARDGPassFlags::Compute;
             return AddPass(
-                std::move(Name),
+                eastl::move(Name),
                 Parameters,
                 Flags,
-                [Function = std::decay_t<ExecuteType>(
-                     std::forward<ExecuteType>(Setup)),
+                [Function = eastl::decay_t<ExecuteType>(
+                     eastl::forward<ExecuteType>(Setup)),
                  Dispatch](
                     FARDGPassExecutionContext& Context,
                     const ParameterType& FrozenParameters) mutable
@@ -530,15 +531,15 @@ namespace arda::render_graph
             FARDGUniformBufferHandle Handle) const noexcept;
 
         /** Returns texture extraction declarations in registration order. */
-        [[nodiscard]] const std::vector<FARDGTextureExtraction>&
+        [[nodiscard]] const eastl::vector<FARDGTextureExtraction>&
         GetTextureExtractions() const noexcept;
 
         /** Returns buffer extraction declarations in registration order. */
-        [[nodiscard]] const std::vector<FARDGBufferExtraction>&
+        [[nodiscard]] const eastl::vector<FARDGBufferExtraction>&
         GetBufferExtractions() const noexcept;
 
         /** Returns a deterministic textual description of the compiled graph. */
-        [[nodiscard]] std::string DumpGraph() const;
+        [[nodiscard]] eastl::string DumpGraph() const;
 
     private:
         friend class FARDGCompiler;
@@ -561,13 +562,13 @@ namespace arda::render_graph
         }
 
         [[nodiscard]] FARDGUniformBufferRef CreateUniformBufferInternal(
-            std::string Name,
+            eastl::string Name,
             size_t ByteSize,
             const FARDGParameterMetadata* Metadata,
             const void* Contents);
 
         [[nodiscard]] FARDGPassHandle AddPassInternal(
-            std::string Name,
+            eastl::string Name,
             EARDGPassFlags Flags,
             const void* Parameters,
             const FARDGParameterMetadata* Metadata,
@@ -597,58 +598,58 @@ namespace arda::render_graph
             FARDGPassExecutionContext& Context,
             const ParameterType& Parameters)
         {
-            if constexpr (std::is_invocable_v<
+            if constexpr (eastl::is_invocable_v<
                               ExecuteType&,
                               FARDGPassExecutionContext&,
                               const ParameterType&>)
             {
                 Execute(Context, Parameters);
             }
-            else if constexpr (std::is_invocable_v<
+            else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    const ParameterType&,
                                    FARDGPassExecutionContext&>)
             {
                 Execute(Parameters, Context);
             }
-            else if constexpr (std::is_invocable_v<
+            else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    nvrhi::ICommandList&,
                                    const ParameterType&>)
             {
                 Execute(Context.mCommandList, Parameters);
             }
-            else if constexpr (std::is_invocable_v<
+            else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    const ParameterType&,
                                    nvrhi::ICommandList&>)
             {
                 Execute(Parameters, Context.mCommandList);
             }
-            else if constexpr (std::is_invocable_v<
+            else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    FARDGPassExecutionContext&>)
             {
                 Execute(Context);
             }
-            else if constexpr (std::is_invocable_v<
+            else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    nvrhi::ICommandList&>)
             {
                 Execute(Context.mCommandList);
             }
-            else if constexpr (std::is_invocable_v<ExecuteType&, const ParameterType&>)
+            else if constexpr (eastl::is_invocable_v<ExecuteType&, const ParameterType&>)
             {
                 Execute(Parameters);
             }
-            else if constexpr (std::is_invocable_v<ExecuteType&>)
+            else if constexpr (eastl::is_invocable_v<ExecuteType&>)
             {
                 Execute();
             }
             else
             {
                 static_assert(
-                    std::is_invocable_v<ExecuteType&>,
+                    eastl::is_invocable_v<ExecuteType&>,
                     "Unsupported render-graph pass lambda signature.");
             }
         }
@@ -658,26 +659,26 @@ namespace arda::render_graph
             ExecuteType& Execute,
             FARDGPassExecutionContext& Context)
         {
-            if constexpr (std::is_invocable_v<ExecuteType&, FARDGPassExecutionContext&>)
+            if constexpr (eastl::is_invocable_v<ExecuteType&, FARDGPassExecutionContext&>)
             {
                 Execute(Context);
             }
-            else if constexpr (std::is_invocable_v<ExecuteType&, nvrhi::ICommandList&>)
+            else if constexpr (eastl::is_invocable_v<ExecuteType&, nvrhi::ICommandList&>)
             {
                 Execute(Context.mCommandList);
             }
-            else if constexpr (std::is_invocable_v<ExecuteType&>)
+            else if constexpr (eastl::is_invocable_v<ExecuteType&>)
             {
                 Execute();
             }
             else
             {
                 static_assert(
-                    std::is_invocable_v<ExecuteType&>,
+                    eastl::is_invocable_v<ExecuteType&>,
                     "Unsupported render-graph pass lambda signature.");
             }
         }
 
-        std::unique_ptr<FImpl> mImpl;
+        eastl::unique_ptr<FImpl> mImpl;
     };
 }

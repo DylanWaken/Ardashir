@@ -5,10 +5,11 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdio>
 #include <cstdint>
-#include <string>
-#include <type_traits>
-#include <vector>
+#include <EASTL/string.h>
+#include <EASTL/type_traits.h>
+#include <EASTL/vector.h>
 
 namespace
 {
@@ -44,7 +45,7 @@ namespace
 
     struct FARDGTrackedObject
     {
-        FARDGTrackedObject(int Identifier, std::vector<int>& DestructionOrder)
+        FARDGTrackedObject(int Identifier, eastl::vector<int>& DestructionOrder)
             : mIdentifier(Identifier)
             , mDestructionOrder(DestructionOrder)
         {
@@ -56,7 +57,7 @@ namespace
         }
 
         int mIdentifier = 0;
-        std::vector<int>& mDestructionOrder;
+        eastl::vector<int>& mDestructionOrder;
     };
 
     struct alignas(128) FARDGAlignedObject
@@ -105,7 +106,7 @@ namespace
     {
     public:
         explicit FARDGTestTexture(nvrhi::TextureDesc Desc)
-            : mDesc(std::move(Desc))
+            : mDesc(eastl::move(Desc))
         {
         }
 
@@ -150,8 +151,8 @@ namespace
     };
 
     static_assert(sizeof(FARDGPassHandle) == sizeof(uint32_t));
-    static_assert(std::is_trivially_copyable_v<FARDGPassHandle>);
-    static_assert(!std::is_convertible_v<FARDGPassHandle, FARDGTextureHandle>);
+    static_assert(eastl::is_trivially_copyable_v<FARDGPassHandle>);
+    static_assert(!eastl::is_convertible_v<FARDGPassHandle, FARDGTextureHandle>);
 }
 
 TEST(ArdaRenderGraph, ReportsModuleName)
@@ -175,14 +176,14 @@ TEST(ArdaRenderGraph, TypedHandlesAreCompactStableAndDistinct)
     EXPECT_LT(First, Second);
 
     TARDGHandleHasher<FARDGPassHandleTag> Hasher;
-    EXPECT_EQ(Hasher(First), std::hash<uint32_t>{}(0u));
+    EXPECT_EQ(Hasher(First), eastl::hash<uint32_t>{}(0u));
 }
 
 TEST(ArdaRenderGraph, ArenaHonorsAlignmentAndDestroysInReverseOrder)
 {
     using namespace arda::render_graph;
 
-    std::vector<int> DestructionOrder;
+    eastl::vector<int> DestructionOrder;
     FARDGArena Arena(64);
     FARDGTrackedObject* First = Arena.Allocate<FARDGTrackedObject>(1, DestructionOrder);
     FARDGAlignedObject* Aligned = Arena.Allocate<FARDGAlignedObject>();
@@ -197,7 +198,7 @@ TEST(ArdaRenderGraph, ArenaHonorsAlignmentAndDestroysInReverseOrder)
 
     Arena.Reset();
 
-    EXPECT_EQ(DestructionOrder, (std::vector<int>{2, 1}));
+    EXPECT_EQ(DestructionOrder, (eastl::vector<int>{2, 1}));
     EXPECT_EQ(Arena.GetObjectCount(), 0u);
     EXPECT_EQ(Arena.GetBlockCount(), 0u);
 }
@@ -240,7 +241,7 @@ TEST(ArdaRenderGraph, LogicalResourcesRetainNvrhiDescriptorsAndViewRanges)
         TextureDesc,
         EARDGResourceFlags::External | EARDGResourceFlags::Extracted);
 
-    EXPECT_EQ(Texture.GetName(), "SceneColor");
+    EXPECT_STREQ(Texture.GetName().c_str(), "SceneColor");
     EXPECT_EQ(Texture.GetDesc().width, 1920u);
     EXPECT_EQ(Texture.GetDesc().mipLevels, 5u);
     EXPECT_EQ(Texture.GetTexture().Get(), nullptr);
@@ -354,14 +355,14 @@ TEST(ArdaRenderGraph, ParameterEnumerationRecursesThroughNestedStructsAndArrays)
     Parameters.mLayers[0].mScale = 2.0f;
     Parameters.mLayers[1].mScale = 3.0f;
 
-    std::vector<std::string> Paths;
-    std::vector<float> Scales;
+    eastl::vector<eastl::string> Paths;
+    eastl::vector<float> Scales;
     FARDGOuterParameters::GetStaticMetadata().Enumerate(
         &Parameters,
         [&Paths, &Scales](const FARDGParameter& Parameter)
         {
             Paths.push_back(Parameter.mPath);
-            if (Parameter.mPath.find("mScale") != std::string::npos)
+            if (Parameter.mPath.find("mScale") != eastl::string::npos)
             {
                 Scales.push_back(Parameter.GetValue<float>());
             }
@@ -369,7 +370,7 @@ TEST(ArdaRenderGraph, ParameterEnumerationRecursesThroughNestedStructsAndArrays)
 
     EXPECT_EQ(
         Paths,
-        (std::vector<std::string>{
+        (eastl::vector<eastl::string>{
             "mFrameIndex",
             "mInner.mScale",
             "mInner.mTexture",
@@ -379,7 +380,7 @@ TEST(ArdaRenderGraph, ParameterEnumerationRecursesThroughNestedStructsAndArrays)
             "mLayers[1].mTexture",
             "mOutput",
             "mRenderTargets"}));
-    EXPECT_EQ(Scales, (std::vector<float>{1.5f, 2.0f, 3.0f}));
+    EXPECT_EQ(Scales, (eastl::vector<float>{1.5f, 2.0f, 3.0f}));
 
     size_t NestedContainerCount = 0;
     FARDGOuterParameters::GetStaticMetadata().Enumerate(
@@ -416,7 +417,7 @@ TEST(ArdaRenderGraph, BuilderAllocatesParametersAndStoresTypedBlackboardValues)
         Builder.GetBlackboard().Get<FARDGBlackboardValue>().mFrameIndex,
         37u);
     EXPECT_FATAL_CHECK(
-        (void)Builder.GetBlackboard().Get<std::string>(),
+        (void)Builder.GetBlackboard().Get<eastl::string>(),
         "The requested render-graph blackboard value is absent");
 
     FARDGInnerParameters StackParameters;
@@ -527,10 +528,10 @@ TEST(ArdaRenderGraph, BuilderDeduplicatesExternalImportsAndRootsExternalWrites)
     EXPECT_FALSE(Builder.TryGetPass(Write)->GetState().mbCulled);
     EXPECT_EQ(
         Builder.TryGetPass(Write)->GetState().mProducers,
-        (std::vector<FARDGPassHandle>{Builder.GetProloguePass()}));
+        (eastl::vector<FARDGPassHandle>{Builder.GetProloguePass()}));
     EXPECT_EQ(
         Builder.TryGetPass(Write)->GetState().mSynchronizationProducers,
-        (std::vector<FARDGPassHandle>{DeadRead}));
+        (eastl::vector<FARDGPassHandle>{DeadRead}));
 }
 
 TEST(ArdaRenderGraph, CompilerTracksProducersCullsDeadPassesAndPreservesSentinels)
@@ -601,7 +602,7 @@ TEST(ArdaRenderGraph, CompilerTracksProducersCullsDeadPassesAndPreservesSentinel
     EXPECT_TRUE(Builder.TryGetPass(DeadPass)->GetState().mbCulled);
     EXPECT_EQ(
         Builder.TryGetPass(Consume)->GetState().mProducers,
-        (std::vector<FARDGPassHandle>{Produce}));
+        (eastl::vector<FARDGPassHandle>{Produce}));
     EXPECT_EQ(Intermediate->GetFirstUse(), Produce);
     EXPECT_EQ(Intermediate->GetLastUse(), Consume);
     EXPECT_EQ(Output->GetLastUse(), Result.mEpilogue);
@@ -662,7 +663,7 @@ TEST(ArdaRenderGraph, SetupTraversesViewsAndNestedUniformBufferMetadata)
 
     const FARDGPassState& State = Builder.TryGetPass(Consume)->GetState();
     EXPECT_EQ(State.mTextureStates.size(), 3u);
-    EXPECT_EQ(State.mProducers, (std::vector<FARDGPassHandle>{Produce}));
+    EXPECT_EQ(State.mProducers, (eastl::vector<FARDGPassHandle>{Produce}));
     EXPECT_FALSE(Builder.TryGetPass(Produce)->GetState().mbCulled);
     EXPECT_FALSE(Builder.TryGetPass(Consume)->GetState().mbCulled);
 }
@@ -1051,11 +1052,11 @@ TEST(ArdaRenderGraph, DebugModesExposeConservativeBarriersAndExtendedLifetimes)
         Result.mResourceLifetimes[0].mLastUse,
         Result.mExecutionOrder.size() - 1u);
 
-    const std::string Dump = Builder.DumpGraph();
-    EXPECT_NE(Dump.find("ExecutionOrder ["), std::string::npos);
-    EXPECT_NE(Dump.find("conservativeBarriers=1"), std::string::npos);
-    EXPECT_NE(Dump.find("forced=1"), std::string::npos);
-    EXPECT_NE(Dump.find("UAV->PixelSRV|NonPixelSRV"), std::string::npos);
+    const eastl::string Dump = Builder.DumpGraph();
+    EXPECT_NE(Dump.find("ExecutionOrder ["), eastl::string::npos);
+    EXPECT_NE(Dump.find("conservativeBarriers=1"), eastl::string::npos);
+    EXPECT_NE(Dump.find("forced=1"), eastl::string::npos);
+    EXPECT_NE(Dump.find("UAV->PixelSRV|NonPixelSRV"), eastl::string::npos);
 }
 
 TEST(ArdaRenderGraph, GraphDumpIsDeterministicAndContainsCompilerProducts)
@@ -1069,22 +1070,24 @@ TEST(ArdaRenderGraph, GraphDumpIsDeterministicAndContainsCompilerProducts)
         [] {});
     (void)Builder.Compile();
 
-    const std::string First = Builder.DumpGraph();
-    const std::string Second = Builder.DumpGraph();
-    EXPECT_EQ(First, Second);
-    EXPECT_NE(First.find("ArdaRenderGraph"), std::string::npos);
-    EXPECT_NE(First.find("\"StablePass\""), std::string::npos);
+    const eastl::string First = Builder.DumpGraph();
+    const eastl::string Second = Builder.DumpGraph();
+    EXPECT_TRUE(First == Second);
+    EXPECT_NE(First.find("ArdaRenderGraph"), eastl::string::npos);
+    EXPECT_NE(First.find("\"StablePass\""), eastl::string::npos);
+    char PassText[32];
+    std::snprintf(PassText, sizeof(PassText), " P%u", Pass.GetIndex());
     EXPECT_NE(
-        First.find(" P" + std::to_string(Pass.GetIndex())),
-        std::string::npos);
-    EXPECT_NE(First.find("GraphEpilogue"), std::string::npos);
+        First.find(PassText),
+        eastl::string::npos);
+    EXPECT_NE(First.find("GraphEpilogue"), eastl::string::npos);
 }
 
 TEST(ArdaRenderGraph, TransientHeapAllocatorReusesOnlyExpiredIntervals)
 {
     using namespace arda::render_graph;
 
-    const std::vector<FARDGTransientAllocationRequest> Requests{
+    const eastl::vector<FARDGTransientAllocationRequest> Requests{
         {0, 1, 3, 256, 64},
         {1, 2, 4, 128, 64},
         {2, 5, 6, 192, 64}};
@@ -1268,7 +1271,7 @@ TEST(ArdaRenderGraph, CompilerLowersCrossQueueDependencies)
         [] {});
 
     const FARDGCompileResult& Result = Builder.Compile();
-    const auto Iterator = std::find_if(
+    const auto Iterator = eastl::find_if(
         Result.mQueueDependencies.begin(),
         Result.mQueueDependencies.end(),
         [Produce, Consume](const FARDGQueueDependency& Dependency)
@@ -1310,7 +1313,7 @@ TEST(ArdaRenderGraph, ExecutesAndExtractsOnAvailableBackend)
     Configuration.mbEnableValidation = true;
     if (!ConfigureBackend(Configuration) || !InitializeBackend())
     {
-        GTEST_SKIP() << GetBackendError();
+        GTEST_SKIP() << GetBackendError().c_str();
     }
 
     {
@@ -1413,7 +1416,7 @@ TEST(ArdaRenderGraph, ImmediateModeExecutesSeriallyWithFirstWriteClobbering)
     Configuration.mbEnableValidation = true;
     if (!ConfigureBackend(Configuration) || !InitializeBackend())
     {
-        GTEST_SKIP() << GetBackendError();
+        GTEST_SKIP() << GetBackendError().c_str();
     }
 
     {
@@ -1477,7 +1480,7 @@ TEST(ArdaRenderGraph, PassContextRejectsUndeclaredPhysicalAccess)
     Configuration.mbEnableValidation = true;
     if (!ConfigureBackend(Configuration) || !InitializeBackend())
     {
-        GTEST_SKIP() << GetBackendError();
+        GTEST_SKIP() << GetBackendError().c_str();
     }
 
     {
@@ -1545,7 +1548,7 @@ TEST(ArdaRenderGraph, RecordsIndependentPassesAndSubmitsCrossQueueWaits)
     Configuration.mbEnableValidation = true;
     if (!ConfigureBackend(Configuration) || !InitializeBackend())
     {
-        GTEST_SKIP() << GetBackendError();
+        GTEST_SKIP() << GetBackendError().c_str();
     }
 
     {

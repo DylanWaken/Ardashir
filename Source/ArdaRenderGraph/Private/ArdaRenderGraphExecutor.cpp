@@ -7,11 +7,12 @@
 #include "ArdaScopeTimer.h"
 #include "ArdaTrace.h"
 
-#include <algorithm>
+#include <EASTL/algorithm.h>
 #include <cstring>
 #include <future>
+#include <EASTL/sort.h>
 #include <thread>
-#include <unordered_map>
+#include <EASTL/unordered_map.h>
 
 namespace arda::render_graph
 {
@@ -19,10 +20,10 @@ namespace arda::render_graph
     {
         struct FARDGRuntimePassTransitions
         {
-            std::vector<FARDGTextureTransition> mTextures;
-            std::vector<FARDGBufferTransition> mBuffers;
-            std::vector<FARDGPassTextureState> mTextureClobbers;
-            std::vector<FARDGPassBufferState> mBufferClobbers;
+            eastl::vector<FARDGTextureTransition> mTextures;
+            eastl::vector<FARDGBufferTransition> mBuffers;
+            eastl::vector<FARDGPassTextureState> mTextureClobbers;
+            eastl::vector<FARDGPassBufferState> mBufferClobbers;
         };
 
         struct FARDGRecordedPass
@@ -137,7 +138,7 @@ namespace arda::render_graph
         template <typename ValueType>
         void HashCombine(size_t& Seed, const ValueType& Value)
         {
-            Seed ^= std::hash<ValueType>{}(Value) +
+            Seed ^= eastl::hash<ValueType>{}(Value) +
                 0x9e3779b9u +
                 (Seed << 6u) +
                 (Seed >> 2u);
@@ -221,7 +222,7 @@ namespace arda::render_graph
                         "NVRHI failed to create a render-graph texture.");
                 }
                 Bucket.push_back(
-                    {std::move(Desc), Texture, LastUse, ReuseDomain});
+                    {eastl::move(Desc), Texture, LastUse, ReuseDomain});
                 return Texture;
             }
 
@@ -236,7 +237,7 @@ namespace arda::render_graph
 
             nvrhi::IDevice& mDevice;
             FARDGExecutionResult& mResult;
-            std::unordered_map<size_t, std::vector<FEntry>> mEntries;
+            eastl::unordered_map<size_t, eastl::vector<FEntry>> mEntries;
         };
 
         class FARDGBufferPool final
@@ -283,7 +284,7 @@ namespace arda::render_graph
                         "NVRHI failed to create a render-graph buffer.");
                 }
                 Bucket.push_back(
-                    {std::move(Desc), Buffer, LastUse, ReuseDomain});
+                    {eastl::move(Desc), Buffer, LastUse, ReuseDomain});
                 return Buffer;
             }
 
@@ -298,7 +299,7 @@ namespace arda::render_graph
 
             nvrhi::IDevice& mDevice;
             FARDGExecutionResult& mResult;
-            std::unordered_map<size_t, std::vector<FEntry>> mEntries;
+            eastl::unordered_map<size_t, eastl::vector<FEntry>> mEntries;
         };
 
         void EvaluateTransientHeapLayout(
@@ -306,7 +307,7 @@ namespace arda::render_graph
             nvrhi::IDevice& Device,
             FARDGExecutionResult& Result)
         {
-            std::vector<FARDGTransientAllocationRequest> Requests;
+            eastl::vector<FARDGTransientAllocationRequest> Requests;
             if (!Device.queryFeatureSupport(nvrhi::Feature::VirtualResources))
             {
                 for (const FARDGResourceLifetime& Lifetime :
@@ -394,7 +395,7 @@ namespace arda::render_graph
                  Graph.mCompileResult.mExecutionOrder)
             {
                 const FARDGPass& Pass = Graph.mPasses.Get(Handle);
-                const bool bUsesTexture = std::any_of(
+                const bool bUsesTexture = eastl::any_of(
                     Pass.GetState().mTextureStates.begin(),
                     Pass.GetState().mTextureStates.end(),
                     [Texture](const FARDGPassTextureState& State)
@@ -426,7 +427,7 @@ namespace arda::render_graph
                  Graph.mCompileResult.mExecutionOrder)
             {
                 const FARDGPass& Pass = Graph.mPasses.Get(Handle);
-                const bool bUsesBuffer = std::any_of(
+                const bool bUsesBuffer = eastl::any_of(
                     Pass.GetState().mBufferStates.begin(),
                     Pass.GetState().mBufferStates.end(),
                     [Buffer](const FARDGPassBufferState& State)
@@ -458,9 +459,9 @@ namespace arda::render_graph
 
             FARDGTexturePool TexturePool(Device, Result);
             FARDGBufferPool BufferPool(Device, Result);
-            std::vector<FARDGResourceLifetime> Lifetimes =
+            eastl::vector<FARDGResourceLifetime> Lifetimes =
                 Graph.mCompileResult.mResourceLifetimes;
-            std::sort(
+            eastl::sort(
                 Lifetimes.begin(),
                 Lifetimes.end(),
                 [](const auto& Left, const auto& Right)
@@ -536,20 +537,20 @@ namespace arda::render_graph
                     ARDA_CHECK_MSG(
                         "NVRHI failed to create a graph uniform buffer.");
                 }
-                UniformBuffer->BindBuffer(std::move(Buffer));
+                UniformBuffer->BindBuffer(eastl::move(Buffer));
             }
         }
 
-        [[nodiscard]] std::vector<FARDGRuntimePassTransitions>
+        [[nodiscard]] eastl::vector<FARDGRuntimePassTransitions>
         BuildPhysicalTransitions(FARDGBuilder::FImpl& Graph)
         {
-            std::unordered_map<
+            eastl::unordered_map<
                 nvrhi::ITexture*,
-                std::vector<nvrhi::ResourceStates>>
+                eastl::vector<nvrhi::ResourceStates>>
                 TextureStates;
-            std::unordered_map<nvrhi::IBuffer*, nvrhi::ResourceStates>
+            eastl::unordered_map<nvrhi::IBuffer*, nvrhi::ResourceStates>
                 BufferStates;
-            std::vector<FARDGRuntimePassTransitions> Runtime(
+            eastl::vector<FARDGRuntimePassTransitions> Runtime(
                 Graph.mPasses.GetCount());
 
             for (FARDGPassHandle Handle :
@@ -644,7 +645,7 @@ namespace arda::render_graph
 
             if (Graph.mContext.mDebugOptions.mbClobberFirstWrites)
             {
-                std::vector<std::vector<bool>> ProducedTextures;
+                eastl::vector<eastl::vector<bool>> ProducedTextures;
                 ProducedTextures.reserve(Graph.mTextures.GetCount());
                 for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
                 {
@@ -653,7 +654,7 @@ namespace arda::render_graph
                         static_cast<size_t>(Desc.mipLevels) * Desc.arraySize,
                         Texture->IsExternal());
                 }
-                std::vector<bool> ProducedBuffers(
+                eastl::vector<bool> ProducedBuffers(
                     Graph.mBuffers.GetCount(),
                     false);
                 for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
@@ -991,11 +992,11 @@ namespace arda::render_graph
             Graph,
             *Graph.mContext.mDevice,
             Graph.mExecutionResult);
-        const std::vector<FARDGRuntimePassTransitions> RuntimeTransitions =
+        const eastl::vector<FARDGRuntimePassTransitions> RuntimeTransitions =
             BuildPhysicalTransitions(Graph);
 
-        std::vector<FARDGRecordedPass> Recorded(Graph.mPasses.GetCount());
-        std::vector<uint32_t> Levels(Graph.mPasses.GetCount(), 0);
+        eastl::vector<FARDGRecordedPass> Recorded(Graph.mPasses.GetCount());
+        eastl::vector<uint32_t> Levels(Graph.mPasses.GetCount(), 0);
         uint32_t MaxLevel = 0;
         for (FARDGPassHandle Handle : Graph.mCompileResult.mExecutionOrder)
         {
@@ -1013,7 +1014,7 @@ namespace arda::render_graph
                     if (ProducerPass != nullptr &&
                         !ProducerPass->GetState().mbCulled)
                     {
-                        Level = std::max(
+                        Level = eastl::max(
                             Level,
                             Levels[Producer.GetIndex()] + 1u);
                     }
@@ -1028,18 +1029,18 @@ namespace arda::render_graph
                 AccumulateLevel(Producer);
             }
             Levels[Handle.GetIndex()] = Level;
-            MaxLevel = std::max(MaxLevel, Level);
+            MaxLevel = eastl::max(MaxLevel, Level);
         }
 
         const uint32_t HardwareThreads =
-            std::max(1u, std::thread::hardware_concurrency());
+            eastl::max(1u, std::thread::hardware_concurrency());
         const uint32_t MaxWorkers = Options.mMaxRecordingThreads == 0
             ? HardwareThreads
-            : std::max(1u, Options.mMaxRecordingThreads);
+            : eastl::max(1u, Options.mMaxRecordingThreads);
         for (uint32_t Level = 0; Level <= MaxLevel; ++Level)
         {
-            std::vector<FARDGPassHandle> ParallelPasses;
-            std::vector<FARDGPassHandle> SerialPasses;
+            eastl::vector<FARDGPassHandle> ParallelPasses;
+            eastl::vector<FARDGPassHandle> SerialPasses;
             for (FARDGPassHandle Handle :
                  Graph.mCompileResult.mExecutionOrder)
             {
@@ -1075,10 +1076,10 @@ namespace arda::render_graph
                  Begin < ParallelPasses.size();
                  Begin += MaxWorkers)
             {
-                const size_t End = std::min(
+                const size_t End = eastl::min(
                     ParallelPasses.size(),
                     Begin + MaxWorkers);
-                std::vector<std::future<void>> Futures;
+                eastl::vector<std::future<void>> Futures;
                 Futures.reserve(End - Begin);
                 Graph.mExecutionResult.mbUsedParallelRecording |=
                     End - Begin > 1;
@@ -1116,8 +1117,8 @@ namespace arda::render_graph
         }
 
         const uint64_t UploadInstance = UploadUniformBuffers(Graph);
-        std::array<bool, 3> bUploadWaited{};
-        std::vector<uint64_t> PassInstances(Graph.mPasses.GetCount(), 0);
+        eastl::array<bool, 3> bUploadWaited{};
+        eastl::vector<uint64_t> PassInstances(Graph.mPasses.GetCount(), 0);
         for (FARDGPassHandle Handle : Graph.mCompileResult.mExecutionOrder)
         {
             FARDGRecordedPass& Pass = Recorded[Handle.GetIndex()];

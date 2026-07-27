@@ -26,8 +26,9 @@
 #endif
 
 #include <cstdio>
-#include <memory>
+#include <EASTL/unique_ptr.h>
+#include <EASTL/shared_ptr.h>
 #include <mutex>
-#include <string>
-#include <utility>
-#include <vector>
+#include <EASTL/string.h>
+#include <EASTL/utility.h>
+#include <EASTL/vector.h>

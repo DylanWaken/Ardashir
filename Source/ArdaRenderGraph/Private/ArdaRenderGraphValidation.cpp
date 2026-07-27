@@ -4,9 +4,9 @@
 #include "ArdaRenderGraphLog.h"
 #include "ArdaRenderGraphValidation.h"
 
-#include <algorithm>
+#include <EASTL/algorithm.h>
 #include <sstream>
-#include <unordered_set>
+#include <EASTL/unordered_set.h>
 
 namespace arda::render_graph
 {
@@ -112,7 +112,7 @@ namespace arda::render_graph
             const char* Message)
         {
             std::ostringstream Stream;
-            Stream << "Render-graph pass \"" << Pass.GetName() << "\": "
+            Stream << "Render-graph pass \"" << Pass.GetName().c_str() << "\": "
                    << Message;
             ARDA_CHECK_MSG("%s", Stream.str().c_str());
         }
@@ -226,7 +226,7 @@ namespace arda::render_graph
 
         void ValidateProducedBeforeRead(const FARDGBuilder::FImpl& Graph)
         {
-            std::vector<std::vector<bool>> ProducedTextures;
+            eastl::vector<eastl::vector<bool>> ProducedTextures;
             ProducedTextures.reserve(Graph.mTextures.GetCount());
             for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
             {
@@ -235,7 +235,7 @@ namespace arda::render_graph
                     static_cast<size_t>(Desc.mipLevels) * Desc.arraySize,
                     Texture->IsExternal());
             }
-            std::vector<bool> ProducedBuffers(Graph.mBuffers.GetCount(), false);
+            eastl::vector<bool> ProducedBuffers(Graph.mBuffers.GetCount(), false);
             for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
             {
                 ProducedBuffers[Buffer->GetHandle().GetIndex()] =
@@ -249,7 +249,7 @@ namespace arda::render_graph
                     continue;
                 }
 
-                std::vector<std::vector<bool>> PassTextureWrites(
+                eastl::vector<eastl::vector<bool>> PassTextureWrites(
                     Graph.mTextures.GetCount());
                 for (const FARDGPassTextureState& Access :
                      Pass->GetState().mTextureStates)
@@ -284,7 +284,7 @@ namespace arda::render_graph
                 }
 
                 bool bPassWritesBuffer = false;
-                std::unordered_set<uint32_t> PassBufferWrites;
+                eastl::unordered_set<uint32_t> PassBufferWrites;
                 for (const FARDGPassBufferState& Access :
                      Pass->GetState().mBufferStates)
                 {
@@ -441,8 +441,8 @@ namespace arda::render_graph
             }
         }
 
-        std::unordered_set<uint32_t> ExtractedTextures;
-        std::unordered_set<const void*> TextureOutputs;
+        eastl::unordered_set<uint32_t> ExtractedTextures;
+        eastl::unordered_set<const void*> TextureOutputs;
         for (const FARDGTextureExtraction& Extraction : Graph.mTextureExtractions)
         {
             if (Extraction.mTexture == nullptr || Extraction.mOutput == nullptr ||
@@ -457,8 +457,8 @@ namespace arda::render_graph
                     "A render-graph texture extraction is invalid or duplicated.");
             }
         }
-        std::unordered_set<uint32_t> ExtractedBuffers;
-        std::unordered_set<const void*> BufferOutputs;
+        eastl::unordered_set<uint32_t> ExtractedBuffers;
+        eastl::unordered_set<const void*> BufferOutputs;
         for (const FARDGBufferExtraction& Extraction : Graph.mBufferExtractions)
         {
             if (Extraction.mBuffer == nullptr || Extraction.mOutput == nullptr ||
@@ -480,7 +480,7 @@ namespace arda::render_graph
     void FARDGValidation::ValidateTransitions(
         const FARDGBuilder::FImpl& Graph)
     {
-        std::vector<std::vector<nvrhi::ResourceStates>> TextureStates;
+        eastl::vector<eastl::vector<nvrhi::ResourceStates>> TextureStates;
         TextureStates.reserve(Graph.mTextures.GetCount());
         for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
         {
@@ -494,7 +494,7 @@ namespace arda::render_graph
                 static_cast<size_t>(Desc.mipLevels) * Desc.arraySize,
                 Initial);
         }
-        std::vector<nvrhi::ResourceStates> BufferStates;
+        eastl::vector<nvrhi::ResourceStates> BufferStates;
         BufferStates.reserve(Graph.mBuffers.GetCount());
         for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
         {
@@ -620,7 +620,7 @@ namespace arda::render_graph
             }
             const auto& States =
                 TextureStates[Texture->GetHandle().GetIndex()];
-            if (std::any_of(
+            if (eastl::any_of(
                     States.begin(),
                     States.end(),
                     [Texture](nvrhi::ResourceStates State)

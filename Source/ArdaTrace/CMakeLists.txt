@@ -15,6 +15,7 @@ target_include_directories(ArdaTrace
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Public"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private"
 )
+target_link_libraries(ArdaTrace PUBLIC Ardashir::EASTL)
 target_precompile_headers(ArdaTrace PRIVATE Private/ArdaTracePch.h)
 set_target_properties(ArdaTrace PROPERTIES FOLDER "Ardashir")
 

@@ -55,6 +55,29 @@ if(NOT EXISTS "${ARDASHIR_DXC_EXECUTABLE}")
         "The downloaded DXC archive does not contain ${_ardashir_dxc_relative_path}.")
 endif()
 
+# EASTL is the project-wide container and algorithm library. Its allocator is
+# configured through ArdaEASTLConfig.h so consumers do not need EA's extended
+# global operator-new overloads.
+set(EASTL_BUILD_BENCHMARK OFF CACHE BOOL "Disable EASTL benchmarks" FORCE)
+set(EASTL_BUILD_TESTS OFF CACHE BOOL "Disable EASTL tests" FORCE)
+set(EASTL_STD_ITERATOR_CATEGORY_ENABLED ON CACHE BOOL
+    "Allow EASTL iterators to interoperate with standard-library facilities" FORCE)
+# EASTL currently pins an EABase revision whose project declares CMake 3.1.
+# CMake 4 requires a newer compatibility floor; 3.10 also avoids CMake's
+# pending-removal deprecation warning.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.10)
+add_subdirectory(
+    "${PROJECT_SOURCE_DIR}/ThirdParty/EASTL"
+    "${PROJECT_BINARY_DIR}/ThirdParty/EASTL"
+    EXCLUDE_FROM_ALL)
+add_library(Ardashir::EASTL ALIAS EASTL)
+target_include_directories(EASTL PUBLIC "${PROJECT_SOURCE_DIR}/Cmake")
+target_compile_definitions(EASTL PUBLIC
+    EASTL_USER_CONFIG_HEADER="ArdaEASTLConfig.h")
+target_compile_options(EASTL PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/wd4100>)
+set_target_properties(EASTL EABase PROPERTIES FOLDER "ThirdParty/EASTL")
+
 # Dear ImGui does not provide its own CMake project. Define reusable core and
 # GLFW platform-backend targets from the checked-out submodule.
 set(_ardashir_imgui_dir "${PROJECT_SOURCE_DIR}/ThirdParty/ImGui")

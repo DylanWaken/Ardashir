@@ -12,7 +12,7 @@ target_include_directories(ArdaScene
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Public"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private"
 )
-target_link_libraries(ArdaScene PUBLIC nvrhi)
+target_link_libraries(ArdaScene PUBLIC nvrhi Ardashir::EASTL)
 target_precompile_headers(ArdaScene PRIVATE Private/ArdaScenePch.h)
 
 set_target_properties(ArdaScene PROPERTIES FOLDER "Ardashir")

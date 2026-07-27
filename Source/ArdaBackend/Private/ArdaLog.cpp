@@ -47,7 +47,7 @@ namespace arda::backend
             output(Record, userData);
         }
 
-        std::string FormatLogMessage(
+        eastl::string FormatLogMessage(
             const char* Format,
             std::va_list Arguments)
         {
@@ -67,7 +67,7 @@ namespace arda::backend
                 return "Log message formatting failed.";
             }
 
-            std::string message(
+            eastl::string message(
                 static_cast<std::size_t>(requiredLength) + 1,
                 '\0');
             std::va_list formatArguments;
@@ -105,12 +105,12 @@ namespace arda::backend
     void FArdaLogCategory::SetMinimumVerbosity(
         EArdaLogVerbosity verbosity) noexcept
     {
-        mMinimumVerbosity.store(verbosity, std::memory_order_relaxed);
+        mMinimumVerbosity.store(verbosity, eastl::memory_order_relaxed);
     }
 
     EArdaLogVerbosity FArdaLogCategory::GetMinimumVerbosity() const noexcept
     {
-        return mMinimumVerbosity.load(std::memory_order_relaxed);
+        return mMinimumVerbosity.load(eastl::memory_order_relaxed);
     }
 
     bool FArdaLogCategory::IsEnabled(
@@ -176,7 +176,7 @@ namespace arda::backend
 
         std::va_list arguments;
         va_start(arguments, format);
-        const std::string message = FormatLogMessage(format, arguments);
+        const eastl::string message = FormatLogMessage(format, arguments);
         va_end(arguments);
 
         const FArdaLogRecord record{

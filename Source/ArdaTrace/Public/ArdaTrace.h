@@ -1,9 +1,8 @@
 #pragma once
 
-#include <atomic>
 #include <cstdint>
 #include <filesystem>
-#include <string>
+#include <EASTL/string.h>
 
 namespace arda::trace
 {
@@ -43,7 +42,7 @@ namespace arda::trace
     [[nodiscard]] bool IsTraceCaptureActive() noexcept;
 
     /** Returns the most recent trace recorder error. */
-    [[nodiscard]] std::string GetTraceError();
+    [[nodiscard]] eastl::string GetTraceError();
 
     /**
      * Assigns a display name to the calling thread.

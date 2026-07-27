@@ -3,9 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <new>
-#include <type_traits>
-#include <utility>
-#include <vector>
+#include <EASTL/type_traits.h>
+#include <EASTL/utility.h>
+#include <EASTL/vector.h>
 
 namespace arda::render_graph
 {
@@ -31,7 +31,7 @@ namespace arda::render_graph
     /** Stores deterministic placements and the required heap capacity. */
     struct FARDGTransientHeapLayout
     {
-        std::vector<FARDGTransientAllocation> mAllocations;
+        eastl::vector<FARDGTransientAllocation> mAllocations;
         uint64_t mCapacity = 0;
         bool mbContainsAliases = false;
     };
@@ -48,7 +48,7 @@ namespace arda::render_graph
          * @return Placements in request identifier order.
          */
         [[nodiscard]] static FARDGTransientHeapLayout Allocate(
-            const std::vector<FARDGTransientAllocationRequest>& Requests,
+            const eastl::vector<FARDGTransientAllocationRequest>& Requests,
             bool bAllowAliasing);
     };
 
@@ -78,9 +78,9 @@ namespace arda::render_graph
         {
             void* Storage = AllocateBytes(sizeof(ObjectType), alignof(ObjectType));
             ObjectType* Object = new (Storage) ObjectType(
-                std::forward<ArgumentTypes>(Arguments)...);
+                eastl::forward<ArgumentTypes>(Arguments)...);
 
-            if constexpr (!std::is_trivially_destructible_v<ObjectType>)
+            if constexpr (!eastl::is_trivially_destructible_v<ObjectType>)
             {
                 RegisterDestructor(
                     Object,
@@ -125,7 +125,7 @@ namespace arda::render_graph
 
         size_t mDefaultBlockSize = 0;
         size_t mObjectCount = 0;
-        std::vector<FARDGBlock> mBlocks;
-        std::vector<FARDGDestructor> mDestructors;
+        eastl::vector<FARDGBlock> mBlocks;
+        eastl::vector<FARDGDestructor> mDestructors;
     };
 }

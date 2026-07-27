@@ -3,7 +3,7 @@
 #include "ArdaBackend.h"
 
 #include <cstdint>
-#include <string>
+#include <EASTL/string.h>
 
 struct GLFWwindow;
 
@@ -22,13 +22,13 @@ namespace arda::tests::nvrhi_test
         [[nodiscard]] GLFWwindow* GetHandle() const { return mWindow; }
         [[nodiscard]] uint32_t GetWidth() const { return mWidth; }
         [[nodiscard]] uint32_t GetHeight() const { return mHeight; }
-        [[nodiscard]] const std::string& GetError() const { return mError; }
+        [[nodiscard]] const eastl::string& GetError() const { return mError; }
 
         [[nodiscard]] nvrhi::Object GetD3D12WindowHandle() const noexcept override;
-        [[nodiscard]] std::vector<const char*> GetVulkanInstanceExtensions() const override;
+        [[nodiscard]] eastl::vector<const char*> GetVulkanInstanceExtensions() const override;
         [[nodiscard]] nvrhi::Object CreateVulkanSurface(
             nvrhi::Object VulkanInstance,
-            std::string& OutError) override;
+            eastl::string& OutError) override;
 
     private:
         static void FramebufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -38,6 +38,6 @@ namespace arda::tests::nvrhi_test
         uint32_t mHeight = 0;
         bool mbResizePending = false;
         bool mbGlfwInitialized = false;
-        std::string mError;
+        eastl::string mError;
     };
 }

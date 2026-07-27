@@ -4,7 +4,7 @@
 #include "ArdaRenderGraph.h"
 
 #include <filesystem>
-#include <string>
+#include <EASTL/string.h>
 
 namespace arda::tests::nvrhi_test
 {
@@ -17,13 +17,13 @@ namespace arda::tests::nvrhi_test
             const std::filesystem::path& shaderDirectory);
         bool RenderFrame(backend::IArdaSwapChain& swapChain);
 
-        [[nodiscard]] const std::string& GetError() const { return mError; }
+        [[nodiscard]] const eastl::string& GetError() const { return mError; }
 
     private:
         static bool LoadBinary(
             const std::filesystem::path& path,
-            std::vector<uint8_t>& binary,
-            std::string& error);
+            eastl::vector<uint8_t>& binary,
+            eastl::string& error);
         [[nodiscard]] render_graph::FARDGRenderGraphContext CreateGraphContext() const;
 
         nvrhi::DeviceHandle mDevice;
@@ -34,6 +34,6 @@ namespace arda::tests::nvrhi_test
         nvrhi::GraphicsPipelineHandle mPipeline;
         nvrhi::BufferHandle mVertexBuffer;
         nvrhi::BufferHandle mIndexBuffer;
-        std::string mError;
+        eastl::string mError;
     };
 }

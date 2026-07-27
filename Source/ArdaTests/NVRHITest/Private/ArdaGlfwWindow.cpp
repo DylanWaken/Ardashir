@@ -3,6 +3,8 @@
 #include "ArdaGlfwWindow.h"
 #include "ArdaLog.h"
 
+#include <cstdio>
+
 ARDA_DECLARE_LOG_CATEGORY_EXTERN(LogNVRHITest);
 
 #if defined(_WIN32)
@@ -62,8 +64,8 @@ namespace arda::tests::nvrhi_test
         int framebufferWidth = 0;
         int framebufferHeight = 0;
         glfwGetFramebufferSize(mWindow, &framebufferWidth, &framebufferHeight);
-        mWidth = static_cast<uint32_t>(std::max(framebufferWidth, 1));
-        mHeight = static_cast<uint32_t>(std::max(framebufferHeight, 1));
+        mWidth = static_cast<uint32_t>(eastl::max(framebufferWidth, 1));
+        mHeight = static_cast<uint32_t>(eastl::max(framebufferHeight, 1));
         return true;
     }
 
@@ -103,7 +105,7 @@ namespace arda::tests::nvrhi_test
 #endif
     }
 
-    std::vector<const char*> FArdaGlfwWindow::GetVulkanInstanceExtensions() const
+    eastl::vector<const char*> FArdaGlfwWindow::GetVulkanInstanceExtensions() const
     {
         uint32_t ExtensionCount = 0;
         const char** Extensions = glfwGetRequiredInstanceExtensions(&ExtensionCount);
@@ -117,7 +119,7 @@ namespace arda::tests::nvrhi_test
 
     nvrhi::Object FArdaGlfwWindow::CreateVulkanSurface(
         nvrhi::Object VulkanInstance,
-        std::string& OutError)
+        eastl::string& OutError)
     {
         OutError.clear();
         if (!mWindow)
@@ -139,8 +141,14 @@ namespace arda::tests::nvrhi_test
         {
             const char* GlfwError = nullptr;
             glfwGetError(&GlfwError);
-            OutError = "glfwCreateWindowSurface failed with VkResult " +
-                std::to_string(static_cast<int>(Result));
+            char ResultText[32];
+            std::snprintf(
+                ResultText,
+                sizeof(ResultText),
+                "%d",
+                static_cast<int>(Result));
+            OutError = "glfwCreateWindowSurface failed with VkResult ";
+            OutError += ResultText;
             if (GlfwError && GlfwError[0] != '\0')
             {
                 OutError += ": ";

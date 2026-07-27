@@ -6,15 +6,16 @@
 #include "ArdaRenderGraphValidation.h"
 #include "ArdaScopeTimer.h"
 
-#include <algorithm>
-#include <limits>
-#include <unordered_set>
+#include <EASTL/algorithm.h>
+#include <EASTL/numeric_limits.h>
+#include <EASTL/sort.h>
+#include <EASTL/unordered_set.h>
 
 namespace arda::render_graph
 {
     namespace
     {
-        constexpr uint32_t InvalidGroup = std::numeric_limits<uint32_t>::max();
+        constexpr uint32_t InvalidGroup = eastl::numeric_limits<uint32_t>::max();
 
         [[nodiscard]] bool IsWriteState(
             nvrhi::ResourceStates State) noexcept
@@ -182,7 +183,7 @@ namespace arda::render_graph
 
             for (FARDGPass* Consumer : Graph.mPasses.GetEntries())
             {
-                std::sort(
+                eastl::sort(
                     Consumer->GetState().mProducers.begin(),
                     Consumer->GetState().mProducers.end());
                 for (FARDGPassHandle ProducerHandle :
@@ -199,7 +200,7 @@ namespace arda::render_graph
                     Producer->AddConsumer(Consumer->GetHandle());
                 }
 
-                std::sort(
+                eastl::sort(
                     Consumer->GetState().mSynchronizationProducers.begin(),
                     Consumer->GetState().mSynchronizationProducers.end());
                 for (FARDGPassHandle ProducerHandle :
@@ -237,7 +238,7 @@ namespace arda::render_graph
                 Pass->GetState().mbCulled = !Pass->GetState().mbSentinel;
             }
 
-            std::vector<FARDGPassHandle> Worklist;
+            eastl::vector<FARDGPassHandle> Worklist;
             Worklist.push_back(Graph.mCompileResult.mEpilogue);
             for (const FARDGPass* Pass : Graph.mPasses.GetEntries())
             {
@@ -319,7 +320,7 @@ namespace arda::render_graph
 
         void CompileResourceLifetimes(FARDGBuilder::FImpl& Graph)
         {
-            std::vector<uint32_t> ExecutionIndices(
+            eastl::vector<uint32_t> ExecutionIndices(
                 Graph.mPasses.GetCount(),
                 InvalidGroup);
             for (uint32_t Index = 0;
@@ -384,7 +385,7 @@ namespace arda::render_graph
 
         void CompileBarriers(FARDGBuilder::FImpl& Graph)
         {
-            std::vector<std::vector<nvrhi::ResourceStates>> TextureStates;
+            eastl::vector<eastl::vector<nvrhi::ResourceStates>> TextureStates;
             TextureStates.reserve(Graph.mTextures.GetCount());
             for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
             {
@@ -399,7 +400,7 @@ namespace arda::render_graph
                     Initial);
             }
 
-            std::vector<nvrhi::ResourceStates> BufferStates;
+            eastl::vector<nvrhi::ResourceStates> BufferStates;
             BufferStates.reserve(Graph.mBuffers.GetCount());
             for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
             {
@@ -425,7 +426,7 @@ namespace arda::render_graph
                     continue;
                 }
 
-                std::vector<std::vector<nvrhi::ResourceStates>> RequiredTextures(
+                eastl::vector<eastl::vector<nvrhi::ResourceStates>> RequiredTextures(
                     Graph.mTextures.GetCount());
                 for (const FARDGPassTextureState& Access :
                      Pass.GetState().mTextureStates)
@@ -523,7 +524,7 @@ namespace arda::render_graph
                     }
                 }
 
-                std::vector<nvrhi::ResourceStates> RequiredBuffers(
+                eastl::vector<nvrhi::ResourceStates> RequiredBuffers(
                     Graph.mBuffers.GetCount(),
                     nvrhi::ResourceStates::Unknown);
                 for (const FARDGPassBufferState& Access :
@@ -640,15 +641,15 @@ namespace arda::render_graph
             {
                 const FARDGPass& Consumer =
                     Graph.mPasses.Get(ConsumerHandle);
-                std::vector<FARDGPassHandle> Producers =
+                eastl::vector<FARDGPassHandle> Producers =
                     Consumer.GetState().mProducers;
                 Producers.insert(
                     Producers.end(),
                     Consumer.GetState().mSynchronizationProducers.begin(),
                     Consumer.GetState().mSynchronizationProducers.end());
-                std::sort(Producers.begin(), Producers.end());
+                eastl::sort(Producers.begin(), Producers.end());
                 Producers.erase(
-                    std::unique(Producers.begin(), Producers.end()),
+                    eastl::unique(Producers.begin(), Producers.end()),
                     Producers.end());
                 for (FARDGPassHandle ProducerHandle : Producers)
                 {
@@ -682,13 +683,13 @@ namespace arda::render_graph
                 }
 
                 FARDGPassHandle Fork = Graph.mCompileResult.mPrologue;
-                std::vector<FARDGPassHandle> ProducerWorklist =
+                eastl::vector<FARDGPassHandle> ProducerWorklist =
                     Pass.GetState().mProducers;
                 ProducerWorklist.insert(
                     ProducerWorklist.end(),
                     Pass.GetState().mSynchronizationProducers.begin(),
                     Pass.GetState().mSynchronizationProducers.end());
-                std::unordered_set<uint32_t> VisitedProducers;
+                eastl::unordered_set<uint32_t> VisitedProducers;
                 while (!ProducerWorklist.empty())
                 {
                     const FARDGPassHandle ProducerHandle =
@@ -724,13 +725,13 @@ namespace arda::render_graph
                 }
 
                 FARDGPassHandle Join = Graph.mCompileResult.mEpilogue;
-                std::vector<FARDGPassHandle> ConsumerWorklist =
+                eastl::vector<FARDGPassHandle> ConsumerWorklist =
                     Pass.GetState().mConsumers;
                 ConsumerWorklist.insert(
                     ConsumerWorklist.end(),
                     Pass.GetState().mSynchronizationConsumers.begin(),
                     Pass.GetState().mSynchronizationConsumers.end());
-                std::unordered_set<uint32_t> VisitedConsumers;
+                eastl::unordered_set<uint32_t> VisitedConsumers;
                 while (!ConsumerWorklist.empty())
                 {
                     const FARDGPassHandle ConsumerHandle =

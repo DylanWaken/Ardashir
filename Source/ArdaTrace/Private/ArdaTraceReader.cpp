@@ -3,10 +3,10 @@
 #include "ArdaTraceFormat.h"
 #include "ArdaTraceReader.h"
 
-#include <array>
+#include <EASTL/array.h>
 #include <cmath>
-#include <limits>
-#include <unordered_set>
+#include <EASTL/numeric_limits.h>
+#include <EASTL/unordered_set.h>
 
 namespace arda::trace
 {
@@ -22,7 +22,7 @@ namespace arda::trace
                 static_cast<std::streamsize>(sizeof(ValueType))));
         }
 
-        bool ReadString(std::ifstream& Stream, std::string& OutValue)
+        bool ReadString(std::ifstream& Stream, eastl::string& OutValue)
         {
             std::uint32_t Length = 0;
             if (!ReadValue(Stream, Length) || Length > MaximumStringLength)
@@ -35,9 +35,9 @@ namespace arda::trace
                 || static_cast<bool>(Stream.read(OutValue.data(), Length));
         }
 
-        bool ValidateReferences(const FArdaTraceSession& Session, std::string& OutError)
+        bool ValidateReferences(const FArdaTraceSession& Session, eastl::string& OutError)
         {
-            std::unordered_map<std::uint64_t, const FArdaTraceScope*> ScopesById;
+            eastl::unordered_map<std::uint64_t, const FArdaTraceScope*> ScopesById;
             for (const FArdaTraceScope& Scope : Session.mScopes)
             {
                 if (Session.mNames.count(Scope.mNameId) == 0
@@ -61,7 +61,7 @@ namespace arda::trace
 
             for (const FArdaTraceScope& Scope : Session.mScopes)
             {
-                std::unordered_set<std::uint64_t> VisitedScopeIds = {Scope.mScopeId};
+                eastl::unordered_set<std::uint64_t> VisitedScopeIds = {Scope.mScopeId};
                 const FArdaTraceScope* CurrentScope = &Scope;
                 while (CurrentScope->mParentScopeId != 0)
                 {
@@ -106,7 +106,7 @@ namespace arda::trace
     bool ReadTraceCapture(
         const std::filesystem::path& FilePath,
         FArdaTraceSession& OutSession,
-        std::string& OutError)
+        eastl::string& OutError)
     {
         std::ifstream Stream(FilePath, std::ios::binary);
         if (!Stream)
@@ -115,7 +115,7 @@ namespace arda::trace
             return false;
         }
 
-        std::array<char, detail::TraceMagic.size()> Magic = {};
+        eastl::array<char, detail::TraceMagic.size()> Magic = {};
         std::uint32_t Version = 0;
         std::uint32_t EndianMarker = 0;
         FArdaTraceSession Session;
@@ -158,13 +158,13 @@ namespace arda::trace
             case detail::EArdaTraceRecordType::Name:
             {
                 std::uint32_t NameId = 0;
-                std::string Name;
+                eastl::string Name;
                 if (!ReadValue(Stream, NameId) || !ReadString(Stream, Name))
                 {
                     OutError = "A trace name record is malformed.";
                     return false;
                 }
-                if (!Session.mNames.emplace(NameId, std::move(Name)).second)
+                if (!Session.mNames.emplace(NameId, eastl::move(Name)).second)
                 {
                     OutError = "The trace capture contains a duplicate name identifier.";
                     return false;
@@ -174,13 +174,13 @@ namespace arda::trace
             case detail::EArdaTraceRecordType::Thread:
             {
                 std::uint32_t ThreadId = 0;
-                std::string Name;
+                eastl::string Name;
                 if (!ReadValue(Stream, ThreadId) || !ReadString(Stream, Name))
                 {
                     OutError = "A trace thread record is malformed.";
                     return false;
                 }
-                Session.mThreads[ThreadId] = std::move(Name);
+                Session.mThreads[ThreadId] = eastl::move(Name);
                 break;
             }
             case detail::EArdaTraceRecordType::Scope:
@@ -246,7 +246,7 @@ namespace arda::trace
             return false;
         }
 
-        OutSession = std::move(Session);
+        OutSession = eastl::move(Session);
         OutError.clear();
         return true;
     }

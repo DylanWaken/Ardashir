@@ -3,9 +3,10 @@
 #include "ArdaDevice.h"
 
 #include <cstdint>
-#include <memory>
-#include <string>
-#include <vector>
+#include <EASTL/unique_ptr.h>
+#include <EASTL/shared_ptr.h>
+#include <EASTL/string.h>
+#include <EASTL/vector.h>
 
 namespace arda::backend
 {
@@ -26,7 +27,7 @@ namespace arda::backend
          * Returns Vulkan instance extensions required by the window system.
          * The returned name pointers must remain valid during initialization.
          */
-        [[nodiscard]] virtual std::vector<const char*> GetVulkanInstanceExtensions() const = 0;
+        [[nodiscard]] virtual eastl::vector<const char*> GetVulkanInstanceExtensions() const = 0;
 
         /**
          * Creates a Vulkan presentation surface owned by the backend.
@@ -36,7 +37,7 @@ namespace arda::backend
          */
         [[nodiscard]] virtual nvrhi::Object CreateVulkanSurface(
             nvrhi::Object VulkanInstance,
-            std::string& OutError) = 0;
+            eastl::string& OutError) = 0;
     };
 
     /** Manages presentation images and submission for a native swap chain. */
@@ -73,7 +74,7 @@ namespace arda::backend
         /** Returns the current presentation height in pixels. */
         [[nodiscard]] virtual uint32_t GetHeight() const noexcept = 0;
         /** Returns the most recent swap-chain error message. */
-        [[nodiscard]] virtual const std::string& GetError() const noexcept = 0;
+        [[nodiscard]] virtual const eastl::string& GetError() const noexcept = 0;
     };
 
     /**
@@ -88,5 +89,5 @@ namespace arda::backend
         IArdaWindowSurface& WindowSurface,
         uint32_t Width,
         uint32_t Height,
-        std::unique_ptr<IArdaSwapChain>& OutSwapChain);
+        eastl::unique_ptr<IArdaSwapChain>& OutSwapChain);
 }

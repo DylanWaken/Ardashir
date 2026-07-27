@@ -1,6 +1,6 @@
 #pragma once
 
-#include <atomic>
+#include <EASTL/atomic.h>
 #include <cstdint>
 
 namespace arda::backend
@@ -37,7 +37,7 @@ namespace arda::backend
 
     private:
         const char* mName;
-        std::atomic<EArdaLogVerbosity> mMinimumVerbosity;
+        eastl::atomic<EArdaLogVerbosity> mMinimumVerbosity;
     };
 
     /**

@@ -6,7 +6,7 @@
 
 #include <filesystem>
 #include <fstream>
-#include <string>
+#include <EASTL/string.h>
 #include <thread>
 
 namespace
@@ -22,7 +22,7 @@ TEST(ArdaTrace, RecordsNestedScopesCountersAndMarkers)
     using namespace arda::trace;
 
     const std::filesystem::path CapturePath = MakeCapturePath("ArdaTraceRoundTrip.ardatrace");
-    ASSERT_TRUE(StartTraceCapture(CapturePath)) << GetTraceError();
+    ASSERT_TRUE(StartTraceCapture(CapturePath)) << GetTraceError().c_str();
     SetCurrentTraceThreadName("Test Thread");
     {
         ARDA_NAMED_SCOPE_TIMER("Rendering");
@@ -32,21 +32,23 @@ TEST(ArdaTrace, RecordsNestedScopesCountersAndMarkers)
             ARDA_TRACE_MARKER("Dispatch");
         }
     }
-    ASSERT_TRUE(StopTraceCapture()) << GetTraceError();
+    ASSERT_TRUE(StopTraceCapture()) << GetTraceError().c_str();
 
     FArdaTraceSession Session;
-    std::string Error;
-    ASSERT_TRUE(ReadTraceCapture(CapturePath, Session, Error)) << Error;
+    eastl::string Error;
+    ASSERT_TRUE(ReadTraceCapture(CapturePath, Session, Error)) << Error.c_str();
     ASSERT_EQ(Session.mScopes.size(), 2u);
     ASSERT_EQ(Session.mCounters.size(), 1u);
     ASSERT_EQ(Session.mMarkers.size(), 1u);
-    EXPECT_EQ(Session.mThreads.at(Session.mScopes.front().mThreadId), "Test Thread");
+    EXPECT_STREQ(
+        Session.mThreads.at(Session.mScopes.front().mThreadId).c_str(),
+        "Test Thread");
 
     const FArdaTraceScope* RenderingScope = nullptr;
     const FArdaTraceScope* RaytracerScope = nullptr;
     for (const FArdaTraceScope& Scope : Session.mScopes)
     {
-        const std::string& Name = Session.mNames.at(Scope.mNameId);
+        const eastl::string& Name = Session.mNames.at(Scope.mNameId);
         if (Name == "Rendering")
         {
             RenderingScope = &Scope;
@@ -62,9 +64,13 @@ TEST(ArdaTrace, RecordsNestedScopesCountersAndMarkers)
     EXPECT_EQ(RenderingScope->mParentScopeId, 0u);
     EXPECT_EQ(RaytracerScope->mParentScopeId, RenderingScope->mScopeId);
     EXPECT_GE(RenderingScope->mEndNanoseconds, RenderingScope->mStartNanoseconds);
-    EXPECT_EQ(Session.mNames.at(Session.mCounters.front().mNameId), "Visible Objects");
+    EXPECT_STREQ(
+        Session.mNames.at(Session.mCounters.front().mNameId).c_str(),
+        "Visible Objects");
     EXPECT_DOUBLE_EQ(Session.mCounters.front().mValue, 42.0);
-    EXPECT_EQ(Session.mNames.at(Session.mMarkers.front().mNameId), "Dispatch");
+    EXPECT_STREQ(
+        Session.mNames.at(Session.mMarkers.front().mNameId).c_str(),
+        "Dispatch");
 
     std::filesystem::remove(CapturePath);
 }
@@ -80,7 +86,7 @@ TEST(ArdaTrace, RejectsTruncatedCapture)
     }
 
     FArdaTraceSession Session;
-    std::string Error;
+    eastl::string Error;
     EXPECT_FALSE(ReadTraceCapture(CapturePath, Session, Error));
     EXPECT_FALSE(Error.empty());
     std::filesystem::remove(CapturePath);
@@ -91,7 +97,7 @@ TEST(ArdaTrace, StreamsFullChunksFromIndependentThreads)
     using namespace arda::trace;
 
     const std::filesystem::path CapturePath = MakeCapturePath("ArdaTraceThreads.ardatrace");
-    ASSERT_TRUE(StartTraceCapture(CapturePath)) << GetTraceError();
+    ASSERT_TRUE(StartTraceCapture(CapturePath)) << GetTraceError().c_str();
 
     const auto RecordScopes = [](const char* ThreadName)
     {
@@ -107,11 +113,11 @@ TEST(ArdaTrace, StreamsFullChunksFromIndependentThreads)
     std::thread SecondThread(RecordScopes, "Worker B");
     FirstThread.join();
     SecondThread.join();
-    ASSERT_TRUE(StopTraceCapture()) << GetTraceError();
+    ASSERT_TRUE(StopTraceCapture()) << GetTraceError().c_str();
 
     FArdaTraceSession Session;
-    std::string Error;
-    ASSERT_TRUE(ReadTraceCapture(CapturePath, Session, Error)) << Error;
+    eastl::string Error;
+    ASSERT_TRUE(ReadTraceCapture(CapturePath, Session, Error)) << Error.c_str();
     EXPECT_EQ(Session.mScopes.size(), 2200u);
 
     bool bFoundWorkerA = false;

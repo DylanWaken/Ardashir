@@ -4,6 +4,8 @@
 
 #include <cstdio>
 #include <cstring>
+#include <EASTL/string.h>
+#include <string>
 
 namespace
 {
@@ -125,7 +127,8 @@ TEST(ArdaLog, ResetRestoresDefaultStderrOutput)
     arda::backend::ResetLogOutput();
     testing::internal::CaptureStderr();
     ARDA_LOG(LogTest, Display, "Default output");
-    const std::string output = testing::internal::GetCapturedStderr();
+    const std::string captured = testing::internal::GetCapturedStderr();
+    const eastl::string output(captured.data(), captured.size());
 
-    EXPECT_NE(output.find("[TestScope][Display] Default output"), std::string::npos);
+    EXPECT_NE(output.find("[TestScope][Display] Default output"), eastl::string::npos);
 }

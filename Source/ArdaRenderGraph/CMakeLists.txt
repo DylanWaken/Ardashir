@@ -13,7 +13,7 @@ target_include_directories(ArdaRenderGraph
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private"
 )
 target_link_libraries(ArdaRenderGraph
-    PUBLIC nvrhi Ardashir::ArdaBackend
+    PUBLIC nvrhi Ardashir::ArdaBackend Ardashir::EASTL
     PRIVATE Ardashir::ArdaTrace
 )
 target_precompile_headers(ArdaRenderGraph PRIVATE Private/ArdaRenderGraphPch.h)

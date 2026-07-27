@@ -5,9 +5,9 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <type_traits>
-#include <utility>
-#include <vector>
+#include <EASTL/type_traits.h>
+#include <EASTL/utility.h>
+#include <EASTL/vector.h>
 
 namespace arda::render_graph
 {
@@ -26,7 +26,7 @@ namespace arda::render_graph
         template <
             typename ConcreteType = ObjectType,
             typename... ArgumentTypes,
-            typename = std::enable_if_t<std::is_base_of_v<ObjectType, ConcreteType>>>
+            typename = eastl::enable_if_t<eastl::is_base_of_v<ObjectType, ConcreteType>>>
         [[nodiscard]] HandleType Emplace(ArgumentTypes&&... Arguments)
         {
             if (mEntries.size() >= HandleType::InvalidIndex)
@@ -37,7 +37,7 @@ namespace arda::render_graph
             const HandleType Handle(static_cast<uint32_t>(mEntries.size()));
             ConcreteType* Object = mArena.Allocate<ConcreteType>(
                 Handle,
-                std::forward<ArgumentTypes>(Arguments)...);
+                eastl::forward<ArgumentTypes>(Arguments)...);
 
             mEntries.push_back(Object);
 
@@ -92,13 +92,13 @@ namespace arda::render_graph
             return mEntries.empty();
         }
 
-        [[nodiscard]] const std::vector<ObjectType*>& GetEntries() const noexcept
+        [[nodiscard]] const eastl::vector<ObjectType*>& GetEntries() const noexcept
         {
             return mEntries;
         }
 
     private:
         FARDGArena& mArena;
-        std::vector<ObjectType*> mEntries;
+        eastl::vector<ObjectType*> mEntries;
     };
 }

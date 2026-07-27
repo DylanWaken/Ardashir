@@ -2,10 +2,11 @@
 
 #include "ArdaBackendDevice.h"
 
-#include <algorithm>
-#include <array>
+#include <EASTL/algorithm.h>
+#include <EASTL/array.h>
 #include <cstring>
-#include <limits>
+#include <EASTL/numeric_limits.h>
+#include <vector>
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -13,7 +14,7 @@ namespace arda::backend
 {
     namespace
     {
-        constexpr uint32_t InvalidQueueFamily = std::numeric_limits<uint32_t>::max();
+        constexpr uint32_t InvalidQueueFamily = eastl::numeric_limits<uint32_t>::max();
 
         struct FArdaVulkanQueueSelection
         {
@@ -23,11 +24,12 @@ namespace arda::backend
             uint32_t mComputeIndex = 0;
             uint32_t mCopyFamily = InvalidQueueFamily;
             uint32_t mCopyIndex = 0;
-            std::vector<uint32_t> mRequestedQueueCounts;
+            eastl::vector<uint32_t> mRequestedQueueCounts;
         };
 
+        template<typename QueueFamilyContainer>
         bool AllocateQueue(
-            const std::vector<vk::QueueFamilyProperties>& QueueFamilies,
+            const QueueFamilyContainer& QueueFamilies,
             vk::QueueFlags RequiredFlags,
             vk::QueueFlags ExcludedFlags,
             FArdaVulkanQueueSelection& Selection,
@@ -53,8 +55,9 @@ namespace arda::backend
             return false;
         }
 
+        template<typename QueueFamilyContainer>
         FArdaVulkanQueueSelection SelectQueues(
-            const std::vector<vk::QueueFamilyProperties>& QueueFamilies,
+            const QueueFamilyContainer& QueueFamilies,
             uint32_t GraphicsFamily)
         {
             FArdaVulkanQueueSelection Selection;
@@ -108,7 +111,7 @@ namespace arda::backend
         }
 
         vk::SurfaceFormatKHR SelectSurfaceFormat(
-            const std::vector<vk::SurfaceFormatKHR>& Formats)
+            const eastl::vector<vk::SurfaceFormatKHR>& Formats)
         {
             for (const auto& Format : Formats)
             {
@@ -141,26 +144,49 @@ namespace arda::backend
             return vk::CompositeAlphaFlagBitsKHR::eOpaque;
         }
 
-        std::string DescribeVulkanResult(vk::Result Result)
+        eastl::string DescribeVulkanResult(vk::Result Result)
         {
-            return vk::to_string(Result);
+            const std::string Description = vk::to_string(Result);
+            return eastl::string(Description.data(), Description.size());
         }
 
         template<typename TValue>
         bool ExtractVulkanValue(
             const vk::ResultValue<TValue>& ResultValue,
             TValue& OutValue,
-            std::string& Error,
+            eastl::string& Error,
             const char* Context)
         {
             if (ResultValue.result != vk::Result::eSuccess)
             {
-                Error = std::string(Context) + ": " +
+                Error = eastl::string(Context) + ": " +
                     DescribeVulkanResult(ResultValue.result);
                 return false;
             }
 
-            OutValue = std::move(ResultValue.value);
+            OutValue = eastl::move(ResultValue.value);
+            return true;
+        }
+
+        template<typename TValue, typename TAllocator>
+        bool ExtractVulkanValue(
+            const vk::ResultValue<std::vector<TValue, TAllocator>>& ResultValue,
+            eastl::vector<TValue>& OutValue,
+            eastl::string& Error,
+            const char* Context)
+        {
+            if (ResultValue.result != vk::Result::eSuccess)
+            {
+                Error = eastl::string(Context) + ": " +
+                    DescribeVulkanResult(ResultValue.result);
+                return false;
+            }
+
+            OutValue.resize(ResultValue.value.size());
+            for (size_t Index = 0; Index < ResultValue.value.size(); ++Index)
+            {
+                OutValue[Index] = ResultValue.value[Index];
+            }
             return true;
         }
 
@@ -189,8 +215,8 @@ namespace arda::backend
                 , mVulkanDevice(VulkanDevice)
                 , mGraphicsQueue(GraphicsQueue)
                 , mSurface(Surface)
-                , mNativeDevice(std::move(NativeDevice))
-                , mDevice(std::move(Device))
+                , mNativeDevice(eastl::move(NativeDevice))
+                , mDevice(eastl::move(Device))
                 , mWidth(Width)
                 , mHeight(Height)
             {
@@ -248,7 +274,7 @@ namespace arda::backend
 
                 const auto AcquireResult = mVulkanDevice.acquireNextImageKHR(
                     mSwapChain,
-                    std::numeric_limits<uint64_t>::max(),
+                    eastl::numeric_limits<uint64_t>::max(),
                     mImageAvailable[mFrameIndex]);
                 if (AcquireResult.result == vk::Result::eErrorOutOfDateKHR)
                 {
@@ -343,7 +369,7 @@ namespace arda::backend
                 return mHeight;
             }
 
-            const std::string& GetError() const noexcept override
+            const eastl::string& GetError() const noexcept override
             {
                 return mError;
             }
@@ -363,7 +389,7 @@ namespace arda::backend
                     return false;
                 }
 
-                std::vector<vk::SurfaceFormatKHR> Formats;
+                eastl::vector<vk::SurfaceFormatKHR> Formats;
                 if (!ExtractVulkanValue(
                         mPhysicalDevice.getSurfaceFormatsKHR(mSurface),
                         Formats,
@@ -387,17 +413,17 @@ namespace arda::backend
 
                 vk::Extent2D Extent;
                 if (Capabilities.currentExtent.width !=
-                    std::numeric_limits<uint32_t>::max())
+                    eastl::numeric_limits<uint32_t>::max())
                 {
                     Extent = Capabilities.currentExtent;
                 }
                 else
                 {
-                    Extent.width = std::clamp(
+                    Extent.width = eastl::clamp(
                         RequestedWidth,
                         Capabilities.minImageExtent.width,
                         Capabilities.maxImageExtent.width);
-                    Extent.height = std::clamp(
+                    Extent.height = eastl::clamp(
                         RequestedHeight,
                         Capabilities.minImageExtent.height,
                         Capabilities.maxImageExtent.height);
@@ -406,7 +432,7 @@ namespace arda::backend
                 uint32_t ImageCount = Capabilities.minImageCount + 1;
                 if (Capabilities.maxImageCount > 0)
                 {
-                    ImageCount = std::min(ImageCount, Capabilities.maxImageCount);
+                    ImageCount = eastl::min(ImageCount, Capabilities.maxImageCount);
                 }
 
                 vk::SwapchainCreateInfoKHR Description;
@@ -435,7 +461,7 @@ namespace arda::backend
                 }
 
                 mSwapChain = SwapChainResult.value;
-                std::vector<vk::Image> Images;
+                eastl::vector<vk::Image> Images;
                 if (!ExtractVulkanValue(
                         mVulkanDevice.getSwapchainImagesKHR(mSwapChain),
                         Images,
@@ -550,12 +576,12 @@ namespace arda::backend
             uint32_t mHeight = 0;
             uint32_t mImageIndex = 0;
             uint32_t mFrameIndex = 0;
-            std::string mError;
+            eastl::string mError;
             vk::SwapchainKHR mSwapChain;
-            std::vector<nvrhi::TextureHandle> mTextures;
-            std::vector<nvrhi::FramebufferHandle> mFramebuffers;
-            std::array<vk::Semaphore, mFramesInFlight> mImageAvailable;
-            std::array<vk::Semaphore, mFramesInFlight> mRenderFinished;
+            eastl::vector<nvrhi::TextureHandle> mTextures;
+            eastl::vector<nvrhi::FramebufferHandle> mFramebuffers;
+            eastl::array<vk::Semaphore, mFramesInFlight> mImageAvailable;
+            eastl::array<vk::Semaphore, mFramesInFlight> mRenderFinished;
         };
 
         class FArdaVulkanBackendDevice final : public IArdaBackendDevice
@@ -626,7 +652,7 @@ namespace arda::backend
 
                 if (WindowSurface)
                 {
-                    std::string SurfaceError;
+                    eastl::string SurfaceError;
                     const nvrhi::Object SurfaceObject = WindowSurface->CreateVulkanSurface(
                         nvrhi::Object(static_cast<VkInstance>(mInstance)),
                         SurfaceError);
@@ -655,10 +681,10 @@ namespace arda::backend
                 uint32_t MaximumQueueCount = 1;
                 for (const uint32_t QueueCount : mQueueSelection.mRequestedQueueCounts)
                 {
-                    MaximumQueueCount = std::max(MaximumQueueCount, QueueCount);
+                    MaximumQueueCount = eastl::max(MaximumQueueCount, QueueCount);
                 }
-                const std::vector<float> QueuePriorities(MaximumQueueCount, 1.f);
-                std::vector<vk::DeviceQueueCreateInfo> QueueDescriptions;
+                const eastl::vector<float> QueuePriorities(MaximumQueueCount, 1.f);
+                eastl::vector<vk::DeviceQueueCreateInfo> QueueDescriptions;
                 for (uint32_t Family = 0; Family < QueueFamilies.size(); ++Family)
                 {
                     const uint32_t QueueCount =
@@ -683,7 +709,7 @@ namespace arda::backend
                 Features12.setTimelineSemaphore(true);
                 Features12.setPNext(&Features13);
 
-                std::vector<const char*> DeviceExtensions;
+                eastl::vector<const char*> DeviceExtensions;
                 if (mSurface)
                 {
                     DeviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -770,7 +796,7 @@ namespace arda::backend
                 return EArdaInitializeResult::Success;
             }
 
-            std::unique_ptr<IArdaSwapChain> CreateSwapChain(
+            eastl::unique_ptr<IArdaSwapChain> CreateSwapChain(
                 uint32_t Width,
                 uint32_t Height) override
             {
@@ -780,7 +806,7 @@ namespace arda::backend
                     return nullptr;
                 }
 
-                auto SwapChain = std::make_unique<FArdaVulkanSwapChain>(
+                auto SwapChain = eastl::make_unique<FArdaVulkanSwapChain>(
                     mPhysicalDevice,
                     mVulkanDevice,
                     mGraphicsQueue,
@@ -820,7 +846,7 @@ namespace arda::backend
                 return mQueueCapabilities;
             }
 
-            const std::string& GetError() const noexcept override
+            const eastl::string& GetError() const noexcept override
             {
                 return mError;
             }
@@ -908,9 +934,9 @@ namespace arda::backend
                 return false;
             }
 
-            std::string mError;
+            eastl::string mError;
             vk::detail::DynamicLoader mLoader;
-            std::vector<const char*> mInstanceExtensions;
+            eastl::vector<const char*> mInstanceExtensions;
             vk::Instance mInstance;
             vk::SurfaceKHR mSurface;
             vk::PhysicalDevice mPhysicalDevice;
@@ -925,8 +951,8 @@ namespace arda::backend
         };
     }
 
-    std::unique_ptr<IArdaBackendDevice> CreateVulkanBackendDevice()
+    eastl::unique_ptr<IArdaBackendDevice> CreateVulkanBackendDevice()
     {
-        return std::make_unique<FArdaVulkanBackendDevice>();
+        return eastl::make_unique<FArdaVulkanBackendDevice>();
     }
 }

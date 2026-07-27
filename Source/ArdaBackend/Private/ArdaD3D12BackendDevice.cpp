@@ -18,9 +18,9 @@ namespace arda::backend
                 HWND Window,
                 uint32_t Width,
                 uint32_t Height)
-                : mFactory(std::move(Factory))
-                , mGraphicsQueue(std::move(GraphicsQueue))
-                , mDevice(std::move(Device))
+                : mFactory(eastl::move(Factory))
+                , mGraphicsQueue(eastl::move(GraphicsQueue))
+                , mDevice(eastl::move(Device))
                 , mWindow(Window)
                 , mWidth(Width)
                 , mHeight(Height)
@@ -149,7 +149,7 @@ namespace arda::backend
                 return mHeight;
             }
 
-            const std::string& GetError() const noexcept override
+            const eastl::string& GetError() const noexcept override
             {
                 return mError;
             }
@@ -225,8 +225,10 @@ namespace arda::backend
             HWND mWindow = nullptr;
             uint32_t mWidth = 0;
             uint32_t mHeight = 0;
-            std::string mError;
+            eastl::string mError;
             Microsoft::WRL::ComPtr<IDXGISwapChain3> mSwapChain;
+            // NVRHI RefCountPtr overloads operator&, which is incompatible with
+            // EASTL array's iterator implementation.
             std::array<nvrhi::TextureHandle, mBufferCount> mTextures;
             std::array<nvrhi::FramebufferHandle, mBufferCount> mFramebuffers;
         };
@@ -357,7 +359,7 @@ namespace arda::backend
                 return EArdaInitializeResult::Success;
             }
 
-            std::unique_ptr<IArdaSwapChain> CreateSwapChain(
+            eastl::unique_ptr<IArdaSwapChain> CreateSwapChain(
                 uint32_t Width,
                 uint32_t Height) override
             {
@@ -367,7 +369,7 @@ namespace arda::backend
                     return nullptr;
                 }
 
-                auto SwapChain = std::make_unique<FArdaD3D12SwapChain>(
+                auto SwapChain = eastl::make_unique<FArdaD3D12SwapChain>(
                     mFactory,
                     mGraphicsQueue,
                     mDevice,
@@ -401,14 +403,14 @@ namespace arda::backend
                 return mQueueCapabilities;
             }
 
-            const std::string& GetError() const noexcept override
+            const eastl::string& GetError() const noexcept override
             {
                 return mError;
             }
 
         private:
             HWND mWindow = nullptr;
-            std::string mError;
+            eastl::string mError;
             Microsoft::WRL::ComPtr<IDXGIFactory6> mFactory;
             Microsoft::WRL::ComPtr<ID3D12Device> mD3DDevice;
             Microsoft::WRL::ComPtr<ID3D12CommandQueue> mGraphicsQueue;
@@ -420,8 +422,8 @@ namespace arda::backend
         };
     }
 
-    std::unique_ptr<IArdaBackendDevice> CreateD3D12BackendDevice()
+    eastl::unique_ptr<IArdaBackendDevice> CreateD3D12BackendDevice()
     {
-        return std::make_unique<FArdaD3D12BackendDevice>();
+        return eastl::make_unique<FArdaD3D12BackendDevice>();
     }
 }

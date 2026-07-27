@@ -2,7 +2,7 @@
 
 #include <nvrhi/nvrhi.h>
 
-#include <string>
+#include <EASTL/string.h>
 
 namespace arda::backend
 {
@@ -112,7 +112,7 @@ namespace arda::backend
     [[nodiscard]] nvrhi::DeviceHandle GetDevice() noexcept;
 
     /** Returns the most recent backend error message. */
-    [[nodiscard]] std::string GetBackendError();
+    [[nodiscard]] eastl::string GetBackendError();
     /**
      * Returns a readable name for a backend type.
      * @param backend The backend type to name.

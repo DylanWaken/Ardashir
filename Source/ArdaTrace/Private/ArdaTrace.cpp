@@ -3,7 +3,8 @@
 #include "ArdaTrace.h"
 #include "ArdaTraceFormat.h"
 
-#include <algorithm>
+#include <EASTL/algorithm.h>
+#include <cstdio>
 #include <cstring>
 
 namespace arda::trace
@@ -16,23 +17,23 @@ namespace arda::trace
         {
             std::uint32_t mThreadId = 0;
             std::uint64_t mGeneration = 0;
-            std::string mName;
-            std::vector<detail::FArdaBufferedEvent> mEvents;
+            eastl::string mName;
+            eastl::vector<detail::FArdaBufferedEvent> mEvents;
         };
 
         struct FArdaTraceState
         {
             std::mutex mMutex;
             std::ofstream mStream;
-            std::atomic<bool> mbActive = false;
-            std::atomic<std::uint64_t> mGeneration = 0;
-            std::atomic<std::uint32_t> mNextNameId = 1;
-            std::atomic<std::uint32_t> mNextThreadId = 1;
-            std::atomic<std::uint64_t> mNextScopeId = 1;
-            std::unordered_map<std::string, std::uint32_t> mNameIds;
-            std::unordered_map<std::uint32_t, std::string> mNames;
-            std::vector<std::shared_ptr<FArdaThreadBuffer>> mThreadBuffers;
-            std::string mError;
+            eastl::atomic<bool> mbActive = false;
+            eastl::atomic<std::uint64_t> mGeneration = 0;
+            eastl::atomic<std::uint32_t> mNextNameId = 1;
+            eastl::atomic<std::uint32_t> mNextThreadId = 1;
+            eastl::atomic<std::uint64_t> mNextScopeId = 1;
+            eastl::unordered_map<eastl::string, std::uint32_t> mNameIds;
+            eastl::unordered_map<std::uint32_t, eastl::string> mNames;
+            eastl::vector<eastl::shared_ptr<FArdaThreadBuffer>> mThreadBuffers;
+            eastl::string mError;
             std::uint64_t mOriginNanoseconds = 0;
         };
 
@@ -58,7 +59,7 @@ namespace arda::trace
         void WriteNameRecord(
             std::ofstream& Stream,
             std::uint32_t NameId,
-            const std::string& Name)
+            const eastl::string& Name)
         {
             const detail::EArdaTraceRecordType Type = detail::EArdaTraceRecordType::Name;
             const std::uint32_t Length = static_cast<std::uint32_t>(Name.size());
@@ -71,7 +72,7 @@ namespace arda::trace
         void WriteThreadRecord(
             std::ofstream& Stream,
             std::uint32_t ThreadId,
-            const std::string& Name)
+            const eastl::string& Name)
         {
             const detail::EArdaTraceRecordType Type = detail::EArdaTraceRecordType::Thread;
             const std::uint32_t Length = static_cast<std::uint32_t>(Name.size());
@@ -119,24 +120,30 @@ namespace arda::trace
             }
         }
 
-        std::shared_ptr<FArdaThreadBuffer> GetThreadBuffer()
+        eastl::shared_ptr<FArdaThreadBuffer> GetThreadBuffer()
         {
-            thread_local std::shared_ptr<FArdaThreadBuffer> ThreadBuffer;
+            thread_local eastl::shared_ptr<FArdaThreadBuffer> ThreadBuffer;
             if (ThreadBuffer != nullptr)
             {
                 return ThreadBuffer;
             }
 
             FArdaTraceState& State = GetState();
-            ThreadBuffer = std::make_shared<FArdaThreadBuffer>();
-            ThreadBuffer->mThreadId = State.mNextThreadId.fetch_add(1, std::memory_order_relaxed);
-            ThreadBuffer->mName = "Thread " + std::to_string(ThreadBuffer->mThreadId);
+            ThreadBuffer = eastl::make_shared<FArdaThreadBuffer>();
+            ThreadBuffer->mThreadId = State.mNextThreadId.fetch_add(1, eastl::memory_order_relaxed);
+            char ThreadName[32];
+            std::snprintf(
+                ThreadName,
+                sizeof(ThreadName),
+                "Thread %u",
+                ThreadBuffer->mThreadId);
+            ThreadBuffer->mName = ThreadName;
             ThreadBuffer->mEvents.reserve(EventChunkCapacity);
             return ThreadBuffer;
         }
 
         bool PrepareThreadBuffer(
-            const std::shared_ptr<FArdaThreadBuffer>& ThreadBuffer,
+            const eastl::shared_ptr<FArdaThreadBuffer>& ThreadBuffer,
             std::uint64_t Generation)
         {
             if (ThreadBuffer->mGeneration == Generation)
@@ -149,8 +156,8 @@ namespace arda::trace
 
             FArdaTraceState& State = GetState();
             std::lock_guard<std::mutex> Lock(State.mMutex);
-            if (!State.mbActive.load(std::memory_order_relaxed)
-                || State.mGeneration.load(std::memory_order_relaxed) != Generation)
+            if (!State.mbActive.load(eastl::memory_order_relaxed)
+                || State.mGeneration.load(eastl::memory_order_relaxed) != Generation)
             {
                 return false;
             }
@@ -169,8 +176,8 @@ namespace arda::trace
 
             FArdaTraceState& State = GetState();
             std::lock_guard<std::mutex> Lock(State.mMutex);
-            if (State.mbActive.load(std::memory_order_relaxed)
-                && State.mGeneration.load(std::memory_order_relaxed) == ThreadBuffer.mGeneration)
+            if (State.mbActive.load(eastl::memory_order_relaxed)
+                && State.mGeneration.load(eastl::memory_order_relaxed) == ThreadBuffer.mGeneration)
             {
                 for (const detail::FArdaBufferedEvent& Event : ThreadBuffer.mEvents)
                 {
@@ -180,7 +187,7 @@ namespace arda::trace
                 if (!State.mStream)
                 {
                     State.mError = "Failed while writing trace events.";
-                    State.mbActive.store(false, std::memory_order_release);
+                    State.mbActive.store(false, eastl::memory_order_release);
                 }
             }
             ThreadBuffer.mEvents.clear();
@@ -189,14 +196,14 @@ namespace arda::trace
         void BufferEvent(detail::FArdaBufferedEvent Event) noexcept
         {
             FArdaTraceState& State = GetState();
-            if (!State.mbActive.load(std::memory_order_acquire))
+            if (!State.mbActive.load(eastl::memory_order_acquire))
             {
                 return;
             }
 
             const std::uint64_t Generation =
-                State.mGeneration.load(std::memory_order_acquire);
-            const std::shared_ptr<FArdaThreadBuffer> ThreadBuffer = GetThreadBuffer();
+                State.mGeneration.load(eastl::memory_order_acquire);
+            const eastl::shared_ptr<FArdaThreadBuffer> ThreadBuffer = GetThreadBuffer();
             if (!PrepareThreadBuffer(ThreadBuffer, Generation))
             {
                 return;
@@ -213,7 +220,7 @@ namespace arda::trace
         std::uint32_t RegisterName(const char* Name)
         {
             FArdaTraceState& State = GetState();
-            const std::string StableName = Name != nullptr ? Name : "<unnamed>";
+            const eastl::string StableName = Name != nullptr ? Name : "<unnamed>";
             std::lock_guard<std::mutex> Lock(State.mMutex);
 
             const auto ExistingName = State.mNameIds.find(StableName);
@@ -223,10 +230,10 @@ namespace arda::trace
             }
 
             const std::uint32_t NameId =
-                State.mNextNameId.fetch_add(1, std::memory_order_relaxed);
+                State.mNextNameId.fetch_add(1, eastl::memory_order_relaxed);
             State.mNameIds.emplace(StableName, NameId);
             State.mNames.emplace(NameId, StableName);
-            if (State.mbActive.load(std::memory_order_relaxed))
+            if (State.mbActive.load(eastl::memory_order_relaxed))
             {
                 WriteNameRecord(State.mStream, NameId, StableName);
             }
@@ -248,7 +255,7 @@ namespace arda::trace
     {
         FArdaTraceState& State = GetState();
         std::lock_guard<std::mutex> Lock(State.mMutex);
-        if (State.mbActive.load(std::memory_order_relaxed))
+        if (State.mbActive.load(eastl::memory_order_relaxed))
         {
             State.mError = "A trace capture is already active.";
             return false;
@@ -266,7 +273,7 @@ namespace arda::trace
         State.mError.clear();
         State.mOriginNanoseconds = detail::GetTraceTimestampNanoseconds();
         const std::uint64_t Generation =
-            State.mGeneration.fetch_add(1, std::memory_order_relaxed) + 1;
+            State.mGeneration.fetch_add(1, eastl::memory_order_relaxed) + 1;
         (void)Generation;
 
         WriteBytes(State.mStream, detail::TraceMagic.data(), detail::TraceMagic.size());
@@ -285,14 +292,14 @@ namespace arda::trace
             return false;
         }
 
-        State.mbActive.store(true, std::memory_order_release);
+        State.mbActive.store(true, eastl::memory_order_release);
         return true;
     }
 
     bool StopTraceCapture()
     {
         FArdaTraceState& State = GetState();
-        const bool bWasActive = State.mbActive.exchange(false, std::memory_order_acq_rel);
+        const bool bWasActive = State.mbActive.exchange(false, eastl::memory_order_acq_rel);
         if (!bWasActive && !State.mStream.is_open())
         {
             std::lock_guard<std::mutex> Lock(State.mMutex);
@@ -304,8 +311,8 @@ namespace arda::trace
         }
 
         std::lock_guard<std::mutex> Lock(State.mMutex);
-        const std::uint64_t Generation = State.mGeneration.load(std::memory_order_relaxed);
-        for (const std::shared_ptr<FArdaThreadBuffer>& ThreadBuffer : State.mThreadBuffers)
+        const std::uint64_t Generation = State.mGeneration.load(eastl::memory_order_relaxed);
+        for (const eastl::shared_ptr<FArdaThreadBuffer>& ThreadBuffer : State.mThreadBuffers)
         {
             if (ThreadBuffer->mGeneration != Generation)
             {
@@ -333,10 +340,10 @@ namespace arda::trace
 
     bool IsTraceCaptureActive() noexcept
     {
-        return GetState().mbActive.load(std::memory_order_acquire);
+        return GetState().mbActive.load(eastl::memory_order_acquire);
     }
 
-    std::string GetTraceError()
+    eastl::string GetTraceError()
     {
         FArdaTraceState& State = GetState();
         std::lock_guard<std::mutex> Lock(State.mMutex);
@@ -345,23 +352,23 @@ namespace arda::trace
 
     void SetCurrentTraceThreadName(const char* ThreadName)
     {
-        const std::shared_ptr<FArdaThreadBuffer> ThreadBuffer = GetThreadBuffer();
+        const eastl::shared_ptr<FArdaThreadBuffer> ThreadBuffer = GetThreadBuffer();
         ThreadBuffer->mName = ThreadName != nullptr ? ThreadName : "<unnamed thread>";
 
         FArdaTraceState& State = GetState();
-        if (!State.mbActive.load(std::memory_order_acquire))
+        if (!State.mbActive.load(eastl::memory_order_acquire))
         {
             return;
         }
 
-        const std::uint64_t Generation = State.mGeneration.load(std::memory_order_acquire);
+        const std::uint64_t Generation = State.mGeneration.load(eastl::memory_order_acquire);
         if (!PrepareThreadBuffer(ThreadBuffer, Generation))
         {
             return;
         }
 
         std::lock_guard<std::mutex> Lock(State.mMutex);
-        if (State.mbActive.load(std::memory_order_relaxed))
+        if (State.mbActive.load(eastl::memory_order_relaxed))
         {
             WriteThreadRecord(State.mStream, ThreadBuffer->mThreadId, ThreadBuffer->mName);
         }
@@ -400,7 +407,7 @@ namespace arda::trace
     {
         std::uint64_t AllocateScopeId() noexcept
         {
-            return GetState().mNextScopeId.fetch_add(1, std::memory_order_relaxed);
+            return GetState().mNextScopeId.fetch_add(1, eastl::memory_order_relaxed);
         }
 
         void RecordScope(

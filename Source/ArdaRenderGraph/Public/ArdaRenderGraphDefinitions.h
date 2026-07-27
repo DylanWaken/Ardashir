@@ -2,9 +2,9 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
-#include <limits>
-#include <type_traits>
+#include <EASTL/functional.h>
+#include <EASTL/numeric_limits.h>
+#include <EASTL/type_traits.h>
 
 #include <nvrhi/nvrhi.h>
 
@@ -20,7 +20,7 @@ namespace arda::render_graph
     {
     public:
         /** The value used to represent an invalid handle. */
-        static constexpr uint32_t InvalidIndex = std::numeric_limits<uint32_t>::max();
+        static constexpr uint32_t InvalidIndex = eastl::numeric_limits<uint32_t>::max();
 
         /** Constructs an invalid handle. */
         constexpr TARDGHandle() noexcept = default;
@@ -86,7 +86,7 @@ namespace arda::render_graph
         /** Returns the hash of Handle. */
         [[nodiscard]] size_t operator()(TARDGHandle<TagType> Handle) const noexcept
         {
-            return std::hash<uint32_t>{}(Handle.GetIndex());
+            return eastl::hash<uint32_t>{}(Handle.GetIndex());
         }
     };
 

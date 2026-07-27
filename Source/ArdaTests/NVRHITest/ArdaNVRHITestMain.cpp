@@ -71,7 +71,7 @@ namespace arda::tests::nvrhi_test
         {
         public:
             explicit FArdaBackendShutdownGuard(
-                std::unique_ptr<backend::IArdaSwapChain>& swapChain)
+                eastl::unique_ptr<backend::IArdaSwapChain>& swapChain)
                 : mSwapChain(swapChain)
             {
             }
@@ -90,21 +90,21 @@ namespace arda::tests::nvrhi_test
             }
 
         private:
-            std::unique_ptr<backend::IArdaSwapChain>& mSwapChain;
+            eastl::unique_ptr<backend::IArdaSwapChain>& mSwapChain;
         };
 
-        bool ParseOptions(int argumentCount, char** arguments, FArdaOptions& options, std::string& error)
+        bool ParseOptions(int argumentCount, char** arguments, FArdaOptions& options, eastl::string& error)
         {
             for (int index = 1; index < argumentCount; ++index)
             {
-                const std::string_view argument(arguments[index]);
+                const eastl::string_view argument(arguments[index]);
                 if (argument == "--hidden")
                 {
                     options.mbHidden = true;
                 }
                 else if (argument == "--backend" && index + 1 < argumentCount)
                 {
-                    const std::string_view backendArgument(arguments[++index]);
+                    const eastl::string_view backendArgument(arguments[++index]);
                     if (backendArgument == "d3d12")
                     {
                         options.mBackend = backend::EArdaBackendType::D3D12;
@@ -150,7 +150,7 @@ namespace arda::tests::nvrhi_test
         int Run(int argumentCount, char** arguments)
         {
             FArdaOptions options;
-            std::string error;
+            eastl::string error;
             if (!ParseOptions(argumentCount, arguments, options, error))
             {
                 ARDA_LOG(LogNVRHITest, Error, "%s", error.c_str());
@@ -171,14 +171,14 @@ namespace arda::tests::nvrhi_test
             configuration.mMessageCallback = &messageCallback;
             if (!backend::ConfigureBackend(configuration))
             {
-                const std::string backendError = backend::GetBackendError();
+                const eastl::string backendError = backend::GetBackendError();
                 ARDA_LOG(LogNVRHITest, Error, "%s", backendError.c_str());
                 return options.mBackend == backend::EArdaBackendType::D3D12
                     ? SkippedExitCode
                     : EXIT_FAILURE;
             }
 
-            std::unique_ptr<backend::IArdaSwapChain> swapChain;
+            eastl::unique_ptr<backend::IArdaSwapChain> swapChain;
             FArdaBackendShutdownGuard shutdownGuard(swapChain);
             const backend::EArdaInitializeResult result =
                 backend::InitializeBackendForPresentation(
@@ -188,7 +188,7 @@ namespace arda::tests::nvrhi_test
                 swapChain);
             if (result != backend::EArdaInitializeResult::Success)
             {
-                const std::string backendError = backend::GetBackendError();
+                const eastl::string backendError = backend::GetBackendError();
                 ARDA_LOG(LogNVRHITest, Error, "%s", backendError.c_str());
                 return result == backend::EArdaInitializeResult::Unavailable
                     ? SkippedExitCode

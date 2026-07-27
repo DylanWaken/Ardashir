@@ -2,14 +2,22 @@
 
 #include "ArdaRenderGraphLog.h"
 
-#include <any>
+#include <EASTL/any.h>
 #include <typeindex>
-#include <type_traits>
-#include <unordered_map>
-#include <utility>
+#include <EASTL/type_traits.h>
+#include <EASTL/unordered_map.h>
+#include <EASTL/utility.h>
 
 namespace arda::render_graph
 {
+    struct FARDGTypeIndexHash
+    {
+        [[nodiscard]] size_t operator()(const std::type_index& Type) const noexcept
+        {
+            return Type.hash_code();
+        }
+    };
+
     /** Stores one graph-scoped value per C++ type. */
     class FARDGBlackboard final
     {
@@ -26,18 +34,18 @@ namespace arda::render_graph
         ValueType& Set(ValueType Value)
         {
             static_assert(
-                std::is_copy_constructible_v<ValueType>,
+                eastl::is_copy_constructible_v<ValueType>,
                 "Render-graph blackboard values must be copy constructible.");
             const std::type_index Key(typeid(ValueType));
-            mValues.insert_or_assign(Key, std::move(Value));
-            return std::any_cast<ValueType&>(mValues.at(Key));
+            mValues.insert_or_assign(Key, eastl::move(Value));
+            return eastl::any_cast<ValueType&>(mValues.at(Key));
         }
 
         /** Constructs the value associated with ValueType and returns it. */
         template <typename ValueType, typename... ArgumentTypes>
         ValueType& Emplace(ArgumentTypes&&... Arguments)
         {
-            return Set(ValueType(std::forward<ArgumentTypes>(Arguments)...));
+            return Set(ValueType(eastl::forward<ArgumentTypes>(Arguments)...));
         }
 
         /** Returns the value associated with ValueType. */
@@ -71,7 +79,7 @@ namespace arda::render_graph
             const auto Iterator = mValues.find(std::type_index(typeid(ValueType)));
             return Iterator == mValues.end()
                 ? nullptr
-                : std::any_cast<ValueType>(&Iterator->second);
+                : eastl::any_cast<ValueType>(&Iterator->second);
         }
 
         /** Returns the immutable value associated with ValueType, or null when absent. */
@@ -81,7 +89,7 @@ namespace arda::render_graph
             const auto Iterator = mValues.find(std::type_index(typeid(ValueType)));
             return Iterator == mValues.end()
                 ? nullptr
-                : std::any_cast<ValueType>(&Iterator->second);
+                : eastl::any_cast<ValueType>(&Iterator->second);
         }
 
         /** Returns an existing value or default-constructs it when absent. */
@@ -96,6 +104,7 @@ namespace arda::render_graph
         }
 
     private:
-        std::unordered_map<std::type_index, std::any> mValues;
+        eastl::unordered_map<std::type_index, eastl::any, FARDGTypeIndexHash>
+            mValues;
     };
 }

@@ -2,9 +2,9 @@
 
 #include <cstdint>
 #include <filesystem>
-#include <string>
-#include <unordered_map>
-#include <vector>
+#include <EASTL/string.h>
+#include <EASTL/unordered_map.h>
+#include <EASTL/vector.h>
 
 namespace arda::trace
 {
@@ -55,15 +55,15 @@ namespace arda::trace
         /** Steady-clock timestamp captured when recording began. */
         std::uint64_t mOriginNanoseconds = 0;
         /** Registered labels keyed by trace name identifier. */
-        std::unordered_map<std::uint32_t, std::string> mNames;
+        eastl::unordered_map<std::uint32_t, eastl::string> mNames;
         /** Display names keyed by trace thread identifier. */
-        std::unordered_map<std::uint32_t, std::string> mThreads;
+        eastl::unordered_map<std::uint32_t, eastl::string> mThreads;
         /** Completed CPU scopes. */
-        std::vector<FArdaTraceScope> mScopes;
+        eastl::vector<FArdaTraceScope> mScopes;
         /** Numeric counter samples. */
-        std::vector<FArdaTraceCounter> mCounters;
+        eastl::vector<FArdaTraceCounter> mCounters;
         /** Instantaneous markers. */
-        std::vector<FArdaTraceMarker> mMarkers;
+        eastl::vector<FArdaTraceMarker> mMarkers;
     };
 
     /**
@@ -76,5 +76,5 @@ namespace arda::trace
     [[nodiscard]] bool ReadTraceCapture(
         const std::filesystem::path& FilePath,
         FArdaTraceSession& OutSession,
-        std::string& OutError);
+        eastl::string& OutError);
 }

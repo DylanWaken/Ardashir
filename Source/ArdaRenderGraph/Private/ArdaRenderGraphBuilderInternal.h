@@ -5,15 +5,15 @@
 #include "ArdaRenderGraphRegistry.h"
 
 #include <mutex>
-#include <unordered_map>
-#include <unordered_set>
+#include <EASTL/unordered_map.h>
+#include <EASTL/unordered_set.h>
 
 namespace arda::render_graph
 {
     struct FARDGBuilder::FImpl final
     {
         explicit FImpl(FARDGRenderGraphContext InContext)
-            : mContext(std::move(InContext))
+            : mContext(eastl::move(InContext))
             , mPasses(mArena)
             , mTextures(mArena)
             , mBuffers(mArena)
@@ -31,16 +31,16 @@ namespace arda::render_graph
         TARDGHandleRegistry<FARDGBuffer, FARDGBufferHandle> mBuffers;
         TARDGHandleRegistry<FARDGView, FARDGViewHandle> mViews;
         TARDGHandleRegistry<FARDGUniformBuffer, FARDGUniformBufferHandle> mUniformBuffers;
-        std::unordered_set<const void*> mParameterStorage;
-        std::unordered_map<nvrhi::ITexture*, FARDGTextureRef> mImportedTextures;
-        std::unordered_map<nvrhi::IBuffer*, FARDGBufferRef> mImportedBuffers;
-        std::vector<FARDGTextureExtraction> mTextureExtractions;
-        std::vector<FARDGBufferExtraction> mBufferExtractions;
+        eastl::unordered_set<const void*> mParameterStorage;
+        eastl::unordered_map<nvrhi::ITexture*, FARDGTextureRef> mImportedTextures;
+        eastl::unordered_map<nvrhi::IBuffer*, FARDGBufferRef> mImportedBuffers;
+        eastl::vector<FARDGTextureExtraction> mTextureExtractions;
+        eastl::vector<FARDGBufferExtraction> mBufferExtractions;
         FARDGBlackboard mBlackboard;
         FARDGCompileResult mCompileResult;
         FARDGExecutionResult mExecutionResult;
         std::mutex mPassAccessMutex;
-        std::unordered_set<uint32_t> mActivePassAccess;
+        eastl::unordered_set<uint32_t> mActivePassAccess;
         bool mbCompiled = false;
         bool mbCompiling = false;
         bool mbExecutionStarted = false;

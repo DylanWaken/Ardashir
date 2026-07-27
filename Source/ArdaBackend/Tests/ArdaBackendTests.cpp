@@ -47,7 +47,7 @@ namespace
         ASSERT_TRUE(ConfigureBackend(Backend));
         if (!InitializeBackend())
         {
-            GTEST_SKIP() << GetBackendError();
+            GTEST_SKIP() << GetBackendError().c_str();
         }
 
         EXPECT_TRUE(IsBackendInitialized());
