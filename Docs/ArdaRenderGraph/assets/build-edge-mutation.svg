@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="560" viewBox="0 0 1100 560" role="img" aria-labelledby="title desc">
+  <title id="title">Heightmap build-time edge mutation</title>
+  <desc id="desc">GenerateNoiseHeightmap establishes P2 as the latest heightmap writer. DebugHeightmap reads that version. ErodeHeightmap depends on P2 and receives an ordering-only synchronization edge from P3 before replacing the writer.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="dataArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="syncArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#fbbf24"/>
+    </marker>
+    <style>
+      .box{rx:12;stroke-width:2}.title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:600 16px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .data{stroke:#7dd3fc;stroke-width:3;fill:none;marker-end:url(#dataArrow)}
+      .sync{stroke:#fbbf24;stroke-width:3;stroke-dasharray:8 6;fill:none;marker-end:url(#syncArrow)}
+    </style>
+  </defs>
+  <rect width="1100" height="560" rx="22" fill="url(#bg)"/>
+  <text x="550" y="40" class="title">Heightmap history mutates in registration order</text>
+
+  <rect class="box" x="55" y="105" width="270" height="100" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="190" y="141" class="label">P2 GenerateNoiseHeightmap</text>
+  <text x="190" y="168" class="small">UAV-write Heightmap mip 0</text>
+  <text x="190" y="190" class="small">lastWriter = P2</text>
+
+  <rect class="box" x="415" y="105" width="250" height="100" fill="#2c3442" stroke="#64748b"/>
+  <text x="540" y="141" class="label">P3 DebugHeightmap</text>
+  <text x="540" y="168" class="small">read Heightmap for minimap</text>
+  <text x="540" y="190" class="small">readers = [P3]</text>
+
+  <rect class="box" x="775" y="105" width="270" height="100" fill="#3a294d" stroke="#c084fc"/>
+  <text x="910" y="141" class="label">P4 ErodeHeightmap</text>
+  <text x="910" y="168" class="small">UAV-rewrite Heightmap mip 0</text>
+  <text x="935" y="190" class="small">lastWriter = P4</text>
+
+  <path class="data" d="M325 135 H410"/>
+  <path class="data" d="M325 175 C530 300 690 300 770 175"/>
+  <path class="sync" d="M665 135 H770"/>
+
+  <text x="367" y="119" class="small">RAW producer</text>
+  <text x="550" y="286" class="small">WAW producer edge P2 -&gt; P4</text>
+  <text x="715" y="119" class="small">WAR sync</text>
+
+  <rect x="90" y="370" width="920" height="120" rx="14" fill="#20364a" stroke="#38bdf8" stroke-width="2"/>
+  <text x="550" y="404" class="label">After P4 is registered</text>
+  <text x="550" y="435" class="small">P4.producers = [P2] | P4.syncProducers = [P3]</text>
+  <text x="550" y="463" class="small">Heightmap.lastWriter = P4 | Heightmap.readers = []</text>
+  <text x="550" y="520" class="small">Producer edges carry data and liveness. Synchronization edges carry ordering only.</text>
+</svg>

@@ -28,11 +28,11 @@
 
   <text x="35" y="162" class="label">Texture A</text>
   <rect x="260" y="132" width="405" height="52" rx="10" fill="#1f5b78" stroke="#38bdf8" stroke-width="2"/>
-  <text x="462" y="163" class="center">first use P0 ? last use P3</text>
+  <text x="462" y="163" class="center">first use P0 through last use P3</text>
 
   <text x="35" y="247" class="label">Texture B</text>
   <rect x="800" y="217" width="135" height="52" rx="10" fill="#1f5b78" stroke="#38bdf8" stroke-width="2"/>
-  <text x="867" y="248" class="center">P4 ? P5</text>
+  <text x="867" y="248" class="center">P4 through P5</text>
 
   <text x="35" y="332" class="label">Texture C</text>
   <rect x="395" y="302" width="405" height="52" rx="10" fill="#4a2b63" stroke="#c084fc" stroke-width="2"/>

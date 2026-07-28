@@ -1,41 +1,78 @@
-# 2. Core concepts
+# 2. Core concepts: the graph is a plan, not the GPU
 
 [← Getting started](01-Getting-Started.md) · [Documentation home](README.md) ·
 [Next: Resources and parameters →](03-Resources-and-Parameters.md)
 
-## Declare intent, then execute
+Return to the frame graph from the introduction:
 
-ArdaRenderGraph separates two domains:
+```text
+TerrainSettings
+      |
+      v
+[Generate noise] --Heightmap--> [Erode heightmap] --> [Triangulate terrain]
+       |                                                   |
+       +--> [Debug heightmap]                              +--> TerrainVertices/Indices
+                 (dead)                                              |
+                                                                     v
+                                                  [Render terrain] -> [Overlay]
+                                                           |
+                                                      BackBuffer
+```
 
-- **Logical domain:** graph-owned records describe resources, views, passes,
-  accesses, and dependencies. Creating these records does not allocate GPU
-  resources.
-- **Physical domain:** execution binds imported or newly allocated NVRHI
-  handles, records command lists, and submits work.
+While this graph is being built, none of its graph-created resources need to
+exist on the GPU. They are descriptions that answer: what should run, what does
+it access, and which result matters? Only after compilation answers those
+questions does execution allocate resources and record NVRHI commands.
 
-This separation lets compilation reason about dead passes, queue placement,
-state transitions, and non-overlapping resource lifetimes before GPU work is
-created.
+## Logical and physical are different domains
 
-![ArdaRenderGraph architecture](assets/architecture.svg)
+A *logical resource* is a graph-owned C++ record. For a texture it stores an
+NVRHI descriptor, graph flags, a typed registry handle, initial/final states,
+the latest writer, readers since that writer, and a use interval. A physical
+resource is the `nvrhi::ITexture` or `nvrhi::IBuffer` on which commands
+actually operate.
 
-## Builder
+```text
+Build                              Execute
+-----                              -------
+FARDGTexture T0 "Heightmap"        ---> nvrhi::ITexture* 0x...
+FARDGBuffer  B0 "TerrainVertices"  ---> nvrhi::IBuffer*  0x...
+```
 
-`FARDGBuilder` owns one complete graph:
+For graph-created resources, the physical handle is initially empty. Execution
+may allocate a new object or reuse a descriptor-compatible object whose earlier
+logical lifetime has ended. For imported resources, the logical record wraps a
+physical handle that already exists.
 
-- graph-scoped arena storage;
-- dense registries for passes, textures, buffers, views, and uniform buffers;
+This split allows compilation to delete the unused `DebugHeightmap` pass before
+materialization. It also allows two non-overlapping logical resources to share
+one physical allocation without making them the same logical dependency.
+The records are defined in
+[`ArdaRenderGraphResources.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h);
+materialization occurs in
+[`ArdaRenderGraphExecutor.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphExecutor.cpp).
+
+## One builder owns one graph submission
+
+`FARDGBuilder` owns:
+
+- an arena for graph-scoped records and frozen parameters;
+- append-only registries for passes, textures, buffers, views, and uniform
+  buffers;
 - the typed blackboard;
-- compile and execution results; and
-- external-resource and extraction records.
+- import and extraction records;
+- immutable context and compile/execution results; and
+- lifecycle state that prevents late mutation or repeated execution.
 
-The builder is non-copyable and non-movable. Pointers such as
-`FARDGTextureRef` and frozen parameter pointers are valid only for the
-builder's lifetime.
+The private layout is visible in
+[`ArdaRenderGraphBuilderInternal.h`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilderInternal.h).
+The builder is neither copyable nor movable. A pointer such as
+`FARDGTextureRef`, a view reference, or a frozen parameter pointer belongs to
+that builder and must not outlive it.
 
-## References and handles
+## Why there are both references and handles
 
-The public convenience references are pointers to logical records:
+The convenient public references are pointers to logical records:
 
 ```cpp
 FARDGTextureRef
@@ -47,7 +84,9 @@ FARDGBufferUAVRef
 FARDGUniformBufferRef
 ```
 
-Each record also has a compact, typed, 32-bit registry handle:
+Pointers make setup readable: `Texture->GetDesc()` and
+`Texture->GetHandle()` are ordinary C++. Internally, dense typed handles make
+stable graph indices:
 
 ```cpp
 FARDGPassHandle
@@ -57,33 +96,196 @@ FARDGViewHandle
 FARDGUniformBufferHandle
 ```
 
-Handles are stable because registries are append-only. Handle types are
-deliberately incompatible, so a buffer handle cannot accidentally be used as a
-texture handle. A default-constructed handle is invalid; use `IsValid()`,
-`operator bool`, or `GetIndex()`.
+`TARDGHandle<Tag>` contains one `uint32_t`. Its tag makes handle categories
+incompatible at compile time, so a texture handle cannot be passed where a
+buffer handle is expected. A default-constructed handle has `InvalidIndex`;
+test it with `IsValid()` or its explicit Boolean conversion.
 
-`TryGetPass`, `TryGetTexture`, `TryGetBuffer`, `TryGetView`, and
-`TryGetUniformBuffer` return null for invalid handles.
+### How a registry assigns a handle
 
-## Passes
+Each registry is an append-only vector of arena-owned pointers:
 
-A pass contains:
+```text
+texture registry
+index 0 -> FARDGTexture "Heightmap"   -> FARDGTextureHandle(0)
+index 1 -> FARDGTexture "BackBuffer"  -> FARDGTextureHandle(1)
+```
 
-- a diagnostic name;
-- `EARDGPassFlags`;
-- an optional immutable parameter object and static metadata;
-- a type-erased callback;
-- derived producers, consumers, resource states, views, and uniform buffers;
-- compiled transitions, pipeline, async fork/join, and raster group; and
-- culling/sentinel status.
+On `Emplace`, the current vector size becomes the handle index, the object is
+allocated in the arena, and its pointer is appended. No erase operation exists,
+so handles remain stable for the builder's lifetime. See
+[`TARDGHandleRegistry`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphRegistry.h)
+and the handle definition in
+[`ArdaRenderGraphDefinitions.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h).
 
-Registration order is the deterministic execution order after culled passes are
-removed. Manual edges must also point forward in registration order; the
-implementation does not topologically reorder arbitrary input.
+The builder's `TryGetPass`, `TryGetTexture`, `TryGetBuffer`, `TryGetView`, and
+`TryGetUniformBuffer` return `nullptr` for invalid or out-of-range handles.
 
-### Callback forms
+## A pass has a declaration half and an execution half
 
-Typed `AddPass` accepts all of these shapes:
+The declaration half exists during build and compile:
+
+- name and `EARDGPassFlags`;
+- frozen parameter object and generated metadata;
+- producer and synchronization edges;
+- texture/buffer state requirements, views, and uniform buffers;
+- culling and sentinel state; and
+- compiled transitions, selected pipeline, async fork/join, and raster group.
+
+The execution half is a type-erased callback invoked while recording a command
+list. The callback sees the same frozen parameters from which edges and states
+were discovered.
+
+The public pass records and execution context are in
+[`ArdaRenderGraphPass.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h).
+
+## Registration order is the topological order
+
+This invariant is easy to miss and crucial to using the graph correctly:
+
+> Register every producer before every consumer. ArdaRenderGraph does not run a
+> general topological sort to repair arbitrary registration order.
+
+The surviving execution order is the original registry order with culled
+passes removed:
+
+```text
+registered: P0 GraphPrologue, P1 UploadTerrainSettings, P2 GenerateNoiseHeightmap,
+            P3 DebugHeightmap, P4 ErodeHeightmap, P5 TriangulateTerrain,
+            P6 RenderTerrain, P7 TerrainOverlay, P8 GraphEpilogue
+live:       P0, P1, P2, P4, P5, P6, P7, P8
+```
+
+Resource edges are naturally forward because a pass can only depend on the
+resource's current last writer. `AddDependency` also rejects a producer that
+was registered after its consumer. Compilation validates the same invariant
+before constructing reverse consumer edges. See
+[`FARDGBuilder::AddDependency`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp)
+and
+[`BuildConsumerEdges`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphCompiler.cpp).
+
+## Frozen parameters make the declaration trustworthy
+
+Suppose a caller registers `TriangulateTerrain` with a stack parameter pointing
+at `Heightmap`, then reuses the stack object for another pass. If the graph kept
+that pointer directly, compilation and execution could observe different
+resources.
+
+`AddPass` avoids that problem:
+
+```text
+caller's stack object --copy--> graph arena --const ref--> pass callback
+                              |
+                              +--> metadata traversal during AddPass
+```
+
+- `AllocateParameters<T>()` constructs directly in graph arena storage.
+- A parameter pointer not known to the arena is copied there.
+- Parameter structs must be standard-layout types.
+- Non-trivial destructors are registered and run in reverse allocation order
+  when the builder dies.
+- The callback receives a `const` frozen object.
+
+The template path is implemented by `AllocateParameters`, `FreezeParameters`,
+and `AddPass` in
+[`ArdaRenderGraphBuilder.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h).
+The tests verify both stack freezing and reverse destruction in
+[`ArdaGraphTests.cpp`](../../Source/ArdaRenderGraph/Tests/ArdaGraphTests.cpp).
+
+## The blackboard shares build products by type
+
+Large renderers often have independent setup functions. A depth prepass may
+create a texture that later lighting setup needs, but threading that reference
+through every function makes graph construction noisy. `FARDGBlackboard`
+stores one copy-constructible value per exact C++ type:
+
+```cpp
+struct FSceneGraphData
+{
+    FARDGTextureRef mDepth = nullptr;
+    uint32_t mViewIndex = 0;
+};
+
+FSceneGraphData& Scene =
+    Graph.GetBlackboard().Emplace<FSceneGraphData>();
+Scene.mDepth = Depth;
+Scene.mViewIndex = 2;
+
+if (const FSceneGraphData* Shared =
+        Graph.GetBlackboard().TryGet<FSceneGraphData>())
+{
+    FARDGTextureRef SharedDepth = Shared->mDepth;
+    (void)SharedDepth;
+}
+```
+
+Available operations are:
+
+- `Contains<T>()`;
+- `Set(T)`;
+- `Emplace<T>(...)`;
+- `Get<T>()`, which fails when absent;
+- `TryGet<T>()`, which returns `nullptr` when absent; and
+- `GetOrCreate<T>()`.
+
+The mutable builder accessor is only available while building; the const
+accessor remains usable later. The implementation uses
+`eastl::unordered_map<std::type_index, eastl::any>` in
+[`ArdaRenderGraphBlackboard.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphBlackboard.h).
+
+The blackboard is a communication channel, not an access declaration. Putting
+`mDepth` in `FSceneGraphData` creates no dependency. A pass must still include
+the texture or one of its views in its parameter struct.
+
+## Sentinels give the graph boundaries
+
+Every builder starts with `GraphPrologue` at pass handle 0. Compilation appends
+`GraphEpilogue` after every user pass:
+
+```text
+GraphPrologue -> user passes -> GraphEpilogue
+```
+
+They have no user callbacks, but they simplify boundary reasoning:
+
+- an imported resource uses the prologue as its initial producer;
+- the epilogue depends on the last writer of every external or extracted
+  resource;
+- readers of those boundary resources contribute synchronization edges to the
+  epilogue;
+- final-state transitions are attached to the epilogue; and
+- both sentinels remain live.
+
+This is why writing an imported back buffer or extracting a graph-created
+history texture roots its producer chain. Sentinel construction is in
+[`ArdaRenderGraphBuilderInternal.h`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilderInternal.h),
+and epilogue wiring is at the start of
+[`FARDGCompiler::Compile`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphCompiler.cpp).
+
+## Pass flags in plain language
+
+- `None` — no operation category. A utility callback still needs an observable
+  dependent, a manual edge to a live pass, or `NeverCull`.
+- `Raster` — graphics work with declared attachment bindings.
+- `Compute` — compute work; by itself it uses the graphics-capable pipeline.
+- `AsyncCompute` — asks for a distinct compute queue and must be combined with
+  `Compute`. Capability or state incompatibility causes graphics fallback.
+- `Copy` — asks for the copy queue. Declared states must contain only
+  `CopySource` and/or `CopyDest`; unavailable copy capability falls back.
+- `NeverCull` — creates a culling root for an intentional side effect.
+- `SkipRenderPass` — valid only with `Raster`; opts out of raster compatibility
+  grouping for explicitly managed framebuffer behavior.
+- `NeverParallel` — records this callback serially on the CPU. It does not
+  choose a GPU queue.
+
+`Raster`, compute/async-compute, and `Copy` are mutually exclusive operation
+categories. Invalid combinations are rejected when the pass is added. Flags
+are defined in
+[`ArdaRenderGraphDefinitions.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h).
+
+## Callback forms
+
+Typed `AddPass` accepts:
 
 ```cpp
 [](FARDGPassExecutionContext&, const FParameters&) {}
@@ -96,87 +298,30 @@ Typed `AddPass` accepts all of these shapes:
 []() {}
 ```
 
-Parameterless `AddPass` accepts a pass context, a command list, or no arguments.
-Prefer `FARDGPassExecutionContext` when touching graph resources: its getters
-check that the resource or view appears in the pass parameters. A callback that
-uses independently retained physical NVRHI handles cannot be completely
-validated by the graph.
+Parameterless `AddPass` accepts a pass context, command list, or no arguments.
+Prefer `FARDGPassExecutionContext` when accessing graph resources. Its
+`GetTexture`, `GetBuffer`, and `GetUniformBuffer` methods verify that the
+current pass declared the requested logical object. A raw command-list callback
+can use independently retained NVRHI handles, which the graph cannot prove
+complete.
 
-`AddDispatchPass` runs a setup callback and then calls
-`ICommandList::dispatch` with `FARDGDispatchArguments`. It always adds the
-`Compute` flag.
+`AddDispatchPass` uses the same setup callback forms, always adds `Compute`,
+then calls `ICommandList::dispatch` with its `FARDGDispatchArguments`.
 
-## Pass flags
+## Lifecycle recap
 
-- `None`: no implied pipeline operation. Parameterless utility passes still
-  need `NeverCull`, an observable dependent, or a manual edge to a root.
-- `Raster`: graphics pass with declared attachment bindings.
-- `Compute`: compute dispatch/work on the graphics-capable pipeline.
-- `AsyncCompute`: requests a distinct compute queue and must be combined with
-  `Compute`.
-- `Copy`: requests a copy queue; every declared state must be `CopySource`
-  and/or `CopyDest`.
-- `NeverCull`: makes the pass a culling root.
-- `SkipRenderPass`: valid only with `Raster`; excludes the pass from raster
-  compatibility grouping for explicitly managed framebuffer behavior.
-- `NeverParallel`: records the pass serially on the CPU.
+All of these concepts are scoped by the builder's one-way lifecycle:
 
-Illegal combinations are rejected. `Raster`, `Compute`/`AsyncCompute`, and
-`Copy` are mutually exclusive operation categories. `AsyncCompute` without
-`Compute`, or `SkipRenderPass` without `Raster`, is invalid.
-
-## Frozen parameter storage
-
-Parameter structs must be standard-layout types. `AddPass` behaves as follows:
-
-- a pointer returned by `AllocateParameters<T>()` is already graph-owned and is
-  retained;
-- any other parameter object is copied into the graph arena;
-- non-trivial destructors are registered and run in reverse order when the
-  builder is destroyed.
-
-The pass callback receives a `const` frozen object. This prevents later stack
-changes from changing graph topology after dependency discovery.
-
-## Typed blackboard
-
-The graph blackboard stores one copy-constructible value per exact C++ type:
-
-```cpp
-struct FSceneGraphData
-{
-    FARDGTextureRef mDepth = nullptr;
-    uint32_t mViewIndex = 0;
-};
-
-auto& Data = Graph.GetBlackboard().Emplace<FSceneGraphData>();
-Data.mDepth = Depth;
-
-if (Graph.GetBlackboard().Contains<FSceneGraphData>())
-{
-    FARDGTextureRef SharedDepth =
-        Graph.GetBlackboard().Get<FSceneGraphData>().mDepth;
-}
+```text
+Building -> Compiled -> Executed
+    \          \           \
+     allowed    immutable    cannot execute again
 ```
 
-Available operations are `Contains`, `Set`, `Emplace`, `Get`, `TryGet`, and
-`GetOrCreate`. `Get` throws when absent. The non-const builder accessor is
-available only while building; the const accessor can inspect the blackboard
-later.
-
-The blackboard shares data between graph-building subsystems. It does not by
-itself declare resource access: a pass must still place referenced resources in
-its parameter struct.
-
-## Sentinels
-
-Every graph starts with `GraphPrologue` at pass handle 0. Compilation appends
-`GraphEpilogue`.
-
-- Imported resources treat the prologue as their initial producer.
-- External and extracted outputs connect to the epilogue, keeping required
-  producers live and applying final-state transitions.
-- Sentinels are always live but do not invoke user callbacks.
+Build declarations, blackboard mutation, and parameter allocation stop at
+successful compilation. Compilation itself is idempotent. Execution may invoke
+compilation, but only one execution attempt is allowed. A failed graph is not a
+recovery container; discard it and construct the next graph.
 
 ---
 

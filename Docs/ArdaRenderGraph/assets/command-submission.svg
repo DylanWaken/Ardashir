@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="610" viewBox="0 0 1160 610" role="img" aria-labelledby="title desc">
+  <title id="title">Command recording and cross-queue submission</title>
+  <desc id="desc">Live terrain passes record by dependency level after DebugHeightmap is culled. Their command lists submit in registration order. Compute waits for UploadTerrainSettings, and RenderTerrain waits for the TriangulateTerrain compute instance.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="waitArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#fbbf24"/>
+    </marker>
+    <style>
+      .box{rx:11;stroke-width:2}.title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:600 16px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .flow{stroke:#7dd3fc;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+      .wait{stroke:#fbbf24;stroke-width:3;stroke-dasharray:8 5;fill:none;marker-end:url(#waitArrow)}
+      .lane{stroke:#64748b;stroke-width:2}
+    </style>
+  </defs>
+  <rect width="1160" height="610" rx="22" fill="url(#bg)"/>
+  <text x="580" y="38" class="title">CPU recording waves are separate from GPU queue synchronization</text>
+
+  <text x="110" y="92" class="label">CPU level 0</text>
+  <rect class="box" x="205" y="62" width="190" height="66" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="300" y="89" class="label">UploadTerrainSettings</text>
+  <text x="300" y="112" class="small">P1 copy command list</text>
+
+  <text x="110" y="177" class="label">CPU level 1</text>
+  <rect class="box" x="320" y="147" width="230" height="66" fill="#3a294d" stroke="#c084fc"/>
+  <text x="435" y="174" class="label">GenerateNoiseHeightmap</text>
+  <text x="435" y="197" class="small">P2 compute command list</text>
+  <path class="flow" d="M300 128 C300 140 360 140 380 147"/>
+
+  <text x="110" y="262" class="label">CPU level 2</text>
+  <rect class="box" x="430" y="232" width="250" height="66" fill="#214b45" stroke="#34d399"/>
+  <text x="555" y="259" class="label">Erode then Triangulate</text>
+  <text x="555" y="282" class="small">P4 level 2; P5 level 3</text>
+  <path class="flow" d="M435 213 C435 225 490 225 510 232"/>
+
+  <rect x="750" y="62" width="345" height="236" rx="14" fill="#20364a" stroke="#38bdf8" stroke-width="2"/>
+  <text x="922" y="94" class="label">Inside each pass list</text>
+  <text x="922" y="126" class="small">open command list</text>
+  <text x="922" y="154" class="small">disable automatic barriers</text>
+  <text x="922" y="182" class="small">track state + commit graph barriers</text>
+  <text x="922" y="210" class="small">optional first-write clobber</text>
+  <text x="922" y="238" class="small">invoke pass lambda in marker</text>
+  <text x="922" y="266" class="small">close command list</text>
+
+  <text x="105" y="382" class="label">Copy queue</text>
+  <text x="105" y="462" class="label">Compute queue</text>
+  <text x="105" y="542" class="label">Graphics queue</text>
+  <line x1="200" y1="377" x2="1090" y2="377" class="lane"/>
+  <line x1="200" y1="457" x2="1090" y2="457" class="lane"/>
+  <line x1="200" y1="537" x2="1090" y2="537" class="lane"/>
+
+  <rect class="box" x="235" y="342" width="220" height="70" fill="#493720" stroke="#fbbf24"/>
+  <text x="345" y="371" class="label">Submit P1 Settings</text>
+  <text x="345" y="395" class="small">instance C1</text>
+
+  <rect class="box" x="500" y="422" width="220" height="70" fill="#214b45" stroke="#34d399"/>
+  <text x="610" y="451" class="label">Submit P2, P4, P5</text>
+  <text x="610" y="475" class="small">three lists; latest instance K3</text>
+
+  <rect class="box" x="780" y="502" width="220" height="70" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="890" y="531" class="label">Submit P6 RenderTerrain</text>
+  <text x="890" y="555" class="small">then P7, P8 on graphics</text>
+
+  <path class="wait" d="M455 377 C480 377 470 457 495 457"/>
+  <path class="wait" d="M720 457 C750 457 740 537 775 537"/>
+  <text x="485" y="404" class="small">wait C1</text>
+  <text x="755" y="484" class="small">wait K3</text>
+
+  <text x="580" y="596" class="small">Submission follows compiled registration order; queue waits permit safe overlap without reordering the graph.</text>
+</svg>
