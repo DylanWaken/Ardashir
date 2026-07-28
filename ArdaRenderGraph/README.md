@@ -1,54 +1,123 @@
-# ArdaRenderGraph
+# ArdaRenderGraph: from declarations to GPU work
 
-ArdaRenderGraph is Ardashir's deferred render dependency graph for
-[NVRHI](https://github.com/NVIDIA-RTX/NVRHI). Application code declares logical
-textures, buffers, resource states, and passes. The graph then validates the
-declarations, removes dead work, derives dependencies and barriers, selects
-queues, manages resource lifetimes, records command lists, and submits them.
+ArdaRenderGraph is Ardashir's deferred dependency graph for
+[NVRHI](https://github.com/NVIDIA-RTX/NVRHI). Instead of allocating every
+temporary texture immediately and hand-writing every barrier, renderer code
+first describes *intent*: this pass writes a buffer, that pass samples a
+texture, and the final pass renders to the swap chain. The graph can then reason
+about the whole frame before submitting anything.
 
-This guide assumes basic C++, computer-science, and graphics knowledge. NVRHI
-device creation, shader compilation, binding layouts, pipelines, and swap-chain
-setup are intentionally out of scope; use the
-[NVRHI programming guide](https://github.com/NVIDIA-RTX/NVRHI/blob/main/doc/ProgrammingGuide.md)
-and [repository](https://github.com/NVIDIA-RTX/NVRHI) for those topics.
+Our recurring example is a deliberately small procedural-terrain pipeline:
 
-![ArdaRenderGraph architecture](assets/architecture.svg)
+```text
+[Upload terrain settings] -> [Generate noise heightmap] -> [Erode heightmap]
+                                      |                         |
+                                      v                         v
+                         [Debug heightmap/minimap]      [Triangulate terrain]
+                                  (culled)                      |
+                                               TerrainVertices + TerrainIndices
+                                                               |
+                                                               v
+                                                  [Render terrain] -> [Overlay]
+                                                               |
+                                                          BackBuffer
+```
 
-## Guide
+From those declarations, ArdaRenderGraph:
 
-1. [Getting started](01-Getting-Started.md) — build integration, graph context,
-   lifecycle, and a minimal executable buffer graph.
-2. [Core concepts](02-Core-Concepts.md) — logical versus physical resources,
-   passes, handles, frozen parameters, flags, and the blackboard.
-3. [Resources and parameters](03-Resources-and-Parameters.md) — textures,
-   buffers, views, every parameter macro, states, external resources, uniform
-   buffers, extraction, lifetimes, and pools.
-4. [Passes and dependencies](04-Passes-and-Dependencies.md) — automatic and
-   manual edges, culling, raster declarations, compute-to-graphics, and
-   swap-chain rendering.
-5. [Compilation](05-Compilation.md) — validation, queue selection, barriers,
-   UAV ordering, raster groups, compile products, and graph dumps.
-6. [Execution and queues](06-Execution-and-Queues.md) — materialization,
-   recording, submission, async compute, queue waits, and execution results.
-7. [Debugging and practices](07-Debugging-and-Practices.md) — diagnostic modes,
-   common failures, recommended patterns, and current limitations.
+1. discovers data dependencies;
+2. removes the intentionally unused terrain-debug/minimap pass, because it has
+   no observable output;
+3. chooses graphics, asynchronous-compute, or copy pipelines;
+4. derives resource lifetimes and NVRHI state transitions;
+5. creates or reuses physical resources;
+6. records command lists and inserts cross-queue waits; and
+7. submits the surviving work in registration order.
 
-## The short mental model
+This terrain graph is a pedagogical example used throughout the series; the
+repository does not currently ship terrain shaders or a terrain demo. Chapter
+12 preserves the actual triangle renderer as a separate, source-backed example.
 
-1. Construct one `FARDGBuilder` for one graph submission.
-2. Register external resources and create deferred logical resources.
-3. Describe each pass's accesses in an `ARDG_*` parameter struct.
-4. Add passes in forward dependency order.
-5. Extract graph-created resources that must survive the graph, or write an
-   imported external resource to make the result observable.
-6. Call `Execute()`. It calls `Compile()` automatically if needed.
-7. Create a new builder for the next graph.
+The implementation is compact enough to read. This series therefore teaches
+each concept and then links it to the code that implements it. The public API
+starts in
+[`ArdaRenderGraph.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraph.h);
+the build, compile, and execute paths live under
+[`Source/ArdaRenderGraph`](../../Source/ArdaRenderGraph).
 
-![Graph lifecycle](assets/graph-lifecycle.svg)
+![ArdaRenderGraph architecture from declarations to NVRHI submission](assets/architecture.svg)
+
+## The two-level mental model
+
+During graph construction, `FARDGTextureRef` and `FARDGBufferRef` point to
+*logical records*. They contain descriptors, names, ownership flags, and
+dependency history. They are not necessarily backed by an
+`nvrhi::ITexture` or `nvrhi::IBuffer` yet.
+
+```text
+Build and compile                         Execute
+-----------------                         -------
+logical Texture T0  --------------------> physical nvrhi::ITexture
+logical Buffer  B0  --------------------> physical nvrhi::IBuffer
+pass + state declarations --------------> barriers + nvrhi::ICommandList
+producer/sync edges --------------------> ordering + queue waits
+```
+
+That separation is the central idea. It lets compilation cull dead work and
+calculate lifetimes before execution commits GPU memory. Imported resources are
+the exception: their logical records already point at caller-owned NVRHI
+handles.
+
+## One frame in seven steps
+
+1. Construct one `FARDGBuilder` with a device and queue capabilities.
+2. Import caller-owned resources and create graph-owned logical resources.
+3. Put resource accesses in `ARDG_*` parameter structs.
+4. Register passes in dependency order. **Registration order is the
+   topological order**; compilation does not reorder arbitrary passes.
+5. Make results observable by writing an imported resource, extracting a
+   graph-created resource, or marking an intentional side effect `NeverCull`.
+6. Call `Execute()`. It compiles automatically, materializes resources, records
+   command lists, and submits them.
+7. Discard the builder and create another for the next graph submission.
+
+`Execute()` completes CPU submission, not GPU execution. Presentation,
+readback waits, and frame-level synchronization still belong to the
+application.
+
+## Series map
+
+The first four chapters establish the vocabulary used by every source
+walkthrough:
+
+1. [Getting started](01-Getting-Started.md) — build the three-stage terrain core
+   and follow it from logical declarations to an imported back-buffer write.
+2. [Core concepts](02-Core-Concepts.md) — logical and physical resources,
+   handles and registries, pass records, frozen parameters, the blackboard,
+   sentinels, and the one-shot lifecycle.
+3. [Resources and parameters](03-Resources-and-Parameters.md) — descriptors,
+   views, every parameter macro family, imports, extraction, uniform buffers,
+   states, subresources, and lifetimes.
+4. [Passes and dependencies](04-Passes-and-Dependencies.md) — RAW, WAR, and WAW
+   hazards, producer versus synchronization edges, forward registration,
+   manual dependencies, and backward culling.
+
+The remaining chapters trace those ideas through the implementation:
+
+5. [Compilation](05-Compilation.md)
+6. [Execution and queues](06-Execution-and-Queues.md)
+7. [Debugging and practices](07-Debugging-and-Practices.md)
+8. [Build and edge walkthrough](08-Build-and-Edge-Walkthrough.md)
+9. [Compiler source walkthrough](09-Compiler-Source-Walkthrough.md)
+10. [Allocation and materialization](10-Allocation-and-Materialization.md)
+11. [Executor source walkthrough](11-Executor-Source-Walkthrough.md)
+12. [End-to-end examples](12-End-to-End-Examples.md)
+13. [Recipes and reference](13-Recipes-and-Reference.md)
 
 ## Public entry point
 
-Include the aggregate header:
+ArdaRenderGraph requires C++17. Include its aggregate header and link its CMake
+target:
 
 ```cpp
 #include "ArdaRenderGraph.h"
@@ -56,21 +125,36 @@ Include the aggregate header:
 using namespace arda::render_graph;
 ```
 
-Link the CMake target:
-
 ```cmake
 target_link_libraries(MyTarget PRIVATE Ardashir::ArdaRenderGraph)
 ```
 
-ArdaRenderGraph requires C++17 and links NVRHI publicly.
+The target links NVRHI publicly. Device creation, shader compilation, binding
+layouts, pipelines, swap-chain acquisition, and presentation are intentionally
+outside the graph. See the
+[NVRHI programming guide](https://github.com/NVIDIA-RTX/NVRHI/blob/main/doc/ProgrammingGuide.md)
+for those systems.
 
-## What the graph does not replace
+## What to trust when prose and code differ
 
-The graph does not create shaders, binding layouts, graphics/compute pipelines,
-swap chains, or application synchronization around presentation. Pass lambdas
-still issue ordinary NVRHI commands. The graph's job is to make declared
-resource use, ordering, states, allocation intervals, and queue synchronization
-explicit and consistent.
+The repository source is authoritative. Useful starting points are:
+
+- public types and flags:
+  [`ArdaRenderGraphDefinitions.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h);
+- the builder API:
+  [`ArdaRenderGraphBuilder.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h);
+- resources and views:
+  [`ArdaRenderGraphResources.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h);
+- parameter macros:
+  [`ArdaRenderGraphParameters.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphParameters.h);
+- build-time edge discovery:
+  [`ArdaRenderGraphBuilder.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp);
+- compilation:
+  [`ArdaRenderGraphCompiler.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphCompiler.cpp);
+- execution:
+  [`ArdaRenderGraphExecutor.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphExecutor.cpp);
+- executable behavior checks:
+  [`ArdaGraphTests.cpp`](../../Source/ArdaRenderGraph/Tests/ArdaGraphTests.cpp).
 
 ---
 

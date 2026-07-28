@@ -1,41 +1,306 @@
-# 4. Passes and dependencies
+# 4. Passes and dependencies: edges appear while you build
 
 [← Resources and parameters](03-Resources-and-Parameters.md) ·
 [Documentation home](README.md) · [Next: Compilation →](05-Compilation.md)
 
-## How automatic edges are built
+A graph edge means one pass must happen before another. ArdaRenderGraph does not
+ask callers to spell out most edges. It derives them while `AddPass` walks the
+frozen parameter object.
 
-Parameter metadata is traversed immediately when `AddPass` registers a pass.
-For each logical texture or buffer:
+The recurring live path is:
 
-1. Every read or write depends on the most recent writer.
-2. A read is remembered as a reader since that writer.
-3. A later write receives synchronization-only edges from those readers, then
-   replaces the latest writer and clears the reader list.
+```text
+P1 UploadTerrainSettings --TerrainSettings--> P2 GenerateNoiseHeightmap
+                                                   |
+                         +-------------------------+------------------+
+                         | Heightmap                                  |
+                         v                                            v
+                 P3 DebugHeightmap (dead)                    P4 ErodeHeightmap
+                         |                                   /        |
+                         + - - synchronization only - - - - +         v
+                                                        P5 TriangulateTerrain
+                                                                  |
+                                                   TerrainVertices/Indices
+                                                                  v
+P0 GraphPrologue --BackBuffer---------------------------> P6 RenderTerrain
+                                                                  |
+                                                                  v
+                                                          P7 TerrainOverlay
+```
 
-The first rule is a **producer edge**: it controls ordering and culling
-reachability. The third is a **synchronization edge**: it prevents a write from
-overtaking earlier reads, but does not keep otherwise dead readers alive.
+The terrain settings, heightmap, mesh buffers, and imported back buffer form the
+live producer chain. `DebugHeightmap` is an intentionally unused
+terrain-debug/minimap read. Its synchronization-only edge prevents a live old
+heightmap read from racing the later erosion rewrite, but does not keep that
+debug pass alive.
 
-![Pass dependencies and culling](assets/pass-dependencies.svg)
+## Two edge kinds solve two different problems
 
-Texture dependencies are subresource-aware for validation and transitions, but
-the latest-producer/readers bookkeeping is attached to the logical texture as a
-whole. Buffer dependency tracking is also whole-buffer even when access ranges
-are narrower.
+ArdaRenderGraph stores:
 
-## Manual dependencies
+1. **producer edges** — data-flow dependencies used for ordering *and* backward
+   culling reachability;
+2. **synchronization edges** — ordering-only dependencies used for recording
+   levels and cross-queue waits, but ignored by culling.
 
-Use `AddDependency(Producer, Consumer)` for ordering that resource declarations
-cannot express:
+Why split them? Consider an old value that a pass reads before a later pass
+overwrites it:
+
+```text
+[Read old value] - -sync- -> [Write new value]
+```
+
+The write must not overtake the read. But if no observable result needs the
+reader, that ordering requirement should not make the reader live. A
+synchronization edge preserves the hazard only when both endpoints survive for
+other reasons.
+
+The edge vectors are part of `FARDGPassState` in
+[`ArdaRenderGraphPass.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h).
+
+## The resource carries just enough build history
+
+Every logical texture and buffer stores:
+
+```text
+lastProducer = latest pass that wrote it
+readers      = passes that read it since lastProducer
+```
+
+When a pass declares access, the builder applies this logic:
+
+```text
+add producer edge: lastProducer -> current, if lastProducer is valid
+
+if current access is a read:
+    remember current in readers
+else:
+    add synchronization edge: each reader -> current
+    clear readers
+    lastProducer = current
+```
+
+This is implemented directly by `FARDGSetupContext::AddTexture` and
+`AddBuffer` in
+[`ArdaRenderGraphBuilder.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp).
+The resource-side `mLastProducer` and `mReaders` fields are in
+[`ArdaRenderGraphResources.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h).
+
+The history is whole-resource. Texture state validation and transitions know
+about mip/slice selections, and buffer declarations validate byte ranges, but
+edge discovery uses one last-writer/readers history per logical texture or
+buffer.
+
+![How reads and writes mutate producer and synchronization edges](assets/build-edge-mutation.svg)
+
+## RAW, WAW, and WAR one step at a time
+
+These names describe access order to one resource: R is read, W is write.
+
+### Read after write (RAW)
+
+```text
+initial: lastProducer = none, readers = {}
+
+P2 writes Heightmap
+    lastProducer = P2
+
+P3 reads Heightmap
+    producer edge P2 -> P3
+    readers = {P3}
+```
+
+`P3` needs data produced by `P2`. The producer edge orders them, but because
+culling walks backward from live consumers, that edge alone does not make the
+otherwise unobservable debug pass a root.
+
+### Write after write (WAW)
+
+```text
+P2 writes Heightmap
+    lastProducer = P2
+
+P4 writes Heightmap
+    producer edge P2 -> P4
+    lastProducer = P4
+```
+
+The later write depends on the earlier writer. This serializes writes and
+preserves the declared version chain. Repeated UAV state can additionally
+produce a UAV ordering barrier during compilation.
+
+### Write after read (WAR)
+
+Use the heightmap version produced by `P2`:
+
+```text
+P3 DebugHeightmap reads Heightmap
+    producer edge P2 -> P3
+    readers = {P3}
+
+P4 ErodeHeightmap writes Heightmap
+    producer edge P2 -> P4
+    synchronization edge P3 - -> P4
+    readers = {}
+    lastProducer = P4
+```
+
+The producer edge from `P2` identifies the version both passes started from.
+The synchronization edge stops `P4` from destroying that version before `P3`
+reads it. Culling does not walk from `P4` to `P3`; because `P3` has no live
+data-flow contribution, it disappears.
+
+An imported resource starts with `GraphPrologue` as `P0`. A graph-created
+resource cannot be read before a pass produces the relevant content;
+compilation validation rejects that case.
+
+## A complete CPU-only dependency example
+
+This function builds, compiles, and dumps a two-pass live chain plus one dead
+pass. It needs no device because callbacks are never executed:
 
 ```cpp
-FARDGPassHandle UploadMetadata = Graph.AddPass(
+#include "ArdaRenderGraph.h"
+
+using namespace arda::render_graph;
+
+ARDG_BEGIN_PARAMETER_STRUCT(FWriteBufferParameters)
+    ARDG_BUFFER_ACCESS(mOutput)
+ARDG_END_PARAMETER_STRUCT()
+
+ARDG_BEGIN_PARAMETER_STRUCT(FReadWriteBufferParameters)
+    ARDG_BUFFER_ACCESS(mInput)
+    ARDG_BUFFER_ACCESS(mOutput)
+ARDG_END_PARAMETER_STRUCT()
+
+ARDG_BEGIN_PARAMETER_STRUCT(FReadBufferParameters)
+    ARDG_BUFFER_ACCESS(mInput)
+ARDG_END_PARAMETER_STRUCT()
+
+eastl::string BuildDependencyExample()
+{
+    FARDGBuilder Graph;
+
+    nvrhi::BufferDesc Desc;
+    Desc.setDebugName("Height samples")
+        .setByteSize(1024)
+        .setCanHaveUAVs(true);
+    FARDGBufferRef HeightSamples = Graph.CreateBuffer(Desc);
+
+    Desc.setDebugName("Terrain mesh data");
+    FARDGBufferRef TerrainMesh = Graph.CreateBuffer(Desc);
+
+    FWriteBufferParameters Generate;
+    Generate.mOutput = {
+        HeightSamples,
+        nvrhi::ResourceStates::UnorderedAccess,
+        nvrhi::EntireBuffer
+    };
+    const FARDGPassHandle GeneratePass = Graph.AddPass(
+        "GenerateNoiseHeightmap",
+        &Generate,
+        EARDGPassFlags::Compute,
+        [] {});
+
+    FReadWriteBufferParameters Triangulate;
+    Triangulate.mInput = {
+        HeightSamples,
+        nvrhi::ResourceStates::ShaderResource,
+        nvrhi::EntireBuffer
+    };
+    Triangulate.mOutput = {
+        TerrainMesh,
+        nvrhi::ResourceStates::UnorderedAccess,
+        nvrhi::EntireBuffer
+    };
+    const FARDGPassHandle TriangulatePass = Graph.AddPass(
+        "TriangulateTerrain",
+        &Triangulate,
+        EARDGPassFlags::Compute,
+        [] {});
+
+    FReadBufferParameters Unused;
+    Unused.mInput = {
+        HeightSamples,
+        nvrhi::ResourceStates::ShaderResource,
+        nvrhi::EntireBuffer
+    };
+    const FARDGPassHandle UnusedPass = Graph.AddPass(
+        "DebugHeightmap",
+        &Unused,
+        EARDGPassFlags::None,
+        [] {});
+
+    nvrhi::BufferHandle Extracted;
+    Graph.QueueBufferExtraction(
+        TerrainMesh,
+        Extracted,
+        nvrhi::ResourceStates::CopySource);
+
+    (void)Graph.Compile();
+
+    const FARDGPass* GenerateRecord = Graph.TryGetPass(GeneratePass);
+    const FARDGPass* TriangulateRecord =
+        Graph.TryGetPass(TriangulatePass);
+    const FARDGPass* UnusedRecord = Graph.TryGetPass(UnusedPass);
+    (void)GenerateRecord;     // live
+    (void)TriangulateRecord;  // live
+    (void)UnusedRecord;       // culled
+
+    return Graph.DumpGraph();
+}
+```
+
+The edge state after registration is:
+
+```text
+GenerateNoiseHeightmap --producer--> TriangulateTerrain --producer--> GraphEpilogue
+
+                    \----producer----> DebugHeightmap   (no path to a root)
+```
+
+The extraction of `TerrainMesh` causes compilation to connect
+`TriangulateTerrain` to the epilogue. Backward traversal then reaches
+`GenerateNoiseHeightmap`. `DebugHeightmap` remains unreached and is omitted
+from `mExecutionOrder`. This behavior is exercised in
+[`ArdaGraphTests.cpp`](../../Source/ArdaRenderGraph/Tests/ArdaGraphTests.cpp).
+
+## Registration order is already topological order
+
+The API has a strict forward-building model:
+
+```text
+correct:   register producer P1, then consumer P2
+incorrect: register consumer P1, then hope compile moves producer P2 before it
+```
+
+Compilation does not run Kahn's algorithm or a DFS topological sort. It builds
+reverse consumer vectors and validates that every producer index is lower than
+its consumer index. After culling, execution order is registry order with dead
+passes removed.
+
+This has useful consequences:
+
+- output is deterministic;
+- cycles cannot be introduced through legal forward edges;
+- dependency levels can be calculated in one forward pass; and
+- resource setup can derive edges immediately from the current last writer.
+
+It also places responsibility on the caller: register passes in dependency
+order.
+
+## Manual dependencies represent non-resource causality
+
+Use `AddDependency(Producer, Consumer)` when resource parameters cannot express
+the ordering:
+
+```cpp
+const FARDGPassHandle UploadMetadata = Graph.AddPass(
     "Upload metadata",
     EARDGPassFlags::None,
     [] {});
 
-FARDGPassHandle BuildCommands = Graph.AddPass(
+const FARDGPassHandle BuildCommands = Graph.AddPass(
     "Build commands",
     EARDGPassFlags::Compute | EARDGPassFlags::NeverCull,
     [] {});
@@ -43,187 +308,185 @@ FARDGPassHandle BuildCommands = Graph.AddPass(
 Graph.AddDependency(UploadMetadata, BuildCommands);
 ```
 
-Manual dependencies are producer/culling edges. Both passes must already be
-registered, must be distinct, and the producer must have a lower handle
-(earlier registration) than the consumer.
+A manual dependency is a producer edge, so backward culling from
+`BuildCommands` also keeps `UploadMetadata`. Both passes must already be
+registered, handles must be valid and distinct, and the producer must have a
+lower registry index.
 
-## Culling
+Do not use manual edges to hide missing resource declarations. They order
+callbacks but do not contribute resource states, transitions, lifetimes, or
+checked physical access.
 
-Normal compilation starts with all non-sentinel passes marked culled, then walks
-producer edges backward from:
+## Culling starts at observable roots and walks backward
 
-- the epilogue, which depends on the last writer of every external or extracted
-  resource; and
-- every `NeverCull` pass.
+![Producer edges, synchronization edges, and dead-pass culling](assets/pass-dependencies.svg)
 
-Anything not reached is omitted from `mExecutionOrder`. Consequences:
+Normal compilation initially marks every non-sentinel pass as culled. It seeds
+a worklist with:
 
-- Writing a graph-created resource that is never consumed or extracted is dead.
-- A read-only pass with no live consumer is dead, even if it reads an external
-  resource.
-- Writing an imported swap-chain image is observable and stays live.
-- A side-effecting callback invisible to resource declarations must use
-  `NeverCull` or feed a manually connected live pass.
-- Synchronization-only edges do not rescue dead work.
+- `GraphEpilogue`; and
+- every pass carrying `NeverCull`.
 
-Immediate mode disables culling and keeps every registered pass.
+Compilation has already connected the epilogue to the last writer of every
+external or extracted resource. The worklist follows **producer edges only**:
 
-## Compute-to-graphics example
+```text
+roots: {Epilogue, each NeverCull pass}
 
-The following declarations establish a compute UAV write followed by a raster
-shader read and color-target write:
+while roots/worklist is not empty:
+    pass = pop()
+    mark pass live
+    push each still-culled producer
+```
+
+Then the compiler scans the append-only pass registry and copies live handles
+to `mExecutionOrder`. That scan is why registration order remains execution
+order. The exact implementation is
+[`CullPasses`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphCompiler.cpp).
+
+### What survives?
+
+```text
+BackBuffer
+    ^
+    |
+[Generate] -> [Erode] -> [Triangulate] -> [Render] -> [Overlay] -> Epilogue
+                    \
+                     [DebugHeightmap]                         culled
+```
+
+- A write to an unconsumed graph-created resource is dead.
+- A read-only terrain-debug/minimap pass with no live consumer is dead, even
+  when a later live rewrite has a synchronization-only dependency on it.
+- The last writer of an imported swap-chain image is observable and stays
+  live.
+- A callback with a side effect invisible to resource declarations needs
+  `NeverCull` or a manual producer edge into a live pass.
+- Synchronization edges alone never rescue dead work.
+- Immediate debug mode bypasses this algorithm and keeps every pass.
+
+## Terrain compute-to-raster data flow
+
+Parameter declarations can connect different operation categories:
 
 ```cpp
-ARDG_BEGIN_PARAMETER_STRUCT(FGenerateParameters)
-    ARDG_TEXTURE_UAV(mGenerated)
+ARDG_BEGIN_PARAMETER_STRUCT(FGenerateHeightmapParameters)
+    ARDG_TEXTURE_UAV(mHeightmap)
 ARDG_END_PARAMETER_STRUCT()
 
-ARDG_BEGIN_PARAMETER_STRUCT(FDrawParameters)
-    ARDG_TEXTURE_SRV(mGenerated)
+ARDG_BEGIN_PARAMETER_STRUCT(FTriangulateTerrainParameters)
+    ARDG_TEXTURE_SRV(mHeightmap)
+    ARDG_BUFFER_UAV(mTerrainVertices)
+    ARDG_BUFFER_UAV(mTerrainIndices)
+ARDG_END_PARAMETER_STRUCT()
+
+ARDG_BEGIN_PARAMETER_STRUCT(FRenderTerrainParameters)
+    ARDG_BUFFER_ACCESS(mTerrainVertices)
+    ARDG_BUFFER_ACCESS(mTerrainIndices)
     ARDG_RENDER_TARGET_BINDING_SLOTS(mTargets)
 ARDG_END_PARAMETER_STRUCT()
 
-FARDGTextureUAVRef GeneratedUAV =
-    Graph.CreateUAV("Generated UAV", { Generated->GetHandle() });
-FARDGTextureSRVRef GeneratedSRV =
-    Graph.CreateSRV("Generated SRV", { Generated->GetHandle() });
-
-FGenerateParameters Generate;
-Generate.mGenerated = GeneratedUAV;
+FGenerateHeightmapParameters Generate;
+Generate.mHeightmap = HeightmapUAV;
 (void)Graph.AddDispatchPass(
-    "Generate texture",
+    "GenerateNoiseHeightmap",
     &Generate,
     FARDGDispatchArguments{32, 32, 1},
-    [ComputeState](FARDGPassExecutionContext& Context,
-                   const FGenerateParameters& Frozen)
-    {
-        // Build binding items with Context.GetTexture(Frozen.mGenerated).
-        Context.mCommandList.setComputeState(ComputeState);
-    });
+    BindNoiseComputeState,
+    EARDGPassFlags::AsyncCompute);
 
-FDrawParameters Draw;
-Draw.mGenerated = GeneratedSRV;
-Draw.mTargets.mColor[0] = { ColorTarget, nvrhi::AllSubresources };
-(void)Graph.AddPass(
-    "Draw generated texture",
-    &Draw,
-    EARDGPassFlags::Raster,
-    [GraphicsState](FARDGPassExecutionContext& Context,
-                    const FDrawParameters& Frozen) mutable
-    {
-        (void)Context.GetTexture(Frozen.mGenerated);
-        (void)Context.GetTexture(Frozen.mTargets.mColor[0].mTexture);
-        Context.mCommandList.setGraphicsState(GraphicsState);
-        Context.mCommandList.draw(
-            nvrhi::DrawArguments().setVertexCount(3));
-    });
-```
+FTriangulateTerrainParameters Triangulate;
+Triangulate.mHeightmap = HeightmapSRV;
+Triangulate.mTerrainVertices = TerrainVerticesUAV;
+Triangulate.mTerrainIndices = TerrainIndicesUAV;
+(void)Graph.AddDispatchPass(
+    "TriangulateTerrain",
+    &Triangulate,
+    FARDGDispatchArguments{32, 32, 1},
+    BindTriangulationComputeState,
+    EARDGPassFlags::AsyncCompute);
 
-`ComputeState` and `GraphicsState` stand for ordinary, valid NVRHI state objects
-prepared by the renderer. In real code their binding sets/framebuffer must
-refer to the physical resources resolved for this graph. The declarations
-derive:
-
-- generate → draw producer ordering;
-- `Common` → `UnorderedAccess` → shader-resource transitions;
-- a UAV ordering barrier where equal UAV states repeat; and
-- render-target transition and observability when `ColorTarget` is external or
-  extracted.
-
-## External swap-chain raster pass
-
-This pattern mirrors the project's NVRHI triangle integration. It assumes the
-swap chain has returned an `nvrhi::FramebufferHandle`, and the graphics pipeline
-is already compatible with it:
-
-```cpp
-ARDG_BEGIN_PARAMETER_STRUCT(FPresentParameters)
-    ARDG_BUFFER_ACCESS(mVertexBuffer)
-    ARDG_BUFFER_ACCESS(mIndexBuffer)
-    ARDG_RENDER_TARGET_BINDING_SLOTS(mTargets)
-ARDG_END_PARAMETER_STRUCT()
-
-const nvrhi::FramebufferAttachment Attachment =
-    Framebuffer->getDesc().colorAttachments[0];
-
-FARDGTextureRef BackBuffer = Graph.RegisterExternalTexture(
-    Attachment.texture,
-    nvrhi::ResourceStates::Present,
-    "Swap-chain color");
-FARDGBufferRef Vertices = Graph.RegisterExternalBuffer(
-    VertexBuffer,
+FRenderTerrainParameters Render;
+Render.mTerrainVertices = {
+    TerrainVertices,
     nvrhi::ResourceStates::VertexBuffer,
-    "Vertices");
-FARDGBufferRef Indices = Graph.RegisterExternalBuffer(
-    IndexBuffer,
+    nvrhi::EntireBuffer
+};
+Render.mTerrainIndices = {
+    TerrainIndices,
     nvrhi::ResourceStates::IndexBuffer,
-    "Indices");
-
-FPresentParameters Parameters;
-Parameters.mVertexBuffer = {
-    Vertices, nvrhi::ResourceStates::VertexBuffer, nvrhi::EntireBuffer };
-Parameters.mIndexBuffer = {
-    Indices, nvrhi::ResourceStates::IndexBuffer, nvrhi::EntireBuffer };
-Parameters.mTargets.mColor[0] = {
-    BackBuffer, Attachment.subresources };
-
+    nvrhi::EntireBuffer
+};
+Render.mTargets.mColor[0] = {
+    ColorTarget,
+    nvrhi::AllSubresources
+};
 (void)Graph.AddPass(
-    "Render to swap chain",
-    &Parameters,
+    "RenderTerrain",
+    &Render,
     EARDGPassFlags::Raster,
-    [Framebuffer, Pipeline](FARDGPassExecutionContext& Context,
-                            const FPresentParameters& Frozen)
-    {
-        (void)Context.GetTexture(Frozen.mTargets.mColor[0].mTexture);
-
-        nvrhi::GraphicsState State;
-        State.setPipeline(Pipeline)
-            .setFramebuffer(Framebuffer)
-            .addVertexBuffer(
-                nvrhi::VertexBufferBinding()
-                    .setBuffer(Context.GetBuffer(
-                        Frozen.mVertexBuffer.mBuffer)))
-            .setIndexBuffer(
-                nvrhi::IndexBufferBinding()
-                    .setBuffer(Context.GetBuffer(
-                        Frozen.mIndexBuffer.mBuffer))
-                    .setFormat(nvrhi::Format::R16_UINT));
-
-        Context.mCommandList.setGraphicsState(State);
-        Context.mCommandList.drawIndexed(
-            nvrhi::DrawArguments().setVertexCount(3));
-    });
-
-(void)Graph.Execute();
+    RecordTerrainDraw);
 ```
 
-The imported back buffer starts in `Present`, transitions to `RenderTarget`,
-and returns to `Present` in the epilogue. Its write roots the raster pass.
-Acquire the framebuffer before building, call the swap chain's pre-submit hook
-before graph submission if its API requires one, and present afterward.
+`BindNoiseComputeState`, `BindTriangulationComputeState`, and
+`RecordTerrainDraw` stand for application code that resolves the declared
+physical resources and builds matching NVRHI bindings/state. This documentation
+example does not imply that the repository ships terrain shaders. The
+declarations derive:
 
-The graph validates the declared logical attachment, but the independently
-captured framebuffer is still an external NVRHI object. The application remains
-responsible for ensuring they describe the same image/subresources.
+```text
+[GenerateNoiseHeightmap: Heightmap UAV]
+                    |
+                    | producer edge + UAV->SRV transition
+                    v
+[TriangulateTerrain: Heightmap SRV + terrain-buffer UAVs]
+                    |
+                    | producer edge + UAV->vertex/index transitions
+                    v
+[RenderTerrain: terrain buffers + ColorTarget render target]
+```
 
-## Raster bindings and groups
+If `ColorTarget` is external or extracted, `RenderTerrain` becomes part of the
+epilogue producer chain.
 
-Consecutive, live graphics `Raster` passes with identical logical color/depth
+## An external swap-chain write is a natural root
+
+`RenderTerrain` imports the acquired back buffer in the `Present` state,
+declares it in `ARDG_RENDER_TARGET_BINDING_SLOTS`, and captures the matching
+NVRHI framebuffer for the actual draw. The graph then sees:
+
+```text
+GraphPrologue --BackBuffer(Present)--> [RenderTerrain]
+                                           |
+                                           v
+                                    GraphEpilogue
+                                    BackBuffer(Present)
+```
+
+The write is observable because external resources are wired to the epilogue.
+Compilation derives `Present -> RenderTarget -> Present`. The application still
+owns acquire, any swap-chain pre-submit hook, presentation, and the invariant
+that the captured framebuffer refers to the same image/subresources as the
+declared logical attachment.
+
+The repository's full rendering pattern is in
+[`ArdaTriangleRenderer.cpp`](../../Source/ArdaTests/NVRHITest/Private/ArdaTriangleRenderer.cpp).
+
+## Raster groups and CPU recording are separate concerns
+
+Consecutive live graphics `Raster` passes with identical logical color/depth
 attachment handles and subresources receive the same raster-group index.
-Changing attachments or inserting a non-raster pass starts a new group.
-`SkipRenderPass` excludes a pass from grouping.
+Changing attachments or inserting a non-raster pass starts another group.
+`SkipRenderPass` opts a raster pass out.
 
-Current execution records one command list per pass and does not automatically
-create framebuffers, begin/end NVRHI render passes, or merge grouped passes.
-Raster groups are compile metadata for diagnostics/future scheduling.
+Raster groups are currently compile metadata. Execution still records one
+command list per pass; it does not create framebuffers, begin/end NVRHI render
+passes, or merge grouped callbacks.
 
-## `NeverParallel`
-
-Dependency-independent passes at the same recording level can be recorded on
-different CPU threads. Mark a callback `NeverParallel` if it touches shared CPU
-state, a non-thread-safe allocator/cache, or an external API that requires
-serialization. This affects CPU command-list recording, not GPU queue
-selection.
+Independent passes at the same dependency level may be recorded on separate
+CPU threads. `NeverParallel` puts one callback on the serial recording path
+when it touches non-thread-safe CPU state. It does not affect culling or select
+a GPU queue.
 
 ---
 

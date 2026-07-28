@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="560" viewBox="0 0 1100 560" role="img" aria-labelledby="title desc">
+  <title id="title">Logical lifetimes mapped to committed NVRHI resources</title>
+  <desc id="desc">Two descriptor-compatible logical resources with non-overlapping inclusive lifetimes and the same queue domain reuse one committed NVRHI object. A resource that overlaps them needs another object.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#7dd3fc"/>
+    </marker>
+    <style>
+      .box{rx:11;stroke-width:2}.title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:600 16px system-ui,sans-serif;fill:#eef6ff}.small{font:14px system-ui,sans-serif;fill:#c5d2e3}
+      .center{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.tick{stroke:#64748b;stroke-width:1}
+      .map{stroke:#7dd3fc;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1100" height="560" rx="22" fill="url(#bg)"/>
+  <text x="550" y="40" class="title">Materialization reuses objects only after an inclusive lifetime expires</text>
+
+  <text x="35" y="92" class="label">Logical intervals</text>
+  <line x1="250" y1="95" x2="1010" y2="95" stroke="#94a3b8" stroke-width="2"/>
+  <g class="center">
+    <line x1="280" y1="84" x2="280" y2="320" class="tick"/><text x="280" y="78">P1</text>
+    <line x1="430" y1="84" x2="430" y2="320" class="tick"/><text x="430" y="78">P2</text>
+    <line x1="580" y1="84" x2="580" y2="320" class="tick"/><text x="580" y="78">P3</text>
+    <line x1="730" y1="84" x2="730" y2="320" class="tick"/><text x="730" y="78">P4</text>
+    <line x1="880" y1="84" x2="880" y2="320" class="tick"/><text x="880" y="78">P5</text>
+  </g>
+
+  <text x="35" y="150" class="label">Scratch A</text>
+  <rect class="box" x="280" y="122" width="300" height="48" fill="#1f5b78" stroke="#38bdf8"/>
+  <text x="430" y="152" class="center">[P1, P3]</text>
+
+  <text x="35" y="225" class="label">Scratch B</text>
+  <rect class="box" x="730" y="197" width="150" height="48" fill="#1f5b78" stroke="#38bdf8"/>
+  <text x="805" y="227" class="center">[P4, P5]</text>
+
+  <text x="35" y="300" class="label">Overlap C</text>
+  <rect class="box" x="430" y="272" width="300" height="48" fill="#4a2b63" stroke="#c084fc"/>
+  <text x="580" y="302" class="center">[P2, P4]</text>
+
+  <path class="map" d="M430 170 C430 350 350 350 350 405"/>
+  <path class="map" d="M805 245 C805 350 470 350 470 405"/>
+  <path class="map" d="M580 320 V405"/>
+
+  <rect class="box" x="155" y="410" width="410" height="92" fill="#214b45" stroke="#34d399"/>
+  <text x="360" y="444" class="center">Physical object 0</text>
+  <text x="360" y="472" class="center">A then B: same descriptor + queue domain</text>
+  <text x="360" y="492" class="center">reuse test: A.lastUse &lt; B.firstUse</text>
+
+  <rect class="box" x="625" y="410" width="320" height="92" fill="#3a294d" stroke="#c084fc"/>
+  <text x="785" y="444" class="center">Physical object 1</text>
+  <text x="785" y="472" class="center">C overlaps A and B</text>
+  <text x="785" y="492" class="center">separate committed resource</text>
+
+  <text x="550" y="536" class="center">This is object pooling, not placed-resource heap aliasing. Pools live for one Execute() call.</text>
+</svg>

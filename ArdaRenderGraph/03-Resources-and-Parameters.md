@@ -1,241 +1,448 @@
-# 3. Resources and parameters
+# 3. Resources and parameters: describe every access
 
 [← Core concepts](02-Core-Concepts.md) · [Documentation home](README.md) ·
 [Next: Passes and dependencies →](04-Passes-and-Dependencies.md)
 
-## Logical textures and buffers
+In an immediate renderer, a function can receive an `nvrhi::ITexture*` and use
+it however it wants. A render graph needs more information before that function
+runs: is the texture read or written, which subresources are involved, and
+which NVRHI state is required?
 
-`CreateTexture` and `CreateBuffer` register descriptors now and defer physical
-allocation until execution:
+ArdaRenderGraph puts those answers in pass parameter structs:
+
+```text
+logical resource + view/range + required state
+                        |
+                        v
+               parameter metadata
+                        |
+             +----------+----------+
+             |                     |
+       dependency edges      state transitions
+```
+
+This chapter builds the resources for our recurring graph and covers every
+parameter macro family used to declare them.
+
+## Create descriptions now, physical resources later
+
+`CreateTexture` and `CreateBuffer` register logical records:
 
 ```cpp
-nvrhi::TextureDesc ColorDesc;
-ColorDesc.setDebugName("Lighting")
-    .setWidth(1920)
-    .setHeight(1080)
-    .setFormat(nvrhi::Format::RGBA16_FLOAT)
-    .setIsUAV(true)
-    .setIsRenderTarget(true);
-FARDGTextureRef Color = Graph.CreateTexture(ColorDesc);
+nvrhi::TextureDesc HeightmapDesc;
+HeightmapDesc.setDebugName("Heightmap")
+    .setWidth(1024)
+    .setHeight(1024)
+    .setMipLevels(2)
+    .setFormat(nvrhi::Format::R32_FLOAT)
+    .setIsUAV(true);
+FARDGTextureRef Heightmap = Graph.CreateTexture(HeightmapDesc);
 
-nvrhi::BufferDesc DataDesc;
-DataDesc.setDebugName("Visible objects")
-    .setByteSize(64 * 1024)
-    .setStructStride(sizeof(uint32_t))
+nvrhi::BufferDesc VertexDesc;
+VertexDesc.setDebugName("TerrainVertices")
+    .setByteSize(MaxTerrainVertexCount * sizeof(FTerrainVertex))
+    .setStructStride(sizeof(FTerrainVertex))
+    .setIsVertexBuffer(true)
     .setCanHaveUAVs(true);
-FARDGBufferRef Data = Graph.CreateBuffer(DataDesc);
+FARDGBufferRef TerrainVertices = Graph.CreateBuffer(VertexDesc);
+
+nvrhi::BufferDesc IndexDesc;
+IndexDesc.setDebugName("TerrainIndices")
+    .setByteSize(MaxTerrainIndexCount * sizeof(uint32_t))
+    .setStructStride(sizeof(uint32_t))
+    .setIsIndexBuffer(true)
+    .setCanHaveUAVs(true);
+FARDGBufferRef TerrainIndices = Graph.CreateBuffer(IndexDesc);
 ```
 
-Names and dimensions/byte sizes must be non-empty/non-zero. Graph-created
-resources accept `EARDGResourceFlags::None` or `Transient` (the default).
-`External` and `Extracted` are assigned through import and extraction APIs, not
-direct creation.
+The calls return pointers to `FARDGTexture` and `FARDGBuffer`, not physical
+NVRHI objects. Their descriptors are retained for validation and later
+materialization. Graph-created textures require a name and non-zero width,
+height, depth, array size, and mip count. Buffers require a name and non-zero
+byte size.
 
-An `Unknown` initial state for a graph-created resource is normalized to
-`Common` for compilation and execution.
+Creation accepts `EARDGResourceFlags::None` or `Transient`; `Transient` is the
+default. Do not pass `External` or `Extracted` directly. Import and extraction
+APIs assign those meanings because they require additional state and ownership
+information.
 
-## Views
+If a graph-created descriptor has `Unknown` initial state, compilation and
+execution normalize it to `Common`. The creation path is in
+[`ArdaRenderGraphBuilder.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp),
+and the records are in
+[`ArdaRenderGraphResources.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h).
 
-Views are logical declarations over a parent resource:
+## Views select part of a logical parent
+
+An SRV or UAV declaration is another logical record. It identifies a parent
+texture or buffer and narrows how a pass sees it:
 
 ```cpp
-FARDGTextureViewDesc MipView;
-MipView.mTexture = Color->GetHandle();
-MipView.mSubresources = nvrhi::TextureSubresourceSet(1, 1, 0, 1);
-MipView.mFormat = nvrhi::Format::RGBA16_FLOAT; // optional override
-FARDGTextureUAVRef ColorMip1 =
-    Graph.CreateUAV("Lighting mip 1 UAV", MipView);
+FARDGTextureViewDesc HeightmapMip0View;
+HeightmapMip0View.mTexture = Heightmap->GetHandle();
+HeightmapMip0View.mSubresources = nvrhi::TextureSubresourceSet(0, 1, 0, 1);
+HeightmapMip0View.mFormat = nvrhi::Format::R32_FLOAT;
+FARDGTextureUAVRef HeightmapMip0UAV =
+    Graph.CreateTextureUAV("Heightmap mip 0 UAV", HeightmapMip0View);
 
-FARDGBufferViewDesc RangeView;
-RangeView.mBuffer = Data->GetHandle();
-RangeView.mRange = nvrhi::BufferRange(0, 4096);
-FARDGBufferSRVRef FirstPage =
-    Graph.CreateSRV("Visible object page", RangeView);
+FARDGBufferViewDesc VertexRangeView;
+VertexRangeView.mBuffer = TerrainVertices->GetHandle();
+VertexRangeView.mRange =
+    nvrhi::BufferRange(0, MaxTerrainVertexCount * sizeof(FTerrainVertex));
+FARDGBufferUAVRef TerrainVerticesUAV =
+    Graph.CreateBufferUAV("Terrain vertices UAV", VertexRangeView);
 ```
 
-`CreateTextureSRV/UAV` and `CreateBufferSRV/UAV` are the explicit names;
-overloaded `CreateSRV` and `CreateUAV` are aliases. Texture views can select
-mips, array slices, format, and dimension. Buffer views can select a byte range
-and typed format.
+Texture view descriptors select mip levels, array slices, an optional format,
+and an optional dimension. Buffer views select a byte range and optional typed
+format. The parent must belong to the same graph, and the view name must be
+non-empty.
 
-Views do not create separate physical resources. During a pass,
-`Context.GetTexture(View)` or `Context.GetBuffer(View)` returns the physical
-parent. Use the view descriptor when building the NVRHI binding item.
+There are four explicit creators:
 
-## Parameter structs
+- `CreateTextureSRV`;
+- `CreateTextureUAV`;
+- `CreateBufferSRV`; and
+- `CreateBufferUAV`.
 
-Metadata-generating macros turn ordinary standard-layout C++ structs into graph
-access declarations:
+Overloaded `CreateSRV` and `CreateUAV` are short aliases.
+
+### A logical view is not a physical child object
+
+The graph stores view metadata and uses its parent/range to discover access:
+
+```text
+Texture T0 Heightmap
+  +-- View V0: mip 0 UAV
+  +-- View V1: mip 0 SRV
+```
+
+During a pass, `Context.GetTexture(HeightmapMip0UAV)` returns the parent
+`nvrhi::ITexture*`. Likewise, `GetBuffer(TerrainVerticesUAV)` returns the
+parent buffer. Use the view's descriptor when constructing the appropriate
+NVRHI binding item. The checked getter verifies that the exact logical view
+appeared in this pass's frozen parameters.
+
+## Parameter macros generate data and metadata
+
+A parameter struct remains ordinary standard-layout C++ data, but its macros
+also generate static metadata:
 
 ```cpp
-ARDG_BEGIN_PARAMETER_STRUCT(FLightingParameters)
-    ARDG_PARAMETER(uint32_t, mLightCount)
-    ARDG_TEXTURE_SRV(mDepth)
-    ARDG_TEXTURE_UAV(mOutput)
+ARDG_BEGIN_PARAMETER_STRUCT(FTriangulateTerrainParameters)
+    ARDG_PARAMETER(uint32_t, mGridResolution)
+    ARDG_TEXTURE_SRV(mHeightmap)
+    ARDG_BUFFER_UAV(mTerrainVertices)
 ARDG_END_PARAMETER_STRUCT()
 ```
 
 The generated struct has a default constructor and public members.
-`GetStaticMetadata()` exposes name, size, alignment, declaration-ordered member
-records, defaults, array counts/strides, and nested metadata.
+`FTriangulateTerrainParameters::GetStaticMetadata()` describes:
 
-Null resource members are ignored. Ordinary value members affect neither
-dependencies nor states.
+- the struct's name, size, and alignment;
+- members in declaration order;
+- each member's semantic type, offset, size, and alignment;
+- array count and element stride;
+- default resource state; and
+- nested parameter metadata.
 
-Tooling can call `FindMember("mName")` or `Enumerate(&Parameters, Visitor)`.
-Enumeration reports leaf members in declaration order with dotted/indexed
-paths. Pass `true` as the third argument to visit nested struct containers
-before their children as well. A resolved `FARDGParameter` exposes the member
-record, address, path, array index, and typed `GetValue<T>()`.
+When `AddPass` receives an `FTriangulateTerrainParameters`,
+`FARDGSetupContext` enumerates that metadata immediately. Ordinary values are
+skipped for dependency
+purposes. Null resource references are also skipped. Resource members are
+resolved into logical texture/buffer states, views, uniform buffers, and edges.
+See the macro implementation in
+[`ArdaRenderGraphParameters.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphParameters.h)
+and the traversal in
+[`ArdaRenderGraphBuilder.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp).
 
 ## Complete parameter macro reference
 
-All scalar macros have an `_ARRAY(..., Count)` counterpart where shown.
-Arrays are `std::array` members and are enumerated element by element.
+The generated array members below are `eastl::array`. Metadata enumerates each
+element in index order.
 
-### Values and nesting
-
-- `ARDG_PARAMETER(CppType, Name)`
-- `ARDG_PARAMETER_ARRAY(CppType, Name, Count)`
-- `ARDG_PARAMETER_STRUCT(StructType, Name)`
-- `ARDG_PARAMETER_STRUCT_ARRAY(StructType, Name, Count)`
-
-Nested parameter structs are recursively traversed. Metadata paths look like
-`mLighting.mDepth` and `mLayers[1].mOutput`.
-
-### Direct logical resources
-
-- `ARDG_TEXTURE(Name)` / `ARDG_TEXTURE_ARRAY(Name, Count)` — default
-  `ShaderResource`.
-- `ARDG_BUFFER(Name)` / `ARDG_BUFFER_ARRAY(Name, Count)` — default
-  `ShaderResource`.
-
-These declare the whole logical resource with the macro's default state.
-
-### Shader-resource and unordered-access views
-
-- `ARDG_TEXTURE_SRV(Name)` / `ARDG_TEXTURE_SRV_ARRAY(Name, Count)` — selected
-  texture subresources in `ShaderResource`.
-- `ARDG_TEXTURE_UAV(Name)` / `ARDG_TEXTURE_UAV_ARRAY(Name, Count)` — selected
-  texture subresources in `UnorderedAccess`.
-- `ARDG_BUFFER_SRV(Name)` / `ARDG_BUFFER_SRV_ARRAY(Name, Count)` — selected
-  buffer range in `ShaderResource`.
-- `ARDG_BUFFER_UAV(Name)` / `ARDG_BUFFER_UAV_ARRAY(Name, Count)` — selected
-  buffer range in `UnorderedAccess`.
-
-### Runtime state/range access
-
-- `ARDG_TEXTURE_ACCESS(Name)` /
-  `ARDG_TEXTURE_ACCESS_ARRAY(Name, Count)` stores `FARDGTextureAccess`.
-- `ARDG_BUFFER_ACCESS(Name)` /
-  `ARDG_BUFFER_ACCESS_ARRAY(Name, Count)` stores `FARDGBufferAccess`.
-
-Use these when the state or range is selected at runtime:
+### Plain values
 
 ```cpp
-Parameters.mInput = {
-    Texture,
-    nvrhi::ResourceStates::NonPixelShaderResource,
+ARDG_PARAMETER(CppType, MemberName)
+ARDG_PARAMETER_ARRAY(CppType, MemberName, Count)
+```
+
+These store callback data but contribute no graph access:
+
+```cpp
+ARDG_BEGIN_PARAMETER_STRUCT(FTileParameters)
+    ARDG_PARAMETER(uint32_t, mTileCount)
+    ARDG_PARAMETER_ARRAY(float, mThresholds, 4)
+ARDG_END_PARAMETER_STRUCT()
+```
+
+### Nested parameter structs
+
+```cpp
+ARDG_PARAMETER_STRUCT(StructType, MemberName)
+ARDG_PARAMETER_STRUCT_ARRAY(StructType, MemberName, Count)
+```
+
+Nested structs are recursively enumerated:
+
+```cpp
+ARDG_BEGIN_PARAMETER_STRUCT(FLayerParameters)
+    ARDG_TEXTURE(mInput)
+    ARDG_PARAMETER(float, mWeight)
+ARDG_END_PARAMETER_STRUCT()
+
+ARDG_BEGIN_PARAMETER_STRUCT(FCompositeParameters)
+    ARDG_PARAMETER_STRUCT(FLayerParameters, mBase)
+    ARDG_PARAMETER_STRUCT_ARRAY(FLayerParameters, mLayers, 2)
+ARDG_END_PARAMETER_STRUCT()
+```
+
+Metadata paths become `mBase.mInput`, `mLayers[0].mWeight`, and so on.
+
+### Direct whole-resource reads
+
+```cpp
+ARDG_TEXTURE(MemberName)
+ARDG_TEXTURE_ARRAY(MemberName, Count)
+ARDG_BUFFER(MemberName)
+ARDG_BUFFER_ARRAY(MemberName, Count)
+```
+
+Each member is a direct logical resource reference. The default state is
+`ShaderResource`, and the whole texture or buffer is declared.
+
+Use these for simple shader reads where no narrower logical view or dynamic
+state is needed.
+
+### Texture and buffer views
+
+```cpp
+ARDG_TEXTURE_SRV(MemberName)
+ARDG_TEXTURE_SRV_ARRAY(MemberName, Count)
+ARDG_TEXTURE_UAV(MemberName)
+ARDG_TEXTURE_UAV_ARRAY(MemberName, Count)
+
+ARDG_BUFFER_SRV(MemberName)
+ARDG_BUFFER_SRV_ARRAY(MemberName, Count)
+ARDG_BUFFER_UAV(MemberName)
+ARDG_BUFFER_UAV_ARRAY(MemberName, Count)
+```
+
+SRV macros imply `ShaderResource`; UAV macros imply `UnorderedAccess`.
+Texture views contribute their selected subresources. Buffer views contribute
+their selected byte range.
+
+### Runtime-selected state and range
+
+```cpp
+ARDG_TEXTURE_ACCESS(MemberName)
+ARDG_TEXTURE_ACCESS_ARRAY(MemberName, Count)
+ARDG_BUFFER_ACCESS(MemberName)
+ARDG_BUFFER_ACCESS_ARRAY(MemberName, Count)
+```
+
+These store `FARDGTextureAccess` or `FARDGBufferAccess`. Use them when the
+required state or selected range is decided while building:
+
+```cpp
+ARDG_BEGIN_PARAMETER_STRUCT(FCopyMipParameters)
+    ARDG_TEXTURE_ACCESS(mSource)
+    ARDG_TEXTURE_ACCESS(mDestination)
+ARDG_END_PARAMETER_STRUCT()
+
+FCopyMipParameters Copy;
+Copy.mSource = {
+    Source,
+    nvrhi::ResourceStates::CopySource,
     nvrhi::TextureSubresourceSet(0, 1, 0, 1)
 };
-Parameters.mOutput = {
-    Buffer,
-    nvrhi::ResourceStates::UnorderedAccess,
-    nvrhi::BufferRange(4096, 4096)
+Copy.mDestination = {
+    Destination,
+    nvrhi::ResourceStates::CopyDest,
+    nvrhi::TextureSubresourceSet(1, 1, 0, 1)
 };
 ```
 
-The state must not be `Unknown`.
+The state must not be `Unknown`. The same pattern works with
+`nvrhi::BufferRange` for buffer accesses.
 
 ### Uniform buffers
 
-- `ARDG_UNIFORM_BUFFER(Name)` /
-  `ARDG_UNIFORM_BUFFER_ARRAY(Name, Count)` — declares `ConstantBuffer` use.
+```cpp
+ARDG_UNIFORM_BUFFER(MemberName)
+ARDG_UNIFORM_BUFFER_ARRAY(MemberName, Count)
+```
 
-Create one from another ARDG parameter struct:
+These store `FARDGUniformBufferRef` and declare `ConstantBuffer` use:
 
 ```cpp
 ARDG_BEGIN_PARAMETER_STRUCT(FViewConstants)
-    ARDG_PARAMETER(float, mExposure)
-    ARDG_TEXTURE(mBlueNoise)
+    ARDG_PARAMETER(float, mCameraNear)
+    ARDG_PARAMETER(float, mCameraFar)
+    ARDG_PARAMETER_ARRAY(float, mPadding, 2)
+ARDG_END_PARAMETER_STRUCT()
+
+ARDG_BEGIN_PARAMETER_STRUCT(FTerrainShadingParameters)
+    ARDG_UNIFORM_BUFFER(mViewConstants)
+    ARDG_BUFFER_ACCESS(mTerrainVertices)
 ARDG_END_PARAMETER_STRUCT()
 
 FViewConstants Constants;
-Constants.mExposure = 1.0f;
-Constants.mBlueNoise = BlueNoise;
-FARDGUniformBufferRef ViewCB =
-    Graph.CreateUniformBuffer("View constants", &Constants);
+Constants.mCameraNear = 0.1f;
+Constants.mCameraFar = 10000.0f;
+FARDGUniformBufferRef ViewConstants =
+    Graph.CreateUniformBuffer("Terrain view constants", &Constants);
+
+FTerrainShadingParameters Shading;
+Shading.mViewConstants = ViewConstants;
+Shading.mTerrainVertices = {
+    TerrainVertices,
+    nvrhi::ResourceStates::VertexBuffer,
+    nvrhi::EntireBuffer
+};
 ```
 
-The contents are frozen. Execution creates a dedicated constant buffer, uploads
-all graph uniform buffers on graphics, transitions them to `ConstantBuffer`,
-and makes compute/copy queues wait for that upload before their first submitted
-pass.
+`CreateUniformBuffer` freezes the complete parameter object. At execution it
+creates a dedicated NVRHI constant buffer and writes those bytes on the
+graphics queue. The upload command list transitions buffers to
+`ConstantBuffer`. Before a compute or copy queue submits its first graph pass,
+that queue waits for the upload instance.
 
-Important: uniform-buffer metadata is recursively traversed. `mBlueNoise` above
-therefore also declares a shader-resource dependency in every pass that
-references `ViewCB`.
+Uniform-buffer metadata is also recursively traversed when a pass references
+the uniform buffer. Therefore a resource member nested in uniform-buffer
+contents contributes dependencies and states to that pass. Remember that the
+complete parameter object is uploaded byte-for-byte; design shader-facing
+layout and padding deliberately.
 
-### Raster attachments
+This view-constant example is separate from the recurring
+`UploadTerrainSettings` pass, which copy-writes an ordinary logical buffer.
+Graph uniform buffers use the executor's dedicated graphics upload path
+described above.
 
-- `ARDG_RENDER_TARGET_BINDING_SLOTS(Name)` stores
-  `FARDGRenderTargetBindingSlots`.
+The public creation template is in
+[`ArdaRenderGraphBuilder.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h);
+creation and upload are implemented in
+[`ArdaRenderGraphBuilder.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp)
+and
+[`ArdaRenderGraphExecutor.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphExecutor.cpp).
 
-It contains `mColor[nvrhi::c_MaxRenderTargets]` and `mDepthStencil`. Color
-attachments imply `RenderTarget`; depth/stencil implies `DepthWrite`. Each
-binding can select texture subresources.
+### Raster attachment slots
 
-The macro declares dependencies, states, and a raster compatibility signature.
-The pass callback still binds its NVRHI framebuffer and graphics state.
+```cpp
+ARDG_RENDER_TARGET_BINDING_SLOTS(MemberName)
+```
 
-## Resource states and dependency meaning
+This macro stores `FARDGRenderTargetBindingSlots`. There is no array variant:
+the object already contains
+`eastl::array<FARDGRenderTargetBinding, nvrhi::c_MaxRenderTargets> mColor`
+and one `mDepthStencil` binding.
 
-The implementation classifies these as writes:
+```cpp
+ARDG_BEGIN_PARAMETER_STRUCT(FRenderTerrainParameters)
+    ARDG_RENDER_TARGET_BINDING_SLOTS(mTargets)
+ARDG_END_PARAMETER_STRUCT()
 
-- `UnorderedAccess`, `RenderTarget`, `DepthWrite`, `CopyDest`,
-  `ResolveDest`, `AccelStructWrite`, `OpacityMicromapWrite`, and
-  `ConvertCoopVecMatrixOutput`.
+FRenderTerrainParameters RenderTerrain;
+RenderTerrain.mTargets.mColor[0] = {
+    BackBuffer,
+    nvrhi::AllSubresources
+};
+```
 
-Other legal states are reads. Multiple read states for the same resource in one
-pass can be merged. A write state cannot be combined with another incompatible
-state in the same pass.
+Color bindings imply `RenderTarget`; depth/stencil implies `DepthWrite`.
+Subresource selections contribute dependency and state information, and the
+logical attachment signature contributes raster-group metadata.
 
-Textures track state per mip and array slice. Buffers validate ranges for
-access/dependency discovery, but transitions and produced-before-read status are
-whole-buffer. Two disjoint buffer writes still serialize and produce a
-whole-buffer UAV barrier when needed.
+The declaration does not create or bind an NVRHI framebuffer. The callback
+still supplies a compatible framebuffer and graphics state.
 
-See the
-[NVRHI programming guide](https://github.com/NVIDIA-RTX/NVRHI/blob/main/doc/ProgrammingGuide.md)
-for the underlying state model.
+## Metadata can support tools, too
 
-## External resources
+`GetStaticMetadata()` is public. `FindMember("mName")` looks up a direct
+member. `Enumerate(&Parameters, Visitor)` visits leaf values in declaration
+order. Passing `true` as its third argument also reports nested struct
+containers before their children.
 
-Import physical handles owned outside the graph:
+Each `FARDGParameter` provides:
+
+- `mMember`, the static declaration;
+- `mValue`, the resolved address;
+- `mPath`, including dotted names and array indices;
+- `mArrayIndex`; and
+- `GetValue<T>()`.
+
+The tests assert paths such as `mInner.mTexture` and
+`mLayers[1].mScale` in
+[`ArdaGraphTests.cpp`](../../Source/ArdaRenderGraph/Tests/ArdaGraphTests.cpp).
+
+## Which states mean write?
+
+Edge discovery classifies an access as a write if its NVRHI state contains:
+
+- `UnorderedAccess`;
+- `RenderTarget`;
+- `DepthWrite`;
+- `CopyDest`;
+- `ResolveDest`;
+- `AccelStructWrite`;
+- `OpacityMicromapWrite`; or
+- `ConvertCoopVecMatrixOutput`.
+
+Other legal states are reads. Multiple read states for one resource in one pass
+can be merged. A write state cannot be combined with another incompatible state
+for the same resource in that pass.
+
+Textures track compile-time state and produced-before-read status per mip and
+array slice. Dependency history itself is attached to the whole logical
+texture. Buffers validate declared ranges, but dependency history, transition
+state, and produced-before-read status are whole-buffer. Two disjoint UAV
+writes to one logical buffer therefore still serialize and can require a
+whole-buffer UAV barrier.
+
+The state classification and setup walk are in
+[`ArdaRenderGraphBuilder.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp);
+state merging and transitions are in
+[`ArdaRenderGraphCompiler.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphCompiler.cpp).
+
+## Import caller-owned resources
+
+The swap-chain image exists before the graph, so import it with a known state:
 
 ```cpp
 FARDGTextureRef BackBuffer = Graph.RegisterExternalTexture(
     SwapChainTexture,
     nvrhi::ResourceStates::Present,
-    "Swap-chain color");
+    "BackBuffer");
 ```
 
-The initial state must be known. The overload without an explicit state uses
-the handle descriptor's `initialState`; it still rejects `Unknown`.
+The equivalent buffer API is `RegisterExternalBuffer`. Overloads without an
+explicit state use the NVRHI descriptor's `initialState`, but still reject
+`Unknown`.
 
-Importing the same physical handle twice in one builder returns the same
-logical record if the states agree, and throws if they conflict. Imported
-resources:
+Import creates one logical wrapper around the supplied physical handle:
 
-- carry `External`, never `Transient`;
-- begin with the prologue as producer;
-- keep writes observable through the epilogue; and
-- return to their final state, initially the imported state.
+```text
+GraphPrologue --initial producer--> BackBuffer logical record
+                                      |
+                                      +--> existing nvrhi::ITexture
+```
 
-## Extraction
+Imported resources:
 
-Extraction transfers a graph-created physical handle to caller-owned output
-storage after submission:
+- carry `External`, not `Transient`;
+- start with `GraphPrologue` as their latest producer;
+- use the imported state as initial and default final state;
+- keep their last write observable through `GraphEpilogue`; and
+- return to their final state in the epilogue.
+
+Importing the same physical handle twice in one builder returns the existing
+logical record when initial states agree. Conflicting states are rejected.
+
+## Extract graph-created resources
+
+Extraction is the opposite boundary operation. It asks execution to expose a
+graph-created physical handle:
 
 ```cpp
 nvrhi::TextureHandle HistoryForNextFrame;
@@ -247,41 +454,58 @@ Graph.QueueTextureExtraction(
 
 Extraction:
 
-- adds `Extracted`;
-- removes transient eligibility;
-- makes the last producer observable;
-- extends the lifetime through the epilogue;
-- emits an epilogue transition to the requested non-`Unknown` state; and
-- fills the output handle after all graph command lists are submitted.
+1. adds the `Extracted` flag;
+2. makes the resource ineligible for transient reuse;
+3. connects its last producer to the epilogue;
+4. extends its live interval through the epilogue;
+5. requests a non-`Unknown` final state; and
+6. writes the physical handle to caller-owned output storage after all graph
+   command lists have been submitted.
 
-Each logical resource and each output address can be extracted only once.
-A non-external resource must have a producer before compilation. Extraction
-does not wait for GPU completion.
+Each logical resource can be extracted once, and one output address cannot
+receive two extractions. A graph-created extracted resource must have a
+producer by compilation time. Extraction does not wait for GPU completion.
 
-## Lifetimes, pooling, and transient fallback
+## Lifetimes connect logical and physical resources
 
-![Resource lifetime and pool reuse](assets/resource-lifetime.svg)
+![Logical resource lifetimes and descriptor-compatible pool reuse](assets/resource-lifetime.svg)
 
-Compilation computes inclusive first/last execution-order indices for every
-live texture and buffer. External and extracted resources extend to the
-epilogue. A resource is transient only when it has `Transient` and is neither
-external nor extracted.
+After culling, compilation assigns every live texture and buffer an inclusive
+first/last execution-order interval:
 
-At execution, descriptor-compatible transient resources may reuse one committed
-NVRHI texture/buffer when:
+```text
+execution index:  0          1         2         3        4           5       6        7
+                  P0         P1        P2        P4       P5          P6      P7       P8
+                  Prologue   Upload    Generate  Erode    Triangulate Render  Overlay  Epilogue
+TerrainSettings            [---------------]
+Heightmap                            [------------------]
+TerrainVertices                                      [---------------]
+TerrainIndices                                       [---------------]
+BackBuffer                                                    [------------------------]
+```
 
-- their lifetimes do not overlap (`previous.last < next.first`); and
-- all uses stay in one queue reuse domain.
+`DebugHeightmap` P3 is absent because culling rebuilds use intervals from live
+passes only. The inclusive intervals are `TerrainSettings [1,2]`,
+`Heightmap [2,4]`, both terrain buffers `[4,5]`, and `BackBuffer [5,7]`.
 
-Cross-queue resources and non-transient resources do not participate in this
-reuse. Pooling is local to a single `Execute()` call.
+External and extracted resources extend through the epilogue. A resource is a
+transient candidate only when it has `Transient` and is neither external nor
+extracted.
 
-The allocator can calculate an ideal virtual-heap layout when NVRHI reports
-virtual-resource support. Actual placed-resource aliasing is currently disabled
-because portable NVRHI aliasing barriers and heap-compatibility queries are not
-available. Transient candidates therefore use committed-resource pooling and
-set `mbUsedTransientFallback`. `mbUsedVirtualHeaps` and
-`mbUsedTransientAliasing` currently remain false.
+During one `Execute()`, descriptor-compatible transient logical resources can
+reuse a committed physical object when their intervals do not overlap
+(`previous.last < next.first`) and all uses are in one queue reuse domain.
+Cross-queue and non-transient resources do not reuse through this pool.
+
+True placed-resource aliasing is currently disabled: NVRHI does not provide the
+portable aliasing barrier and heap-compatibility information needed to make it
+safe across supported backends. The allocator can calculate an ideal interval
+layout, but execution uses committed-resource fallback. Consequently transient
+candidates can set `mbUsedTransientFallback`, while
+`mbUsedVirtualHeaps` and `mbUsedTransientAliasing` currently remain false.
+
+Chapter 10 follows this path in detail. The source is
+[`ArdaRenderGraphExecutor.cpp`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphExecutor.cpp).
 
 ---
 
