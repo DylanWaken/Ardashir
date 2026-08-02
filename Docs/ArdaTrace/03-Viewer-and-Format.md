@@ -9,7 +9,7 @@ timeline with HTML, CSS, JavaScript, and Canvas.
 From the repository root:
 
 ```powershell
-.\Scripts\RunTraceViewer.bat frame.ardatrace
+python Scripts\RunTraceViewer.py frame.ardatrace
 ```
 
 Direct invocation exposes additional options:

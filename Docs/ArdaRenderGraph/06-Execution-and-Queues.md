@@ -128,9 +128,9 @@ it. See the template in
 Raster passes issue ordinary NVRHI commands in their lambda. The graph does not
 build a framebuffer, graphics state, or draw call. A typical callback resolves
 declared attachments and buffers, calls `setGraphicsState`, then `draw` or
-`drawIndexed`. The executable example in
-[`ArdaTriangleRenderer.cpp`](../../Source/ArdaTests/NVRHITest/Private/ArdaTriangleRenderer.cpp)
-does exactly this.
+`drawIndexed`. The executable terrain callbacks in
+[`ArdaTerrainRenderer.cpp`](../../Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp)
+record both the indexed terrain draw and the overlay draw.
 
 Compiled raster groups are metadata only. They report consecutive passes with
 compatible logical attachments; execution does not merge render passes or
@@ -141,9 +141,9 @@ command lists.
 A `Copy` pass likewise issues ordinary `copyTexture`, `copyBuffer`, `writeBuffer`,
 or related NVRHI commands. The flag controls queue eligibility and validation,
 not the callback's contents. On a real copy queue, all declared states must be
-copy-compatible. The triangle demo's geometry upload shows `writeBuffer` in a
-normal graphics pass; using a copy queue is optional, not required for upload
-commands.
+copy-compatible. Terrain P1 records `copyBuffer` from imported persistent
+`TerrainSettingsUpload` to graph-created `TerrainSettings`; it falls back to
+graphics when no copy queue exists.
 
 ## Dependency-level CPU recording
 
@@ -267,6 +267,11 @@ Recording may finish in any worker order, but submission iterates
 `mExecutionOrder`. This gives deterministic CPU submission and stable instance
 bookkeeping while still allowing independent GPU queues to overlap between
 their explicit waits.
+
+The `ARDGExample.D3D12` and `ARDGExample.Vulkan` CTest smoke tests exercise one
+hidden frame of this submission path on available backends; their registration
+is in
+[`ARDGExample/CMakeLists.txt`](../../Source/ArdaTests/ARDGExample/CMakeLists.txt).
 
 ## Extraction is submitted, not completed
 

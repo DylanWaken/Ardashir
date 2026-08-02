@@ -10,6 +10,7 @@ frozen parameter object.
 The recurring live path is:
 
 ```text
+P0 GraphPrologue --TerrainSettingsUpload--> P1 UploadTerrainSettings
 P1 UploadTerrainSettings --TerrainSettings--> P2 GenerateNoiseHeightmap
                                                    |
                          +-------------------------+------------------+
@@ -367,87 +368,24 @@ BackBuffer
 
 ## Terrain compute-to-raster data flow
 
-Parameter declarations can connect different operation categories:
-
-```cpp
-ARDG_BEGIN_PARAMETER_STRUCT(FGenerateHeightmapParameters)
-    ARDG_TEXTURE_UAV(mHeightmap)
-ARDG_END_PARAMETER_STRUCT()
-
-ARDG_BEGIN_PARAMETER_STRUCT(FTriangulateTerrainParameters)
-    ARDG_TEXTURE_SRV(mHeightmap)
-    ARDG_BUFFER_UAV(mTerrainVertices)
-    ARDG_BUFFER_UAV(mTerrainIndices)
-ARDG_END_PARAMETER_STRUCT()
-
-ARDG_BEGIN_PARAMETER_STRUCT(FRenderTerrainParameters)
-    ARDG_BUFFER_ACCESS(mTerrainVertices)
-    ARDG_BUFFER_ACCESS(mTerrainIndices)
-    ARDG_RENDER_TARGET_BINDING_SLOTS(mTargets)
-ARDG_END_PARAMETER_STRUCT()
-
-FGenerateHeightmapParameters Generate;
-Generate.mHeightmap = HeightmapUAV;
-(void)Graph.AddDispatchPass(
-    "GenerateNoiseHeightmap",
-    &Generate,
-    FARDGDispatchArguments{32, 32, 1},
-    BindNoiseComputeState,
-    EARDGPassFlags::AsyncCompute);
-
-FTriangulateTerrainParameters Triangulate;
-Triangulate.mHeightmap = HeightmapSRV;
-Triangulate.mTerrainVertices = TerrainVerticesUAV;
-Triangulate.mTerrainIndices = TerrainIndicesUAV;
-(void)Graph.AddDispatchPass(
-    "TriangulateTerrain",
-    &Triangulate,
-    FARDGDispatchArguments{32, 32, 1},
-    BindTriangulationComputeState,
-    EARDGPassFlags::AsyncCompute);
-
-FRenderTerrainParameters Render;
-Render.mTerrainVertices = {
-    TerrainVertices,
-    nvrhi::ResourceStates::VertexBuffer,
-    nvrhi::EntireBuffer
-};
-Render.mTerrainIndices = {
-    TerrainIndices,
-    nvrhi::ResourceStates::IndexBuffer,
-    nvrhi::EntireBuffer
-};
-Render.mTargets.mColor[0] = {
-    ColorTarget,
-    nvrhi::AllSubresources
-};
-(void)Graph.AddPass(
-    "RenderTerrain",
-    &Render,
-    EARDGPassFlags::Raster,
-    RecordTerrainDraw);
-```
-
-`BindNoiseComputeState`, `BindTriangulationComputeState`, and
-`RecordTerrainDraw` stand for application code that resolves the declared
-physical resources and builds matching NVRHI bindings/state. This documentation
-example does not imply that the repository ships terrain shaders. The
-declarations derive:
+The full runtime declaration connects copy, asynchronous compute, and graphics:
 
 ```text
-[GenerateNoiseHeightmap: Heightmap UAV]
-                    |
-                    | producer edge + UAV->SRV transition
-                    v
-[TriangulateTerrain: Heightmap SRV + terrain-buffer UAVs]
-                    |
-                    | producer edge + UAV->vertex/index transitions
-                    v
-[RenderTerrain: terrain buffers + ColorTarget render target]
+P1 UploadTerrainSettings (Copy)
+  -> P2 GenerateNoiseHeightmap (AsyncCompute, Heightmap mip 0 UAV)
+  -> P4 ErodeHeightmap (AsyncCompute, same UAV)
+  -> P5 TriangulateTerrain (AsyncCompute, mip 0 SRV + buffer UAVs)
+  -> P6 RenderTerrain (Graphics, vertex/index reads + BackBuffer write)
+  -> P7 TerrainOverlay (Graphics, same BackBuffer write)
 ```
 
-If `ColorTarget` is external or extracted, `RenderTerrain` becomes part of the
-epilogue producer chain.
+The exact parameter structs, binding sets, dispatch setup, and draw recording
+are canonical in
+[`ArdaTerrainRenderer.cpp`](../../Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp);
+the matching shader resources and entry points are in
+[`ArdaTerrain.hlsl`](../../Source/ArdaTests/ARDGExample/Shaders/ArdaTerrain.hlsl).
+This avoids a second implementation drifting from the runnable example while
+the generic snippets above continue to teach dependency APIs.
 
 ## An external swap-chain write is a natural root
 
@@ -469,8 +407,8 @@ owns acquire, any swap-chain pre-submit hook, presentation, and the invariant
 that the captured framebuffer refers to the same image/subresources as the
 declared logical attachment.
 
-The repository's full rendering pattern is in
-[`ArdaTriangleRenderer.cpp`](../../Source/ArdaTests/NVRHITest/Private/ArdaTriangleRenderer.cpp).
+The repository's full terrain rendering pattern is in
+[`ArdaTerrainRenderer.cpp`](../../Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp).
 
 ## Raster groups and CPU recording are separate concerns
 

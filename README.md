@@ -91,7 +91,7 @@ Install Flask and launch the local offline viewer:
 
 ```powershell
 python -m pip install -r Tools\ArdaTraceViewer\requirements.txt
-.\Scripts\RunTraceViewer.bat frame.ardatrace
+python Scripts\RunTraceViewer.py frame.ardatrace
 ```
 
 The viewer binds to loopback by default. Open the displayed URL to inspect

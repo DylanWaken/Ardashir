@@ -34,9 +34,15 @@ From those declarations, ArdaRenderGraph:
 6. records command lists and inserts cross-queue waits; and
 7. submits the surviving work in registration order.
 
-This terrain graph is a pedagogical example used throughout the series; the
-repository does not currently ship terrain shaders or a terrain demo. Chapter
-12 preserves the actual triangle renderer as a separate, source-backed example.
+This is also the repository's runnable terrain example. Its canonical sources
+are the
+[`FArdaTerrainRenderer` implementation](../../Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp),
+the
+[`ArdaTerrain.hlsl` shaders](../../Source/ArdaTests/ARDGExample/Shaders/ArdaTerrain.hlsl),
+and the
+[`ARDGExample` entry point](../../Source/ArdaTests/ARDGExample/ArdaARDGExampleMain.cpp).
+The `ARDGExample.D3D12` and `ARDGExample.Vulkan` CTest smoke tests run one
+hidden frame on available backends.
 
 The implementation is compact enough to read. This series therefore teaches
 each concept and then links it to the code that implements it. The public API
@@ -90,8 +96,8 @@ application.
 The first four chapters establish the vocabulary used by every source
 walkthrough:
 
-1. [Getting started](01-Getting-Started.md) — build the three-stage terrain core
-   and follow it from logical declarations to an imported back-buffer write.
+1. [Getting started](01-Getting-Started.md) — build and run the full P0–P8
+   terrain example, then follow it from declarations to submission.
 2. [Core concepts](02-Core-Concepts.md) — logical and physical resources,
    handles and registries, pass records, frozen parameters, the blackboard,
    sentinels, and the one-shot lifecycle.

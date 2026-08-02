@@ -14,11 +14,22 @@ namespace arda::render_graph
 {
     namespace
     {
+        /**
+         * Converts an EASTL string to the standard string type required by NVRHI
+         * descriptor debug names. This build-stage adapter copies exactly the
+         * recorded byte range and does not mutate graph state.
+         */
         [[nodiscard]] std::string ToStdString(const eastl::string& Value)
         {
             return std::string(Value.data(), Value.size());
         }
 
+        /**
+         * Classifies a declared pass state during graph setup.
+         *
+         * Any contained write bit makes the whole declaration a write for
+         * dependency-history purposes; finer legality checks happen at compile time.
+         */
         [[nodiscard]] bool IsWriteState(nvrhi::ResourceStates State) noexcept
         {
             constexpr uint32_t WriteMask =
@@ -33,6 +44,10 @@ namespace arda::render_graph
             return (static_cast<uint32_t>(State) & WriteMask) != 0;
         }
 
+        /**
+         * Returns the stable diagnostic label used by the compiled-graph dump.
+         * Unknown enum values are rendered defensively instead of affecting execution.
+         */
         [[nodiscard]] const char* GetPipelineName(EARDGPipeline Pipeline) noexcept
         {
             switch (Pipeline)
@@ -47,13 +62,25 @@ namespace arda::render_graph
             return "Unknown";
         }
 
+        /**
+         * Appends a human-readable bitset for one NVRHI resource state.
+         *
+         * This debug-output helper preserves combined read states by joining every
+         * recognized bit; it has no effect on barrier compilation or state tracking.
+         */
         void AppendStateName(
             std::ostream& Stream,
             nvrhi::ResourceStates State)
         {
             struct FStateName
             {
+                /**
+                 * Single NVRHI state bit matched while formatting a diagnostic
+                 * state mask.
+                 */
                 nvrhi::ResourceStates mState;
+
+                /** Non-owning, static-lifetime label emitted when mState is present. */
                 const char* mName;
             };
             static constexpr FStateName Names[] = {
@@ -103,6 +130,12 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Reports whether graph-building mutation is still legal.
+         *
+         * Build APIs close as soon as compilation, execution, or failure begins,
+         * preserving the append-only pass and resource registries.
+         */
         [[nodiscard]] bool IsBuilding(
             const FARDGBuilder::FImpl& Graph) noexcept
         {
@@ -114,14 +147,53 @@ namespace arda::render_graph
 
         struct FARDGSetupContext
         {
+            /**
+             * Graph-owned pass registry used during setup; handles use the graph
+             * pass index domain.
+             */
             TARDGHandleRegistry<FARDGPass, FARDGPassHandle>& mPasses;
+
+            /**
+             * Graph-owned texture registry used to validate and resolve texture
+             * declarations.
+             */
             TARDGHandleRegistry<FARDGTexture, FARDGTextureHandle>& mTextures;
+
+            /**
+             * Graph-owned buffer registry used to validate and resolve buffer
+             * declarations.
+             */
             TARDGHandleRegistry<FARDGBuffer, FARDGBufferHandle>& mBuffers;
+
+            /**
+             * Graph-owned view registry used to validate exact logical view
+             * identities.
+             */
             TARDGHandleRegistry<FARDGView, FARDGViewHandle>& mViews;
+
+            /**
+             * Graph-owned uniform-buffer registry used for recursive parameter
+             * discovery.
+             */
             TARDGHandleRegistry<FARDGUniformBuffer, FARDGUniformBufferHandle>& mUniformBuffers;
+
+            /**
+             * Pass currently being populated; its setup state remains valid for
+             * the graph lifetime.
+             */
             FARDGPass& mPass;
+
+            /**
+             * Uniform-buffer indices visited while setting up mPass; empty at
+             * setup start and local to this pass.
+             */
             eastl::unordered_set<uint32_t> mVisitedUniformBuffers;
 
+            /**
+             * Adds a build-stage data-flow predecessor to the pass.
+             * Self-dependencies are suppressed because one pass may declare the same
+             * resource more than once while metadata is enumerated.
+             */
             void AddProducer(FARDGPassHandle Producer)
             {
                 if (Producer != mPass.GetHandle())
@@ -130,6 +202,10 @@ namespace arda::render_graph
                 }
             }
 
+            /**
+             * Records an exact logical view used by the pass for execution-time
+             * access validation. Duplicate parameter references remain one view entry.
+             */
             void AddView(FARDGViewHandle View)
             {
                 if (eastl::find(
@@ -141,6 +217,14 @@ namespace arda::render_graph
                 }
             }
 
+            /**
+             * Records one texture access and updates build-time hazard history.
+             *
+             * Every access depends on the whole texture's latest writer. A read joins
+             * the current reader epoch; a write orders after those readers, clears the
+             * epoch, and becomes the latest writer. The selected subresources are
+             * retained for later validation and barrier lowering, not edge discovery.
+             */
             void AddTexture(
                 FARDGTextureRef Texture,
                 nvrhi::ResourceStates State,
@@ -185,6 +269,14 @@ namespace arda::render_graph
                 }
             }
 
+            /**
+             * Records one buffer access and updates build-time hazard history.
+             *
+             * The algorithm mirrors AddTexture: RAW/WAW hazards use producer edges,
+             * while WAR hazards use synchronization-only edges so dead readers do not
+             * become live. Dependency history is whole-buffer even though Range is
+             * preserved for declaration validation.
+             */
             void AddBuffer(
                 FARDGBufferRef Buffer,
                 nvrhi::ResourceStates State,
@@ -228,6 +320,13 @@ namespace arda::render_graph
                 }
             }
 
+            /**
+             * Records a logical uniform buffer and recursively discovers resources
+             * referenced by its frozen contents during pass setup.
+             *
+             * The visited set prevents duplicate traversal within this pass, which
+             * also bounds recursive metadata graphs and keeps declarations stable.
+             */
             void AddUniformBuffer(FARDGUniformBufferRef UniformBuffer)
             {
                 if (UniformBuffer == nullptr)
@@ -255,10 +354,19 @@ namespace arda::render_graph
                 }
             }
 
+            /**
+             * Enumerates frozen parameter metadata during pass registration and
+             * dispatches each leaf to the corresponding resource setup path.
+             *
+             * Besides collecting accesses and edges, view leaves preserve exact view
+             * identity and raster bindings build the later grouping signature.
+             */
             void Visit(const FARDGParameterMetadata& Metadata, const void* Parameters)
             {
                 Metadata.Enumerate(
                     Parameters,
+                    // Interpret each generated metadata leaf in declaration order so
+                    // edge and state collection remain deterministic.
                     [this](const FARDGParameter& Parameter)
                     {
                         const FARDGParameterMember& Member = *Parameter.mMember;
@@ -430,6 +538,13 @@ namespace arda::render_graph
             }
         };
 
+        /**
+         * Validates mutually dependent pass flags at build time.
+         *
+         * This rejects unknown bits and impossible operation categories before a pass
+         * enters the append-only registry; resource-state compatibility is validated
+         * later by the compiler.
+         */
         void ValidatePassFlags(EARDGPassFlags Flags)
         {
             constexpr uint16_t KnownFlags =
@@ -456,6 +571,12 @@ namespace arda::render_graph
         }
     }
 
+    /**
+     * Starts the graph-building stage and creates its private arena-backed state.
+     *
+     * The implementation constructor installs the prologue sentinel. Graphics queue
+     * capability is required because sentinels and fallback work use that pipeline.
+     */
     FARDGBuilder::FARDGBuilder(FARDGRenderGraphContext Context)
         : mImpl(eastl::make_unique<FImpl>(eastl::move(Context)))
     {
@@ -466,8 +587,18 @@ namespace arda::render_graph
         }
     }
 
+    /**
+     * Releases all graph-scoped registries, frozen parameters, and physical handles.
+     * Arena-registered parameter destructors run as part of implementation teardown.
+     */
     FARDGBuilder::~FARDGBuilder() = default;
 
+    /**
+     * Opens the execution-stage physical-resource access gate for one recording pass.
+     *
+     * The gate ties subsequent getters to the active pass and command list, preventing
+     * access outside the callback or through undeclared graph resources.
+     */
     FARDGPassExecutionContext::FARDGPassExecutionContext(
         FARDGBuilder& Graph,
         FARDGPassHandle Pass,
@@ -482,6 +613,10 @@ namespace arda::render_graph
         mbAccessGateOpen = true;
     }
 
+    /**
+     * Closes the pass access gate when callback recording leaves its scope.
+     * The guard flag keeps teardown safe if construction did not finish opening it.
+     */
     FARDGPassExecutionContext::~FARDGPassExecutionContext() noexcept
     {
         if (mbAccessGateOpen)
@@ -490,48 +625,61 @@ namespace arda::render_graph
         }
     }
 
+    /** Resolves a directly declared logical texture during pass recording. */
     nvrhi::ITexture* FARDGPassExecutionContext::GetTexture(
         FARDGTexture* Texture) const
     {
         return mGraph.ResolveTextureForPass(mPass, Texture);
     }
 
+    /** Resolves the parent physical texture of a declared logical SRV. */
     nvrhi::ITexture* FARDGPassExecutionContext::GetTexture(
         FARDGTextureSRV* View) const
     {
         return mGraph.ResolveTextureViewForPass(mPass, View);
     }
 
+    /** Resolves the parent physical texture of a declared logical UAV. */
     nvrhi::ITexture* FARDGPassExecutionContext::GetTexture(
         FARDGTextureUAV* View) const
     {
         return mGraph.ResolveTextureViewForPass(mPass, View);
     }
 
+    /** Resolves a directly declared logical buffer during pass recording. */
     nvrhi::IBuffer* FARDGPassExecutionContext::GetBuffer(
         FARDGBuffer* Buffer) const
     {
         return mGraph.ResolveBufferForPass(mPass, Buffer);
     }
 
+    /** Resolves the parent physical buffer of a declared logical SRV. */
     nvrhi::IBuffer* FARDGPassExecutionContext::GetBuffer(
         FARDGBufferSRV* View) const
     {
         return mGraph.ResolveBufferViewForPass(mPass, View);
     }
 
+    /** Resolves the parent physical buffer of a declared logical UAV. */
     nvrhi::IBuffer* FARDGPassExecutionContext::GetBuffer(
         FARDGBufferUAV* View) const
     {
         return mGraph.ResolveBufferViewForPass(mPass, View);
     }
 
+    /** Resolves a declared logical uniform buffer's physical constant buffer. */
     nvrhi::IBuffer* FARDGPassExecutionContext::GetUniformBuffer(
         FARDGUniformBuffer* UniformBuffer) const
     {
         return mGraph.ResolveUniformBufferForPass(mPass, UniformBuffer);
     }
 
+    /**
+     * Opens the execution-stage access gate for a live pass.
+     *
+     * The mutex supports parallel command recording. A pass may have only one active
+     * context, and execution must have begun without already finishing or failing.
+     */
     void FARDGBuilder::BeginPassAccess(FARDGPassHandle Pass)
     {
         std::lock_guard<std::mutex> Lock(mImpl->mPassAccessMutex);
@@ -549,12 +697,22 @@ namespace arda::render_graph
         }
     }
 
+    /**
+     * Closes a pass's execution-stage access gate.
+     * Erasing a missing entry is harmless, which keeps context destruction noexcept.
+     */
     void FARDGBuilder::EndPassAccess(FARDGPassHandle Pass) noexcept
     {
         std::lock_guard<std::mutex> Lock(mImpl->mPassAccessMutex);
         mImpl->mActivePassAccess.erase(Pass.GetIndex());
     }
 
+    /**
+     * Resolves a logical texture to its materialized NVRHI object during recording.
+     *
+     * Ownership, active-pass scope, physical availability, and declaration membership
+     * are all checked under the access mutex before the raw pointer is returned.
+     */
     nvrhi::ITexture* FARDGBuilder::ResolveTextureForPass(
         FARDGPassHandle Pass,
         FARDGTexture* Texture) const
@@ -571,6 +729,8 @@ namespace arda::render_graph
             ARDA_CHECK_MSG(
                 "A pass requested an unavailable render-graph texture.");
         }
+        // A parent texture may have been declared directly or indirectly through a
+        // view; both paths contribute a texture-state record during setup.
         const bool bDeclared = eastl::any_of(
             PassRecord->GetState().mTextureStates.begin(),
             PassRecord->GetState().mTextureStates.end(),
@@ -586,6 +746,12 @@ namespace arda::render_graph
         return Texture->GetTexture();
     }
 
+    /**
+     * Validates an exact logical texture view, then resolves its parent texture.
+     *
+     * View identity is checked separately from parent access so a pass cannot use a
+     * different subresource/format declaration merely because the parent was present.
+     */
     nvrhi::ITexture* FARDGBuilder::ResolveTextureViewForPass(
         FARDGPassHandle Pass,
         FARDGView* View) const
@@ -632,6 +798,12 @@ namespace arda::render_graph
         return ResolveTextureForPass(Pass, mImpl->mTextures.TryGet(Texture));
     }
 
+    /**
+     * Resolves a logical buffer to its materialized NVRHI object during recording.
+     *
+     * The same gated ownership and declaration checks used for textures protect
+     * parallel pass callbacks from undeclared or cross-graph physical access.
+     */
     nvrhi::IBuffer* FARDGBuilder::ResolveBufferForPass(
         FARDGPassHandle Pass,
         FARDGBuffer* Buffer) const
@@ -648,6 +820,8 @@ namespace arda::render_graph
             ARDA_CHECK_MSG(
                 "A pass requested an unavailable render-graph buffer.");
         }
+        // Buffer ranges affect validation but any state entry for this logical buffer
+        // establishes that its parent object was declared by the pass.
         const bool bDeclared = eastl::any_of(
             PassRecord->GetState().mBufferStates.begin(),
             PassRecord->GetState().mBufferStates.end(),
@@ -663,6 +837,12 @@ namespace arda::render_graph
         return Buffer->GetBuffer();
     }
 
+    /**
+     * Validates an exact logical buffer view, then resolves its parent buffer.
+     *
+     * This preserves the selected range/format declaration as part of pass identity
+     * while returning the parent NVRHI buffer used to build binding items.
+     */
     nvrhi::IBuffer* FARDGBuilder::ResolveBufferViewForPass(
         FARDGPassHandle Pass,
         FARDGView* View) const
@@ -709,6 +889,12 @@ namespace arda::render_graph
         return ResolveBufferForPass(Pass, mImpl->mBuffers.TryGet(Buffer));
     }
 
+    /**
+     * Resolves a declared uniform buffer during execution-stage pass recording.
+     *
+     * The buffer must belong to this graph, be materialized, appear in the pass's
+     * uniform-buffer declarations, and be requested while that pass gate is active.
+     */
     nvrhi::IBuffer* FARDGBuilder::ResolveUniformBufferForPass(
         FARDGPassHandle Pass,
         FARDGUniformBuffer* UniformBuffer) const
@@ -739,6 +925,10 @@ namespace arda::render_graph
         return UniformBuffer->GetBuffer();
     }
 
+    /**
+     * Allocates immutable parameter bytes from the graph arena during building.
+     * Arena lifetime keeps callback-visible parameter addresses stable through execute.
+     */
     void* FARDGBuilder::AllocateParameterStorage(size_t Size, size_t Alignment)
     {
         if (!IsBuilding(*mImpl))
@@ -748,6 +938,11 @@ namespace arda::render_graph
         return mImpl->mArena.AllocateBytes(Size, Alignment);
     }
 
+    /**
+     * Registers cleanup for a non-trivially destructible arena parameter object.
+     * Destruction is deferred until graph teardown because individual arena blocks are
+     * not released during the graph lifecycle.
+     */
     void FARDGBuilder::RegisterParameterDestructor(
         void* Object,
         void (*Destroy)(void*))
@@ -755,17 +950,28 @@ namespace arda::render_graph
         mImpl->mArena.RegisterDestructor(Object, Destroy);
     }
 
+    /**
+     * Marks an address as already frozen in this builder's arena.
+     * FreezeParameters uses this identity set to avoid copying graph-owned objects.
+     */
     void FARDGBuilder::MarkParameterStorage(const void* Parameters)
     {
         mImpl->mParameterStorage.insert(Parameters);
     }
 
+    /** Returns whether a parameter address is already graph-owned frozen storage. */
     bool FARDGBuilder::IsParameterStorage(const void* Parameters) const noexcept
     {
         return mImpl->mParameterStorage.find(Parameters) !=
             mImpl->mParameterStorage.end();
     }
 
+    /**
+     * Registers a deferred logical texture during the graph-building stage.
+     *
+     * Only caller-created transient/ordinary records are accepted here; the descriptor
+     * is validated and retained for compile checks and execution materialization.
+     */
     FARDGTextureRef FARDGBuilder::CreateTexture(
         nvrhi::TextureDesc Desc,
         EARDGResourceFlags Flags)
@@ -790,6 +996,12 @@ namespace arda::render_graph
         return &mImpl->mTextures.Get(mImpl->mTextures.Emplace(eastl::move(Desc), Flags));
     }
 
+    /**
+     * Registers a deferred logical buffer during the graph-building stage.
+     *
+     * The non-empty descriptor and allowed creation flags become an arena-backed
+     * record; no NVRHI buffer is allocated until execution materializes live work.
+     */
     FARDGBufferRef FARDGBuilder::CreateBuffer(
         nvrhi::BufferDesc Desc,
         EARDGResourceFlags Flags)
@@ -810,6 +1022,10 @@ namespace arda::render_graph
         return &mImpl->mBuffers.Get(mImpl->mBuffers.Emplace(eastl::move(Desc), Flags));
     }
 
+    /**
+     * Creates a logical texture SRV whose descriptor references a texture in this
+     * builder. The view remains metadata until a pass uses its parent for binding.
+     */
     FARDGTextureSRVRef FARDGBuilder::CreateTextureSRV(
         eastl::string Name,
         FARDGTextureViewDesc Desc)
@@ -827,6 +1043,10 @@ namespace arda::render_graph
         return static_cast<FARDGTextureSRV*>(mImpl->mViews.TryGet(Handle));
     }
 
+    /**
+     * Creates a logical texture UAV during building and records its parent,
+     * subresources, and optional format for later setup and access validation.
+     */
     FARDGTextureUAVRef FARDGBuilder::CreateTextureUAV(
         eastl::string Name,
         FARDGTextureViewDesc Desc)
@@ -844,6 +1064,10 @@ namespace arda::render_graph
         return static_cast<FARDGTextureUAV*>(mImpl->mViews.TryGet(Handle));
     }
 
+    /**
+     * Creates a logical buffer SRV whose parent belongs to this graph.
+     * Its selected range is consumed when parameter setup records the parent access.
+     */
     FARDGBufferSRVRef FARDGBuilder::CreateBufferSRV(
         eastl::string Name,
         FARDGBufferViewDesc Desc)
@@ -861,6 +1085,10 @@ namespace arda::render_graph
         return static_cast<FARDGBufferSRV*>(mImpl->mViews.TryGet(Handle));
     }
 
+    /**
+     * Creates a logical buffer UAV during building.
+     * The record preserves parent, range, and format metadata but owns no physical view.
+     */
     FARDGBufferUAVRef FARDGBuilder::CreateBufferUAV(
         eastl::string Name,
         FARDGBufferViewDesc Desc)
@@ -878,6 +1106,13 @@ namespace arda::render_graph
         return static_cast<FARDGBufferUAV*>(mImpl->mViews.TryGet(Handle));
     }
 
+    /**
+     * Imports a caller-owned physical texture at the graph boundary.
+     *
+     * The known initial state also becomes its default final state, and the prologue
+     * is installed as latest producer so first use depends on graph entry. Reimporting
+     * the same NVRHI object deduplicates to one logical record when states agree.
+     */
     FARDGTextureRef FARDGBuilder::RegisterExternalTexture(
         nvrhi::TextureHandle Texture,
         nvrhi::ResourceStates InitialState,
@@ -923,6 +1158,12 @@ namespace arda::render_graph
         return Resource;
     }
 
+    /**
+     * Imports a caller-owned physical buffer at the graph boundary.
+     *
+     * As with textures, identity is deduplicated, conflicting initial states fail, and
+     * prologue producer history makes the pre-graph contents available to first use.
+     */
     FARDGBufferRef FARDGBuilder::RegisterExternalBuffer(
         nvrhi::BufferHandle Buffer,
         nvrhi::ResourceStates InitialState,
@@ -968,6 +1209,12 @@ namespace arda::render_graph
         return Resource;
     }
 
+    /**
+     * Registers a logical uniform buffer backed by frozen parameter bytes.
+     *
+     * During building it stores descriptor, metadata, and contents only. Execution
+     * later allocates a dedicated constant buffer and uploads the exact frozen bytes.
+     */
     FARDGUniformBufferRef FARDGBuilder::CreateUniformBufferInternal(
         eastl::string Name,
         size_t ByteSize,
@@ -994,6 +1241,12 @@ namespace arda::render_graph
         return mImpl->mUniformBuffers.TryGet(Handle);
     }
 
+    /**
+     * Declares a texture as an observable graph output during building.
+     *
+     * Extraction removes transient eligibility, requests the epilogue final state, and
+     * records caller-owned output storage populated after command-list submission.
+     */
     void FARDGBuilder::QueueTextureExtraction(
         FARDGTextureRef Texture,
         nvrhi::TextureHandle* Output,
@@ -1007,6 +1260,8 @@ namespace arda::render_graph
         {
             ARDA_CHECK_MSG("Invalid logical texture extraction.");
         }
+        // Enforce both sides of the one-to-one extraction contract: a resource and an
+        // output address may each participate in only one queued extraction.
         const auto Existing = eastl::find_if(
             mImpl->mTextureExtractions.begin(),
             mImpl->mTextureExtractions.end(),
@@ -1025,6 +1280,12 @@ namespace arda::render_graph
         mImpl->mTextureExtractions.push_back({Texture, Output, FinalState});
     }
 
+    /**
+     * Declares a buffer as an observable graph output during building.
+     *
+     * The requested final state is lowered onto the epilogue, and execution writes the
+     * retained physical handle to the unique caller output after graph submission.
+     */
     void FARDGBuilder::QueueBufferExtraction(
         FARDGBufferRef Buffer,
         nvrhi::BufferHandle* Output,
@@ -1038,6 +1299,8 @@ namespace arda::render_graph
         {
             ARDA_CHECK_MSG("Invalid logical buffer extraction.");
         }
+        // Resource and destination uniqueness prevents ambiguous final states or two
+        // logical resources from racing to publish into the same handle object.
         const auto Existing = eastl::find_if(
             mImpl->mBufferExtractions.begin(),
             mImpl->mBufferExtractions.end(),
@@ -1056,6 +1319,13 @@ namespace arda::render_graph
         mImpl->mBufferExtractions.push_back({Buffer, Output, FinalState});
     }
 
+    /**
+     * Appends a type-erased pass and performs its build-stage metadata setup.
+     *
+     * The pass is registered before parameters are visited so it already has a stable,
+     * greater-than-predecessors handle while accesses update resource history. Setup
+     * derives raw states, views, raster bindings, and incoming dependency edges.
+     */
     FARDGPassHandle FARDGBuilder::AddPassInternal(
         eastl::string Name,
         EARDGPassFlags Flags,
@@ -1095,6 +1365,12 @@ namespace arda::render_graph
         return Handle;
     }
 
+    /**
+     * Adds explicit non-resource causality as a build-stage producer edge.
+     *
+     * Both passes must already be registered in forward handle order. Because this is
+     * a producer edge, compilation uses it for ordering and backward liveness.
+     */
     void FARDGBuilder::AddDependency(
         FARDGPassHandle Producer,
         FARDGPassHandle Consumer)
@@ -1116,6 +1392,12 @@ namespace arda::render_graph
         mImpl->mPasses.Get(Consumer).AddProducer(Producer);
     }
 
+    /**
+     * Runs device-independent graph compilation once and returns its stable result.
+     *
+     * Repeated calls reuse the published result. The compiling guard closes build
+     * mutation and prevents re-entry while compiler stages validate and lower state.
+     */
     const FARDGCompileResult& FARDGBuilder::Compile()
     {
         if (mImpl->mbCompiled)
@@ -1133,28 +1415,42 @@ namespace arda::render_graph
         return Result;
     }
 
+    /**
+     * Hands the graph to the execution pipeline for compile-on-demand,
+     * materialization, command recording, queue submission, and extraction publishing.
+     */
     const FARDGExecutionResult& FARDGBuilder::Execute(
         const FARDGExecuteOptions& Options)
     {
         return FARDGExecutor::Execute(*this, Options);
     }
 
+    /**
+     * Returns the published execution report after the graph has executed.
+     * A null result distinguishes the pre-execution lifecycle state.
+     */
     const FARDGExecutionResult*
     FARDGBuilder::GetLastExecutionResult() const noexcept
     {
         return mImpl->mbExecuted ? &mImpl->mExecutionResult : nullptr;
     }
 
+    /** Reports whether all device-independent compiler stages completed successfully. */
     bool FARDGBuilder::IsCompiled() const noexcept
     {
         return mImpl->mbCompiled;
     }
 
+    /** Returns the immutable device, queue-capability, and debug execution context. */
     const FARDGRenderGraphContext& FARDGBuilder::GetContext() const noexcept
     {
         return mImpl->mContext;
     }
 
+    /**
+     * Returns mutable graph-scoped blackboard storage during building.
+     * Mutation is rejected after the graph closes so compiled callbacks see stable data.
+     */
     FARDGBlackboard& FARDGBuilder::GetBlackboard()
     {
         if (!IsBuilding(*mImpl))
@@ -1165,88 +1461,116 @@ namespace arda::render_graph
         return mImpl->mBlackboard;
     }
 
+    /** Returns read-only graph-scoped blackboard storage in any lifecycle stage. */
     const FARDGBlackboard& FARDGBuilder::GetBlackboard() const noexcept
     {
         return mImpl->mBlackboard;
     }
 
+    /** Returns the synthetic graph-entry pass created with the private implementation. */
     FARDGPassHandle FARDGBuilder::GetProloguePass() const noexcept
     {
         return mImpl->mCompileResult.mPrologue;
     }
 
+    /** Returns the synthetic graph-exit pass handle populated during compilation. */
     FARDGPassHandle FARDGBuilder::GetEpiloguePass() const noexcept
     {
         return mImpl->mCompileResult.mEpilogue;
     }
 
+    /** Resolves a pass handle to mutable graph storage, or null when invalid. */
     FARDGPass* FARDGBuilder::TryGetPass(FARDGPassHandle Handle) noexcept
     {
         return mImpl->mPasses.TryGet(Handle);
     }
 
+    /** Resolves a pass handle to immutable graph storage, or null when invalid. */
     const FARDGPass* FARDGBuilder::TryGetPass(FARDGPassHandle Handle) const noexcept
     {
         return mImpl->mPasses.TryGet(Handle);
     }
 
+    /** Resolves a texture handle to mutable logical resource storage, or null. */
     FARDGTexture* FARDGBuilder::TryGetTexture(FARDGTextureHandle Handle) noexcept
     {
         return mImpl->mTextures.TryGet(Handle);
     }
 
+    /** Resolves a texture handle to immutable logical resource storage, or null. */
     const FARDGTexture* FARDGBuilder::TryGetTexture(
         FARDGTextureHandle Handle) const noexcept
     {
         return mImpl->mTextures.TryGet(Handle);
     }
 
+    /** Resolves a buffer handle to mutable logical resource storage, or null. */
     FARDGBuffer* FARDGBuilder::TryGetBuffer(FARDGBufferHandle Handle) noexcept
     {
         return mImpl->mBuffers.TryGet(Handle);
     }
 
+    /** Resolves a buffer handle to immutable logical resource storage, or null. */
     const FARDGBuffer* FARDGBuilder::TryGetBuffer(
         FARDGBufferHandle Handle) const noexcept
     {
         return mImpl->mBuffers.TryGet(Handle);
     }
 
+    /** Resolves a view handle to mutable logical view storage, or null. */
     FARDGView* FARDGBuilder::TryGetView(FARDGViewHandle Handle) noexcept
     {
         return mImpl->mViews.TryGet(Handle);
     }
 
+    /** Resolves a view handle to immutable logical view storage, or null. */
     const FARDGView* FARDGBuilder::TryGetView(
         FARDGViewHandle Handle) const noexcept
     {
         return mImpl->mViews.TryGet(Handle);
     }
 
+    /** Resolves a uniform-buffer handle to mutable logical storage, or null. */
     FARDGUniformBuffer* FARDGBuilder::TryGetUniformBuffer(
         FARDGUniformBufferHandle Handle) noexcept
     {
         return mImpl->mUniformBuffers.TryGet(Handle);
     }
 
+    /** Resolves a uniform-buffer handle to immutable logical storage, or null. */
     const FARDGUniformBuffer* FARDGBuilder::TryGetUniformBuffer(
         FARDGUniformBufferHandle Handle) const noexcept
     {
         return mImpl->mUniformBuffers.TryGet(Handle);
     }
 
+    /**
+     * Returns texture extraction declarations in build registration order.
+     * The executor consumes this stable list to publish physical handles.
+     */
     const eastl::vector<FARDGTextureExtraction>&
     FARDGBuilder::GetTextureExtractions() const noexcept
     {
         return mImpl->mTextureExtractions;
     }
 
+    /**
+     * Returns buffer extraction declarations in build registration order.
+     * The executor consumes this stable list after submission.
+     */
     const eastl::vector<FARDGBufferExtraction>&
     FARDGBuilder::GetBufferExtractions() const noexcept
     {
         return mImpl->mBufferExtractions;
     }
 
+    /**
+     * Serializes the compiled graph into a deterministic diagnostic report.
+     *
+     * The dump exposes execution order, culling, dependencies, lowered transitions,
+     * lifetimes, and queue edges for inspection; it does not mutate or serialize an
+     * executable graph and is unavailable before compilation completes.
+     */
     eastl::string FARDGBuilder::DumpGraph() const
     {
         if (!mImpl->mbCompiled)
@@ -1305,6 +1629,8 @@ namespace arda::render_graph
         }
 
         Stream << "Passes " << mImpl->mPasses.GetCount() << "\n";
+        // Include culled records as well as live ones so the report explains compiler
+        // decisions rather than showing only the final execution schedule.
         for (const FARDGPass* Pass : mImpl->mPasses.GetEntries())
         {
             const FARDGPassState& State = Pass->GetState();

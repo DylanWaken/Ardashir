@@ -21,8 +21,10 @@ logical resource + view/range + required state
        dependency edges      state transitions
 ```
 
-This chapter builds the resources for our recurring graph and covers every
-parameter macro family used to declare them.
+This chapter builds the resources for the recurring runtime graph and covers
+every parameter macro family used to declare them. The complete declarations
+are in
+[`ArdaTerrainRenderer.cpp`](../../Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp).
 
 ## Create descriptions now, physical resources later
 
@@ -31,8 +33,8 @@ parameter macro family used to declare them.
 ```cpp
 nvrhi::TextureDesc HeightmapDesc;
 HeightmapDesc.setDebugName("Heightmap")
-    .setWidth(1024)
-    .setHeight(1024)
+    .setWidth(128)
+    .setHeight(128)
     .setMipLevels(2)
     .setFormat(nvrhi::Format::R32_FLOAT)
     .setIsUAV(true);
@@ -315,10 +317,11 @@ contents contributes dependencies and states to that pass. Remember that the
 complete parameter object is uploaded byte-for-byte; design shader-facing
 layout and padding deliberately.
 
-This view-constant example is separate from the recurring
-`UploadTerrainSettings` pass, which copy-writes an ordinary logical buffer.
-Graph uniform buffers use the executor's dedicated graphics upload path
-described above.
+This view-constant example is separate from the runtime
+`UploadTerrainSettings` pass. That pass imports the persistent
+`TerrainSettingsUpload` buffer in `CopySource` and copy-writes the
+graph-created `TerrainSettings` buffer in `CopyDest`. Graph uniform buffers use
+the executor's dedicated graphics upload path described above.
 
 The public creation template is in
 [`ArdaRenderGraphBuilder.h`](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h);
@@ -477,6 +480,7 @@ first/last execution-order interval:
 execution index:  0          1         2         3        4           5       6        7
                   P0         P1        P2        P4       P5          P6      P7       P8
                   Prologue   Upload    Generate  Erode    Triangulate Render  Overlay  Epilogue
+TerrainSettingsUpload       [----------------------------------------------------------]
 TerrainSettings            [---------------]
 Heightmap                            [------------------]
 TerrainVertices                                      [---------------]
@@ -485,8 +489,9 @@ BackBuffer                                                    [-----------------
 ```
 
 `DebugHeightmap` P3 is absent because culling rebuilds use intervals from live
-passes only. The inclusive intervals are `TerrainSettings [1,2]`,
-`Heightmap [2,4]`, both terrain buffers `[4,5]`, and `BackBuffer [5,7]`.
+passes only. The inclusive intervals are `TerrainSettingsUpload [1,7]`,
+`TerrainSettings [1,2]`, `Heightmap [2,4]`, both terrain buffers `[4,5]`,
+and `BackBuffer [5,7]`.
 
 External and extracted resources extend through the epilogue. A resource is a
 transient candidate only when it has `Transient` and is neither external nor

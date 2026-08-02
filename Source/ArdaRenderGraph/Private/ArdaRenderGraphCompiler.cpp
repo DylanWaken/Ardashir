@@ -17,6 +17,13 @@ namespace arda::render_graph
     {
         constexpr uint32_t InvalidGroup = eastl::numeric_limits<uint32_t>::max();
 
+        /**
+         * Returns whether a state contains any state bit that permits a write.
+         *
+         * State lowering uses this when merging declarations for one resource
+         * within one pass: writes must remain exclusive, while compatible
+         * read-only requirements may be combined.
+         */
         [[nodiscard]] bool IsWriteState(
             nvrhi::ResourceStates State) noexcept
         {
@@ -34,6 +41,12 @@ namespace arda::render_graph
             return (static_cast<uint32_t>(State) & WriteMask) != 0;
         }
 
+        /**
+         * Returns whether a state includes unordered access.
+         *
+         * Barrier lowering checks this even when before and after states are
+         * equal, because consecutive UAV accesses still require memory ordering.
+         */
         [[nodiscard]] bool IsUAVState(
             nvrhi::ResourceStates State) noexcept
         {
@@ -41,6 +54,13 @@ namespace arda::render_graph
                 nvrhi::ResourceStates::Unknown;
         }
 
+        /**
+         * Converts a declaration to the state required on the selected pipeline.
+         *
+         * Async compute cannot use the pixel stage. When a general shader-read
+         * declaration contains both pixel and non-pixel bits, this removes only
+         * the pixel bit; all other states and pipelines are preserved.
+         */
         [[nodiscard]] nvrhi::ResourceStates NormalizeStateForPipeline(
             nvrhi::ResourceStates State,
             EARDGPipeline Pipeline) noexcept
@@ -60,6 +80,13 @@ namespace arda::render_graph
                     nvrhi::ResourceStates::PixelShaderResource));
         }
 
+        /**
+         * Merges one pass's requirements for the same tracked resource unit.
+         *
+         * Unknown adopts the first requirement, equal states remain unchanged,
+         * and distinct read-only states are ORed. A conflict involving a write
+         * fails compilation. The unit is a texture mip/slice or a whole buffer.
+         */
         [[nodiscard]] nvrhi::ResourceStates MergePassState(
             nvrhi::ResourceStates Existing,
             nvrhi::ResourceStates Required)
@@ -80,6 +107,12 @@ namespace arda::render_graph
                 "A render-graph pass declares conflicting states for one resource.");
         }
 
+        /**
+         * Tests whether every state declared by a pass is legal on a copy queue.
+         *
+         * Each present declaration must be a nonzero subset of CopySource and
+         * CopyDest. An empty pass is vacuously compatible.
+         */
         [[nodiscard]] bool IsCopyCompatible(const FARDGPass& Pass) noexcept
         {
             constexpr uint32_t CopyMask =
@@ -106,6 +139,13 @@ namespace arda::render_graph
             return true;
         }
 
+        /**
+         * Tests whether every pass state can execute on async compute.
+         *
+         * Graphics-only states are rejected. A pixel shader read is accepted
+         * only when the non-pixel bit is also present, allowing pipeline
+         * normalization to retain a valid compute read.
+         */
         [[nodiscard]] bool IsAsyncComputeCompatible(
             const FARDGPass& Pass) noexcept
         {
@@ -115,6 +155,7 @@ namespace arda::render_graph
                 static_cast<uint32_t>(nvrhi::ResourceStates::DepthRead) |
                 static_cast<uint32_t>(nvrhi::ResourceStates::Present) |
                 static_cast<uint32_t>(nvrhi::ResourceStates::ShadingRateSurface);
+            // Use the same queue-compatibility rule for textures and buffers.
             const auto IsCompatibleState =
                 [GraphicsOnlyMask](nvrhi::ResourceStates State)
                 {
@@ -146,6 +187,13 @@ namespace arda::render_graph
             return true;
         }
 
+        /**
+         * Stage 4: selects a deterministic execution pipeline for every pass.
+         *
+         * Copy and async requests are honored only outside immediate mode for
+         * non-sentinels with an available queue and compatible states. Failed
+         * eligibility falls back to graphics. Only each pass's pipeline changes.
+         */
         void AssignPipelines(FARDGBuilder::FImpl& Graph)
         {
             for (FARDGPass* Pass : Graph.mPasses.GetEntries())
@@ -173,6 +221,14 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Stage 5: validates incoming edges and builds reverse adjacency.
+         *
+         * Setup records predecessors on consumers. This stage sorts those lists,
+         * requires every edge to point strictly forward in stable handle order,
+         * and mirrors data and ordering-only edges onto producers. The forward
+         * invariant makes registration order topological and precludes cycles.
+         */
         void BuildConsumerEdges(FARDGBuilder::FImpl& Graph)
         {
             for (FARDGPass* Pass : Graph.mPasses.GetEntries())
@@ -219,6 +275,14 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Stage 6: removes passes that cannot contribute to an observable root.
+         *
+         * Normal mode walks data producers backward from the epilogue and
+         * NeverCull roots. Synchronization edges order work but do not preserve
+         * liveness. Execution order is the registration-order subsequence of
+         * live passes; immediate mode instead keeps every pass.
+         */
         void CullPasses(FARDGBuilder::FImpl& Graph)
         {
             if (Graph.mContext.mDebugOptions.mbImmediateMode)
@@ -238,6 +302,7 @@ namespace arda::render_graph
                 Pass->GetState().mbCulled = !Pass->GetState().mbSentinel;
             }
 
+            // Each popped producer extends a path from an observable root.
             eastl::vector<FARDGPassHandle> Worklist;
             Worklist.push_back(Graph.mCompileResult.mEpilogue);
             for (const FARDGPass* Pass : Graph.mPasses.GetEntries())
@@ -277,6 +342,13 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Stage 7: rebuilds resource use intervals after culling.
+         *
+         * Build-time intervals include dead declarations, so this clears them
+         * and replays only execution-order accesses. External and extracted
+         * resources are also used at the epilogue for graph-exit state/ownership.
+         */
         void RebuildLiveResourceIntervals(FARDGBuilder::FImpl& Graph)
         {
             for (FARDGTexture* Texture : Graph.mTextures.GetEntries())
@@ -318,6 +390,14 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Stage 8: emits inclusive lifetimes in execution-order coordinates.
+         *
+         * Resource records hold pass handles, so this first maps live handles
+         * to compact execution indices. It emits textures then buffers in
+         * registry order and identifies only graph-owned transient reuse
+         * candidates. Debug lifetime extension widens all intervals.
+         */
         void CompileResourceLifetimes(FARDGBuilder::FImpl& Graph)
         {
             eastl::vector<uint32_t> ExecutionIndices(
@@ -383,6 +463,15 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Stage 9: lowers live state declarations into transition metadata.
+         *
+         * Textures are tracked per mip and array slice; buffers are tracked as
+         * whole resources. Repeated requirements within a pass are normalized
+         * and merged before transitions are emitted. Equal UAV states request
+         * ordering, conservative mode can force other equal-state barriers, and
+         * graph-exit transitions are attached to the epilogue. No GPU calls occur.
+         */
         void CompileBarriers(FARDGBuilder::FImpl& Graph)
         {
             eastl::vector<eastl::vector<nvrhi::ResourceStates>> TextureStates;
@@ -426,6 +515,7 @@ namespace arda::render_graph
                     continue;
                 }
 
+                // Merge all aliases/views before advancing the tracked texture state.
                 eastl::vector<eastl::vector<nvrhi::ResourceStates>> RequiredTextures(
                     Graph.mTextures.GetCount());
                 for (const FARDGPassTextureState& Access :
@@ -470,6 +560,7 @@ namespace arda::render_graph
                     }
                 }
 
+                // Emit cell-sized records with explicit before/after continuity.
                 for (uint32_t TextureIndex = 0;
                      TextureIndex < RequiredTextures.size();
                      ++TextureIndex)
@@ -524,6 +615,7 @@ namespace arda::render_graph
                     }
                 }
 
+                // Buffer ranges are validated elsewhere but share one state slot.
                 eastl::vector<nvrhi::ResourceStates> RequiredBuffers(
                     Graph.mBuffers.GetCount(),
                     nvrhi::ResourceStates::Unknown);
@@ -567,6 +659,7 @@ namespace arda::render_graph
                 }
             }
 
+            // The synthetic epilogue owns graph-exit transitions and UAV ordering.
             FARDGPass& Epilogue =
                 Graph.mPasses.Get(Graph.mCompileResult.mEpilogue);
             for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
@@ -633,6 +726,14 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Stage 12: emits synchronization metadata for cross-pipeline edges.
+         *
+         * Data and ordering-only producers are combined and deduplicated for
+         * each live consumer. Culled and same-pipeline edges need no record;
+         * every remaining edge becomes one deterministic queue dependency that
+         * execution can use to derive waits.
+         */
         void CompileQueueDependencies(FARDGBuilder::FImpl& Graph)
         {
             Graph.mCompileResult.mQueueDependencies.clear();
@@ -670,6 +771,15 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Stage 11: computes graphics fork/join bounds for async-compute passes.
+         *
+         * Each async pass walks both edge kinds backward through non-graphics
+         * work to the latest reachable graphics predecessor, and forward to the
+         * earliest reachable graphics successor. Sentinels are fallbacks and
+         * culled nodes are ignored. These fields are descriptive; explicit
+         * queue dependencies drive submission synchronization.
+         */
         void CompileAsyncMetadata(FARDGBuilder::FImpl& Graph)
         {
             for (FARDGPassHandle Handle : Graph.mCompileResult.mExecutionOrder)
@@ -690,6 +800,7 @@ namespace arda::render_graph
                     Pass.GetState().mSynchronizationProducers.begin(),
                     Pass.GetState().mSynchronizationProducers.end());
                 eastl::unordered_set<uint32_t> VisitedProducers;
+                // Stop each ancestry path at its first live graphics boundary.
                 while (!ProducerWorklist.empty())
                 {
                     const FARDGPassHandle ProducerHandle =
@@ -732,6 +843,7 @@ namespace arda::render_graph
                     Pass.GetState().mSynchronizationConsumers.begin(),
                     Pass.GetState().mSynchronizationConsumers.end());
                 eastl::unordered_set<uint32_t> VisitedConsumers;
+                // Mirror the search to find the nearest later graphics boundary.
                 while (!ConsumerWorklist.empty())
                 {
                     const FARDGPassHandle ConsumerHandle =
@@ -770,6 +882,14 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Stage 13: groups adjacent compatible graphics raster passes.
+         *
+         * A maximal run shares a dense group index only when every pass is
+         * groupable and has an identical logical attachment signature. Any
+         * non-groupable pass breaks adjacency. Groups are metadata and do not
+         * themselves merge command lists or render passes.
+         */
         void CompileRasterGroups(FARDGBuilder::FImpl& Graph)
         {
             uint32_t GroupCount = 0;
@@ -805,6 +925,15 @@ namespace arda::render_graph
         }
     }
 
+    /**
+     * Runs the full compile pipeline and publishes the builder-owned result.
+     *
+     * Validation precedes culling so dead work cannot hide bad declarations.
+     * The epilogue makes external/extracted outputs observable, then queue
+     * selection, reverse edges, liveness, lifetimes, barriers, transition replay,
+     * async metadata, queue dependencies, and raster grouping run in dependency
+     * order. The compiled flag is committed last; later calls return the cache.
+     */
     const FARDGCompileResult& FARDGCompiler::Compile(FARDGBuilder& Builder)
     {
         ARDA_NAMED_SCOPE_TIMER("ARDG Compile");
@@ -837,6 +966,8 @@ namespace arda::render_graph
             }
         }
 
+        // Anchor externally visible writes at one liveness root. Trailing
+        // readers add ordering-only edges, so they remain culled if otherwise dead.
         Graph.mCompileResult.mEpilogue =
             Graph.mPasses.Emplace<FARDGSentinelPass>("GraphEpilogue");
         FARDGPass& Epilogue =

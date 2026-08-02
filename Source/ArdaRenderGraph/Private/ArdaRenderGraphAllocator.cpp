@@ -11,11 +11,18 @@ namespace arda::render_graph
 {
     namespace
     {
+        /** Validates the alignment invariant shared by heap and arena allocation. */
         [[nodiscard]] bool IsPowerOfTwo(size_t Value) noexcept
         {
             return Value != 0 && (Value & (Value - 1u)) == 0;
         }
 
+        /**
+         * Rounds a heap offset up without silently wrapping uint64_t.
+         *
+         * Alignment is assumed to be a non-zero power of two, as validated by
+         * the caller before this execution-allocation helper is used.
+         */
         [[nodiscard]] uint64_t AlignUp(uint64_t Value, uint64_t Alignment)
         {
             if (Value > eastl::numeric_limits<uint64_t>::max() - (Alignment - 1u))
@@ -26,19 +33,37 @@ namespace arda::render_graph
         }
     }
 
+    /**
+     * Computes the ideal transient placement for compiled resource lifetimes.
+     *
+     * This execution-allocation model is deterministic: requests are visited
+     * by first use and identifier, retired ranges are merged, and the first
+     * aligned free range is selected. It does not create NVRHI heaps or
+     * resources; the executor can evaluate the result independently of the
+     * backend policy it ultimately uses.
+     *
+     * TODO(ArdaRenderGraph): Physical placed-resource aliasing is currently
+     * disabled. Apply this layout only after NVRHI exposes portable aliasing
+     * barriers and heap-compatibility queries.
+     */
     FARDGTransientHeapLayout FARDGTransientHeapAllocator::Allocate(
         const eastl::vector<FARDGTransientAllocationRequest>& Requests,
         bool bAllowAliasing)
     {
         struct FARDGActiveAllocation
         {
+            /** Inclusive execution-order index after which this placement may retire. */
             uint32_t mLastUse = 0;
+            /** Byte offset of the live placement from the ideal heap start. */
             uint64_t mOffset = 0;
+            /** Size in bytes returned to the free-range set when the lifetime retires. */
             uint64_t mSize = 0;
         };
         struct FARDGFreeRange
         {
+            /** Byte offset of the reusable range from the ideal heap start. */
             uint64_t mOffset = 0;
+            /** Number of contiguous reusable bytes beginning at mOffset. */
             uint64_t mSize = 0;
         };
 
@@ -46,6 +71,8 @@ namespace arda::render_graph
         eastl::sort(
             Sorted.begin(),
             Sorted.end(),
+            // Lifetime order makes retirement valid; the identifier tie-break
+            // makes equal-first-use layouts reproducible.
             [](const auto& Left, const auto& Right)
             {
                 if (Left.mFirstUse != Right.mFirstUse)
@@ -72,6 +99,8 @@ namespace arda::render_graph
 
             if (bAllowAliasing)
             {
+                // Intervals are inclusive, so only allocations ending strictly
+                // before this first use are no longer live.
                 for (auto Iterator = Active.begin(); Iterator != Active.end();)
                 {
                     if (Iterator->mLastUse < Request.mFirstUse)
@@ -89,11 +118,14 @@ namespace arda::render_graph
                 eastl::sort(
                     FreeRanges.begin(),
                     FreeRanges.end(),
+                    // Offset order enables the following linear adjacency merge.
                     [](const auto& Left, const auto& Right)
                     {
                         return Left.mOffset < Right.mOffset;
                     });
                 eastl::vector<FARDGFreeRange> Merged;
+                // Coalescing adjacent retired allocations can make a larger
+                // request fit even when neither original range was sufficient.
                 for (const FARDGFreeRange& Range : FreeRanges)
                 {
                     if (!Merged.empty() &&
@@ -114,6 +146,8 @@ namespace arda::render_graph
             bool bReused = false;
             if (bAllowAliasing)
             {
+                // Deterministic first-fit: preserve any alignment prefix and
+                // unused suffix as independent ranges for later requests.
                 for (size_t Index = 0; Index < FreeRanges.size(); ++Index)
                 {
                     const FARDGFreeRange Range = FreeRanges[Index];
@@ -145,6 +179,8 @@ namespace arda::render_graph
 
             if (!bReused)
             {
+                // Grow only at the aligned high-water mark when no retired
+                // range can satisfy the request.
                 Offset = AlignUp(Layout.mCapacity, Request.mAlignment);
             }
             if (Offset > eastl::numeric_limits<uint64_t>::max() - Request.mSize)
@@ -163,6 +199,8 @@ namespace arda::render_graph
         eastl::sort(
             Layout.mAllocations.begin(),
             Layout.mAllocations.end(),
+            // Consumers receive placements in stable request-identifier order,
+            // independent of the lifetime order used by the algorithm.
             [](const auto& Left, const auto& Right)
             {
                 return Left.mIdentifier < Right.mIdentifier;
@@ -170,6 +208,7 @@ namespace arda::render_graph
         return Layout;
     }
 
+    /** Initializes build-time graph storage and rejects an unusable block size. */
     FARDGArena::FARDGArena(size_t DefaultBlockSize)
         : mDefaultBlockSize(DefaultBlockSize)
     {
@@ -179,11 +218,21 @@ namespace arda::render_graph
         }
     }
 
+    /** Ends graph storage lifetime by applying the same cleanup as Reset. */
     FARDGArena::~FARDGArena()
     {
         Reset();
     }
 
+    /**
+     * Allocates stable build-time storage from an existing block or a new one.
+     *
+     * Blocks are searched newest-first to favor the current allocation region.
+     * The stored block alignment guarantees its base address can satisfy any
+     * request no stricter than that alignment; offsets are then aligned within
+     * the block. Successful allocation advances only that block's high-water
+     * mark and never relocates earlier objects.
+     */
     void* FARDGArena::AllocateBytes(size_t Size, size_t Alignment)
     {
         if (!IsPowerOfTwo(Alignment))
@@ -223,6 +272,12 @@ namespace arda::render_graph
         return Block.mMemory;
     }
 
+    /**
+     * Adds a type-erased cleanup action for a constructed arena object.
+     *
+     * Registration order is construction order; Reset deliberately traverses
+     * the list backward before releasing storage.
+     */
     void FARDGArena::RegisterDestructor(void* Object, void (*Destroy)(void*))
     {
         if (Object == nullptr || Destroy == nullptr)
@@ -232,6 +287,13 @@ namespace arda::render_graph
         mDestructors.push_back({Object, Destroy});
     }
 
+    /**
+     * Destroys graph-scoped objects and releases all arena blocks.
+     *
+     * Destruction precedes deallocation because callbacks dereference objects
+     * in those blocks. Reverse traversal provides LIFO destruction, after
+     * which counters and containers return to their initial empty state.
+     */
     void FARDGArena::Reset() noexcept
     {
         for (auto DestructorIterator = mDestructors.rbegin();
@@ -252,6 +314,13 @@ namespace arda::render_graph
         mObjectCount = 0;
     }
 
+    /**
+     * Appends one aligned block for the build-time monotonic allocator.
+     *
+     * The block grows beyond the preferred size for oversized requests and
+     * uses at least max_align_t alignment. Its offset starts at zero; the
+     * caller advances it after consuming the requested bytes.
+     */
     FARDGArena::FARDGBlock& FARDGArena::AddBlock(size_t MinimumSize, size_t Alignment)
     {
         FARDGBlock Block;

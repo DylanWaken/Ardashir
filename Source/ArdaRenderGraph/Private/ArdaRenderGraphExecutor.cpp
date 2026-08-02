@@ -20,24 +20,40 @@ namespace arda::render_graph
     {
         struct FARDGRuntimePassTransitions
         {
+            /** Physical texture transitions emitted while recording this pass. */
             eastl::vector<FARDGTextureTransition> mTextures;
+            /** Physical buffer transitions emitted while recording this pass. */
             eastl::vector<FARDGBufferTransition> mBuffers;
+            /** First-write texture accesses selected for debug clearing in this pass. */
             eastl::vector<FARDGPassTextureState> mTextureClobbers;
+            /** First-write buffer accesses selected for debug clearing in this pass. */
             eastl::vector<FARDGPassBufferState> mBufferClobbers;
         };
 
         struct FARDGRecordedPass
         {
+            /** Command list owned by NVRHI and populated during the recording stage. */
             nvrhi::CommandListHandle mCommandList;
+            /** Submission queue selected from the pass pipeline; graphics is the default. */
             nvrhi::CommandQueue mQueue = nvrhi::CommandQueue::Graphics;
+            /** Number of debug resource clears encoded into this pass's command list. */
             uint32_t mClobberedResourceCount = 0;
         };
 
         struct FARDGExecutionFailureGuard
         {
+            /** Non-owning graph implementation protected for this execution attempt. */
             FARDGBuilder::FImpl& mGraph;
+            /** Disarm flag set only after submission and extraction publication succeed. */
             bool mbCompleted = false;
 
+            /**
+             * Makes an interrupted execution attempt terminal for this builder.
+             *
+             * Execute disarms the guard only after all submissions and
+             * extraction publication succeed, so exceptions cannot leave a
+             * partially submitted graph looking reusable.
+             */
             ~FARDGExecutionFailureGuard()
             {
                 if (!mbCompleted)
@@ -47,6 +63,7 @@ namespace arda::render_graph
             }
         };
 
+        /** Maps the compiler-selected graph pipeline to its NVRHI submit queue. */
         [[nodiscard]] nvrhi::CommandQueue GetCommandQueue(
             EARDGPipeline Pipeline) noexcept
         {
@@ -62,12 +79,14 @@ namespace arda::render_graph
             return nvrhi::CommandQueue::Graphics;
         }
 
+        /** Converts an NVRHI queue enum to the result-array bookkeeping index. */
         [[nodiscard]] size_t GetQueueIndex(
             nvrhi::CommandQueue Queue) noexcept
         {
             return static_cast<size_t>(Queue);
         }
 
+        /** Identifies states that require explicit unordered-access ordering. */
         [[nodiscard]] bool IsUAVState(
             nvrhi::ResourceStates State) noexcept
         {
@@ -75,6 +94,10 @@ namespace arda::render_graph
                 nvrhi::ResourceStates::Unknown;
         }
 
+        /**
+         * Replaces an unspecified resource start state with the executable
+         * Common state used during materialization and transition tracking.
+         */
         [[nodiscard]] nvrhi::ResourceStates NormalizeInitialState(
             nvrhi::ResourceStates State) noexcept
         {
@@ -83,6 +106,12 @@ namespace arda::render_graph
                 : State;
         }
 
+        /**
+         * Performs the definitive compatibility check for texture-pool reuse.
+         *
+         * This execution-materialization check includes every descriptor field
+         * relevant to the pool policy; hash equality alone is never trusted.
+         */
         [[nodiscard]] bool TextureDescriptorsEqual(
             const nvrhi::TextureDesc& Left,
             const nvrhi::TextureDesc& Right) noexcept
@@ -111,6 +140,7 @@ namespace arda::render_graph
                      sizeof(Left.clearValue)) == 0);
         }
 
+        /** Performs the definitive descriptor check for committed-buffer reuse. */
         [[nodiscard]] bool BufferDescriptorsEqual(
             const nvrhi::BufferDesc& Left,
             const nvrhi::BufferDesc& Right) noexcept
@@ -135,6 +165,12 @@ namespace arda::render_graph
                 Left.sharedResourceFlags == Right.sharedResourceFlags;
         }
 
+        /**
+         * Mixes one descriptor field into a pool bucket key.
+         *
+         * Collisions are harmless because acquisition always follows hashing
+         * with full descriptor equality.
+         */
         template <typename ValueType>
         void HashCombine(size_t& Seed, const ValueType& Value)
         {
@@ -144,6 +180,11 @@ namespace arda::render_graph
                 (Seed >> 2u);
         }
 
+        /**
+         * Builds a fast texture-pool bucket key from high-selectivity fields.
+         *
+         * Omitted fields are checked by TextureDescriptorsEqual before reuse.
+         */
         [[nodiscard]] size_t HashTextureDescriptor(
             const nvrhi::TextureDesc& Desc)
         {
@@ -163,6 +204,11 @@ namespace arda::render_graph
             return Hash;
         }
 
+        /**
+         * Builds a fast buffer-pool bucket key from high-selectivity fields.
+         *
+         * Omitted fields are checked by BufferDescriptorsEqual before reuse.
+         */
         [[nodiscard]] size_t HashBufferDescriptor(
             const nvrhi::BufferDesc& Desc)
         {
@@ -181,6 +227,7 @@ namespace arda::render_graph
         class FARDGTexturePool final
         {
         public:
+            /** Creates an execution-local texture pool and result counter sink. */
             FARDGTexturePool(
                 nvrhi::IDevice& Device,
                 FARDGExecutionResult& Result)
@@ -189,6 +236,15 @@ namespace arda::render_graph
             {
             }
 
+            /**
+             * Binds one logical lifetime to a compatible committed texture.
+             *
+             * Descriptors are normalized before lookup. Reuse requires exact
+             * compatibility, the same non-negative queue domain, and an
+             * earlier inclusive lifetime whose last use precedes FirstUse.
+             * Reuse advances the entry's availability and updates the report;
+             * otherwise a new NVRHI object is created.
+             */
             [[nodiscard]] nvrhi::TextureHandle Acquire(
                 nvrhi::TextureDesc Desc,
                 uint32_t FirstUse,
@@ -229,20 +285,28 @@ namespace arda::render_graph
         private:
             struct FEntry
             {
+                /** Normalized descriptor used for definitive compatibility checks. */
                 nvrhi::TextureDesc mDesc;
+                /** Pool-owned reference to the reusable physical texture. */
                 nvrhi::TextureHandle mTexture;
+                /** Inclusive execution-order index of the latest logical user's last use. */
                 uint32_t mAvailableAfter = 0;
+                /** Queue reuse domain index, or -1 when this entry cannot be recycled. */
                 int32_t mReuseDomain = -1;
             };
 
+            /** Non-owning device used to create textures during materialization. */
             nvrhi::IDevice& mDevice;
+            /** Non-owning execution report updated with texture reuse statistics. */
             FARDGExecutionResult& mResult;
+            /** Execution-local descriptor-hash buckets owning reusable texture handles. */
             eastl::unordered_map<size_t, eastl::vector<FEntry>> mEntries;
         };
 
         class FARDGBufferPool final
         {
         public:
+            /** Creates an execution-local buffer pool and result counter sink. */
             FARDGBufferPool(
                 nvrhi::IDevice& Device,
                 FARDGExecutionResult& Result)
@@ -251,6 +315,13 @@ namespace arda::render_graph
             {
             }
 
+            /**
+             * Binds one logical lifetime to a compatible committed buffer.
+             *
+             * Reuse follows the same inclusive-lifetime, descriptor-equality,
+             * and same-queue-domain invariants as texture acquisition. A
+             * negative domain deliberately forces a fresh physical object.
+             */
             [[nodiscard]] nvrhi::BufferHandle Acquire(
                 nvrhi::BufferDesc Desc,
                 uint32_t FirstUse,
@@ -291,17 +362,37 @@ namespace arda::render_graph
         private:
             struct FEntry
             {
+                /** Normalized descriptor used for definitive compatibility checks. */
                 nvrhi::BufferDesc mDesc;
+                /** Pool-owned reference to the reusable physical buffer. */
                 nvrhi::BufferHandle mBuffer;
+                /** Inclusive execution-order index of the latest logical user's last use. */
                 uint32_t mAvailableAfter = 0;
+                /** Queue reuse domain index, or -1 when this entry cannot be recycled. */
                 int32_t mReuseDomain = -1;
             };
 
+            /** Non-owning device used to create buffers during materialization. */
             nvrhi::IDevice& mDevice;
+            /** Non-owning execution report updated with buffer reuse statistics. */
             FARDGExecutionResult& mResult;
+            /** Execution-local descriptor-hash buckets owning reusable buffer handles. */
             eastl::unordered_map<size_t, eastl::vector<FEntry>> mEntries;
         };
 
+        /**
+         * Evaluates ideal placed-resource packing before materialization.
+         *
+         * Virtual probes provide size/alignment when the backend supports
+         * them, but the computed aliasing layout is intentionally not applied:
+         * the portable NVRHI surface does not expose all required aliasing
+         * safety operations. Every transient candidate is therefore reported
+         * as using committed-resource fallback.
+         *
+         * TODO(ArdaRenderGraph): Enable physical placed-resource aliasing here
+         * after NVRHI provides portable aliasing barriers and heap-compatibility
+         * queries; then consume the computed layout instead of discarding it.
+         */
         void EvaluateTransientHeapLayout(
             FARDGBuilder::FImpl& Graph,
             nvrhi::IDevice& Device,
@@ -386,6 +477,13 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Returns the sole queue domain using a transient texture, or -1.
+         *
+         * Materialization permits committed-object recycling only when every
+         * live use stays on one queue, avoiding unproven cross-queue lifetime
+         * completion assumptions.
+         */
         [[nodiscard]] int32_t GetTextureReuseDomain(
             const FARDGBuilder::FImpl& Graph,
             FARDGTextureHandle Texture)
@@ -398,6 +496,8 @@ namespace arda::render_graph
                 const bool bUsesTexture = eastl::any_of(
                     Pass.GetState().mTextureStates.begin(),
                     Pass.GetState().mTextureStates.end(),
+                    // This predicate only establishes whether the pass
+                    // contributes its selected queue to the resource domain.
                     [Texture](const FARDGPassTextureState& State)
                     {
                         return State.mTexture == Texture;
@@ -418,6 +518,7 @@ namespace arda::render_graph
             return Domain;
         }
 
+        /** Buffer counterpart to GetTextureReuseDomain. */
         [[nodiscard]] int32_t GetBufferReuseDomain(
             const FARDGBuilder::FImpl& Graph,
             FARDGBufferHandle Buffer)
@@ -430,6 +531,7 @@ namespace arda::render_graph
                 const bool bUsesBuffer = eastl::any_of(
                     Pass.GetState().mBufferStates.begin(),
                     Pass.GetState().mBufferStates.end(),
+                    // Capture the typed handle by value for a pure membership test.
                     [Buffer](const FARDGPassBufferState& State)
                     {
                         return State.mBuffer == Buffer;
@@ -450,6 +552,14 @@ namespace arda::render_graph
             return Domain;
         }
 
+        /**
+         * Materializes every live logical resource before command recording.
+         *
+         * Lifetimes are visited deterministically so execution-local pools can
+         * recycle exact committed-resource matches after non-overlapping uses.
+         * Imported resources retain their handles; created textures/buffers
+         * bind pool results; uniform buffers receive dedicated allocations.
+         */
         void MaterializeResources(
             FARDGBuilder::FImpl& Graph,
             nvrhi::IDevice& Device,
@@ -464,6 +574,8 @@ namespace arda::render_graph
             eastl::sort(
                 Lifetimes.begin(),
                 Lifetimes.end(),
+                // First-use order makes pool availability meaningful; type and
+                // registry index make ties deterministic.
                 [](const auto& Left, const auto& Right)
                 {
                     if (Left.mFirstUse != Right.mFirstUse)
@@ -541,6 +653,16 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Rebuilds compiled logical transitions against physical identities.
+         *
+         * Pooling may bind disjoint logical resources to one NVRHI object, so
+         * the second resource inherits the first resource's final state rather
+         * than its own descriptor's initial state. This stage walks execution
+         * order, tracks that physical history (per mip/slice for textures and
+         * whole-resource for buffers), and emits pass-indexed runtime records.
+         * It also plans supported debug clobbers before first writes.
+         */
         [[nodiscard]] eastl::vector<FARDGRuntimePassTransitions>
         BuildPhysicalTransitions(FARDGBuilder::FImpl& Graph)
         {
@@ -573,6 +695,8 @@ namespace arda::render_graph
                     const nvrhi::TextureDesc& Desc = Texture.GetDesc();
                     if (States.empty())
                     {
+                        // A physical texture enters history once; later logical
+                        // aliases continue from the state left in this vector.
                         States.resize(
                             static_cast<size_t>(Desc.mipLevels) * Desc.arraySize,
                             NormalizeInitialState(Texture.GetInitialState()));
@@ -645,6 +769,9 @@ namespace arda::render_graph
 
             if (Graph.mContext.mDebugOptions.mbClobberFirstWrites)
             {
+                // External resources are treated as already produced. Created
+                // resources become produced at their first declared write,
+                // independently for each texture mip/slice.
                 eastl::vector<eastl::vector<bool>> ProducedTextures;
                 ProducedTextures.reserve(Graph.mTextures.GetCount());
                 for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
@@ -768,6 +895,15 @@ namespace arda::render_graph
             return Runtime;
         }
 
+        /**
+         * Records one compiled pass and its runtime transitions.
+         *
+         * This command-recording stage creates a list for the selected queue,
+         * disables automatic barriers, establishes rebuilt physical start
+         * states, emits forced/UAV ordering and optional first-write clobbers,
+         * then invokes non-sentinel pass work inside a marker. No submission
+         * occurs here, which allows independent passes to run on CPU workers.
+         */
         [[nodiscard]] FARDGRecordedPass RecordPass(
             FARDGBuilder& Builder,
             FARDGBuilder::FImpl& Graph,
@@ -791,6 +927,8 @@ namespace arda::render_graph
 
             Recorded.mCommandList->open();
             Recorded.mCommandList->setEnableAutomaticBarriers(false);
+                // Runtime records, rather than compiled logical before-states,
+                // are authoritative after physical pooling has been resolved.
                 for (const FARDGTextureTransition& Transition :
                      Transitions.mTextures)
                 {
@@ -905,6 +1043,13 @@ namespace arda::render_graph
             return Recorded;
         }
 
+        /**
+         * Uploads frozen uniform-buffer bytes on one graphics command list.
+         *
+         * The returned submission instance is zero when there is no upload.
+         * Non-graphics queues wait on a non-zero instance before their first
+         * pass submission; graphics work is naturally ordered on its queue.
+         */
         [[nodiscard]] uint64_t UploadUniformBuffers(
             FARDGBuilder::FImpl& Graph)
         {
@@ -947,6 +1092,13 @@ namespace arda::render_graph
                 nvrhi::CommandQueue::Graphics);
         }
 
+        /**
+         * Publishes materialized handles requested during graph construction.
+         *
+         * Compilation has already kept these resources live through the
+         * epilogue and arranged final states. Assignment occurs after CPU
+         * submission and does not imply GPU completion.
+         */
         void CompleteExtractions(FARDGBuilder::FImpl& Graph)
         {
             for (const FARDGTextureExtraction& Extraction :
@@ -962,6 +1114,16 @@ namespace arda::render_graph
         }
     }
 
+    /**
+     * Runs the graph's one-shot execution pipeline through CPU submission.
+     *
+     * The graph is compiled if necessary, then resources are materialized,
+     * physical transitions are rebuilt, command lists are recorded by
+     * dependency wave, uniform data is uploaded, and pass lists are submitted
+     * in deterministic execution order with required queue waits. Extractions
+     * are published only after submission. A scope guard permanently marks
+     * the builder failed if any stage exits unsuccessfully.
+     */
     const FARDGExecutionResult& FARDGExecutor::Execute(
         FARDGBuilder& Builder,
         const FARDGExecuteOptions& Options)
@@ -988,6 +1150,8 @@ namespace arda::render_graph
         Graph.mExecutionResult = {};
         Graph.mExecutionResult.mbUsedImmediateMode =
             Graph.mContext.mDebugOptions.mbImmediateMode;
+        // Physical handles must exist before transition rebuilding and before
+        // worker threads invoke validated pass resource getters.
         MaterializeResources(
             Graph,
             *Graph.mContext.mDevice,
@@ -1006,6 +1170,8 @@ namespace arda::render_graph
                 continue;
             }
             uint32_t Level = 0;
+            // Fold both data producers and explicit synchronization producers
+            // into the earliest safe CPU recording wave for this pass.
             auto AccumulateLevel =
                 [&Graph, &Levels, &Level](FARDGPassHandle Producer)
                 {
@@ -1088,6 +1254,10 @@ namespace arda::render_graph
                     const FARDGPassHandle Handle = ParallelPasses[Index];
                     Futures.push_back(std::async(
                         std::launch::async,
+                        // Each job owns a distinct command list and writes a
+                        // distinct pass-indexed result slot; shared graph data
+                        // is read-only during recording except guarded access
+                        // validation managed by execution contexts.
                         [&Builder,
                          &Graph,
                          &RuntimeTransitions,
@@ -1119,6 +1289,9 @@ namespace arda::render_graph
         const uint64_t UploadInstance = UploadUniformBuffers(Graph);
         eastl::array<bool, 3> bUploadWaited{};
         eastl::vector<uint64_t> PassInstances(Graph.mPasses.GetCount(), 0);
+        // Submission order remains deterministic even when recording completed
+        // out of order. Per-pass instances become synchronization tokens for
+        // later cross-queue consumers.
         for (FARDGPassHandle Handle : Graph.mCompileResult.mExecutionOrder)
         {
             FARDGRecordedPass& Pass = Recorded[Handle.GetIndex()];

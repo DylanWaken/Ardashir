@@ -61,11 +61,24 @@ namespace arda::render_graph
             static_cast<uint32_t>(nvrhi::ResourceStates::Present) |
             static_cast<uint32_t>(nvrhi::ResourceStates::ShadingRateSurface);
 
+        /**
+         * Returns whether a state contains any bit that permits resource writes.
+         *
+         * The classification uses the same write mask as the declaration
+         * legality checks, covering UAV, attachment, copy, and acceleration writes.
+         */
         [[nodiscard]] bool IsWriteState(nvrhi::ResourceStates State) noexcept
         {
             return (static_cast<uint32_t>(State) & WriteMask) != 0;
         }
 
+        /**
+         * Converts a declared state to the requirement for the selected pipeline.
+         *
+         * Async compute drops the pixel bit only from a combined pixel/non-pixel
+         * shader-read declaration. This exactly mirrors compiler lowering so
+         * transition replay tests the state the selected queue actually uses.
+         */
         [[nodiscard]] nvrhi::ResourceStates NormalizeStateForPipeline(
             nvrhi::ResourceStates State,
             EARDGPipeline Pipeline) noexcept
@@ -85,6 +98,12 @@ namespace arda::render_graph
                     nvrhi::ResourceStates::PixelShaderResource));
         }
 
+        /**
+         * Returns whether more than one independently writable state bit is set.
+         *
+         * The bit-clearing test is applied only to the masked write bits; zero
+         * and a single write state are legal candidates.
+         */
         [[nodiscard]] bool HasMultipleWriteStates(
             nvrhi::ResourceStates State) noexcept
         {
@@ -92,6 +111,13 @@ namespace arda::render_graph
             return Value != 0 && (Value & (Value - 1u)) != 0;
         }
 
+        /**
+         * Checks the resource-state combinations accepted by graph declarations.
+         *
+         * A legal state is known, has at most one write bit, never combines a
+         * write with reads, and uses Common or Present only as a standalone state.
+         * Resource-kind and queue-specific restrictions are checked separately.
+         */
         [[nodiscard]] bool IsLegalStateCombination(
             nvrhi::ResourceStates State) noexcept
         {
@@ -107,6 +133,12 @@ namespace arda::render_graph
                 ((Value & Present) == 0 || Value == Present);
         }
 
+        /**
+         * Reports a fatal validation failure prefixed with the pass's diagnostic name.
+         *
+         * Centralizing this formatting keeps all pass-local declaration and
+         * transition errors attributable to the pass that introduced them.
+         */
         [[noreturn]] void ReportPassError(
             const FARDGPass& Pass,
             const char* Message)
@@ -117,6 +149,13 @@ namespace arda::render_graph
             ARDA_CHECK_MSG("%s", Stream.str().c_str());
         }
 
+        /**
+         * Validates one declared state against general, resource-kind, and queue rules.
+         *
+         * This pre-compile helper rejects unknown or internally incompatible
+         * combinations, texture/buffer domain mismatches, and states forbidden
+         * by explicit Copy or AsyncCompute pass requests.
+         */
         void ValidateState(
             const FARDGPass& Pass,
             nvrhi::ResourceStates State,
@@ -157,6 +196,14 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Validates one pass texture access against the graph and texture descriptor.
+         *
+         * The handle must resolve in this graph, its state must be legal, its
+         * resolved mip/slice range must be nonempty and in bounds, and UAV or
+         * attachment states require the corresponding descriptor capability.
+         * This stage reads declarations only.
+         */
         void ValidateTextureAccess(
             const FARDGBuilder::FImpl& Graph,
             const FARDGPass& Pass,
@@ -198,6 +245,13 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Validates one pass buffer access against the graph and buffer descriptor.
+         *
+         * The handle and state must be valid, the resolved byte range must be
+         * nonempty and in bounds, and unordered access requires UAV-capable
+         * backing. Buffer state tracking remains whole-resource after this check.
+         */
         void ValidateBufferAccess(
             const FARDGBuilder::FImpl& Graph,
             const FARDGPass& Pass,
@@ -224,6 +278,15 @@ namespace arda::render_graph
             }
         }
 
+        /**
+         * Replays registration order to reject graph-created reads before production.
+         *
+         * External resources start produced. Texture production is tracked per
+         * mip/slice, while buffers use one whole-resource bit. Writes are first
+         * collected for a pass, reads may then rely on earlier production or a
+         * same-pass write, and finally those writes are committed globally.
+         * Sentinels are ignored and no graph state is mutated.
+         */
         void ValidateProducedBeforeRead(const FARDGBuilder::FImpl& Graph)
         {
             eastl::vector<eastl::vector<bool>> ProducedTextures;
@@ -249,6 +312,8 @@ namespace arda::render_graph
                     continue;
                 }
 
+                // Gather writes first so a pass may initialize and read the same
+                // declared state unit without exposing it to earlier passes.
                 eastl::vector<eastl::vector<bool>> PassTextureWrites(
                     Graph.mTextures.GetCount());
                 for (const FARDGPassTextureState& Access :
@@ -295,6 +360,7 @@ namespace arda::render_graph
                     }
                 }
 
+                // Validate reads against prior production or the pass-local write set.
                 for (const FARDGPassTextureState& Access :
                      Pass->GetState().mTextureStates)
                 {
@@ -339,6 +405,7 @@ namespace arda::render_graph
                     }
                 }
 
+                // Publish this pass's writes only after all of its reads are checked.
                 for (uint32_t TextureIndex = 0;
                      TextureIndex < PassTextureWrites.size();
                      ++TextureIndex)
@@ -362,6 +429,15 @@ namespace arda::render_graph
         }
     }
 
+    /**
+     * Validates the complete build-time representation before compiler mutation.
+     *
+     * Resource loops enforce known flags, ownership/backing consistency, and
+     * legal entry/exit states. Pass loops validate every declared access,
+     * including work later eligible for culling. Extraction records must refer
+     * to unique registered resources and unique output addresses. A final
+     * production replay proves graph-created reads have an initialization path.
+     */
     void FARDGValidation::ValidateBeforeCompile(
         const FARDGBuilder::FImpl& Graph)
     {
@@ -477,6 +553,15 @@ namespace arda::render_graph
         ValidateProducedBeforeRead(Graph);
     }
 
+    /**
+     * Independently replays compiled transitions and verifies all live contracts.
+     *
+     * The replay starts from declared initial states, treating Unknown as Common.
+     * Every transition must begin at the tracked state before advancing it.
+     * Writes require exact normalized states, reads allow a containing read-state
+     * mask, and used external/extracted resources must reach their final state.
+     * Texture tracking is per mip/slice; buffer tracking is whole-resource.
+     */
     void FARDGValidation::ValidateTransitions(
         const FARDGBuilder::FImpl& Graph)
     {
@@ -508,6 +593,8 @@ namespace arda::render_graph
         for (FARDGPassHandle Handle : Graph.mCompileResult.mExecutionOrder)
         {
             const FARDGPass& Pass = Graph.mPasses.Get(Handle);
+            // Replay compiler output first, then test declarations against the
+            // resulting state visible while this pass executes.
             for (const FARDGTextureTransition& Transition :
                  Pass.GetState().mTextureTransitions)
             {
@@ -623,6 +710,7 @@ namespace arda::render_graph
             if (eastl::any_of(
                     States.begin(),
                     States.end(),
+                    // One final state contract applies to every texture cell.
                     [Texture](nvrhi::ResourceStates State)
                     {
                         return State != Texture->GetFinalState();

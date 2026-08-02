@@ -51,8 +51,8 @@ timestamp queries, allocation events, call stacks, or live network streams.
   [`Source/ArdaTrace/Private`](../../Source/ArdaTrace/Private)
 - Runtime tests: [`Source/ArdaTrace/Tests`](../../Source/ArdaTrace/Tests)
 - Web viewer: [`Tools/ArdaTraceViewer`](../../Tools/ArdaTraceViewer)
-- Viewer launchers: [`Scripts/RunTraceViewer.bat`](../../Scripts/RunTraceViewer.bat)
-  and [`Scripts/RunTraceViewer.sh`](../../Scripts/RunTraceViewer.sh)
+- Viewer launcher:
+  [`Scripts/RunTraceViewer.py`](../../Scripts/RunTraceViewer.py)
 
 ## Critical lifecycle rule
 
