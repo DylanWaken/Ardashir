@@ -14,7 +14,9 @@ Several tests use empty callbacks and call `Compile()` only. In particular,
 [`DispatchPassApiRegistersComputeWork`](../../Source/ArdaRenderGraph/Tests/ArdaGraphTests.cpp)
 does **not** execute its registered dispatch, and the copy-queue checks do
 **not** issue a copy. Backend runtime tests execute buffer clears, while the
-triangle integration executes real buffer uploads and a raster draw.
+`ARDGExample` smoke tests execute the complete terrain copy/compute/raster
+frame. The smaller triangle integration remains useful for isolating geometry
+upload and one raster draw.
 
 ## 1. Produce, consume, and cull dead work
 
@@ -178,202 +180,58 @@ really refers to the declared attachment. See the actual
 flow and the compile-only external-write test in
 [`ArdaGraphTests.cpp`](../../Source/ArdaRenderGraph/Tests/ArdaGraphTests.cpp).
 
-## 3. Generate, triangulate, and render procedural terrain
+## 3. Full runtime procedural terrain
 
-This is the three-stage core of the series' pedagogical terrain graph. A noise
-compute shader writes a heightmap, another compute shader reads that heightmap
-and writes terrain vertex/index buffers, and a raster pass draws those buffers
-to an imported back buffer:
+The canonical end-to-end example is the `ARDGExample` application:
+
+- [`ArdaTerrainRenderer.cpp`](../../Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp)
+  contains resource creation, the full P1–P7 declaration, binding sets,
+  pipelines, copy, dispatch, and raster recording;
+- [`ArdaTerrain.hlsl`](../../Source/ArdaTests/ARDGExample/Shaders/ArdaTerrain.hlsl)
+  contains noise generation, erosion, triangulation, terrain shading, and
+  overlay shaders;
+- [`ArdaARDGExampleMain.cpp`](../../Source/ArdaTests/ARDGExample/ArdaARDGExampleMain.cpp)
+  owns backend selection, the window, swap chain, frame loop, and presentation;
+  and
+- [`ARDGExample/CMakeLists.txt`](../../Source/ArdaTests/ARDGExample/CMakeLists.txt)
+  builds both shader formats and registers one-frame D3D12/Vulkan CTest smoke
+  tests.
 
 ```text
-GenerateNoiseHeightmap        TriangulateTerrain               RenderTerrain
-Heightmap UAV          -----> Heightmap SRV                    BackBuffer RT
-dispatch(...)                 TerrainVertices/Indices UAV ---> drawIndexed(...)
-
-Heightmap: Common -> UnorderedAccess -> NonPixelShaderResource
-Buffers:   Common --------------------> UnorderedAccess -> VertexBuffer/IndexBuffer
+P0 GraphPrologue
+P1 UploadTerrainSettings       Copy
+P2 GenerateNoiseHeightmap      AsyncCompute
+P3 DebugHeightmap              Graphics read, no output; culled
+P4 ErodeHeightmap              AsyncCompute UAV rewrite
+P5 TriangulateTerrain          AsyncCompute
+P6 RenderTerrain               Raster
+P7 TerrainOverlay              Raster, same BackBuffer attachment
+P8 GraphEpilogue
 ```
 
-Chapters 5 and 8 extend this core with the settings upload, intentionally dead
-debug/minimap read, erosion rewrite, and overlay passes needed to demonstrate
-the compiler's complete P0–P8 behavior.
+The heightmap is `128 × 128`, `R32_FLOAT`, and has two mips; the graph creates
+SRV/UAV views selecting only mip 0. P1 copies the imported persistent
+`TerrainSettingsUpload` buffer into graph-created `TerrainSettings`. P6 and P7
+bind the same imported back buffer, so they form one raster group. With
+dedicated queues, the command-recording work edges cross from copy to async
+compute at P1 → P2 and from async compute to graphics at P5 → P6.
 
-The repository does not currently ship the terrain shaders, pipelines, or demo.
-The `Build*State` helpers below are explicitly application placeholders for
-creating NVRHI binding sets and state that match the graph-resolved resources.
+Build and run from the repository root:
 
-```cpp
-ARDG_BEGIN_PARAMETER_STRUCT(FGenerateNoiseHeightmapParameters)
-    ARDG_TEXTURE_UAV(mHeightmap)
-ARDG_END_PARAMETER_STRUCT()
+```powershell
+cmake -S . -B build -DARDASHIR_BUILD_ARDG_EXAMPLE=ON
+cmake --build build --config Debug --target ARDGExample
+ctest --test-dir build -C Debug --output-on-failure
 
-ARDG_BEGIN_PARAMETER_STRUCT(FTriangulateTerrainParameters)
-    ARDG_TEXTURE_SRV(mHeightmap)
-    ARDG_BUFFER_UAV(mTerrainVertices)
-    ARDG_BUFFER_UAV(mTerrainIndices)
-ARDG_END_PARAMETER_STRUCT()
-
-ARDG_BEGIN_PARAMETER_STRUCT(FRenderTerrainParameters)
-    ARDG_BUFFER_ACCESS(mTerrainVertices)
-    ARDG_BUFFER_ACCESS(mTerrainIndices)
-    ARDG_RENDER_TARGET_BINDING_SLOTS(mTargets)
-ARDG_END_PARAMETER_STRUCT()
-
-const nvrhi::FramebufferAttachment BackBufferAttachment =
-    Framebuffer->getDesc().colorAttachments[0];
-
-FARDGBuilder Graph(GraphContext);
-FARDGTextureRef BackBuffer = Graph.RegisterExternalTexture(
-    BackBufferAttachment.texture,
-    nvrhi::ResourceStates::Present,
-    "BackBuffer");
-
-nvrhi::TextureDesc HeightmapDesc;
-HeightmapDesc.setDebugName("Heightmap")
-    .setWidth(HeightmapWidth)
-    .setHeight(HeightmapHeight)
-    .setFormat(nvrhi::Format::R32_FLOAT)
-    .setIsUAV(true);
-FARDGTextureRef Heightmap = Graph.CreateTexture(HeightmapDesc);
-
-nvrhi::BufferDesc VertexDesc;
-VertexDesc.setDebugName("TerrainVertices")
-    .setByteSize(MaxTerrainVertexCount * sizeof(FTerrainVertex))
-    .setStructStride(sizeof(FTerrainVertex))
-    .setCanHaveUAVs(true)
-    .setIsVertexBuffer(true);
-FARDGBufferRef TerrainVertices = Graph.CreateBuffer(VertexDesc);
-
-nvrhi::BufferDesc IndexDesc;
-IndexDesc.setDebugName("TerrainIndices")
-    .setByteSize(MaxTerrainIndexCount * sizeof(uint32_t))
-    .setStructStride(sizeof(uint32_t))
-    .setCanHaveUAVs(true)
-    .setIsIndexBuffer(true);
-FARDGBufferRef TerrainIndices = Graph.CreateBuffer(IndexDesc);
-
-FARDGTextureViewDesc HeightmapView;
-HeightmapView.mTexture = Heightmap->GetHandle();
-HeightmapView.mSubresources = nvrhi::TextureSubresourceSet(0, 1, 0, 1);
-FARDGTextureUAVRef HeightmapUAV =
-    Graph.CreateTextureUAV("Heightmap UAV", HeightmapView);
-FARDGTextureSRVRef HeightmapSRV =
-    Graph.CreateTextureSRV("Heightmap SRV", HeightmapView);
-
-FARDGBufferViewDesc VertexView;
-VertexView.mBuffer = TerrainVertices->GetHandle();
-VertexView.mRange = nvrhi::EntireBuffer;
-FARDGBufferUAVRef TerrainVerticesUAV =
-    Graph.CreateBufferUAV("TerrainVertices UAV", VertexView);
-
-FARDGBufferViewDesc IndexView;
-IndexView.mBuffer = TerrainIndices->GetHandle();
-IndexView.mRange = nvrhi::EntireBuffer;
-FARDGBufferUAVRef TerrainIndicesUAV =
-    Graph.CreateBufferUAV("TerrainIndices UAV", IndexView);
-
-FGenerateNoiseHeightmapParameters Generate;
-Generate.mHeightmap = HeightmapUAV;
-Graph.AddDispatchPass(
-    "GenerateNoiseHeightmap",
-    &Generate,
-    FARDGDispatchArguments{
-        DivideRoundUp(HeightmapWidth, 8u),
-        DivideRoundUp(HeightmapHeight, 8u),
-        1
-    },
-    [NoisePipeline](FARDGPassExecutionContext& Context,
-                    const FGenerateNoiseHeightmapParameters& Frozen)
-    {
-        nvrhi::ITexture* PhysicalHeightmap =
-            Context.GetTexture(Frozen.mHeightmap);
-        nvrhi::ComputeState State = BuildNoiseComputeState(
-            NoisePipeline,
-            PhysicalHeightmap); // Application placeholder.
-        Context.mCommandList.setComputeState(State);
-    },
-    EARDGPassFlags::AsyncCompute);
-
-FTriangulateTerrainParameters Triangulate;
-Triangulate.mHeightmap = HeightmapSRV;
-Triangulate.mTerrainVertices = TerrainVerticesUAV;
-Triangulate.mTerrainIndices = TerrainIndicesUAV;
-Graph.AddDispatchPass(
-    "TriangulateTerrain",
-    &Triangulate,
-    FARDGDispatchArguments{
-        DivideRoundUp(HeightmapWidth - 1u, 8u),
-        DivideRoundUp(HeightmapHeight - 1u, 8u),
-        1
-    },
-    [TriangulationPipeline](
-        FARDGPassExecutionContext& Context,
-        const FTriangulateTerrainParameters& Frozen)
-    {
-        nvrhi::ITexture* PhysicalHeightmap =
-            Context.GetTexture(Frozen.mHeightmap);
-        nvrhi::IBuffer* PhysicalVertices =
-            Context.GetBuffer(Frozen.mTerrainVertices);
-        nvrhi::IBuffer* PhysicalIndices =
-            Context.GetBuffer(Frozen.mTerrainIndices);
-        nvrhi::ComputeState State = BuildTriangulationComputeState(
-            TriangulationPipeline,
-            PhysicalHeightmap,
-            PhysicalVertices,
-            PhysicalIndices); // Application placeholder.
-        Context.mCommandList.setComputeState(State);
-    },
-    EARDGPassFlags::AsyncCompute);
-
-FRenderTerrainParameters Render;
-Render.mTerrainVertices = {
-    TerrainVertices,
-    nvrhi::ResourceStates::VertexBuffer,
-    nvrhi::EntireBuffer
-};
-Render.mTerrainIndices = {
-    TerrainIndices,
-    nvrhi::ResourceStates::IndexBuffer,
-    nvrhi::EntireBuffer
-};
-Render.mTargets.mColor[0] = {
-    BackBuffer,
-    BackBufferAttachment.subresources
-};
-Graph.AddPass(
-    "RenderTerrain",
-    &Render,
-    EARDGPassFlags::Raster,
-    [TerrainPipeline, Framebuffer, TerrainIndexCount](
-        FARDGPassExecutionContext& Context,
-        const FRenderTerrainParameters& Frozen)
-    {
-        nvrhi::IBuffer* PhysicalVertices =
-            Context.GetBuffer(Frozen.mTerrainVertices.mBuffer);
-        nvrhi::IBuffer* PhysicalIndices =
-            Context.GetBuffer(Frozen.mTerrainIndices.mBuffer);
-        (void)Context.GetTexture(Frozen.mTargets.mColor[0].mTexture);
-
-        nvrhi::GraphicsState State = BuildTerrainGraphicsState(
-            TerrainPipeline,
-            Framebuffer,
-            PhysicalVertices,
-            PhysicalIndices); // Application placeholder.
-        Context.mCommandList.setGraphicsState(State);
-        Context.mCommandList.drawIndexed(
-            nvrhi::DrawArguments().setVertexCount(TerrainIndexCount));
-    });
-
-Graph.Execute();
+ARDGExample --backend d3d12
+ARDGExample --backend vulkan
 ```
 
-Both `RenderTerrain` buffer-read declarations find `TriangulateTerrain` as the
-last writer; edge deduplication keeps one pass edge, while barrier lowering
-still transitions each whole buffer independently.
-`Heightmap` state tracking is per mip/slice. The imported back-buffer write
-keeps `RenderTerrain` live and the epilogue restores `Present`. These are real
-graph declarations and dispatch/draw recording calls, but the placeholder
-helpers must be supplied by an application before this example can execute.
+This chapter intentionally does not duplicate the terrain implementation.
+[Getting started](01-Getting-Started.md) explains its graph products, while
+[Compilation](05-Compilation.md) and
+[Execution and queues](06-Execution-and-Queues.md) follow those products
+through the compiler and executor.
 
 ## 4. Async compute with a graphics join
 
@@ -664,7 +522,7 @@ It does not wait for GPU completion. Declaration behavior is covered by
 while backend execution and extraction are covered by
 [`ExecutesAndExtractsOnAvailableBackend`](../../Source/ArdaRenderGraph/Tests/ArdaGraphTests.cpp).
 
-## 8. Actual triangle renderer walkthrough
+## 8. Additional triangle renderer walkthrough
 
 The full integration is
 [`Source/ArdaTests/NVRHITest/Private/ArdaTriangleRenderer.cpp`](../../Source/ArdaTests/NVRHITest/Private/ArdaTriangleRenderer.cpp).
@@ -775,7 +633,7 @@ attachment was declared, but the graph cannot prove that the captured
 framebuffer contains the same physical texture and subresources. That
 consistency remains the renderer's responsibility.
 
-### What this integration proves
+### What the smaller integration proves
 
 The triangle integration executes real upload and draw commands. It does not
 exercise shader dispatch or a copy-queue command. The render-graph unit tests

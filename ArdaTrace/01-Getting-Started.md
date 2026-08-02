@@ -101,13 +101,13 @@ python3 -m pip install -r Tools/ArdaTraceViewer/requirements.txt
 Windows:
 
 ```powershell
-.\Scripts\RunTraceViewer.bat frame.ardatrace
+python Scripts\RunTraceViewer.py frame.ardatrace
 ```
 
 Linux:
 
 ```sh
-./Scripts/RunTraceViewer.sh frame.ardatrace
+python3 Scripts/RunTraceViewer.py frame.ardatrace
 ```
 
 Open `http://127.0.0.1:5000` in a browser. You can also launch the viewer
@@ -118,7 +118,7 @@ without a path and upload a capture through **Open capture**.
 Run the native and viewer tests:
 
 ```powershell
-.\Scripts\RunAllTests.bat
+python Scripts\RunAllTests.py
 cd Tools\ArdaTraceViewer
 python -m unittest discover -s tests
 ```

@@ -33,12 +33,13 @@ and public compile products in
 ## The recurring graph
 
 Assume graphics, compute, and copy queues are available. Registration has
-already produced these pass handles:
+already produced these pass handles. This is the graph built every frame by
+[`FArdaTerrainRenderer::RenderFrame`](../../Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp):
 
 | Handle | Pass | Declaration |
 | --- | --- | --- |
 | P0 | `GraphPrologue` | synthetic sentinel |
-| P1 | `UploadTerrainSettings` | copy-write `TerrainSettings` |
+| P1 | `UploadTerrainSettings` | copy-read imported `TerrainSettingsUpload`, copy-write graph-created `TerrainSettings` |
 | P2 | `GenerateNoiseHeightmap` | async-compute read `TerrainSettings`, UAV-write `Heightmap` mip 0 |
 | P3 | `DebugHeightmap` | graphics read `Heightmap` mip 0, no observable output |
 | P4 | `ErodeHeightmap` | async-compute UAV-rewrite `Heightmap` mip 0 |
@@ -48,10 +49,12 @@ already produced these pass handles:
 
 The resources are:
 
+- `TerrainSettingsUpload`, an imported persistent buffer read as `CopySource`
+  by P1;
 - `TerrainSettings`, a graph-created whole buffer whose unknown initial state
   will be treated as `Common`;
-- `Heightmap`, a graph-created, two-mip UAV texture, although this graph touches
-  only mip 0;
+- `Heightmap`, a graph-created `128 × 128`, `R32_FLOAT`, two-mip UAV texture,
+  although this graph touches only mip 0;
 - `TerrainVertices` and `TerrainIndices`, graph-created UAV-capable buffers
   that are later consumed in vertex/index states; and
 - `BackBuffer`, imported in `Present`, with `Present` also its graph-exit state.
@@ -61,6 +64,7 @@ The build-time dependency history is already:
 ```text
 producer edges:       P1 -> P2 -> P4 -> P5 -> P6 -> P7
                             \-> P3
+                      P0 -> P1
                       P0 ----------------------> P6
 synchronization edge: P3 -------------> P4
 ```
@@ -184,8 +188,9 @@ For each external or extracted resource:
 2. every reader since that writer becomes a synchronization producer of P8.
 
 For `BackBuffer`, the last writer is `TerrainOverlay`, so P7 → P8 makes the
-final image observable. Readers would be ordered before graph exit, but those
-synchronization edges do not make an otherwise dead read live.
+final image observable. The read-only external `TerrainSettingsUpload` also
+adds P1 as a synchronization producer of P8. Such graph-exit synchronization
+does not make an otherwise dead read live.
 
 Why connect the epilogue instead of special-casing outputs later? It gives
 culling one ordinary root and gives final transitions a synthetic pass on which
@@ -318,6 +323,7 @@ For the example:
 
 | Resource | First use | Last use | Interval |
 | --- | --- | --- | --- |
+| `TerrainSettingsUpload` | P1 | P8 | `[1, 7]` |
 | `TerrainSettings` | P1 | P2 | `[1, 2]` |
 | `Heightmap` | P2 | P5 | `[2, 4]` |
 | `TerrainVertices` | P5 | P6 | `[4, 5]` |
@@ -371,6 +377,7 @@ request ordering.
 The example lowers to:
 
 ```text
+P1 TerrainSettingsUpload: CopySource -> CopySource
 P1 TerrainSettings: Common -> CopyDest
 P2 TerrainSettings: CopyDest -> NonPixelShaderResource
 P2 Heightmap mip 0: Common -> UnorderedAccess
@@ -472,7 +479,7 @@ producer lists, sorts and deduplicates them, and emits
 `FARDGQueueDependency` for each live edge whose endpoints have different
 pipelines.
 
-The example emits exactly these resource-edge queue dependencies:
+The two cross-queue dependencies between command-recording work passes are:
 
 ```text
 P1 Copy         -> P2 AsyncCompute
@@ -481,7 +488,9 @@ P5 AsyncCompute -> P6 Graphics
 
 The P3 → P4 synchronization edge emits nothing because P3 was culled.
 Same-queue edges emit nothing because ordinary queue submission order handles
-them. The lowering is
+them. Boundary metadata can also relate a sentinel to the first or last use of
+an imported resource; sentinels have no work callback or producer command-list
+instance, so they do not add a runtime queue wait. The lowering is
 [`CompileQueueDependencies`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphCompiler.cpp#L636-L671).
 
 These records, unlike fork/join diagnostics, are the compile products used to

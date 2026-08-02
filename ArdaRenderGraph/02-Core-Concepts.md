@@ -3,21 +3,22 @@
 [← Getting started](01-Getting-Started.md) · [Documentation home](README.md) ·
 [Next: Resources and parameters →](03-Resources-and-Parameters.md)
 
-Return to the frame graph from the introduction:
+Return to the canonical runtime graph from the introduction:
 
 ```text
-TerrainSettings
-      |
-      v
-[Generate noise] --Heightmap--> [Erode heightmap] --> [Triangulate terrain]
-       |                                                   |
-       +--> [Debug heightmap]                              +--> TerrainVertices/Indices
-                 (dead)                                              |
-                                                                     v
-                                                  [Render terrain] -> [Overlay]
-                                                           |
-                                                      BackBuffer
+P0 --TerrainSettingsUpload--> P1 Upload -> P2 Generate -> P4 Erode -> P5 Triangulate
+                                            |
+                                            +-> P3 Debug heightmap (dead)
+
+P0 --imported BackBuffer---------------------------------------> P6 Render -> P7 Overlay -> P8
+                                                                   ^
+                                                   terrain buffers--+
 ```
+
+The runnable declaration and callbacks are in
+[`ArdaTerrainRenderer.cpp`](../../Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp);
+the D3D12 and Vulkan smoke-test registration is in
+[`ARDGExample/CMakeLists.txt`](../../Source/ArdaTests/ARDGExample/CMakeLists.txt).
 
 While this graph is being built, none of its graph-created resources need to
 exist on the GPU. They are descriptions that answer: what should run, what does

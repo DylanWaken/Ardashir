@@ -31,6 +31,21 @@ FARDGBuilder Graph(Context);
 Graphics capability is required. A device is required by `Execute()`, but not
 by `Compile()` or `DumpGraph()`.
 
+### Build and run the canonical terrain graph
+
+```powershell
+cmake -S . -B build -DARDASHIR_BUILD_ARDG_EXAMPLE=ON
+cmake --build build --config Debug --target ARDGExample
+ctest --test-dir build -C Debug --output-on-failure
+
+ARDGExample --backend d3d12
+ARDGExample --backend vulkan
+```
+
+The D3D12 and Vulkan CTest smoke tests run one hidden frame when the backend is
+available. See
+[`ARDGExample/CMakeLists.txt`](../../Source/ArdaTests/ARDGExample/CMakeLists.txt).
+
 ### Create a transient output and keep it
 
 ```cpp
@@ -572,11 +587,20 @@ symptom-led use.
 
 ### Source-backed examples and tests
 
+- [`ArdaTerrainRenderer.cpp`](../../Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp):
+  canonical P0–P8 runtime terrain graph with real copy, compute, and raster
+  commands.
+- [`ArdaTerrain.hlsl`](../../Source/ArdaTests/ARDGExample/Shaders/ArdaTerrain.hlsl):
+  terrain compute and graphics shader entry points.
+- [`ArdaARDGExampleMain.cpp`](../../Source/ArdaTests/ARDGExample/ArdaARDGExampleMain.cpp):
+  dual-backend application entry, swap-chain loop, and presentation.
+- [`ARDGExample/CMakeLists.txt`](../../Source/ArdaTests/ARDGExample/CMakeLists.txt):
+  shader compilation plus D3D12/Vulkan smoke-test registration.
 - [`ArdaGraphTests.cpp`](../../Source/ArdaRenderGraph/Tests/ArdaGraphTests.cpp):
   metadata, compilation, culling, transitions, queues, diagnostics, runtime
   clear/extraction/reuse, access-gate, and queue-wait coverage.
 - [`ArdaTriangleRenderer.cpp`](../../Source/ArdaTests/NVRHITest/Private/ArdaTriangleRenderer.cpp):
-  actual geometry upload and swap-chain raster submission.
+  smaller geometry-upload and swap-chain raster example.
 
 ## Current limitations
 

@@ -315,9 +315,14 @@ to the new write, so culling does not follow it.
 
 ## 9. Walk the recurring example one pass at a time
 
+This is the build order in the runnable
+[`ArdaTerrainRenderer.cpp`](../../Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp),
+including its imported persistent upload buffer.
+
 Start with:
 
 ```text
+TerrainSettingsUpload: lastWriter=P0,      readers=[]  # external import
 TerrainSettings: lastWriter=invalid, readers=[]
 Heightmap:       lastWriter=invalid, readers=[]
 TerrainVertices: lastWriter=invalid, readers=[]
@@ -328,13 +333,15 @@ BackBuffer:      lastWriter=P0,      readers=[]  # external import
 External registration sets the prologue as last producer in
 [`RegisterExternalTexture/Buffer`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp#L881-L968).
 
-### P1 `UploadTerrainSettings`: write `TerrainSettings`
+### P1 `UploadTerrainSettings`: read upload, write settings
 
-There is no previous writer and no reader:
+The imported source read follows P0; the graph-created destination has no
+previous writer:
 
 ```text
-P1.producers = []
+P1.producers = [P0]
 P1.syncProducers = []
+TerrainSettingsUpload.readers = [P1]
 TerrainSettings.lastWriter = P1
 TerrainSettings.readers = []
 ```
@@ -407,8 +414,10 @@ P7.producers = [P6]
 BackBuffer.lastWriter = P7
 ```
 
-Compilation appends P8 `GraphEpilogue`, which receives P7 as producer. Backward
-culling reaches P7, P6, P5, P4, P2, and P1. It does not follow P4's
+Compilation appends P8 `GraphEpilogue`, which receives P7 as producer. Because
+`TerrainSettingsUpload` is external and was only read, P8 also receives P1 as
+a synchronization producer for graph-exit ordering. Backward culling reaches
+P7, P6, P5, P4, P2, and P1 through producer edges. It does not follow P4's
 synchronization edge to P3, so P3 is removed. The live registration order
 `[P0, P1, P2, P4, P5, P6, P7, P8]` is the execution order; compilation does
 not topologically reorder it.
