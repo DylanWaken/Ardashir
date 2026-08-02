@@ -55,6 +55,7 @@ namespace arda::tests::ardg_example
         nvrhi::BindingLayoutHandle mErodeBindingLayout;
         nvrhi::BindingLayoutHandle mTriangulateBindingLayout;
         nvrhi::BindingLayoutHandle mCameraBindingLayout;
+        nvrhi::BindingLayoutHandle mTerrainPixelBindingLayout;
         nvrhi::ComputePipelineHandle mGeneratePipeline;
         nvrhi::ComputePipelineHandle mErodePipeline;
         nvrhi::ComputePipelineHandle mTriangulatePipeline;

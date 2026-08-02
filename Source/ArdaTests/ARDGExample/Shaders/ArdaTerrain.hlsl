@@ -173,7 +173,7 @@ struct TerrainVertexInput
 struct TerrainVertexOutput
 {
     float4 mPosition : SV_Position;
-    float mHeight : HEIGHT;
+    float2 mUV : TEXCOORD0;
     float mDepth : DEPTH;
 };
 
@@ -189,9 +189,34 @@ TerrainVertexOutput TerrainVS(TerrainVertexInput input)
     const float4 viewPosition =
         mul(float4(input.mPosition, 1.0), WorldToView);
     output.mPosition = mul(viewPosition, Projection);
-    output.mHeight = input.mHeight;
+    output.mUV =
+        float2(input.mPosition.y, input.mPosition.x) / 1.45 + 0.5;
     output.mDepth = viewPosition.z;
     return output;
+}
+
+Texture2D<float> RenderHeightmap : register(t0);
+
+float SampleHeightmap(float2 uv)
+{
+    uint width;
+    uint height;
+    RenderHeightmap.GetDimensions(width, height);
+
+    const float2 grid =
+        saturate(uv) * float2(width - 1, height - 1);
+    const uint2 lower = uint2(floor(grid));
+    const uint2 upper = min(lower + 1, uint2(width - 1, height - 1));
+    const float2 blend = frac(grid);
+    const float lowerHeight = lerp(
+        RenderHeightmap.Load(int3(lower, 0)),
+        RenderHeightmap.Load(int3(uint2(upper.x, lower.y), 0)),
+        blend.x);
+    const float upperHeight = lerp(
+        RenderHeightmap.Load(int3(uint2(lower.x, upper.y), 0)),
+        RenderHeightmap.Load(int3(upper, 0)),
+        blend.x);
+    return lerp(lowerHeight, upperHeight, blend.y);
 }
 
 float ContourMask(float height, float interval, float thickness)
@@ -208,11 +233,12 @@ float ContourMask(float height, float interval, float thickness)
 
 float4 TerrainPS(TerrainVertexOutput input) : SV_Target
 {
-    const float minorContour = ContourMask(input.mHeight, 0.010, 0.48);
-    const float majorContour = ContourMask(input.mHeight, 0.050, 0.78);
+    const float height = SampleHeightmap(input.mUV);
+    const float minorContour = ContourMask(height, 0.010, 0.48);
+    const float majorContour = ContourMask(height, 0.050, 0.78);
 
     const float boundaryHeight = 0.42;
-    const float relativeHeight = input.mHeight - boundaryHeight;
+    const float relativeHeight = height - boundaryHeight;
     const float distanceFromBoundary = abs(relativeHeight);
     const float boundaryFade = lerp(
         0.3,

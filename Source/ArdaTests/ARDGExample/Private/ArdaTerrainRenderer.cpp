@@ -74,6 +74,7 @@ namespace arda::tests::ardg_example
             ARDG_BUFFER_ACCESS(mTerrainVertices)
             ARDG_BUFFER_ACCESS(mTerrainIndices)
             ARDG_BUFFER_ACCESS(mCamera)
+            ARDG_TEXTURE_SRV(mHeightmap)
             ARDG_RENDER_TARGET_BINDING_SLOTS(mTargets)
         ARDG_END_PARAMETER_STRUCT()
 
@@ -218,10 +219,15 @@ namespace arda::tests::ardg_example
             nvrhi::BindingLayoutDesc()
                 .setVisibility(nvrhi::ShaderType::Vertex)
                 .addItem(nvrhi::BindingLayoutItem::ConstantBuffer(0)));
+        mTerrainPixelBindingLayout = mDevice->createBindingLayout(
+            nvrhi::BindingLayoutDesc()
+                .setVisibility(nvrhi::ShaderType::Pixel)
+                .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0)));
         if (!mGenerateBindingLayout ||
             !mErodeBindingLayout ||
             !mTriangulateBindingLayout ||
-            !mCameraBindingLayout)
+            !mCameraBindingLayout ||
+            !mTerrainPixelBindingLayout)
         {
             mError = "NVRHI failed to create terrain binding layouts.";
             return false;
@@ -281,6 +287,7 @@ namespace arda::tests::ardg_example
                 .setVertexShader(mTerrainVertexShader)
                 .setPixelShader(mTerrainPixelShader)
                 .addBindingLayout(mCameraBindingLayout)
+                .addBindingLayout(mTerrainPixelBindingLayout)
                 .setRenderState(terrainRenderState),
             nvrhi::FramebufferInfo()
                 .addColorFormat(swapChainFormat)
@@ -687,6 +694,7 @@ namespace arda::tests::ardg_example
             cameraBuffer,
             nvrhi::ResourceStates::ConstantBuffer,
             nvrhi::EntireBuffer};
+        render.mHeightmap = heightmapSRV;
         render.mTargets.mColor[0] = {
             backBuffer,
             colorAttachment.subresources};
@@ -780,6 +788,20 @@ namespace arda::tests::ardg_example
                     context.GetBuffer(frozen.mCamera.mBuffer),
                     &cameraSettings,
                     sizeof(cameraSettings));
+                nvrhi::BindingSetHandle terrainPixelBindings =
+                    mDevice->createBindingSet(
+                        nvrhi::BindingSetDesc().addItem(
+                            nvrhi::BindingSetItem::Texture_SRV(
+                                0,
+                                context.GetTexture(frozen.mHeightmap),
+                                nvrhi::Format::R32_FLOAT,
+                                nvrhi::TextureSubresourceSet(0, 1, 0, 1))),
+                        mTerrainPixelBindingLayout);
+                if (!terrainPixelBindings)
+                {
+                    ARDA_CHECK_MSG(
+                        "Failed to create terrain pixel bindings.");
+                }
 
                 const nvrhi::ViewportState viewport =
                     nvrhi::ViewportState().addViewportAndScissorRect(
@@ -792,6 +814,7 @@ namespace arda::tests::ardg_example
                     .setFramebuffer(terrainFramebuffer)
                     .setViewport(viewport)
                     .addBindingSet(mCameraBindingSet)
+                        .addBindingSet(terrainPixelBindings)
                     .addVertexBuffer(
                         nvrhi::VertexBufferBinding()
                             .setBuffer(context.GetBuffer(
