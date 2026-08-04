@@ -5,7 +5,7 @@
 [Next: Allocation and materialization →](10-Allocation-and-Materialization.md)
 
 This chapter reads
-[`FARDGCompiler::Compile`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphCompiler.cpp#L808-L888)
+[`FARDGCompiler::Compile`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphCompiler.cpp#L937-L1019)
 in call order. The goal is not merely to list functions, but to state what each
 one consumes, what invariant it establishes, and what its algorithm costs.
 
@@ -13,6 +13,34 @@ The compiler is deliberately small: one public static entry point and private
 free functions in an anonymous namespace. Its output is deterministic metadata;
 the executor is responsible for physical allocation, command recording, and
 submission.
+
+This is the compile section of the
+[complete call-chain diagram](assets/arda-render-graph-call-chain.svg):
+
+![ArdaRenderGraph compile-stage call chain](assets/arda-render-graph-call-chain.svg#ardg-compile-view)
+
+## Reading the compile-stage excerpt
+
+The left column is the exact call order in `FARDGCompiler::Compile`. The middle
+column expands each helper's loops, graph walks, and important branches. The
+right column names the field or invariant published for later stages.
+
+The flow has four logical subsections:
+
+1. **Validate and close graph boundaries:** validate all declarations before
+   culling, reject unproduced extractions, append `GraphEpilogue`, and root
+   externally observable writers.
+2. **Choose queues and live topology:** assign a pipeline, mirror incoming
+   edges to consumers, then cull by walking data producers backward from the
+   epilogue and `NeverCull` roots.
+3. **Lower resources and states:** rebuild live uses, convert them to inclusive
+   execution-index lifetimes, compile per-pass logical transitions, and replay
+   those transitions independently.
+4. **Publish execution metadata:** derive async diagnostics, concrete
+   cross-pipeline queue dependencies, raster groups, then set `mbCompiled`.
+
+Green arrows in the excerpt identify the exact products consumed by the
+executor. No box in this stage creates an NVRHI resource or command list.
 
 ## Current behavior and proposed behavior
 
@@ -57,7 +85,7 @@ The first compile owns the mutation of compiler products. Later direct calls
 return the same object without rerunning validation or stages. The public
 builder wrapper also guards lifecycle state and sets `mbCompiling` around this
 call:
-[`FARDGBuilder::Compile`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp#L1119-L1134).
+[`FARDGBuilder::Compile`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp#L1759-L1774).
 
 **Invariant on entry:** graph construction is finished for this compile
 attempt; the prologue, user passes, logical resources, raw access states,

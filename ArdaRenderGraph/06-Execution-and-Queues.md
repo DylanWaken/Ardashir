@@ -33,19 +33,7 @@ Execution performs these phases:
 
 Consider this graph:
 
-```text
-Copy:     UploadTerrainSettings
-                    |
-                    | wait for copy instance
-                    v
-Compute:  GenerateNoiseHeightmap -> ErodeHeightmap -> TriangulateTerrain
-                                                               |
-                                                               | wait for compute instance
-                                                               v
-Graphics:                                            RenderTerrain -> TerrainOverlay
-                                                          |
-                                                     BackBuffer -> Present
-```
+![Terrain work flowing through copy, compute, and graphics queues](assets/runtime-multi-queue-pipeline.svg)
 
 The live terrain passes may be recorded on CPU worker threads when their
 dependency levels permit it. Submission nevertheless remains registration
@@ -149,13 +137,7 @@ graphics when no copy queue exists.
 
 The executor assigns each live pass a dependency level:
 
-```text
-level 0:  A       B
-           \     /
-level 1:     C       D
-             \     /
-level 2:       E
-```
+![Dependency-level recording DAG](assets/runtime-recording-level-dag.svg)
 
 A pass's level is one greater than the maximum level of its live producer and
 synchronization-producer edges. Passes in the same level therefore have no

@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1590" viewBox="0 0 1200 1590" role="img" aria-labelledby="sheet-title sheet-desc">
+  <title id="sheet-title">Getting started render graph diagrams</title>
+  <desc id="sheet-desc">Three dark themed diagrams explain the canonical P0 through P8 terrain graph, its live data path, and its cross-queue synchronization edges.</desc>
+  <view id="p0-p8-tree" viewBox="0 0 1200 790"/>
+  <view id="live-data-path" viewBox="0 810 1200 370"/>
+  <view id="cross-queue-edges" viewBox="0 1200 1200 390"/>
+  <defs>
+    <linearGradient id="gs-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="gs-arrow-cyan" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="gs-arrow-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#6ee7b7"/>
+    </marker>
+    <marker id="gs-arrow-amber" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#fbbf24"/>
+    </marker>
+    <style>
+      .gs-bg{fill:url(#gs-bg)}
+      .gs-panel{fill:#111c2e;stroke:#334b68;stroke-width:2}
+      .gs-sentinel{fill:#263247;stroke:#94a3b8;stroke-width:2}
+      .gs-copy{fill:#493720;stroke:#fbbf24;stroke-width:2}
+      .gs-compute{fill:#253154;stroke:#818cf8;stroke-width:2}
+      .gs-raster{fill:#214b45;stroke:#34d399;stroke-width:2}
+      .gs-dead{fill:#392b3d;stroke:#f472b6;stroke-width:2;stroke-dasharray:7 5}
+      .gs-title{font:700 25px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .gs-subtitle{font:15px system-ui,sans-serif;fill:#aebed2;text-anchor:middle}
+      .gs-label{font:600 16px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .gs-small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .gs-tiny{font:13px system-ui,sans-serif;fill:#aebed2;text-anchor:middle}
+      .gs-code{font:600 14px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#d8e5f4;text-anchor:middle}
+      .gs-tag{font:700 12px system-ui,sans-serif;fill:#93c5fd;text-anchor:middle;letter-spacing:.7px}
+      .gs-edge{fill:none;stroke:#7dd3fc;stroke-width:3;marker-end:url(#gs-arrow-cyan)}
+      .gs-data{fill:none;stroke:#6ee7b7;stroke-width:3;marker-end:url(#gs-arrow-green)}
+      .gs-sync{fill:none;stroke:#fbbf24;stroke-width:2.5;stroke-dasharray:8 5;marker-end:url(#gs-arrow-amber)}
+      .gs-dead-edge{fill:none;stroke:#f472b6;stroke-width:2.5;stroke-dasharray:7 5;marker-end:url(#gs-arrow-cyan)}
+    </style>
+  </defs>
+
+  <g id="p0-p8-tree-diagram" role="img" aria-labelledby="tree-title tree-desc">
+    <title id="tree-title">Canonical P0 through P8 terrain graph</title>
+    <desc id="tree-desc">The graph begins at a prologue that supplies imported upload and back buffer resources, uploads terrain settings, generates and erodes a heightmap, triangulates terrain, renders and overlays the back buffer, and ends at an epilogue. The P3 debug pass is culled.</desc>
+    <rect class="gs-bg" width="1200" height="790" rx="22"/>
+    <text x="600" y="40" class="gs-title">One frame: canonical P0-P8 graph</text>
+    <text x="600" y="66" class="gs-subtitle">Registration order is topological; compilation culls P3 and appends P8.</text>
+
+    <rect x="465" y="94" width="270" height="56" rx="12" class="gs-sentinel"/>
+    <text x="600" y="128" class="gs-label">P0 GraphPrologue</text>
+
+    <rect x="70" y="187" width="260" height="72" rx="12" class="gs-copy"/>
+    <text x="200" y="216" class="gs-label">Imported upload buffer</text>
+    <text x="200" y="240" class="gs-small">TerrainSettingsUpload / CopySource</text>
+
+    <rect x="465" y="187" width="270" height="72" rx="12" class="gs-copy"/>
+    <text x="600" y="216" class="gs-label">P1 UploadTerrainSettings</text>
+    <text x="600" y="240" class="gs-small">copy queue when available</text>
+
+    <path d="M540 150 V172 H200 V187" class="gs-edge"/>
+    <path d="M600 150 V187" class="gs-edge"/>
+    <path d="M330 223 H465" class="gs-data"/>
+    <path d="M660 150 H1150 V452 H1115" class="gs-edge"/>
+    <text x="1055" y="182" class="gs-tiny">imported BackBuffer</text>
+
+    <rect x="465" y="294" width="270" height="72" rx="12" class="gs-compute"/>
+    <text x="600" y="323" class="gs-label">P2 GenerateNoiseHeightmap</text>
+    <text x="600" y="347" class="gs-small">async compute / writes Heightmap</text>
+    <path d="M600 259 V294" class="gs-data"/>
+    <text x="705" y="281" class="gs-tiny">TerrainSettings</text>
+
+    <rect x="80" y="414" width="270" height="76" rx="12" class="gs-dead"/>
+    <text x="215" y="444" class="gs-label">P3 DebugHeightmap</text>
+    <text x="215" y="468" class="gs-small">graphics read / no output / culled</text>
+    <path d="M520 366 V389 H215 V414" class="gs-dead-edge"/>
+
+    <rect x="465" y="414" width="270" height="76" rx="12" class="gs-compute"/>
+    <text x="600" y="444" class="gs-label">P4 ErodeHeightmap</text>
+    <text x="600" y="468" class="gs-small">async compute / UAV rewrite</text>
+    <path d="M600 366 V414" class="gs-data"/>
+    <path d="M350 452 H465" class="gs-sync"/>
+    <text x="407" y="438" class="gs-tag">WAR SYNC</text>
+
+    <rect x="465" y="535" width="270" height="76" rx="12" class="gs-compute"/>
+    <text x="600" y="565" class="gs-label">P5 TriangulateTerrain</text>
+    <text x="600" y="589" class="gs-small">writes vertices + indices</text>
+    <path d="M600 490 V535" class="gs-data"/>
+
+    <rect x="815" y="414" width="300" height="76" rx="12" class="gs-raster"/>
+    <text x="965" y="444" class="gs-label">P6 RenderTerrain</text>
+    <text x="965" y="468" class="gs-small">raster / writes BackBuffer</text>
+    <path d="M735 573 H775 V452 H815" class="gs-data"/>
+    <text x="887" y="528" class="gs-tiny">TerrainVertices + TerrainIndices</text>
+
+    <rect x="815" y="535" width="300" height="76" rx="12" class="gs-raster"/>
+    <text x="965" y="565" class="gs-label">P7 TerrainOverlay</text>
+    <text x="965" y="589" class="gs-small">raster / same BackBuffer</text>
+    <path d="M965 490 V535" class="gs-data"/>
+
+    <rect x="815" y="665" width="300" height="62" rx="12" class="gs-sentinel"/>
+    <text x="965" y="702" class="gs-label">P8 GraphEpilogue</text>
+    <path d="M965 611 V665" class="gs-edge"/>
+
+    <rect x="70" y="655" width="665" height="82" rx="12" class="gs-panel"/>
+    <text x="402.5" y="684" class="gs-label">Live execution order</text>
+    <text x="402.5" y="712" class="gs-code">P0, P1, P2, P4, P5, P6, P7, P8</text>
+  </g>
+
+  <g id="live-data-path-diagram" role="img" aria-labelledby="path-title path-desc">
+    <title id="path-title">Live terrain data path</title>
+    <desc id="path-desc">Terrain settings flow from P1 to P2. Heightmap data flows through P4 to P5. Terrain vertices and indices flow to P6, then the back buffer flows through P7 to P8.</desc>
+    <rect class="gs-bg" x="0" y="810" width="1200" height="370" rx="22"/>
+    <text x="600" y="852" class="gs-title">Live data path after culling</text>
+    <text x="600" y="878" class="gs-subtitle">Labels name the resource that creates each producer dependency.</text>
+
+    <rect x="38" y="925" width="135" height="64" rx="11" class="gs-copy"/>
+    <text x="105.5" y="963" class="gs-label">P1 Upload</text>
+    <rect x="238" y="925" width="150" height="64" rx="11" class="gs-compute"/>
+    <text x="313" y="963" class="gs-label">P2 Generate</text>
+    <rect x="453" y="925" width="135" height="64" rx="11" class="gs-compute"/>
+    <text x="520.5" y="963" class="gs-label">P4 Erode</text>
+    <rect x="653" y="925" width="165" height="64" rx="11" class="gs-compute"/>
+    <text x="735.5" y="963" class="gs-label">P5 Triangulate</text>
+    <rect x="883" y="925" width="135" height="64" rx="11" class="gs-raster"/>
+    <text x="950.5" y="963" class="gs-label">P6 Render</text>
+    <rect x="883" y="1070" width="135" height="64" rx="11" class="gs-raster"/>
+    <text x="950.5" y="1108" class="gs-label">P7 Overlay</text>
+    <rect x="1065" y="1070" width="100" height="64" rx="11" class="gs-sentinel"/>
+    <text x="1115" y="1108" class="gs-label">P8</text>
+
+    <path d="M173 957 H238" class="gs-data"/>
+    <text x="205.5" y="939" class="gs-tiny">TerrainSettings</text>
+    <path d="M388 957 H453" class="gs-data"/>
+    <text x="420.5" y="939" class="gs-tiny">Heightmap</text>
+    <path d="M588 957 H653" class="gs-data"/>
+    <text x="620.5" y="939" class="gs-tiny">Heightmap</text>
+    <path d="M818 957 H883" class="gs-data"/>
+    <text x="850.5" y="920" class="gs-tiny">TerrainVertices</text>
+    <text x="850.5" y="939" class="gs-tiny">TerrainIndices</text>
+    <path d="M950.5 989 V1070" class="gs-data"/>
+    <text x="1002" y="1034" class="gs-tiny">BackBuffer</text>
+    <path d="M1018 1102 H1065" class="gs-data"/>
+
+    <rect x="38" y="1035" width="650" height="99" rx="12" class="gs-panel"/>
+    <text x="363" y="1065" class="gs-label">Culled branch</text>
+    <text x="363" y="1091" class="gs-small">P3 reads P2's Heightmap but produces no observable result.</text>
+    <text x="363" y="1116" class="gs-small">Its synchronization-only P3-to-P4 hazard does not keep it alive.</text>
+  </g>
+
+  <g id="cross-queue-edges-diagram" role="img" aria-labelledby="queue-title queue-desc">
+    <title id="queue-title">Cross-queue dependency edges</title>
+    <desc id="queue-desc">P1 on the copy queue must complete before P2 on async compute. P5 on async compute must complete before P6 on graphics. Same-queue edges do not need explicit waits.</desc>
+    <rect class="gs-bg" x="0" y="1200" width="1200" height="390" rx="22"/>
+    <text x="600" y="1242" class="gs-title">Cross-queue edges become runtime waits</text>
+    <text x="600" y="1268" class="gs-subtitle">Queue fallback to graphics removes the corresponding cross-queue wait.</text>
+
+    <rect x="55" y="1310" width="1090" height="210" rx="16" class="gs-panel"/>
+    <text x="145" y="1350" class="gs-tag">COPY QUEUE</text>
+    <text x="570" y="1350" class="gs-tag">ASYNC COMPUTE QUEUE</text>
+    <text x="1015" y="1350" class="gs-tag">GRAPHICS QUEUE</text>
+
+    <rect x="75" y="1382" width="210" height="72" rx="12" class="gs-copy"/>
+    <text x="180" y="1412" class="gs-label">P1 Upload</text>
+    <text x="180" y="1436" class="gs-small">CopyDest write</text>
+
+    <rect x="465" y="1382" width="210" height="72" rx="12" class="gs-compute"/>
+    <text x="570" y="1412" class="gs-label">P2 Generate</text>
+    <text x="570" y="1436" class="gs-small">SRV read + UAV write</text>
+
+    <rect x="465" y="1478" width="210" height="72" rx="12" class="gs-compute"/>
+    <text x="570" y="1508" class="gs-label">P5 Triangulate</text>
+    <text x="570" y="1532" class="gs-small">terrain buffer writes</text>
+
+    <rect x="910" y="1478" width="210" height="72" rx="12" class="gs-raster"/>
+    <text x="1015" y="1508" class="gs-label">P6 Render</text>
+    <text x="1015" y="1532" class="gs-small">vertex + index reads</text>
+
+    <path d="M285 1418 H465" class="gs-sync"/>
+    <text x="375" y="1402" class="gs-tiny">signal + wait</text>
+    <path d="M675 1514 H910" class="gs-sync"/>
+    <text x="792.5" y="1498" class="gs-tiny">signal + wait</text>
+
+    <text x="600" y="1571" class="gs-small">Sentinels have no producer command list, so sentinel boundary metadata does not create a runtime queue wait.</text>
+  </g>
+</svg>

@@ -11,14 +11,40 @@ the helpers above it implement each major step.
 
 Keep one distinction in mind while reading:
 
-```text
-CPU build       CPU compile       CPU record        CPU submit       GPU work
-   |                 |                 |                 |               |
-logical API ---> schedule/state ---> ICommandList ---> queue calls ---> executes
-```
+![CPU build-through-submit phases and asynchronous GPU work](assets/runtime-cpu-phase-timeline.svg)
 
 `Execute()` reaches the CPU-submit point. It does not wait for the final GPU
 point.
+
+This is the execution section of the
+[complete call-chain diagram](assets/arda-render-graph-call-chain.svg):
+
+![ArdaRenderGraph execute-stage call chain](assets/arda-render-graph-call-chain.svg#ardg-execute-view)
+
+## Reading the execute-stage excerpt
+
+The left column follows `FARDGExecutor::Execute` in source order. The center
+expands helper calls and runtime decisions. The right tracks physical NVRHI
+objects, recorded command lists, queue instances, and the final execution
+result.
+
+The stage is split into four handoffs:
+
+1. **Compile metadata → physical resources:** `MaterializeResources` consumes
+   resource lifetimes and binds imported, newly created, or pool-reused NVRHI
+   handles to logical records.
+2. **Logical transitions → physical transitions:**
+   `BuildPhysicalTransitions` repairs state history after physical reuse and
+   optionally plans first-write clobbers.
+3. **Graph edges → CPU command recording:** producer and synchronization edges
+   form dependency levels; eligible passes record concurrently, but every pass
+   still gets its own queue-compatible command list.
+4. **Queue dependencies → GPU submission:** uniform upload and cross-pipeline
+   records become `queueWaitForCommandList` calls before deterministic
+   `mExecutionOrder` submission. Extractions publish handles after submission.
+
+The amber dashed arrows are waits or guards, not ordinary function calls. The
+bottom result is a CPU-submission result; GPU completion remains asynchronous.
 
 ## 1. Enter once, with a usable device
 
@@ -134,16 +160,7 @@ history of the selected `nvrhi::ITexture*` and `nvrhi::IBuffer*` objects.
 Why is this a separate phase? Suppose the pool makes `ScratchB` reuse
 `ScratchA`:
 
-```text
-compiled logical history
-
-ScratchA: Common -> UAV -> ShaderResource
-ScratchB: Common -----------------------> CopyDest
-
-materialized physical history
-
-Physical0: Common -> UAV -> ShaderResource -> CopyDest
-```
+![Scratch logical histories rebuilt into Physical0 history](assets/runtime-executor-transition-rebuild.svg)
 
 The compiled before-state for `ScratchB` is wrong for `Physical0`. The rebuild
 walks execution order and keys state maps by physical pointer. It emits
@@ -194,13 +211,7 @@ max(current level, producer level + 1)
 
 This produces CPU recording waves:
 
-```text
-level 0       BuildA       BuildB
-                 \         /
-level 1          Combine       Independent
-                     \         /
-level 2               Finish
-```
+![Dependency-level recording DAG](assets/runtime-recording-level-dag.svg)
 
 Edges define recording order. Queue selection does not: independent graphics
 and compute passes can record in the same wave, while dependent passes on the

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="500" viewBox="0 0 1000 500" role="img" aria-labelledby="title desc">
+  <title id="title">Dependency-level recording DAG</title>
+  <desc id="desc">BuildA and BuildB record in level zero. Both feed Combine in level one, where Independent can record concurrently. Combine and Independent feed Finish in level two.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/>
+    </marker>
+    <style>
+      .title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .level{font:700 17px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .label{font:600 17px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .node{rx:12;stroke-width:2}
+      .edge{stroke:#7dd3fc;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+      .guide{stroke:#475569;stroke-width:1;stroke-dasharray:5 7}
+    </style>
+  </defs>
+  <rect width="1000" height="500" rx="22" fill="url(#bg)"/>
+  <text x="500" y="40" class="title">Edges determine CPU recording waves</text>
+
+  <line x1="150" y1="165" x2="940" y2="165" class="guide"/>
+  <line x1="150" y1="300" x2="940" y2="300" class="guide"/>
+  <text x="85" y="105" class="level">Level 0</text>
+  <text x="85" y="240" class="level">Level 1</text>
+  <text x="85" y="375" class="level">Level 2</text>
+
+  <rect class="node" x="250" y="72" width="190" height="72" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="345" y="103" class="label">BuildA</text>
+  <text x="345" y="127" class="small">may record in parallel</text>
+  <rect class="node" x="560" y="72" width="190" height="72" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="655" y="103" class="label">BuildB</text>
+  <text x="655" y="127" class="small">may record in parallel</text>
+
+  <rect class="node" x="330" y="207" width="210" height="72" fill="#214b45" stroke="#34d399"/>
+  <text x="435" y="238" class="label">Combine</text>
+  <text x="435" y="262" class="small">waits for A and B</text>
+  <rect class="node" x="650" y="207" width="210" height="72" fill="#3a294d" stroke="#c084fc"/>
+  <text x="755" y="238" class="label">Independent</text>
+  <text x="755" y="262" class="small">same recording level</text>
+
+  <rect class="node" x="475" y="342" width="210" height="72" fill="#493720" stroke="#fbbf24"/>
+  <text x="580" y="373" class="label">Finish</text>
+  <text x="580" y="397" class="small">waits for level 1 inputs</text>
+
+  <path class="edge" d="M345 144 C345 180 405 180 420 202"/>
+  <path class="edge" d="M655 144 C655 180 500 180 470 202"/>
+  <path class="edge" d="M435 279 C435 320 530 310 555 337"/>
+  <path class="edge" d="M755 279 C755 320 640 310 605 337"/>
+
+  <text x="500" y="464" class="small">Queue type does not set the level; live producer and synchronization edges do.</text>
+</svg>

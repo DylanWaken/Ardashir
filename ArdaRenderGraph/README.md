@@ -9,19 +9,7 @@ about the whole frame before submitting anything.
 
 Our recurring example is a deliberately small procedural-terrain pipeline:
 
-```text
-[Upload terrain settings] -> [Generate noise heightmap] -> [Erode heightmap]
-                                      |                         |
-                                      v                         v
-                         [Debug heightmap/minimap]      [Triangulate terrain]
-                                  (culled)                      |
-                                               TerrainVertices + TerrainIndices
-                                                               |
-                                                               v
-                                                  [Render terrain] -> [Overlay]
-                                                               |
-                                                          BackBuffer
-```
+![Procedural terrain dependency graph with the unused debug branch culled](assets/intro-readme.svg#terrain-dag)
 
 From those declarations, ArdaRenderGraph:
 
@@ -53,6 +41,21 @@ the build, compile, and execute paths live under
 
 ![ArdaRenderGraph architecture from declarations to NVRHI submission](assets/architecture.svg)
 
+## Complete build, compile, and execute call chain
+
+The following source-ordered diagram is the implementation map for the three
+stage walkthroughs. Read it from top to bottom. Cyan arrows are function calls,
+green arrows identify state produced for the next layer, and dashed amber
+arrows identify validation or GPU queue waits.
+
+![Complete ArdaRenderGraph build, compile, and execute call chain](assets/arda-render-graph-call-chain.svg)
+
+The stage chapters use exact excerpts from this master diagram:
+
+- [build and edge discovery](08-Build-and-Edge-Walkthrough.md);
+- [compiler lowering](09-Compiler-Source-Walkthrough.md); and
+- [materialization, recording, and submission](11-Executor-Source-Walkthrough.md).
+
 ## The two-level mental model
 
 During graph construction, `FARDGTextureRef` and `FARDGBufferRef` point to
@@ -60,14 +63,7 @@ During graph construction, `FARDGTextureRef` and `FARDGBufferRef` point to
 dependency history. They are not necessarily backed by an
 `nvrhi::ITexture` or `nvrhi::IBuffer` yet.
 
-```text
-Build and compile                         Execute
------------------                         -------
-logical Texture T0  --------------------> physical nvrhi::ITexture
-logical Buffer  B0  --------------------> physical nvrhi::IBuffer
-pass + state declarations --------------> barriers + nvrhi::ICommandList
-producer/sync edges --------------------> ordering + queue waits
-```
+![Bridge from logical graph declarations to physical NVRHI resources and work](assets/intro-readme.svg#logical-physical-bridge)
 
 That separation is the central idea. It lets compilation cull dead work and
 calculate lifetimes before execution commits GPU memory. Imported resources are
