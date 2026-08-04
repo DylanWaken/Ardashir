@@ -248,6 +248,16 @@ namespace arda::render_graph
             FARDGUniformBuffer* UniformBuffer) const;
 
         /**
+         * Creates an NVRHI binding set from this pass's parameter descriptors.
+         *
+         * Shader-resource, unordered-access, and uniform-buffer parameters are
+         * matched to the supplied layout by register class and declaration order.
+         * Direct access and render-target parameters are intentionally not bindings.
+         */
+        [[nodiscard]] nvrhi::BindingSetHandle CreateBindingSet(
+            nvrhi::IBindingLayout* BindingLayout) const;
+
+        /**
          * The command list currently recording the pass.
          *
          * Physical graph resources should be obtained through the validated

@@ -44,6 +44,83 @@ namespace arda::render_graph
             return (static_cast<uint32_t>(State) & WriteMask) != 0;
         }
 
+        /** Identifies the shader register namespace used by a parameter binding. */
+        enum class EARDGBindingClass : uint8_t
+        {
+            None,
+            ShaderResource,
+            UnorderedAccess,
+            ConstantBuffer
+        };
+
+        /** Maps generated parameter semantics to their NVRHI register namespace. */
+        [[nodiscard]] EARDGBindingClass GetBindingClass(
+            EARDGParameterType Type) noexcept
+        {
+            switch (Type)
+            {
+            case EARDGParameterType::Texture:
+            case EARDGParameterType::Buffer:
+            case EARDGParameterType::TextureShaderResourceView:
+            case EARDGParameterType::BufferShaderResourceView:
+                return EARDGBindingClass::ShaderResource;
+
+            case EARDGParameterType::TextureUnorderedAccessView:
+            case EARDGParameterType::BufferUnorderedAccessView:
+                return EARDGBindingClass::UnorderedAccess;
+
+            case EARDGParameterType::UniformBuffer:
+                return EARDGBindingClass::ConstantBuffer;
+
+            case EARDGParameterType::Value:
+            case EARDGParameterType::TextureAccess:
+            case EARDGParameterType::BufferAccess:
+            case EARDGParameterType::NestedStruct:
+            case EARDGParameterType::RenderTargetBindingSlots:
+                return EARDGBindingClass::None;
+            }
+            return EARDGBindingClass::None;
+        }
+
+        /** Returns whether a layout item can represent one parameter descriptor. */
+        [[nodiscard]] bool IsCompatibleBindingType(
+            EARDGParameterType ParameterType,
+            nvrhi::ResourceType LayoutType) noexcept
+        {
+            switch (ParameterType)
+            {
+            case EARDGParameterType::Texture:
+            case EARDGParameterType::TextureShaderResourceView:
+                return LayoutType == nvrhi::ResourceType::Texture_SRV;
+
+            case EARDGParameterType::TextureUnorderedAccessView:
+                return LayoutType == nvrhi::ResourceType::Texture_UAV;
+
+            case EARDGParameterType::Buffer:
+            case EARDGParameterType::BufferShaderResourceView:
+                return LayoutType == nvrhi::ResourceType::TypedBuffer_SRV ||
+                    LayoutType == nvrhi::ResourceType::StructuredBuffer_SRV ||
+                    LayoutType == nvrhi::ResourceType::RawBuffer_SRV;
+
+            case EARDGParameterType::BufferUnorderedAccessView:
+                return LayoutType == nvrhi::ResourceType::TypedBuffer_UAV ||
+                    LayoutType == nvrhi::ResourceType::StructuredBuffer_UAV ||
+                    LayoutType == nvrhi::ResourceType::RawBuffer_UAV;
+
+            case EARDGParameterType::UniformBuffer:
+                return LayoutType == nvrhi::ResourceType::ConstantBuffer ||
+                    LayoutType == nvrhi::ResourceType::VolatileConstantBuffer;
+
+            case EARDGParameterType::Value:
+            case EARDGParameterType::TextureAccess:
+            case EARDGParameterType::BufferAccess:
+            case EARDGParameterType::NestedStruct:
+            case EARDGParameterType::RenderTargetBindingSlots:
+                return false;
+            }
+            return false;
+        }
+
         /**
          * Returns the stable diagnostic label used by the compiled-graph dump.
          * Unknown enum values are rendered defensively instead of affecting execution.
@@ -674,6 +751,13 @@ namespace arda::render_graph
         return mGraph.ResolveUniformBufferForPass(mPass, UniformBuffer);
     }
 
+    /** Builds a binding set directly from the active pass parameter descriptors. */
+    nvrhi::BindingSetHandle FARDGPassExecutionContext::CreateBindingSet(
+        nvrhi::IBindingLayout* BindingLayout) const
+    {
+        return mGraph.CreateBindingSetForPass(mPass, BindingLayout);
+    }
+
     /**
      * Opens the execution-stage access gate for a live pass.
      *
@@ -923,6 +1007,280 @@ namespace arda::render_graph
                 "A pass requested a uniform buffer absent from its parameters.");
         }
         return UniformBuffer->GetBuffer();
+    }
+
+    /**
+     * Materializes descriptor bindings from the active pass's frozen parameters.
+     *
+     * Parameter declaration order assigns independent t/u/b register slots. Arrays
+     * occupy one slot and use NVRHI array elements. The supplied layout selects the
+     * subset belonging to that binding set and supplies the concrete buffer-view
+     * flavor (typed, structured, or raw).
+     */
+    nvrhi::BindingSetHandle FARDGBuilder::CreateBindingSetForPass(
+        FARDGPassHandle Pass,
+        nvrhi::IBindingLayout* BindingLayout) const
+    {
+        if (BindingLayout == nullptr)
+        {
+            ARDA_CHECK_MSG(
+                "Cannot create pass bindings from a null binding layout.");
+        }
+
+        const FARDGPass* PassRecord = nullptr;
+        nvrhi::IDevice* Device = nullptr;
+        {
+            std::lock_guard<std::mutex> Lock(mImpl->mPassAccessMutex);
+            PassRecord = mImpl->mPasses.TryGet(Pass);
+            Device = mImpl->mContext.mDevice;
+            if (PassRecord == nullptr ||
+                mImpl->mActivePassAccess.find(Pass.GetIndex()) ==
+                    mImpl->mActivePassAccess.end() ||
+                PassRecord->GetParameters() == nullptr ||
+                PassRecord->GetParameterMetadata() == nullptr ||
+                Device == nullptr)
+            {
+                ARDA_CHECK_MSG(
+                    "Pass bindings require active parameters and an NVRHI device.");
+            }
+        }
+
+        const nvrhi::BindingLayoutDesc* LayoutDesc = BindingLayout->getDesc();
+        if (LayoutDesc == nullptr)
+        {
+            ARDA_CHECK_MSG(
+                "Pass parameters cannot populate a bindless binding layout.");
+        }
+
+        auto MakeBufferItem =
+            [](nvrhi::ResourceType Type,
+               uint32_t Slot,
+               nvrhi::IBuffer* Buffer,
+               nvrhi::Format Format,
+               nvrhi::BufferRange Range)
+            {
+                switch (Type)
+                {
+                case nvrhi::ResourceType::TypedBuffer_SRV:
+                    return nvrhi::BindingSetItem::TypedBuffer_SRV(
+                        Slot, Buffer, Format, Range);
+                case nvrhi::ResourceType::TypedBuffer_UAV:
+                    return nvrhi::BindingSetItem::TypedBuffer_UAV(
+                        Slot, Buffer, Format, Range);
+                case nvrhi::ResourceType::StructuredBuffer_SRV:
+                    return nvrhi::BindingSetItem::StructuredBuffer_SRV(
+                        Slot, Buffer, Format, Range);
+                case nvrhi::ResourceType::StructuredBuffer_UAV:
+                    return nvrhi::BindingSetItem::StructuredBuffer_UAV(
+                        Slot, Buffer, Format, Range);
+                case nvrhi::ResourceType::RawBuffer_SRV:
+                    return nvrhi::BindingSetItem::RawBuffer_SRV(
+                        Slot, Buffer, Range);
+                case nvrhi::ResourceType::RawBuffer_UAV:
+                    return nvrhi::BindingSetItem::RawBuffer_UAV(
+                        Slot, Buffer, Range);
+                default:
+                    ARDA_CHECK_MSG(
+                        "A buffer parameter matched a non-buffer binding layout item.");
+                    return nvrhi::BindingSetItem::None(Slot);
+                }
+            };
+
+        nvrhi::BindingSetDesc BindingDesc;
+        eastl::vector<uint32_t> MatchedElements(
+            LayoutDesc->bindings.size(),
+            0u);
+        uint32_t NextShaderResourceSlot = 0;
+        uint32_t NextUnorderedAccessSlot = 0;
+        uint32_t NextConstantBufferSlot = 0;
+
+        PassRecord->GetParameterMetadata()->Enumerate(
+            PassRecord->GetParameters(),
+            [&](const FARDGParameter& Parameter)
+            {
+                const EARDGParameterType ParameterType =
+                    Parameter.mMember->mType;
+                const EARDGBindingClass BindingClass =
+                    GetBindingClass(ParameterType);
+                if (BindingClass == EARDGBindingClass::None)
+                {
+                    return;
+                }
+
+                uint32_t Slot = 0;
+                uint32_t* NextSlot = nullptr;
+                switch (BindingClass)
+                {
+                case EARDGBindingClass::ShaderResource:
+                    NextSlot = &NextShaderResourceSlot;
+                    break;
+                case EARDGBindingClass::UnorderedAccess:
+                    NextSlot = &NextUnorderedAccessSlot;
+                    break;
+                case EARDGBindingClass::ConstantBuffer:
+                    NextSlot = &NextConstantBufferSlot;
+                    break;
+                case EARDGBindingClass::None:
+                    return;
+                }
+                Slot = *NextSlot;
+                if (Parameter.mArrayIndex + 1 ==
+                    Parameter.mMember->mElementCount)
+                {
+                    ++*NextSlot;
+                }
+
+                size_t LayoutIndex = LayoutDesc->bindings.size();
+                for (size_t Index = 0;
+                     Index < LayoutDesc->bindings.size();
+                     ++Index)
+                {
+                    const nvrhi::BindingLayoutItem& Candidate =
+                        LayoutDesc->bindings[Index];
+                    if (Candidate.slot == Slot &&
+                        IsCompatibleBindingType(ParameterType, Candidate.type))
+                    {
+                        LayoutIndex = Index;
+                        break;
+                    }
+                }
+                if (LayoutIndex == LayoutDesc->bindings.size())
+                {
+                    return;
+                }
+
+                const nvrhi::BindingLayoutItem& LayoutBinding =
+                    LayoutDesc->bindings[LayoutIndex];
+                if (Parameter.mArrayIndex >= LayoutBinding.getArraySize())
+                {
+                    ARDA_CHECK_MSG(
+                        "A pass parameter array exceeds its binding layout.");
+                }
+
+                nvrhi::BindingSetItem Item =
+                    nvrhi::BindingSetItem::None(Slot);
+                switch (ParameterType)
+                {
+                case EARDGParameterType::Texture:
+                    Item = nvrhi::BindingSetItem::Texture_SRV(
+                        Slot,
+                        ResolveTextureForPass(
+                            Pass,
+                            Parameter.GetValue<FARDGTextureRef>()));
+                    break;
+
+                case EARDGParameterType::TextureShaderResourceView:
+                {
+                    const FARDGTextureSRVRef View =
+                        Parameter.GetValue<FARDGTextureSRVRef>();
+                    Item = nvrhi::BindingSetItem::Texture_SRV(
+                        Slot,
+                        ResolveTextureViewForPass(Pass, View),
+                        View->GetDesc().mFormat,
+                        View->GetDesc().mSubresources,
+                        View->GetDesc().mDimension);
+                    break;
+                }
+
+                case EARDGParameterType::TextureUnorderedAccessView:
+                {
+                    const FARDGTextureUAVRef View =
+                        Parameter.GetValue<FARDGTextureUAVRef>();
+                    Item = nvrhi::BindingSetItem::Texture_UAV(
+                        Slot,
+                        ResolveTextureViewForPass(Pass, View),
+                        View->GetDesc().mFormat,
+                        View->GetDesc().mSubresources,
+                        View->GetDesc().mDimension);
+                    break;
+                }
+
+                case EARDGParameterType::Buffer:
+                {
+                    const FARDGBufferRef Buffer =
+                        Parameter.GetValue<FARDGBufferRef>();
+                    nvrhi::IBuffer* Physical =
+                        ResolveBufferForPass(Pass, Buffer);
+                    Item = MakeBufferItem(
+                        LayoutBinding.type,
+                        Slot,
+                        Physical,
+                        Physical->getDesc().format,
+                        nvrhi::EntireBuffer);
+                    break;
+                }
+
+                case EARDGParameterType::BufferShaderResourceView:
+                {
+                    const FARDGBufferSRVRef View =
+                        Parameter.GetValue<FARDGBufferSRVRef>();
+                    Item = MakeBufferItem(
+                        LayoutBinding.type,
+                        Slot,
+                        ResolveBufferViewForPass(Pass, View),
+                        View->GetDesc().mFormat,
+                        View->GetDesc().mRange);
+                    break;
+                }
+
+                case EARDGParameterType::BufferUnorderedAccessView:
+                {
+                    const FARDGBufferUAVRef View =
+                        Parameter.GetValue<FARDGBufferUAVRef>();
+                    Item = MakeBufferItem(
+                        LayoutBinding.type,
+                        Slot,
+                        ResolveBufferViewForPass(Pass, View),
+                        View->GetDesc().mFormat,
+                        View->GetDesc().mRange);
+                    break;
+                }
+
+                case EARDGParameterType::UniformBuffer:
+                    Item = nvrhi::BindingSetItem::ConstantBuffer(
+                        Slot,
+                        ResolveUniformBufferForPass(
+                            Pass,
+                            Parameter.GetValue<FARDGUniformBufferRef>()));
+                    break;
+
+                case EARDGParameterType::Value:
+                case EARDGParameterType::TextureAccess:
+                case EARDGParameterType::BufferAccess:
+                case EARDGParameterType::NestedStruct:
+                case EARDGParameterType::RenderTargetBindingSlots:
+                    return;
+                }
+
+                if (Item.type != LayoutBinding.type)
+                {
+                    ARDA_CHECK_MSG(
+                        "A pass parameter does not match its binding layout type.");
+                }
+                Item.arrayElement =
+                    static_cast<uint32_t>(Parameter.mArrayIndex);
+                BindingDesc.addItem(Item);
+                ++MatchedElements[LayoutIndex];
+            });
+
+        for (size_t Index = 0; Index < LayoutDesc->bindings.size(); ++Index)
+        {
+            if (MatchedElements[Index] !=
+                LayoutDesc->bindings[Index].getArraySize())
+            {
+                ARDA_CHECK_MSG(
+                    "A binding layout item has no matching pass parameter descriptor.");
+            }
+        }
+
+        nvrhi::BindingSetHandle BindingSet =
+            Device->createBindingSet(BindingDesc, BindingLayout);
+        if (!BindingSet)
+        {
+            ARDA_CHECK_MSG(
+                "NVRHI failed to create a pass parameter binding set.");
+        }
+        return BindingSet;
     }
 
     /**

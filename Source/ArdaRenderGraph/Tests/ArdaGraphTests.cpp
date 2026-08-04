@@ -97,6 +97,11 @@ namespace
         ARDG_UNIFORM_BUFFER(mUniformBuffer)
     ARDG_END_PARAMETER_STRUCT()
 
+    ARDG_BEGIN_PARAMETER_STRUCT(FARDGBindingSetParameters)
+        ARDG_TEXTURE_UAV(mTexture)
+        ARDG_BUFFER_UAV(mBuffer)
+    ARDG_END_PARAMETER_STRUCT()
+
     struct FARDGBlackboardValue
     {
         uint32_t mFrameIndex = 0;
@@ -1302,6 +1307,103 @@ TEST(ArdaRenderGraph, DispatchPassApiRegistersComputeWork)
     ASSERT_NE(Pass, nullptr);
     EXPECT_TRUE(HasAllFlags(Pass->GetFlags(), EARDGPassFlags::Compute));
     EXPECT_FALSE(Pass->GetState().mbCulled);
+}
+
+TEST(ArdaRenderGraph, PassContextCreatesBindingsFromParameterDescriptors)
+{
+    using namespace arda::backend;
+    using namespace arda::render_graph;
+
+    FArdaBackendConfiguration Configuration;
+    Configuration.mbEnableValidation = true;
+    if (!ConfigureBackend(Configuration) || !InitializeBackend())
+    {
+        GTEST_SKIP() << GetBackendError().c_str();
+    }
+
+    {
+        const FArdaDeviceContext& DeviceContext = GetDeviceContext();
+        FARDGRenderGraphContext GraphContext;
+        GraphContext.mDevice = DeviceContext.mDevice;
+        GraphContext.mQueueCapabilities.mbGraphics = true;
+        GraphContext.mQueueCapabilities.mbCompute =
+            DeviceContext.mQueueCapabilities.mbCompute;
+        GraphContext.mQueueCapabilities.mbCopy =
+            DeviceContext.mQueueCapabilities.mbCopy;
+        FARDGBuilder Builder(GraphContext);
+
+        nvrhi::TextureDesc TextureDesc;
+        TextureDesc
+            .setDebugName("BindingSetTexture")
+            .setWidth(4)
+            .setHeight(4)
+            .setFormat(nvrhi::Format::R32_UINT)
+            .setIsUAV(true);
+        FARDGTextureRef Texture = Builder.CreateTexture(TextureDesc);
+        FARDGTextureViewDesc TextureViewDesc;
+        TextureViewDesc.mTexture = Texture->GetHandle();
+        TextureViewDesc.mSubresources =
+            nvrhi::TextureSubresourceSet(0, 1, 0, 1);
+        FARDGTextureUAVRef TextureView =
+            Builder.CreateTextureUAV("BindingSetTextureUAV", TextureViewDesc);
+
+        nvrhi::BufferDesc BufferDesc;
+        BufferDesc
+            .setDebugName("BindingSetBuffer")
+            .setByteSize(64)
+            .setStructStride(sizeof(uint32_t))
+            .setCanHaveUAVs(true);
+        FARDGBufferRef Buffer = Builder.CreateBuffer(BufferDesc);
+        FARDGBufferViewDesc BufferViewDesc;
+        BufferViewDesc.mBuffer = Buffer->GetHandle();
+        FARDGBufferUAVRef BufferView =
+            Builder.CreateBufferUAV("BindingSetBufferUAV", BufferViewDesc);
+
+        nvrhi::BindingLayoutHandle Layout =
+            DeviceContext.mDevice->createBindingLayout(
+                nvrhi::BindingLayoutDesc()
+                    .setVisibility(nvrhi::ShaderType::Compute)
+                    .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0))
+                    .addItem(
+                        nvrhi::BindingLayoutItem::StructuredBuffer_UAV(1)));
+        ASSERT_TRUE(Layout);
+
+        FARDGBindingSetParameters Parameters;
+        Parameters.mTexture = TextureView;
+        Parameters.mBuffer = BufferView;
+        nvrhi::BindingSetHandle GeneratedBindings;
+        (void)Builder.AddPass(
+            "CreateParameterBindings",
+            &Parameters,
+            EARDGPassFlags::Compute |
+                EARDGPassFlags::NeverCull |
+                EARDGPassFlags::NeverParallel,
+            [&GeneratedBindings, Layout](
+                FARDGPassExecutionContext& Context)
+            {
+                GeneratedBindings = Context.CreateBindingSet(Layout);
+            });
+
+        FARDGExecuteOptions Options;
+        Options.mbParallelRecording = false;
+        (void)Builder.Execute(Options);
+
+        ASSERT_TRUE(GeneratedBindings);
+        const nvrhi::BindingSetDesc* GeneratedDesc =
+            GeneratedBindings->getDesc();
+        ASSERT_NE(GeneratedDesc, nullptr);
+        ASSERT_EQ(GeneratedDesc->bindings.size(), 2u);
+        EXPECT_EQ(
+            GeneratedDesc->bindings[0].type,
+            nvrhi::ResourceType::Texture_UAV);
+        EXPECT_EQ(GeneratedDesc->bindings[0].slot, 0u);
+        EXPECT_EQ(
+            GeneratedDesc->bindings[1].type,
+            nvrhi::ResourceType::StructuredBuffer_UAV);
+        EXPECT_EQ(GeneratedDesc->bindings[1].slot, 1u);
+        EXPECT_TRUE(DeviceContext.mDevice->waitForIdle());
+    }
+    ShutdownBackend();
 }
 
 TEST(ArdaRenderGraph, ExecutesAndExtractsOnAvailableBackend)

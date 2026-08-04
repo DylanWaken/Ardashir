@@ -52,7 +52,7 @@ namespace arda::tests::ardg_example
         ARDG_END_PARAMETER_STRUCT()
 
         ARDG_BEGIN_PARAMETER_STRUCT(FGenerateNoiseHeightmapParameters)
-            ARDG_BUFFER_ACCESS(mSettings)
+            ARDG_BUFFER_SRV(mSettings)
             ARDG_TEXTURE_UAV(mHeightmap)
         ARDG_END_PARAMETER_STRUCT()
 
@@ -498,6 +498,12 @@ namespace arda::tests::ardg_example
         render_graph::FARDGTextureSRVRef heightmapSRV =
             graph.CreateTextureSRV("Heightmap mip 0 SRV", heightmapView);
 
+        render_graph::FARDGBufferViewDesc settingsView;
+        settingsView.mBuffer = terrainSettings->GetHandle();
+        settingsView.mRange = nvrhi::EntireBuffer;
+        render_graph::FARDGBufferSRVRef terrainSettingsSRV =
+            graph.CreateBufferSRV("TerrainSettings SRV", settingsView);
+
         render_graph::FARDGBufferViewDesc vertexView;
         vertexView.mBuffer = terrainVertices->GetHandle();
         vertexView.mRange = nvrhi::EntireBuffer;
@@ -556,10 +562,7 @@ namespace arda::tests::ardg_example
             });
 
         FGenerateNoiseHeightmapParameters generate;
-        generate.mSettings = {
-            terrainSettings,
-            nvrhi::ResourceStates::NonPixelShaderResource,
-            nvrhi::EntireBuffer};
+        generate.mSettings = terrainSettingsSRV;
         generate.mHeightmap = heightmapUAV;
         (void)graph.AddDispatchPass(
             "GenerateNoiseHeightmap",
@@ -569,25 +572,10 @@ namespace arda::tests::ardg_example
                 DivideRoundUp(HeightmapHeight, 8),
                 1},
             [this](
-                render_graph::FARDGPassExecutionContext& context,
-                const FGenerateNoiseHeightmapParameters& frozen)
+                render_graph::FARDGPassExecutionContext& context)
             {
-                nvrhi::BindingSetHandle bindings = mDevice->createBindingSet(
-                    nvrhi::BindingSetDesc()
-                        .addItem(nvrhi::BindingSetItem::StructuredBuffer_SRV(
-                            0,
-                            context.GetBuffer(frozen.mSettings.mBuffer)))
-                        .addItem(nvrhi::BindingSetItem::Texture_UAV(
-                            0,
-                            context.GetTexture(frozen.mHeightmap),
-                            nvrhi::Format::R32_FLOAT,
-                            nvrhi::TextureSubresourceSet(0, 1, 0, 1))),
-                    mGenerateBindingLayout);
-                if (!bindings)
-                {
-                    ARDA_CHECK_MSG(
-                        "Failed to create GenerateNoiseHeightmap bindings.");
-                }
+                nvrhi::BindingSetHandle bindings =
+                    context.CreateBindingSet(mGenerateBindingLayout);
                 context.mCommandList.setComputeState(
                     nvrhi::ComputeState()
                         .setPipeline(mGeneratePipeline)
@@ -616,21 +604,10 @@ namespace arda::tests::ardg_example
                 DivideRoundUp(HeightmapHeight, 8),
                 1},
             [this](
-                render_graph::FARDGPassExecutionContext& context,
-                const FErodeHeightmapParameters& frozen)
+                render_graph::FARDGPassExecutionContext& context)
             {
-                nvrhi::BindingSetHandle bindings = mDevice->createBindingSet(
-                    nvrhi::BindingSetDesc().addItem(
-                        nvrhi::BindingSetItem::Texture_UAV(
-                            0,
-                            context.GetTexture(frozen.mHeightmap),
-                            nvrhi::Format::R32_FLOAT,
-                            nvrhi::TextureSubresourceSet(0, 1, 0, 1))),
-                    mErodeBindingLayout);
-                if (!bindings)
-                {
-                    ARDA_CHECK_MSG("Failed to create ErodeHeightmap bindings.");
-                }
+                nvrhi::BindingSetHandle bindings =
+                    context.CreateBindingSet(mErodeBindingLayout);
                 context.mCommandList.setComputeState(
                     nvrhi::ComputeState()
                         .setPipeline(mErodePipeline)
@@ -650,30 +627,10 @@ namespace arda::tests::ardg_example
                 DivideRoundUp(HeightmapHeight - 1, 8),
                 1},
             [this](
-                render_graph::FARDGPassExecutionContext& context,
-                const FTriangulateTerrainParameters& frozen)
+                render_graph::FARDGPassExecutionContext& context)
             {
-                nvrhi::BindingSetHandle bindings = mDevice->createBindingSet(
-                    nvrhi::BindingSetDesc()
-                        .addItem(nvrhi::BindingSetItem::Texture_SRV(
-                            0,
-                            context.GetTexture(frozen.mHeightmap),
-                            nvrhi::Format::R32_FLOAT,
-                            nvrhi::TextureSubresourceSet(0, 1, 0, 1)))
-                        .addItem(
-                            nvrhi::BindingSetItem::StructuredBuffer_UAV(
-                                0,
-                                context.GetBuffer(frozen.mTerrainVertices)))
-                        .addItem(
-                            nvrhi::BindingSetItem::StructuredBuffer_UAV(
-                                1,
-                                context.GetBuffer(frozen.mTerrainIndices))),
-                    mTriangulateBindingLayout);
-                if (!bindings)
-                {
-                    ARDA_CHECK_MSG(
-                        "Failed to create TriangulateTerrain bindings.");
-                }
+                nvrhi::BindingSetHandle bindings =
+                    context.CreateBindingSet(mTriangulateBindingLayout);
                 context.mCommandList.setComputeState(
                     nvrhi::ComputeState()
                         .setPipeline(mTriangulatePipeline)
@@ -789,19 +746,7 @@ namespace arda::tests::ardg_example
                     &cameraSettings,
                     sizeof(cameraSettings));
                 nvrhi::BindingSetHandle terrainPixelBindings =
-                    mDevice->createBindingSet(
-                        nvrhi::BindingSetDesc().addItem(
-                            nvrhi::BindingSetItem::Texture_SRV(
-                                0,
-                                context.GetTexture(frozen.mHeightmap),
-                                nvrhi::Format::R32_FLOAT,
-                                nvrhi::TextureSubresourceSet(0, 1, 0, 1))),
-                        mTerrainPixelBindingLayout);
-                if (!terrainPixelBindings)
-                {
-                    ARDA_CHECK_MSG(
-                        "Failed to create terrain pixel bindings.");
-                }
+                    context.CreateBindingSet(mTerrainPixelBindingLayout);
 
                 const nvrhi::ViewportState viewport =
                     nvrhi::ViewportState().addViewportAndScissorRect(

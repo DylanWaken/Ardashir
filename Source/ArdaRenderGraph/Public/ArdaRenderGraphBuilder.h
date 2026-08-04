@@ -591,6 +591,9 @@ namespace arda::render_graph
         [[nodiscard]] nvrhi::IBuffer* ResolveUniformBufferForPass(
             FARDGPassHandle Pass,
             FARDGUniformBuffer* UniformBuffer) const;
+        [[nodiscard]] nvrhi::BindingSetHandle CreateBindingSetForPass(
+            FARDGPassHandle Pass,
+            nvrhi::IBindingLayout* BindingLayout) const;
 
         template <typename ExecuteType, typename ParameterType>
         static void InvokePassLambda(
