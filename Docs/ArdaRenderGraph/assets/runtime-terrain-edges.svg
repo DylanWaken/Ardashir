@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">Terrain graph producer and synchronization edges</title>
+  <desc id="desc">Producer edges connect P0 to P1 and P6, P1 to P2, P2 to P3 and P4, P4 to P5, P5 to P6, and P6 to P7. A synchronization-only edge connects P3 to P4.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="producerArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="syncArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#fbbf24"/>
+    </marker>
+    <style>
+      .title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:600 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:13px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .node{rx:11;stroke-width:2}
+      .producer{stroke:#7dd3fc;stroke-width:2.5;fill:none;marker-end:url(#producerArrow)}
+      .sync{stroke:#fbbf24;stroke-width:3;stroke-dasharray:8 6;fill:none;marker-end:url(#syncArrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="500" rx="22" fill="url(#bg)"/>
+  <text x="600" y="40" class="title">Terrain dependency history before culling</text>
+
+  <rect class="node" x="35" y="185" width="130" height="70" fill="#253247" stroke="#94a3b8"/>
+  <text x="100" y="214" class="label">P0 Prologue</text>
+  <text x="100" y="238" class="small">sentinel</text>
+
+  <rect class="node" x="210" y="185" width="165" height="70" fill="#493720" stroke="#fbbf24"/>
+  <text x="292" y="214" class="label">P1 Upload</text>
+  <text x="292" y="238" class="small">copy</text>
+
+  <rect class="node" x="420" y="185" width="165" height="70" fill="#214b45" stroke="#34d399"/>
+  <text x="502" y="214" class="label">P2 Generate</text>
+  <text x="502" y="238" class="small">async compute</text>
+
+  <rect class="node" x="630" y="185" width="165" height="70" fill="#214b45" stroke="#34d399"/>
+  <text x="712" y="214" class="label">P4 Erode</text>
+  <text x="712" y="238" class="small">async compute</text>
+
+  <rect class="node" x="840" y="185" width="165" height="70" fill="#214b45" stroke="#34d399"/>
+  <text x="922" y="214" class="label">P5 Triangulate</text>
+  <text x="922" y="238" class="small">async compute</text>
+
+  <rect class="node" x="885" y="325" width="165" height="70" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="967" y="354" class="label">P6 Render</text>
+  <text x="967" y="378" class="small">graphics</text>
+
+  <rect class="node" x="1015" y="185" width="150" height="70" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="1090" y="214" class="label">P7 Overlay</text>
+  <text x="1090" y="238" class="small">graphics</text>
+
+  <rect class="node" x="525" y="70" width="165" height="70" fill="#3a294d" stroke="#c084fc"/>
+  <text x="607" y="99" class="label">P3 Debug</text>
+  <text x="607" y="123" class="small">graphics read</text>
+
+  <path class="producer" d="M165 220 H205"/>
+  <path class="producer" d="M375 220 H415"/>
+  <path class="producer" d="M585 220 H625"/>
+  <path class="producer" d="M795 220 H835"/>
+  <path class="producer" d="M535 185 C535 160 575 160 585 145"/>
+  <path class="producer" d="M935 255 C935 285 955 285 960 320"/>
+  <path class="producer" d="M1050 360 C1135 350 1160 285 1110 260"/>
+  <path class="producer" d="M165 240 C310 430 710 430 880 365"/>
+  <path class="sync" d="M690 105 C755 105 755 165 712 180"/>
+
+  <rect x="345" y="438" width="510" height="38" rx="10" fill="#20364a" stroke="#38bdf8"/>
+  <line x1="380" y1="457" x2="430" y2="457" class="producer"/>
+  <text x="500" y="462" class="small">producer edge</text>
+  <line x1="605" y1="457" x2="655" y2="457" class="sync"/>
+  <text x="755" y="462" class="small">synchronization-only edge</text>
+</svg>

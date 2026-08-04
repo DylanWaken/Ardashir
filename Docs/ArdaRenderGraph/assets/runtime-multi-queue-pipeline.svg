@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1050" height="650" viewBox="0 0 1050 650" role="img" aria-labelledby="title desc">
+  <title id="title">Terrain work across copy, compute, and graphics queues</title>
+  <desc id="desc">UploadTerrainSettings runs on copy. Compute waits for its instance, then GenerateNoiseHeightmap, ErodeHeightmap, and TriangulateTerrain run in sequence. Graphics waits for the compute instance, then RenderTerrain and TerrainOverlay produce the presented back buffer.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="flowArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="waitArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#fbbf24"/>
+    </marker>
+    <style>
+      .title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .lane{font:700 18px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .label{font:600 16px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .node{rx:12;stroke-width:2}
+      .flow{stroke:#7dd3fc;stroke-width:2.5;fill:none;marker-end:url(#flowArrow)}
+      .wait{stroke:#fbbf24;stroke-width:3;stroke-dasharray:8 5;fill:none;marker-end:url(#waitArrow)}
+    </style>
+  </defs>
+  <rect width="1050" height="650" rx="22" fill="url(#bg)"/>
+  <text x="525" y="40" class="title">The terrain frame descends through three queue pipelines</text>
+
+  <rect x="35" y="70" width="980" height="135" rx="16" fill="#2f291d" stroke="#fbbf24"/>
+  <text x="130" y="105" class="lane">Copy queue</text>
+  <rect class="node" x="350" y="95" width="350" height="76" fill="#493720" stroke="#fbbf24"/>
+  <text x="525" y="126" class="label">UploadTerrainSettings</text>
+  <text x="525" y="151" class="small">writes TerrainSettings</text>
+
+  <rect x="35" y="250" width="980" height="145" rx="16" fill="#173b37" stroke="#34d399"/>
+  <text x="130" y="290" class="lane">Compute queue</text>
+  <rect class="node" x="250" y="285" width="220" height="76" fill="#214b45" stroke="#34d399"/>
+  <text x="360" y="316" class="label">GenerateNoise</text>
+  <text x="360" y="341" class="small">Heightmap UAV</text>
+  <rect class="node" x="500" y="285" width="180" height="76" fill="#214b45" stroke="#34d399"/>
+  <text x="590" y="316" class="label">Erode</text>
+  <text x="590" y="341" class="small">Heightmap UAV</text>
+  <rect class="node" x="710" y="285" width="240" height="76" fill="#214b45" stroke="#34d399"/>
+  <text x="830" y="316" class="label">TriangulateTerrain</text>
+  <text x="830" y="341" class="small">writes mesh buffers</text>
+
+  <rect x="35" y="440" width="980" height="170" rx="16" fill="#192e4a" stroke="#60a5fa"/>
+  <text x="130" y="480" class="lane">Graphics queue</text>
+  <rect class="node" x="310" y="475" width="250" height="76" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="435" y="506" class="label">RenderTerrain</text>
+  <text x="435" y="531" class="small">writes BackBuffer</text>
+  <rect class="node" x="620" y="475" width="230" height="76" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="735" y="506" class="label">TerrainOverlay</text>
+  <text x="735" y="531" class="small">same BackBuffer</text>
+  <rect class="node" x="875" y="475" width="105" height="76" fill="#253247" stroke="#94a3b8"/>
+  <text x="927" y="506" class="label">Present</text>
+  <text x="927" y="531" class="small">P8</text>
+
+  <path class="wait" d="M525 171 V280"/>
+  <text x="655" y="230" class="small">wait for copy instance</text>
+  <path class="flow" d="M470 323 H495"/>
+  <path class="flow" d="M680 323 H705"/>
+  <path class="wait" d="M830 361 C830 415 435 415 435 470"/>
+  <text x="635" y="421" class="small">wait for compute instance</text>
+  <path class="flow" d="M560 513 H615"/>
+  <path class="flow" d="M850 513 H870"/>
+</svg>

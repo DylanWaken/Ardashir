@@ -10,16 +10,7 @@ which NVRHI state is required?
 
 ArdaRenderGraph puts those answers in pass parameter structs:
 
-```text
-logical resource + view/range + required state
-                        |
-                        v
-               parameter metadata
-                        |
-             +----------+----------+
-             |                     |
-       dependency edges      state transitions
-```
+![Parameter metadata drives dependency edges and state transitions](assets/dependency-resource-diagrams.svg#parameter-metadata)
 
 This chapter builds the resources for the recurring runtime graph and covers
 every parameter macro family used to declare them. The complete declarations
@@ -113,11 +104,7 @@ Overloaded `CreateSRV` and `CreateUAV` are short aliases.
 
 The graph stores view metadata and uses its parent/range to discover access:
 
-```text
-Texture T0 Heightmap
-  +-- View V0: mip 0 UAV
-  +-- View V1: mip 0 SRV
-```
+![Logical Heightmap texture with mip 0 UAV and SRV views](assets/dependency-resource-diagrams.svg#logical-view-tree)
 
 During a pass, `Context.GetTexture(HeightmapMip0UAV)` returns the parent
 `nvrhi::ITexture*`. Likewise, `GetBuffer(TerrainVerticesUAV)` returns the
@@ -425,11 +412,7 @@ explicit state use the NVRHI descriptor's `initialState`, but still reject
 
 Import creates one logical wrapper around the supplied physical handle:
 
-```text
-GraphPrologue --initial producer--> BackBuffer logical record
-                                      |
-                                      +--> existing nvrhi::ITexture
-```
+![External texture import across the graph ownership boundary](assets/dependency-resource-diagrams.svg#external-import-boundary)
 
 Imported resources:
 
@@ -476,17 +459,7 @@ producer by compilation time. Extraction does not wait for GPU completion.
 After culling, compilation assigns every live texture and buffer an inclusive
 first/last execution-order interval:
 
-```text
-execution index:  0          1         2         3        4           5       6        7
-                  P0         P1        P2        P4       P5          P6      P7       P8
-                  Prologue   Upload    Generate  Erode    Triangulate Render  Overlay  Epilogue
-TerrainSettingsUpload       [----------------------------------------------------------]
-TerrainSettings            [---------------]
-Heightmap                            [------------------]
-TerrainVertices                                      [---------------]
-TerrainIndices                                       [---------------]
-BackBuffer                                                    [------------------------]
-```
+![Terrain resource lifetime Gantt over live execution order](assets/dependency-resource-diagrams.svg#terrain-lifetimes)
 
 `DebugHeightmap` P3 is absent because culling rebuilds use intervals from live
 passes only. The inclusive intervals are `TerrainSettingsUpload [1,7]`,

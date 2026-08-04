@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="510" viewBox="0 0 1120 510" role="img" aria-labelledby="title desc">
+  <title id="title">Logical transitions rebuilt as physical transition history</title>
+  <desc id="desc">Logical A transitions from Common through UnorderedAccess to ShaderResource. Logical B was compiled from Common to CopyDest. When both reuse one physical buffer, the physical history instead transitions from Common through UnorderedAccess and ShaderResource to CopyDest.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/>
+    </marker>
+    <style>
+      .title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .section{font:700 18px system-ui,sans-serif;fill:#c5d2e3}
+      .label{font:600 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .state{rx:11;stroke-width:2}
+      .flow{stroke:#7dd3fc;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1120" height="510" rx="22" fill="url(#bg)"/>
+  <text x="560" y="40" class="title">Physical reuse joins two logical state histories</text>
+
+  <text x="55" y="92" class="section">Compiled logical histories</text>
+  <text x="110" y="145" class="label">Logical A</text>
+  <rect class="state" x="210" y="115" width="150" height="58" fill="#253247" stroke="#94a3b8"/>
+  <text x="285" y="150" class="label">Common</text>
+  <rect class="state" x="435" y="115" width="190" height="58" fill="#214b45" stroke="#34d399"/>
+  <text x="530" y="150" class="label">UnorderedAccess</text>
+  <rect class="state" x="700" y="115" width="190" height="58" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="795" y="150" class="label">ShaderResource</text>
+  <path class="flow" d="M360 144 H430"/>
+  <path class="flow" d="M625 144 H695"/>
+
+  <text x="110" y="235" class="label">Logical B</text>
+  <rect class="state" x="210" y="205" width="150" height="58" fill="#253247" stroke="#94a3b8"/>
+  <text x="285" y="240" class="label">Common</text>
+  <rect class="state" x="700" y="205" width="190" height="58" fill="#493720" stroke="#fbbf24"/>
+  <text x="795" y="240" class="label">CopyDest</text>
+  <path class="flow" d="M360 234 H695"/>
+
+  <rect x="270" y="292" width="580" height="42" rx="10" fill="#20364a" stroke="#38bdf8"/>
+  <text x="560" y="319" class="small">Logical A and Logical B bind the same physical buffer at different times.</text>
+
+  <text x="55" y="382" class="section">Rebuilt physical history</text>
+  <rect class="state" x="105" y="405" width="145" height="58" fill="#253247" stroke="#94a3b8"/>
+  <text x="177" y="440" class="label">Common</text>
+  <rect class="state" x="330" y="405" width="185" height="58" fill="#214b45" stroke="#34d399"/>
+  <text x="422" y="440" class="label">UnorderedAccess</text>
+  <rect class="state" x="595" y="405" width="185" height="58" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="687" y="440" class="label">ShaderResource</text>
+  <rect class="state" x="860" y="405" width="155" height="58" fill="#493720" stroke="#fbbf24"/>
+  <text x="937" y="440" class="label">CopyDest</text>
+  <path class="flow" d="M250 434 H325"/>
+  <path class="flow" d="M515 434 H590"/>
+  <path class="flow" d="M780 434 H855"/>
+</svg>

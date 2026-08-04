@@ -61,13 +61,7 @@ The resources are:
 
 The build-time dependency history is already:
 
-```text
-producer edges:       P1 -> P2 -> P4 -> P5 -> P6 -> P7
-                            \-> P3
-                      P0 -> P1
-                      P0 ----------------------> P6
-synchronization edge: P3 -------------> P4
-```
+![Terrain producer and synchronization edges](assets/runtime-terrain-edges.svg)
 
 `P3` read `Heightmap` after `P2`; when `P4` became the next writer, `P4`
 received an ordering-only edge from that reader. The distinction matters:
@@ -481,10 +475,7 @@ pipelines.
 
 The two cross-queue dependencies between command-recording work passes are:
 
-```text
-P1 Copy         -> P2 AsyncCompute
-P5 AsyncCompute -> P6 Graphics
-```
+![Terrain cross-queue dependency pair](assets/runtime-cross-queue-dependencies.svg)
 
 The P3 → P4 synchronization edge emits nothing because P3 was culled.
 Same-queue edges emit nothing because ordinary queue submission order handles

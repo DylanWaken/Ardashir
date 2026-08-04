@@ -10,25 +10,39 @@ each pass already owns its incoming producer edges, each resource already knows
 its last writer and readers since that write, and each pass already contains
 the raw state declarations that barrier compilation will lower.
 
-This chapter follows that build-time path:
+This chapter expands the build section of the
+[complete call-chain diagram](assets/arda-render-graph-call-chain.svg).
 
-```text
-FARDGBuilder::AddPass
-    -> freeze parameters
-    -> AddPassInternal
-    -> create FARDGLambdaPass
-    -> FARDGSetupContext::Visit
-    -> metadata enumeration
-    -> AddTexture / AddBuffer / AddUniformBuffer
-    -> mutate pass edges and resource history
-```
+![ArdaRenderGraph build-stage call chain](assets/arda-render-graph-call-chain.svg#ardg-build-view)
+
+## Reading the build-stage excerpt
+
+The four columns separate API calls from implementation and stored state:
+
+1. **Public API** starts the builder, creates/imports logical resources,
+   freezes parameter data, registers passes, and optionally adds manual
+   dependencies or extractions.
+2. **Builder internals** enforce the `IsBuilding()` lifecycle, append
+   arena-backed registry entries, create `FARDGLambdaPass`, and enter setup.
+3. **Setup and metadata walk** enumerates every parameter leaf and routes it to
+   `AddTexture`, `AddBuffer`, `AddView`, `AddUniformBuffer`, or raster-binding
+   handling.
+4. **Persistent logical state** receives raw access declarations, producer and
+   synchronization-producer edges, resource last-writer/readers history, and
+   first/last build-time uses.
+
+The expanded write-state diamond is the dependency core. Every access follows
+the current last writer. A write additionally waits for all readers of the old
+version, clears that reader epoch, and becomes the new last writer. The bottom
+box is the hard stage boundary: `Compile()` sets `mbCompiling`, so all
+`IsBuilding()`-guarded mutation closes before compiler code runs.
 
 The relevant code is split between the public
 [`AddPass` template](../../Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h#L364-L422),
 the private
-[`AddPassInternal`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp#L1059-L1096),
+[`AddPassInternal`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp#L1687-L1724),
 and the anonymous private
-[`FARDGSetupContext`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp#L115-L431).
+[`FARDGSetupContext`](../../Source/ArdaRenderGraph/Private/ArdaRenderGraphBuilder.cpp#L225-L616).
 
 ## Actual behavior versus future direction
 

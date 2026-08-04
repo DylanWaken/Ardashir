@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="510" viewBox="0 0 1160 510" role="img" aria-labelledby="title desc">
+  <title id="title">Scratch logical histories rebuilt into Physical0 history</title>
+  <desc id="desc">ScratchA transitions from Common through UAV to ShaderResource. ScratchB was compiled from Common to CopyDest. Because ScratchB reuses ScratchA physical storage, Physical0 transitions from ShaderResource to CopyDest instead of restarting at Common.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/>
+    </marker>
+    <style>
+      .title{font:700 22px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .section{font:700 18px system-ui,sans-serif;fill:#c5d2e3}
+      .label{font:600 16px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .state{rx:11;stroke-width:2}
+      .flow{stroke:#7dd3fc;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+      .repair{stroke:#fbbf24;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1160" height="510" rx="22" fill="url(#bg)"/>
+  <text x="580" y="40" class="title">BuildPhysicalTransitions follows physical identity</text>
+
+  <text x="45" y="90" class="section">Compiled logical histories</text>
+  <text x="110" y="145" class="label">ScratchA</text>
+  <rect class="state" x="210" y="115" width="150" height="58" fill="#253247" stroke="#94a3b8"/>
+  <text x="285" y="150" class="label">Common</text>
+  <rect class="state" x="435" y="115" width="150" height="58" fill="#214b45" stroke="#34d399"/>
+  <text x="510" y="150" class="label">UAV</text>
+  <rect class="state" x="660" y="115" width="195" height="58" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="757" y="150" class="label">ShaderResource</text>
+  <path class="flow" d="M360 144 H430"/>
+  <path class="flow" d="M585 144 H655"/>
+
+  <text x="110" y="235" class="label">ScratchB</text>
+  <rect class="state" x="210" y="205" width="150" height="58" fill="#253247" stroke="#94a3b8"/>
+  <text x="285" y="240" class="label">Common</text>
+  <rect class="state" x="705" y="205" width="150" height="58" fill="#493720" stroke="#fbbf24"/>
+  <text x="780" y="240" class="label">CopyDest</text>
+  <path class="flow" d="M360 234 H700"/>
+
+  <rect x="275" y="292" width="610" height="42" rx="10" fill="#20364a" stroke="#38bdf8"/>
+  <text x="580" y="319" class="small">ScratchB reuses ScratchA backing, so Common is not its physical before-state.</text>
+
+  <text x="45" y="382" class="section">Materialized physical history</text>
+  <text x="105" y="445" class="label">Physical0</text>
+  <rect class="state" x="210" y="410" width="140" height="58" fill="#253247" stroke="#94a3b8"/>
+  <text x="280" y="445" class="label">Common</text>
+  <rect class="state" x="420" y="410" width="140" height="58" fill="#214b45" stroke="#34d399"/>
+  <text x="490" y="445" class="label">UAV</text>
+  <rect class="state" x="630" y="410" width="190" height="58" fill="#1f3656" stroke="#60a5fa"/>
+  <text x="725" y="445" class="label">ShaderResource</text>
+  <rect class="state" x="890" y="410" width="150" height="58" fill="#493720" stroke="#fbbf24"/>
+  <text x="965" y="445" class="label">CopyDest</text>
+  <path class="flow" d="M350 439 H415"/>
+  <path class="flow" d="M560 439 H625"/>
+  <path class="repair" d="M820 439 H885"/>
+  <text x="852" y="420" class="small">rebuilt</text>
+</svg>

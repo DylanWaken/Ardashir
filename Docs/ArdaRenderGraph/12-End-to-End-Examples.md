@@ -22,14 +22,7 @@ upload and one raster draw.
 
 This device-free example shows the smallest useful dependency graph.
 
-```text
-GraphPrologue
-     |
-     v
-  Produce --Intermediate--> Consume --Output--> GraphEpilogue
-
-  Dead --DeadOutput--> (nothing)                 [culled]
-```
+![Minimal produce, consume, and cull graph](assets/examples-end-to-end.svg#examples-minimal-graph)
 
 ```cpp
 ARDG_BEGIN_PARAMETER_STRUCT(FTextureFlowParameters)
@@ -112,20 +105,7 @@ which is a compile-only test with empty callbacks.
 An external write is already observable, so no extraction or `NeverCull` is
 needed.
 
-```text
-AcquireFrame
-     |
-     v
-[Present back buffer] --Raster pass--> [RenderTarget]
-     ^                                      |
-     +----------- epilogue: Present <-------+
-                                             |
-                                       PrepareSubmit
-                                             |
-                                          Execute
-                                             |
-                                           Present
-```
+![Swap-chain frame and acquire-present loop](assets/examples-end-to-end.svg#examples-swapchain-loop)
 
 ```cpp
 ARDG_BEGIN_PARAMETER_STRUCT(FPresentParameters)
@@ -238,17 +218,7 @@ through the compiler and executor.
 Request async compute with both `Compute` and `AsyncCompute`, and advertise the
 real queue capability. Use non-pixel shader state for compute reads.
 
-```text
-Graphics:  ProduceInput -------- wait --------------------> Composite
-                 |                                          ^
-                 | fork                                     | join
-                 v                                          |
-Compute:     AsyncFilter ------------------------------------+
-
-Queue edges:
-  ProduceInput(Graphics) -> AsyncFilter(Compute)
-  AsyncFilter(Compute)    -> Composite(Graphics)
-```
+![Async compute fork and graphics join with queue edges](assets/examples-end-to-end.svg#examples-async-fork-join)
 
 ```cpp
 ARDG_BEGIN_PARAMETER_STRUCT(FAsyncCompositeParameters)
@@ -327,15 +297,7 @@ A copy pass may declare only `CopySource` and `CopyDest`. This example imports a
 source buffer, creates a destination, records a real NVRHI copy, and extracts
 the result.
 
-```text
-External source (CopySource)
-          |
-          v
-     Copy buffer  --copy queue when available--> Destination
-                                                   |
-                                                   v
-                                    Extract as CopySource
-```
+![Copy queue import, copy, and extraction](assets/examples-end-to-end.svg#examples-copy-queue)
 
 ```cpp
 ARDG_BEGIN_PARAMETER_STRUCT(FCopyBufferParameters)
@@ -399,12 +361,7 @@ Two descriptor-identical transient resources can use one committed NVRHI
 allocation when their live intervals do not overlap and all use is in one queue
 domain.
 
-```text
-Execution index:       1          2
-Transient A:          [A]
-Transient B:                     [B]
-Physical allocation: [========= reused =========]
-```
+![Transient A and B committed-resource reuse timeline](assets/examples-end-to-end.svg#examples-transient-reuse)
 
 ```cpp
 ARDG_BEGIN_PARAMETER_STRUCT(FClearParameters)
@@ -464,16 +421,7 @@ Extraction crosses a graph boundary. Keep the returned NVRHI handle in
 application state, wait through the renderer's normal frame synchronization,
 and import it into the next builder with the state requested at extraction.
 
-```text
-Frame N graph
-  BuildHistory (UAV) -> epilogue transition to ShaderResource
-                           |
-                           v
-                    extracted handle
-                           |
-Frame N+1 graph            v
-  prologue -> imported History (ShaderResource) -> ReadHistory
-```
+![Extraction in one frame and import in the next](assets/examples-end-to-end.svg#examples-extraction-frames)
 
 ```cpp
 // Frame N
@@ -544,16 +492,7 @@ only for the geometry upload.
 
 ### Upload graph
 
-```text
-External vertex buffer: VertexBuffer -> CopyDest -> VertexBuffer
-                                      \ writeBuffer(vertices)
-
-External index buffer:  IndexBuffer  -> CopyDest -> IndexBuffer
-                                      \ writeBuffer(indices)
-
-Graph queue: Graphics (`EARDGPassFlags::None`)
-After submit: device.waitForIdle()
-```
+![One-time triangle vertex and index buffer upload graph](assets/examples-end-to-end.svg#examples-triangle-upload)
 
 The source declares:
 
@@ -582,23 +521,7 @@ the graph itself only promises submission.
 
 ### Per-frame render graph
 
-```text
-swapChain.AcquireFrame(framebuffer)
-                |
-                v
-Import color: Present ------------------------------+
-Import vertex: VertexBuffer ----+                   |
-Import index:  IndexBuffer -----+--> Render triangle|
-                                      clear + draw  |
-                                             |      |
-Epilogue: color -> Present <-----------------+------+
-                |
-swapChain.PrepareSubmit()
-                |
-graph.Execute()
-                |
-swapChain.Present()
-```
+![Per-frame triangle acquire, draw, execute, and present graph](assets/examples-end-to-end.svg#examples-triangle-frame)
 
 Each `RenderFrame` call:
 

@@ -9,25 +9,7 @@ frozen parameter object.
 
 The recurring live path is:
 
-```text
-P0 GraphPrologue --TerrainSettingsUpload--> P1 UploadTerrainSettings
-P1 UploadTerrainSettings --TerrainSettings--> P2 GenerateNoiseHeightmap
-                                                   |
-                         +-------------------------+------------------+
-                         | Heightmap                                  |
-                         v                                            v
-                 P3 DebugHeightmap (dead)                    P4 ErodeHeightmap
-                         |                                   /        |
-                         + - - synchronization only - - - - +         v
-                                                        P5 TriangulateTerrain
-                                                                  |
-                                                   TerrainVertices/Indices
-                                                                  v
-P0 GraphPrologue --BackBuffer---------------------------> P6 RenderTerrain
-                                                                  |
-                                                                  v
-                                                          P7 TerrainOverlay
-```
+![Full terrain producer and synchronization graph](assets/dependency-pass-diagrams.svg#terrain-producer-graph)
 
 The terrain settings, heightmap, mesh buffers, and imported back buffer form the
 live producer chain. `DebugHeightmap` is an intentionally unused
@@ -47,9 +29,7 @@ ArdaRenderGraph stores:
 Why split them? Consider an old value that a pass reads before a later pass
 overwrites it:
 
-```text
-[Read old value] - -sync- -> [Write new value]
-```
+![Read-to-write synchronization edge](assets/dependency-pass-diagrams.svg#read-write-sync)
 
 The write must not overtake the read. But if no observable result needs the
 reader, that ordering requirement should not make the reader live. A
@@ -70,16 +50,7 @@ readers      = passes that read it since lastProducer
 
 When a pass declares access, the builder applies this logic:
 
-```text
-add producer edge: lastProducer -> current, if lastProducer is valid
-
-if current access is a read:
-    remember current in readers
-else:
-    add synchronization edge: each reader -> current
-    clear readers
-    lastProducer = current
-```
+![Flowchart for discovering producer and synchronization edges](assets/dependency-pass-diagrams.svg#edge-discovery)
 
 This is implemented directly by `FARDGSetupContext::AddTexture` and
 `AddBuffer` in
@@ -100,16 +71,7 @@ These names describe access order to one resource: R is read, W is write.
 
 ### Read after write (RAW)
 
-```text
-initial: lastProducer = none, readers = {}
-
-P2 writes Heightmap
-    lastProducer = P2
-
-P3 reads Heightmap
-    producer edge P2 -> P3
-    readers = {P3}
-```
+![Read-after-write resource history trace](assets/dependency-pass-diagrams.svg#raw-trace)
 
 `P3` needs data produced by `P2`. The producer edge orders them, but because
 culling walks backward from live consumers, that edge alone does not make the
@@ -117,14 +79,7 @@ otherwise unobservable debug pass a root.
 
 ### Write after write (WAW)
 
-```text
-P2 writes Heightmap
-    lastProducer = P2
-
-P4 writes Heightmap
-    producer edge P2 -> P4
-    lastProducer = P4
-```
+![Write-after-write resource history trace](assets/dependency-pass-diagrams.svg#waw-trace)
 
 The later write depends on the earlier writer. This serializes writes and
 preserves the declared version chain. Repeated UAV state can additionally
@@ -134,17 +89,7 @@ produce a UAV ordering barrier during compilation.
 
 Use the heightmap version produced by `P2`:
 
-```text
-P3 DebugHeightmap reads Heightmap
-    producer edge P2 -> P3
-    readers = {P3}
-
-P4 ErodeHeightmap writes Heightmap
-    producer edge P2 -> P4
-    synchronization edge P3 - -> P4
-    readers = {}
-    lastProducer = P4
-```
+![Write-after-read resource history trace](assets/dependency-pass-diagrams.svg#war-trace)
 
 The producer edge from `P2` identifies the version both passes started from.
 The synchronization edge stops `P4` from destroying that version before `P3`
@@ -254,11 +199,7 @@ eastl::string BuildDependencyExample()
 
 The edge state after registration is:
 
-```text
-GenerateNoiseHeightmap --producer--> TriangulateTerrain --producer--> GraphEpilogue
-
-                    \----producer----> DebugHeightmap   (no path to a root)
-```
+![Extracted live chain and dead debug branch](assets/dependency-pass-diagrams.svg#extracted-chain)
 
 The extraction of `TerrainMesh` causes compilation to connect
 `TriangulateTerrain` to the epilogue. Backward traversal then reaches
@@ -270,10 +211,7 @@ from `mExecutionOrder`. This behavior is exercised in
 
 The API has a strict forward-building model:
 
-```text
-correct:   register producer P1, then consumer P2
-incorrect: register consumer P1, then hope compile moves producer P2 before it
-```
+![Correct and incorrect pass registration order](assets/dependency-pass-diagrams.svg#registration-order)
 
 Compilation does not run Kahn's algorithm or a DFS topological sort. It builds
 reverse consumer vectors and validates that every producer index is lower than
@@ -320,7 +258,7 @@ checked physical access.
 
 ## Culling starts at observable roots and walks backward
 
-![Producer edges, synchronization edges, and dead-pass culling](assets/pass-dependencies.svg)
+![Backward culling reachability from observable roots](assets/dependency-pass-diagrams.svg#culling-reachability)
 
 Normal compilation initially marks every non-sentinel pass as culled. It seeds
 a worklist with:
@@ -347,14 +285,7 @@ order. The exact implementation is
 
 ### What survives?
 
-```text
-BackBuffer
-    ^
-    |
-[Generate] -> [Erode] -> [Triangulate] -> [Render] -> [Overlay] -> Epilogue
-                    \
-                     [DebugHeightmap]                         culled
-```
+![Live terrain chain and culled DebugHeightmap branch](assets/dependency-pass-diagrams.svg#culling-live-chain)
 
 - A write to an unconsumed graph-created resource is dead.
 - A read-only terrain-debug/minimap pass with no live consumer is dead, even
@@ -370,14 +301,7 @@ BackBuffer
 
 The full runtime declaration connects copy, asynchronous compute, and graphics:
 
-```text
-P1 UploadTerrainSettings (Copy)
-  -> P2 GenerateNoiseHeightmap (AsyncCompute, Heightmap mip 0 UAV)
-  -> P4 ErodeHeightmap (AsyncCompute, same UAV)
-  -> P5 TriangulateTerrain (AsyncCompute, mip 0 SRV + buffer UAVs)
-  -> P6 RenderTerrain (Graphics, vertex/index reads + BackBuffer write)
-  -> P7 TerrainOverlay (Graphics, same BackBuffer write)
-```
+![Terrain pipeline across copy, asynchronous compute, and graphics queues](assets/dependency-pass-diagrams.svg#terrain-pipeline-lane)
 
 The exact parameter structs, binding sets, dispatch setup, and draw recording
 are canonical in
@@ -393,13 +317,7 @@ the generic snippets above continue to teach dependency APIs.
 declares it in `ARDG_RENDER_TARGET_BINDING_SLOTS`, and captures the matching
 NVRHI framebuffer for the actual draw. The graph then sees:
 
-```text
-GraphPrologue --BackBuffer(Present)--> [RenderTerrain]
-                                           |
-                                           v
-                                    GraphEpilogue
-                                    BackBuffer(Present)
-```
+![External BackBuffer producer root and final-state path](assets/dependency-pass-diagrams.svg#external-backbuffer-root)
 
 The write is observable because external resources are wired to the epilogue.
 Compilation derives `Present -> RenderTarget -> Present`. The application still

@@ -1,0 +1,232 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="2150" viewBox="0 0 1200 2150" role="img" aria-labelledby="sheet-title sheet-desc">
+  <title id="sheet-title">ArdaRenderGraph core concept diagrams</title>
+  <desc id="sheet-desc">Five dark themed diagrams explain the abbreviated terrain graph, logical to physical resource mapping, handle registries, frozen parameters, and graph sentinels.</desc>
+  <view id="terrain-graph" viewBox="0 0 1200 560"/>
+  <view id="build-execute-mapping" viewBox="0 580 1200 390"/>
+  <view id="handle-registry" viewBox="0 990 1200 370"/>
+  <view id="parameter-freeze" viewBox="0 1380 1200 390"/>
+  <view id="sentinel-chain" viewBox="0 1790 1200 360"/>
+  <defs>
+    <linearGradient id="cc-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="cc-arrow-cyan" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="cc-arrow-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#6ee7b7"/>
+    </marker>
+    <marker id="cc-arrow-amber" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#fbbf24"/>
+    </marker>
+    <style>
+      .cc-bg{fill:url(#cc-bg)}
+      .cc-panel{fill:#111c2e;stroke:#334b68;stroke-width:2}
+      .cc-node{fill:#173047;stroke:#38bdf8;stroke-width:2}
+      .cc-sentinel{fill:#263247;stroke:#94a3b8;stroke-width:2}
+      .cc-copy{fill:#493720;stroke:#fbbf24;stroke-width:2}
+      .cc-compute{fill:#253154;stroke:#818cf8;stroke-width:2}
+      .cc-raster{fill:#214b45;stroke:#34d399;stroke-width:2}
+      .cc-dead{fill:#392b3d;stroke:#f472b6;stroke-width:2;stroke-dasharray:7 5}
+      .cc-title{font:700 25px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .cc-subtitle{font:15px system-ui,sans-serif;fill:#aebed2;text-anchor:middle}
+      .cc-label{font:600 16px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .cc-small{font:14px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .cc-left{font:14px system-ui,sans-serif;fill:#c5d2e3}
+      .cc-code{font:600 14px ui-monospace,SFMono-Regular,Consolas,monospace;fill:#d8e5f4;text-anchor:middle}
+      .cc-tag{font:700 12px system-ui,sans-serif;fill:#93c5fd;text-anchor:middle;letter-spacing:.7px}
+      .cc-edge{fill:none;stroke:#7dd3fc;stroke-width:3;marker-end:url(#cc-arrow-cyan)}
+      .cc-data{fill:none;stroke:#6ee7b7;stroke-width:3;marker-end:url(#cc-arrow-green)}
+      .cc-sync{fill:none;stroke:#fbbf24;stroke-width:2.5;stroke-dasharray:8 5;marker-end:url(#cc-arrow-amber)}
+      .cc-dead-edge{fill:none;stroke:#f472b6;stroke-width:2.5;stroke-dasharray:7 5;marker-end:url(#cc-arrow-cyan)}
+    </style>
+  </defs>
+
+  <g id="terrain-graph-diagram" role="img" aria-labelledby="terrain-title terrain-desc">
+    <title id="terrain-title">Abbreviated canonical terrain graph</title>
+    <desc id="terrain-desc">The prologue provides imported settings and back buffer resources. Upload, generation, erosion, triangulation, render, and overlay passes lead to the epilogue. The debug heightmap pass is dead.</desc>
+    <rect class="cc-bg" width="1200" height="560" rx="22"/>
+    <text x="600" y="40" class="cc-title">Canonical terrain graph: declarations form a plan</text>
+    <text x="600" y="66" class="cc-subtitle">Graph-created resources may remain logical until dead work has been removed.</text>
+
+    <rect x="45" y="112" width="170" height="62" rx="11" class="cc-sentinel"/>
+    <text x="130" y="149" class="cc-label">P0 Prologue</text>
+
+    <rect x="270" y="112" width="145" height="62" rx="11" class="cc-copy"/>
+    <text x="342.5" y="149" class="cc-label">P1 Upload</text>
+    <rect x="470" y="112" width="155" height="62" rx="11" class="cc-compute"/>
+    <text x="547.5" y="149" class="cc-label">P2 Generate</text>
+    <rect x="680" y="112" width="145" height="62" rx="11" class="cc-compute"/>
+    <text x="752.5" y="149" class="cc-label">P4 Erode</text>
+    <rect x="880" y="112" width="190" height="62" rx="11" class="cc-compute"/>
+    <text x="975" y="149" class="cc-label">P5 Triangulate</text>
+
+    <path d="M215 143 H270" class="cc-data"/>
+    <text x="242.5" y="126" class="cc-tag">SETTINGS</text>
+    <path d="M415 143 H470" class="cc-data"/>
+    <path d="M625 143 H680" class="cc-data"/>
+    <path d="M825 143 H880" class="cc-data"/>
+
+    <rect x="470" y="238" width="210" height="72" rx="11" class="cc-dead"/>
+    <text x="575" y="267" class="cc-label">P3 Debug heightmap</text>
+    <text x="575" y="291" class="cc-small">dead: no observable output</text>
+    <path d="M547.5 174 V238" class="cc-dead-edge"/>
+
+    <rect x="690" y="370" width="180" height="68" rx="11" class="cc-raster"/>
+    <text x="780" y="399" class="cc-label">P6 Render</text>
+    <text x="780" y="422" class="cc-small">terrain buffers</text>
+    <path d="M975 174 V335 H780 V370" class="cc-data"/>
+
+    <rect x="925" y="370" width="180" height="68" rx="11" class="cc-raster"/>
+    <text x="1015" y="399" class="cc-label">P7 Overlay</text>
+    <text x="1015" y="422" class="cc-small">BackBuffer</text>
+    <path d="M870 404 H925" class="cc-data"/>
+
+    <rect x="925" y="478" width="180" height="56" rx="11" class="cc-sentinel"/>
+    <text x="1015" y="512" class="cc-label">P8 Epilogue</text>
+    <path d="M1015 438 V478" class="cc-edge"/>
+
+    <path d="M130 174 V455 H640 V404 H690" class="cc-edge"/>
+    <text x="465" y="445" class="cc-small">imported BackBuffer boundary path</text>
+    <path d="M680 274 H752.5 V174" class="cc-sync"/>
+    <text x="735" y="255" class="cc-tag">WAR SYNC</text>
+
+    <rect x="45" y="238" width="330" height="156" rx="13" class="cc-panel"/>
+    <text x="210" y="270" class="cc-label">Compilation decides</text>
+    <text x="70" y="301" class="cc-left">1. Which pass outputs are observable</text>
+    <text x="70" y="328" class="cc-left">2. Which producer chains remain live</text>
+    <text x="70" y="355" class="cc-left">3. Which resources need materialization</text>
+    <text x="70" y="382" class="cc-left">4. Which queue and state transitions apply</text>
+  </g>
+
+  <g id="build-execute-mapping-diagram" role="img" aria-labelledby="mapping-title mapping-desc">
+    <title id="mapping-title">Logical and physical resource mapping</title>
+    <desc id="mapping-desc">During build, logical texture T0 Heightmap and logical buffer B0 TerrainVertices are records without required GPU allocation. During execution, each resolves to a physical NVRHI object, which may be newly allocated, reused, or imported.</desc>
+    <rect class="cc-bg" x="0" y="580" width="1200" height="390" rx="22"/>
+    <text x="600" y="622" class="cc-title">Logical identity is separate from physical allocation</text>
+    <text x="600" y="648" class="cc-subtitle">Dependencies refer to stable graph records, never to a transient memory address.</text>
+
+    <rect x="45" y="690" width="455" height="205" rx="16" class="cc-panel"/>
+    <text x="272.5" y="727" class="cc-label">BUILD: logical records</text>
+    <rect x="75" y="757" width="395" height="52" rx="10" class="cc-node"/>
+    <text x="272.5" y="789" class="cc-code">FARDGTexture T0 "Heightmap"</text>
+    <rect x="75" y="824" width="395" height="52" rx="10" class="cc-node"/>
+    <text x="272.5" y="856" class="cc-code">FARDGBuffer B0 "TerrainVertices"</text>
+
+    <rect x="700" y="690" width="455" height="205" rx="16" class="cc-panel"/>
+    <text x="927.5" y="727" class="cc-label">EXECUTE: physical objects</text>
+    <rect x="730" y="757" width="395" height="52" rx="10" class="cc-raster"/>
+    <text x="927.5" y="789" class="cc-code">nvrhi::ITexture*</text>
+    <rect x="730" y="824" width="395" height="52" rx="10" class="cc-raster"/>
+    <text x="927.5" y="856" class="cc-code">nvrhi::IBuffer*</text>
+
+    <path d="M470 783 H730" class="cc-data"/>
+    <path d="M470 850 H730" class="cc-data"/>
+    <text x="600" y="768" class="cc-tag">MATERIALIZE</text>
+    <text x="600" y="835" class="cc-tag">MATERIALIZE</text>
+
+    <rect x="170" y="916" width="860" height="36" rx="10" fill="#20364a" stroke="#38bdf8" stroke-width="2"/>
+    <text x="600" y="940" class="cc-small">Graph-created: allocate or reuse after lifetime analysis. Imported: wrap an existing caller-owned handle.</text>
+  </g>
+
+  <g id="handle-registry-diagram" role="img" aria-labelledby="registry-title registry-desc">
+    <title id="registry-title">Append-only typed handle registry</title>
+    <desc id="registry-desc">Registry index zero points to the Heightmap texture record and yields texture handle zero. Index one points to BackBuffer and yields texture handle one. Arena ownership and no erasure keep handles stable.</desc>
+    <rect class="cc-bg" x="0" y="990" width="1200" height="370" rx="22"/>
+    <text x="600" y="1032" class="cc-title">Append-only registries assign stable typed handles</text>
+    <text x="600" y="1058" class="cc-subtitle">The current vector size becomes the new object's handle index.</text>
+
+    <rect x="50" y="1100" width="1100" height="184" rx="16" class="cc-panel"/>
+    <text x="135" y="1135" class="cc-tag">INDEX</text>
+    <text x="430" y="1135" class="cc-tag">ARENA-OWNED LOGICAL RECORD</text>
+    <text x="885" y="1135" class="cc-tag">TYPED HANDLE</text>
+
+    <rect x="75" y="1160" width="120" height="48" rx="10" class="cc-sentinel"/>
+    <text x="135" y="1190" class="cc-code">0</text>
+    <rect x="250" y="1160" width="365" height="48" rx="10" class="cc-node"/>
+    <text x="432.5" y="1190" class="cc-code">FARDGTexture "Heightmap"</text>
+    <rect x="720" y="1160" width="330" height="48" rx="10" class="cc-compute"/>
+    <text x="885" y="1190" class="cc-code">FARDGTextureHandle(0)</text>
+    <path d="M195 1184 H250" class="cc-edge"/>
+    <path d="M615 1184 H720" class="cc-edge"/>
+
+    <rect x="75" y="1223" width="120" height="48" rx="10" class="cc-sentinel"/>
+    <text x="135" y="1253" class="cc-code">1</text>
+    <rect x="250" y="1223" width="365" height="48" rx="10" class="cc-node"/>
+    <text x="432.5" y="1253" class="cc-code">FARDGTexture "BackBuffer"</text>
+    <rect x="720" y="1223" width="330" height="48" rx="10" class="cc-compute"/>
+    <text x="885" y="1253" class="cc-code">FARDGTextureHandle(1)</text>
+    <path d="M195 1247 H250" class="cc-edge"/>
+    <path d="M615 1247 H720" class="cc-edge"/>
+
+    <rect x="170" y="1305" width="860" height="35" rx="10" fill="#20364a" stroke="#38bdf8" stroke-width="2"/>
+    <text x="600" y="1328" class="cc-small">No erase operation exists; tag types prevent texture, buffer, pass, and view handles from mixing.</text>
+  </g>
+
+  <g id="parameter-freeze-diagram" role="img" aria-labelledby="freeze-title freeze-desc">
+    <title id="freeze-title">Parameter freezing</title>
+    <desc id="freeze-desc">AddPass copies a caller stack parameter object into graph arena storage. Metadata traversal and the pass callback both observe the same immutable frozen object, even if the caller later reuses the stack object.</desc>
+    <rect class="cc-bg" x="0" y="1380" width="1200" height="390" rx="22"/>
+    <text x="600" y="1422" class="cc-title">AddPass freezes one trustworthy declaration</text>
+    <text x="600" y="1448" class="cc-subtitle">Setup-time discovery and recording-time access cannot diverge.</text>
+
+    <rect x="45" y="1500" width="285" height="94" rx="13" class="cc-copy"/>
+    <text x="187.5" y="1533" class="cc-label">Caller's stack object</text>
+    <text x="187.5" y="1559" class="cc-code">Parameters.mHeightmap</text>
+    <text x="187.5" y="1581" class="cc-small">may be reused after AddPass</text>
+
+    <rect x="455" y="1500" width="290" height="94" rx="13" class="cc-node"/>
+    <text x="600" y="1533" class="cc-label">Graph arena copy</text>
+    <text x="600" y="1559" class="cc-code">const FrozenParameters</text>
+    <text x="600" y="1581" class="cc-small">lives with the builder</text>
+    <path d="M330 1547 H455" class="cc-data"/>
+    <text x="392.5" y="1531" class="cc-tag">COPY</text>
+
+    <rect x="870" y="1477" width="285" height="88" rx="13" class="cc-compute"/>
+    <text x="1012.5" y="1510" class="cc-label">Metadata traversal</text>
+    <text x="1012.5" y="1536" class="cc-small">edges, states, views, lifetimes</text>
+    <path d="M745 1530 H870" class="cc-data"/>
+
+    <rect x="870" y="1607" width="285" height="88" rx="13" class="cc-raster"/>
+    <text x="1012.5" y="1640" class="cc-label">Pass callback</text>
+    <text x="1012.5" y="1666" class="cc-small">same const frozen declaration</text>
+    <path d="M745 1564 H805 V1651 H870" class="cc-data"/>
+
+    <rect x="180" y="1640" width="565" height="74" rx="12" class="cc-panel"/>
+    <text x="462.5" y="1669" class="cc-label">Lifetime and destruction rules</text>
+    <text x="462.5" y="1695" class="cc-small">Standard-layout parameters; non-trivial destructors run in reverse allocation order.</text>
+  </g>
+
+  <g id="sentinel-chain-diagram" role="img" aria-labelledby="sentinel-title sentinel-desc">
+    <title id="sentinel-title">Graph sentinel chain</title>
+    <desc id="sentinel-desc">GraphPrologue is the initial producer for imported resources. User passes transform resources. GraphEpilogue depends on final external or extracted resource writers and owns final-state transitions.</desc>
+    <rect class="cc-bg" x="0" y="1790" width="1200" height="360" rx="22"/>
+    <text x="600" y="1832" class="cc-title">Sentinels make graph boundaries explicit</text>
+    <text x="600" y="1858" class="cc-subtitle">Both sentinels remain live and have no user callbacks.</text>
+
+    <rect x="50" y="1910" width="250" height="98" rx="14" class="cc-sentinel"/>
+    <text x="175" y="1943" class="cc-label">GraphPrologue</text>
+    <text x="175" y="1969" class="cc-small">handle 0</text>
+    <text x="175" y="1992" class="cc-small">initial imported producer</text>
+
+    <rect x="450" y="1910" width="300" height="98" rx="14" class="cc-compute"/>
+    <text x="600" y="1943" class="cc-label">User pass chain</text>
+    <text x="600" y="1969" class="cc-small">reads, writes, and side effects</text>
+    <text x="600" y="1992" class="cc-small">producer-before-consumer order</text>
+
+    <rect x="900" y="1910" width="250" height="98" rx="14" class="cc-sentinel"/>
+    <text x="1025" y="1943" class="cc-label">GraphEpilogue</text>
+    <text x="1025" y="1969" class="cc-small">appended by Compile()</text>
+    <text x="1025" y="1992" class="cc-small">final-state transitions</text>
+
+    <path d="M300 1959 H450" class="cc-data"/>
+    <text x="375" y="1941" class="cc-tag">IMPORTED INPUT</text>
+    <path d="M750 1959 H900" class="cc-data"/>
+    <text x="825" y="1941" class="cc-tag">EXTERNAL OUTPUT</text>
+
+    <rect x="170" y="2052" width="860" height="70" rx="12" class="cc-panel"/>
+    <text x="600" y="2080" class="cc-label">Culling root</text>
+    <text x="600" y="2105" class="cc-small">An imported write or queued extraction connects its last writer to the live epilogue and roots the producer chain.</text>
+  </g>
+</svg>

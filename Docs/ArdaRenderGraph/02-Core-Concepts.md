@@ -5,15 +5,7 @@
 
 Return to the canonical runtime graph from the introduction:
 
-```text
-P0 --TerrainSettingsUpload--> P1 Upload -> P2 Generate -> P4 Erode -> P5 Triangulate
-                                            |
-                                            +-> P3 Debug heightmap (dead)
-
-P0 --imported BackBuffer---------------------------------------> P6 Render -> P7 Overlay -> P8
-                                                                   ^
-                                                   terrain buffers--+
-```
+![Abbreviated canonical terrain graph with imported boundaries and the dead debug pass](assets/intro-core-concepts.svg#terrain-graph)
 
 The runnable declaration and callbacks are in
 [`ArdaTerrainRenderer.cpp`](../../Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp);
@@ -33,12 +25,7 @@ the latest writer, readers since that writer, and a use interval. A physical
 resource is the `nvrhi::ITexture` or `nvrhi::IBuffer` on which commands
 actually operate.
 
-```text
-Build                              Execute
------                              -------
-FARDGTexture T0 "Heightmap"        ---> nvrhi::ITexture* 0x...
-FARDGBuffer  B0 "TerrainVertices"  ---> nvrhi::IBuffer*  0x...
-```
+![Logical graph records mapped to physical NVRHI resources during execution](assets/intro-core-concepts.svg#build-execute-mapping)
 
 For graph-created resources, the physical handle is initially empty. Execution
 may allocate a new object or reuse a descriptor-compatible object whose earlier
@@ -106,11 +93,7 @@ test it with `IsValid()` or its explicit Boolean conversion.
 
 Each registry is an append-only vector of arena-owned pointers:
 
-```text
-texture registry
-index 0 -> FARDGTexture "Heightmap"   -> FARDGTextureHandle(0)
-index 1 -> FARDGTexture "BackBuffer"  -> FARDGTextureHandle(1)
-```
+![Append-only texture registry assigning stable typed handles](assets/intro-core-concepts.svg#handle-registry)
 
 On `Emplace`, the current vector size becomes the handle index, the object is
 allocated in the arena, and its pointer is appended. No erase operation exists,
@@ -174,11 +157,7 @@ resources.
 
 `AddPass` avoids that problem:
 
-```text
-caller's stack object --copy--> graph arena --const ref--> pass callback
-                              |
-                              +--> metadata traversal during AddPass
-```
+![Parameter freezing into graph arena storage for metadata traversal and pass recording](assets/intro-core-concepts.svg#parameter-freeze)
 
 - `AllocateParameters<T>()` constructs directly in graph arena storage.
 - A parameter pointer not known to the arena is copied there.
@@ -243,9 +222,7 @@ the texture or one of its views in its parameter struct.
 Every builder starts with `GraphPrologue` at pass handle 0. Compilation appends
 `GraphEpilogue` after every user pass:
 
-```text
-GraphPrologue -> user passes -> GraphEpilogue
-```
+![Graph prologue, user pass chain, and graph epilogue boundaries](assets/intro-core-concepts.svg#sentinel-chain)
 
 They have no user callbacks, but they simplify boundary reasoning:
 
@@ -313,11 +290,7 @@ then calls `ICommandList::dispatch` with its `FARDGDispatchArguments`.
 
 All of these concepts are scoped by the builder's one-way lifecycle:
 
-```text
-Building -> Compiled -> Executed
-    \          \           \
-     allowed    immutable    cannot execute again
-```
+![One-way builder lifecycle from building through compiled to executed](assets/graph-lifecycle.svg)
 
 Build declarations, blackboard mutation, and parameter allocation stop at
 successful compilation. Compilation itself is idempotent. Execution may invoke

@@ -41,35 +41,7 @@ Vulkan backend.
 
 ## One frame: the canonical P0–P8 graph
 
-```text
-P0 GraphPrologue
-       |
-       +-- TerrainSettingsUpload (imported, CopySource)
-       |          |
-       |          v
-       |   P1 UploadTerrainSettings (copy)
-       |          |
-       |          v
-       |   TerrainSettings (graph-created, CopyDest)
-       |          |
-       |          v
-       |   P2 GenerateNoiseHeightmap (async compute)
-       |          |\
-       |          | +--> P3 DebugHeightmap (graphics read, no output; culled)
-       |          v
-       |   P4 ErodeHeightmap (async compute UAV rewrite)
-       |          |
-       |          v
-       |   P5 TriangulateTerrain (async compute)
-       |          |
-       |   TerrainVertices + TerrainIndices
-       |          |
-       +--------> P6 RenderTerrain (raster) --+
-                                                 +--> same BackBuffer
-                   P7 TerrainOverlay (raster) <--+
-                              |
-                       P8 GraphEpilogue
-```
+![Canonical P0 through P8 terrain graph, including the culled P3 debug branch](assets/intro-getting-started.svg#p0-p8-tree)
 
 `P8` is appended by `Compile()`. Registration order is the topological order;
 the compiler removes `P3` but does not renumber or reorder the remaining
@@ -101,10 +73,7 @@ form raster group 0.
 
 The parameter declarations produce the live data path:
 
-```text
-P1 --TerrainSettings--> P2 --Heightmap--> P4 --Heightmap--> P5
-P5 --TerrainVertices/TerrainIndices--> P6 --BackBuffer--> P7 --> P8
-```
+![Live terrain resource data path after culling](assets/intro-getting-started.svg#live-data-path)
 
 `P3` also has `P2` as a producer. When `P4` rewrites the heightmap, setup adds
 the synchronization-only edge `P3 - -> P4` so a live old-value read could not
@@ -114,10 +83,7 @@ so that hazard does not keep `P3` alive.
 With copy and compute queues available, two cross-queue dependencies between
 command-recording work passes produce runtime waits:
 
-```text
-P1 Copy         -> P2 AsyncCompute
-P5 AsyncCompute -> P6 Graphics
-```
+![Copy-to-compute and compute-to-graphics queue dependencies](assets/intro-getting-started.svg#cross-queue-edges)
 
 Unavailable copy or compute queues cause deterministic graphics fallback.
 Same-queue pass edges need no explicit queue wait. Imported-resource boundary
@@ -140,6 +106,16 @@ The `ARDGExample` application exercises these products with real shaders,
 binding sets, pipelines, dispatches, copy, draw calls, swap-chain acquisition,
 and presentation. Its D3D12 and Vulkan CTest smoke tests run one hidden frame
 when the corresponding backend is available.
+
+## Follow the complete implementation call chain
+
+The following source-ordered map expands the frame from public builder calls
+through build-time edge discovery, compiler lowering, physical resource
+materialization, command recording, queue waits, submission, and extraction.
+The dedicated source walkthroughs later in this guide examine each stage in
+detail.
+
+![Complete ArdaRenderGraph build, compile, and execute call chain](assets/arda-render-graph-call-chain.svg)
 
 ## Read the canonical implementation
 
@@ -189,11 +165,6 @@ the callback both observe that same immutable declaration.
 ## The builder's one-way lifecycle
 
 ![The one-way builder lifecycle](assets/graph-lifecycle.svg)
-
-```text
-Building --Compile()--> Compiled --Execute()--> Executed
-    \-------------------Execute()--------------/
-```
 
 `Execute()` compiles automatically when needed and submits only once. It
 completes CPU submission, not GPU execution. Presentation, readback waits, and

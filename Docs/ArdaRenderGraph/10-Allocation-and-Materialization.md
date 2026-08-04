@@ -31,17 +31,7 @@ from transient eligibility.
 
 For example:
 
-```text
-execution index       1       2       3       4       5
-
-HeightTile A       [---------]
-MeshScratch B                [---------]
-TerrainDebug C                                 [---]
-
-A = [1,3]
-B = [3,4]   overlaps A at inclusive index 3: cannot reuse A
-C = [5,5]   starts after A and B expire: may reuse either exact match
-```
+![Inclusive logical lifetimes and their overlap](assets/runtime-lifetime-overlap.svg)
 
 ![Logical intervals mapped to execution-local committed resources](assets/physical-reuse.svg)
 
@@ -150,21 +140,7 @@ times, but no two NVRHI resource objects are placed over one heap range.
 
 ### Example: one buffer serves two logical resources
 
-```text
-passes       P1          P2          P3
-             |           |           |
-ScratchA   write ------ read
-ScratchB                           write
-
-logical lifetimes:
-ScratchA = [P1, P2]
-ScratchB = [P3, P3]
-
-same normalized BufferDesc + same queue domain
-                    |
-                    v
-one nvrhi::IBuffer, rebound from ScratchA to ScratchB
-```
+![ScratchA and ScratchB reuse one physical buffer](assets/runtime-buffer-reuse.svg)
 
 The backend execution test creates two equal transient buffers with disjoint
 lifetimes and observes `mBufferPoolReuseCount == 1`; see
@@ -260,11 +236,7 @@ committed fallback is reported directly.
 Compilation tracks state by logical resource. Pooling can later create this
 situation:
 
-```text
-Logical A: Common -> UnorderedAccess -> ShaderResource
-                         same physical buffer
-Logical B: Common -> CopyDest
-```
+![Logical transition histories rebuilt as one physical history](assets/runtime-logical-physical-transitions.svg)
 
 If A and B share one `nvrhi::IBuffer`, B does not actually begin in `Common`.
 The physical object is still in A's final `ShaderResource` state. Recording the
