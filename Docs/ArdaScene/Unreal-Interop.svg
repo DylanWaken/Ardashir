@@ -1,121 +1,100 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="980" viewBox="0 0 1500 980" role="img" aria-labelledby="title desc">
-  <title id="title">Unreal and Ardashir shared D3D12 device interoperability</title>
-  <desc id="desc">Architecture diagram showing Unreal ownership, the Unreal adapter, engine-neutral contracts, Ardashir GPU scene and render graph, and bidirectional synchronization on a shared D3D12 device.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900" viewBox="0 0 1500 900" role="img" aria-labelledby="title desc">
+  <title id="title">Future Unreal scene extraction representation boundary</title>
+  <desc id="desc">A future Unreal adapter maps Unreal identities, resources, and semantic objects into engine-neutral ArdaScene update records without implementing GPU interop.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#8fa1b3"/>
     </marker>
     <style>
       .background { fill: #11151a; }
-      .uePanel { fill: #24221a; stroke: #c5a65a; stroke-width: 2; }
-      .adapterPanel { fill: #231d2a; stroke: #aa82c4; stroke-width: 2; }
-      .corePanel { fill: #182533; stroke: #65a7d8; stroke-width: 2; }
-      .gpuPanel { fill: #1c2923; stroke: #70b58a; stroke-width: 2; }
+      .ue { fill: #24221a; stroke: #c5a65a; stroke-width: 2; }
+      .adapter { fill: #231d2a; stroke: #aa82c4; stroke-width: 2; stroke-dasharray: 8 6; }
+      .core { fill: #182533; stroke: #65a7d8; stroke-width: 2; }
+      .excluded { fill: #171d24; stroke: #596675; stroke-width: 2; stroke-dasharray: 5 6; }
       .title { fill: #f1f5f9; font: 700 30px "Segoe UI", sans-serif; }
-      .heading { fill: #f1f5f9; font: 700 19px "Segoe UI", sans-serif; }
+      .heading { fill: #f1f5f9; font: 700 18px "Segoe UI", sans-serif; }
       .text { fill: #d4dbe3; font: 14px "Segoe UI", sans-serif; }
       .small { fill: #9eabb8; font: 12px "Segoe UI", sans-serif; }
       .arrow { stroke: #8fa1b3; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
-      .sync { stroke: #c5a65a; stroke-width: 3; fill: none; stroke-dasharray: 8 6; marker-end: url(#arrow); }
-      .ownership { stroke: #e06c75; stroke-width: 2; fill: none; stroke-dasharray: 9 6; }
+      .boundary { stroke: #e06c75; stroke-width: 2; fill: none; stroke-dasharray: 9 6; }
     </style>
   </defs>
 
-  <rect class="background" width="1500" height="980"/>
-  <text class="title" x="55" y="52">Unreal D3D12 host: shared device, borrowed resources, explicit synchronization</text>
-  <text class="small" x="55" y="78">Unreal owns native allocations and queues; Ardashir owns its graph, RT structures, and rendering logic.</text>
+  <rect class="background" width="1500" height="900"/>
+  <text class="title" x="55" y="52">Future Unreal producer boundary: representation only</text>
+  <text class="small" x="55" y="78">The current ArdaScene milestone defines the right-hand contracts; the Unreal adapter itself is deferred.</text>
 
-  <rect class="uePanel" x="45" y="115" width="370" height="750" rx="10"/>
-  <text class="heading" x="70" y="150">Unreal Engine ownership domain</text>
+  <rect class="ue" x="45" y="120" width="390" height="650" rx="10"/>
+  <text class="heading" x="70" y="157">Future Unreal source domain</text>
 
-  <rect class="uePanel" x="80" y="185" width="300" height="105" rx="8"/>
-  <text class="heading" x="105" y="218">D3D12 device and queues</text>
-  <text class="text" x="105" y="245">ID3D12Device</text>
-  <text class="text" x="105" y="268">Graphics / compute / copy queues</text>
+  <rect class="ue" x="85" y="200" width="310" height="100" rx="8"/>
+  <text class="heading" x="110" y="233">Stable source identities</text>
+  <text class="text" x="110" y="260">Components, proxies, resources</text>
+  <text class="small" x="110" y="282">Never stored as pointers in ArdaScene</text>
 
-  <rect class="uePanel" x="80" y="330" width="300" height="135" rx="8"/>
-  <text class="heading" x="105" y="363">Unreal scene resources</text>
-  <text class="text" x="105" y="390">Vertex and index buffers</text>
-  <text class="text" x="105" y="413">GPU Scene and instance buffers</text>
-  <text class="text" x="105" y="436">Textures and material data</text>
+  <rect class="ue" x="85" y="340" width="310" height="120" rx="8"/>
+  <text class="heading" x="110" y="373">Scene semantics</text>
+  <text class="text" x="110" y="400">Geometry, instances, materials</text>
+  <text class="text" x="110" y="425">Lights, environments, views</text>
+  <text class="small" x="110" y="447">Mapped to project-owned records</text>
 
-  <rect class="uePanel" x="80" y="505" width="300" height="120" rx="8"/>
-  <text class="heading" x="105" y="538">Unreal scene semantics</text>
-  <text class="text" x="105" y="565">Proxies, lights, views, materials</text>
-  <text class="small" x="105" y="591">Version-specific layout knowledge</text>
+  <rect class="ue" x="85" y="500" width="310" height="130" rx="8"/>
+  <text class="heading" x="110" y="533">Source data descriptions</text>
+  <text class="text" x="110" y="560">External resource identity</text>
+  <text class="text" x="110" y="585">Byte ranges, strides, field offsets</text>
+  <text class="small" x="110" y="610">No wrapping or synchronization yet</text>
 
-  <rect class="uePanel" x="80" y="665" width="300" height="125" rx="8"/>
-  <text class="heading" x="105" y="698">RHI completion and reuse</text>
-  <text class="text" x="105" y="725">Host completion token</text>
-  <text class="text" x="105" y="748">Wait before resource reuse</text>
-  <text class="small" x="105" y="772">Native ownership never transfers</text>
+  <rect class="adapter" x="505" y="120" width="420" height="650" rx="10"/>
+  <text class="heading" x="530" y="157">Future FArdaUnrealSceneExtractor</text>
 
-  <rect class="adapterPanel" x="465" y="115" width="365" height="750" rx="10"/>
-  <text class="heading" x="490" y="150">Integrations/Unreal/ArdaUnreal</text>
+  <rect class="adapter" x="545" y="200" width="340" height="100" rx="8"/>
+  <text class="heading" x="570" y="233">Identity mapping</text>
+  <text class="text" x="570" y="260">UE object key to FArdaSourceObjectId</text>
+  <text class="small" x="570" y="282">Preserves handles across updates</text>
 
-  <rect class="adapterPanel" x="500" y="185" width="295" height="105" rx="8"/>
-  <text class="heading" x="525" y="218">FArdaUnrealDeviceHost</text>
-  <text class="text" x="525" y="245">NVRHI wrapper over same device</text>
-  <text class="small" x="525" y="268">No device creation or destruction</text>
+  <rect class="adapter" x="545" y="340" width="340" height="120" rx="8"/>
+  <text class="heading" x="570" y="373">Semantic conversion</text>
+  <text class="text" x="570" y="400">Create engine-neutral record descriptors</text>
+  <text class="text" x="570" y="425">Convert inline math conventions</text>
+  <text class="small" x="570" y="447">Preserve opaque extensions when needed</text>
 
-  <rect class="adapterPanel" x="500" y="330" width="295" height="135" rx="8"/>
-  <text class="heading" x="525" y="363">Resource importer</text>
-  <text class="text" x="525" y="390">Wrap native textures and buffers</text>
-  <text class="text" x="525" y="413">Cache identity and revision</text>
-  <text class="small" x="525" y="439">No allocation and no GPU copy</text>
+  <rect class="adapter" x="545" y="500" width="340" height="130" rx="8"/>
+  <text class="heading" x="570" y="533">Layout declaration</text>
+  <text class="text" x="570" y="560">FArdaExternalDataDesc</text>
+  <text class="text" x="570" y="585">FArdaStructLayoutDesc</text>
+  <text class="small" x="570" y="610">Allocation and content revisions</text>
 
-  <rect class="adapterPanel" x="500" y="505" width="295" height="120" rx="8"/>
-  <text class="heading" x="525" y="538">Scene extractor</text>
-  <text class="text" x="525" y="565">Build FArdaSceneUpdateBatch</text>
-  <text class="small" x="525" y="591">Stable handles and layout schemas</text>
+  <rect class="core" x="995" y="120" width="460" height="650" rx="10"/>
+  <text class="heading" x="1020" y="157">ArdaScene current milestone</text>
 
-  <rect class="adapterPanel" x="500" y="665" width="295" height="125" rx="8"/>
-  <text class="heading" x="525" y="698">GPU synchronization bridge</text>
-  <text class="text" x="525" y="725">Host-to-Arda waits</text>
-  <text class="text" x="525" y="748">Arda-to-host completion</text>
-  <text class="small" x="525" y="772">State and queue ownership transfer</text>
+  <rect class="core" x="1035" y="200" width="380" height="100" rx="8"/>
+  <text class="heading" x="1060" y="233">FArdaSceneUpdateBatch</text>
+  <text class="text" x="1060" y="260">Typed add, patch, and remove commands</text>
+  <text class="small" x="1060" y="282">Same API used by standalone producer</text>
 
-  <rect class="corePanel" x="880" y="115" width="575" height="750" rx="10"/>
-  <text class="heading" x="905" y="150">Engine-neutral Ardashir renderer</text>
+  <rect class="core" x="1035" y="340" width="380" height="120" rx="8"/>
+  <text class="heading" x="1060" y="373">Engine-neutral records</text>
+  <text class="text" x="1060" y="400">Handles and source IDs</text>
+  <text class="text" x="1060" y="425">Data views and semantic layouts</text>
+  <text class="small" x="1060" y="447">No Unreal or GPU API types</text>
 
-  <rect class="corePanel" x="920" y="185" width="495" height="105" rx="8"/>
-  <text class="heading" x="945" y="218">ArdaScene snapshot</text>
-  <text class="text" x="945" y="245">Geometry, instances, materials, lights, views</text>
-  <text class="small" x="945" y="268">No UE, NVRHI, native pointer, or RDG reference</text>
+  <rect class="core" x="1035" y="500" width="380" height="130" rx="8"/>
+  <text class="heading" x="1060" y="533">FArdaSceneSnapshot</text>
+  <text class="text" x="1060" y="560">Immutable dense semantic arrays</text>
+  <text class="text" x="1060" y="585">External identities remain opaque</text>
+  <text class="small" x="1060" y="610">No resource copy or realization</text>
 
-  <rect class="gpuPanel" x="920" y="330" width="495" height="135" rx="8"/>
-  <text class="heading" x="945" y="363">ArdaSceneGPU and external registry</text>
-  <text class="text" x="945" y="390">Resolve wrappers and validate layouts</text>
-  <text class="text" x="945" y="413">Bindless descriptors and persistent tables</text>
-  <text class="small" x="945" y="439">Borrow geometry; build Ardashir BLAS/TLAS</text>
+  <path class="arrow" d="M 395 250 L 545 250"/>
+  <path class="arrow" d="M 885 250 L 1035 250"/>
+  <path class="arrow" d="M 395 400 L 545 400"/>
+  <path class="arrow" d="M 885 400 L 1035 400"/>
+  <path class="arrow" d="M 395 565 L 545 565"/>
+  <path class="arrow" d="M 885 565 L 1035 565"/>
 
-  <rect class="gpuPanel" x="920" y="505" width="495" height="120" rx="8"/>
-  <text class="heading" x="945" y="538">ArdaRenderGraph</text>
-  <text class="text" x="945" y="565">RegisterExternalBuffer / Texture</text>
-  <text class="small" x="945" y="591">AS builds, transitions, RT dispatch and lifetimes</text>
+  <path class="boundary" d="M 465 105 L 465 790"/>
+  <text class="small" x="478" y="810">Unreal type boundary</text>
 
-  <rect class="gpuPanel" x="920" y="665" width="495" height="125" rx="8"/>
-  <text class="heading" x="945" y="698">ArdaGI and output</text>
-  <text class="text" x="945" y="725">Trace to ReSTIR GI to denoise</text>
-  <text class="text" x="945" y="748">Export color and completion token</text>
-  <text class="small" x="945" y="772">Unreal's raster renderer is not required</text>
-
-  <path class="arrow" d="M 380 237 L 500 237"/>
-  <path class="arrow" d="M 795 237 L 920 237"/>
-  <path class="arrow" d="M 380 397 L 500 397"/>
-  <path class="arrow" d="M 795 397 L 920 397"/>
-  <path class="arrow" d="M 380 565 L 500 565"/>
-  <path class="arrow" d="M 795 565 L 920 565"/>
-
-  <path class="sync" d="M 380 715 L 500 715"/>
-  <path class="sync" d="M 920 760 C 850 830, 735 830, 795 750"/>
-  <path class="sync" d="M 500 760 C 430 835, 315 835, 380 750"/>
-
-  <path class="ownership" d="M 435 105 L 435 875"/>
-  <text class="small" x="445" y="900">Native ownership boundary</text>
-  <path class="ownership" d="M 850 105 L 850 875"/>
-  <text class="small" x="860" y="900">Unreal header boundary</text>
-
-  <text class="small" x="55" y="944">Resource data remains in Unreal allocations; Ardashir consumes compatible views and owns only wrappers, descriptors, AS objects, histories, and outputs.</text>
+  <rect class="excluded" x="270" y="825" width="960" height="48" rx="8"/>
+  <text class="small" x="300" y="854">Deferred: FRHI wrapping, shared device, fences, RDG imports, acceleration structures, shaders, GI, and rendering</text>
 </svg>
