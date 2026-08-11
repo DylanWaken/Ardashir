@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="920" viewBox="0 0 1500 920" role="img" aria-labelledby="title desc">
-  <title id="title">ArdaScene publication and ray-traced frame flow</title>
-  <desc id="desc">Sequence from producer updates through immutable scene publication, GPU scene update planning, acceleration structures, render graph execution, ReSTIR GI, and snapshot retirement.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900" viewBox="0 0 1500 900" role="img" aria-labelledby="title desc">
+  <title id="title">ArdaScene update and immutable snapshot publication</title>
+  <desc id="desc">A representation-only sequence from scene producer transaction through validation, publication, concurrent reading, and snapshot retirement.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#8fa1b3"/>
@@ -10,8 +10,8 @@
       .background { fill: #11151a; }
       .lane { fill: #171d24; stroke: #3c4856; stroke-width: 2; }
       .step { fill: #182533; stroke: #65a7d8; stroke-width: 2; }
-      .gpu { fill: #1c2923; stroke: #70b58a; stroke-width: 2; }
-      .history { fill: #231d2a; stroke: #aa82c4; stroke-width: 2; }
+      .reader { fill: #1c2923; stroke: #70b58a; stroke-width: 2; }
+      .old { fill: #231d2a; stroke: #aa82c4; stroke-width: 2; }
       .title { fill: #f1f5f9; font: 700 30px "Segoe UI", sans-serif; }
       .heading { fill: #f1f5f9; font: 700 18px "Segoe UI", sans-serif; }
       .text { fill: #d4dbe3; font: 14px "Segoe UI", sans-serif; }
@@ -21,91 +21,71 @@
     </style>
   </defs>
 
-  <rect class="background" width="1500" height="920"/>
-  <text class="title" x="55" y="52">Immutable scene publication and ray-traced frame flow</text>
-  <text class="small" x="55" y="78">CPU update and GPU execution overlap through versioned snapshots and completion-based retirement.</text>
+  <rect class="background" width="1500" height="900"/>
+  <text class="title" x="55" y="52">ArdaScene transaction and snapshot flow</text>
+  <text class="small" x="55" y="78">No backend, graph, acceleration structure, or rendering work occurs in this flow.</text>
 
-  <rect class="lane" x="45" y="110" width="1410" height="225" rx="10"/>
-  <text class="heading" x="70" y="145">Producer / scene publication</text>
+  <rect class="lane" x="45" y="115" width="1410" height="250" rx="10"/>
+  <text class="heading" x="70" y="150">Single producer transaction</text>
 
-  <rect class="step" x="80" y="180" width="250" height="105" rx="8"/>
-  <text class="heading" x="105" y="214">1. Begin update</text>
-  <text class="text" x="105" y="240">Create, update, remove records</text>
-  <text class="small" x="105" y="263">Standalone or Unreal producer</text>
+  <rect class="step" x="80" y="195" width="240" height="115" rx="8"/>
+  <text class="heading" x="105" y="228">1. Begin update</text>
+  <text class="text" x="105" y="255">Capture base scene epoch</text>
+  <text class="small" x="105" y="282">One active writer</text>
 
-  <rect class="step" x="395" y="180" width="250" height="105" rx="8"/>
-  <text class="heading" x="420" y="214">2. Validate transaction</text>
-  <text class="text" x="420" y="240">Handles, layouts, revisions</text>
-  <text class="small" x="420" y="263">No RHI access</text>
+  <rect class="step" x="370" y="195" width="240" height="115" rx="8"/>
+  <text class="heading" x="395" y="228">2. Record commands</text>
+  <text class="text" x="395" y="255">Add, patch, and remove</text>
+  <text class="small" x="395" y="282">Typed handles and source IDs</text>
 
-  <rect class="step" x="710" y="180" width="250" height="105" rx="8"/>
-  <text class="heading" x="735" y="214">3. Publish snapshot N</text>
-  <text class="text" x="735" y="240">Dense immutable record spans</text>
-  <text class="small" x="735" y="263">Scene epoch and change set</text>
+  <rect class="step" x="660" y="195" width="240" height="115" rx="8"/>
+  <text class="heading" x="685" y="228">3. Validate result</text>
+  <text class="text" x="685" y="255">References, ranges, layouts</text>
+  <text class="small" x="685" y="282">Failure publishes nothing</text>
 
-  <rect class="history" x="1025" y="180" width="370" height="105" rx="8"/>
-  <text class="heading" x="1050" y="214">Snapshot N-1 remains readable</text>
-  <text class="text" x="1050" y="240">Referenced by in-flight graph and GPU work</text>
-  <text class="small" x="1050" y="263">Retired only after completion token</text>
+  <rect class="step" x="950" y="195" width="240" height="115" rx="8"/>
+  <text class="heading" x="975" y="228">4. Build snapshot N</text>
+  <text class="text" x="975" y="255">Dense immutable arrays</text>
+  <text class="small" x="975" y="282">Handle lookup and change set</text>
 
-  <path class="arrow" d="M 330 232 L 395 232"/>
-  <path class="arrow" d="M 645 232 L 710 232"/>
-  <path class="arrow" d="M 960 232 L 1025 232"/>
+  <rect class="step" x="1240" y="195" width="170" height="115" rx="8"/>
+  <text class="heading" x="1265" y="228">5. Publish</text>
+  <text class="text" x="1265" y="255">Advance epoch</text>
+  <text class="small" x="1265" y="282">Atomic pointer swap</text>
 
-  <rect class="lane" x="45" y="370" width="1410" height="420" rx="10"/>
-  <text class="heading" x="70" y="405">Render thread / GPU scene / ArdaRenderGraph</text>
+  <path class="arrow" d="M 320 252 L 370 252"/>
+  <path class="arrow" d="M 610 252 L 660 252"/>
+  <path class="arrow" d="M 900 252 L 950 252"/>
+  <path class="arrow" d="M 1190 252 L 1240 252"/>
 
-  <rect class="gpu" x="80" y="440" width="250" height="120" rx="8"/>
-  <text class="heading" x="105" y="474">4. Resolve resources</text>
-  <text class="text" x="105" y="500">Owned or borrowed handles</text>
-  <text class="text" x="105" y="523">Layout and lifetime validation</text>
-  <text class="small" x="105" y="545">Reject incompatible zero-copy views</text>
+  <rect class="lane" x="45" y="410" width="1410" height="345" rx="10"/>
+  <text class="heading" x="70" y="445">Concurrent immutable readers</text>
 
-  <rect class="gpu" x="395" y="440" width="250" height="120" rx="8"/>
-  <text class="heading" x="420" y="474">5. Prepare GPU update</text>
-  <text class="text" x="420" y="500">Dirty uploads and descriptors</text>
-  <text class="text" x="420" y="523">History invalidation reasons</text>
-  <text class="small" x="420" y="545">No unchanged data upload</text>
+  <rect class="reader" x="100" y="505" width="350" height="155" rx="8"/>
+  <text class="heading" x="125" y="540">Reader A retains snapshot N</text>
+  <text class="text" x="125" y="568">Dense geometry and instance traversal</text>
+  <text class="text" x="125" y="594">Typed handle lookup</text>
+  <text class="small" x="125" y="625">No locks during ordinary reads</text>
 
-  <rect class="gpu" x="710" y="440" width="250" height="120" rx="8"/>
-  <text class="heading" x="735" y="474">6. Prepare AS work</text>
-  <text class="text" x="735" y="500">BLAS reuse, refit, or rebuild</text>
-  <text class="text" x="735" y="523">TLAS update or rebuild</text>
-  <text class="small" x="735" y="545">Retain all referenced geometry</text>
+  <rect class="reader" x="575" y="505" width="350" height="155" rx="8"/>
+  <text class="heading" x="600" y="540">Reader B retains snapshot N</text>
+  <text class="text" x="600" y="568">Materials, lights, environments, views</text>
+  <text class="text" x="600" y="594">Epoch and change-set inspection</text>
+  <text class="small" x="600" y="625">No mutable record access</text>
 
-  <rect class="gpu" x="1025" y="440" width="370" height="120" rx="8"/>
-  <text class="heading" x="1050" y="474">7. Build and execute Arda graph</text>
-  <text class="text" x="1050" y="500">Import external resources and host waits</text>
-  <text class="text" x="1050" y="523">AS builds to trace to ReSTIR to denoise</text>
-  <text class="small" x="1050" y="545">Return per-queue completion tokens</text>
+  <rect class="old" x="1050" y="505" width="350" height="155" rx="8"/>
+  <text class="heading" x="1075" y="540">Snapshot N-1 retirement</text>
+  <text class="text" x="1075" y="568">Old records remain valid while retained</text>
+  <text class="text" x="1075" y="594">Owned blobs release with final reference</text>
+  <text class="small" x="1075" y="625">No GPU completion dependency in core</text>
 
-  <path class="arrow" d="M 330 500 L 395 500"/>
-  <path class="arrow" d="M 645 500 L 710 500"/>
-  <path class="arrow" d="M 960 500 L 1025 500"/>
+  <path class="arrow" d="M 1325 310 L 1325 380 L 275 380 L 275 505"/>
+  <path class="arrow" d="M 1325 380 L 750 380 L 750 505"/>
+  <path class="return" d="M 450 675 C 520 730, 980 730, 1050 650"/>
 
-  <rect class="history" x="225" y="640" width="300" height="100" rx="8"/>
-  <text class="heading" x="250" y="674">8. Commit temporal state</text>
-  <text class="text" x="250" y="700">Current becomes previous</text>
-  <text class="small" x="250" y="722">Reservoirs remain in ArdaGI</text>
+  <rect class="step" x="530" y="790" width="440" height="70" rx="8"/>
+  <text class="heading" x="555" y="822">Producer may start transaction N+1</text>
+  <text class="small" x="555" y="846">Published snapshot N remains immutable and independently retained</text>
 
-  <rect class="history" x="660" y="640" width="300" height="100" rx="8"/>
-  <text class="heading" x="685" y="674">9. Retire GPU resources</text>
-  <text class="text" x="685" y="700">Descriptors, wrappers, scratch</text>
-  <text class="small" x="685" y="722">Completion-based, never frame-count only</text>
-
-  <rect class="history" x="1095" y="640" width="300" height="100" rx="8"/>
-  <text class="heading" x="1120" y="674">10. Release snapshot N-1</text>
-  <text class="text" x="1120" y="700">After final submission retires</text>
-  <text class="small" x="1120" y="722">Producer may reuse slots safely</text>
-
-  <path class="arrow" d="M 1210 560 C 1210 605, 375 600, 375 640"/>
-  <path class="arrow" d="M 525 690 L 660 690"/>
-  <path class="arrow" d="M 960 690 L 1095 690"/>
-
-  <path class="return" d="M 1245 740 C 1440 800, 1420 870, 205 870 C 90 870, 80 820, 205 285"/>
-  <text class="small" x="540" y="855">Next frame: producer builds snapshot N+1 while snapshot N is consumed</text>
-
-  <path class="arrow" d="M 835 285 L 835 350 L 205 350 L 205 440"/>
-
-  <text class="small" x="70" y="815">A change set is an optimization hint plus validation input; the immutable snapshot remains the complete source of truth.</text>
+  <path class="arrow" d="M 750 660 L 750 790"/>
 </svg>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title desc">
-  <title id="title">ArdaScene standalone and Unreal-hosted architecture</title>
-  <desc id="desc">Layered architecture showing standalone and Unreal producers feeding an engine-neutral scene, followed by interop, GPU scene, render graph, and ReSTIR GI.</desc>
+  <title id="title">ArdaScene representation-only architecture</title>
+  <desc id="desc">Standalone and future hosted producers publish update batches into an engine-neutral scene database and immutable snapshot.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#8fa1b3"/>
@@ -10,81 +10,75 @@
       .background { fill: #11151a; }
       .panel { fill: #171d24; stroke: #3c4856; stroke-width: 2; }
       .core { fill: #182533; stroke: #65a7d8; stroke-width: 2; }
-      .host { fill: #24221a; stroke: #c5a65a; stroke-width: 2; }
-      .gpu { fill: #1c2923; stroke: #70b58a; stroke-width: 2; }
-      .optional { fill: #231d2a; stroke: #aa82c4; stroke-width: 2; stroke-dasharray: 8 6; }
+      .producer { fill: #24221a; stroke: #c5a65a; stroke-width: 2; }
+      .future { fill: #231d2a; stroke: #aa82c4; stroke-width: 2; stroke-dasharray: 8 6; }
       .title { fill: #f1f5f9; font: 700 30px "Segoe UI", sans-serif; }
-      .heading { fill: #f1f5f9; font: 700 20px "Segoe UI", sans-serif; }
-      .text { fill: #d4dbe3; font: 15px "Segoe UI", sans-serif; }
-      .small { fill: #9eabb8; font: 13px "Segoe UI", sans-serif; }
+      .heading { fill: #f1f5f9; font: 700 19px "Segoe UI", sans-serif; }
+      .text { fill: #d4dbe3; font: 14px "Segoe UI", sans-serif; }
+      .small { fill: #9eabb8; font: 12px "Segoe UI", sans-serif; }
       .arrow { stroke: #8fa1b3; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
-      .boundary { stroke: #566473; stroke-width: 2; stroke-dasharray: 10 8; fill: none; }
     </style>
   </defs>
 
   <rect class="background" width="1400" height="900"/>
-  <text class="title" x="60" y="55">ArdaScene architecture: standalone first, Unreal optional</text>
-  <text class="small" x="60" y="82">The same semantic snapshot and GPU scene feed the renderer in both execution modes.</text>
+  <text class="title" x="55" y="52">ArdaScene representation milestone</text>
+  <text class="small" x="55" y="78">Current scope ends at an immutable semantic snapshot; rendering and GPU realization are deferred.</text>
 
-  <rect class="panel" x="45" y="115" width="1310" height="190" rx="10"/>
+  <rect class="panel" x="45" y="115" width="1310" height="180" rx="10"/>
   <text class="heading" x="70" y="150">Scene producers</text>
 
-  <rect class="host" x="90" y="175" width="405" height="90" rx="8"/>
-  <text class="heading" x="115" y="207">Standalone producer</text>
-  <text class="text" x="115" y="233">Native assets, procedural geometry, application state</text>
-  <text class="small" x="115" y="254">Own device and Ardashir-owned resources</text>
+  <rect class="producer" x="90" y="180" width="440" height="80" rx="8"/>
+  <text class="heading" x="115" y="212">Standalone Ardashir producer</text>
+  <text class="text" x="115" y="238">CPU blobs, canonical layouts, semantic records</text>
 
-  <rect class="optional" x="905" y="175" width="405" height="90" rx="8"/>
-  <text class="heading" x="930" y="207">Unreal adapter</text>
-  <text class="text" x="930" y="233">Scene extractor and foreign resource declarations</text>
-  <text class="small" x="930" y="254">Optional plugin; shares Unreal's D3D12 device</text>
+  <rect class="future" x="870" y="180" width="440" height="80" rx="8"/>
+  <text class="heading" x="895" y="212">Future hosted producer</text>
+  <text class="text" x="895" y="238">External identities and foreign layouts; no host types in core</text>
 
-  <rect class="core" x="420" y="350" width="560" height="150" rx="10"/>
-  <text class="heading" x="450" y="387">ArdaScene: engine-neutral semantic database</text>
-  <text class="text" x="450" y="420">Generational handles | geometry | instances | materials</text>
-  <text class="text" x="450" y="448">lights | views | resource views | layout schemas</text>
-  <text class="small" x="450" y="477">Mutable update transaction to immutable FArdaSceneSnapshot</text>
+  <rect class="core" x="440" y="345" width="520" height="105" rx="10"/>
+  <text class="heading" x="470" y="380">FArdaSceneUpdateBatch</text>
+  <text class="text" x="470" y="406">Typed add, patch, and remove commands</text>
+  <text class="small" x="470" y="428">Source-object IDs map producer identity to stable scene handles</text>
 
-  <path class="arrow" d="M 292 265 C 292 330, 480 315, 520 350"/>
-  <path class="arrow" d="M 1107 265 C 1107 330, 920 315, 880 350"/>
+  <path class="arrow" d="M 310 260 C 310 325, 500 305, 540 345"/>
+  <path class="arrow" d="M 1090 260 C 1090 325, 900 305, 860 345"/>
 
-  <rect class="panel" x="45" y="540" width="1310" height="300" rx="10"/>
-  <text class="heading" x="70" y="576">GPU realization and renderer</text>
+  <rect class="panel" x="45" y="500" width="1310" height="305" rx="10"/>
+  <text class="heading" x="70" y="537">ArdaScene engine-neutral core</text>
 
-  <rect class="gpu" x="90" y="610" width="280" height="160" rx="8"/>
-  <text class="heading" x="115" y="645">ArdaInterop</text>
-  <text class="text" x="115" y="675">Device host</text>
-  <text class="text" x="115" y="700">External resource registry</text>
-  <text class="text" x="115" y="725">Fence and lifetime tokens</text>
-  <text class="small" x="115" y="751">Empty/owned path is valid standalone</text>
+  <rect class="core" x="90" y="580" width="285" height="160" rx="8"/>
+  <text class="heading" x="115" y="615">Identity and source data</text>
+  <text class="text" x="115" y="643">Generational typed handles</text>
+  <text class="text" x="115" y="669">Owned and borrowed CPU blobs</text>
+  <text class="text" x="115" y="695">External and procedural IDs</text>
+  <text class="small" x="115" y="720">No native pointers or GPU handles</text>
 
-  <rect class="gpu" x="430" y="610" width="300" height="160" rx="8"/>
-  <text class="heading" x="455" y="645">ArdaSceneGPU</text>
-  <text class="text" x="455" y="675">Resource/layout resolution</text>
-  <text class="text" x="455" y="700">Bindless registries</text>
-  <text class="text" x="455" y="725">BLAS/TLAS manager</text>
-  <text class="small" x="455" y="751">Produces FArdaGpuSceneView</text>
+  <rect class="core" x="415" y="580" width="285" height="160" rx="8"/>
+  <text class="heading" x="440" y="615">Semantic records</text>
+  <text class="text" x="440" y="643">Geometry and instances</text>
+  <text class="text" x="440" y="669">Materials and lights</text>
+  <text class="text" x="440" y="695">Environments and views</text>
+  <text class="small" x="440" y="720">Layouts describe source storage</text>
 
-  <rect class="gpu" x="790" y="610" width="230" height="160" rx="8"/>
-  <text class="heading" x="815" y="645">ArdaRenderGraph</text>
-  <text class="text" x="815" y="675">Imports external data</text>
-  <text class="text" x="815" y="700">Schedules AS and RT work</text>
-  <text class="text" x="815" y="725">States, queues, lifetimes</text>
+  <rect class="core" x="740" y="580" width="285" height="160" rx="8"/>
+  <text class="heading" x="765" y="615">FArdaSceneDatabase</text>
+  <text class="text" x="765" y="643">Mutable typed registries</text>
+  <text class="text" x="765" y="669">Atomic validation and publish</text>
+  <text class="text" x="765" y="695">Deterministic change sets</text>
+  <text class="small" x="765" y="720">Single writer, many readers</text>
 
-  <rect class="gpu" x="1080" y="610" width="230" height="160" rx="8"/>
-  <text class="heading" x="1105" y="645">ArdaGI</text>
-  <text class="text" x="1105" y="675">Path tracing</text>
-  <text class="text" x="1105" y="700">ReSTIR GI reservoirs</text>
-  <text class="text" x="1105" y="725">Denoise and resolve</text>
+  <rect class="core" x="1065" y="580" width="245" height="160" rx="8"/>
+  <text class="heading" x="1090" y="615">Immutable snapshot</text>
+  <text class="text" x="1090" y="643">Dense record spans</text>
+  <text class="text" x="1090" y="669">Handle lookup tables</text>
+  <text class="text" x="1090" y="695">Epoch and change set</text>
+  <text class="small" x="1090" y="720">Complete milestone output</text>
 
-  <path class="arrow" d="M 700 500 L 700 565 L 580 565 L 580 610"/>
-  <path class="arrow" d="M 370 690 L 430 690"/>
-  <path class="arrow" d="M 730 690 L 790 690"/>
-  <path class="arrow" d="M 1020 690 L 1080 690"/>
+  <path class="arrow" d="M 700 450 L 700 535 L 232 535 L 232 580"/>
+  <path class="arrow" d="M 375 660 L 415 660"/>
+  <path class="arrow" d="M 700 660 L 740 660"/>
+  <path class="arrow" d="M 1025 660 L 1065 660"/>
 
-  <path class="boundary" d="M 855 110 L 855 305"/>
-  <text class="small" x="870" y="137">Optional host boundary</text>
-
-  <text class="small" x="70" y="815">Dependency rule: Unreal depends on the Ardashir renderer stack; no core Ardashir module depends on Unreal.</text>
-  <text class="small" x="70" y="838">Standalone rule: ArdaBackend device creation, native scene producer, and Arda swap chain remain complete without ArdaUnreal.</text>
+  <rect class="future" x="460" y="830" width="480" height="45" rx="8"/>
+  <text class="small" x="490" y="858">Future consumers: GPU scene, renderer, GI, Unreal integration - not current scope</text>
 </svg>
