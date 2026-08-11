@@ -23,6 +23,7 @@ namespace arda::render_graph
     class FARDGBufferSRV;
     class FARDGBufferUAV;
     class FARDGUniformBuffer;
+    class FARDGAccelStruct;
 
     /** Records one texture-state requirement contributed by a pass. */
     struct FARDGPassTextureState
@@ -53,6 +54,19 @@ namespace arda::render_graph
         nvrhi::ResourceStates mState = nvrhi::ResourceStates::Unknown;
 
         /** Whether the state permits the pass to modify the resource. */
+        bool mbWrite = false;
+    };
+
+    /** Records one acceleration-structure state requirement contributed by a pass. */
+    struct FARDGPassAccelStructState
+    {
+        /** The logical acceleration structure whose state is required. */
+        FARDGAccelStructHandle mAccelStruct;
+
+        /** The NVRHI state required while the pass executes. */
+        nvrhi::ResourceStates mState = nvrhi::ResourceStates::Unknown;
+
+        /** Whether the state permits the pass to modify the structure. */
         bool mbWrite = false;
     };
 
@@ -92,6 +106,22 @@ namespace arda::render_graph
 
         /** Whether equal UAV states still require an ordering barrier. */
         bool mbUAVBarrier = false;
+
+        /** Whether debug validation requests an ordering barrier for equal states. */
+        bool mbForceBarrier = false;
+    };
+
+    /** Describes one compiled acceleration-structure transition. */
+    struct FARDGAccelStructTransition
+    {
+        /** The logical acceleration structure being transitioned. */
+        FARDGAccelStructHandle mAccelStruct;
+
+        /** The state known before the transition. */
+        nvrhi::ResourceStates mStateBefore = nvrhi::ResourceStates::Unknown;
+
+        /** The state required after the transition. */
+        nvrhi::ResourceStates mStateAfter = nvrhi::ResourceStates::Unknown;
 
         /** Whether debug validation requests an ordering barrier for equal states. */
         bool mbForceBarrier = false;
@@ -155,6 +185,9 @@ namespace arda::render_graph
         /** Buffer-state requirements derived from parameter metadata. */
         eastl::vector<FARDGPassBufferState> mBufferStates;
 
+        /** Acceleration-structure requirements derived from parameter metadata. */
+        eastl::vector<FARDGPassAccelStructState> mAccelStructStates;
+
         /** Uniform buffers declared through parameter metadata. */
         eastl::vector<FARDGUniformBufferHandle> mUniformBuffers;
 
@@ -166,6 +199,9 @@ namespace arda::render_graph
 
         /** Whole-buffer transitions lowered by graph compilation. */
         eastl::vector<FARDGBufferTransition> mBufferTransitions;
+
+        /** Acceleration-structure transitions lowered by graph compilation. */
+        eastl::vector<FARDGAccelStructTransition> mAccelStructTransitions;
 
         /** The pipeline selected from the pass flags or by later compilation. */
         EARDGPipeline mPipeline = EARDGPipeline::Graphics;
@@ -246,6 +282,10 @@ namespace arda::render_graph
         /** Returns a declared uniform buffer's physical constant buffer. */
         [[nodiscard]] nvrhi::IBuffer* GetUniformBuffer(
             FARDGUniformBuffer* UniformBuffer) const;
+
+        /** Returns a declared acceleration structure's physical handle. */
+        [[nodiscard]] nvrhi::rt::IAccelStruct* GetAccelStruct(
+            FARDGAccelStruct* AccelStruct) const;
 
         /**
          * Creates an NVRHI binding set from this pass's parameter descriptors.
@@ -447,6 +487,12 @@ namespace arda::render_graph
         void AddBufferState(FARDGPassBufferState State)
         {
             mState.mBufferStates.push_back(eastl::move(State));
+        }
+
+        /** Adds one acceleration-structure state requirement to this pass. */
+        void AddAccelStructState(FARDGPassAccelStructState State)
+        {
+            mState.mAccelStructStates.push_back(eastl::move(State));
         }
 
     private:

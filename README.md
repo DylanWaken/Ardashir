@@ -14,6 +14,9 @@ resources across rendering, simulation, and inference workloads.
   dependency graph implementation on top of NVRHI. It schedules rendering work
   and manages resource dependencies, transitions, queues, and lifetimes.
 
+- **[ArdaScene](Docs/ArdaScene/README.md)** — Planned engine-neutral scene
+  representation for standalone and hosted ray-traced rendering.
+
 - **ArdaGI** — A library for real-time, ray-tracing-based global illumination.
 
 - **ArdaPhys** — A GPU physics library for AVBD, acceleration structures,

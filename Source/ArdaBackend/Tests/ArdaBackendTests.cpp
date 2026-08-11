@@ -35,6 +35,29 @@ TEST(ArdaBackend, ReportsQueueAvailabilityByNvrhiQueueType)
     EXPECT_FALSE(Capabilities.IsQueueAvailable(nvrhi::CommandQueue::Count));
 }
 
+TEST(ArdaBackend, RejectsInvalidSharedDeviceDescriptors)
+{
+    using namespace arda::backend;
+
+    FArdaSharedDeviceContext Context;
+    FArdaSharedDeviceDescriptor Descriptor;
+
+    EXPECT_EQ(Descriptor.mOwnership, EArdaDeviceOwnership::Borrowed);
+    EXPECT_FALSE(Context.Initialize(Descriptor));
+    EXPECT_FALSE(Context.IsInitialized());
+    EXPECT_EQ(Context.GetDevice(), nullptr);
+    EXPECT_NE(Context.GetError().find("valid NVRHI device"), eastl::string::npos);
+
+    Descriptor.mOwnership = static_cast<EArdaDeviceOwnership>(-1);
+    EXPECT_FALSE(Context.Initialize(Descriptor));
+    EXPECT_NE(Context.GetError().find("invalid ownership"), eastl::string::npos);
+
+    Descriptor.mOwnership = EArdaDeviceOwnership::Borrowed;
+    Descriptor.mBackend = static_cast<EArdaBackendType>(-1);
+    EXPECT_FALSE(Context.Initialize(Descriptor));
+    EXPECT_NE(Context.GetError().find("invalid backend"), eastl::string::npos);
+}
+
 namespace
 {
     void VerifyDeviceInitialization(
@@ -73,6 +96,29 @@ namespace
             EXPECT_TRUE(Capabilities.mbCompute);
             EXPECT_TRUE(Capabilities.mbCopy);
         }
+
+        FArdaSharedDeviceDescriptor SharedDescriptor;
+        SharedDescriptor.mDevice = GetDevice();
+        SharedDescriptor.mBackend = Backend;
+        SharedDescriptor.mQueueCapabilities = Capabilities;
+
+        FArdaSharedDeviceContext SharedContext;
+        ASSERT_TRUE(SharedContext.Initialize(SharedDescriptor))
+            << SharedContext.GetError().c_str();
+        EXPECT_TRUE(SharedContext.IsInitialized());
+        EXPECT_EQ(SharedContext.GetDevice().Get(), Device);
+        EXPECT_EQ(SharedContext.GetBackend(), Backend);
+        EXPECT_EQ(
+            SharedContext.GetOwnership(),
+            EArdaDeviceOwnership::Borrowed);
+        EXPECT_EQ(
+            SharedContext.GetQueueCapabilities().mbGraphics,
+            Capabilities.mbGraphics);
+        EXPECT_FALSE(SharedContext.Initialize(SharedDescriptor));
+        SharedContext.Reset();
+        EXPECT_FALSE(SharedContext.IsInitialized());
+        EXPECT_TRUE(IsBackendInitialized());
+        EXPECT_NE(GetDevice(), nullptr);
 
         constexpr nvrhi::CommandQueue Queues[] = {
             nvrhi::CommandQueue::Graphics,
