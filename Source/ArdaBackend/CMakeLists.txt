@@ -16,6 +16,14 @@ target_compile_definitions(ArdaBackend PRIVATE
     $<$<BOOL:${WIN32}>:NOMINMAX>
     $<$<BOOL:${WIN32}>:WIN32_LEAN_AND_MEAN>
 )
+if(ARDASHIR_DXC_EXECUTABLE)
+    string(REPLACE "\\" "\\\\" ARDA_DEFAULT_DXC_ESCAPED
+        "${ARDASHIR_DXC_EXECUTABLE}")
+    string(REPLACE "\"" "\\\"" ARDA_DEFAULT_DXC_ESCAPED
+        "${ARDA_DEFAULT_DXC_ESCAPED}")
+    target_compile_definitions(ArdaBackend PRIVATE
+        "ARDA_DEFAULT_DXC_EXECUTABLE=\"${ARDA_DEFAULT_DXC_ESCAPED}\"")
+endif()
 target_include_directories(ArdaBackend
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Public"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private"

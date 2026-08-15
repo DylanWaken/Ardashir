@@ -179,6 +179,11 @@ namespace arda::rhi
          * @return The requested value.
          */
         [[nodiscard]] virtual EArdaRHIShaderStage GetStage() const noexcept = 0;
+        /**
+         * Returns a deterministic identity derived from bytecode, stage, and
+         * entry point for persistent pipeline-cache keys.
+         */
+        [[nodiscard]] virtual uint64_t GetPersistentCacheHash() const noexcept { return 0; }
     };
 
     /** Interface for shader library. */
@@ -362,6 +367,12 @@ namespace arda::rhi
         EArdaRHIFormat mDepthFormat = EArdaRHIFormat::Unknown;
         /** Stores the sample count. */
         uint32_t mSampleCount = 1;
+        /**
+         * Stable metadata key used by backend-native persistent caches.
+         * Zero disables named lookup. It is intentionally ignored by equality
+         * and semantic descriptor hashing.
+         */
+        uint64_t mPersistentCacheKey = 0;
         /** Stores the debug name. */
         eastl::string mDebugName;
         /**
@@ -400,6 +411,12 @@ namespace arda::rhi
         FArdaRHIShaderRef mComputeShader;
         /** Stores the binding layouts. */
         eastl::vector<FArdaRHIBindingLayoutRef> mBindingLayouts;
+        /**
+         * Stable metadata key used by backend-native persistent caches.
+         * Zero disables named lookup. It is intentionally ignored by equality
+         * and semantic descriptor hashing.
+         */
+        uint64_t mPersistentCacheKey = 0;
         /** Stores the debug name. */
         eastl::string mDebugName;
         /**

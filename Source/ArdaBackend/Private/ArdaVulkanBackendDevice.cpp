@@ -829,7 +829,9 @@ namespace arda::backend
                     return EArdaInitializeResult::Failure;
                 }
                 mArdaDevice = rhi::private_impl::CreateArdaNvrhiDevice(
-                    mDevice, mLifetime);
+                    mDevice, mLifetime, EArdaBackendType::Vulkan,
+                    Configuration.mPipelineCacheDirectory,
+                    Configuration.mMessageCallback);
                 if (!mArdaDevice)
                 {
                     mError = "Failed to create the opaque Arda Vulkan device.";

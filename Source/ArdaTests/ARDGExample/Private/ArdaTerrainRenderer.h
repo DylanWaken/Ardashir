@@ -15,8 +15,7 @@ namespace arda::tests::ardg_example
     public:
         bool Initialize(
             const backend::FArdaDeviceContext& deviceContext,
-            rhi::EArdaRHIFormat swapChainFormat,
-            const std::filesystem::path& shaderDirectory);
+            rhi::EArdaRHIFormat swapChainFormat);
         void UpdateCamera(
             float forward,
             float right,
@@ -29,8 +28,7 @@ namespace arda::tests::ardg_example
 
     private:
         bool CreateShadersAndInitializers(
-            const backend::FArdaDeviceContext& deviceContext,
-            const std::filesystem::path& shaderDirectory);
+            const backend::FArdaDeviceContext& deviceContext);
         bool CreateSettingsUploadBuffer();
         bool CreateCameraResources();
 

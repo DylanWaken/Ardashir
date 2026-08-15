@@ -4,13 +4,43 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <thread>
 #include <vector>
 
 namespace
 {
+    class FCapturingDiagnosticCallback final
+        : public arda::backend::IArdaDiagnosticCallback
+    {
+    public:
+        void Message(
+            arda::backend::EArdaDiagnosticSeverity,
+            const char* Text) override
+        {
+            mMessages.emplace_back(Text ? Text : "");
+        }
+
+        [[nodiscard]] bool Contains(const char* Text) const
+        {
+            return std::any_of(
+                mMessages.begin(), mMessages.end(),
+                [Text](const std::string& Message)
+                {
+                    return Message.find(Text) != std::string::npos;
+                });
+        }
+
+        void Clear() { mMessages.clear(); }
+
+    private:
+        std::vector<std::string> mMessages;
+    };
+
     class FTestTexture final : public arda::rhi::IArdaRHITexture
     {
     public:
@@ -94,6 +124,267 @@ namespace
         Desc.mDebugName = Artifact;
         return Device.CreateShader(Desc);
     }
+
+    arda::rhi::FArdaRHIStatus CreatePersistentTestPipelines(
+        arda::backend::EArdaBackendType Backend,
+        uint64_t& OutComputeKey,
+        uint64_t& OutGraphicsKey)
+    {
+        using namespace arda;
+        using namespace backend;
+        using namespace rhi;
+
+        auto Device = GetDevice();
+        auto ComputeShader = CreateTestShader(
+            *Device, Backend, "ArdaShaderStructTest",
+            "ShaderStructTestCS", EArdaRHIShaderStage::Compute);
+        if (!ComputeShader)
+            return ComputeShader.mStatus;
+        FArdaRHIBindingLayoutDesc LayoutDesc;
+        LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+        LayoutDesc.mItems.push_back(
+            { 0, 1, EArdaRHIBindingType::StructuredBufferUAV });
+        auto Layout = Device->CreateBindingLayout(LayoutDesc);
+        if (!Layout)
+            return Layout.mStatus;
+        FArdaComputePipelineStateInitializer ComputeInitializer;
+        ComputeInitializer.mDesc.mComputeShader = ComputeShader.mValue;
+        ComputeInitializer.mDesc.mBindingLayouts.push_back(Layout.mValue);
+        FArdaPipelineStateCache Cache(Device);
+        FArdaRHIComputePipelineRef ComputePipeline;
+        if (auto Status = Cache.GetOrCreateCompute(
+                ComputeInitializer, ComputePipeline);
+            !Status)
+            return Status;
+        OutComputeKey = ComputePipeline->GetDesc().mPersistentCacheKey;
+
+        auto VertexShader = CreateTestShader(
+            *Device, Backend, "ArdaPipelineStateTestVS",
+            "PipelineStateTestVS", EArdaRHIShaderStage::Vertex);
+        if (!VertexShader)
+            return VertexShader.mStatus;
+        auto PixelShader = CreateTestShader(
+            *Device, Backend, "ArdaPipelineStateTestPS",
+            "PipelineStateTestPS", EArdaRHIShaderStage::Pixel);
+        if (!PixelShader)
+            return PixelShader.mStatus;
+        FArdaGraphicsPipelineStateInitializer GraphicsInitializer;
+        GraphicsInitializer.mDesc.mVertexShader = VertexShader.mValue;
+        GraphicsInitializer.mDesc.mPixelShader = PixelShader.mValue;
+        GraphicsInitializer.mDesc.mColorFormats.push_back(
+            EArdaRHIFormat::RGBA8UNorm);
+        GraphicsInitializer.mDesc.mSampleCount = 1;
+        GraphicsInitializer.mDesc.mDepthStencilState.mbDepthTest = false;
+        GraphicsInitializer.mDesc.mDepthStencilState.mbDepthWrite = false;
+        FArdaRHIGraphicsPipelineRef GraphicsPipeline;
+        if (auto Status = Cache.GetOrCreateGraphics(
+                GraphicsInitializer, {}, GraphicsPipeline);
+            !Status)
+            return Status;
+        OutGraphicsKey = GraphicsPipeline->GetDesc().mPersistentCacheKey;
+        return {};
+    }
+}
+
+TEST(ArdaPipelineStateCache, PersistentKeysAreNonSemanticMetadata)
+{
+    using namespace arda::rhi;
+    FArdaRHIComputePipelineDesc ComputeA;
+    FArdaRHIComputePipelineDesc ComputeB;
+    ComputeA.mPersistentCacheKey = 1;
+    ComputeB.mPersistentCacheKey = 2;
+    EXPECT_EQ(ComputeA, ComputeB);
+    EXPECT_EQ(HashValue(ComputeA), HashValue(ComputeB));
+
+    FArdaRHIGraphicsPipelineDesc GraphicsA;
+    FArdaRHIGraphicsPipelineDesc GraphicsB;
+    GraphicsA.mPersistentCacheKey = 3;
+    GraphicsB.mPersistentCacheKey = 4;
+    EXPECT_EQ(GraphicsA, GraphicsB);
+    EXPECT_EQ(HashValue(GraphicsA), HashValue(GraphicsB));
+}
+
+#if defined(_WIN32)
+TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
+{
+    using namespace arda;
+    using namespace backend;
+    using namespace rhi;
+
+    ShutdownBackend();
+    const auto Unique = std::chrono::steady_clock::now()
+        .time_since_epoch().count();
+    const std::filesystem::path Directory =
+        std::filesystem::temp_directory_path() /
+        ("arda-pso-cache-" + std::to_string(Unique));
+    std::error_code Error;
+    std::filesystem::remove_all(Directory, Error);
+
+    FArdaBackendConfiguration Configuration;
+    FCapturingDiagnosticCallback Diagnostics;
+    Configuration.mBackend = EArdaBackendType::D3D12;
+    Configuration.mbEnableValidation = false;
+    Configuration.mPipelineCacheDirectory = Directory;
+    Configuration.mMessageCallback = &Diagnostics;
+
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    if (!InitializeBackend())
+    {
+        std::filesystem::remove_all(Directory, Error);
+        GTEST_SKIP() << GetBackendError().c_str();
+    }
+    FArdaRHIDeviceRef RetainedFirstDevice = GetDevice();
+    uint64_t FirstComputeKey = 0;
+    uint64_t FirstGraphicsKey = 0;
+    const auto FirstCreateStatus =
+        CreatePersistentTestPipelines(
+            EArdaBackendType::D3D12, FirstComputeKey, FirstGraphicsKey);
+    ASSERT_TRUE(FirstCreateStatus)
+        << FirstCreateStatus.mMessage.c_str();
+    EXPECT_NE(FirstComputeKey, 0u);
+    EXPECT_NE(FirstGraphicsKey, 0u);
+    ShutdownBackend();
+
+    const auto CacheFile = Directory / "d3d12.pso-cache";
+    ASSERT_TRUE(std::filesystem::is_regular_file(CacheFile));
+    EXPECT_GT(std::filesystem::file_size(CacheFile), 24u);
+
+    Diagnostics.Clear();
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    uint64_t ReloadedComputeKey = 0;
+    uint64_t ReloadedGraphicsKey = 0;
+    const auto ReloadedCreateStatus =
+        CreatePersistentTestPipelines(
+            EArdaBackendType::D3D12,
+            ReloadedComputeKey,
+            ReloadedGraphicsKey);
+    EXPECT_TRUE(ReloadedCreateStatus)
+        << ReloadedCreateStatus.mMessage.c_str();
+    EXPECT_EQ(ReloadedComputeKey, FirstComputeKey);
+    EXPECT_EQ(ReloadedGraphicsKey, FirstGraphicsKey);
+    EXPECT_TRUE(Diagnostics.Contains("LoadComputePipeline accepted"));
+    EXPECT_TRUE(Diagnostics.Contains("LoadGraphicsPipeline accepted"));
+    ShutdownBackend();
+
+    {
+        const std::string NewerContents = "newer pipeline cache generation";
+        std::ofstream Newer(CacheFile, std::ios::binary | std::ios::trunc);
+        Newer.write(NewerContents.data(), NewerContents.size());
+        ASSERT_TRUE(Newer);
+        Newer.close();
+        RetainedFirstDevice = nullptr;
+        std::ifstream Verify(CacheFile, std::ios::binary);
+        const std::string Actual{
+            std::istreambuf_iterator<char>(Verify),
+            std::istreambuf_iterator<char>() };
+        EXPECT_EQ(Actual, NewerContents);
+    }
+
+    {
+        std::fstream WrongBackend(
+            CacheFile, std::ios::binary | std::ios::in | std::ios::out);
+        ASSERT_TRUE(WrongBackend);
+        const uint32_t VulkanBackend =
+            static_cast<uint32_t>(EArdaBackendType::Vulkan);
+        WrongBackend.seekp(12);
+        WrongBackend.write(
+            reinterpret_cast<const char*>(&VulkanBackend),
+            sizeof(VulkanBackend));
+        ASSERT_TRUE(WrongBackend);
+    }
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    uint64_t WrongBackendComputeKey = 0;
+    uint64_t WrongBackendGraphicsKey = 0;
+    const auto WrongBackendCreateStatus =
+        CreatePersistentTestPipelines(
+            EArdaBackendType::D3D12,
+            WrongBackendComputeKey,
+            WrongBackendGraphicsKey);
+    EXPECT_TRUE(WrongBackendCreateStatus)
+        << WrongBackendCreateStatus.mMessage.c_str();
+    ShutdownBackend();
+
+    {
+        std::ofstream Corrupt(CacheFile, std::ios::binary | std::ios::trunc);
+        Corrupt << "not a pipeline cache";
+    }
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    uint64_t CorruptComputeKey = 0;
+    uint64_t CorruptGraphicsKey = 0;
+    const auto CorruptCreateStatus =
+        CreatePersistentTestPipelines(
+            EArdaBackendType::D3D12,
+            CorruptComputeKey,
+            CorruptGraphicsKey);
+    EXPECT_TRUE(CorruptCreateStatus)
+        << CorruptCreateStatus.mMessage.c_str();
+    EXPECT_EQ(CorruptComputeKey, FirstComputeKey);
+    EXPECT_EQ(CorruptGraphicsKey, FirstGraphicsKey);
+    ShutdownBackend();
+
+    std::filesystem::remove_all(Directory, Error);
+}
+#endif
+
+TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
+{
+    using namespace arda::backend;
+
+    ShutdownBackend();
+    const auto Unique = std::chrono::steady_clock::now()
+        .time_since_epoch().count();
+    const std::filesystem::path Directory =
+        std::filesystem::temp_directory_path() /
+        ("arda-vulkan-pso-cache-" + std::to_string(Unique));
+    std::error_code Error;
+    std::filesystem::remove_all(Directory, Error);
+
+    FArdaBackendConfiguration Configuration;
+    FCapturingDiagnosticCallback Diagnostics;
+    Configuration.mBackend = EArdaBackendType::Vulkan;
+    Configuration.mbEnableValidation = false;
+    Configuration.mPipelineCacheDirectory = Directory;
+    Configuration.mMessageCallback = &Diagnostics;
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    if (!InitializeBackend())
+    {
+        std::filesystem::remove_all(Directory, Error);
+        GTEST_SKIP() << GetBackendError().c_str();
+    }
+
+    uint64_t FirstComputeKey = 0;
+    uint64_t FirstGraphicsKey = 0;
+    const auto FirstCreateStatus = CreatePersistentTestPipelines(
+        EArdaBackendType::Vulkan, FirstComputeKey, FirstGraphicsKey);
+    ASSERT_TRUE(FirstCreateStatus)
+        << FirstCreateStatus.mMessage.c_str();
+    ShutdownBackend();
+
+    const auto CacheFile = Directory / "vulkan.pso-cache";
+    ASSERT_TRUE(std::filesystem::is_regular_file(CacheFile));
+    EXPECT_GT(std::filesystem::file_size(CacheFile), 24u);
+
+    Diagnostics.Clear();
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    EXPECT_TRUE(Diagnostics.Contains(
+        "Vulkan persistent pipeline cache data was accepted"));
+    uint64_t ReloadedComputeKey = 0;
+    uint64_t ReloadedGraphicsKey = 0;
+    const auto ReloadedCreateStatus = CreatePersistentTestPipelines(
+        EArdaBackendType::Vulkan,
+        ReloadedComputeKey,
+        ReloadedGraphicsKey);
+    EXPECT_TRUE(ReloadedCreateStatus)
+        << ReloadedCreateStatus.mMessage.c_str();
+    EXPECT_EQ(ReloadedComputeKey, FirstComputeKey);
+    EXPECT_EQ(ReloadedGraphicsKey, FirstGraphicsKey);
+    ShutdownBackend();
+
+    std::filesystem::remove_all(Directory, Error);
 }
 
 TEST(ArdaPipelineStateCache, CachesPrecachesEvictsAndReportsFailures)
@@ -411,6 +702,23 @@ TEST(ArdaPipelineStateCache, DeterministicLruKeepsMostRecentlyUsedEntry)
             Initializers[1], BRecreated));
         EXPECT_NE(BRecreated.Get(), B.Get());
         EXPECT_EQ(Cache.GetStats().mComputeEntries, 2u);
+        ASSERT_NE(A->GetDesc().mPersistentCacheKey, 0u);
+        EXPECT_EQ(
+            A->GetDesc().mPersistentCacheKey,
+            BRecreated->GetDesc().mPersistentCacheKey);
+
+        FArdaRHIBindingLayoutDesc ChangedLayoutDesc = LayoutDesc;
+        ChangedLayoutDesc.mItems.push_back(
+            { 1, 1, EArdaRHIBindingType::StructuredBufferUAV });
+        auto ChangedLayout = Device->CreateBindingLayout(ChangedLayoutDesc);
+        ASSERT_TRUE(ChangedLayout);
+        FArdaComputePipelineStateInitializer Changed = Initializers[0];
+        Changed.mDesc.mBindingLayouts[0] = ChangedLayout.mValue;
+        FArdaRHIComputePipelineRef ChangedPipeline;
+        ASSERT_TRUE(Cache.GetOrCreateCompute(Changed, ChangedPipeline));
+        EXPECT_NE(
+            A->GetDesc().mPersistentCacheKey,
+            ChangedPipeline->GetDesc().mPersistentCacheKey);
     }
 
     ShutdownBackend();

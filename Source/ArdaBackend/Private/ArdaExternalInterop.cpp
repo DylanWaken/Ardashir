@@ -238,7 +238,9 @@ namespace arda::backend
                 }
 
                 mArdaDevice = rhi::private_impl::CreateArdaNvrhiDevice(
-                    mDevice, mLifetime);
+                    mDevice, mLifetime, Configuration.mBackend,
+                    Configuration.mPipelineCacheDirectory,
+                    Configuration.mMessageCallback);
                 if (!mArdaDevice)
                 {
                     mError = "Failed to create the Arda facade for the external device.";

@@ -11,6 +11,7 @@
 #include "PipelineStateCache/ArdaPipelineStateCache.h"
 #include "RHIWrappers/ArdaRHI.h"
 #include "ShaderStructs/ArdaShaderDirectories.h"
+#include "ShaderStructs/ArdaShaderCompiler.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 #include "ShaderStructs/ArdaShaderParameters.h"
 #include "ShaderStructs/ArdaShaderType.h"

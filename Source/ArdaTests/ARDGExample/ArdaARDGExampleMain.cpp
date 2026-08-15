@@ -23,6 +23,11 @@ namespace arda::tests::ardg_example
             uint32_t mWindowHeight = 720;
             bool mbHidden = false;
             bool mbFullscreen = false;
+            std::filesystem::path mShaderCookOutputDirectory;
+            backend::EArdaShaderCompilationMode mShaderMode =
+                backend::EArdaShaderCompilationMode::OnDemand;
+            std::filesystem::path mShaderCacheDirectory;
+            std::filesystem::path mShaderSourceDirectory;
         };
 
         class FArdaMessageCallback final : public backend::IArdaDiagnosticCallback
@@ -101,6 +106,54 @@ namespace arda::tests::ardg_example
                 {
                     options.mbFullscreen = true;
                 }
+                else if (argument == "--arda-cook-shaders" &&
+                         index + 1 < argumentCount)
+                {
+                    options.mShaderCookOutputDirectory = arguments[++index];
+                    if (options.mShaderCookOutputDirectory.empty())
+                    {
+                        error =
+                            "--arda-cook-shaders requires an output directory.";
+                        return false;
+                    }
+                }
+                else if (argument == "--shader-cache" && index + 1 < argumentCount)
+                {
+                    options.mShaderCacheDirectory = arguments[++index];
+                    if (options.mShaderCacheDirectory.empty())
+                    {
+                        error = "--shader-cache requires a directory.";
+                        return false;
+                    }
+                }
+                else if (argument == "--shader-source" && index + 1 < argumentCount)
+                {
+                    options.mShaderSourceDirectory = arguments[++index];
+                    if (options.mShaderSourceDirectory.empty())
+                    {
+                        error = "--shader-source requires a directory.";
+                        return false;
+                    }
+                }
+                else if (argument == "--shader-mode" && index + 1 < argumentCount)
+                {
+                    const eastl::string_view mode(arguments[++index]);
+                    if (mode == "startup")
+                        options.mShaderMode =
+                            backend::EArdaShaderCompilationMode::Startup;
+                    else if (mode == "ondemand")
+                        options.mShaderMode =
+                            backend::EArdaShaderCompilationMode::OnDemand;
+                    else if (mode == "load-only")
+                        options.mShaderMode =
+                            backend::EArdaShaderCompilationMode::LoadOnly;
+                    else
+                    {
+                        error =
+                            "Unknown shader mode. Use startup, ondemand, or load-only.";
+                        return false;
+                    }
+                }
                 else if (argument == "--backend" && index + 1 < argumentCount)
                 {
                     const eastl::string_view backendArgument(arguments[++index]);
@@ -167,6 +220,59 @@ namespace arda::tests::ardg_example
             return true;
         }
 
+        int CookRegisteredShaders(const std::filesystem::path& outputDirectory)
+        {
+            const backend::FArdaShaderDirectoryStatus scanStatus =
+                backend::ScanAndFreezeShaderSourceDirectories();
+            if (!scanStatus)
+            {
+                ARDA_LOG(
+                    LogARDGExample,
+                    Error,
+                    "Shader source scan failed: %s",
+                    scanStatus.mMessage.c_str());
+                return EXIT_FAILURE;
+            }
+
+            const std::vector<backend::EArdaBackendType> backends = {
+                backend::EArdaBackendType::D3D12,
+                backend::EArdaBackendType::Vulkan
+            };
+            const backend::FArdaShaderCompileResult result =
+                backend::CompileRegisteredShaderArtifacts(
+                    outputDirectory,
+                    backends);
+            for (const backend::FArdaShaderCompileDiagnostic& diagnostic :
+                 result.mDiagnostics)
+            {
+                const std::string sourcePath = diagnostic.mSourcePath.string();
+                const std::string outputPath = diagnostic.mOutputPath.string();
+                ARDA_LOG(
+                    LogARDGExample,
+                    Error,
+                    "Shader cook diagnostic: shader=%s backend=%s "
+                    "permutation=%u source=%s output=%s message=%s",
+                    diagnostic.mShaderType.c_str(),
+                    backend::ToString(diagnostic.mBackend),
+                    diagnostic.mPermutationId,
+                    sourcePath.c_str(),
+                    outputPath.c_str(),
+                    diagnostic.mMessage.c_str());
+            }
+
+            const std::filesystem::path manifestPath =
+                outputDirectory / "ArdaShaderManifest.json";
+            ARDA_LOG(
+                LogARDGExample,
+                Log,
+                "Shader cook: compiled=%u cache=%u skipped=%u manifest=%s",
+                result.mJobsCompiled,
+                result.mCacheHits,
+                result.mJobsSkipped,
+                manifestPath.string().c_str());
+            return result ? EXIT_SUCCESS : EXIT_FAILURE;
+        }
+
         std::filesystem::path GetExecutableDirectory(const char* executable)
         {
             return std::filesystem::absolute(executable).parent_path();
@@ -179,6 +285,52 @@ namespace arda::tests::ardg_example
             if (!ParseOptions(argumentCount, arguments, options, error))
             {
                 ARDA_LOG(LogARDGExample, Error, "%s", error.c_str());
+                return EXIT_FAILURE;
+            }
+            const std::filesystem::path executableDirectory =
+                GetExecutableDirectory(arguments[0]);
+            if (options.mShaderCacheDirectory.empty())
+            {
+                options.mShaderCacheDirectory =
+                    executableDirectory / ".arda-cache" / "shaders";
+            }
+            if (options.mShaderSourceDirectory.empty())
+                options.mShaderSourceDirectory = GArdaARDGShaderSourceDirectory;
+
+            const backend::FArdaShaderDirectoryStatus shaderDirectoryStatus =
+                backend::AddShaderSourceDirectoryMapping(
+                    "/ArdaTests/ARDGExample",
+                    options.mShaderSourceDirectory);
+            if (!shaderDirectoryStatus)
+            {
+                ARDA_LOG(
+                    LogARDGExample,
+                    Error,
+                    "%s",
+                    shaderDirectoryStatus.mMessage.c_str());
+                return EXIT_FAILURE;
+            }
+
+            if (!options.mShaderCookOutputDirectory.empty())
+            {
+                return CookRegisteredShaders(
+                    options.mShaderCookOutputDirectory);
+            }
+
+            FArdaMessageCallback messageCallback;
+            backend::FArdaBackendConfiguration configuration;
+            configuration.mBackend = options.mBackend;
+            configuration.mbEnableValidation = true;
+            configuration.mMessageCallback = &messageCallback;
+            configuration.mShaderCompilationMode = options.mShaderMode;
+            configuration.mShaderCacheDirectory = options.mShaderCacheDirectory;
+            if (!backend::ConfigureBackend(configuration))
+            {
+                ARDA_LOG(
+                    LogARDGExample,
+                    Error,
+                    "%s",
+                    backend::GetBackendError().c_str());
                 return EXIT_FAILURE;
             }
 
@@ -196,37 +348,6 @@ namespace arda::tests::ardg_example
                     "%s",
                     window.GetError().c_str());
                 return options.mbHidden ? SkippedExitCode : EXIT_FAILURE;
-            }
-
-            FArdaMessageCallback messageCallback;
-            const backend::FArdaShaderDirectoryStatus shaderDirectoryStatus =
-                backend::AddShaderSourceDirectoryMapping(
-                    "/ArdaTests/ARDGExample",
-                    GArdaARDGShaderSourceDirectory);
-            if (!shaderDirectoryStatus)
-            {
-                ARDA_LOG(
-                    LogARDGExample,
-                    Error,
-                    "%s",
-                    shaderDirectoryStatus.mMessage.c_str());
-                return EXIT_FAILURE;
-            }
-
-            backend::FArdaBackendConfiguration configuration;
-            configuration.mBackend = options.mBackend;
-            configuration.mbEnableValidation = true;
-            configuration.mMessageCallback = &messageCallback;
-            if (!backend::ConfigureBackend(configuration))
-            {
-                ARDA_LOG(
-                    LogARDGExample,
-                    Error,
-                    "%s",
-                    backend::GetBackendError().c_str());
-                return options.mBackend == backend::EArdaBackendType::D3D12
-                    ? SkippedExitCode
-                    : EXIT_FAILURE;
             }
 
             eastl::unique_ptr<backend::IArdaSwapChain> swapChain;
@@ -252,8 +373,7 @@ namespace arda::tests::ardg_example
             FArdaTerrainRenderer renderer;
             if (!renderer.Initialize(
                     backend::GetDeviceContext(),
-                    swapChain->GetFormat(),
-                    GetExecutableDirectory(arguments[0])))
+                    swapChain->GetFormat()))
             {
                 ARDA_LOG(
                     LogARDGExample,

@@ -9,6 +9,7 @@
 #include <EASTL/string.h>
 #include <EASTL/vector.h>
 #include <filesystem>
+#include <mutex>
 
 namespace arda::backend
 {
@@ -18,6 +19,8 @@ namespace arda::backend
         None,
         RegistrationFailed,
         InvalidDevice,
+        /** Development compilation failed before bytecode could be loaded. */
+        ArtifactCompileFailed,
         BytecodeMissing,
         BytecodeEmpty,
         BytecodeReadFailed,
@@ -77,22 +80,28 @@ namespace arda::backend
     {
     public:
         /** @return The registered type used to create this instance. */
-        [[nodiscard]] const FArdaShaderType& GetType() const noexcept { return *mType; }
+        [[nodiscard]] const FArdaShaderType& GetType() const noexcept { return mType; }
         /** @return The created RHI shader. */
         [[nodiscard]] const rhi::FArdaRHIShaderRef& GetShader() const noexcept { return mShader; }
+        /** @return True after bytecode and RHI resources were created successfully. */
+        [[nodiscard]] bool IsLoaded() const noexcept { return mShader != nullptr; }
+        /** @return Encoded permutation identifier used to create this instance. */
+        [[nodiscard]] uint32_t GetPermutationId() const noexcept { return mPermutationId; }
         /** @return Binding layouts created for the shader parameters. */
         [[nodiscard]] const eastl::vector<rhi::FArdaRHIBindingLayoutRef>&
         GetBindingLayouts() const noexcept { return mBindingLayouts; }
         /** @return Parameter metadata, or null for a parameterless shader. */
         [[nodiscard]] const FArdaShaderParameterMetadata* GetParameterMetadata() const
         {
-            return mType != nullptr ? mType->GetParameterMetadata() : nullptr;
+            return mType.GetParameterMetadata();
         }
 
     private:
         friend class FArdaGlobalShaderMap;
-        /** Registered type used to create the instance. */
-        const FArdaShaderType* mType = nullptr;
+        /** Owned descriptor snapshot used to create the instance. */
+        FArdaShaderType mType;
+        /** Encoded permutation identifier used to create the instance. */
+        uint32_t mPermutationId = 0;
         /** Created RHI shader. */
         rhi::FArdaRHIShaderRef mShader;
         /** Binding layouts created from the parameter metadata. */
@@ -115,44 +124,73 @@ namespace arda::backend
         [[nodiscard]] bool Initialize(
             const FArdaDeviceContext& DeviceContext,
             const std::filesystem::path& ShaderDirectory);
+        /**
+         * Initializes using the configured persistent backend shader cache.
+         * @param DeviceContext Device and backend used to create shaders.
+         * @return True when registration and policy-specific initialization succeed.
+         */
+        [[nodiscard]] bool Initialize(const FArdaDeviceContext& DeviceContext);
 
         /** @return True when the map contains initialized global shaders. */
-        [[nodiscard]] bool IsInitialized() const noexcept { return mbInitialized; }
+        [[nodiscard]] bool IsInitialized() const noexcept;
         /**
          * Finds a shader instance by registered type.
          * @param Type Shader type to locate.
-         * @return The matching instance, or null.
+         * @param PermutationId Encoded permutation identifier to locate.
+         * @return The matching instance, or null. Returned pointers remain
+         * valid until Reset; callers must externally quiesce use before
+         * Reset or Initialize changes map ownership.
          */
-        [[nodiscard]] const FArdaGlobalShaderInstance* Find(const FArdaShaderType& Type) const noexcept;
+        [[nodiscard]] const FArdaGlobalShaderInstance* Find(
+            const FArdaShaderType& Type,
+            uint32_t PermutationId = 0) const;
         /**
          * Finds a shader instance by registered name.
          * @param Name Shader type name to locate.
+         * @param PermutationId Encoded permutation identifier to locate.
          * @return The matching instance, or null.
          */
-        [[nodiscard]] const FArdaGlobalShaderInstance* Find(const eastl::string& Name) const noexcept;
-        /** @return All initialized global shader instances. */
-        [[nodiscard]] const eastl::vector<FArdaGlobalShaderInstance>& Enumerate() const noexcept
-        {
-            return mShaders;
-        }
+        [[nodiscard]] const FArdaGlobalShaderInstance* Find(
+            const eastl::string& Name,
+            uint32_t PermutationId = 0) const;
+        /**
+         * Eagerly loads every selected placeholder before returning.
+         * @return All successfully loaded global shader instances. If loading
+         * fails, diagnostics are recorded and unloaded slots remain present.
+         */
+        [[nodiscard]] eastl::vector<FArdaGlobalShaderInstance> Enumerate() const;
         /** @return Diagnostics collected during the most recent initialization. */
-        [[nodiscard]] const eastl::vector<FArdaGlobalShaderMapDiagnostic>&
-        GetDiagnostics() const noexcept { return mDiagnostics; }
+        [[nodiscard]] eastl::vector<FArdaGlobalShaderMapDiagnostic>
+        GetDiagnostics() const;
 
-        /** Releases all shader instances and permits initialization with new inputs. */
+        /**
+         * Releases all shader instances and permits initialization with new
+         * inputs. Reset and Initialize require external quiescence of raw
+         * pointers previously returned by Find.
+         */
         void Reset() noexcept;
 
     private:
+        /** Ensures one stable slot is loaded according to the configured policy. */
+        [[nodiscard]] bool EnsureSlotLoaded(size_t Index) const;
+        /** Lock-held implementation; slots are preallocated before publication. */
+        [[nodiscard]] bool EnsureSlotLoadedLocked(size_t Index) const;
         /** Device permanently associated with initialized shader instances. */
         rhi::FArdaRHIDeviceRef mDevice;
         /** Backend used to choose artifact formats. */
         EArdaBackendType mBackend = DefaultBackend;
+        /** Compilation timing policy captured at initialization. */
+        EArdaShaderCompilationMode mMode = EArdaShaderCompilationMode::OnDemand;
         /** Directory containing the loaded compiled artifacts. */
         std::filesystem::path mDirectory;
         /** Initialized global shader instances. */
-        eastl::vector<FArdaGlobalShaderInstance> mShaders;
+        mutable eastl::vector<FArdaGlobalShaderInstance> mShaders;
+        /** Per-slot state: zero unloaded, one loaded, two permanently failed. */
+        mutable eastl::vector<uint8_t> mLoadStates;
         /** Diagnostics from the most recent initialization. */
-        eastl::vector<FArdaGlobalShaderMapDiagnostic> mDiagnostics;
+        mutable eastl::vector<FArdaGlobalShaderMapDiagnostic> mDiagnostics;
+        /** Serializes first-use loading and diagnostics without growing slots. */
+        mutable std::mutex mLoadMutex;
         /** Whether the map is initialized. */
         bool mbInitialized = false;
     };

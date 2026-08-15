@@ -813,6 +813,11 @@ namespace arda::rhi
          * @return A status describing whether the operation succeeded.
          */
         virtual FArdaRHIStatus WaitForIdle() = 0;
+        /**
+         * Flushes dirty backend-native pipeline cache data and permanently
+         * detaches disk persistence from this device wrapper. Idempotent.
+         */
+        virtual void FlushAndDisablePipelineCachePersistence() noexcept = 0;
         /** Performs the run garbage collection operation. */
         virtual void RunGarbageCollection() = 0;
     };

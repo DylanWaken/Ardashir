@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <condition_variable>
 #include <mutex>
+#include <type_traits>
 
 namespace arda::backend
 {
@@ -13,6 +14,154 @@ namespace arda::backend
         FArdaRHIStatus Invalid(const char* Message)
         {
             return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, Message);
+        }
+
+        class FStablePipelineHasher
+        {
+        public:
+            template <typename T,
+                std::enable_if_t<std::is_integral_v<T> &&
+                    !std::is_same_v<std::remove_cv_t<T>, bool>, int> = 0>
+            void Add(T Value) noexcept
+            {
+                AddUnsigned(static_cast<uint64_t>(Value));
+            }
+            void Add(bool Value) noexcept { AddUnsigned(Value ? 1u : 0u); }
+            template <typename T> void AddEnum(T Value) noexcept
+            {
+                AddUnsigned(static_cast<uint64_t>(Value));
+            }
+            void AddString(const eastl::string& Value) noexcept
+            {
+                Add(Value.size());
+                for (char Byte : Value)
+                {
+                    mHash ^= static_cast<uint8_t>(Byte);
+                    mHash *= 1099511628211ull;
+                }
+            }
+            uint64_t Finish() const noexcept { return mHash == 0 ? 1 : mHash; }
+        private:
+            void AddUnsigned(uint64_t Value) noexcept
+            {
+                for (uint32_t Shift = 0; Shift < 64; Shift += 8)
+                {
+                    mHash ^= static_cast<uint8_t>(Value >> Shift);
+                    mHash *= 1099511628211ull;
+                }
+            }
+            uint64_t mHash = 14695981039346656037ull;
+        };
+
+        void HashShader(
+            FStablePipelineHasher& Hash,
+            const FArdaRHIShaderRef& Shader) noexcept
+        {
+            Hash.Add(Shader ? Shader->GetPersistentCacheHash() : 0);
+        }
+
+        void HashBindingLayout(
+            FStablePipelineHasher& Hash,
+            const FArdaRHIBindingLayoutRef& Layout) noexcept
+        {
+            if (!Layout)
+            {
+                Hash.Add(0);
+                return;
+            }
+            Hash.Add(1);
+            const auto& Desc = Layout->GetDesc();
+            Hash.AddEnum(Desc.mVisibility);
+            Hash.Add(Desc.mRegisterSpace);
+            Hash.Add(Desc.mbRegisterSpaceIsDescriptorSet);
+            Hash.Add(Desc.mItems.size());
+            for (const auto& Item : Desc.mItems)
+            {
+                Hash.Add(Item.mSlot);
+                Hash.Add(Item.mArraySize);
+                Hash.AddEnum(Item.mType);
+            }
+        }
+
+        void HashInputLayout(
+            FStablePipelineHasher& Hash,
+            const FArdaRHIInputLayoutRef& Layout) noexcept
+        {
+            if (!Layout)
+            {
+                Hash.Add(0);
+                return;
+            }
+            Hash.Add(1);
+            const auto& Desc = Layout->GetDesc();
+            Hash.Add(Desc.mAttributes.size());
+            for (const auto& Attribute : Desc.mAttributes)
+            {
+                Hash.AddString(Attribute.mSemanticName);
+                Hash.AddEnum(Attribute.mFormat);
+                Hash.Add(Attribute.mArraySize);
+                Hash.Add(Attribute.mBufferIndex);
+                Hash.Add(Attribute.mOffset);
+                Hash.Add(Attribute.mElementStride);
+                Hash.Add(Attribute.mbInstanced);
+            }
+            HashShader(Hash, Desc.mVertexShader);
+        }
+
+        void HashLayouts(
+            FStablePipelineHasher& Hash,
+            const eastl::vector<FArdaRHIBindingLayoutRef>& Layouts) noexcept
+        {
+            Hash.Add(Layouts.size());
+            for (const auto& Layout : Layouts)
+                HashBindingLayout(Hash, Layout);
+        }
+
+        uint64_t PersistentKey(const FArdaRHIComputePipelineDesc& Desc) noexcept
+        {
+            FStablePipelineHasher Hash;
+            Hash.Add(0x434F4D50555445ull);
+            HashShader(Hash, Desc.mComputeShader);
+            HashLayouts(Hash, Desc.mBindingLayouts);
+            return Hash.Finish();
+        }
+
+        uint64_t PersistentKey(const FArdaRHIGraphicsPipelineDesc& Desc) noexcept
+        {
+            FStablePipelineHasher Hash;
+            Hash.Add(0x47524150484943ull);
+            Hash.AddEnum(Desc.mTopology);
+            Hash.Add(Desc.mPatchControlPoints);
+            HashInputLayout(Hash, Desc.mInputLayout);
+            HashShader(Hash, Desc.mVertexShader);
+            HashShader(Hash, Desc.mHullShader);
+            HashShader(Hash, Desc.mDomainShader);
+            HashShader(Hash, Desc.mGeometryShader);
+            HashShader(Hash, Desc.mPixelShader);
+            HashLayouts(Hash, Desc.mBindingLayouts);
+            Hash.Add(Desc.mBlendState.mbAlphaToCoverage);
+            for (const auto& Target : Desc.mBlendState.mTargets)
+            {
+                Hash.Add(Target.mbEnable);
+                Hash.AddEnum(Target.mSourceColor);
+                Hash.AddEnum(Target.mDestinationColor);
+                Hash.AddEnum(Target.mSourceAlpha);
+                Hash.AddEnum(Target.mDestinationAlpha);
+            }
+            Hash.AddEnum(Desc.mRasterState.mFillMode);
+            Hash.AddEnum(Desc.mRasterState.mCullMode);
+            Hash.Add(Desc.mRasterState.mbFrontCounterClockwise);
+            Hash.Add(Desc.mRasterState.mbDepthClip);
+            Hash.Add(Desc.mRasterState.mbScissor);
+            Hash.Add(Desc.mDepthStencilState.mbDepthTest);
+            Hash.Add(Desc.mDepthStencilState.mbDepthWrite);
+            Hash.AddEnum(Desc.mDepthStencilState.mDepthFunc);
+            Hash.Add(Desc.mColorFormats.size());
+            for (auto Format : Desc.mColorFormats)
+                Hash.AddEnum(Format);
+            Hash.AddEnum(Desc.mDepthFormat);
+            Hash.Add(Desc.mSampleCount);
+            return Hash.Finish();
         }
 
         FArdaRHIStatus CompleteGraphicsDesc(
@@ -248,7 +397,9 @@ namespace arda::backend
         mImpl->mCompute.push_back(
             { Initializer.mDesc, {}, ++mImpl->mUseSerial, true });
         Lock.unlock();
-        auto Created = mImpl->mDevice->CreateComputePipeline(Initializer.mDesc);
+        auto CreationDesc = Initializer.mDesc;
+        CreationDesc.mPersistentCacheKey = PersistentKey(CreationDesc);
+        auto Created = mImpl->mDevice->CreateComputePipeline(CreationDesc);
         Lock.lock();
         --mImpl->mInFlight;
         auto Pending = std::find_if(
@@ -346,7 +497,9 @@ namespace arda::backend
         mImpl->mGraphics.push_back(
             { Completed, {}, ++mImpl->mUseSerial, true });
         Lock.unlock();
-        auto Created = mImpl->mDevice->CreateGraphicsPipeline(Completed);
+        auto CreationDesc = Completed;
+        CreationDesc.mPersistentCacheKey = PersistentKey(CreationDesc);
+        auto Created = mImpl->mDevice->CreateGraphicsPipeline(CreationDesc);
         Lock.lock();
         --mImpl->mInFlight;
         auto Pending = std::find_if(

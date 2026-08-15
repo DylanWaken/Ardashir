@@ -115,7 +115,7 @@
 
 # Pipeline initializer/cache helpers used by ARDGExample:
 #include "PipelineStateCache/ArdaPipelineStateCache.h"</code></pre>
-          <p>DXC must be configured as <code>ARDASHIR_DXC_EXECUTABLE</code> for the supplied examples. <code>ARDGExampleShaders</code> compiles both DXIL and Vulkan 1.3 SPIR-V, and <code>ARDGExample</code> can run one hidden frame with <code>--backend d3d12|vulkan --frames 1 --hidden</code>. Your application may instead load bytecode directly as <code>NVRHITest</code> does.</p>
+          <p><code>ARDGExample</code> discovers jobs from registered shader permutations and can invoke an external DXC at startup or first use. Configure DXC through application compiler configuration, the build default, or <code>ARDASHIR_DXC_EXECUTABLE</code>. Run one hidden frame with <code>--backend d3d12|vulkan --frames 1 --hidden --shader-mode ondemand --shader-cache &lt;directory&gt;</code>, or explicitly cook both backends with <code>--arda-cook-shaders &lt;output-directory&gt;</code>.</p>
         </section>
 
         <section id="mental-model">
@@ -141,7 +141,7 @@
           <p><strong>DEMONSTRATED.</strong> Perform this once, outside the frame function:</p>
           <ol>
             <li>Create a window implementing the presentation window contract.</li>
-            <li>Register virtual shader roots with <a href="../ArdaBackend/api-reference.html#api-arda-backend-addshadersourcedirectorymapping-0a243cb3"><code>AddShaderSourceDirectoryMapping()</code></a> before backend initialization.</li>
+            <li>Register virtual shader roots with <a href="../ArdaBackend/api-reference.html#api-arda-backend-addshadersourcedirectorymapping-0a243cb3"><code>AddShaderSourceDirectoryMapping()</code></a> before backend initialization; choose <code>LoadOnly</code>, <code>Startup</code>, or <code>OnDemand</code> and a writable user shader cache.</li>
             <li>Fill a backend configuration, enable validation while integrating, call <a href="../ArdaBackend/api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend()</code></a>, then <a href="../ArdaBackend/api-reference.html#api-arda-backend-initializebackendforpresentation-57fda7b3"><code>InitializeBackendForPresentation()</code></a>.</li>
             <li>Read the live <a href="../ArdaBackend/api-reference.html#api-arda-backend-getdevicecontext-1ba97e9b"><code>GetDeviceContext()</code></a>; retain its device and copy its actual queue capabilities.</li>
             <li>Initialize a <a href="../ArdaBackend/api-reference.html#api-arda-backend-fardaglobalshadermap-b7046fe0"><code>FArdaGlobalShaderMap</code></a>, or create RHI shaders from backend-specific binaries.</li>
@@ -682,9 +682,9 @@ if (!swapChain.Present())
           <ol>
             <li>Stop producing frames and wait for swap-chain/device idle.</li>
             <li>Destroy builders and per-frame state.</li>
-            <li>Release RT SBT/pipeline/AS, raster and compute PSOs, binding sets, shaders, buffers, textures, shader map, and pipeline cache.</li>
+            <li>Release RT SBT/pipeline/AS, raster and compute PSOs, binding sets, shaders, buffers, textures, shader map, and in-memory pipeline cache.</li>
             <li>Destroy the swap chain and window integration objects.</li>
-            <li>Call <a href="../ArdaBackend/api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a> last.</li>
+            <li>Call <a href="../ArdaBackend/api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a> while the process context still owns the device so dirty D3D12/Vulkan pipeline data is atomically flushed and persistence is disabled; then release any retained device reference.</li>
           </ol>
         </section>
 

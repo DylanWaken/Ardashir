@@ -200,8 +200,7 @@ namespace arda::tests::ardg_example
 
     bool FArdaTerrainRenderer::Initialize(
         const backend::FArdaDeviceContext& deviceContext,
-        rhi::EArdaRHIFormat,
-        const std::filesystem::path& shaderDirectory)
+        rhi::EArdaRHIFormat)
     {
         mDevice = deviceContext.mDevice;
         mQueueCapabilities = {
@@ -215,7 +214,7 @@ namespace arda::tests::ardg_example
         }
         mPipelineStateCache =
             std::make_unique<backend::FArdaPipelineStateCache>(mDevice);
-        if (!CreateShadersAndInitializers(deviceContext, shaderDirectory) ||
+        if (!CreateShadersAndInitializers(deviceContext) ||
             !CreateSettingsUploadBuffer() ||
             !CreateCameraResources())
         {
@@ -226,10 +225,9 @@ namespace arda::tests::ardg_example
     }
 
     bool FArdaTerrainRenderer::CreateShadersAndInitializers(
-        const backend::FArdaDeviceContext& deviceContext,
-        const std::filesystem::path& shaderDirectory)
+        const backend::FArdaDeviceContext& deviceContext)
     {
-        if (!mShaderMap.Initialize(deviceContext, shaderDirectory))
+        if (!mShaderMap.Initialize(deviceContext))
         {
             const auto& Diagnostics = mShaderMap.GetDiagnostics();
             mError = Diagnostics.empty()

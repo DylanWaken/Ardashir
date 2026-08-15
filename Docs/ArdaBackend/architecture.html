@@ -186,7 +186,7 @@
 
           <h3>Backend pinning</h3>
           <p>A resource cannot safely outlive everything required to destroy or call it. Concrete RHI device/resource wrappers therefore retain or otherwise anchor the implementation lifetime they need. A copied <a href="api-reference.html#api-arda-rhi-fardarhideviceref-bbf7458c"><code>FArdaRHIDeviceRef</code></a> can remain valid after <code>ShutdownBackend()</code> clears process ownership because the concrete device object still has an owner.</p>
-          <p>This behavior supports safe references, but relying on it as normal shutdown design leaves native destruction timing implicit. Production code should still destroy dependent systems and release copied references before process shutdown.</p>
+          <p>This behavior supports safe references, but relying on it as normal shutdown design leaves native destruction timing implicit. Production code should destroy dependent renderer systems first, call process shutdown to flush and disable pipeline persistence, then release any remaining copied device references.</p>
 
           <h3>Reference concurrency</h3>
           <p>The reference wrapper contains no lock. Concurrent access to the same <code>TArdaRHIRef</code> variable requires external synchronization. Whether separate reference objects may concurrently call an implementation's <code>AddRef</code>/<code>Release</code> depends on the concrete reference-count implementation; do not infer whole-object thread safety from reference counting.</p>
@@ -197,7 +197,7 @@
           <p>The private <code>FArdaBackendState</code> is a function-local process singleton. It contains a mutex, configuration, context, default callback, private backend device, error text, and atomic initialized flag.</p>
 
           <h3>Why process-wide state exists</h3>
-          <p>Shader directory freezing, global shader registration, selected artifact format, and a canonical device context all benefit from one authoritative lifecycle. A process facade also makes simple tools and applications easy to bootstrap.</p>
+          <p>Shader directory freezing, global shader registration, compilation mode, persistent cache paths, and a canonical device context all benefit from one authoritative lifecycle. Startup-mode shader ensure occurs before native device creation; native pipeline-cache loading occurs while that device is constructed. A process facade also makes simple tools and applications easy to bootstrap.</p>
 
           <h3>Publication model</h3>
           <p>Initialization holds the lifecycle mutex while it validates registries and creates the backend. It writes context fields first, then stores the initialized flag with release ordering. <a href="api-reference.html#api-arda-backend-isbackendinitialized-d99926a4"><code>IsBackendInitialized()</code></a> performs an acquire load.</p>
@@ -249,7 +249,7 @@ if (!result &amp;&amp;
           <p>The application chooses one backend and validation policy, then calls either headless initialization or presentation initialization. The presentation path shown here publishes the singleton context only after shader-registration gates, native device creation, and swap-chain creation all succeed.</p>
           <aside class="callout warning">
             <h3>Production path and conformance experiment diverge at shutdown</h3>
-            <p>The code deliberately shows two mutually exclusive endings. The normal production branch releases the caller's ordinary device reference before <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a>, matching the lifecycle in <a href="getting-started.html#lifetime">Getting started</a>. The conformance branch intentionally retains and uses a copied device after shutdown only to prove the intrusive-ownership guarantee exercised by current tests. Do not copy that branch into routine renderer teardown; reserve it for narrowly controlled lifetime tests or integrations whose ownership contract explicitly requires it.</p>
+            <p>The code deliberately shows two mutually exclusive endings. For persistent pipeline-cache correctness, call <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a> while the process context still owns the device; it flushes and disables persistence before clearing that ownership. The conformance branch intentionally retains and uses a copied device after shutdown to prove the intrusive-ownership guarantee. Do not use retained references as a substitute for ordinary dependency teardown.</p>
           </aside>
           <pre><code>using namespace arda;
 
@@ -295,9 +295,9 @@ rhi::FArdaRHIDeviceRef device = backend::GetDevice(); // retained copy
 
 if (!runLifetimeConformanceExperiment)
 {
-    // Normative production teardown: release ordinary caller ownership first.
-    device = nullptr;
+    // Normative production teardown: flush persistence through process context.
     backend::ShutdownBackend();
+    device = nullptr;
 }
 else
 {
@@ -336,19 +336,19 @@ else
           </aside>
 
           <h3>Step 4: reverse the ownership timeline</h3>
-          <p>Normative production shutdown proceeds in reverse dependency order. The ordinary caller-held device and resources are released before the process singleton:</p>
+          <p>Normative production shutdown reverses dependent renderer ownership, then lets the process singleton flush native pipeline data while its context still owns the device:</p>
           <ol>
             <li><strong>Stop producers.</strong> Prevent frame, upload, and compilation tasks from creating more work.</li>
             <li><strong>Complete GPU use.</strong> Wait until submitted work no longer needs the buffer or swap-chain images. CPU <a class="term" data-term="lifetime" href="../glossary.html#term-lifetime">lifetime</a> alone does not establish GPU completion.</li>
             <li><strong>Release presentation and renderer state.</strong> Destroy the swap chain, clear device-bound caches/maps, and release renderer-owned resources.</li>
-            <li><strong>Release ordinary copied owners.</strong> Reset caller-held device and resource references once their dependent systems are gone. This is the production path documented in <a href="getting-started.html#lifetime">Getting started</a>.</li>
-            <li><strong>Clear process availability.</strong> Call <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a>. It waits for the private backend to become idle, clears the context's device reference and queue capabilities, resets private process state, and marks the singleton uninitialized.</li>
+            <li><strong>Flush and clear process availability.</strong> Call <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a>. It waits if persistence is dirty, atomically saves backend-native pipeline data, disables its path/callback, clears context ownership and queue capabilities, and marks the singleton uninitialized.</li>
+            <li><strong>Release ordinary copied owners.</strong> Reset caller-held device and resource references once shutdown has disabled persistence.</li>
           </ol>
-          <p>The conformance branch reverses only the last two actions on purpose: it keeps one copied <code>FArdaRHIDeviceRef</code>, shuts down the singleton, probes the retained device, and then releases the copy. That experiment demonstrates the actual lifetime guarantee without redefining recommended teardown order. Outside narrowly controlled lifetime tests or integrations with an explicit post-singleton ownership requirement, retaining or using ordinary renderer devices/resources after shutdown is non-normative.</p>
+          <p>The conformance branch keeps one copied <code>FArdaRHIDeviceRef</code>, shuts down the singleton, probes the retained device, and then releases the copy. The retained object also retains its concrete backend or external lifetime token. Pipeline persistence is already disabled, so later pipeline creation or device destruction cannot write through stale cache configuration or call a released diagnostic callback.</p>
 
           <h3>Process availability versus retained lifetime</h3>
           <p>After shutdown, <a href="api-reference.html#api-arda-backend-isbackendinitialized-d99926a4"><code>IsBackendInitialized()</code></a> is false, <code>GetDevice()</code> is empty, and process queue capabilities are reset. Those observations describe the singleton facade. They do not mutate a copied <a class="term" data-term="intrusive-reference-counting" href="../glossary.html#term-intrusive-reference-counting">intrusive reference</a> held elsewhere.</p>
-          <p>The backend tests retain a shared device reference across <code>ShutdownBackend()</code>, verify that it still reports capabilities, and successfully create a sampler through it while the process singleton reports uninitialized. This is concrete evidence that process availability and object <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a> are different state dimensions. The guarantee remains real: shutdown does not forcibly invalidate every copied intrusive reference. The production rule is equally clear: release ordinary caller device/resources before shutdown, and use the guarantee after shutdown only in a deliberately bounded conformance test or specialized integration.</p>
+          <p>The backend tests retain a shared device reference across <code>ShutdownBackend()</code>, verify that it still reports capabilities, and successfully create a sampler while the process singleton reports uninitialized. This proves process availability and object <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a> are different state dimensions. Production code should still stop work and release dependent renderer objects first, call shutdown to flush/disable persistence, then release any remaining device references.</p>
 
           <h3>Checkpoint</h3>
           <p>At the end of this sequence, can you identify (1) who owns the swap chain, device copy, cache, and buffer; (2) which objects carry the creating device's affinity; (3) why the validation double yields <code>WrongDevice</code> without requiring a second process backend; and (4) why an empty <code>GetDevice()</code> after shutdown does not prove that every copied RHI reference was destroyed?</p>
@@ -475,6 +475,7 @@ else
             <li>Optional features and queues are capability-gated.</li>
             <li>Native imports document representation, device, state, synchronization, and ownership.</li>
             <li>Failure reports preserve both structured status and asynchronous validation context.</li>
+            <li>Shutdown flushes and disables backend-native pipeline persistence before process ownership and callback configuration disappear.</li>
           </ol>
         </section>
 
@@ -484,6 +485,7 @@ else
             <li>The opaque RHI is a semantic and dependency boundary, not merely a vocabulary translation.</li>
             <li>Public backend systems own process policy and authored rendering integration; private layers own conversion and native objects.</li>
             <li>Intrusive references share RHI ownership and can pin concrete implementation lifetime beyond the global context.</li>
+            <li>Retained devices remain functional after shutdown, while pipeline persistence is deliberately disabled to detach retired paths and callbacks.</li>
             <li>The process singleton simplifies one-device operation but requires lifecycle exclusion and limits multi-device composition.</li>
             <li>Device affinity, explicit status, scoped thread-safety contracts, and audited native interop keep failures diagnosable.</li>
           </ul>

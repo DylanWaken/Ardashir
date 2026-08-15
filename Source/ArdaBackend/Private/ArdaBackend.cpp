@@ -2,6 +2,7 @@
 
 #include "ArdaBackend.h"
 #include "ArdaBackendDevice.h"
+#include "ShaderStructs/ArdaShaderCompiler.h"
 #include "ShaderStructs/ArdaShaderDirectoriesPrivate.h"
 
 #include <atomic>
@@ -69,6 +70,65 @@ namespace arda::backend
         {
             static FArdaBackendState state;
             return state;
+        }
+
+        bool ResolveAndValidateRuntimeConfiguration(
+            FArdaBackendState& State,
+            FArdaBackendConfiguration& Configuration)
+        {
+            if (Configuration.mShaderCacheDirectory.empty())
+            {
+                State.mError = "The shader cache directory must not be empty.";
+                return false;
+            }
+            std::error_code Error;
+            Configuration.mShaderCacheDirectory = std::filesystem::absolute(
+                Configuration.mShaderCacheDirectory, Error).lexically_normal();
+            if (Error || Configuration.mShaderCacheDirectory.empty())
+            {
+                State.mError =
+                    "The shader cache directory could not be resolved to an absolute path.";
+                return false;
+            }
+            if (!Configuration.mPipelineCacheDirectory.empty())
+            {
+                Error.clear();
+                Configuration.mPipelineCacheDirectory = std::filesystem::absolute(
+                    Configuration.mPipelineCacheDirectory, Error).lexically_normal();
+                if (Error || Configuration.mPipelineCacheDirectory.empty())
+                {
+                    State.mError =
+                        "The pipeline cache directory could not be resolved to an absolute path.";
+                    return false;
+                }
+                Error.clear();
+                const bool Exists = std::filesystem::exists(
+                    Configuration.mPipelineCacheDirectory, Error);
+                if (Error || (Exists && !std::filesystem::is_directory(
+                        Configuration.mPipelineCacheDirectory, Error)) || Error)
+                {
+                    State.mError =
+                        "The pipeline cache path cannot be inspected or is not a directory.";
+                    return false;
+                }
+            }
+            if (Configuration.mDeviceSource == EArdaDeviceSource::ExternalProvider)
+            {
+                if (!State.mExternalDeviceProvider)
+                {
+                    State.mError =
+                        "ExternalProvider device source requires a registered provider before startup shader compilation.";
+                    return false;
+                }
+                if (State.mExternalDeviceProvider->GetBackendType() !=
+                    Configuration.mBackend)
+                {
+                    State.mError =
+                        "The registered external device provider backend does not match the configured backend.";
+                    return false;
+                }
+            }
+            return true;
         }
 
         bool CreateConfiguredDevice(
@@ -171,6 +231,30 @@ namespace arda::backend
                 Status.mMessage;
             return false;
         }
+
+        bool EnsureStartupShaders(
+            FArdaBackendState& State,
+            const FArdaBackendConfiguration& Configuration)
+        {
+            if (Configuration.mShaderCompilationMode !=
+                EArdaShaderCompilationMode::Startup)
+            {
+                return true;
+            }
+            const FArdaShaderCompileResult Result =
+                EnsureRegisteredShaderArtifacts(
+                    Configuration.mShaderCacheDirectory,
+                    Configuration.mBackend);
+            if (Result)
+                return true;
+            State.mError = "Startup shader compilation failed";
+            if (!Result.mDiagnostics.empty())
+            {
+                State.mError += ": ";
+                State.mError += Result.mDiagnostics.front().mMessage;
+            }
+            return false;
+        }
     }
 
     const EArdaBackendType& gCurrentBackend = currentBackend;
@@ -207,7 +291,62 @@ namespace arda::backend
         }
 #endif
 
-        state.mConfiguration = configuration;
+        if (configuration.mShaderCacheDirectory.empty())
+        {
+            state.mError = "The shader cache directory must not be empty.";
+            return false;
+        }
+        std::error_code PathError;
+        FArdaBackendConfiguration resolvedConfiguration = configuration;
+        resolvedConfiguration.mShaderCacheDirectory =
+            std::filesystem::absolute(
+                configuration.mShaderCacheDirectory,
+                PathError).lexically_normal();
+        if (PathError || resolvedConfiguration.mShaderCacheDirectory.empty())
+        {
+            state.mError =
+                "The shader cache directory could not be resolved to an absolute path.";
+            return false;
+        }
+        if (!configuration.mPipelineCacheDirectory.empty())
+        {
+            PathError.clear();
+            resolvedConfiguration.mPipelineCacheDirectory =
+                std::filesystem::absolute(
+                    configuration.mPipelineCacheDirectory,
+                    PathError).lexically_normal();
+            if (PathError || resolvedConfiguration.mPipelineCacheDirectory.empty())
+            {
+                state.mError =
+                    "The pipeline cache directory could not be resolved to an absolute path.";
+                return false;
+            }
+            PathError.clear();
+            const bool bPipelineCachePathExists = std::filesystem::exists(
+                resolvedConfiguration.mPipelineCacheDirectory, PathError);
+            if (PathError)
+            {
+                state.mError =
+                    "The pipeline cache directory could not be inspected.";
+                return false;
+            }
+            if (bPipelineCachePathExists &&
+                !std::filesystem::is_directory(
+                    resolvedConfiguration.mPipelineCacheDirectory, PathError))
+            {
+                state.mError =
+                    "The pipeline cache path exists but is not a directory.";
+                return false;
+            }
+            if (PathError)
+            {
+                state.mError =
+                    "The pipeline cache directory could not be inspected.";
+                return false;
+            }
+        }
+
+        state.mConfiguration = resolvedConfiguration;
         state.mContext.mBackend = configuration.mBackend;
         state.mContext.mDeviceSource = configuration.mDeviceSource;
         currentBackend = configuration.mBackend;
@@ -237,6 +376,9 @@ namespace arda::backend
         }
 
         FArdaBackendConfiguration runtimeConfiguration = state.mConfiguration;
+        if (!ResolveAndValidateRuntimeConfiguration(state, runtimeConfiguration))
+            return false;
+        state.mConfiguration = runtimeConfiguration;
         if (!runtimeConfiguration.mMessageCallback)
         {
             runtimeConfiguration.mMessageCallback = &state.mDefaultMessageCallback;
@@ -245,6 +387,11 @@ namespace arda::backend
         if (!BeginShaderDirectoryUse(state))
             return false;
         if (!FreezeAndValidateShaderSources(state))
+        {
+            private_api::CompleteShaderDirectoryRegistryUse(false);
+            return false;
+        }
+        if (!EnsureStartupShaders(state, runtimeConfiguration))
         {
             private_api::CompleteShaderDirectoryRegistryUse(false);
             return false;
@@ -297,6 +444,9 @@ namespace arda::backend
         }
 
         FArdaBackendConfiguration runtimeConfiguration = state.mConfiguration;
+        if (!ResolveAndValidateRuntimeConfiguration(state, runtimeConfiguration))
+            return EArdaInitializeResult::Failure;
+        state.mConfiguration = runtimeConfiguration;
         if (!runtimeConfiguration.mMessageCallback)
         {
             runtimeConfiguration.mMessageCallback = &state.mDefaultMessageCallback;
@@ -305,6 +455,11 @@ namespace arda::backend
         if (!BeginShaderDirectoryUse(state))
             return EArdaInitializeResult::Failure;
         if (!FreezeAndValidateShaderSources(state))
+        {
+            private_api::CompleteShaderDirectoryRegistryUse(false);
+            return EArdaInitializeResult::Failure;
+        }
+        if (!EnsureStartupShaders(state, runtimeConfiguration))
         {
             private_api::CompleteShaderDirectoryRegistryUse(false);
             return EArdaInitializeResult::Failure;
@@ -352,7 +507,10 @@ namespace arda::backend
         std::lock_guard<std::mutex> lock(state.mMutex);
         if (state.mBackendDevice)
         {
-            state.mBackendDevice->WaitForIdle();
+            if (state.mContext.mDevice)
+                state.mContext.mDevice->FlushAndDisablePipelineCachePersistence();
+            else
+                state.mBackendDevice->WaitForIdle();
         }
         state.mContext.mDevice = nullptr;
         state.mContext.mQueueCapabilities = {};

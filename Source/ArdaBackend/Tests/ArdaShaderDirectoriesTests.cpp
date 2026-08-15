@@ -390,7 +390,7 @@ TEST_F(ArdaShaderDirectories, VirtualCommitBeforeFreezeIsActionable)
         Status.mCode,
         EArdaShaderRegistrationError::DirectoryRegistryNotFrozen);
     EXPECT_NE(
-        Status.mMessage.find("ScanAndFreezeShaderSourceDirectories"),
+        Status.mMessage.find("scanned and frozen"),
         eastl::string::npos);
 }
 
@@ -442,6 +442,9 @@ TEST_F(ArdaShaderDirectories, ArtifactFailureReportsVirtualAndPhysicalSource)
         arda::rhi::EArdaRHIShaderStage::Compute,
         nullptr);
 
+    FArdaBackendConfiguration Configuration;
+    Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+    ASSERT_TRUE(ConfigureBackend(Configuration));
     if (!InitializeBackend())
         GTEST_SKIP() << GetBackendError().c_str();
 
@@ -459,8 +462,9 @@ TEST_F(ArdaShaderDirectories, ArtifactFailureReportsVirtualAndPhysicalSource)
     EXPECT_FALSE(Map.Initialize(
         GetDeviceContext(),
         fs::path(ARDA_BACKEND_TEST_SHADER_DIR)));
-    ASSERT_FALSE(Map.GetDiagnostics().empty());
-    const auto& Diagnostic = Map.GetDiagnostics().back();
+    const auto Diagnostics = Map.GetDiagnostics();
+    ASSERT_FALSE(Diagnostics.empty());
+    const auto& Diagnostic = Diagnostics.back();
     EXPECT_EQ(Diagnostic.mCode, EArdaGlobalShaderMapError::BytecodeMissing);
     EXPECT_EQ(
         Diagnostic.mVirtualSource,

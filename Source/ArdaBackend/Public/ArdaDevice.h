@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 namespace arda::backend
 {
     /** Identifies the severity of a backend diagnostic message. */
@@ -67,6 +68,22 @@ namespace arda::backend
         Vulkan
     };
 
+    /**
+     * Selects when registered shaders are compiled and loaded.
+     *
+     * The selected policy is fixed by ConfigureBackend before initialization
+     * and applies to the active graphics backend only.
+     */
+    enum class EArdaShaderCompilationMode
+    {
+        /** Never invokes the compiler; initialized maps load deployed artifacts eagerly. */
+        LoadOnly,
+        /** Ensures all selected artifacts during backend startup and loads maps eagerly. */
+        Startup,
+        /** Defers compilation and RHI shader creation until a shader is first requested. */
+        OnDemand
+    };
+
     /** Selects whether Arda creates the native device or wraps one supplied externally. */
     enum class EArdaDeviceSource
     {
@@ -95,7 +112,7 @@ namespace arda::backend
     inline constexpr EArdaBackendType DefaultBackend = EArdaBackendType::Vulkan;
 #endif
 
-    /** Configures backend selection, validation, and diagnostic reporting. */
+    /** Configures backend selection, shader policy, validation, and diagnostics. */
     struct FArdaBackendConfiguration
     {
         /** The graphics API to initialize. */
@@ -104,6 +121,27 @@ namespace arda::backend
         EArdaDeviceSource mDeviceSource = EArdaDeviceSource::ArdaCreated;
         /** Whether graphics API validation layers are enabled. */
         bool mbEnableValidation = true;
+        /** Timing policy for registered shader compilation on the active backend. */
+        EArdaShaderCompilationMode mShaderCompilationMode =
+            EArdaShaderCompilationMode::OnDemand;
+        /**
+         * Persistent registered-shader artifact cache.
+         *
+         * Relative paths are resolved to stable absolute paths when the
+         * configuration is accepted. The directory is created only if
+         * compilation needs to publish an artifact.
+         */
+        std::filesystem::path mShaderCacheDirectory =
+            std::filesystem::path(".arda-cache") / "shaders";
+        /**
+         * Persistent backend-native compiled pipeline cache.
+         *
+         * Blobs are backend, adapter, and driver specific. Relative paths are
+         * resolved to absolute paths by ConfigureBackend. An empty path
+         * explicitly disables pipeline-cache disk I/O.
+         */
+        std::filesystem::path mPipelineCacheDirectory =
+            std::filesystem::path(".arda-cache") / "pipelines";
         /** Receives backend diagnostic messages, or null to use the default callback. */
         IArdaDiagnosticCallback* mMessageCallback = nullptr;
     };

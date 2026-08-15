@@ -63,14 +63,14 @@
             <li>derive register, space, array, visibility, and nested-struct layouts from ArdaBackend declarations;</li>
             <li>distinguish a <a class="term" data-term="binding-layout" href="../glossary.html#term-binding-layout">binding layout</a> from a <a class="term" data-term="binding-set" href="../glossary.html#term-binding-set">binding set</a> and use each at the correct lifetime;</li>
             <li>identify CPU/HLSL <a class="term" data-term="abi" href="../glossary.html#term-abi">ABI</a> risks that authored metadata cannot prove; and</li>
-            <li>deploy and initialize a platform-correct global shader map without frame-time compilation.</li>
+            <li>choose <code>LoadOnly</code>, <code>Startup</code>, or <code>OnDemand</code> compilation and predict when DXC, disk I/O, and RHI creation occur.</li>
           </ul>
         </section>
 
         <section id="prerequisites">
           <h2>Prerequisites and chapter scope</h2>
           <p>Read <a href="architecture.html">Architecture</a> for the backend/device boundary and <a href="getting-started.html">Getting started</a> for configuration and initialization order. Familiarity with HLSL resource syntax such as <code>register(t0, space1)</code>, C++ standard-layout structs, and explicit graphics APIs is useful.</p>
-          <p>This chapter covers ArdaBackend global shaders: named shader types registered independently of materials or scene objects. It does not claim that ArdaBackend compiles HLSL at runtime. The runtime consumes previously compiled <a class="term" data-term="bytecode" href="../glossary.html#term-bytecode">bytecode</a>; your build system remains responsible for invoking the compiler, selecting flags, and packaging artifacts.</p>
+          <p>This chapter covers ArdaBackend global shaders: named shader types registered independently of materials or scene objects. The current implementation can invoke an external DXC process at startup or first use, persist backend-specific <a class="term" data-term="bytecode" href="../glossary.html#term-bytecode">bytecode</a> and <code>.arda-key</code> sidecars, or operate as a bytecode-only loader. Shader compilation is a runtime service selected by configuration; it is not a CMake dependency.</p>
         </section>
 
         <section id="pipeline">
@@ -96,134 +96,52 @@ TerrainPS                   Pixel       TerrainPS
 
 D3D12 package: TerrainGenerateCS.dxil, TerrainVS.dxil, TerrainPS.dxil
 Vulkan package: TerrainGenerateCS.spv,  TerrainVS.spv,  TerrainPS.spv</code></pre>
-          <p>The compiler command belongs in build tooling, but its inputs should be treated as artifact identity: source content and includes, entry point, target profile, backend target, optimization/debug flags, preprocessor defines, and compiler version. If any changes, regenerate the corresponding artifact. ArdaBackend chooses the extension with <a href="api-reference.html#api-arda-backend-getshaderartifactextension-1bb9eb91"><code>arda::backend::GetShaderArtifactExtension</code></a> and loads bytes with <a href="api-reference.html#api-arda-backend-loadshaderbytecode-f1313f42"><code>arda::backend::LoadShaderBytecode</code></a>; the loader deliberately does not compile, translate, or reflect them.</p>
+          <p>Arda derives artifact identity from the registered type, backend, encoded permutation, DXC profile and deterministic arguments, logical source identity, compiler executable bytes, frozen virtual-source manifest, and local source/include trees. The resulting 64-bit input key is stored beside the artifact as <code>&lt;artifact&gt;.arda-key</code>. <a href="api-reference.html#api-arda-backend-getshaderartifactextension-1bb9eb91"><code>GetShaderArtifactExtension</code></a> selects <code>.dxil</code> or <code>.spv</code>; <a href="api-reference.html#api-arda-backend-loadshaderbytecode-f1313f42"><code>LoadShaderBytecode</code></a> remains a byte loader, while the registered compiler service decides whether bytes must be produced first.</p>
+          <p>That cache key is an input-identity check, not a device-compatibility certificate. Shader bytecode is backend-format-specific: DXIL is for D3D12 and SPIR-V is for Vulkan. Although compatible devices may accept the same artifact, reuse is not guaranteed because the current key includes compiler, source, job, and backend inputs but no adapter or driver fingerprint. Native shader and pipeline creation is the final validation authority. Persistent PSO blobs are stricter still: they contain driver-native optimization data and are adapter- and driver-specific.</p>
           <aside class="callout warning">
             <h3>A file that exists can still be wrong</h3>
-            <p>The runtime filename proves only that bytes were deployed. A stale artifact, wrong target profile, mismatched entry point, or SPIR-V file renamed to <code>.dxil</code> can pass file I/O and fail device creation. The repository example uses explicit CMake outputs and dependencies; it does not provide a generic shader manifest system.</p>
+            <p>A file without a sidecar is accepted as legacy prebuilt bytecode. A file with a sidecar is validated when compilation policy permits it; a key mismatch is rebuilt only when <code>mbCompileOutdatedArtifacts</code> is true. Shipping-style configuration can disable both rebuild switches and deliberately trust deployed bytes.</p>
           </aside>
         </section>
 
         <section id="artifact-build">
-          <h2>Production artifact build: a transferable DXC recipe</h2>
-          <p>The repository evidence for this workflow is the <code>ARDGExampleShaders</code> target in <code>Source/ArdaTests/ARDGExample/CMakeLists.txt</code>. Project-wide <code>Cmake/Dependencies.cmake</code> downloads a pinned DirectX Shader Compiler archive with a SHA-256 check, selects <code>dxc.exe</code> for Windows x64 or <code>dxc</code> for Linux x86-64, and publishes its path as <code>ARDASHIR_DXC_EXECUTABLE</code>. The example then compiles every required entry point to both backend formats and makes the <code>ARDGExample</code> executable depend on those outputs.</p>
-          <aside class="callout">
-            <h3>Transferable recipe, not a hidden runtime service</h3>
-            <p>The commands and CMake pattern below can be adapted to another renderer target. They describe offline build steps. ArdaBackend still only selects an extension with <a href="api-reference.html#api-arda-backend-getshaderartifactextension-1bb9eb91"><code>arda::backend::GetShaderArtifactExtension</code></a> and reads the resulting bytes with <a href="api-reference.html#api-arda-backend-loadshaderbytecode-f1313f42"><code>arda::backend::LoadShaderBytecode</code></a>.</p>
-          </aside>
+          <h2>Registered permutations and runtime compilation</h2>
+          <p>Each committed <a href="api-reference.html#api-arda-backend-fardashadertype-16467199"><code>FArdaShaderType</code></a> exposes a count of <a class="term" data-term="shader-permutation" href="../glossary.html#term-shader-permutation">shader permutations</a>. Arda enumerates the Cartesian product in encoded identifier order, calls the type's compile predicate for the active backend, and creates jobs only for selected permutations. The permutation environment contributes sorted preprocessor definitions, so two logical variants produce distinct deterministic keys and artifact stems.</p>
+          <figure>
+            <img src="Assets/runtime-shader-compilation-cache.svg" alt="Registered shader permutations flowing through compilation mode selection, persistent key validation, optional external DXC execution, atomic artifact publication, and RHI shader creation.">
+            <figcaption><code>LoadOnly</code> never launches DXC; <code>Startup</code> ensures every selected permutation before device creation; <code>OnDemand</code> defers ensure, byte loading, and RHI creation until lookup.</figcaption>
+          </figure>
 
-          <h3>Prerequisites</h3>
-          <ul>
-            <li>A CMake configure on Windows x64 or Linux x86-64, the two host families supported by the automatic DXC setup in <code>Cmake/Dependencies.cmake</code>.</li>
-            <li>Network access for the first <code>FetchContent</code> population, or an already populated dependency cache containing the pinned archive.</li>
-            <li>A writable build tree and a generator that executes custom commands before linking the consuming target.</li>
-            <li>HLSL source with explicit entry points and resource-register declarations that agree with ArdaBackend parameter metadata.</li>
-            <li>A chosen shader model and stage profile for every entry point; the example uses Shader Model 6.0 profiles.</li>
-            <li>Runtime support for the backend being tested. Artifact production can succeed even when the current machine cannot create the corresponding D3D12 or Vulkan device.</li>
-          </ul>
+          <h3>Three compilation modes</h3>
+          <dl>
+            <dt><code>LoadOnly</code></dt>
+            <dd>Never invokes the compiler. Global-map initialization eagerly loads every selected deployed artifact and creates its shader and layouts. Missing bytes fail initialization.</dd>
+            <dt><code>Startup</code></dt>
+            <dd>Before native device creation, <code>InitializeBackend</code> or presentation initialization calls <code>EnsureRegisteredShaderArtifacts</code> for every selected permutation of the active backend. Current sidecars become cache hits; missing or stale artifacts compile according to compiler policy. The map then eagerly creates RHI objects.</dd>
+            <dt><code>OnDemand</code></dt>
+            <dd>Initialization records slots but does not read bytecode or create RHI shaders. The first <code>Find</code> or enumeration of a slot calls <code>EnsureRegisteredShaderArtifact</code>, loads bytes, creates the shader and layouts, and memoizes success. This <a class="term" data-term="first-use-compilation" href="../glossary.html#term-first-use-compilation">first-use compilation</a> moves both compilation and native object creation onto the request path.</dd>
+          </dl>
+          <p><code>FArdaBackendConfiguration::mShaderCacheDirectory</code> defaults to <code>.arda-cache/shaders</code>. <code>ConfigureBackend</code> resolves it to an absolute path; applications should normally override it with a writable per-user cache location rather than an install directory. <code>ARDGExample --shader-cache &lt;directory&gt;</code> demonstrates an explicit path and otherwise uses <code>&lt;executable-directory&gt;/.arda-cache/shaders</code>.</p>
 
-          <h3>Expected source, build, and package layout</h3>
-          <pre><code>&lt;repository&gt;/
-├─ Cmake/Dependencies.cmake
-└─ Source/ArdaTests/ARDGExample/
-   ├─ CMakeLists.txt
-   └─ Shaders/
-      └─ ArdaTerrain.hlsl
+          <h3>External DXC, independent of CMake</h3>
+          <p><code>FArdaShaderCompilerConfiguration::mCompilerExecutable</code> has highest priority. If empty, Arda uses the build-time <code>ARDA_DEFAULT_DXC_EXECUTABLE</code>, then the <code>ARDASHIR_DXC_EXECUTABLE</code> environment variable. The resolved path must name a regular file. Arda launches that executable directly, captures its output, and derives profiles from the registered stage: for example <code>vs_6_0</code>, <code>ps_6_0</code>, <code>cs_6_0</code>, mesh <code>ms_6_5</code>, or ray library <code>lib_6_3</code>.</p>
+          <p>D3D12 jobs emit DXIL. Vulkan jobs add <code>-spirv</code>, <code>-fspv-target-env=vulkan1.3</code> by default, ray-tracing extension flags where needed, and register-space-zero shifts <code>t=0</code>, <code>s=128</code>, <code>b=256</code>, and <code>u=384</code>. Custom common, DXIL, and SPIR-V arguments are appended deterministically. CMake may provide the default executable path, but it does not enumerate or compile registered application permutations.</p>
+          <p><code>FArdaShaderCompilerConfiguration::mSourceRoot</code> is only a fallback prepended to a compiler job's relative, non-virtual source stem. A source stem beginning with <code>/</code> is resolved through the frozen virtual-source manifest instead, so normal registered application shaders should use a virtual source path plus <code>AddShaderSourceDirectoryMapping</code> or <code>AddShaderSourceDirectory</code>. Do not confuse this compiler fallback with ARDGExample's <code>--shader-source</code>: that command-line option selects the physical directory mapped to the example's virtual shader root.</p>
 
-&lt;build&gt;/.../ARDGExample/Shaders/
-├─ TerrainGenerateCS.dxil
-├─ TerrainGenerateCS.spv
-├─ TerrainVS.dxil
-├─ TerrainVS.spv
-├─ TerrainPS.dxil
-└─ TerrainPS.spv
+          <h3>Persistent sidecar cache and atomic publication</h3>
+          <p>The <a class="term" data-term="shader-artifact-cache" href="../glossary.html#term-shader-artifact-cache">shader artifact cache</a> stores each <code>.dxil</code> or <code>.spv</code> file beside a 16-hex-digit <code>.arda-key</code> sidecar. A current key plus a non-empty artifact is a cross-process-execution cache hit. Publishing uses process-unique temporary output, key, and log files, then atomic replacement with rollback backups so readers do not observe a deliberately half-published pair. Same-process writers to one output are serialized; cross-process exclusion is best effort.</p>
+          <p>Development defaults compile missing and stale artifacts in non-<code>NDEBUG</code> builds; release defaults disable both. Legacy bytecode without a sidecar is accepted. In bytecode-only policy, existing artifacts are accepted without computing a current key, while missing artifacts fail. Keep deployed shipping bytes immutable and configure <code>LoadOnly</code> when the compiler must never run.</p>
 
-&lt;ARDGExample executable directory&gt;/
-├─ ARDGExample[.exe]
-├─ TerrainGenerateCS.dxil
-├─ TerrainGenerateCS.spv
-└─ ...all other declared DXIL and SPIR-V outputs</code></pre>
-          <p>The exact intermediate build prefix depends on the generator and root binary directory. The important runtime rule is simpler: the example's post-build step copies every declared artifact beside the executable, and the application passes that executable directory to the global shader map. The runtime looks for <code>&lt;OutputStem&gt;.dxil</code> on D3D12 and <code>&lt;OutputStem&gt;.spv</code> on Vulkan.</p>
-
-          <h3>Stage profile, entry point, and output stem</h3>
-          <p>A compiler invocation must agree with the corresponding <a href="api-reference.html#api-arda-backend-fardashadertype-16467199"><code>arda::backend::FArdaShaderType</code></a>. The source filename identifies the HLSL compilation unit; <code>-T</code> selects its stage profile; <code>-E</code> selects the entry point; and <code>-Fo</code> names the artifact from the registered output stem.</p>
-          <pre><code>Entry point                  DXC profile   Output stem
-GenerateNoiseHeightmapCS     cs_6_0        TerrainGenerateCS
-ErodeHeightmapCS             cs_6_0        TerrainErodeCS
-TriangulateTerrainCS         cs_6_0        TerrainTriangulateCS
-TerrainVS                    vs_6_0        TerrainVS
-TerrainPS                    ps_6_0        TerrainPS
-TerrainOverlayVS             vs_6_0        TerrainOverlayVS
-TerrainOverlayPS             ps_6_0        TerrainOverlayPS</code></pre>
-          <p>Those names match the <code>ARDA_IMPLEMENT_GLOBAL_SHADER</code> declarations in <code>Source/ArdaTests/ARDGExample/Private/ArdaTerrainRenderer.cpp</code> and the custom commands in the example target. Changing an entry point, profile, or output stem on only one side produces a missing artifact, shader-creation failure, or an identity that loads the wrong code.</p>
-
-          <h3>Representative DXIL command</h3>
-          <p>This is the example's compute form. Vertex and pixel variants replace <code>cs_6_0</code> with <code>vs_6_0</code> or <code>ps_6_0</code> and select their own entry point and output stem.</p>
-          <pre><code>"${ARDASHIR_DXC_EXECUTABLE}" -nologo \
-  -T cs_6_0 \
-  -E GenerateNoiseHeightmapCS \
-  -Fo "${SHADER_OUTPUT_DIR}/TerrainGenerateCS.dxil" \
-  "${SHADER_SOURCE}"</code></pre>
-          <p>The output contract is exact: an output stem of <code>TerrainGenerateCS</code> becomes <code>TerrainGenerateCS.dxil</code>. The global shader map does not search alternate names or compile missing files.</p>
-
-          <h3>Representative Vulkan SPIR-V command</h3>
-          <pre><code>"${ARDASHIR_DXC_EXECUTABLE}" -nologo \
-  -spirv \
-  -fspv-target-env=vulkan1.3 \
-  -fvk-t-shift 0 0 \
-  -fvk-s-shift 128 0 \
-  -fvk-b-shift 256 0 \
-  -fvk-u-shift 384 0 \
-  -T cs_6_0 \
-  -E GenerateNoiseHeightmapCS \
-  -Fo "${SHADER_OUTPUT_DIR}/TerrainGenerateCS.spv" \
-  "${SHADER_SOURCE}"</code></pre>
-          <p><code>-spirv</code> changes DXC's output format and <code>-fspv-target-env=vulkan1.3</code> sets the Vulkan 1.3 SPIR-V target environment. The four shifts apply to register space 0: texture/SRV registers begin at binding 0, samplers at 128, constant buffers at 256, and UAVs at 384. Therefore <code>t3</code> maps to Vulkan binding 3, <code>s2</code> to 130, <code>b0</code> to 256, and <code>u1</code> to 385 in descriptor set/space 0. This separation prevents HLSL register classes that reuse the same numeric slot from colliding in Vulkan's unified binding-number namespace.</p>
-          <aside class="callout warning">
-            <h3>Register shifts are part of the ABI</h3>
-            <p>Do not change the shifts independently of the Vulkan runtime binding convention. ArdaBackend metadata continues to describe logical HLSL slots and spaces; the compiler and RHI backend must apply a compatible translation. Validate more register spaces explicitly if a production shader uses them—the repository flags shown here configure only space 0.</p>
-          </aside>
-
-          <h3>CMake outputs, dependencies, and packaging</h3>
-          <pre><code>set(SHADER_OUTPUTS
-    "${SHADER_OUTPUT_DIR}/TerrainGenerateCS.dxil"
-    "${SHADER_OUTPUT_DIR}/TerrainGenerateCS.spv"
-    # ...every other entry-point/backend output
-)
-
-add_custom_command(
-    OUTPUT ${SHADER_OUTPUTS}
-    COMMAND "${CMAKE_COMMAND}" -E make_directory "${SHADER_OUTPUT_DIR}"
-    COMMAND "${ARDASHIR_DXC_EXECUTABLE}" ...DXIL arguments...
-    COMMAND "${ARDASHIR_DXC_EXECUTABLE}" ...SPIR-V arguments...
-    DEPENDS "${SHADER_SOURCE}"
-    COMMENT "Compiling ARDG terrain example shaders"
-    VERBATIM
-)
-
-add_custom_target(ARDGExampleShaders DEPENDS ${SHADER_OUTPUTS})
-add_dependencies(ARDGExample ARDGExampleShaders)
-
-add_custom_command(TARGET ARDGExample POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-        ${SHADER_OUTPUTS} "$&lt;TARGET_FILE_DIR:ARDGExample&gt;"
-    VERBATIM
-)</code></pre>
-          <p><code>OUTPUT</code> gives CMake concrete files for incremental scheduling. The custom target depends on those files, the executable depends on the custom target, and <code>copy_if_different</code> packages both backend variants without rewriting unchanged destination files. Listing both extensions allows one executable directory to serve either backend; <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-initialize-4ea3e035"><code>arda::backend::FArdaGlobalShaderMap::Initialize</code></a> chooses the expected extension from the active device context.</p>
-
-          <h3>Incremental includes and compiler changes</h3>
-          <p>The current <code>ARDGExampleShaders</code> command declares only <code>ArdaTerrain.hlsl</code> in <code>DEPENDS</code>. That is sufficient today because the example is a single source file, but it is not a generic transitive include scanner. When production HLSL uses includes, add every resolved include to <code>DEPENDS</code>, generate a dependency file consumed by CMake where supported, or run a deterministic include scanner. Also make the pinned DXC executable or a compiler-version stamp an input if changing the compiler must invalidate existing artifacts automatically.</p>
-          <p>Keep one CMake <code>OUTPUT</code> entry for every <code>&lt;OutputStem&gt;.&lt;backend extension&gt;</code>. If a command creates an undeclared side output, incremental builds and clean rules cannot reason about it reliably. If a declared output is removed from the command list but remains packaged from an old build, a clean-package CI job should expose the stale file.</p>
-
-          <h3>Diagnostics and ABI validation</h3>
-          <ul>
-            <li>A nonzero DXC exit fails the custom command. Preserve compiler stdout/stderr in CI and print the source, profile, entry point, backend flags, and output path around failures.</li>
-            <li><code>VERBATIM</code> preserves argument boundaries, especially paths containing spaces; <code>-nologo</code> only reduces noise and does not turn warnings into errors.</li>
-            <li>Run the repository's <code>ARDGExample.Vulkan</code> test and, on Windows, <code>ARDGExample.D3D12</code>. Each launches one hidden frame and exercises artifact loading and native pipeline creation.</li>
-            <li>Inspect DXIL and SPIR-V reflection in CI to compare stage, entry point, resource kind, logical register, space, array count, and push-constant size with authored metadata. The example target does not currently automate this comparison.</li>
-            <li>Validate SPIR-V with tooling compatible with the Vulkan 1.3 target and inspect remapped bindings after the four shifts. Successful DXC output alone does not prove descriptor-layout compatibility.</li>
-            <li>For value data, combine reflection checks with C++ <code>static_assert</code> checks for <code>sizeof</code>, <code>alignof</code>, and important <code>offsetof</code> values. Binary reflection cannot prove arbitrary C++ packing by itself.</li>
-            <li>Test from a clean build and clean executable directory. The repository has no generic shader manifest; declared outputs, explicit dependencies, copied files, runtime diagnostics, and backend smoke tests are the evidence chain.</li>
-          </ul>
+          <h3>Optional explicit cook</h3>
+          <p><code>CompileRegisteredShaderArtifacts(output, backends)</code> is an explicit cook, not normal startup. It force-compiles every selected job for the requested backend set into a staging directory, then transactionally publishes artifacts, sidecars, and <code>ArdaShaderManifest.json</code>. <code>ARDGExample --arda-cook-shaders &lt;output-directory&gt;</code> invokes this path for both D3D12 and Vulkan and exits without creating a device. Use <code>--shader-source &lt;directory&gt;</code> when the physical directory mapped to ARDGExample's virtual shader root is elsewhere; this option does not set the compiler's <code>mSourceRoot</code> fallback.</p>
+          <pre><code>ARDGExample --arda-cook-shaders CookedShaders \
+    --shader-source path/to/ARDGExample/Shaders</code></pre>
+          <p>For normal development, choose mode and cache explicitly:</p>
+          <pre><code>ARDGExample --backend vulkan \
+    --shader-mode ondemand \
+    --shader-cache path/to/user/cache \
+    --shader-source path/to/ARDGExample/Shaders</code></pre>
+          <p>Accepted mode spellings are exactly <code>startup</code>, <code>ondemand</code>, and <code>load-only</code>. A cook bypasses cache compatibility and rewrites all selected jobs; startup ensure preserves valid <code>.arda-key</code> hits and writes no manifest.</p>
         </section>
 
         <section id="stages">
@@ -441,12 +359,12 @@ if (!status)
         </section>
 
         <section id="global-map">
-          <h2>Global shader map lifetime and idempotence</h2>
-          <p><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-b7046fe0"><code>arda::backend::FArdaGlobalShaderMap</code></a> is the bridge from committed, backend-neutral type records to device-bound shaders and layouts. Initialization is all-or-nothing: it commits registrations, loads each expected artifact, creates an RHI shader, creates metadata-derived layouts, then publishes the completed vector.</p>
+          <h2>Global shader map modes, lifetime, and idempotence</h2>
+          <p><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-b7046fe0"><code>arda::backend::FArdaGlobalShaderMap</code></a> is the bridge from committed, backend-neutral type records to device-bound shaders and layouts. It snapshots every selected registered permutation. <code>LoadOnly</code> and <code>Startup</code> load all slots eagerly; <code>OnDemand</code> publishes unloaded slots and resolves one under the map mutex when it is first requested.</p>
           <pre><code>arda::backend::FArdaGlobalShaderMap shaderMap;
 if (!shaderMap.Initialize(
         arda::backend::GetDeviceContext(),
-        std::filesystem::path("CompiledShaders")))
+        arda::backend::GetBackendConfiguration().mShaderCacheDirectory))
 {
     for (const auto&amp; diagnostic : shaderMap.GetDiagnostics())
         LogShaderFailure(diagnostic.mShaderType, diagnostic.mMessage);
@@ -460,19 +378,19 @@ if (!blur)
 const auto&amp; shader = blur-&gt;GetShader();
 const auto&amp; layouts = blur-&gt;GetBindingLayouts();
 // Feed shader and layouts into a pipeline initializer.</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-initialize-4ea3e035"><code>arda::backend::FArdaGlobalShaderMap::Initialize</code></a> is idempotent and pointer-stable only for the same device, backend, and artifact directory. A repeated identical call returns success without recreating objects. A successful map rejects changed inputs with <code>ResetRequired</code>. Call <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-reset-b230f2a3"><code>arda::backend::FArdaGlobalShaderMap::Reset</code></a> before device recovery, backend switching, or changing artifact roots.</p>
+          <p>The <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-initialize-17dd8883"><code>Initialize(DeviceContext)</code></a> overload uses the configured <code>mShaderCacheDirectory</code>; the <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-initialize-4ea3e035"><code>Initialize(DeviceContext, ShaderDirectory)</code></a> overload uses its explicit directory instead. Initialization is idempotent and pointer-stable only for the same device, backend, and resolved directory. A successful map rejects changed inputs with <code>ResetRequired</code>. Call <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-reset-b230f2a3"><code>Reset</code></a> before device recovery, backend switching, or changing artifact roots.</p>
           <p>The map retains the device, shader references, layouts, and instances. Code that keeps pointers returned by <code>Find</code> must not outlive the map or cross <code>Reset</code>. Reset the pipeline cache before or with the shader map if cached PSOs retain those shader objects.</p>
         </section>
 
         <section id="deployment">
           <h2>Cross-platform artifact deployment</h2>
-          <p>The artifact directory is flat with respect to shader types: runtime forms <code>ShaderDirectory / (OutputStem + extension)</code>. It does not mirror the virtual source tree. The same logical shader registry can initialize against either backend when the package contains the corresponding output stems with the correct extension.</p>
+          <p>The artifact directory is flat with respect to shader types; it does not mirror the virtual source tree. For a shader with exactly one permutation, runtime forms <code>ShaderDirectory / (&lt;OutputStem&gt; + backend extension)</code>. For a shader with multiple permutations, every encoded ID—including zero—forms <code>ShaderDirectory / (&lt;OutputStem&gt;_P&lt;PermutationId&gt; + backend extension)</code>.</p>
           <ul>
-            <li><strong>D3D12:</strong> deploy DXIL as <code>&lt;OutputStem&gt;.dxil</code>.</li>
-            <li><strong>Vulkan:</strong> deploy SPIR-V as <code>&lt;OutputStem&gt;.spv</code>.</li>
+            <li><strong>D3D12:</strong> append <code>.dxil</code>, for example <code>BlurCS.dxil</code> or <code>BlurCS_P0.dxil</code>.</li>
+            <li><strong>Vulkan:</strong> append <code>.spv</code>, for example <code>BlurCS.spv</code> or <code>BlurCS_P0.spv</code>.</li>
             <li><strong>Both backends in one install:</strong> use separate backend directories or package both extensions; select the directory consistently at initialization.</li>
             <li><strong>Case-sensitive targets:</strong> preserve output-stem case exactly even if Windows development appears forgiving.</li>
-            <li><strong>Shipping builds:</strong> package artifacts as immutable content and verify the explicitly declared output set before backend startup; the repository does not currently generate a generic shader manifest.</li>
+            <li><strong>Shipping builds:</strong> package cooked artifacts as immutable content, disable missing/outdated compilation, and select <code>LoadOnly</code>; the explicit cook emits <code>ArdaShaderManifest.json</code>.</li>
           </ul>
           <p>DXIL and SPIR-V generated from the same HLSL are not guaranteed to have identical layout behavior unless compiler flags and declarations enforce it. Record target environment, shader model, layout mode, optimization level, and compiler revision. Test artifacts on actual vendor drivers; successful offline compilation does not guarantee native pipeline creation.</p>
         </section>
@@ -485,14 +403,15 @@ const auto&amp; layouts = blur-&gt;GetBindingLayouts();
           <p>It permits local declarations while removing static initialization order from final publication. The cost is an explicit commit phase and startup-wide failure: one bad global shader prevents the map from initializing. That fail-fast behavior is preferable to discovering a missing core shader in the middle of a frame.</p>
           <h3>Operational checklist</h3>
           <ul>
-            <li>Compile offline and fail CI on warnings, reflection mismatches, or missing backend variants.</li>
-            <li>Key the shader build cache by transitive includes and complete compiler configuration.</li>
+            <li>Cook explicitly in CI and fail on compiler diagnostics, reflection mismatches, or missing backend variants.</li>
+            <li>Keep the persistent key schema conservative: Arda hashes compiler bytes, job inputs, frozen virtual sources, and local include roots.</li>
             <li>Use stable virtual roots per project or plugin; never encode checkout-specific paths in shader identity.</li>
             <li>Make output stems globally unique within an artifact directory.</li>
             <li>Keep parameter blocks small and split by update frequency and visibility.</li>
             <li>Prefer narrow stage visibility until a layout is intentionally shared.</li>
             <li>Add C++ static assertions and generated reflection tests for every value block crossing the CPU/GPU ABI.</li>
             <li>Log shader type, virtual source, physical source, artifact path, backend, stage, and device validation output together.</li>
+            <li>Choose <code>Startup</code> when all selected shaders must be ready before device publication; choose <code>OnDemand</code> only when first-use latency is acceptable.</li>
             <li>Initialize global shaders before precaching the <a href="pipelines.html">pipeline-state working set</a>.</li>
             <li>Exercise startup on clean packages so developer-only source or artifact paths cannot mask deployment gaps.</li>
           </ul>
@@ -519,6 +438,9 @@ const auto&amp; layouts = blur-&gt;GetBindingLayouts();
             <dt><code>BytecodeMissing</code>, <code>BytecodeEmpty</code>, or <code>BytecodeReadFailed</code></dt>
             <dd>Compare diagnostic path with output stem and active extension. Verify packaging, permissions, case, and atomic file publication. The source manifest being valid does not imply artifacts exist.</dd>
 
+            <dt><code>CompilerUnavailable</code>, <code>ArtifactOutdated</code>, or <code>CompilationFailed</code></dt>
+            <dd>Verify the explicit compiler path, build default, or <code>ARDASHIR_DXC_EXECUTABLE</code>; inspect captured DXC output and the diagnostic's type, backend, permutation, source, and output. An outdated sidecar is rebuilt only when policy permits it.</dd>
+
             <dt><code>ShaderCreationFailed</code></dt>
             <dd>I/O succeeded but the device rejected the artifact. Verify backend format, entry point, stage/profile, target environment, compiler version, supported features, and native validation-layer output.</dd>
 
@@ -536,8 +458,9 @@ const auto&amp; layouts = blur-&gt;GetBindingLayouts();
         <section id="summary">
           <h2>Chapter summary</h2>
           <ul>
-            <li>ArdaBackend consumes offline DXIL or SPIR-V; source, artifacts, RHI shaders, and PSOs have distinct identities and lifetimes.</li>
-            <li>The repository's <code>ARDGExampleShaders</code> target demonstrates explicit dual-backend outputs, DXC stage/entry-point mapping, Vulkan 1.3 register shifts, target dependencies, and post-build packaging.</li>
+            <li>ArdaBackend can ensure registered DXIL or SPIR-V through an external DXC process; source, artifacts, RHI shaders, and PSOs still have distinct identities and lifetimes.</li>
+            <li><code>LoadOnly</code> eagerly loads deployed bytes, <code>Startup</code> ensures all selected permutations before device creation, and <code>OnDemand</code> compiles and creates a slot on first use.</li>
+            <li>Persistent <code>.arda-key</code> sidecars validate deterministic compiler/source/job inputs across executions; explicit cook additionally emits a manifest.</li>
             <li>The frozen virtual namespace makes source lookup portable and collision failures deterministic.</li>
             <li>Deferred static nodes become usable only after deterministic, all-at-once commit.</li>
             <li>Authored metadata describes C++ members and bindings but does not reflect or validate the binary shader ABI.</li>

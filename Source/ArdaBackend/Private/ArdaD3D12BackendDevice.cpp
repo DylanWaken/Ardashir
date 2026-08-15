@@ -386,7 +386,9 @@ namespace arda::backend
                     return EArdaInitializeResult::Failure;
                 }
                 mArdaDevice = rhi::private_impl::CreateArdaNvrhiDevice(
-                    mDevice, mLifetime);
+                    mDevice, mLifetime, EArdaBackendType::D3D12,
+                    Configuration.mPipelineCacheDirectory,
+                    Configuration.mMessageCallback);
                 if (!mArdaDevice)
                 {
                     mError = "Failed to create the opaque Arda D3D12 device.";

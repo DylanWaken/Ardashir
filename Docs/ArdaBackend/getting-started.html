@@ -76,7 +76,7 @@
           <ul>
             <li>distinguish a graphics API backend, physical adapter, logical device, and command queue;</li>
             <li>select D3D12 or Vulkan without confusing platform defaults with guaranteed availability;</li>
-            <li>configure validation and diagnostic callbacks with correct lifetime;</li>
+            <li>configure shader timing and writable shader/pipeline cache paths alongside validation and diagnostics;</li>
             <li>choose between headless and presentation initialization;</li>
             <li>explain each initialization gate and its rollback behavior;</li>
             <li>retain the device safely and tear down renderer-owned objects in dependency order; and</li>
@@ -137,7 +137,7 @@
 
         <section id="configuration">
           <h2>Configuration strategy</h2>
-          <p><a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> replaces process-wide configuration before a backend device exists. The complete configuration contains only the backend, validation flag, and message callback. Keep product policy outside the structure and derive these fields once at startup.</p>
+          <p><a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> replaces process-wide configuration before a backend device exists. It selects backend and device source, validation and diagnostics, registered-shader timing, and persistent shader/pipeline cache directories. Relative cache paths are resolved to stable absolute paths when accepted. The shader path must be non-empty; an empty pipeline path explicitly disables native pipeline-cache disk I/O.</p>
 
           <h3>Validation policy</h3>
           <p>Validation defaults to enabled. Keep it enabled in development, continuous integration smoke tests, and reproducible diagnostic builds. Production shipping policy may disable it for performance and external-dependency reasons, but a validation-enabled build should remain available for field reproduction.</p>
@@ -155,8 +155,15 @@
     config.mBackend = backend;
     config.mbEnableValidation = enableValidation;
     config.mMessageCallback = &amp;diagnostics;
+    config.mShaderCompilationMode =
+        arda::backend::EArdaShaderCompilationMode::Startup;
+    config.mShaderCacheDirectory =
+        GetWritableUserCache() / "Ardashir" / "shaders";
+    config.mPipelineCacheDirectory =
+        GetWritableUserCache() / "Ardashir" / "pipelines";
     return config;
 }</code></pre>
+          <p><code>LoadOnly</code> never invokes DXC and eagerly loads deployed bytes. <code>Startup</code> ensures all selected active-backend permutations before device creation, preserving valid <code>.arda-key</code> hits. <code>OnDemand</code> defers compilation, file loading, and shader/layout creation until first lookup. Configure <code>FArdaShaderCompilerConfiguration</code> separately when either compiling mode may need an external DXC executable.</p>
 
           <aside class="callout warning">
             <h3>Serialize lifecycle policy</h3>
@@ -176,8 +183,10 @@
             <li><strong>Acquire shader-directory use.</strong> Initialization ensures that the registry is available for a live backend.</li>
             <li><strong>Scan and freeze shader sources.</strong> Virtual mappings become an immutable manifest; collisions and invalid paths fail before device publication.</li>
             <li><strong>Commit shader types.</strong> Deferred global-shader registrations are validated into a deterministic set.</li>
+            <li><strong>Ensure startup shaders when selected.</strong> Every active-backend registered permutation is checked against its persistent sidecar and compiled if policy allows. Failure occurs before a native device is created.</li>
             <li><strong>Create the private backend.</strong> D3D12 or Vulkan implementation state is allocated.</li>
             <li><strong>Create adapter/device/queues.</strong> Required native capabilities are checked and the opaque RHI device is constructed.</li>
+            <li><strong>Load native pipeline-cache data.</strong> The device reads the backend-named blob from the configured pipeline directory; invalid or driver-rejected data warns and falls back to an empty cache.</li>
             <li><strong>Create presentation state, if requested.</strong> The window surface and swap chain must succeed before publication.</li>
             <li><strong>Publish.</strong> Device, selected backend, and queue capabilities become the stable <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>; initialized state is released atomically afterward.</li>
           </ol>
@@ -198,6 +207,9 @@ int RunHeadlessGpuJob()
     FArdaBackendConfiguration config;
     config.mBackend = DefaultBackend;
     config.mbEnableValidation = true;
+    config.mShaderCompilationMode = EArdaShaderCompilationMode::OnDemand;
+    config.mShaderCacheDirectory = GetWritableUserCache() / "MyTool" / "shaders";
+    config.mPipelineCacheDirectory = GetWritableUserCache() / "MyTool" / "pipelines";
 
     if (!ConfigureBackend(config))
         return 1;
@@ -276,7 +288,8 @@ arda::rhi::FArdaRHIDeviceRef device = arda::backend::GetDevice();
           </figure>
 
           <h3>Why references can outlive shutdown</h3>
-          <p>The process context owns one intrusive device reference. <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a> waits for the private backend to become idle, clears the context reference and queue capabilities, resets private backend state, and releases shader-directory use. Other copied <a class="term" data-term="intrusive-reference-counting" href="../glossary.html#term-intrusive-reference-counting">intrusive references</a> remain owners. Clearing a global slot is therefore not the same operation as forcibly invalidating every object.</p>
+          <p>The process context owns one intrusive device reference. <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a> first flushes a dirty backend-native pipeline cache and disables persistence, then clears the context reference and queue capabilities, resets private backend state, and releases shader-directory use. Other copied <a class="term" data-term="intrusive-reference-counting" href="../glossary.html#term-intrusive-reference-counting">intrusive references</a> remain owners and retain the backend or external lifetime token. Clearing a global slot is therefore not the same operation as forcibly invalidating every object.</p>
+          <p>Flush-and-disable is essential for retained references: after shutdown they may still create resources and pipelines, but they cannot write another cache blob through a path or diagnostic callback owned by the retired process configuration.</p>
 
           <h3>Production teardown sequence</h3>
           <ol>
@@ -284,9 +297,9 @@ arda::rhi::FArdaRHIDeviceRef device = arda::backend::GetDevice();
             <li>Join or quiesce threads that can access renderer or RHI objects.</li>
             <li>Stop the frame loop and wait for swap-chain operations or device work to become idle.</li>
             <li>Destroy swap chains and presentation framebuffers.</li>
-            <li>Reset global shader maps, pipeline caches, render-graph pools, and renderer-owned resources.</li>
+            <li>Reset global shader maps, in-memory pipeline caches, render-graph pools, and renderer-owned resources.</li>
+            <li>Call <code>ShutdownBackend()</code> from the lifecycle owner so native pipeline data is atomically flushed and persistence is disabled.</li>
             <li>Release retained command lists, resource references, and the caller's device reference.</li>
-            <li>Call <code>ShutdownBackend()</code> from the lifecycle owner.</li>
             <li>Destroy the diagnostic callback only after no backend messages can arrive.</li>
           </ol>
 
@@ -317,7 +330,8 @@ arda::rhi::FArdaRHIDeviceRef device = arda::backend::GetDevice();
           <h2>Production startup checklist</h2>
           <ul>
             <li>Backend choice and fallback policy are explicit and logged.</li>
-            <li>Matching DXIL or SPIR-V shader artifacts are deployed.</li>
+            <li>Shader mode is explicit; deployed bytes exist for <code>LoadOnly</code>, or an external DXC path and writable user cache exist when compilation is allowed.</li>
+            <li>The pipeline cache uses a writable per-user directory, or an empty path intentionally disables persistence.</li>
             <li>Diagnostic callback storage outlives the backend.</li>
             <li>Validation policy is derived from the build/run profile, not scattered call sites.</li>
             <li>Virtual shader directories are registered before initialization.</li>
@@ -335,10 +349,10 @@ arda::rhi::FArdaRHIDeviceRef device = arda::backend::GetDevice();
           <h2>Chapter summary</h2>
           <ul>
             <li>The backend chooses an implementation; the adapter is physical capability; the logical device creates objects; queues execute ordered submissions.</li>
-            <li>Configuration is process-wide and must be complete before initialization.</li>
+            <li>Configuration is process-wide and includes shader timing plus persistent shader and pipeline cache paths.</li>
             <li>Headless and presentation startup share prerequisite gates but have different outputs and result types.</li>
             <li>The live device context is published only after all required work succeeds.</li>
-            <li>Shutdown clears process ownership but copied intrusive references can retain objects, so deliberate reverse-order teardown remains essential.</li>
+            <li>Shutdown atomically flushes and disables native pipeline persistence before clearing process ownership; copied intrusive references can still retain objects and backend lifetime.</li>
           </ul>
 
           <h3>Review and checkpoint questions</h3>

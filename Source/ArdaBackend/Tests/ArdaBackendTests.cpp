@@ -286,6 +286,60 @@ TEST(ArdaBackend, ExposesProcessWideConfigurationAndContext)
     EXPECT_STREQ(GetModuleName(), "ArdaBackend");
 }
 
+TEST(ArdaBackend, ValidatesAndResolvesShaderCacheConfiguration)
+{
+    using namespace arda::backend;
+
+    ShutdownBackend();
+    FArdaBackendConfiguration Configuration;
+    Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::Startup;
+    Configuration.mShaderCacheDirectory.clear();
+    EXPECT_FALSE(ConfigureBackend(Configuration));
+    EXPECT_NE(
+        GetBackendError().find("must not be empty"),
+        eastl::string::npos);
+
+    Configuration.mShaderCompilationMode =
+        EArdaShaderCompilationMode::OnDemand;
+    Configuration.mShaderCacheDirectory =
+        std::filesystem::path(".arda-test-cache") / "shaders";
+    Configuration.mPipelineCacheDirectory =
+        std::filesystem::path(".arda-test-cache") / "pipelines";
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    EXPECT_EQ(
+        GetBackendConfiguration().mShaderCompilationMode,
+        EArdaShaderCompilationMode::OnDemand);
+    EXPECT_TRUE(GetBackendConfiguration().mShaderCacheDirectory.is_absolute());
+    EXPECT_EQ(
+        GetBackendConfiguration().mShaderCacheDirectory.filename(),
+        "shaders");
+    EXPECT_TRUE(GetBackendConfiguration().mPipelineCacheDirectory.is_absolute());
+    EXPECT_EQ(
+        GetBackendConfiguration().mPipelineCacheDirectory.filename(),
+        "pipelines");
+
+    Configuration.mPipelineCacheDirectory.clear();
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    EXPECT_TRUE(GetBackendConfiguration().mPipelineCacheDirectory.empty());
+
+    const auto NonDirectoryPath =
+        std::filesystem::temp_directory_path() /
+        "arda-pipeline-cache-path-validation.tmp";
+    std::error_code Error;
+    std::filesystem::remove(NonDirectoryPath, Error);
+    {
+        std::ofstream File(NonDirectoryPath, std::ios::binary);
+        ASSERT_TRUE(File) << NonDirectoryPath.string();
+        File << "not a directory";
+    }
+    Configuration.mPipelineCacheDirectory = NonDirectoryPath;
+    EXPECT_FALSE(ConfigureBackend(Configuration));
+    EXPECT_NE(
+        GetBackendError().find("not a directory"),
+        eastl::string::npos);
+    std::filesystem::remove(NonDirectoryPath, Error);
+}
+
 TEST(ArdaBackend, ReportsQueueAvailabilityByArdaQueueType)
 {
     arda::backend::FArdaQueueCapabilities Capabilities;

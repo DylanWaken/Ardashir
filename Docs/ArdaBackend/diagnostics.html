@@ -98,7 +98,7 @@
           <p><a href="api-reference.html#api-arda-rhi-fardarhistatus-a19f9625"><code>FArdaRHIStatus</code></a> reports operations that do not return a resource. <a href="api-reference.html#api-arda-rhi-tardarhiresult-3000786e"><code>TArdaRHIResult&lt;T&gt;</code></a> combines status with a value such as a command list, texture, shader, or pipeline. Test the result before touching <code>mValue</code>; retain both the result code and message.</p>
           <p>Typical RHI classes are invalid argument, invalid state/order, unsupported capability, wrong-device ownership, native creation failure, and missing resource. These are operation outcomes, not assertion conditions.</p>
           <h3>3. Shader directories and registration</h3>
-          <p>Shader setup has distinct phases: virtual directory mapping, manifest freeze, type registration, and artifact loading. Directory status explains malformed or duplicate virtual roots, physical path problems, and mutation after the registry is in use. Registration failures should include shader type and virtual source, not just “shader failed.”</p>
+          <p>Shader setup has distinct phases: virtual directory mapping, manifest freeze, type/permutation registration, optional external compilation, persistent sidecar publication, and artifact loading. Compiler diagnostics preserve error code, shader type, backend, permutation, source, output, and captured DXC text. Directory status explains malformed roots and freeze failures; registration failures should include shader type and virtual source, not just “shader failed.”</p>
           <p>Check directory configuration before blaming the compiler or native API. A missing virtual-to-physical mapping prevents the system from identifying the intended source long before bytecode creation.</p>
           <h3>4. Global shader map</h3>
           <p><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-getdiagnostics-195019a4"><code>FArdaGlobalShaderMap::GetDiagnostics()</code></a> retains typed failures from the most recent initialization. <a href="api-reference.html#api-arda-backend-eardaglobalshadermaperror-8d8515b2"><code>EArdaGlobalShaderMapError</code></a> separates registration, invalid device, missing/empty/unreadable bytecode, shader creation, layout creation, and reset-required cases.</p>
@@ -299,9 +299,9 @@ if (!status)
           <ol>
             <li>Inspect the map diagnostic code for <code>BytecodeMissing</code>, not just the final false return.</li>
             <li>Record shader type, virtual/physical source, expected artifact path, and backend extension.</li>
-            <li>Confirm the deployment contains <code>.dxil</code> for D3D12 or <code>.spv</code> for Vulkan as selected by the backend.</li>
+            <li>Confirm the configured shader cache contains <code>.dxil</code> for D3D12 or <code>.spv</code> for Vulkan and inspect the adjacent <code>.arda-key</code> when present.</li>
             <li>Verify directory mapping and registration were finalized before map initialization.</li>
-            <li>Fix build/deployment generation; do not silently substitute another backend’s artifact.</li>
+            <li>In <code>LoadOnly</code>, fix deployment. In <code>Startup</code>/<code>OnDemand</code>, verify compiler resolution and missing/outdated rebuild policy; do not substitute another backend’s artifact.</li>
           </ol>
         </section>
         <section id="injection">
@@ -310,10 +310,11 @@ if (!status)
           <ul>
             <li>select an unavailable backend/runtime in a controlled environment;</li>
             <li>provide duplicate or invalid virtual shader directories;</li>
-            <li>remove, empty, truncate, or deny access to a compiled shader artifact;</li>
+            <li>remove, empty, truncate, or deny access to a shader artifact or its <code>.arda-key</code>; configure an invalid DXC path or disable an allowed rebuild;</li>
             <li>initialize a shader map with the wrong device or without the required reset;</li>
             <li>submit descriptors with invalid formats, dimensions, samples, or cross-device resources;</li>
             <li>force PSO creation failure and set a small diagnostic retention limit;</li>
+            <li>truncate or cross-copy <code>d3d12.pso-cache</code> and <code>vulkan.pso-cache</code>, then verify warning plus empty-cache fallback;</li>
             <li>make log callbacks recurse once to verify the sink does not deadlock;</li>
             <li>exercise callback installation, reset, and owner destruction order;</li>
             <li>resize/minimize presentation repeatedly while validation is enabled;</li>
@@ -339,6 +340,7 @@ if (!status)
             <li>occupancy near configured limits plus misses can indicate eviction churn.</li>
           </ul>
           <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecacheconfiguration-mmaxdiagnostics-9b16fc00"><code>mMaxDiagnostics</code></a> bounds retained PSO failures. A bounded history protects memory but can discard early evidence during a failure storm. Export promptly and rate-limit repeated reports by descriptor hash.</p>
+          <p>Renderer LRU statistics do not report native disk-cache hits. Treat startup warnings such as corrupt/wrong-backend blob, native cache rejection, wait-for-idle failure, oversized payload, or atomic save failure as a separate persistence signal. The implementation falls back to normal pipeline creation; record backend, adapter/driver, absolute cache path, file size, and whether shutdown completed.</p>
           <h3>Descriptor cache and GPU timing</h3>
           <p><a href="api-reference.html#api-arda-rhi-iardarhidevice-getdescriptorcachestats-ce4916c3"><code>GetDescriptorCacheStats()</code></a> exposes lower-level descriptor-cache behavior. Timer queries measure GPU intervals; event queries and queue instances establish completion; markers label captures. Keep CPU wall-clock, queue delay, and GPU execution time distinct.</p>
           <h3>Sampling policy</h3>
@@ -375,7 +377,7 @@ if (!status)
         </section>
         <section id="summary">
           <h2>Summary</h2>
-          <p>Arda’s diagnostic system is layered: immediate status drives control flow; retained shader and PSO records preserve domain context; callbacks and structured logs report backend and native evidence; assertions enforce invariants; markers and captures connect asynchronous GPU execution to authored work. Good triage preserves the first failure and escalates without losing it.</p>
+          <p>Arda’s diagnostic system is layered: immediate status drives control flow; compiler, shader-map, and PSO records preserve domain context; callbacks report native pipeline-cache load/flush warnings; assertions enforce invariants; markers and captures connect asynchronous GPU execution to authored work. Good triage preserves the first failure and escalates without losing it.</p>
           <h3>Checkpoints</h3>
           <ol>
             <li>Why is <code>GetBackendError()</code> not a substitute for an RHI status?</li>

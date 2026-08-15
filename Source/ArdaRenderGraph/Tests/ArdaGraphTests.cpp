@@ -1516,6 +1516,7 @@ TEST(ArdaRenderGraph, RegisteredShaderBridgeUsesExplicitSlotsAndAllLayouts)
 
     FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = false;
+    Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
     if (!ConfigureBackend(Configuration) || !InitializeBackend())
         GTEST_SKIP() << GetBackendError().c_str();
 

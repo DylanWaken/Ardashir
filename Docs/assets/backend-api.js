@@ -9,7 +9,7 @@ window.ArdaBackendApi = {
     "namespace": "arda::backend / arda::rhi",
     "summary": "Public backend initialization, diagnostics, shader authoring, pipeline caching, presentation, and backend-neutral RHI API."
   },
-  "generatedFrom": "Source/ArdaBackend/Public (all 20 unique public headers)",
+  "generatedFrom": "Source/ArdaBackend/Public (all 22 unique public headers)",
   "headerProvenance": [
     "Source/ArdaBackend/Public/ArdaAssert.h",
     "Source/ArdaBackend/Public/ArdaBackend.h",
@@ -28,6 +28,8 @@ window.ArdaBackendApi = {
     "Source/ArdaBackend/Public/RHIWrappers/ArdaRHIResources.h",
     "Source/ArdaBackend/Public/RHIWrappers/ArdaRHITypes.h",
     "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h",
+    "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+    "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
     "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderDirectories.h",
     "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderParameters.h",
     "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h"
@@ -28065,12 +28067,13 @@ window.ArdaBackendApi = {
       "kind": "method",
       "component": "shaders",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] const FArdaGlobalShaderInstance* Find(const eastl::string& Name) const noexcept",
+      "signature": "[[nodiscard]] const FArdaGlobalShaderInstance* Find( const eastl::string& Name, uint32_t PermutationId = 0) const",
       "summary": "Finds a shader instance by registered name.",
-      "details": "Finds a shader instance by registered name. The operation is declared noexcept and must not propagate exceptions. The operation does not mutate the observable state of the object through this interface.",
+      "details": "Finds a shader instance by registered name and encoded permutation ID. In OnDemand mode, the first lookup of an unloaded stable slot ensures its artifact and creates its RHI shader and layouts before returning.",
       "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h",
       "params": [
-        "const eastl::string& Name"
+        "const eastl::string& Name",
+        "uint32_t PermutationId = 0"
       ],
       "returns": "The matching instance, or null.",
       "ownership": "Returns a non-owning pointer or reference into map-owned storage; it remains valid only until Reset, destruction, or another lifecycle-changing operation.",
@@ -28087,12 +28090,13 @@ window.ArdaBackendApi = {
       "kind": "method",
       "component": "shaders",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] const FArdaGlobalShaderInstance* Find(const FArdaShaderType& Type) const noexcept",
+      "signature": "[[nodiscard]] const FArdaGlobalShaderInstance* Find( const FArdaShaderType& Type, uint32_t PermutationId = 0) const",
       "summary": "Finds a shader instance by registered type.",
-      "details": "Finds a shader instance by registered type. The operation is declared noexcept and must not propagate exceptions. The operation does not mutate the observable state of the object through this interface.",
+      "details": "Finds a shader instance by registered type and encoded permutation ID. In OnDemand mode, the first lookup of an unloaded stable slot ensures its artifact and creates its RHI shader and layouts before returning.",
       "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h",
       "params": [
-        "const FArdaShaderType& Type"
+        "const FArdaShaderType& Type",
+        "uint32_t PermutationId = 0"
       ],
       "returns": "The matching instance, or null.",
       "ownership": "Returns a non-owning pointer or reference into map-owned storage; it remains valid only until Reset, destruction, or another lifecycle-changing operation.",
@@ -28130,14 +28134,14 @@ window.ArdaBackendApi = {
       "component": "shaders",
       "page": "api-reference.html",
       "signature": "[[nodiscard]] bool Initialize( const FArdaDeviceContext& DeviceContext, const std::filesystem::path& ShaderDirectory)",
-      "summary": "Loads every committed global shader.",
-      "details": "Commits shader registrations, loads every required backend-specific artifact, creates shaders and parameter binding layouts on the supplied device, and indexes the resulting instances. Repeating the same device context and directory is idempotent and pointer-stable; changing either after success requires Reset first.",
+      "summary": "Initializes the global shader map using an explicit artifact-directory override.",
+      "details": "Commits shader registrations and uses ShaderDirectory instead of the configured persistent backend shader cache. Behavior then follows the configured EArdaShaderCompilationMode: OnDemand preallocates pointer-stable slots but leaves them unloaded until lookup or enumeration; Startup and LoadOnly eagerly materialize every selected slot by loading backend-specific bytecode and creating its RHI shader and parameter binding layouts. Repeating the same device context, backend, and directory is idempotent and pointer-stable; changing any of them after success requires Reset first.",
       "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h",
       "params": [
         "const FArdaDeviceContext& DeviceContext",
         "const std::filesystem::path& ShaderDirectory"
       ],
-      "returns": "True when all global shaders were initialized successfully.",
+      "returns": "True when registration and policy-specific initialization succeed.",
       "ownership": "The map retains the RHI device, created shader references, binding layouts, directory, and instance storage until Reset or destruction. Returned instance pointers and references are non-owning views into that storage.",
       "errors": "Returns false and records diagnostics for registration failure, invalid device, missing, empty, or unreadable bytecode, shader or layout creation failure, or a required Reset.",
       "threading": "No concurrent mutation contract is declared; serialize Initialize and Reset with Find, Enumerate, diagnostics access, and device shutdown.",
@@ -30140,3 +30144,215 @@ window.ArdaBackendApi = {
     }
   ]
 };
+
+/*
+ * Current-source augmentation for runtime shader compilation, permutations,
+ * lazy global-shader loading, and persistent native pipeline caches.
+ * Existing records and anchors above remain unchanged.
+ */
+(function refreshCurrentBackendInventory(api) {
+  "use strict";
+
+  const compiler = "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h";
+  const compilerTypes = "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h";
+  const shaderType = "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h";
+  const shaderMap = "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h";
+  const device = "Source/ArdaBackend/Public/ArdaDevice.h";
+  const rhiDevice = "Source/ArdaBackend/Public/RHIWrappers/ArdaRHIDevice.h";
+  const rhiResources = "Source/ArdaBackend/Public/RHIWrappers/ArdaRHIResources.h";
+
+  function hash32(text) {
+    let value = 0x811c9dc5;
+    for (let index = 0; index < text.length; ++index) {
+      value ^= text.charCodeAt(index);
+      value = Math.imul(value, 0x01000193) >>> 0;
+    }
+    return value.toString(16).padStart(8, "0");
+  }
+
+  function slug(text) {
+    return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  function add(spec) {
+    const [name, qualifiedName, kind, signature, source, overrides = {}] = spec;
+    const semantic = `${qualifiedName}|${kind}|${signature}`;
+    const record = {
+      id: `api-${slug(qualifiedName)}-${hash32(semantic)}`,
+      name,
+      qualifiedName,
+      kind,
+      component: source.includes("RHIWrappers")
+        ? (source.endsWith("ArdaRHIDevice.h") ? "rhi-device" : "rhi-resources")
+        : (source.endsWith("ArdaDevice.h") ? "core" : "shaders"),
+      page: "api-reference.html",
+      signature,
+      summary: `Declares ${qualifiedName} in the current public backend API.`,
+      details: "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      source,
+      params: [],
+      returns: kind === "function" || kind === "method" || kind === "operator" || kind === "constructor"
+        ? "See the canonical signature and source contract."
+        : "Not applicable.",
+      ownership: "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      errors: "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      threading: "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      related: ["arda::backend", "arda::rhi"]
+    };
+    api.symbols.push(Object.assign(record, overrides));
+  }
+
+  const specs = [
+    // ArdaShaderCompiler.h: error model.
+    ["EArdaShaderCompileError", "arda::backend::EArdaShaderCompileError", "enum", "enum class EArdaShaderCompileError : uint8_t", compiler],
+    ["None", "arda::backend::EArdaShaderCompileError::None", "enumerator", "None", compiler],
+    ["RegistrationFailed", "arda::backend::EArdaShaderCompileError::RegistrationFailed", "enumerator", "RegistrationFailed", compiler],
+    ["CompilerUnavailable", "arda::backend::EArdaShaderCompileError::CompilerUnavailable", "enumerator", "CompilerUnavailable", compiler],
+    ["SourceResolutionFailed", "arda::backend::EArdaShaderCompileError::SourceResolutionFailed", "enumerator", "SourceResolutionFailed", compiler],
+    ["UnsupportedStage", "arda::backend::EArdaShaderCompileError::UnsupportedStage", "enumerator", "UnsupportedStage", compiler],
+    ["InvalidPermutation", "arda::backend::EArdaShaderCompileError::InvalidPermutation", "enumerator", "InvalidPermutation", compiler],
+    ["DirectoryCreationFailed", "arda::backend::EArdaShaderCompileError::DirectoryCreationFailed", "enumerator", "DirectoryCreationFailed", compiler],
+    ["ProcessLaunchFailed", "arda::backend::EArdaShaderCompileError::ProcessLaunchFailed", "enumerator", "ProcessLaunchFailed", compiler],
+    ["CompilationFailed", "arda::backend::EArdaShaderCompileError::CompilationFailed", "enumerator", "CompilationFailed", compiler],
+    ["ArtifactMissing", "arda::backend::EArdaShaderCompileError::ArtifactMissing", "enumerator", "ArtifactMissing", compiler],
+    ["ArtifactOutdated", "arda::backend::EArdaShaderCompileError::ArtifactOutdated", "enumerator", "ArtifactOutdated", compiler],
+    ["CacheWriteFailed", "arda::backend::EArdaShaderCompileError::CacheWriteFailed", "enumerator", "CacheWriteFailed", compiler],
+    ["ManifestWriteFailed", "arda::backend::EArdaShaderCompileError::ManifestWriteFailed", "enumerator", "ManifestWriteFailed", compiler],
+
+    // Compiler configuration.
+    ["FArdaShaderCompilerConfiguration", "arda::backend::FArdaShaderCompilerConfiguration", "struct", "struct FArdaShaderCompilerConfiguration", compiler],
+    ["mCompilerExecutable", "arda::backend::FArdaShaderCompilerConfiguration::mCompilerExecutable", "member variable", "std::filesystem::path mCompilerExecutable", compiler],
+    ["mSourceRoot", "arda::backend::FArdaShaderCompilerConfiguration::mSourceRoot", "member variable", "std::filesystem::path mSourceRoot", compiler],
+    ["mbCompileMissingArtifacts", "arda::backend::FArdaShaderCompilerConfiguration::mbCompileMissingArtifacts", "member variable", "bool mbCompileMissingArtifacts", compiler],
+    ["mbCompileOutdatedArtifacts", "arda::backend::FArdaShaderCompilerConfiguration::mbCompileOutdatedArtifacts", "member variable", "bool mbCompileOutdatedArtifacts", compiler],
+    ["mVulkanTargetEnvironment", "arda::backend::FArdaShaderCompilerConfiguration::mVulkanTargetEnvironment", "member variable", "eastl::string mVulkanTargetEnvironment = \"vulkan1.3\"", compiler],
+    ["mVulkanTextureBindingShift", "arda::backend::FArdaShaderCompilerConfiguration::mVulkanTextureBindingShift", "member variable", "uint32_t mVulkanTextureBindingShift = 0", compiler],
+    ["mVulkanSamplerBindingShift", "arda::backend::FArdaShaderCompilerConfiguration::mVulkanSamplerBindingShift", "member variable", "uint32_t mVulkanSamplerBindingShift = 128", compiler],
+    ["mVulkanConstantBufferBindingShift", "arda::backend::FArdaShaderCompilerConfiguration::mVulkanConstantBufferBindingShift", "member variable", "uint32_t mVulkanConstantBufferBindingShift = 256", compiler],
+    ["mVulkanUnorderedAccessBindingShift", "arda::backend::FArdaShaderCompilerConfiguration::mVulkanUnorderedAccessBindingShift", "member variable", "uint32_t mVulkanUnorderedAccessBindingShift = 384", compiler],
+    ["mCommonArguments", "arda::backend::FArdaShaderCompilerConfiguration::mCommonArguments", "member variable", "eastl::vector<eastl::string> mCommonArguments", compiler],
+    ["mDxilArguments", "arda::backend::FArdaShaderCompilerConfiguration::mDxilArguments", "member variable", "eastl::vector<eastl::string> mDxilArguments", compiler],
+    ["mSpirvArguments", "arda::backend::FArdaShaderCompilerConfiguration::mSpirvArguments", "member variable", "eastl::vector<eastl::string> mSpirvArguments", compiler],
+
+    // Compile jobs.
+    ["FArdaShaderCompileJob", "arda::backend::FArdaShaderCompileJob", "struct", "struct FArdaShaderCompileJob", compiler],
+    ["mType", "arda::backend::FArdaShaderCompileJob::mType", "member variable", "FArdaShaderType mType", compiler],
+    ["mBackend", "arda::backend::FArdaShaderCompileJob::mBackend", "member variable", "EArdaBackendType mBackend = DefaultBackend", compiler],
+    ["mPermutationId", "arda::backend::FArdaShaderCompileJob::mPermutationId", "member variable", "uint32_t mPermutationId = 0", compiler],
+    ["mSourcePath", "arda::backend::FArdaShaderCompileJob::mSourcePath", "member variable", "std::filesystem::path mSourcePath", compiler],
+    ["mSourceIdentity", "arda::backend::FArdaShaderCompileJob::mSourceIdentity", "member variable", "eastl::string mSourceIdentity", compiler],
+    ["mOutputPath", "arda::backend::FArdaShaderCompileJob::mOutputPath", "member variable", "std::filesystem::path mOutputPath", compiler],
+    ["mProfile", "arda::backend::FArdaShaderCompileJob::mProfile", "member variable", "eastl::string mProfile", compiler],
+    ["mEnvironment", "arda::backend::FArdaShaderCompileJob::mEnvironment", "member variable", "FArdaShaderCompileEnvironment mEnvironment", compiler],
+    ["mArguments", "arda::backend::FArdaShaderCompileJob::mArguments", "member variable", "eastl::vector<eastl::string> mArguments", compiler],
+    ["mInputKey", "arda::backend::FArdaShaderCompileJob::mInputKey", "member variable", "uint64_t mInputKey = 0", compiler],
+
+    // Diagnostics and aggregate results.
+    ["FArdaShaderCompileDiagnostic", "arda::backend::FArdaShaderCompileDiagnostic", "struct", "struct FArdaShaderCompileDiagnostic", compiler],
+    ["mCode", "arda::backend::FArdaShaderCompileDiagnostic::mCode", "member variable", "EArdaShaderCompileError mCode = EArdaShaderCompileError::None", compiler],
+    ["mShaderType", "arda::backend::FArdaShaderCompileDiagnostic::mShaderType", "member variable", "eastl::string mShaderType", compiler],
+    ["mBackend", "arda::backend::FArdaShaderCompileDiagnostic::mBackend", "member variable", "EArdaBackendType mBackend = DefaultBackend", compiler],
+    ["mPermutationId", "arda::backend::FArdaShaderCompileDiagnostic::mPermutationId", "member variable", "uint32_t mPermutationId = 0", compiler],
+    ["mSourcePath", "arda::backend::FArdaShaderCompileDiagnostic::mSourcePath", "member variable", "std::filesystem::path mSourcePath", compiler],
+    ["mOutputPath", "arda::backend::FArdaShaderCompileDiagnostic::mOutputPath", "member variable", "std::filesystem::path mOutputPath", compiler],
+    ["mMessage", "arda::backend::FArdaShaderCompileDiagnostic::mMessage", "member variable", "eastl::string mMessage", compiler],
+    ["FArdaShaderCompileResult", "arda::backend::FArdaShaderCompileResult", "struct", "struct FArdaShaderCompileResult", compiler],
+    ["mJobsCompiled", "arda::backend::FArdaShaderCompileResult::mJobsCompiled", "member variable", "uint32_t mJobsCompiled = 0", compiler],
+    ["mCacheHits", "arda::backend::FArdaShaderCompileResult::mCacheHits", "member variable", "uint32_t mCacheHits = 0", compiler],
+    ["mJobsSkipped", "arda::backend::FArdaShaderCompileResult::mJobsSkipped", "member variable", "uint32_t mJobsSkipped = 0", compiler],
+    ["mJobs", "arda::backend::FArdaShaderCompileResult::mJobs", "member variable", "eastl::vector<FArdaShaderCompileJob> mJobs", compiler],
+    ["mDiagnostics", "arda::backend::FArdaShaderCompileResult::mDiagnostics", "member variable", "eastl::vector<FArdaShaderCompileDiagnostic> mDiagnostics", compiler],
+    ["operator bool", "arda::backend::FArdaShaderCompileResult::operator bool", "operator", "[[nodiscard]] explicit operator bool() const noexcept", compiler],
+
+    // Compiler entry points.
+    ["ConfigureShaderCompiler", "arda::backend::ConfigureShaderCompiler", "function", "void ConfigureShaderCompiler(const FArdaShaderCompilerConfiguration& Configuration)", compiler],
+    ["GetShaderCompilerConfiguration", "arda::backend::GetShaderCompilerConfiguration", "function", "[[nodiscard]] FArdaShaderCompilerConfiguration GetShaderCompilerConfiguration()", compiler],
+    ["ResetShaderCompilerConfiguration", "arda::backend::ResetShaderCompilerConfiguration", "function", "void ResetShaderCompilerConfiguration()", compiler],
+    ["BuildRegisteredShaderCompileJobs", "arda::backend::BuildRegisteredShaderCompileJobs", "function", "[[nodiscard]] FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(const std::filesystem::path& OutputDirectory, const std::vector<EArdaBackendType>& Backends)", compiler],
+    ["CompileRegisteredShaderArtifacts", "arda::backend::CompileRegisteredShaderArtifacts", "function", "[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, const std::vector<EArdaBackendType>& Backends)", compiler],
+    ["CompileRegisteredShaderArtifacts", "arda::backend::CompileRegisteredShaderArtifacts", "function", "[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, EArdaBackendType Backend)", compiler],
+    ["EnsureRegisteredShaderArtifacts", "arda::backend::EnsureRegisteredShaderArtifacts", "function", "[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, EArdaBackendType Backend)", compiler],
+    ["EnsureRegisteredShaderArtifact", "arda::backend::EnsureRegisteredShaderArtifact", "function", "[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifact(const FArdaShaderType& Type, EArdaBackendType Backend, uint32_t PermutationId, const std::filesystem::path& OutputDirectory)", compiler],
+
+    // ArdaShaderCompilerTypes.h.
+    ["FArdaShaderDefine", "arda::backend::FArdaShaderDefine", "struct", "struct FArdaShaderDefine", compilerTypes],
+    ["mName", "arda::backend::FArdaShaderDefine::mName", "member variable", "eastl::string mName", compilerTypes],
+    ["mValue", "arda::backend::FArdaShaderDefine::mValue", "member variable", "eastl::string mValue", compilerTypes],
+    ["FArdaShaderCompileEnvironment", "arda::backend::FArdaShaderCompileEnvironment", "class", "class FArdaShaderCompileEnvironment final", compilerTypes],
+    ["SetDefine", "arda::backend::FArdaShaderCompileEnvironment::SetDefine", "method", "bool SetDefine(const eastl::string& Name, const eastl::string& Value)", compilerTypes],
+    ["SetDefine", "arda::backend::FArdaShaderCompileEnvironment::SetDefine", "method", "template <typename Integer, std::enable_if_t<std::is_integral_v<Integer> && !std::is_same_v<std::remove_cv_t<Integer>, bool>, int> = 0> bool SetDefine(const eastl::string& Name, Integer Value)", compilerTypes],
+    ["SetDefine", "arda::backend::FArdaShaderCompileEnvironment::SetDefine", "method", "bool SetDefine(const eastl::string& Name, bool Value)", compilerTypes],
+    ["GetDefines", "arda::backend::FArdaShaderCompileEnvironment::GetDefines", "method", "[[nodiscard]] const eastl::vector<FArdaShaderDefine>& GetDefines() const noexcept", compilerTypes],
+    ["FArdaShaderPermutationParameters", "arda::backend::FArdaShaderPermutationParameters", "struct", "struct FArdaShaderPermutationParameters", compilerTypes],
+    ["mType", "arda::backend::FArdaShaderPermutationParameters::mType", "member variable", "const FArdaShaderType* mType = nullptr", compilerTypes],
+    ["mBackend", "arda::backend::FArdaShaderPermutationParameters::mBackend", "member variable", "EArdaBackendType mBackend = DefaultBackend", compilerTypes],
+    ["mPermutationId", "arda::backend::FArdaShaderPermutationParameters::mPermutationId", "member variable", "uint32_t mPermutationId = 0", compilerTypes],
+    ["TArdaShaderPermutationDomain", "arda::backend::TArdaShaderPermutationDomain", "class", "template <typename... Dimensions> class TArdaShaderPermutationDomain final", compilerTypes],
+    ["PermutationCount", "arda::backend::TArdaShaderPermutationDomain::PermutationCount", "constant", "static constexpr uint32_t PermutationCount = static_cast<uint32_t>(CalculateCount())", compilerTypes],
+    ["TArdaShaderPermutationDomain", "arda::backend::TArdaShaderPermutationDomain::TArdaShaderPermutationDomain", "constructor", "constexpr TArdaShaderPermutationDomain() noexcept = default", compilerTypes],
+    ["TArdaShaderPermutationDomain", "arda::backend::TArdaShaderPermutationDomain::TArdaShaderPermutationDomain", "constructor", "explicit constexpr TArdaShaderPermutationDomain(uint32_t PermutationId) noexcept", compilerTypes],
+    ["IsValidPermutationId", "arda::backend::TArdaShaderPermutationDomain::IsValidPermutationId", "method", "[[nodiscard]] static constexpr bool IsValidPermutationId(uint32_t PermutationId) noexcept", compilerTypes],
+    ["IsValid", "arda::backend::TArdaShaderPermutationDomain::IsValid", "method", "[[nodiscard]] constexpr bool IsValid() const noexcept", compilerTypes],
+    ["ToId", "arda::backend::TArdaShaderPermutationDomain::ToId", "method", "[[nodiscard]] constexpr uint32_t ToId() const noexcept", compilerTypes],
+    ["Get", "arda::backend::TArdaShaderPermutationDomain::Get", "method", "template <typename Dimension> [[nodiscard]] constexpr typename Dimension::ValueType Get() const noexcept", compilerTypes],
+    ["Set", "arda::backend::TArdaShaderPermutationDomain::Set", "method", "template <typename Dimension> constexpr bool Set(typename Dimension::ValueType Value) noexcept", compilerTypes],
+    ["ModifyCompilationEnvironment", "arda::backend::TArdaShaderPermutationDomain::ModifyCompilationEnvironment", "method", "bool ModifyCompilationEnvironment(FArdaShaderCompileEnvironment& Environment) const", compilerTypes],
+    ["ARDA_SHADER_PERMUTATION_BOOL", "ARDA_SHADER_PERMUTATION_BOOL", "macro", "#define ARDA_SHADER_PERMUTATION_BOOL(Name, DefineName)", compilerTypes],
+    ["ARDA_SHADER_PERMUTATION_INT", "ARDA_SHADER_PERMUTATION_INT", "macro", "#define ARDA_SHADER_PERMUTATION_INT(Name, DefineName, Count)", compilerTypes],
+
+    // Backend configuration and persistent native pipeline caches.
+    ["EArdaShaderCompilationMode", "arda::backend::EArdaShaderCompilationMode", "enum", "enum class EArdaShaderCompilationMode", device],
+    ["LoadOnly", "arda::backend::EArdaShaderCompilationMode::LoadOnly", "enumerator", "LoadOnly", device],
+    ["Startup", "arda::backend::EArdaShaderCompilationMode::Startup", "enumerator", "Startup", device],
+    ["OnDemand", "arda::backend::EArdaShaderCompilationMode::OnDemand", "enumerator", "OnDemand", device],
+    ["mShaderCompilationMode", "arda::backend::FArdaBackendConfiguration::mShaderCompilationMode", "member variable", "EArdaShaderCompilationMode mShaderCompilationMode = EArdaShaderCompilationMode::OnDemand", device],
+    ["mShaderCacheDirectory", "arda::backend::FArdaBackendConfiguration::mShaderCacheDirectory", "member variable", "std::filesystem::path mShaderCacheDirectory = std::filesystem::path(\".arda-cache\") / \"shaders\"", device],
+    ["mPipelineCacheDirectory", "arda::backend::FArdaBackendConfiguration::mPipelineCacheDirectory", "member variable", "std::filesystem::path mPipelineCacheDirectory = std::filesystem::path(\".arda-cache\") / \"pipelines\"", device],
+    ["FlushAndDisablePipelineCachePersistence", "arda::rhi::IArdaRHIDevice::FlushAndDisablePipelineCachePersistence", "method", "virtual void FlushAndDisablePipelineCachePersistence() noexcept = 0", rhiDevice],
+    ["GetPersistentCacheHash", "arda::rhi::IArdaRHIShader::GetPersistentCacheHash", "method", "[[nodiscard]] virtual uint64_t GetPersistentCacheHash() const noexcept", rhiResources],
+    ["mPersistentCacheKey", "arda::rhi::FArdaRHIGraphicsPipelineDesc::mPersistentCacheKey", "member variable", "uint64_t mPersistentCacheKey = 0", rhiResources],
+    ["mPersistentCacheKey", "arda::rhi::FArdaRHIComputePipelineDesc::mPersistentCacheKey", "member variable", "uint64_t mPersistentCacheKey = 0", rhiResources],
+
+    // Lazy and permutation-aware global shader maps.
+    ["ArtifactCompileFailed", "arda::backend::EArdaGlobalShaderMapError::ArtifactCompileFailed", "enumerator", "ArtifactCompileFailed", shaderMap],
+    ["IsLoaded", "arda::backend::FArdaGlobalShaderInstance::IsLoaded", "method", "[[nodiscard]] bool IsLoaded() const noexcept", shaderMap],
+    ["GetPermutationId", "arda::backend::FArdaGlobalShaderInstance::GetPermutationId", "method", "[[nodiscard]] uint32_t GetPermutationId() const noexcept", shaderMap],
+    ["mPermutationId", "arda::backend::FArdaGlobalShaderInstance::mPermutationId", "member variable", "uint32_t mPermutationId = 0", shaderMap],
+    ["Initialize", "arda::backend::FArdaGlobalShaderMap::Initialize", "method", "[[nodiscard]] bool Initialize(const FArdaDeviceContext& DeviceContext)", shaderMap, {
+      summary: "Initializes the global shader map using the configured persistent backend shader cache.",
+      details: "Commits shader registrations and uses FArdaBackendConfiguration::mShaderCacheDirectory. Behavior follows the configured EArdaShaderCompilationMode: OnDemand preallocates pointer-stable slots but leaves them unloaded until lookup or enumeration; Startup and LoadOnly eagerly materialize every selected slot by loading backend-specific bytecode and creating its RHI shader and parameter binding layouts. Repeating the same device context, backend, and configured directory is idempotent and pointer-stable; changing any of them after success requires Reset first.",
+      params: ["const FArdaDeviceContext& DeviceContext"],
+      returns: "True when registration and policy-specific initialization succeed.",
+      ownership: "The map retains the RHI device, created shader references, binding layouts, directory, and stable instance-slot storage until Reset or destruction. Returned instance pointers and references are non-owning views into that storage.",
+      errors: "Returns false and records diagnostics for registration failure, invalid device, missing, empty, or unreadable bytecode, shader or layout creation failure, or a required Reset.",
+      threading: "No concurrent mutation contract is declared; serialize Initialize and Reset with Find, Enumerate, diagnostics access, and device shutdown.",
+      related: ["arda::backend::FArdaGlobalShaderMap"]
+    }],
+
+    // Shader type permutation registration and compile hooks.
+    ["ArtifactStemCollision", "arda::backend::EArdaShaderRegistrationError::ArtifactStemCollision", "enumerator", "ArtifactStemCollision", shaderType],
+    ["RegistryMutation", "arda::backend::EArdaShaderRegistrationError::RegistryMutation", "enumerator", "RegistryMutation", shaderType],
+    ["FShouldCompilePermutationFunction", "arda::backend::FArdaShaderType::FShouldCompilePermutationFunction", "alias", "using FShouldCompilePermutationFunction = bool (*)(const FArdaShaderPermutationParameters&)", shaderType],
+    ["FModifyCompilationEnvironmentFunction", "arda::backend::FArdaShaderType::FModifyCompilationEnvironmentFunction", "alias", "using FModifyCompilationEnvironmentFunction = void (*)(const FArdaShaderPermutationParameters&, FArdaShaderCompileEnvironment&)", shaderType],
+    ["GetPermutationCount", "arda::backend::FArdaShaderType::GetPermutationCount", "method", "[[nodiscard]] uint32_t GetPermutationCount() const noexcept", shaderType],
+    ["ShouldCompilePermutation", "arda::backend::FArdaShaderType::ShouldCompilePermutation", "method", "[[nodiscard]] bool ShouldCompilePermutation(EArdaBackendType Backend, uint32_t PermutationId) const", shaderType],
+    ["BuildCompilationEnvironment", "arda::backend::FArdaShaderType::BuildCompilationEnvironment", "method", "[[nodiscard]] FArdaShaderCompileEnvironment BuildCompilationEnvironment(EArdaBackendType Backend, uint32_t PermutationId) const", shaderType],
+    ["GetPermutationArtifactStem", "arda::backend::FArdaShaderType::GetPermutationArtifactStem", "method", "[[nodiscard]] eastl::string GetPermutationArtifactStem(uint32_t PermutationId) const", shaderType],
+    ["EnumerateSnapshots", "arda::backend::FArdaShaderTypeRegistration::EnumerateSnapshots", "method", "[[nodiscard]] static eastl::vector<FArdaShaderType> EnumerateSnapshots()", shaderType],
+    ["TShaderPermutationDomain", "arda::backend::detail::TShaderPermutationDomain", "struct", "template <typename ShaderClass, typename = void> struct TShaderPermutationDomain", shaderType],
+    ["TShaderPermutationDomain", "arda::backend::detail::TShaderPermutationDomain", "struct", "template <typename ShaderClass> struct TShaderPermutationDomain<ShaderClass, std::void_t<typename ShaderClass::FPermutationDomain>>", shaderType],
+    ["PermutationCount", "arda::backend::detail::TShaderPermutationDomain::PermutationCount", "constant", "static constexpr uint32_t PermutationCount = 1", shaderType],
+    ["PermutationCount", "arda::backend::detail::TShaderPermutationDomain<ShaderClass, std::void_t<typename ShaderClass::FPermutationDomain>>::PermutationCount", "constant", "static constexpr uint32_t PermutationCount = Domain::PermutationCount", shaderType],
+    ["AddDefines", "arda::backend::detail::TShaderPermutationDomain::AddDefines", "method", "static void AddDefines(uint32_t, FArdaShaderCompileEnvironment&)", shaderType],
+    ["AddDefines", "arda::backend::detail::TShaderPermutationDomain<ShaderClass, std::void_t<typename ShaderClass::FPermutationDomain>>::AddDefines", "method", "static void AddDefines(uint32_t PermutationId, FArdaShaderCompileEnvironment& Environment)", shaderType],
+    ["THasShouldCompilePermutation", "arda::backend::detail::THasShouldCompilePermutation", "struct", "template <typename ShaderClass, typename = void> struct THasShouldCompilePermutation : std::false_type", shaderType],
+    ["THasNamedShouldCompilePermutation", "arda::backend::detail::THasNamedShouldCompilePermutation", "struct", "template <typename ShaderClass, typename = void> struct THasNamedShouldCompilePermutation : std::false_type", shaderType],
+    ["THasModifyCompilationEnvironment", "arda::backend::detail::THasModifyCompilationEnvironment", "struct", "template <typename ShaderClass, typename = void> struct THasModifyCompilationEnvironment : std::false_type", shaderType],
+    ["THasModifyCompilationEnvironment", "arda::backend::detail::THasModifyCompilationEnvironment", "struct", "template <typename ShaderClass> struct THasModifyCompilationEnvironment<ShaderClass, std::void_t<decltype(&ShaderClass::ModifyCompilationEnvironment)>>", shaderType],
+    ["THasNamedModifyCompilationEnvironment", "arda::backend::detail::THasNamedModifyCompilationEnvironment", "struct", "template <typename ShaderClass, typename = void> struct THasNamedModifyCompilationEnvironment : std::false_type", shaderType],
+    ["ShouldCompileShaderPermutation", "arda::backend::detail::ShouldCompileShaderPermutation", "function", "template <typename ShaderClass> [[nodiscard]] bool ShouldCompileShaderPermutation(const FArdaShaderPermutationParameters& Parameters)", shaderType],
+    ["BuildShaderCompilationEnvironment", "arda::backend::detail::BuildShaderCompilationEnvironment", "function", "template <typename ShaderClass> void BuildShaderCompilationEnvironment(const FArdaShaderPermutationParameters& Parameters, FArdaShaderCompileEnvironment& Environment)", shaderType]
+  ];
+
+  specs.forEach(add);
+})(window.ArdaBackendApi);
