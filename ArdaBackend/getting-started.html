@@ -31,6 +31,7 @@
         <a href="quick-guide.html">Quick user's guide</a>
         <a aria-current="page" href="getting-started.html">Getting started</a>
         <a href="architecture.html">Architecture</a>
+        <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
         <a href="rhi.html">RHI types &amp; resources</a>
@@ -186,7 +187,7 @@
 
         <section id="headless">
           <h2>Worked example: headless startup</h2>
-          <p>Headless means “no presentation surface,” not “no GPU.” Use it for compute tools, offline processing, tests, servers, and renderer bootstrap that creates presentation later through another design. <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend()</code></a> returns <code>bool</code>.</p>
+          <p>Headless means “no presentation surface,” not “no GPU.” Use it for compute tools, offline processing, tests, servers, and renderer bootstrap that creates presentation later through another design. It is also the required initialization call when <a href="external-interop.html">adopting a host-owned device</a>; that wrapper is host-presented and rejects presentation initialization. <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend()</code></a> returns <code>bool</code>.</p>
 
           <pre><code>#include "ArdaBackend.h"
 
@@ -355,6 +356,7 @@ arda::rhi::FArdaRHIDeviceRef device = arda::backend::GetDevice();
             <li><a href="architecture.html">Architecture: object ownership, process state, affinity, and threading</a></li>
             <li><a href="shaders.html">Shaders: inputs that must freeze before initialization</a></li>
             <li><a href="presentation.html">Presentation: swap-chain and window-surface lifetime</a></li>
+            <li><a href="external-interop.html">External interop: adopting an engine-owned device and queues</a></li>
             <li><a href="diagnostics.html">Diagnostics: preserving validation and failure context</a></li>
           </ul>
         </section>

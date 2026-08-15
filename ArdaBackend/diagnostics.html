@@ -30,6 +30,7 @@
         <a href="quick-guide.html">Quick user's guide</a>
         <a href="getting-started.html">Getting started</a>
         <a href="architecture.html">Architecture</a>
+        <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
         <a href="rhi.html">RHI types &amp; resources</a>
@@ -81,7 +82,7 @@
             <li>design failure-injection, telemetry, cache-statistics, and production reporting policy.</li>
           </ul>
           <h3>Prerequisites</h3>
-          <p>Read <a href="getting-started.html">Getting started</a> for configuration and lifecycle, <a href="shaders.html">Shaders</a> for directory and registration phases, <a href="pipelines.html">Pipeline states</a> for cache behavior, and <a href="commands.html">Commands</a> for queue and marker concepts.</p>
+          <p>Read <a href="getting-started.html">Getting started</a> for configuration and lifecycle, <a href="shaders.html">Shaders</a> for directory and registration phases, <a href="pipelines.html">Pipeline states</a> for cache behavior, and <a href="commands.html">Commands</a> for queue and marker concepts. Engine-hosted integrations should also read <a href="external-interop.html">External interop</a> so reports preserve provider identity, native descriptor facts, lifetime-token identity, and host queue-coordination evidence.</p>
         </section>
         <section id="taxonomy">
           <h2>A layered error taxonomy</h2>
@@ -393,6 +394,7 @@ if (!status)
             <li><a href="shaders.html">Shaders</a> — directory mapping, registration, artifacts, and shader-map diagnostics.</li>
             <li><a href="pipelines.html">Pipeline states</a> — PSO validation, cache keys, retention, and statistics.</li>
             <li><a href="commands.html">Commands</a> — command lifecycle, queue instances, queries, and markers.</li>
+            <li><a href="external-interop.html#failures">External interop</a> — provider, token, imported-resource, and shared-queue failures.</li>
             <li><a href="presentation.html">Presentation</a> — acquire/present errors, resize, and synchronization.</li>
             <li><a href="api-reference.html#api-arda-backend-fardalogrecord-955eb9fb"><code>FArdaLogRecord</code> reference</a> — exact structured-log fields and lifetime contract.</li>
           </ul>

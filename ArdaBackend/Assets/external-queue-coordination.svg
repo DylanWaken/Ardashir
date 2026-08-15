@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620" role="img" aria-labelledby="title desc">
+  <title id="title">Host and Arda queue coordination interval</title>
+  <desc id="desc">A safe timeline shows the host flushing earlier submissions, acquiring queue serialization, granting an exclusive interval in which Arda records, submits, and retires work, then receiving outgoing states and resuming. An unsafe timeline shows host RHI and Arda submissions overlapping on the same queue, crossed out because no submission-hook integration exists.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker>
+    <style>
+      .title{font:700 28px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}
+      .label{font:700 15px system-ui,sans-serif;fill:#eef6ff}.body{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.lane{font:700 14px system-ui,sans-serif;fill:#eef6ff;text-anchor:end}
+      .host{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.arda{fill:#214b45;stroke:#34d399;stroke-width:2}.sync{fill:#493720;stroke:#fbbf24;stroke-width:2}.unsafe{fill:#4a252a;stroke:#fb7185;stroke-width:2}
+      .axis{stroke:#64748b;stroke-width:2;marker-end:url(#arrow)}.gate{stroke:#fbbf24;stroke-width:3;stroke-dasharray:7 5}.cross{stroke:#fb7185;stroke-width:8;stroke-linecap:round}
+    </style>
+  </defs>
+  <rect width="1100" height="620" rx="20" fill="url(#bg)"/>
+  <text x="42" y="48" class="title">Coordinate one exclusive submission interval</text>
+  <text x="42" y="76" class="sub">Queue API calls may be legal individually while their uncoordinated interleaving is still invalid.</text>
+
+  <text x="156" y="128" class="lane">Safe host lane</text>
+  <line x1="180" y1="122" x2="1040" y2="122" class="axis"/>
+  <rect x="202" y="98" width="145" height="48" rx="9" class="host"/><text x="274" y="127" class="body">host submits prior work</text>
+  <rect x="376" y="98" width="145" height="48" rx="9" class="sync"/><text x="448" y="119" class="body">flush / marshal</text><text x="448" y="136" class="body">acquire serialization</text>
+  <rect x="820" y="98" width="190" height="48" rx="9" class="host"/><text x="915" y="119" class="body">consume outgoing states</text><text x="915" y="136" class="body">host resumes</text>
+
+  <line x1="542" y1="90" x2="542" y2="346" class="gate"/>
+  <line x1="792" y1="90" x2="792" y2="346" class="gate"/>
+  <text x="667" y="178" class="label" text-anchor="middle">EXCLUSIVE ARDA INTERVAL</text>
+
+  <text x="156" y="234" class="lane">Arda CPU</text>
+  <line x1="180" y1="228" x2="1040" y2="228" class="axis"/>
+  <rect x="558" y="204" width="104" height="48" rx="9" class="arda"/><text x="610" y="233" class="body">record</text>
+  <rect x="676" y="204" width="100" height="48" rx="9" class="arda"/><text x="726" y="233" class="body">submit</text>
+
+  <text x="156" y="328" class="lane">Native queue</text>
+  <line x1="180" y1="322" x2="1040" y2="322" class="axis"/>
+  <rect x="558" y="298" width="218" height="48" rx="9" class="arda"/><text x="667" y="319" class="body">Arda/NVRHI work + internal signals</text><text x="667" y="336" class="body">completion / retirement established</text>
+  <text x="542" y="372" class="body">grant queue + incoming state</text>
+  <text x="792" y="372" class="body">publish completion + outgoing state</text>
+
+  <text x="156" y="440" class="lane">Unsafe overlap</text>
+  <line x1="180" y1="434" x2="1040" y2="434" class="axis"/>
+  <rect x="330" y="410" width="330" height="48" rx="9" class="unsafe"/><text x="495" y="439" class="body">independent host RHI submissions</text>
+  <rect x="520" y="472" width="330" height="48" rx="9" class="unsafe"/><text x="685" y="501" class="body">direct Arda submissions on same queue</text>
+  <line x1="462" y1="397" x2="730" y2="536" class="cross"/><line x1="730" y1="397" x2="462" y2="536" class="cross"/>
+
+  <rect x="206" y="556" width="688" height="42" rx="10" class="sync"/>
+  <text x="550" y="582" class="body">No submission-hook API: host exclusion/coordination is a required integration contract</text>
+</svg>

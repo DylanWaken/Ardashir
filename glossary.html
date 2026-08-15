@@ -65,7 +65,7 @@
               <option value="Project">Project</option>
               </select>
             </div>
-            <p class="filter-status" data-glossary-count role="status" aria-live="polite">92 of 92 terms shown</p>
+            <p class="filter-status" data-glossary-count role="status" aria-live="polite">95 of 95 terms shown</p>
           </div>
           <p class="callout" data-glossary-empty hidden>No terms match the current filters.</p>
           <div class="glossary-list">
@@ -177,6 +177,12 @@
           <p><strong>In Ardashir:</strong> The D3D12 path consumes DXIL shader bytecode.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-bytecode">Bytecode</a></li><li><a href="#term-d3d12">D3D12</a></li><li><a href="#term-spir-v">SPIR-V</a></li></ul></div>
         </article>
+        <article class="glossary-entry" id="term-external-device-provider" data-glossary-entry data-category="Project" data-search="External device provider Project A host-owned adapter that supplies an existing native graphics device and queues to an abstraction layer. ArdaBackend copies the provider's D3D12 or Vulkan descriptor and optional lifetime token during initialization; callbacks are serialized and non-reentrant.">
+          <div class="glossary-entry__meta"><h3>External device provider</h3><span class="category">Project</span></div>
+          <p>A host-owned adapter that supplies an existing native graphics device and queues to an abstraction layer.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend copies the provider's D3D12 or Vulkan descriptor and optional lifetime token during initialization; callbacks are serialized and non-reentrant.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-native-import">Native import</a></li><li><a href="#term-lifetime-token">Lifetime token</a></li><li><a href="#term-queue-coordination">Queue coordination</a></li></ul></div>
+        </article>
         <article class="glossary-entry" id="term-fence" data-glossary-entry data-category="Graphics" data-search="Fence Graphics A monotonically signaled synchronization primitive commonly observed by the CPU. ArdaBackend uses fences to determine when submitted GPU work and associated resources are safe to reuse.">
           <div class="glossary-entry__meta"><h3>Fence</h3><span class="category">Graphics</span></div>
           <p>A monotonically signaled synchronization primitive commonly observed by the CPU.</p>
@@ -237,6 +243,12 @@
           <p><strong>In Ardashir:</strong> GPU work can extend effective resource lifetime beyond the CPU call that submits it.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-ownership">Ownership</a></li><li><a href="#term-fence">Fence</a></li><li><a href="#term-raii">RAII</a></li></ul></div>
         </article>
+        <article class="glossary-entry" id="term-lifetime-token" data-glossary-entry data-category="Computer science" data-search="Lifetime token Computer science A shared ownership object retained to keep a separate host lifetime valid without owning the native handle directly. External Arda device and resource wrappers retain optional tokens; one native resource identity must use one canonical token ownership identity.">
+          <div class="glossary-entry__meta"><h3>Lifetime token</h3><span class="category">Computer science</span></div>
+          <p>A shared ownership object retained to keep a separate host lifetime valid without owning the native handle directly.</p>
+          <p><strong>In Ardashir:</strong> External Arda device and resource wrappers retain optional tokens; one native resource identity must use one canonical token ownership identity.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-ownership">Ownership</a></li><li><a href="#term-lifetime">Lifetime</a></li><li><a href="#term-native-import">Native import</a></li></ul></div>
+        </article>
         <article class="glossary-entry" id="term-lru" data-glossary-entry data-category="Computer science" data-search="LRU Computer science Least recently used, an eviction policy that discards the item unused for the longest time. An LRU policy can bound ArdaBackend caches while favoring recently reused pipeline objects.">
           <div class="glossary-entry__meta"><h3>LRU</h3><span class="category">Computer science</span></div>
           <p>Least recently used, an eviction policy that discards the item unused for the longest time.</p>
@@ -261,11 +273,11 @@
           <p><strong>In Ardashir:</strong> ArdaBackend resource views select mip ranges for sampling, rendering, copies, and barriers.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-texture-array">Texture array</a></li><li><a href="#term-resource-state">Resource state</a></li><li><a href="#term-format">Format</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-native-import" data-glossary-entry data-category="Project" data-search="Native import Project Wrapping an externally created native graphics object for use through an abstraction layer. ArdaBackend imports selected D3D12 or Vulkan resources and preserves explicit ownership and state contracts.">
+        <article class="glossary-entry" id="term-native-import" data-glossary-entry data-category="Project" data-search="Native import Project Wrapping an externally created native graphics object for use through an abstraction layer. ArdaBackend imports selected D3D12 or Vulkan textures and buffers from truthful descriptors, retains optional lifetime tokens, and leaves host ownership and synchronization explicit.">
           <div class="glossary-entry__meta"><h3>Native import</h3><span class="category">Project</span></div>
           <p>Wrapping an externally created native graphics object for use through an abstraction layer.</p>
-          <p><strong>In Ardashir:</strong> ArdaBackend imports selected D3D12 or Vulkan resources and preserves explicit ownership and state contracts.</p>
-          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-d3d12">D3D12</a></li><li><a href="#term-vulkan">Vulkan</a></li><li><a href="#term-ownership">Ownership</a></li></ul></div>
+          <p><strong>In Ardashir:</strong> ArdaBackend imports selected D3D12 or Vulkan textures and buffers from truthful descriptors, retains optional lifetime tokens, and leaves host ownership and synchronization explicit.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-d3d12">D3D12</a></li><li><a href="#term-vulkan">Vulkan</a></li><li><a href="#term-lifetime-token">Lifetime token</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-nvrhi" data-glossary-entry data-category="Project" data-search="NVRHI Project NVIDIA Rendering Hardware Interface, a portable C++ graphics abstraction. ArdaBackend adapts NVRHI objects and commands for the rest of Ardashir.">
           <div class="glossary-entry__meta"><h3>NVRHI</h3><span class="category">Project</span></div>
@@ -308,6 +320,12 @@
           <p>An ordered GPU submission stream, commonly specialized for graphics, compute, or copy work.</p>
           <p><strong>In Ardashir:</strong> ArdaBackend submits command lists to queues exposed by its device integration.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-command-list">Command list</a></li><li><a href="#term-synchronization">Synchronization</a></li><li><a href="#term-fence">Fence</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-queue-coordination" data-glossary-entry data-category="Graphics" data-search="Queue coordination Graphics Host-side serialization that grants one integration an ordered, exclusive interval on a shared native submission queue. External Arda integrations must coordinate supplied queues around recording, submission, and retirement because no submission-hook API interleaves an independent host RHI thread.">
+          <div class="glossary-entry__meta"><h3>Queue coordination</h3><span class="category">Graphics</span></div>
+          <p>Host-side serialization that grants one integration an ordered, exclusive interval on a shared native submission queue.</p>
+          <p><strong>In Ardashir:</strong> External Arda integrations must coordinate supplied queues around recording, submission, and retirement because no submission-hook API interleaves an independent host RHI thread.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-queue">Queue</a></li><li><a href="#term-synchronization">Synchronization</a></li><li><a href="#term-external-device-provider">External device provider</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-raii" data-glossary-entry data-category="Computer science" data-search="RAII Computer science Resource acquisition is initialization: C++ object lifetime controls resource ownership and cleanup. ArdaBackend wrappers use destructors and reference objects to release resources predictably.">
           <div class="glossary-entry__meta"><h3>RAII</h3><span class="category">Computer science</span></div>
