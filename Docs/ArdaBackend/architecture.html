@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ArdaBackend architecture: abstraction layers, opaque RHI design, ownership, device affinity, threading, errors, and native interop.">
+  <title>Architecture | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a aria-current="page" href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a aria-current="page" href="architecture.html">Architecture</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a>
+        <a href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaBackend</a> /
+        Architecture
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Abstraction, identity, and lifetime</p>
+          <h1>Architecture</h1>
+          <p>ArdaBackend separates process policy, authored rendering systems, a backend-neutral <a class="term" data-term="rhi" href="../glossary.html#term-rhi">RHI</a>, private wrappers, and native APIs. The architecture is designed around explicit <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a>, stable object identity, inspectable failure, and contained platform dependencies.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#abstraction">Abstraction fundamentals</a>
+          <a href="#layers">Layer boundaries</a>
+          <a href="#ownership">Ownership graph</a>
+          <a href="#refs">Intrusive references</a>
+          <a href="#process-state">Process singleton</a>
+          <a href="#affinity">Device affinity</a>
+          <a href="#worked-example">Worked lifecycle example</a>
+          <a href="#errors">Status and errors</a>
+          <a href="#threading">Thread-safety</a>
+          <a href="#interop">Native interop</a>
+          <a href="#alternatives">Alternatives</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#summary">Summary</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>derive the need for a narrow RHI boundary from dependency and portability constraints;</li>
+            <li>distinguish public backend policy, public RHI contracts, private wrappers, and native API code;</li>
+            <li>trace ownership from process state through devices, caches, command lists, and resources;</li>
+            <li>explain intrusive references and why a device reference pins its concrete backend lifetime;</li>
+            <li>enforce same-device operations and interpret <code>WrongDevice</code> as an architectural diagnostic;</li>
+            <li>choose the correct failure channel and thread-safety domain for an operation; and</li>
+            <li>use native interop as an audited boundary rather than an abstraction escape hatch.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites</h2>
+          <p>Complete <a href="getting-started.html">Getting started</a> first. Review the glossary entries for <a class="term" data-term="intrusive-reference-counting" href="../glossary.html#term-intrusive-reference-counting">intrusive reference counting</a>, <a class="term" data-term="device-affinity" href="../glossary.html#term-device-affinity">device affinity</a>, <a class="term" data-term="synchronization" href="../glossary.html#term-synchronization">synchronization</a>, <a class="term" data-term="descriptor" href="../glossary.html#term-descriptor">descriptor</a>, and <a class="term" data-term="resource" href="../glossary.html#term-resource">resource</a>.</p>
+          <p>This chapter discusses architecture before method-level use. Follow it with <a href="rhi.html">RHI resources</a> and <a href="commands.html">Commands</a> for concrete object creation and execution.</p>
+        </section>
+
+        <section id="abstraction">
+          <h2>Fundamentals: what an abstraction must preserve</h2>
+          <p>A graphics abstraction cannot simply hide native types. It must preserve the semantics that make GPU work correct:</p>
+          <ul>
+            <li>which device created an object;</li>
+            <li>who retains and eventually destroys it;</li>
+            <li>which states and usages were declared;</li>
+            <li>which queue executes a command and which synchronization makes data visible;</li>
+            <li>which capabilities are optional; and</li>
+            <li>how invalid input, unsupported behavior, and native failure are distinguished.</li>
+          </ul>
+
+          <h3>Why an opaque RHI</h3>
+          <p>ArdaBackend returns interfaces such as <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhiresource-88cc5c73"><code>IArdaRHIResource</code></a>, not private wrapper classes or NVRHI handles. “Opaque” means callers can use the declared behavior without knowing the representation.</p>
+          <p>This gives the project a source boundary: renderer translation units need neither D3D12/Vulkan headers nor the private implementation library's types. Backend changes stay local as long as the public semantics remain stable.</p>
+
+          <h3>Cost of opacity</h3>
+          <p>Opacity introduces interface calls, conversion code, wrapper objects, and the need to model features explicitly. It can also delay access to new native extensions. Those costs are accepted to reduce dependency spread and make lifetime, errors, tests, and cross-backend behavior project-owned contracts.</p>
+        </section>
+
+        <section id="layers">
+          <h2>Public, private, and native layers</h2>
+          <figure>
+            <img src="Assets/backend-layer-boundaries.svg" alt="Detailed layer boundary diagram from application policy through public ArdaBackend systems and opaque RHI to private wrappers and D3D12 or Vulkan.">
+            <figcaption>Only portable values, opaque interfaces, status, and diagnostics cross the public boundary. Native object types remain below it.</figcaption>
+          </figure>
+
+          <dl>
+            <dt>Application policy</dt>
+            <dd>Selects startup mode, backend preference, validation profile, logging, lifecycle owner, and shutdown policy.</dd>
+            <dt>Public backend layer — <code>arda::backend</code></dt>
+            <dd>Owns process configuration and context, shader registration and global maps, pipeline-state cache, and presentation interfaces.</dd>
+            <dt>Public RHI layer — <code>arda::rhi</code></dt>
+            <dd>Defines descriptors, capabilities, result types, resource interfaces, command lists, and the device creation/submission surface.</dd>
+            <dt>Private wrapper layer</dt>
+            <dd>Converts Arda descriptors and calls to implementation-library/native representations, wraps returned objects, and carries device identity.</dd>
+            <dt>Native backend layer</dt>
+            <dd>Owns D3D12 or Vulkan instance/factory, adapter or physical device, queues, surface/swap chain, and private integration state.</dd>
+          </dl>
+
+          <figure>
+            <img src="Assets/arda-backend-architecture.svg" alt="Comprehensive ArdaBackend architecture showing initialization, shader registration, pipeline and command programming, and platform presentation.">
+            <figcaption>The complete system map. Use the focused boundary diagram for dependency reasoning and this map to trace shader, pipeline, command, and presentation flows.</figcaption>
+          </figure>
+
+          <h3>Boundary rule</h3>
+          <p>A public header may describe a native handle only through a neutral carrier such as <a href="api-reference.html#api-arda-backend-fardanativeobject-04279ab9"><code>FArdaNativeObject</code></a> or an integer import field. It must not require callers to include private NVRHI, DXGI, D3D12, or Vulkan types.</p>
+        </section>
+
+        <section id="ownership">
+          <h2>Object ownership graph</h2>
+          <figure>
+            <img src="Assets/backend-lifetime-ownership.svg" alt="Ownership and lifetime graph showing caller-owned services and renderer systems, process backend state, opaque device, swap chain, caches, command lists, resources, and GPU use.">
+            <figcaption>Solid arrows denote ownership or strong retention; dashed arrows denote use or affinity. Teardown proceeds from work producers and dependents back toward process state.</figcaption>
+          </figure>
+
+          <dl>
+            <dt>Diagnostic callback</dt>
+            <dd>Caller-owned raw pointer stored by configuration. It must outlive backend use and is not deleted by ArdaBackend.</dd>
+            <dt>Process backend state</dt>
+            <dd>Owns the selected configuration, published context, private backend device, current error, default callback, mutex, and initialized flag.</dd>
+            <dt>Device context</dt>
+            <dd>Contains an intrusive device reference, selected backend, and queue capabilities. The context is process storage; copies of its device reference are independent owners.</dd>
+            <dt>Swap chain</dt>
+            <dd>Returned as <code>eastl::unique_ptr&lt;IArdaSwapChain&gt;</code> and exclusively owned by the caller. It must be destroyed before backend shutdown.</dd>
+            <dt>Shader map and pipeline cache</dt>
+            <dd>Caller-owned systems bound to a device. Their entries retain shaders, layouts, pipelines, and related objects.</dd>
+            <dt>RHI objects</dt>
+            <dd>Intrusively retained resources and command objects. Descriptors containing RHI refs may extend resource lifetime.</dd>
+            <dt>GPU timeline</dt>
+            <dd>Not a C++ owner, but submitted work imposes an effective lifetime requirement until execution completes.</dd>
+          </dl>
+
+          <aside class="callout warning">
+            <h3>Ownership is necessary but not sufficient</h3>
+            <p>A nonzero CPU reference count prevents destruction. It does not prove correct resource state, queue visibility, or safe mutation. Pair ownership reasoning with the command and synchronization model.</p>
+          </aside>
+        </section>
+
+        <section id="refs">
+          <h2>Intrusive references and backend pinning</h2>
+          <p><a href="api-reference.html#api-arda-rhi-tardarhiref-b3e2cfff"><code>TArdaRHIRef&lt;T&gt;</code></a> stores one pointer. Construction and copying call the object's <code>AddRef()</code>; destruction and reset call <code>Release()</code>; moves transfer the pointer without adding a reference. The count lives in the concrete object rather than a separate shared-pointer control block.</p>
+
+          <h3>Why intrusive ownership fits the RHI</h3>
+          <ul>
+            <li>Interfaces can return one lightweight owner type independent of concrete allocation.</li>
+            <li>Resources can be shared by descriptors, caches, command state, renderer systems, and callers.</li>
+            <li>There is no separate control-block allocation per object.</li>
+            <li>A wrapper can coordinate destruction with private native representation.</li>
+          </ul>
+
+          <h3>Backend pinning</h3>
+          <p>A resource cannot safely outlive everything required to destroy or call it. Concrete RHI device/resource wrappers therefore retain or otherwise anchor the implementation lifetime they need. A copied <a href="api-reference.html#api-arda-rhi-fardarhideviceref-bbf7458c"><code>FArdaRHIDeviceRef</code></a> can remain valid after <code>ShutdownBackend()</code> clears process ownership because the concrete device object still has an owner.</p>
+          <p>This behavior supports safe references, but relying on it as normal shutdown design leaves native destruction timing implicit. Production code should still destroy dependent systems and release copied references before process shutdown.</p>
+
+          <h3>Reference concurrency</h3>
+          <p>The reference wrapper contains no lock. Concurrent access to the same <code>TArdaRHIRef</code> variable requires external synchronization. Whether separate reference objects may concurrently call an implementation's <code>AddRef</code>/<code>Release</code> depends on the concrete reference-count implementation; do not infer whole-object thread safety from reference counting.</p>
+        </section>
+
+        <section id="process-state">
+          <h2>Process singleton state</h2>
+          <p>The private <code>FArdaBackendState</code> is a function-local process singleton. It contains a mutex, configuration, context, default callback, private backend device, error text, and atomic initialized flag.</p>
+
+          <h3>Why process-wide state exists</h3>
+          <p>Shader directory freezing, global shader registration, selected artifact format, and a canonical device context all benefit from one authoritative lifecycle. A process facade also makes simple tools and applications easy to bootstrap.</p>
+
+          <h3>Publication model</h3>
+          <p>Initialization holds the lifecycle mutex while it validates registries and creates the backend. It writes context fields first, then stores the initialized flag with release ordering. <a href="api-reference.html#api-arda-backend-isbackendinitialized-d99926a4"><code>IsBackendInitialized()</code></a> performs an acquire load.</p>
+          <p>That atomic flag does not make every context accessor safe during concurrent mutation. References returned by <code>GetDeviceContext()</code> and <code>GetQueueCapabilities()</code> point into process storage. The public contract still requires lifecycle operations and device use not to race.</p>
+
+          <h3>Tradeoff</h3>
+          <p>A singleton simplifies one-device applications but constrains multi-adapter, multi-device, isolated test, hot-reload, and plugin scenarios. A future explicit backend-instance object would improve composition at the cost of passing context through more systems and redesigning global shader registration assumptions.</p>
+        </section>
+
+        <section id="affinity">
+          <h2>Device affinity as an invariant</h2>
+          <p>Every created RHI object belongs to the device that created or imported it. This <a class="term" data-term="device-affinity" href="../glossary.html#term-device-affinity">device affinity</a> is part of object identity even when two devices use the same backend type.</p>
+
+          <h3>Why backend equality is insufficient</h3>
+          <p>Two D3D12 devices may have different descriptor heaps, queues, residency state, and native object ownership. Two Vulkan devices may use different physical devices, queue families, memory allocators, and dispatch tables. Therefore “both are Vulkan” does not make resources interchangeable.</p>
+
+          <h3>Where affinity propagates</h3>
+          <ul>
+            <li>A view belongs with its underlying resource and creating device.</li>
+            <li>A binding set's resources and layout must be compatible with one device.</li>
+            <li>A framebuffer's attachments must belong to its device.</li>
+            <li>A pipeline cache is permanently associated with its constructor device.</li>
+            <li>A global shader map is initialized against one device context.</li>
+            <li>A command list may record only objects accepted by its device.</li>
+          </ul>
+
+          <p>When this invariant is violated, APIs return <a href="api-reference.html#api-arda-rhi-eardarhiresult-wrongdevice-58a25b4b"><code>EArdaRHIResult::WrongDevice</code></a> before crossing into native calls where possible. Treat that result as evidence of an ownership-routing defect, not a transient GPU error.</p>
+
+          <pre><code>arda::rhi::TArdaRHIResult&lt;arda::rhi::FArdaRHIBindingSetRef&gt; result =
+    device-&gt;CreateBindingSet(desc, layout);
+
+if (!result &amp;&amp;
+    result.mStatus.mCode == arda::rhi::EArdaRHIResult::WrongDevice)
+{
+    // Trace the resource, layout, and cache owners that supplied `desc`.
+}</code></pre>
+        </section>
+
+        <section id="worked-example">
+          <h2>Worked example: one backend, one ownership chain</h2>
+          <p>This example follows one legal process-wide lifecycle from configuration to shutdown. It combines the contracts exercised by the backend and pipeline-cache tests: initialization publishes one device, copied device references remain owners, resources are device-affine, cache calls reject a mismatched requesting device, and shutdown clears singleton availability without forcibly clearing every copied reference.</p>
+
+          <aside class="callout">
+            <h3>One live process backend—not two</h3>
+            <p>ArdaBackend does not expose two simultaneously initialized process-wide backends. <a href="api-reference.html#api-arda-backend-initializebackendforpresentation-57fda7b3"><code>InitializeBackendForPresentation</code></a> rejects an already initialized backend. The “foreign device” below is therefore a test fixture or validation double used to exercise the same-device invariant; it is not a recipe for starting a second global backend.</p>
+          </aside>
+
+          <h3>Step 1: configure and publish one backend</h3>
+          <p>The application chooses one backend and validation policy, then calls either headless initialization or presentation initialization. The presentation path shown here publishes the singleton context only after shader-registration gates, native device creation, and swap-chain creation all succeed.</p>
+          <aside class="callout warning">
+            <h3>Production path and conformance experiment diverge at shutdown</h3>
+            <p>The code deliberately shows two mutually exclusive endings. The normal production branch releases the caller's ordinary device reference before <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a>, matching the lifecycle in <a href="getting-started.html#lifetime">Getting started</a>. The conformance branch intentionally retains and uses a copied device after shutdown only to prove the intrusive-ownership guarantee exercised by current tests. Do not copy that branch into routine renderer teardown; reserve it for narrowly controlled lifetime tests or integrations whose ownership contract explicitly requires it.</p>
+          </aside>
+          <pre><code>using namespace arda;
+
+backend::FArdaBackendConfiguration config;
+config.mBackend = backend::DefaultBackend;
+config.mbEnableValidation = true;
+
+if (!backend::ConfigureBackend(config))
+    return ReportStartupFailure(backend::GetBackendError());
+
+eastl::unique_ptr&lt;backend::IArdaSwapChain&gt; swapChain;
+const backend::EArdaInitializeResult init =
+    backend::InitializeBackendForPresentation(
+        windowSurface, width, height, swapChain);
+if (init != backend::EArdaInitializeResult::Success)
+    return ReportStartupFailure(backend::GetBackendError());
+
+rhi::FArdaRHIDeviceRef device = backend::GetDevice(); // retained copy
+
+{
+    rhi::FArdaRHIBufferDesc desc;
+    desc.mByteSize = 4096;
+    desc.mUsage = rhi::EArdaRHIBufferUsage::Structured;
+    desc.mStructureStride = sizeof(uint32_t);
+    desc.mDebugName = "WorkedExampleBuffer";
+    auto buffer = device-&gt;CreateBuffer(desc);
+    if (!buffer)
+        return ReportRhiFailure(buffer.mStatus);
+
+    backend::FArdaPipelineStateCache cache(device);
+
+    // Validation-path pseudocode: supplied only by a test fixture/double.
+    const rhi::IArdaRHIDevice* foreignDevice = testFixture.ForeignDevice();
+    const rhi::FArdaRHIStatus mismatch =
+        cache.PrecacheCompute(initializer, foreignDevice);
+    assert(mismatch.mCode == rhi::EArdaRHIResult::WrongDevice);
+
+    StopRenderingAndWaitForGpu();
+    swapChain.reset();
+    cache.Clear();
+    buffer.mValue = nullptr;
+} // The swap chain, device-bound cache, and renderer resource are gone.
+
+if (!runLifetimeConformanceExperiment)
+{
+    // Normative production teardown: release ordinary caller ownership first.
+    device = nullptr;
+    backend::ShutdownBackend();
+}
+else
+{
+    // Test-only alternative: prove retained ownership after singleton shutdown.
+    backend::ShutdownBackend();
+    assert(!backend::IsBackendInitialized());
+    assert(!backend::GetDevice());
+    assert(device);
+
+    rhi::FArdaRHISamplerDesc probeDesc;
+    auto probe = device-&gt;CreateSampler(probeDesc);
+    assert(probe);
+    probe.mValue = nullptr;
+    device = nullptr;
+}</code></pre>
+
+          <p>The setup is faithful to the public contracts. <a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> precedes initialization; the presentation call returns a caller-owned swap chain; <a href="api-reference.html#api-arda-backend-getdevice-740751f4"><code>GetDevice()</code></a> copies an intrusive device reference; and <a href="api-reference.html#api-arda-rhi-iardarhidevice-createbuffer-b17fba39"><code>CreateBuffer</code></a> returns a value plus <a href="api-reference.html#api-arda-rhi-fardarhistatus-a19f9625"><code>FArdaRHIStatus</code></a>. The helper names, <code>runLifetimeConformanceExperiment</code>, and <code>testFixture.ForeignDevice()</code> are intentionally pseudocode around those real calls.</p>
+
+          <h3>Step 2: assign owners and affinity</h3>
+          <p>Four different ownership facts now coexist:</p>
+          <ol>
+            <li>The process singleton's <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a> retains one reference to the device.</li>
+            <li>The local <code>device</code> variable retains another reference through <a href="api-reference.html#api-arda-rhi-fardarhideviceref-bbf7458c"><code>FArdaRHIDeviceRef</code></a>.</li>
+            <li>The caller exclusively owns <code>swapChain</code>; the process API does not destroy that <code>unique_ptr</code> for the caller.</li>
+            <li><code>buffer.mValue</code> retains the created <a class="term" data-term="resource" href="../glossary.html#term-resource">resource</a>, whose private implementation identity is associated with the creating device.</li>
+          </ol>
+          <p>The pipeline cache also retains its constructor device and is permanently bound to it. This is <a class="term" data-term="device-affinity" href="../glossary.html#term-device-affinity">device affinity</a>: cache, resource, command list, layout, and framebuffer identity must agree when an operation combines them. Backend type equality is not enough.</p>
+
+          <h3>Step 3: interpret <code>WrongDevice</code></h3>
+          <p>The cache's public <code>PrecacheCompute</code> overload accepts an optional requesting-device pointer specifically for ownership validation. Current tests pass a deliberately mismatched sentinel and assert <a href="api-reference.html#api-arda-rhi-eardarhiresult-wrongdevice-58a25b4b"><code>EArdaRHIResult::WrongDevice</code></a>. Pipeline-binding tests likewise combine a cache/command path with a framebuffer test object that does not report the expected owner and verify the same result.</p>
+          <p>The buffer follows the same architectural rule even though the short pseudocode exercises the cache's direct validation hook. Passing that buffer into a view, binding, command state, or other operation owned by a genuinely different RHI device/implementation must be rejected before an unsafe native call where the wrapper can validate provenance.</p>
+
+          <aside class="callout warning">
+            <h3>Failure interpretation</h3>
+            <p><code>WrongDevice</code> is not adapter loss, exhausted memory, or a retryable driver error. It means object provenance was routed incorrectly. Log the cache's device, requesting command-list device, and the owners of every resource/layout/framebuffer in the operation; then repair the owning subsystem or stale cache. Do not retry unchanged inputs.</p>
+          </aside>
+
+          <h3>Step 4: reverse the ownership timeline</h3>
+          <p>Normative production shutdown proceeds in reverse dependency order. The ordinary caller-held device and resources are released before the process singleton:</p>
+          <ol>
+            <li><strong>Stop producers.</strong> Prevent frame, upload, and compilation tasks from creating more work.</li>
+            <li><strong>Complete GPU use.</strong> Wait until submitted work no longer needs the buffer or swap-chain images. CPU <a class="term" data-term="lifetime" href="../glossary.html#term-lifetime">lifetime</a> alone does not establish GPU completion.</li>
+            <li><strong>Release presentation and renderer state.</strong> Destroy the swap chain, clear device-bound caches/maps, and release renderer-owned resources.</li>
+            <li><strong>Release ordinary copied owners.</strong> Reset caller-held device and resource references once their dependent systems are gone. This is the production path documented in <a href="getting-started.html#lifetime">Getting started</a>.</li>
+            <li><strong>Clear process availability.</strong> Call <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a>. It waits for the private backend to become idle, clears the context's device reference and queue capabilities, resets private process state, and marks the singleton uninitialized.</li>
+          </ol>
+          <p>The conformance branch reverses only the last two actions on purpose: it keeps one copied <code>FArdaRHIDeviceRef</code>, shuts down the singleton, probes the retained device, and then releases the copy. That experiment demonstrates the actual lifetime guarantee without redefining recommended teardown order. Outside narrowly controlled lifetime tests or integrations with an explicit post-singleton ownership requirement, retaining or using ordinary renderer devices/resources after shutdown is non-normative.</p>
+
+          <h3>Process availability versus retained lifetime</h3>
+          <p>After shutdown, <a href="api-reference.html#api-arda-backend-isbackendinitialized-d99926a4"><code>IsBackendInitialized()</code></a> is false, <code>GetDevice()</code> is empty, and process queue capabilities are reset. Those observations describe the singleton facade. They do not mutate a copied <a class="term" data-term="intrusive-reference-counting" href="../glossary.html#term-intrusive-reference-counting">intrusive reference</a> held elsewhere.</p>
+          <p>The backend tests retain a shared device reference across <code>ShutdownBackend()</code>, verify that it still reports capabilities, and successfully create a sampler through it while the process singleton reports uninitialized. This is concrete evidence that process availability and object <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a> are different state dimensions. The guarantee remains real: shutdown does not forcibly invalidate every copied intrusive reference. The production rule is equally clear: release ordinary caller device/resources before shutdown, and use the guarantee after shutdown only in a deliberately bounded conformance test or specialized integration.</p>
+
+          <h3>Checkpoint</h3>
+          <p>At the end of this sequence, can you identify (1) who owns the swap chain, device copy, cache, and buffer; (2) which objects carry the creating device's affinity; (3) why the validation double yields <code>WrongDevice</code> without requiring a second process backend; and (4) why an empty <code>GetDevice()</code> after shutdown does not prove that every copied RHI reference was destroyed?</p>
+        </section>
+
+        <section id="errors">
+          <h2>Status and error model</h2>
+          <p>ArdaBackend uses multiple failure channels because startup, ordinary RHI operations, authored caches, validation, and programmer invariants have different recovery needs.</p>
+
+          <dl>
+            <dt><code>bool</code> plus process error</dt>
+            <dd>Lifecycle operations such as headless initialization report simple success while <a href="api-reference.html#api-arda-backend-getbackenderror-bd2c5f82"><code>GetBackendError()</code></a> retains diagnostic text.</dd>
+            <dt>Initialization enum</dt>
+            <dd>Presentation startup uses <a href="api-reference.html#api-arda-backend-eardainitializeresult-2bf6fe00"><code>EArdaInitializeResult</code></a> to separate unavailable from another failure.</dd>
+            <dt>RHI status</dt>
+            <dd><a href="api-reference.html#api-arda-rhi-fardarhistatus-a19f9625"><code>FArdaRHIStatus</code></a> pairs a portable code with a message: success, invalid argument, unsupported, backend failure, invalid state, or wrong device.</dd>
+            <dt>Value result</dt>
+            <dd><a href="api-reference.html#api-arda-rhi-tardarhiresult-3000786e"><code>TArdaRHIResult&lt;T&gt;</code></a> couples a created value with status so failed creation cannot lose context.</dd>
+            <dt>Subsystem diagnostics</dt>
+            <dd>Shader maps and pipeline caches retain richer contextual diagnostics for batch or cached operations.</dd>
+            <dt>Asynchronous callback</dt>
+            <dd>Native validation and backend messages flow through <code>IArdaDiagnosticCallback</code>.</dd>
+            <dt>Assertions</dt>
+            <dd>Checks express programmer invariants that should not become routine runtime branches.</dd>
+          </dl>
+
+          <h3>Design derivation</h3>
+          <p>Exceptions would cross module and potentially toolchain boundaries and do not naturally represent asynchronous validation. A single global error string would lose per-operation context. Explicit statuses make ordinary failure local and testable; callbacks capture messages that originate outside the immediate call.</p>
+        </section>
+
+        <section id="threading">
+          <h2>Thread-safety domains</h2>
+          <p>“The backend is thread-safe” is too broad to be useful. Reason in domains:</p>
+
+          <dl>
+            <dt>Lifecycle domain</dt>
+            <dd>Configure, initialize, context mutation, and shutdown are mutex-serialized internally, but must not race device use. The application supplies lifecycle exclusion.</dd>
+            <dt>Reference domain</dt>
+            <dd>Do not concurrently mutate one smart-reference object. Separate references do not imply that methods on the referred object are safe concurrently.</dd>
+            <dt>Device creation domain</dt>
+            <dd>Consult each device operation's contract. Native APIs may permit concurrent creation while internal descriptor caches require their own synchronization.</dd>
+            <dt>Pipeline-cache domain</dt>
+            <dd><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>FArdaPipelineStateCache</code></a> is explicitly thread-safe and coordinates concurrent requests for the same key.</dd>
+            <dt>Command-list domain</dt>
+            <dd>Use thread-confined recording unless an operation explicitly promises otherwise. A common model is one command list per recording task.</dd>
+            <dt>Queue/submission domain</dt>
+            <dd>CPU serialization and GPU queue order are separate concerns. Use queue synchronization for device execution dependencies.</dd>
+            <dt>Callback domain</dt>
+            <dd>Assume diagnostic callbacks may originate from native or worker contexts; callback implementations should be reentrant or safely marshal messages.</dd>
+          </dl>
+
+          <aside class="callout warning">
+            <h3>A mutex does not extend borrowed-reference lifetime</h3>
+            <p>Accessors returning references to process storage remain valid only while lifecycle state is stable. Copy the intrusive device reference when retaining it; do not keep a reference to mutable process context across shutdown.</p>
+          </aside>
+        </section>
+
+        <section id="interop">
+          <h2>The native interop boundary</h2>
+          <p>Interop is necessary for window systems, external producers, middleware, and resources created outside the RHI. It is also where portability and lifetime assumptions are easiest to violate.</p>
+
+          <h3>Opaque window handles</h3>
+          <p><a href="api-reference.html#api-arda-backend-fardanativeobject-04279ab9"><code>FArdaNativeObject</code></a> encodes a pointer or integer handle as <code>uintptr_t</code>. <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a> exposes the minimum backend-specific operations needed to obtain an HWND or create a Vulkan surface without putting those native types in public signatures.</p>
+
+          <h3>Native resource import</h3>
+          <p>Texture and buffer import descriptions identify native representation and ownership as borrowed or transferred. Before importing, establish:</p>
+          <ol>
+            <li>the native resource type matches the active backend;</li>
+            <li>the resource was created on the compatible native device;</li>
+            <li>the portable description exactly matches the native allocation;</li>
+            <li>the initial state and external synchronization are known;</li>
+            <li>the selected ownership mode matches who will destroy the native object; and</li>
+            <li>the external producer cannot invalidate the object while the RHI or GPU still uses it.</li>
+          </ol>
+
+          <p>Interop should be isolated in platform or integration adapters. Passing native handles through general renderer code converts a deliberate boundary into an undocumented dependency network.</p>
+        </section>
+
+        <section id="alternatives">
+          <h2>Alternative designs and tradeoffs</h2>
+
+          <h3>Templates or compile-time backend selection</h3>
+          <p>Static polymorphism can remove virtual dispatch and expose backend-specific optimization. It multiplies renderer instantiations, increases compile dependencies, and makes runtime backend selection difficult. Opaque interfaces favor stable runtime composition.</p>
+
+          <h3>Direct NVRHI exposure</h3>
+          <p>This removes one wrapper layer and reduces conversion work. It also makes private implementation types part of every consumer's contract. The project-owned RHI preserves the ability to change implementation and add project-specific status, identity, and validation.</p>
+
+          <h3>External shared ownership</h3>
+          <p><code>shared_ptr</code> can manage arbitrary objects without intrusive methods, but normally adds a control block and can complicate identity when native libraries already use handle ownership. Intrusive references align ownership with RHI objects, at the cost of requiring implementations to provide correct reference operations.</p>
+
+          <h3>Explicit backend instance instead of singleton</h3>
+          <p>An instance supports multiple devices, isolated tests, and dependency injection. It forces shader registries, caches, and all consumers to carry an instance identity. The current singleton optimizes for one coherent process device.</p>
+
+          <h3>Exceptions instead of status values</h3>
+          <p>Exceptions can simplify happy-path syntax, but GPU failures are frequent boundary outcomes and often need codes plus native-neutral messages. Status values keep recovery explicit and avoid exception ABI concerns.</p>
+
+          <h3>Permissive cross-device behavior</h3>
+          <p>Attempting implicit copies or native sharing could make some multi-GPU cases convenient, but changes performance and synchronization semantics. Explicit <code>WrongDevice</code> keeps transfer policy above the backend where the renderer can reason about it.</p>
+        </section>
+
+        <section id="failures">
+          <h2>Failure analysis through the architecture</h2>
+          <dl>
+            <dt>Native type leaks into renderer code</dt>
+            <dd>The boundary is misplaced. Move conversion into a platform adapter or private backend wrapper.</dd>
+            <dt>Object survives longer than expected</dt>
+            <dd>Trace intrusive owners in descriptors, caches, command state, and copied device refs. A cleared process context is only one released owner.</dd>
+            <dt><code>WrongDevice</code></dt>
+            <dd>Trace object provenance. Look for a cache or long-lived subsystem bound to an earlier device or an imported native object from another device.</dd>
+            <dt>Intermittent shutdown crash</dt>
+            <dd>Look for concurrent producers, callback lifetime violations, in-flight GPU work, or retained objects destroyed after their platform prerequisites.</dd>
+            <dt>Validation reports after successful status</dt>
+            <dd>The immediate wrapper operation may have succeeded while native validation detected a broader state, synchronization, or lifetime defect. Preserve both channels.</dd>
+            <dt>Context observation races restart</dt>
+            <dd>Internal atomics do not authorize concurrent lifecycle mutation. Add application-level exclusion and copy owning references within the stable phase.</dd>
+          </dl>
+
+          <h3>Production invariants</h3>
+          <ol>
+            <li>Public consumers depend only on public backend/RHI types.</li>
+            <li>Every object has a known owner and creating device.</li>
+            <li>Process lifecycle never races device use.</li>
+            <li>GPU use completes before the final required resource ownership ends.</li>
+            <li>Optional features and queues are capability-gated.</li>
+            <li>Native imports document representation, device, state, synchronization, and ownership.</li>
+            <li>Failure reports preserve both structured status and asynchronous validation context.</li>
+          </ol>
+        </section>
+
+        <section id="summary">
+          <h2>Chapter summary</h2>
+          <ul>
+            <li>The opaque RHI is a semantic and dependency boundary, not merely a vocabulary translation.</li>
+            <li>Public backend systems own process policy and authored rendering integration; private layers own conversion and native objects.</li>
+            <li>Intrusive references share RHI ownership and can pin concrete implementation lifetime beyond the global context.</li>
+            <li>The process singleton simplifies one-device operation but requires lifecycle exclusion and limits multi-device composition.</li>
+            <li>Device affinity, explicit status, scoped thread-safety contracts, and audited native interop keep failures diagnosable.</li>
+          </ul>
+
+          <h3>Review and checkpoint questions</h3>
+          <ol>
+            <li>What semantics must an RHI preserve beyond hiding native type names?</li>
+            <li>Why can two resources from the same backend type still be incompatible?</li>
+            <li>How does a copied device reference affect backend lifetime after shutdown?</li>
+            <li>Which process-state observations are unsafe to retain across lifecycle changes?</li>
+            <li>Why does thread-safe reference counting not make resource methods thread-safe?</li>
+            <li>What six facts should be documented for a native resource import?</li>
+            <li>When would an explicit backend-instance architecture be preferable to a singleton?</li>
+          </ol>
+
+          <h3>Further reading</h3>
+          <ul>
+            <li><a href="rhi.html">RHI resources: descriptors, validation, capabilities, and imports</a></li>
+            <li><a href="commands.html">Commands: recording state, submission, and synchronization</a></li>
+            <li><a href="diagnostics.html">Diagnostics: statuses, callbacks, assertions, and failure reports</a></li>
+            <li><a href="../index.html">Documentation home: continue into adjacent Ardashir systems</a></li>
+          </ul>
+        </section>
+
+        <aside class="callout">
+          <h3>Related API</h3>
+          <p>Use the centralized <a href="api-reference.html">API reference</a> for exact contracts. Key architectural types are <a href="api-reference.html#api-arda-rhi-iardarhiresource-88cc5c73"><code>IArdaRHIResource</code></a>, <a href="api-reference.html#api-arda-rhi-tardarhiref-b3e2cfff"><code>TArdaRHIRef</code></a>, <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>, and <a href="api-reference.html#api-arda-rhi-fardarhistatus-a19f9625"><code>FArdaRHIStatus</code></a>.</p>
+        </aside>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="getting-started.html">← Previous: Getting started</a>
+          <a rel="next" href="shaders.html">Next: Shaders →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend documentation · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

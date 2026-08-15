@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">ARDG backward culling and execution-index resource lifetimes</title>
+  <desc id="desc">Culling starts from GraphEpilogue and NeverCull roots and walks backward through producer edges only. Synchronization-only edges do not preserve liveness. Live passes retain registry order. Resource intervals are rebuilt from live accesses and translated to inclusive compact execution indices.</desc>
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/></linearGradient><marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#34d399"/></marker><marker id="y" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#fbbf24"/></marker>
+    <style>.p{fill:#101a2c;stroke:#52647d;stroke-width:2}.live{fill:#214b45;stroke:#34d399;stroke-width:2}.dead{fill:#253247;stroke:#64748b;stroke-width:2;opacity:.65}.root{fill:#3a294d;stroke:#c084fc;stroke-width:2}.note{fill:#493720;stroke:#fbbf24;stroke-width:2}.h1{font:700 30px system-ui,sans-serif;fill:#eef6ff}.h2{font:700 19px system-ui,sans-serif;fill:#eef6ff}.t{font:15px system-ui,sans-serif;fill:#c5d2e3}.s{font:13px system-ui,sans-serif;fill:#aebdd0}.data{fill:none;stroke:#34d399;stroke-width:3;marker-end:url(#g)}.sync{fill:none;stroke:#fbbf24;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#y)}.grid{stroke:#52647d}.a{fill:#60a5fa}.b{fill:#c084fc}</style>
+  </defs>
+  <rect width="1200" height="760" rx="24" fill="url(#bg)"/><text x="48" y="52" class="h1">Backward culling to execution-index lifetimes</text>
+  <rect x="48" y="100" width="1104" height="280" rx="18" class="p"/><text x="72" y="136" class="h2">1 | Mark roots; follow producer edges backward</text>
+  <rect x="90" y="190" width="150" height="70" rx="12" class="live"/><text x="165" y="232" class="t" text-anchor="middle">P1 write A</text>
+  <rect x="310" y="190" width="150" height="70" rx="12" class="live"/><text x="385" y="232" class="t" text-anchor="middle">P2 read A</text>
+  <rect x="530" y="190" width="150" height="70" rx="12" class="dead"/><text x="605" y="220" class="t" text-anchor="middle">P3 dead read</text><text x="605" y="244" class="s" text-anchor="middle">culled</text>
+  <rect x="750" y="190" width="150" height="70" rx="12" class="live"/><text x="825" y="232" class="t" text-anchor="middle">P4 output</text>
+  <rect x="970" y="190" width="150" height="70" rx="12" class="root"/><text x="1045" y="220" class="t" text-anchor="middle">GraphEpilogue</text><text x="1045" y="244" class="s" text-anchor="middle">root</text>
+  <path d="M240 225H300" class="data"/><path d="M460 225C580 310 690 310 740 225" class="data"/><path d="M900 225H960" class="data"/><path d="M680 205H740" class="sync"/><text x="710" y="188" class="s" text-anchor="middle">order only</text>
+  <text x="72" y="342" class="s">NeverCull adds roots. Immediate mode keeps every pass. Live execution order remains registry order.</text>
+  <rect x="48" y="410" width="1104" height="220" rx="18" class="p"/><text x="72" y="446" class="h2">2 | Replay live accesses; map handles to compact execution indices</text>
+  <text x="238" y="490" class="s" text-anchor="middle">0: P1</text><text x="448" y="490" class="s" text-anchor="middle">1: P2</text><text x="658" y="490" class="s" text-anchor="middle">2: P4</text><text x="868" y="490" class="s" text-anchor="middle">3: Epilogue</text>
+  <path d="M133 508H973M133 548H973M133 588H973M133 474V608M343 474V608M553 474V608M763 474V608M973 474V608" class="grid"/>
+  <text x="85" y="532" class="s">A</text><rect x="134" y="514" width="420" height="24" rx="8" class="a"/><text x="344" y="532" class="s" text-anchor="middle">[0,1] inclusive</text>
+  <text x="75" y="572" class="s">Output</text><rect x="554" y="554" width="420" height="24" rx="8" class="b"/><text x="764" y="572" class="s" text-anchor="middle">[2,3] includes epilogue</text><text x="75" y="612" class="s">Dead</text><text x="344" y="612" class="s" text-anchor="middle">no lifetime emitted</text>
+  <rect x="48" y="654" width="1104" height="62" rx="12" class="note"/><text x="72" y="681" class="t">Current model: whole logical-resource lifetimes; transient excludes External and Extracted.</text><text x="72" y="703" class="s">Extended-lifetime or immediate debug mode widens every interval to the full graph.</text>
+  <text x="48" y="744" class="s">Legend: green = live/data | gray = culled | purple = root/output | amber dashed = order only</text>
+</svg>

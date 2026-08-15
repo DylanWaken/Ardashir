@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A textbook guide to ArdaRenderGraph materialization, parallel recording, deterministic submission, extraction, garbage collection, and execution telemetry.">
+  <title>Execution and submission | ArdaRenderGraph | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaRenderGraph</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
+      <h2>ArdaRenderGraph</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="resources.html">Resources</a>
+        <a href="passes.html">Passes</a>
+        <a href="compilation.html">Compilation</a>
+        <a aria-current="page" href="execution.html">Execution</a>
+        <a href="debugging.html">Debugging</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaRenderGraph</a> /
+        Execution and submission
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Materialize, record, submit</p>
+          <h1>Execution and submission</h1>
+          <p><a class="term" data-term="arda-render-graph" href="../glossary.html#term-arda-render-graph">ArdaRenderGraph</a> execution turns a compiled logical schedule into physical resources and one <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command list</a> per live pass with work. Recording may finish out of order; submission never does.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Objectives and prerequisites</a>
+          <a href="#contract">Execution contract</a>
+          <a href="#flow">Exact E0–E10 flow</a>
+          <a href="#materialization">Materialization and reuse</a>
+          <a href="#physical-state">Physical-state correction</a>
+          <a href="#clobber">First-write clobbering</a>
+          <a href="#recording">Parallel recording waves</a>
+          <a href="#uniforms">Uniform upload</a>
+          <a href="#submission">Submission and waits</a>
+          <a href="#extraction">Extraction, GC, and completion</a>
+          <a href="#telemetry">Execution telemetry</a>
+          <a href="#terrain">ARDGExample terrain walkthrough</a>
+          <a href="#worked-example">Worked integration example</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#summary">Summary</a>
+          <a href="#checkpoints">Checkpoints</a>
+          <a href="#further-reading">Further reading</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>restate every execution stage from E0 through E10 in its actual order;</li>
+            <li>distinguish logical creation, external import, physical materialization, and extraction;</li>
+            <li>explain why the ideal transient heap layout is computed but not consumed;</li>
+            <li>predict committed-resource reuse, runtime state correction, recording waves, and queue waits;</li>
+            <li>interpret <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-55e456b3"><code>FARDGExecutionResult</code></a> without treating submission as completion; and</li>
+            <li>apply the model to the ARDGExample terrain graph.</li>
+          </ul>
+          <h3>Prerequisites</h3>
+          <p>Read <a href="architecture.html">Architecture and lifecycle</a>, <a href="resources.html">Resources</a>, <a href="passes.html">Passes</a>, and <a href="compilation.html">Compilation</a>. You should understand logical handles, pass registration order, compiled execution order, inclusive lifetimes, pipelines, transitions, and queue dependencies.</p>
+        </section>
+
+        <section id="contract">
+          <h2>The execution contract</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-execute-462d7837"><code>FARDGBuilder::Execute</code></a> is one-shot. It compiles if necessary, then materializes, records, and submits. A second call, execution after a sticky failure, or execution without a device is a fatal programming-contract violation.</p>
+          <aside class="callout warning">
+            <h3>CPU submission is not GPU completion</h3>
+            <p>A returned result proves that CPU compilation, recording, queue waits, and submissions were issued. It does not prove that any <a class="term" data-term="queue" href="../glossary.html#term-queue">queue</a> finished. No device-idle wait or <a class="term" data-term="fence" href="../glossary.html#term-fence">fence</a> poll occurs inside graph execution.</p>
+          </aside>
+          <p>A failure guard becomes active once execution starts. It is disarmed only after all submissions and extraction publication succeed. An exception or interrupted stage makes the builder permanently failed so partially submitted work cannot masquerade as a reusable graph.</p>
+        </section>
+
+        <section id="flow">
+          <h2>Exact E0–E10 execution flow</h2>
+          <p>The following labels name the implementation’s fixed ordering. They are a reading aid, not independently callable API phases.</p>
+          <ol start="0">
+            <li><strong>E0 — Guard and compile.</strong> Reject repeated, failed, or device-less execution; call <a href="api-reference.html#api-arda-rdg-fardgbuilder-compile-97614587"><code>Compile</code></a>; mark execution started; arm the sticky-failure guard.</li>
+            <li><strong>E1 — Reset the report.</strong> Zero the builder-owned execution result and copy the selected immediate-mode bit into telemetry.</li>
+            <li><strong>E2 — Materialize resources.</strong> Evaluate transient heap requirements, retain imported handles, bind created textures and buffers from execution-local committed pools, create acceleration structures, and allocate dedicated uniform buffers.</li>
+            <li><strong>E3 — Correct physical transitions.</strong> Replay compiled transitions by physical identity so committed-resource reuse inherits the state actually left by the previous logical occupant; also plan supported first-write clobbers.</li>
+            <li><strong>E4 — Build recording levels.</strong> For each live pass, compute <code>level = max(producer level + 1)</code> across both data producers and synchronization producers.</li>
+            <li><strong>E5 — Record pass command lists.</strong> Process levels in ascending order. Eligible passes record concurrently in thread-capped batches; immediate-mode and <code>NeverParallel</code> work records serially. Each pass owns a distinct list.</li>
+            <li><strong>E6 — Upload uniforms.</strong> If uniform buffers exist, write all frozen bytes on one graphics command list, transition them to constant-buffer state, and submit that upload list.</li>
+            <li><strong>E7 — Submit passes deterministically.</strong> Walk compiled registration-based execution order, insert the first uniform-upload wait per non-graphics queue and each compiled cross-queue dependency wait, then submit each recorded list and retain its queue instance.</li>
+            <li><strong>E8 — Publish extractions.</strong> After all CPU submissions, assign requested physical texture and buffer references to caller-owned output locations.</li>
+            <li><strong>E9 — Run device garbage collection.</strong> Invoke the RHI collection boundary once; this schedules or performs backend-safe retirement but is not a GPU wait.</li>
+            <li><strong>E10 — Commit success and telemetry.</strong> Mark the graph executed, disarm the guard, emit submitted-list, queue-wait, and clobber trace counters, then return the report.</li>
+          </ol>
+          <figure>
+            <img src="Assets/rdg-record-submit-timeline.svg" alt="Dependency-level CPU recording waves followed by deterministic registration-order submission across copy, compute, and graphics queues with explicit waits.">
+            <figcaption>Completion order of CPU recording jobs is deliberately irrelevant. Stable execution order controls submission and supplies producer instances for cross-queue waits.</figcaption>
+          </figure>
+        </section>
+
+        <section id="materialization">
+          <h2>Materialization, imports, extraction, and reuse</h2>
+          <p>A logical <a class="term" data-term="resource" href="../glossary.html#term-resource">resource</a> describes intent; execution needs a physical RHI object. The three paths differ:</p>
+          <dl>
+            <dt>Graph-created texture or buffer</dt>
+            <dd><a href="api-reference.html#api-arda-rdg-fardgbuilder-createtexture-1c683c9b"><code>CreateTexture</code></a> and <a href="api-reference.html#api-arda-rdg-fardgbuilder-createbuffer-3391cbe2"><code>CreateBuffer</code></a> defer physical allocation until E2. The normalized initial state replaces <code>Unknown</code> with <code>Common</code>.</dd>
+            <dt>Imported external resource</dt>
+            <dd><a href="api-reference.html#api-arda-rdg-fardgbuilder-registerexternaltexture-4853552d"><code>RegisterExternalTexture</code></a> and <a href="api-reference.html#api-arda-rdg-fardgbuilder-registerexternalbuffer-fa9aa334"><code>RegisterExternalBuffer</code></a> retain an existing physical handle and declared entry state. Materialization validates that the handle still exists; it does not allocate replacement storage.</dd>
+            <dt>Extracted graph-created resource</dt>
+            <dd><a href="api-reference.html#api-arda-rdg-fardgbuilder-queuetextureextraction-920af16d"><code>QueueTextureExtraction</code></a> or <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuebufferextraction-2454eb04"><code>QueueBufferExtraction</code></a> keeps the resource live through the epilogue, requests a final state, and publishes its physical reference only at E8.</dd>
+          </dl>
+          <figure>
+            <img src="Assets/rdg-resource-materialization.svg" alt="Logical resources flow through ideal transient layout analysis to committed allocation, descriptor pool reuse, and physical-state correction.">
+            <figcaption>Materialization resolves physical identity before pass callbacks can request physical resources.</figcaption>
+          </figure>
+
+          <h3>The ideal transient heap layout is currently unused</h3>
+          <p>If the device advertises virtual resources, E2 creates virtual probes, queries memory size and alignment, and packs non-overlapping transient lifetimes into an ideal layout. The current executor then discards that layout. The RHI does not yet provide portable heap-compatibility queries and aliasing barriers, so placed-resource aliasing would be unsafe on at least one supported backend.</p>
+          <p>Consequently, <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedvirtualheaps-498e5cb3"><code>mbUsedVirtualHeaps</code></a> and <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedtransientaliasing-531524ee"><code>mbUsedTransientAliasing</code></a> remain false on this path, while <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedtransientfallback-21a39c91"><code>mbUsedTransientFallback</code></a> reports committed fallback for transient candidates.</p>
+
+          <h3>Committed descriptor-pool reuse</h3>
+          <p>The execution-local texture and buffer pools can reuse a committed object when all of these conditions hold:</p>
+          <ol>
+            <li>normalized descriptors match exactly; a hash only selects a bucket and is never sufficient;</li>
+            <li>the earlier inclusive lifetime ends strictly before the later lifetime begins;</li>
+            <li>every use of the logical resource stays in the same non-negative queue domain; and</li>
+            <li>the prior pool entry is available at the new first-use index.</li>
+          </ol>
+          <p>A resource used by more than one queue receives no reuse domain and cannot take this shortcut. The pool lasts for one execution, so this is intra-graph committed-object recycling, not a persistent frame-to-frame cache. Exact matches increment <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mtexturepoolreusecount-d0e9cb27"><code>mTexturePoolReuseCount</code></a> or <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbufferpoolreusecount-e7f71bf7"><code>mBufferPoolReuseCount</code></a>.</p>
+        </section>
+
+        <section id="physical-state">
+          <h2>Physical-state correction after reuse</h2>
+          <p>Compilation knows logical identities. Pooling can later bind logical A and logical B to the same physical object. B must therefore begin in A’s final physical state, not in B’s descriptor initial state.</p>
+          <p>E3 independently walks execution order and keys state by physical identity. Texture history is tracked per mip and array slice; buffer history is whole-resource. Runtime transitions replace compiled before-states, recompute equal-state <a class="term" data-term="uav" href="../glossary.html#term-uav">UAV</a> ordering, and preserve forced-barrier intent. During E5, the graph disables automatic barriers, seeds the corrected physical state, requests transitions, commits barriers, and only then invokes the pass callback.</p>
+          <aside class="callout">
+            <h3>Why this replay is mandatory</h3>
+            <p>Without it, descriptor-compatible pool reuse could issue a transition from a state the physical object never occupied. The logical compiler would remain internally consistent while the GPU state history became false.</p>
+          </aside>
+        </section>
+
+        <section id="clobber">
+          <h2>First-write clobbering</h2>
+          <p>When <code>mbClobberFirstWrites</code> is enabled, E3 tracks production separately from transition state. External resources begin produced; graph-created resources become produced at their first declared write. Texture production is per subresource, while buffer production is whole-resource.</p>
+          <p>Immediately before a supported first write, E5 writes a conspicuous pattern:</p>
+          <ul>
+            <li>floating-point color textures: magenta <code>(1, 0, 1, 1)</code>;</li>
+            <li>integer textures and UAV buffers: <code>0xCDCDCDCD</code>;</li>
+            <li>depth/stencil textures on graphics: depth <code>0.12345</code> and stencil <code>0xCD</code>.</li>
+          </ul>
+          <p>Copy passes are not clobbered. Buffer clobbering requires a whole-buffer UAV write to UAV-capable storage. This mode detects code that accidentally preserves old contents across a declared overwrite; it is a diagnostic oracle, not initialization policy.</p>
+        </section>
+
+        <section id="recording">
+          <h2>Dependency-level parallel recording waves</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgexecuteoptions-94bea5d2"><code>FARDGExecuteOptions</code></a> controls CPU recording. <a href="api-reference.html#api-arda-rdg-fardgexecuteoptions-mbparallelrecording-5cb996d7"><code>mbParallelRecording</code></a> defaults true. <a href="api-reference.html#api-arda-rdg-fardgexecuteoptions-mmaxrecordingthreads-8afff500"><code>mMaxRecordingThreads</code></a> uses hardware concurrency when zero and otherwise clamps to at least one worker.</p>
+          <p>Each pass level includes both data and explicit synchronization producers. Within one level, eligible passes are split into batches no larger than the thread cap and launched asynchronously. Every batch joins before the next batch, and every level completes before the next level. <a href="api-reference.html#api-arda-rdg-eardgpassflags-neverparallel-8aecc94b"><code>EARDGPassFlags::NeverParallel</code></a>, disabled parallel recording, and immediate mode place a pass on the serial list.</p>
+          <p>Each recorded pass owns a separate command list selected from its compiled graphics, compute, or copy pipeline. Recording workers write separate result slots and otherwise treat graph data as read-only. A pass callback should use <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-ead56b9c"><code>FARDGPassExecutionContext</code></a> so physical access remains declaration-checked.</p>
+          <aside class="callout warning">
+            <h3>Parallel recording is not parallel submission</h3>
+            <p><a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedparallelrecording-dc898c24"><code>mbUsedParallelRecording</code></a> becomes true only when a batch actually contains more than one pass. It says nothing about GPU overlap.</p>
+          </aside>
+        </section>
+
+        <section id="uniforms">
+          <h2>Uniform-buffer materialization and upload</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-createuniformbuffer-538b5a7e"><code>CreateUniformBuffer</code></a> freezes parameter bytes during graph construction. E2 creates dedicated physical buffers; unlike textures and ordinary buffers, these allocations do not use the committed reuse pools.</p>
+          <p>At E6, one graphics command list writes every frozen byte range, transitions each buffer to <code>ConstantBuffer</code>, closes, and submits. The returned graphics instance is zero when there are no uniform buffers or when submission fails. Graphics pass submissions inherit same-queue order. Before the first pass on each non-graphics queue, E7 inserts exactly one wait on the nonzero upload instance.</p>
+        </section>
+
+        <section id="submission">
+          <h2>Deterministic submission and queue waits</h2>
+          <p>E7 ignores worker completion order and walks <code>mExecutionOrder</code>, which compilation preserves deterministically from registration order after culling and sentinel insertion. Each pass list is submitted separately. Its returned instance is stored by pass and as the last instance for that queue.</p>
+          <p>For every <a href="api-reference.html#api-arda-rdg-fardgqueuedependency-ccd4a634"><code>FARDGQueueDependency</code></a> whose consumer is the current pass, execution looks up the producer pass instance and calls the RHI queue wait from the consumer pipeline to the producer pipeline. Same-queue dependencies need no explicit queue dependency: deterministic queue submission order supplies execution order.</p>
+          <p>Queue waits are placed before the consuming list. A missing or zero producer instance is skipped; successful paths should therefore correlate the result count and backend statuses if submission loss is suspected. The current telemetry counts requested waits and submitted list attempts, not confirmed GPU completions.</p>
+        </section>
+
+        <section id="extraction">
+          <h2>Extraction after submit, garbage collection, and completion</h2>
+          <p>Extraction publication happens only after the submission loop. The output pointer supplied during graph construction must still be valid. Publication transfers a durable RHI reference and the compiler has already arranged the requested final state, but the referenced GPU contents may still be in flight.</p>
+          <p>E9 calls device garbage collection once at the graph-submission boundary. Collection cooperates with backend retention; it does not replace external <a class="term" data-term="synchronization" href="../glossary.html#term-synchronization">synchronization</a>. Before CPU readback, manual memory reuse, or destruction outside retained ownership, wait for the appropriate queue instances through the RHI completion contract.</p>
+        </section>
+
+        <section id="telemetry">
+          <h2>Execution result telemetry</h2>
+          <p>The returned report is builder-owned and describes one completed CPU submission phase:</p>
+          <dl>
+            <dt><code>mSubmittedCommandListCount</code></dt>
+            <dd>Pass and boundary command lists submitted; the separate uniform-upload list is not included.</dd>
+            <dt><code>mQueueWaitCount</code></dt>
+            <dd>Explicit cross-queue waits, including first-use uniform-upload waits.</dd>
+            <dt><code>mTexturePoolReuseCount</code> / <code>mBufferPoolReuseCount</code></dt>
+            <dd>Logical resources served by exact committed descriptor reuse.</dd>
+            <dt><code>mbUsedParallelRecording</code></dt>
+            <dd>At least one recording batch contained multiple jobs.</dd>
+            <dt><code>mbUsedVirtualHeaps</code> / <code>mbUsedTransientAliasing</code> / <code>mbUsedTransientFallback</code></dt>
+            <dd>Allocation-path facts. The current executor reports committed fallback rather than consuming the computed ideal heap layout.</dd>
+            <dt><code>mbUsedImmediateMode</code></dt>
+            <dd>The graph used the immediate-mode correctness oracle.</dd>
+            <dt><code>mClobberedResourceCount</code></dt>
+            <dd>Supported resources actually cleared before first writes.</dd>
+            <dt><code>mLastSubmittedInstances[3]</code></dt>
+            <dd>Last graphics, compute, and copy queue instances. Preserve queue identity; values from different queues are not globally comparable.</dd>
+          </dl>
+          <p>E10 also emits trace counters named <code>ARDG Submitted Command Lists</code>, <code>ARDG Queue Waits</code>, and <code>ARDG Clobbered Resources</code>. Use these with the <code>ARDG Execute</code> scoped CPU timer, not as substitutes for GPU timing.</p>
+        </section>
+
+        <section id="terrain">
+          <h2>ARDGExample terrain walkthrough</h2>
+          <figure>
+            <img src="Assets/rdg-terrain-example.svg" alt="Terrain graph with settings update and upload, noise generation, erosion, triangulation, terrain rendering, overlay rendering, and a culled debug read.">
+            <figcaption>The example exposes dataflow, queue requests, a dead diagnostic pass, and the final back-buffer producer.</figcaption>
+          </figure>
+          <ol>
+            <li><strong>Update settings</strong> writes frame terrain settings.</li>
+            <li><strong>Upload settings</strong> requests copy work. It falls back to graphics if copy capability is unavailable.</li>
+            <li><strong>Generate noise</strong> writes the heightmap on requested async compute; a cross-queue wait connects it to settings upload when queues differ.</li>
+            <li><strong>DebugHeightmap</strong> reads the intermediate heightmap but has no externally visible output. Its ordering into later overwrite work is synchronization-only, so culling removes it.</li>
+            <li><strong>Erode heightmap</strong> consumes and updates terrain data, followed by <strong>Triangulate</strong>, which creates terrain vertex/index data.</li>
+            <li><strong>Render terrain</strong> consumes camera, terrain buffers, and the imported back buffer on graphics.</li>
+            <li><strong>Terrain overlay</strong> is the last back-buffer writer and remains rooted through the graph epilogue.</li>
+          </ol>
+          <p>At execution, imported camera/back-buffer resources retain their RHI handles. Created transient terrain resources materialize from committed pools. Independent recording may overlap on CPU, but submit order remains the compiled order. Queue waits are generated only where producer and consumer pipelines differ.</p>
+          <aside class="callout warning">
+            <h3>Terrain example API version</h3>
+            <p>The current checked-in terrain example still uses the deprecated <code>mCommandList</code> alias. New code should use <code>mUnsafeRawCommandList</code> only for the narrow commands that require raw RHI access, while declaring every graph resource access in pass parameters and resolving graph resources through the execution context.</p>
+          </aside>
+        </section>
+
+        <section id="worked-example">
+          <h2>Worked example: execute, inspect, then retire</h2>
+          <pre><code>FARDGExecuteOptions options;
+options.mbParallelRecording = true;
+options.mMaxRecordingThreads = 4;
+
+const FARDGExecutionResult&amp; submitted = graph.Execute(options);
+
+LogFrameSubmission(
+    submitted.mSubmittedCommandListCount,
+    submitted.mQueueWaitCount,
+    submitted.mLastSubmittedInstances);
+
+// The extracted handle is now published, but GPU writes may still be in flight.
+// Associate queue instances with the frame's completion primitive before reuse.
+frameRetirement.Track(submitted.mLastSubmittedInstances, extractedHeightmap);</code></pre>
+          <p><strong>Reasoning:</strong> the report supports CPU scheduling and observability. The frame-retirement system—not <code>Execute</code>—establishes when the extracted heightmap can be read, recycled, or released.</p>
+        </section>
+
+        <section id="failures">
+          <h2>Failure analysis: symptom, cause, prevention, recovery</h2>
+          <dl>
+            <dt>Fatal check: graph executes twice</dt>
+            <dd><strong>Cause:</strong> a one-shot builder was reused. <strong>Prevention:</strong> construct one builder per graph instance. <strong>Recovery:</strong> discard it and rebuild; do not retry the same builder.</dd>
+            <dt>Stale or corrupt data after committed reuse</dt>
+            <dd><strong>Cause:</strong> suspect an undeclared access, wrong range, or raw-command-list escape before blaming descriptor reuse; E3 corrects declared physical states. <strong>Prevention:</strong> declare every access and use the validated context. <strong>Recovery:</strong> enable extended lifetimes and clobbering, capture the first divergent pass, then repair its declaration.</dd>
+            <dt>Parallel mode crashes or changes output</dt>
+            <dd><strong>Cause:</strong> a callback mutates shared CPU state despite distinct command lists. <strong>Prevention:</strong> make callback inputs immutable or mark the pass <code>NeverParallel</code>. <strong>Recovery:</strong> serialize to isolate, fix ownership, then re-enable parallel recording.</dd>
+            <dt>Compute/copy sees stale uniform data</dt>
+            <dd><strong>Cause:</strong> submission failure or work outside graph-managed ordering. <strong>Prevention:</strong> keep uniform consumers in declared passes and preserve device status diagnostics. <strong>Recovery:</strong> inspect the upload instance and first wait on each non-graphics queue.</dd>
+            <dt>Extracted output exists but CPU read is wrong</dt>
+            <dd><strong>Cause:</strong> extraction publication was mistaken for GPU completion. <strong>Prevention:</strong> associate returned queue instances with frame retirement. <strong>Recovery:</strong> wait for the producing queue and fix the ownership boundary.</dd>
+            <dt>Memory savings are lower than ideal-layout estimates</dt>
+            <dd><strong>Cause:</strong> ideal placed-resource layout is intentionally unused; committed fallback and same-queue descriptor reuse are the implemented paths. <strong>Prevention:</strong> budget from telemetry, not the ideal packer. <strong>Recovery:</strong> reduce live intervals or compatible resource pressure; do not assume physical aliasing.</dd>
+            <dt>Too many queue waits or command lists</dt>
+            <dd><strong>Cause:</strong> queue ping-pong, many cross-queue consumers, or one-list-per-pass granularity. <strong>Prevention:</strong> request async/copy queues only for measured benefit. <strong>Recovery:</strong> inspect compiled dependencies and consolidate pipeline choices.</dd>
+          </dl>
+        </section>
+
+        <section id="summary">
+          <h2>Summary</h2>
+          <p>Execution is a one-shot CPU pipeline: validate and compile, materialize committed resources, correct transitions by physical identity, record dependency waves, upload uniforms, submit in deterministic order with queue waits, publish extraction references, run garbage collection, and return telemetry. The current executor computes but does not consume an ideal transient heap layout. Successful return means submitted, never GPU-complete.</p>
+        </section>
+
+        <section id="checkpoints">
+          <h2>Checkpoints</h2>
+          <ol>
+            <li>Why must physical-state correction occur after committed pool binding?</li>
+            <li>Which four conditions permit committed texture or buffer reuse?</li>
+            <li>Why can two passes record concurrently but still submit in registration order?</li>
+            <li>When does a non-graphics queue wait on uniform upload?</li>
+            <li>What does extraction publication prove, and what does it not prove?</li>
+            <li>Why are ideal transient heap offsets currently diagnostic rather than executable?</li>
+            <li>Which telemetry fields help distinguish recording parallelism, resource reuse, and queue synchronization?</li>
+          </ol>
+        </section>
+
+        <section id="further-reading">
+          <h2>Further reading</h2>
+          <ul>
+            <li><a href="compilation.html">Compilation and scheduling</a> — culling, lifetimes, transitions, pipelines, and queue dependencies.</li>
+            <li><a href="debugging.html">Validation and debugging</a> — differential oracles, graph dumps, and production diagnosis.</li>
+            <li><a href="../ArdaBackend/commands.html">ArdaBackend commands and submission</a> — RHI lists, waits, fences, and completion.</li>
+            <li><a href="api-reference.html#api-arda-rdg-fardgbuilder-execute-462d7837">API: <code>FARDGBuilder::Execute</code></a>,
+              <a href="api-reference.html#api-arda-rdg-fardgexecuteoptions-94bea5d2"><code>FARDGExecuteOptions</code></a>, and
+              <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-55e456b3"><code>FARDGExecutionResult</code></a>.</li>
+            <li><a class="term" data-term="render-graph" href="../glossary.html#term-render-graph">Glossary: render graph</a>,
+              <a class="term" data-term="pass" href="../glossary.html#term-pass">pass</a>,
+              <a class="term" data-term="lifetime" href="../glossary.html#term-lifetime">lifetime</a>, and
+              <a class="term" data-term="descriptor" href="../glossary.html#term-descriptor">descriptor</a>.</li>
+          </ul>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="compilation.html">← Previous: Compilation</a>
+          <a rel="next" href="debugging.html">Next: Debugging →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer">
+    <p>ArdaRenderGraph documentation · <a href="api-reference.html">Canonical API reference</a></p>
+  </footer>
+</body>
+</html>

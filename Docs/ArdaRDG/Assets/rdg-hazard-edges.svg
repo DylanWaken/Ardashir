@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">ARDG producer and synchronization hazard edges</title>
+  <desc id="desc">Read-after-write and write-after-write hazards create producer edges that impose order and preserve liveness. Write-after-read hazards create synchronization-only edges that impose order but do not keep dead readers alive. Current dependency discovery tracks whole logical resources.</desc>
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/></linearGradient><marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#34d399"/></marker><marker id="y" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#fbbf24"/></marker>
+    <style>.p{fill:#101a2c;stroke:#52647d;stroke-width:2}.pass{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.info{fill:#253247;stroke:#94a3b8;stroke-width:2}.note{fill:#493720;stroke:#fbbf24;stroke-width:2}.h1{font:700 30px system-ui,sans-serif;fill:#eef6ff}.h2{font:700 20px system-ui,sans-serif;fill:#eef6ff}.t{font:15px system-ui,sans-serif;fill:#c5d2e3}.s{font:13px system-ui,sans-serif;fill:#aebdd0}.data{fill:none;stroke:#34d399;stroke-width:3;marker-end:url(#g)}.sync{fill:none;stroke:#fbbf24;stroke-width:3;stroke-dasharray:8 6;marker-end:url(#y)}</style>
+  </defs>
+  <rect width="1200" height="720" rx="24" fill="url(#bg)"/><text x="48" y="52" class="h1">Hazard edges: order is not always liveness</text><text x="48" y="80" class="t">Build history stores the last writer plus readers since that write.</text>
+  <rect x="48" y="118" width="1104" height="390" rx="18" class="p"/><text x="75" y="154" class="h2">Example access sequence for logical resource R</text>
+  <rect x="80" y="205" width="190" height="90" rx="12" class="pass"/><text x="175" y="239" class="h2" text-anchor="middle">P1 writes R</text><text x="175" y="268" class="s" text-anchor="middle">latest writer = P1</text>
+  <rect x="360" y="205" width="190" height="90" rx="12" class="pass"/><text x="455" y="239" class="h2" text-anchor="middle">P2 reads R</text><text x="455" y="268" class="s" text-anchor="middle">reader epoch adds P2</text>
+  <rect x="640" y="205" width="190" height="90" rx="12" class="pass"/><text x="735" y="239" class="h2" text-anchor="middle">P3 writes R</text><text x="735" y="268" class="s" text-anchor="middle">clear readers; writer = P3</text>
+  <rect x="920" y="205" width="190" height="90" rx="12" class="pass"/><text x="1015" y="239" class="h2" text-anchor="middle">P4 writes R</text><text x="1015" y="268" class="s" text-anchor="middle">latest writer = P4</text>
+  <path d="M270 230H350" class="data"/><text x="310" y="214" class="s" text-anchor="middle">RAW</text>
+  <path d="M270 282C390 350 545 350 630 282" class="data"/><text x="450" y="362" class="s" text-anchor="middle">WAW via last writer</text>
+  <path d="M550 250H630" class="sync"/><text x="590" y="234" class="s" text-anchor="middle">WAR</text><path d="M830 250H910" class="data"/><text x="870" y="234" class="s" text-anchor="middle">WAW</text>
+  <rect x="80" y="402" width="500" height="76" rx="12" class="info"/><text x="105" y="431" class="h2">Producer edge: RAW / WAW / manual</text><text x="105" y="458" class="t">Orders execution and is followed backward by culling.</text>
+  <rect x="620" y="402" width="490" height="76" rx="12" class="info"/><text x="645" y="431" class="h2">Synchronization edge: WAR</text><text x="645" y="458" class="t">Orders execution; culling does not follow it.</text>
+  <rect x="48" y="540" width="1104" height="116" rx="14" class="note"/><text x="72" y="575" class="h2">General theory versus this implementation</text>
+  <text x="72" y="606" class="t">Theory can discover hazards at subresource granularity. ARDG currently discovers edges for a whole texture, buffer, or acceleration structure.</text>
+  <text x="72" y="632" class="t">Texture subresources and buffer ranges are retained for validation and state lowering, not edge discovery.</text>
+  <text x="48" y="692" class="s">Legend: green solid = producer (order + liveness) | amber dashed = synchronization (order only) | blue = pass</text>
+</svg>

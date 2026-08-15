@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="700" viewBox="0 0 900 700" role="img" aria-labelledby="present-title present-desc">
+  <title id="present-title">Cross-platform D3D12 DXGI and Vulkan presentation</title>
+  <desc id="present-desc">The shared IArdaSwapChain sequence maps to a D3D12 DXGI path using the current back-buffer index and Present, and a Vulkan path using image acquisition, image-available and render-finished semaphores, and queue present.</desc>
+  <defs>
+    <marker id="call-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
+    <marker id="sync-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#fbbf24"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.api{fill:#1f3656;stroke:#60a5fa;stroke-width:1.6}.d3d{fill:#20364a;stroke:#38bdf8;stroke-width:1.6}.vk{fill:#312c3f;stroke:#a78bfa;stroke-width:1.6}.sync{fill:#493720;stroke:#fbbf24;stroke-width:1.6}.data{fill:#214b45;stroke:#34d399;stroke-width:1.6}
+      .title{font:700 25px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 14px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.note{font:12px system-ui,sans-serif;fill:#c5d2e3}.tiny{font:11px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle}.call{fill:none;stroke:#7dd3fc;stroke-width:2.2;marker-end:url(#call-arrow)}.syncline{fill:none;stroke:#fbbf24;stroke-width:2.2;stroke-dasharray:7 5;marker-end:url(#sync-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="900" height="700"/>
+  <text class="title" x="32" y="42">Presentation: one public sequence, two synchronization models</text>
+  <text class="sub" x="32" y="68">Current Arda names are explicit; native details remain private implementation.</text>
+  <rect class="api" x="24" y="96" width="852" height="92" rx="10"/>
+  <text class="label" x="450" y="124">IArdaSwapChain</text>
+  <text class="small" x="450" y="149">AcquireFrame(OutFramebuffer) &#8594; record &#8594; PrepareSubmit() &#8594; ExecuteCommandList(s) &#8594; Present()</text>
+  <text class="tiny" x="450" y="173">FArdaRHIFramebufferRef wraps a borrowed native back buffer.</text>
+
+  <rect class="panel" x="24" y="216" width="410" height="364" rx="12"/>
+  <text class="label" x="229" y="246">D3D12 + DXGI (current implementation)</text>
+  <rect class="d3d" x="52" y="272" width="354" height="62" rx="8"/><text class="label" x="229" y="297">AcquireFrame</text><text class="small" x="229" y="320">GetCurrentBackBufferIndex()</text>
+  <rect class="data" x="52" y="358" width="354" height="62" rx="8"/><text class="label" x="229" y="383">Record and submit</text><text class="small" x="229" y="406">render to imported ID3D12Resource</text>
+  <rect class="d3d" x="52" y="444" width="354" height="62" rx="8"/><text class="label" x="229" y="469">PrepareSubmit</text><text class="small" x="229" y="492">intentionally empty on D3D12</text>
+  <rect class="d3d" x="52" y="530" width="354" height="36" rx="8"/><text class="label" x="229" y="553">IDXGISwapChain3::Present(1, 0)</text>
+  <path class="call" d="M229 334 V354"/><path class="call" d="M229 420 V440"/><path class="call" d="M229 506 V526"/>
+
+  <rect class="panel" x="466" y="216" width="410" height="364" rx="12"/>
+  <text class="label" x="671" y="246">Vulkan (current implementation)</text>
+  <rect class="vk" x="494" y="272" width="354" height="62" rx="8"/><text class="label" x="671" y="297">vkAcquireNextImageKHR</text><text class="small" x="671" y="320">signals imageAvailable[frameIndex]</text>
+  <rect class="sync" x="494" y="358" width="354" height="62" rx="8"/><text class="label" x="671" y="383">PrepareSubmit + graphics work</text><text class="small" x="671" y="406">wait imageAvailable; signal renderFinished</text>
+  <rect class="vk" x="494" y="444" width="354" height="62" rx="8"/><text class="label" x="671" y="469">vkQueuePresentKHR</text><text class="small" x="671" y="492">waits renderFinished[frameIndex]</text>
+  <rect class="data" x="494" y="530" width="354" height="36" rx="8"/><text class="label" x="671" y="553">advance frameIndex / recreate if out-of-date</text>
+  <path class="syncline" d="M671 334 V354"/><path class="syncline" d="M671 420 V440"/><path class="call" d="M671 506 V526"/>
+
+  <rect class="panel" x="24" y="606" width="852" height="70" rx="9"/>
+  <text class="note" x="48" y="632">General invariant: acquire before rendering; present only after submitted rendering completes.</text>
+  <path class="call" d="M50 655 H100"/><text class="note" x="111" y="660">API/native call</text>
+  <path class="syncline" d="M300 655 H350"/><text class="note" x="361" y="660">semaphore / required synchronization</text>
+  <rect class="data" x="650" y="645" width="32" height="18" rx="3"/><text class="note" x="694" y="660">frame data/state</text>
+</svg>

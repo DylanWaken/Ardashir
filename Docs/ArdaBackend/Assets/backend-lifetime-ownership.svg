@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="780" viewBox="0 0 1100 780" role="img" aria-labelledby="title desc">
+  <title id="title">ArdaBackend lifetime and ownership graph</title>
+  <desc id="desc">The application lifecycle owner retains a diagnostic callback and renderer systems. Process backend state owns the private backend and a strong device context reference. Renderer systems own the swap chain, shader map, pipeline cache, command lists, and resources. Intrusive references retain the device and resources. Submitted GPU work imposes effective lifetime until completion. Numbered steps show reverse teardown order.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="owner" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#34d399"/>
+    </marker>
+    <marker id="use" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/>
+    </marker>
+    <style>
+      .title{font:700 28px system-ui,sans-serif;fill:#eef6ff}
+      .subtitle{font:14px system-ui,sans-serif;fill:#b9c8db}
+      .box{rx:12;stroke-width:2}
+      .caller{fill:#1f3656;stroke:#60a5fa}
+      .process{fill:#3a294d;stroke:#c084fc}
+      .device{fill:#214b45;stroke:#34d399}
+      .object{fill:#253247;stroke:#94a3b8}
+      .gpu{fill:#493720;stroke:#fbbf24}
+      .label{font:700 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .body{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .small{font:12px system-ui,sans-serif;fill:#c5d2e3}
+      .retain{fill:none;stroke:#34d399;stroke-width:2.5;marker-end:url(#owner)}
+      .uses{fill:none;stroke:#7dd3fc;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#use)}
+      .timeline{fill:none;stroke:#fbbf24;stroke-width:2.5}
+      .step{fill:#493720;stroke:#fbbf24;stroke-width:1.5}
+      .stepText{font:700 12px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+    </style>
+  </defs>
+  <rect width="1100" height="780" rx="20" fill="url(#background)"/>
+  <text x="40" y="45" class="title">Lifetime and ownership: release dependents before roots</text>
+  <text x="40" y="72" class="subtitle">Green: ownership or strong retention &#183; Cyan dashed: use / device affinity &#183; Amber: GPU-effective lifetime and teardown order</text>
+
+  <rect x="48" y="108" width="240" height="92" class="box caller"/>
+  <text x="168" y="138" class="label">Application lifecycle owner</text>
+  <text x="168" y="164" class="body">serializes configure / initialize / shutdown</text>
+  <text x="168" y="184" class="body">stops worker and render producers</text>
+
+  <rect x="430" y="108" width="240" height="92" class="box process"/>
+  <text x="550" y="138" class="label">Process backend state</text>
+  <text x="550" y="164" class="body">configuration &#183; context &#183; error &#183; mutex</text>
+  <text x="550" y="184" class="body">owns private backend device</text>
+
+  <rect x="812" y="108" width="240" height="92" class="box caller"/>
+  <text x="932" y="138" class="label">Diagnostic callback</text>
+  <text x="932" y="164" class="body">caller-owned raw pointer</text>
+  <text x="932" y="184" class="body">outlives all backend messages</text>
+
+  <path d="M288 154 H426" class="retain"/>
+  <path d="M812 154 H674" class="uses"/>
+
+  <rect x="430" y="250" width="240" height="96" class="box device"/>
+  <text x="550" y="280" class="label">Opaque RHI device</text>
+  <text x="550" y="306" class="body">intrusive strong reference</text>
+  <text x="550" y="326" class="body">pins concrete implementation lifetime</text>
+  <path d="M550 200 V246" class="retain"/>
+
+  <rect x="48" y="250" width="240" height="96" class="box caller"/>
+  <text x="168" y="280" class="label">Renderer lifetime object</text>
+  <text x="168" y="306" class="body">retains a copied device ref</text>
+  <text x="168" y="326" class="body">owns higher-level GPU systems</text>
+  <path d="M288 298 H426" class="retain"/>
+
+  <rect x="48" y="406" width="210" height="96" class="box object"/>
+  <text x="153" y="436" class="label">Swap chain</text>
+  <text x="153" y="462" class="body">caller unique_ptr</text>
+  <text x="153" y="482" class="body">owns presentation state</text>
+
+  <rect x="296" y="406" width="210" height="96" class="box object"/>
+  <text x="401" y="436" class="label">Shader map</text>
+  <text x="401" y="462" class="body">device-bound</text>
+  <text x="401" y="482" class="body">retains shaders + layouts</text>
+
+  <rect x="544" y="406" width="210" height="96" class="box object"/>
+  <text x="649" y="436" class="label">Pipeline cache</text>
+  <text x="649" y="462" class="body">device-bound</text>
+  <text x="649" y="482" class="body">retains immutable PSOs</text>
+
+  <rect x="792" y="406" width="260" height="96" class="box object"/>
+  <text x="922" y="436" class="label">Command lists + resources</text>
+  <text x="922" y="462" class="body">intrusive references</text>
+  <text x="922" y="482" class="body">buffers &#183; textures &#183; views &#183; bindings</text>
+
+  <path d="M138 346 V402" class="retain"/>
+  <path d="M168 346 C168 380 401 370 401 402" class="retain"/>
+  <path d="M198 346 C198 380 649 370 649 402" class="retain"/>
+  <path d="M228 346 C228 380 922 370 922 402" class="retain"/>
+  <path d="M550 346 C550 378 153 374 153 402" class="uses"/>
+  <path d="M550 346 C550 378 401 374 401 402" class="uses"/>
+  <path d="M550 346 C550 378 649 374 649 402" class="uses"/>
+  <path d="M550 346 C550 378 922 374 922 402" class="uses"/>
+
+  <rect x="296" y="554" width="508" height="82" class="box gpu"/>
+  <text x="550" y="584" class="label">Submitted GPU work</text>
+  <text x="550" y="610" class="body">effective resource lifetime extends through execution completion</text>
+  <path d="M922 502 C922 540 808 540 808 574" class="uses"/>
+  <path d="M153 502 C153 540 292 540 292 574" class="uses"/>
+
+  <path d="M80 704 H1020" class="timeline"/>
+  <circle cx="110" cy="704" r="18" class="step"/><text x="110" y="709" class="stepText">1</text>
+  <text x="110" y="742" class="body">stop producers</text>
+  <circle cx="290" cy="704" r="18" class="step"/><text x="290" y="709" class="stepText">2</text>
+  <text x="290" y="742" class="body">wait GPU idle</text>
+  <circle cx="480" cy="704" r="18" class="step"/><text x="480" y="709" class="stepText">3</text>
+  <text x="480" y="742" class="body">destroy swap chain</text>
+  <circle cx="680" cy="704" r="18" class="step"/><text x="680" y="709" class="stepText">4</text>
+  <text x="680" y="742" class="body">reset maps / caches / refs</text>
+  <circle cx="900" cy="704" r="18" class="step"/><text x="900" y="709" class="stepText">5</text>
+  <text x="900" y="742" class="body">shutdown process backend</text>
+</svg>

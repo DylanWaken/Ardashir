@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="720" viewBox="0 0 1100 720" role="img" aria-labelledby="title desc">
+  <title id="title">ArdaBackend layer boundaries</title>
+  <desc id="desc">Five horizontal layers show application and renderer policy, public ArdaBackend systems, the opaque public RHI, private wrappers, and native D3D12 or Vulkan APIs. Portable calls flow downward and capabilities, statuses, and diagnostics flow upward. Native types do not cross the public boundary.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="down" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="up" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0 0 L10 4 L0 8 Z" fill="#34d399"/>
+    </marker>
+    <style>
+      .title{font:700 28px system-ui,sans-serif;fill:#eef6ff}
+      .subtitle{font:14px system-ui,sans-serif;fill:#b9c8db}
+      .layer{rx:12;stroke-width:2}
+      .policy{fill:#1f3656;stroke:#60a5fa}
+      .backend{fill:#3a294d;stroke:#c084fc}
+      .rhi{fill:#214b45;stroke:#34d399}
+      .private{fill:#493720;stroke:#fbbf24}
+      .native{fill:#312c3f;stroke:#a78bfa}
+      .label{font:700 17px system-ui,sans-serif;fill:#eef6ff}
+      .body{font:13px system-ui,sans-serif;fill:#c5d2e3}
+      .tag{font:700 11px system-ui,sans-serif;fill:#eef6ff;letter-spacing:.8px}
+      .boundary{stroke:#fbbf24;stroke-width:2.5;stroke-dasharray:9 7}
+      .call{fill:none;stroke:#7dd3fc;stroke-width:2.5;marker-end:url(#down)}
+      .result{fill:none;stroke:#34d399;stroke-width:2.5;marker-end:url(#up)}
+    </style>
+  </defs>
+  <rect width="1100" height="720" rx="20" fill="url(#background)"/>
+  <text x="40" y="45" class="title">ArdaBackend layer boundaries</text>
+  <text x="40" y="72" class="subtitle">Policy descends as portable descriptions and commands; capability, status, and diagnostics return upward.</text>
+
+  <rect x="90" y="104" width="820" height="88" class="layer policy"/>
+  <text x="120" y="132" class="tag">APPLICATION / RENDERER POLICY</text>
+  <text x="120" y="158" class="label">Algorithms, frame scheduling, platform lifecycle</text>
+  <text x="120" y="181" class="body">Chooses backend and validation; owns window adapter, renderer systems, render graph, and shutdown order.</text>
+
+  <rect x="90" y="218" width="820" height="88" class="layer backend"/>
+  <text x="120" y="246" class="tag">PUBLIC &#183; arda::backend</text>
+  <text x="120" y="272" class="label">Process facade and authored graphics systems</text>
+  <text x="120" y="295" class="body">Configuration, context, shader registration/map, pipeline cache, window surface, and swap chain.</text>
+
+  <rect x="90" y="332" width="820" height="88" class="layer rhi"/>
+  <text x="120" y="360" class="tag">PUBLIC &#183; arda::rhi</text>
+  <text x="120" y="386" class="label">Opaque rendering hardware interface</text>
+  <text x="120" y="409" class="body">Descriptors, capabilities, status/results, resource interfaces, intrusive refs, command recording and submission.</text>
+
+  <line x1="40" y1="444" x2="1060" y2="444" class="boundary"/>
+  <rect x="760" y="430" width="280" height="28" rx="14" fill="#493720" stroke="#fbbf24"/>
+  <text x="900" y="449" text-anchor="middle" class="tag">PUBLIC SOURCE BOUNDARY</text>
+
+  <rect x="90" y="472" width="820" height="88" class="layer private"/>
+  <text x="120" y="500" class="tag">PRIVATE IMPLEMENTATION</text>
+  <text x="120" y="526" class="label">Arda wrappers and representation conversion</text>
+  <text x="120" y="549" class="body">Carries device identity, validates affinity, converts descriptors, wraps private objects, and pins backend lifetime.</text>
+
+  <rect x="90" y="586" width="820" height="88" class="layer native"/>
+  <text x="120" y="614" class="tag">NATIVE / IMPLEMENTATION LIBRARY</text>
+  <text x="120" y="640" class="label">NVRHI, DXGI + D3D12, or Vulkan</text>
+  <text x="120" y="663" class="body">Adapter selection, native device and queues, memory, surfaces, swap chains, handles, driver calls, and validation.</text>
+
+  <path d="M945 128 H985 V642 H930" class="call"/>
+  <text x="1000" y="368" transform="rotate(90 1000 368)" class="body">portable calls and data</text>
+  <path d="M1040 640 H1060 V132 H930" class="result"/>
+  <text x="1074" y="355" transform="rotate(-90 1074 355)" class="body">status, capability, diagnostics</text>
+</svg>

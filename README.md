@@ -8,9 +8,14 @@ systems. Its GPU-facing modules are built on NVIDIA's Rendering Hardware
 Interface (NVRHI), allowing the project to share graphics abstractions and
 resources across rendering, simulation, and inference workloads.
 
+**Documentation:** [Canonical GitHub Pages URL](https://dylanwaken.github.io/Ardashir/) · [Documentation source](Docs/index.html)
+
 ## Modules
 
-- **[ArdaRenderGraph](Docs/ArdaRenderGraph/README.md)** — A foundational render
+- **[ArdaBackend](Source/ArdaBackend)** — The graphics backend and RHI layer for
+  devices, resources, shaders, pipelines, commands, and presentation.
+
+- **[ArdaRenderGraph](Source/ArdaRenderGraph)** — A foundational render
   dependency graph implementation on top of NVRHI. It schedules rendering work
   and manages resource dependencies, transitions, queues, and lifetimes.
 
@@ -27,6 +32,15 @@ resources across rendering, simulation, and inference workloads.
 
 - **[ArdaTrace](Docs/ArdaTrace/README.md)** — Low-overhead CPU scope, counter,
   and marker recording for offline performance analysis.
+
+## Quick user guides
+
+- **[ArdaBackend quick user's guide](Docs/ArdaBackend/quick-guide.html)**
+- **[ArdaRenderGraph quick user's guide](Docs/ArdaRDG/quick-guide.html)**
+
+Both guides demonstrate startup, compute, raster, submission, and presentation.
+Their capability-gated hardware ray-tracing path is synthesized from implemented
+and tested API components; it is not a checked-in end-to-end RT sample.
 
 ## Dependencies
 
@@ -127,3 +141,8 @@ ctest --test-dir build -C Debug -L gpu --output-on-failure
 
 A missing graphics backend returns CTest's skip code; rendering, presentation,
 shader, or NVRHI validation failures fail the test.
+
+## Documentation deployment
+
+Changes under `Docs` on `master` are validated and deployed to the canonical
+GitHub Pages URL by GitHub Actions using `.github/workflows/pages.yml`.

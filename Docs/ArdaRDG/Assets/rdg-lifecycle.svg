@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">ARDG single-use build compile execute lifecycle</title>
+  <desc id="desc">A new builder accepts mutation during build, compiles once with cached results, and executes once. Execute invokes compile if needed. Execution closes mutation permanently; success publishes extractions, while execution failure becomes sticky.</desc>
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/></linearGradient><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker>
+    <style>.build{fill:#1f3656;stroke:#60a5fa;stroke-width:3}.compile{fill:#214b45;stroke:#34d399;stroke-width:3}.execute{fill:#3a294d;stroke:#c084fc;stroke-width:3}.bad{fill:#493720;stroke:#fbbf24;stroke-width:2}.h1{font:700 30px system-ui,sans-serif;fill:#eef6ff}.h2{font:700 20px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.t{font:15px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.left{text-anchor:start}.s{font:13px system-ui,sans-serif;fill:#aebdd0}.line{fill:none;stroke:#7dd3fc;stroke-width:3;marker-end:url(#a)}.reject{fill:none;stroke:#fbbf24;stroke-width:2;stroke-dasharray:7 6}</style>
+  </defs>
+  <rect width="1200" height="680" rx="24" fill="url(#bg)"/>
+  <text x="48" y="52" class="h1">Single-use graph lifecycle</text><text x="48" y="80" class="t left">Compile is cacheable; execution is one shot; build mutation never reopens.</text>
+  <rect x="55" y="145" width="280" height="230" rx="18" class="build"/><text x="195" y="185" class="h2">BUILDING</text>
+  <text x="195" y="220" class="t">IsBuilding = true</text><text x="195" y="254" class="t">append passes and resources</text><text x="195" y="286" class="t">freeze parameters; queue extraction</text><text x="195" y="330" class="s" text-anchor="middle">GraphPrologue already exists</text>
+  <rect x="460" y="145" width="280" height="230" rx="18" class="compile"/><text x="600" y="185" class="h2">COMPILED</text>
+  <text x="600" y="220" class="t">mbCompiled = true</text><text x="600" y="254" class="t">14-stage result published</text><text x="600" y="286" class="t">later Compile returns cache</text><text x="600" y="330" class="s" text-anchor="middle">all mutation APIs are closed</text>
+  <rect x="865" y="145" width="280" height="230" rx="18" class="execute"/><text x="1005" y="185" class="h2">EXECUTED</text>
+  <text x="1005" y="220" class="t">mbExecutionStarted = true</text><text x="1005" y="254" class="t">mbExecuted = true on success</text><text x="1005" y="286" class="t">extractions published</text><text x="1005" y="330" class="s" text-anchor="middle">no second Execute</text>
+  <path d="M335 250H450" class="line"/><text x="392" y="230" class="s" text-anchor="middle">Compile()</text>
+  <path d="M740 250H855" class="line"/><text x="797" y="230" class="s" text-anchor="middle">Execute()</text>
+  <path d="M335 350C520 455 690 455 855 350" class="line"/><text x="600" y="444" class="s" text-anchor="middle">Execute() first calls cached-or-first Compile()</text>
+  <rect x="55" y="490" width="1090" height="120" rx="14" class="bad"/><text x="80" y="526" class="h2 left">Guards and terminal failure</text>
+  <text x="80" y="558" class="t left">Compile rejects re-entry, execution-started, or failed state. Execute rejects a second start, failed graph, or missing device.</text>
+  <text x="80" y="586" class="t left">The failure guard sets mbFailed permanently unless every execution stage completes.</text><path d="M1005 375V470" class="reject"/>
+  <text x="48" y="650" class="s">Legend: blue = mutable build | green = cached compile | purple = one-shot execution | amber = rejected transition</text>
+</svg>

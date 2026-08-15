@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Search and read the sole canonical reference for the ArdaRenderGraph public API.">
+  <title>API reference | ArdaRenderGraph | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaRenderGraph</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a aria-current="page" href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
+      <h2>ArdaRenderGraph</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="resources.html">Resources</a>
+        <a href="passes.html">Passes</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="debugging.html">Debugging</a>
+        <a aria-current="page" href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaRenderGraph</a> /
+        API reference
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Canonical generated reference</p>
+          <h1>ArdaRenderGraph API reference</h1>
+          <p>Search, filter, and read the complete public surface in one place. This page is the sole canonical API destination; the textbook chapters explain concepts and workflows without duplicating symbol-level detail. Every generated symbol has a stable fragment link.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#search">Search</a>
+          <a href="#reading-the-api">Reading the API</a>
+          <a href="#components">Components</a>
+          <a href="#symbol-index">Symbol index</a>
+          <a href="#detailed-reference">Detailed reference</a>
+        </nav>
+
+        <section id="search">
+          <h2>Search the public API</h2>
+          <form class="api-search" role="search">
+            <label for="api-search-input">Symbol, type, method, macro, or concept</label>
+            <input id="api-search-input" name="q" type="search" autocomplete="off" placeholder="For example: QueueTextureExtraction">
+            <button type="submit">Search</button>
+          </form>
+          <p>The authored search and generated index search stay synchronized. Useful starting terms include <code>FARDGBuilder</code>, <code>AddPass</code>, <code>ARDG_TEXTURE</code>, <a class="term" data-term="resource-state" href="../glossary.html#term-resource-state">resource state</a>, and <a class="term" data-term="barrier" href="../glossary.html#term-barrier">barrier</a>.</p>
+        </section>
+
+        <section id="reading-the-api">
+          <h2>How to read this reference</h2>
+
+          <h3>Namespace and names</h3>
+          <p>The public graph API lives in <code>arda::render_graph</code>. Qualified names identify the owning namespace or class; short names are convenient search terms but can match overloads, template specializations, or members on several types. Types under <code>arda::rhi</code> are backend objects consumed by the graph, not graph-owned logical declarations.</p>
+
+          <h3>Handles and raw logical references</h3>
+          <p><code>TARDGHandle&lt;TagType&gt;</code> and aliases such as <code>FARDGPassHandle</code> are compact, type-safe indices into append-only registries. An invalid handle names no entry. Types ending in <code>Ref</code>, such as <code>FARDGTextureRef</code>, are nullable raw pointers to graph-owned <em>logical</em> records; they are neither owning smart pointers nor physical RHI resources. Keep both forms within the builder that created them and within that builder’s lifetime.</p>
+
+          <h3>Builder phases are contracts</h3>
+          <p>Treat a builder as a one-graph state machine. During setup, allocate or provide parameters, create or import logical resources and views, register passes, request extraction, and add explicit dependencies. <code>Compile</code> freezes the graph’s device-independent schedule and derives culling, lifetimes, barriers, queues, and groups. <code>Execute</code> compiles when needed, materializes resources, records command lists, and submits once. An entry’s Errors and details state when a call is illegal after compilation or execution; these phase restrictions are correctness rules, not performance advice.</p>
+
+          <h3>Fatal checks and nullable lookup</h3>
+          <p>A documented fatal check means a violated programming contract invokes the project’s check path; it is not a recoverable status result. This is used for conditions such as null required inputs, invalid metadata, undeclared physical access, and illegal phase transitions. In contrast, functions named <code>TryGet*</code> deliberately return <code>nullptr</code> for invalid handles, and <code>FARDGBlackboard::TryGet</code> returns <code>nullptr</code> when a type is absent. Use the nullable forms when absence is expected; use checked forms only when absence is a bug.</p>
+
+          <h3>Ownership, imports, and extraction</h3>
+          <p>The builder owns graph records and copied or arena-allocated parameter storage. A resource created with <code>Create*</code> is logical until execution materializes physical backing; a resource passed to <code>RegisterExternal*</code> remains externally owned while the graph tracks its declared entry state and uses a retained RHI reference. <code>QueueTextureExtraction</code> and <code>QueueBufferExtraction</code> request that graph-created physical storage survive graph completion and write the resulting RHI reference to caller-provided output storage after submission. The output location must remain valid through <code>Execute</code>; extraction transfers a durable reference, not ownership of the logical graph record.</p>
+
+          <h3>CPU submission is not GPU completion</h3>
+          <p>A successful <code>Execute</code> result reports completion of CPU-side compilation, recording, and queue submission. It does not mean the GPU has finished the submitted work. The returned queue instance values describe submitted work; use the RHI device’s synchronization and completion facilities before reading results on the CPU, reusing externally constrained memory, or destroying objects whose lifetime is not retained by the submission system.</p>
+
+          <h3>The unsafe command-list escape hatch</h3>
+          <p><code>FARDGPassExecutionContext</code> validates physical resource access through getters such as <code>GetTexture</code>, <code>GetBuffer</code>, and <code>CreateBindingSet</code>. Its <code>mUnsafeRawCommandList</code> member exists for commands that cannot be expressed through those helpers. It does not make undeclared graph-resource access safe: independently retained RHI references bypass declaration validation, so the compiler cannot infer their dependencies, transitions, or lifetimes. Prefer the validated context and keep raw command-list use narrow and explicit.</p>
+
+          <h3>Parameter macros and templates</h3>
+          <p>Read <code>ARDG_BEGIN_PARAMETER_STRUCT</code> and <code>ARDG_END_PARAMETER_STRUCT</code> as generating a standard-layout C++ struct plus immutable reflection metadata. A macro such as <code>ARDG_TEXTURE</code>, <code>ARDG_BUFFER_UAV</code>, or <code>ARDG_RENDER_TARGET_BINDING_SLOTS</code> declares both a C++ member and its graph access semantics; <code>*_ARRAY</code> variants repeat that contract, nested-struct macros recurse, and direct <code>*_ACCESS</code> members carry runtime state or range information. For templates, substitute the documented type parameters before reading the signature: <code>ParameterType</code> must expose generated static metadata where required, and an <code>ExecuteType</code> callback must match one of the supported pass-lambda forms. Overloads and macro entries are separate canonical symbols even when their visible names are similar.</p>
+        </section>
+
+        <section id="components">
+          <h2>Component index</h2>
+          <p>These links target component sections created by the API renderer.</p>
+          <ul>
+            <li><a href="#api-component-core">Core definitions, typed handles, flags, pipelines, and graph context</a></li>
+            <li><a href="#api-component-resources">Logical resources, views, accesses, imports, and extraction</a></li>
+            <li><a href="#api-component-parameters">Parameter metadata, declarations, macros, and uniform buffers</a></li>
+            <li><a href="#api-component-passes">Pass records, state, execution context, and callback contracts</a></li>
+            <li><a href="#api-component-compilation">Compilation inputs, scheduling products, and graph reports</a></li>
+            <li><a href="#api-component-execution">Execution options, submission results, and physical access</a></li>
+            <li><a href="#api-component-diagnostics">Logging and diagnostic helpers</a></li>
+          </ul>
+          <aside class="callout">
+            <h3>Header choice</h3>
+            <p>Include <code>ArdaRenderGraph.h</code> for the aggregate public surface or a focused public header when you need a narrower dependency.</p>
+          </aside>
+        </section>
+
+        <section id="symbol-index">
+          <h2>Symbol index</h2>
+          <div data-api-index="ArdaRenderGraph"></div>
+          <noscript>
+            <aside class="callout">
+              <h3>JavaScript is required for canonical detail rendering</h3>
+              <p>The searchable index and generated detail entries are rendered from the API inventory with JavaScript. Without JavaScript, use the textbook chapters for conceptual guidance:</p>
+              <ul>
+                <li><a href="getting-started.html">Getting started</a></li>
+                <li><a href="architecture.html">Architecture and lifecycle</a></li>
+                <li><a href="resources.html">Logical resources and ownership</a></li>
+                <li><a href="passes.html">Pass and parameter declarations</a></li>
+                <li><a href="compilation.html">Compilation and scheduling</a></li>
+                <li><a href="execution.html">Execution and submission</a></li>
+                <li><a href="debugging.html">Validation and debugging</a></li>
+              </ul>
+            </aside>
+          </noscript>
+        </section>
+
+        <section id="detailed-reference">
+          <h2>Detailed reference</h2>
+          <p>Entries are grouped by component and then symbol kind. Filter controls apply to both this reference and the compact symbol index above.</p>
+          <div data-api-reference></div>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="debugging.html">← Previous: Debugging</a>
+          <a href="index.html">Back to overview ↑</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer">
+    <p>ArdaRenderGraph documentation · Generated API data is rendered from <code>arda-rdg-api.js</code>.</p>
+  </footer>
+</body>
+</html>

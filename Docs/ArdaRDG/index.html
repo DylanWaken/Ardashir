@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A source-backed conceptual guide and reading roadmap for ArdaRenderGraph.">
+  <title>ArdaRenderGraph | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a aria-current="page" href="index.html">ArdaRenderGraph</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
+      <h2>ArdaRenderGraph</h2>
+      <nav>
+        <a aria-current="page" href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="resources.html">Resources</a>
+        <a href="passes.html">Passes</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="debugging.html">Debugging</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        ArdaRenderGraph
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Deferred GPU-work orchestration</p>
+          <h1>ArdaRenderGraph</h1>
+          <p>ArdaRenderGraph (ARDG) lets renderer code declare named <a class="term" data-term="pass" href="../glossary.html#term-pass">passes</a>, logical resources, and access intent before commands are recorded. The graph then validates the declaration, discovers hazards, removes dead work, derives lifetimes and <a class="term" data-term="barrier" href="../glossary.html#term-barrier">barriers</a>, chooses available queues, records command lists, and submits through ArdaBackend's opaque RHI.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#audiences">Audience paths</a>
+          <a href="#fundamentals">Graph fundamentals</a>
+          <a href="#boundary">Module boundary</a>
+          <a href="#why-deferred">Why deferred</a>
+          <a href="#lifecycle">Three-phase lifecycle</a>
+          <a href="#worked-frame">Worked frame</a>
+          <a href="#invariants">Invariants and tradeoffs</a>
+          <a href="#limitations">Current limitations</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#summary">Summary</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>distinguish a render graph from a renderer, graphics backend, RHI, and native graphics API;</li>
+            <li>explain why deferring command recording creates opportunities for validation, culling, scheduling, and resource reuse;</li>
+            <li>describe ARDG's build, compile, and execute phases and the mutations legal in each;</li>
+            <li>explain why live execution order is a registration-order subsequence;</li>
+            <li>place logical resources, physical RHI resources, pass parameters, and command lists in the correct ownership domain;</li>
+            <li>state what successful execution proves—and what it does not prove about the GPU; and</li>
+            <li>choose a reading path appropriate to integration, architecture, or diagnosis work.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites</h2>
+          <p>You should be comfortable with C++ object <a class="term" data-term="lifetime" href="../glossary.html#term-lifetime">lifetime</a>, GPU buffers and textures, command recording, and <a class="term" data-term="resource-state" href="../glossary.html#term-resource-state">resource states</a>. For the computer-science model, review <a class="term" data-term="dag" href="../glossary.html#term-dag">directed acyclic graphs</a>, <a class="term" data-term="topological-order" href="../glossary.html#term-topological-order">topological order</a>, and <a class="term" data-term="raw-war-waw-hazards" href="../glossary.html#term-raw-war-waw-hazards">RAW, WAR, and WAW hazards</a>.</p>
+          <p>ARDG consumes an initialized ArdaBackend device context. Read the ArdaBackend <a href="../ArdaBackend/getting-started.html">startup guide</a> if device, queue, and presentation setup are not already established.</p>
+        </section>
+
+        <section id="audiences">
+          <h2>Audience and goal-directed paths</h2>
+          <div class="card-grid">
+            <article>
+              <h3>First integration</h3>
+              <p>Read this overview, then <a href="getting-started.html">Getting started</a>. Concentrate on context creation, parameter reflection, output rooting, one-shot execution, and cleanup.</p>
+            </article>
+            <article>
+              <h3>Renderer architect</h3>
+              <p>Continue to <a href="architecture.html">Architecture</a>. Focus on append-only registries, sentinels, hazard edges, culling roots, queue fallback, and physical-resource materialization.</p>
+            </article>
+            <article>
+              <h3>Pass author</h3>
+              <p>Start with the worked frame and getting-started example. Treat parameter macros as the declaration from which dependencies and physical-access validation are derived.</p>
+            </article>
+            <article>
+              <h3>Performance engineer</h3>
+              <p>Study compile products, parallel recording waves, queue dependencies, committed-resource pooling, and the limitations section before interpreting execution counters.</p>
+            </article>
+            <article>
+              <h3>Failure investigator</h3>
+              <p>Use <a href="#failures">failure analysis</a>, <a href="architecture.html#implementation-theory">implementation versus theory</a>, and the deterministic <a href="api-reference.html#api-arda-rdg-fardgbuilder-dumpgraph-c392d068"><code>DumpGraph()</code></a> report.</p>
+            </article>
+          </div>
+        </section>
+
+        <section id="fundamentals">
+          <h2>Fundamentals: a program about a program</h2>
+          <p>A conventional immediate renderer records GPU commands while it decides what to render. At that instant, the system sees only the commands already emitted and whatever manually maintained state surrounds them. A <a class="term" data-term="render-graph" href="../glossary.html#term-render-graph">render graph</a> instead builds a data structure describing future work. In compiler terms, that structure is an intermediate representation: passes are operations, logical resources are values, and dependency edges encode causality.</p>
+
+          <h3>Transferable graph concepts</h3>
+          <dl>
+            <dt>Vertex</dt>
+            <dd>A pass is a graph vertex: one named unit with a callback and declared accesses.</dd>
+            <dt>Edge</dt>
+            <dd>A producer edge says that data flows from an earlier pass to a later pass. A synchronization-only edge orders a write after prior readers without making those readers live.</dd>
+            <dt>Root and reachability</dt>
+            <dd>External or extracted outputs, synthetic boundaries, and <code>NeverCull</code> work identify observable roots. Backward reachability over data producers identifies live work.</dd>
+            <dt>Interval</dt>
+            <dd>A logical resource's first and last live uses form an inclusive interval. Non-overlapping intervals permit safe reuse under additional descriptor and queue-domain constraints.</dd>
+            <dt>Lowering</dt>
+            <dd>Compilation turns semantic declarations into concrete queue choices, transitions, waits, lifetimes, and recording groups.</dd>
+          </dl>
+
+          <p>The model does not replace GPU knowledge. It centralizes that knowledge so one implementation can apply the same hazard, state, and lifetime rules across many rendering algorithms.</p>
+        </section>
+
+        <section id="boundary">
+          <h2>Module boundary</h2>
+          <figure>
+            <img src="Assets/rdg-system-boundary.svg" alt="System boundary showing application and renderer declarations flowing through ArdaRenderGraph into opaque Arda RHI commands, queues, and resources.">
+            <figcaption>The renderer owns intent and callbacks. ARDG owns graph analysis and orchestration. ArdaBackend and the RHI own physical object creation, command execution, synchronization primitives, and native API translation.</figcaption>
+          </figure>
+
+          <h3>What ARDG owns</h3>
+          <ul>
+            <li>one builder's logical pass, texture, buffer, view, uniform-buffer, and acceleration-structure records;</li>
+            <li>frozen pass-parameter storage and graph-scoped <a class="term" data-term="blackboard" href="../glossary.html#term-blackboard">blackboard</a> values;</li>
+            <li>dependency discovery, validation, culling, queue selection, lifetimes, transitions, and queue-wait metadata;</li>
+            <li>execution-local materialization pools, command-list recording, deterministic submission, extraction publication, and execution reports.</li>
+          </ul>
+
+          <h3>What stays outside</h3>
+          <ul>
+            <li>The renderer decides visibility, algorithms, pass contents, descriptors, and which result is observable.</li>
+            <li>ArdaBackend supplies the device and queue capabilities and implements physical resources and command lists.</li>
+            <li>The application owns external resources, extraction destinations, backend lifetime, frame pacing, and GPU-completion policy.</li>
+            <li>Native D3D12 or Vulkan types do not cross the ARDG public boundary.</li>
+          </ul>
+
+          <p>The public aggregate header is <code>Source/ArdaRenderGraph/Public/ArdaRenderGraph.h</code>. Core declarations live in the other public headers; compiler, executor, registry, allocator, and validation machinery remain under <code>Source/ArdaRenderGraph/Private</code>.</p>
+        </section>
+
+        <section id="why-deferred">
+          <h2>Why a deferred graph</h2>
+          <p>Deferral separates <em>declaring intent</em> from <em>choosing an execution plan</em>. Once the complete workload is visible, ARDG can answer questions that a single pass cannot answer locally:</p>
+          <ol>
+            <li><strong>Is the work observable?</strong> Backward liveness can remove pass chains that do not reach an external, extracted, or never-cull root.</li>
+            <li><strong>What must precede what?</strong> Metadata visitation records producer and synchronization edges from resource access history.</li>
+            <li><strong>Which state is required?</strong> The compiler merges compatible reads, rejects conflicting writes, and emits per-subresource texture transitions and whole-buffer transitions.</li>
+            <li><strong>Where can work run?</strong> Copy and async-compute requests are checked against queue availability and state compatibility; ineligible work falls back deterministically to graphics.</li>
+            <li><strong>How long is storage needed?</strong> Live intervals support exact committed-resource reuse when descriptors match, intervals do not overlap, and all use stays in one queue domain.</li>
+            <li><strong>What can record concurrently?</strong> Dependency levels form CPU recording waves, while <code>NeverParallel</code> and immediate mode force serial recording where required.</li>
+          </ol>
+
+          <aside class="callout">
+            <h3>Design derivation: why declarations must be complete</h3>
+            <p>Every optimization depends on the declaration being truthful. An undeclared read hides a dependency; an undeclared write hides both ordering and state; an independently retained RHI handle hides lifetime. For that reason, <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-ead56b9c"><code>FARDGPassExecutionContext</code></a> validates logical resources obtained through its getters, while its raw command-list member is explicitly an unsafe escape hatch.</p>
+          </aside>
+        </section>
+
+        <section id="lifecycle">
+          <h2>The three-phase lifecycle</h2>
+          <figure>
+            <img src="Assets/rdg-lifecycle.svg" alt="Single-use ArdaRenderGraph lifecycle from mutable building through cached compilation to one-shot execution, including terminal failure.">
+            <figcaption>One builder describes one graph. Build mutation closes permanently when compilation begins. Compilation is cached; execution starts once and never reopens the graph.</figcaption>
+          </figure>
+
+          <h3>1. Build</h3>
+          <p>Construct <a href="api-reference.html#api-arda-rdg-fardgbuilder-e0fc26d2"><code>FARDGBuilder</code></a>, allocate or supply parameters, create or import logical resources, register passes, add forward manual dependencies, populate the blackboard, and request extraction. The private implementation creates <code>GraphPrologue</code> first. Registries are append-only and arena-backed, so handles and record addresses remain stable.</p>
+
+          <h3>2. Compile</h3>
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-compile-97614587"><code>Compile()</code></a> validates the declaration, appends <code>GraphEpilogue</code>, chooses pipelines, builds reverse edges, culls dead passes, rebuilds live intervals, derives transitions and queue dependencies, and forms raster compatibility groups. It performs no GPU command recording. A later call returns the same cached <a href="api-reference.html#api-arda-rdg-fardgcompileresult-192e7594"><code>FARDGCompileResult</code></a>.</p>
+
+          <h3>3. Execute</h3>
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-execute-462d7837"><code>Execute()</code></a> compiles on demand, materializes live resources, rebuilds transitions against actual physical identities, records command lists—possibly in parallel waves—submits in deterministic execution order, publishes extractions, runs device garbage collection, and returns one <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-55e456b3"><code>FARDGExecutionResult</code></a>. A second execution is a fatal contract violation.</p>
+
+          <aside class="callout warning">
+            <h3>Submission is not completion</h3>
+            <p>Successful <code>Execute()</code> means CPU-side compilation, recording, and queue submission completed. The GPU may still be executing. Use the returned per-queue submitted instances and Arda RHI synchronization before CPU readback, externally constrained reuse, or teardown that submission retention does not cover.</p>
+          </aside>
+        </section>
+
+        <section id="worked-frame">
+          <h2>Worked example: deferred post-process output</h2>
+          <p>Suppose a renderer imports a scene-color texture, computes a tone-mapped intermediate, and leaves the result available to later CPU-owned renderer state.</p>
+          <ol>
+            <li><strong>Context.</strong> The application converts the live backend device context with <a href="api-reference.html#api-arda-rdg-makerendergraphcontext-ddc93cbb"><code>MakeRenderGraphContext()</code></a>. Queue capabilities are copied; they are not guessed from platform or backend name.</li>
+            <li><strong>Import.</strong> The swap-chain or scene texture is registered with a known entry state. The graph retains the RHI reference but does not take external ownership.</li>
+            <li><strong>Declare.</strong> A logical output texture is created from an RHI descriptor. No physical texture is allocated at this point.</li>
+            <li><strong>Parameterize.</strong> A generated standard-layout parameter struct stores the input and output accesses. The input requests shader-resource state; the output requests unordered access.</li>
+            <li><strong>Register.</strong> <code>AddPass</code> freezes parameter bytes and visits metadata. The write-after-read and read-after-write history becomes graph edges without the callback manually naming predecessors.</li>
+            <li><strong>Root.</strong> <code>QueueTextureExtraction</code> marks the output observable and requests its exit state. Without extraction, external output, or <code>NeverCull</code>, the pass chain could be correctly culled as dead.</li>
+            <li><strong>Compile.</strong> The live chain remains in registration order. The compiler derives transitions and extends the output lifetime through the epilogue.</li>
+            <li><strong>Execute.</strong> Physical storage is acquired, the callback retrieves only declared physical resources through the execution context, command lists are submitted, and the output reference is assigned.</li>
+            <li><strong>Synchronize.</strong> The caller waits through the RHI only when CPU access or external lifetime rules require GPU completion.</li>
+          </ol>
+          <p>This pattern generalizes to shadow maps, visibility buffers, lighting, post-processing, compute preprocessing, and copy workflows: declare values and accesses first, let the graph derive orchestration, then record only the algorithm-specific commands.</p>
+        </section>
+
+        <section id="invariants">
+          <h2>Production invariants and tradeoffs</h2>
+          <ol>
+            <li><strong>One builder, one graph, one execution.</strong> Rebuild per workload or frame rather than trying to reset and replay a builder.</li>
+            <li><strong>Registration order is already topological.</strong> Manual dependencies must point from an earlier registered pass to a later one. Live execution order is the original registration-order subsequence, not an arbitrary topological sort.</li>
+            <li><strong>Declarations are the source of truth.</strong> Physical access through a context must correspond to a declared logical resource or exact view.</li>
+            <li><strong>Absence has two contracts.</strong> <code>TryGet*</code> and blackboard <code>TryGet</code> return null for expected absence; checked operations use fatal checks for programmer errors.</li>
+            <li><strong>Logical and physical identity differ.</strong> Several non-overlapping logical resources may reuse one compatible physical object; runtime transition rebuilding preserves physical state continuity.</li>
+            <li><strong>Ownership does not prove GPU completion.</strong> Retained references protect object lifetime, while queue synchronization proves execution progress.</li>
+            <li><strong>Queue requests are preferences under constraints.</strong> Missing capability or incompatible state falls back to graphics instead of changing correctness.</li>
+          </ol>
+
+          <h3>Tradeoffs</h3>
+          <p>The graph pays CPU cost for metadata traversal, validation, compilation, allocation planning, transition rebuilding, and command-list management. It also constrains pass registration to forward causality and requires reflective parameter declarations. In return, rendering code gains centralized correctness checks, deterministic behavior, dead-work elimination, state lowering, parallel recording opportunities, and bounded resource reuse.</p>
+          <p>An immediate hand-authored command stream can be simpler for tiny one-off tasks and may expose backend-specific behavior sooner. It also makes global optimization and correctness depend on distributed manual bookkeeping. ARDG is most valuable when many passes share resources and the complete workload changes by frame.</p>
+        </section>
+
+        <section id="limitations">
+          <h2>Current implementation limits</h2>
+          <ul>
+            <li><strong>No arbitrary pass reordering.</strong> Forward-only edges make registration order topological; compilation culls a subsequence but does not search alternate schedules.</li>
+            <li><strong>One compile product and one execution.</strong> There is no reset, replay, incremental mutation after compile, or second execute.</li>
+            <li><strong>Physical placed-resource aliasing is disabled.</strong> <code>ArdaRenderGraphExecutor.cpp</code> computes an ideal heap layout when virtual-resource capabilities exist, but safely falls back because the portable RHI lacks required aliasing barriers and heap-compatibility queries.</li>
+            <li><strong>Committed-object pooling is execution-local.</strong> Compatible textures and buffers can be recycled only across strictly non-overlapping inclusive lifetimes in one queue reuse domain.</li>
+            <li><strong>Buffer state tracking is whole-resource.</strong> Byte ranges are retained for declaration validation, but compiler transition state is one slot per buffer. Texture state is tracked per mip and array slice.</li>
+            <li><strong>Raster groups are metadata.</strong> Compatible adjacent raster passes receive group indices; grouping does not itself merge command lists or native render passes.</li>
+            <li><strong>Raw command-list access cannot be proven complete.</strong> Independently retained RHI references can bypass graph declaration, dependency, transition, and lifetime inference.</li>
+            <li><strong>Execution success is asynchronous.</strong> No implicit wait for complete GPU retirement is part of the graph contract.</li>
+          </ul>
+        </section>
+
+        <section id="failures">
+          <h2>Failure modes: symptom, cause, prevention, recovery</h2>
+          <dl>
+            <dt>Pass silently disappears from execution</dt>
+            <dd><strong>Cause:</strong> it has no data path to an external or extracted output and lacks <code>NeverCull</code>. <strong>Prevent:</strong> identify the real observable output instead of marking every pass live. <strong>Recover:</strong> inspect <code>DumpGraph()</code>, then add the missing declaration, extraction, external write, or deliberate side-effect flag.</dd>
+            <dt>Fatal check while adding a backward dependency</dt>
+            <dd><strong>Cause:</strong> the producer was registered after the consumer. <strong>Prevent:</strong> register producers first. <strong>Recover:</strong> reorder setup; ARDG does not topologically sort a backward edge.</dd>
+            <dt>Fatal read-before-produce validation</dt>
+            <dd><strong>Cause:</strong> a graph-created resource or texture subresource is read before any live write. <strong>Prevent:</strong> import initialized data or register a producing pass first. <strong>Recover:</strong> fix declaration order and selected mip/slice, not merely the callback.</dd>
+            <dt>Fatal undeclared physical access during a callback</dt>
+            <dd><strong>Cause:</strong> the callback asks the execution context for a resource or exact view absent from its frozen parameters. <strong>Prevent:</strong> make parameter declarations complete. <strong>Recover:</strong> add the correct member and access state; do not hide the resource behind the raw command list.</dd>
+            <dt>Async or copy work runs on graphics</dt>
+            <dd><strong>Cause:</strong> the queue is unavailable, immediate mode is active, or declared states are incompatible. <strong>Prevent:</strong> treat queue flags as constrained eligibility. <strong>Recover:</strong> inspect context capabilities and pass states; graphics fallback is expected behavior.</dd>
+            <dt>Output reference exists but CPU data is stale</dt>
+            <dd><strong>Cause:</strong> extraction publishes after submission, not GPU completion. <strong>Prevent:</strong> use RHI synchronization for readback and external reuse. <strong>Recover:</strong> wait for the relevant submitted instance before consuming results.</dd>
+            <dt>Builder cannot be reused after an exception or fatal path</dt>
+            <dd><strong>Cause:</strong> execution failure is sticky to avoid treating partial submission as replayable. <strong>Prevent:</strong> validate declarations and device lifetime before execute. <strong>Recover:</strong> discard the builder, establish safe GPU state through the backend, and build a new graph.</dd>
+          </dl>
+        </section>
+
+        <section id="summary">
+          <h2>Chapter summary</h2>
+          <ul>
+            <li>ARDG is a deferred intermediate representation for passes, logical resources, accesses, and callbacks above the opaque RHI.</li>
+            <li>Deferral enables whole-workload validation, liveness, transition lowering, queue selection, parallel recording, and resource reuse.</li>
+            <li>Each builder moves from mutable build to cached compilation to one-shot execution; mutation never reopens.</li>
+            <li>Forward edges make registration order topological, and culling produces a registration-order subsequence.</li>
+            <li>Logical ownership, retained RHI ownership, CPU submission, and GPU completion are distinct concerns.</li>
+          </ul>
+
+          <h3>Review and checkpoint questions</h3>
+          <ol>
+            <li>What information becomes available only because command recording is deferred?</li>
+            <li>Why can ARDG avoid a general-purpose topological sort?</li>
+            <li>What makes a pass observable and therefore live?</li>
+            <li>Why must extraction storage remain valid through execution?</li>
+            <li>How can two logical resources legally refer to one physical resource?</li>
+            <li>What additional operation is required after successful execution before CPU readback?</li>
+          </ol>
+
+          <h3>Further reading</h3>
+          <ul>
+            <li><a href="getting-started.html">Getting started: build and execute a faithful graph</a></li>
+            <li><a href="architecture.html">Architecture: handles, registries, arena, sentinels, dependencies, and call chain</a></li>
+            <li><a href="api-reference.html">Canonical ArdaRenderGraph API reference</a></li>
+            <li><a href="../ArdaBackend/commands.html">ArdaBackend commands: the execution substrate below ARDG</a></li>
+            <li><a href="../glossary.html">Global graphics and computer-science glossary</a></li>
+          </ul>
+        </section>
+
+        <aside class="callout">
+          <h3>Related API</h3>
+          <p>Use the canonical API reference for exact signatures. Start with <a href="api-reference.html#api-arda-rdg-fardgbuilder-e0fc26d2"><code>FARDGBuilder</code></a>, <a href="api-reference.html#api-arda-rdg-fardgrendergraphcontext-0e7e7f3f"><code>FARDGRenderGraphContext</code></a>, <a href="api-reference.html#api-arda-rdg-fardgbuilder-compile-97614587"><code>Compile()</code></a>, and <a href="api-reference.html#api-arda-rdg-fardgbuilder-execute-462d7837"><code>Execute()</code></a>.</p>
+        </aside>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <span></span>
+          <a rel="next" href="getting-started.html">Next: Getting started →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaRenderGraph documentation · Source boundary: <code>Source/ArdaRenderGraph</code> · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

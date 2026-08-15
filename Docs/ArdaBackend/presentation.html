@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A practical theory of ArdaBackend display presentation, swap chains, frame ownership, synchronization, resize, pacing, and shutdown.">
+  <title>Presentation | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a>
+        <a href="commands.html">Commands</a>
+        <a aria-current="page" href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaBackend</a> /
+        Presentation
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Display engine and frame lifecycle</p>
+          <h1>Presentation</h1>
+          <p>Presentation is the boundary where rendered images become visible. ArdaBackend hides DXGI and Vulkan object types behind <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a> and exposes the shared frame contract through <a href="api-reference.html#api-arda-backend-iardaswapchain-7dc6e3a4"><code>IArdaSwapChain</code></a>.</p>
+        </header>
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Objectives and prerequisites</a>
+          <a href="#fundamentals">Presentation fundamentals</a>
+          <a href="#arda-model">Arda implementation</a>
+          <a href="#platforms">D3D12 and Vulkan</a>
+          <a href="#timeline">Frame timeline</a>
+          <a href="#pacing">Latency, pacing, and vsync</a>
+          <a href="#resize">Resize and invalidation</a>
+          <a href="#compatibility">Format compatibility</a>
+          <a href="#robust-loop">Robust frame loop</a>
+          <a href="#teardown">Teardown and multi-window</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#production">Production guidance</a>
+          <a href="#summary">Summary and checkpoints</a>
+          <a href="#further-reading">Further reading</a>
+        </nav>
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>explain why a swap chain owns several displayable images rather than one permanent screen buffer;</li>
+            <li>distinguish a native back buffer from the Arda <a class="term" data-term="framebuffer" href="../glossary.html#term-framebuffer">framebuffer</a> that describes render attachments;</li>
+            <li>preserve acquire, render, submit, and present ordering on both supported backends;</li>
+            <li>handle resize, minimization, Vulkan out-of-date results, and stale framebuffer references safely;</li>
+            <li>separate general latency and present-mode concepts from controls that Arda currently exposes; and</li>
+            <li>shut presentation down without destroying native or RHI objects still used by the GPU.</li>
+          </ul>
+          <h3>Prerequisites</h3>
+          <p>Read <a href="architecture.html">Architecture</a> for ownership and backend layering, <a href="rhi.html">RHI types &amp; resources</a> for texture states and framebuffers, and <a href="commands.html">Commands</a> for command-list submission. Familiarity with a desktop window library is useful, but no direct DXGI or Vulkan code is required.</p>
+        </section>
+        <section id="fundamentals">
+          <h2>Presentation fundamentals</h2>
+          <h3>The display engine is another consumer</h3>
+          <p>A renderer writes pixels on a GPU queue. A display engine scans pixels to a monitor on a schedule. Presentation connects these asynchronous consumers: it selects an image safe for rendering, orders GPU completion before display use, and eventually makes another image available.</p>
+          <p>The image is not copied to a magical “screen” by the Arda API. The native presentation system owns a rotating set of images. “Present” queues one selected image to that system; the compositor or display engine decides when it becomes visible.</p>
+          <h3>Why a swap chain contains multiple images</h3>
+          <p>If rendering and scan-out shared one image, writes could race the display and produce tearing. A <a class="term" data-term="swap-chain" href="../glossary.html#term-swap-chain">swap chain</a> provides multiple back buffers so the GPU can render one image while another is queued or displayed. More buffering can absorb timing variation, but also permits more frames to wait ahead of the display and therefore increases input-to-photon latency.</p>
+          <dl>
+            <dt>Back buffer</dt>
+            <dd>A native presentable texture. DXGI creates it; Vulkan returns it from <code>vkGetSwapchainImagesKHR</code>. The application does not allocate or destroy it independently.</dd>
+            <dt>Framebuffer</dt>
+            <dd>An RHI object that binds one or more attachments for rendering. Arda wraps each back buffer as a borrowed RHI texture, then creates a framebuffer whose color attachment is that texture.</dd>
+            <dt>Acquired image</dt>
+            <dd>The swap-chain image selected for the current frame. Acquisition grants temporary permission to target it; it does not transfer permanent ownership.</dd>
+            <dt>Presentable state</dt>
+            <dd>The state expected by the native presentation engine. Rendering requires attachment state, and the backend/RHI must establish the correct transitions around use.</dd>
+          </dl>
+          <aside class="callout">
+            <h3>References are not presentation rights</h3>
+            <p>An <code>FArdaRHIFramebufferRef</code> keeps a wrapper alive, but resize or swap-chain recreation invalidates the old presentation generation. Never cache an acquired framebuffer across frames, resize, or an out-of-date event.</p>
+          </aside>
+        </section>
+        <section id="arda-model">
+          <h2>The Arda presentation model</h2>
+          <figure>
+            <img src="Assets/cross-platform-presentation.svg" alt="Cross-platform presentation architecture showing the application window bridge, Arda swap-chain contract, DXGI path, and Vulkan surface and swapchain path.">
+            <figcaption>The public contract is narrow; the native object graph and synchronization differ substantially beneath it.</figcaption>
+          </figure>
+          <p>The application supplies a platform adapter and initial drawable dimensions to <a href="api-reference.html#api-arda-backend-initializebackendforpresentation-57fda7b3"><code>InitializeBackendForPresentation</code></a>. On success, Arda publishes the ordinary device context and returns a unique-owner swap chain. Initialization failures return <a href="api-reference.html#api-arda-backend-eardainitializeresult-2bf6fe00"><code>EArdaInitializeResult</code></a>; detailed process-level context comes from <a href="api-reference.html#api-arda-backend-getbackenderror-bd2c5f82"><code>GetBackendError()</code></a>.</p>
+          <h3>The opaque window bridge</h3>
+          <p><a href="api-reference.html#api-arda-backend-fardanativeobject-04279ab9"><code>FArdaNativeObject</code></a> encodes pointer-sized native handles without putting Win32 or Vulkan headers in public signatures. Opacity prevents compile-time coupling; it does not make a wrong type safe. An HWND encoded as a Vulkan instance, a stale window handle, or a surface from another instance remains invalid native input.</p>
+          <ul>
+            <li><a href="api-reference.html#api-arda-backend-iardawindowsurface-getd3d12windowhandle-dc2c7f0f"><code>GetD3D12WindowHandle()</code></a> returns the live HWND used by DXGI.</li>
+            <li><a href="api-reference.html#api-arda-backend-iardawindowsurface-getvulkaninstanceextensions-45278511"><code>GetVulkanInstanceExtensions()</code></a> returns all instance extensions required by the host window system.</li>
+            <li><a href="api-reference.html#api-arda-backend-iardawindowsurface-createvulkansurface-a1c278c0"><code>CreateVulkanSurface()</code></a> receives the actual VkInstance and returns a VkSurfaceKHR encoded opaquely.</li>
+          </ul>
+          <p>The extension-name pointers must remain valid during initialization. The backend owns the Vulkan surface returned by the adapter; the host must keep the native window alive until presentation is fully destroyed.</p>
+          <h3>Owned and borrowed objects</h3>
+          <ul>
+            <li>The host owns the window and adapter.</li>
+            <li>The returned <code>eastl::unique_ptr&lt;IArdaSwapChain&gt;</code> owns the Arda presentation object.</li>
+            <li>The native swap chain owns its back-buffer images.</li>
+            <li>Arda imports those images with borrowed native ownership and wraps them in RHI textures and framebuffers.</li>
+            <li>The swap chain retains backend/native lifetime needed by its resources, but must still be destroyed before global shutdown.</li>
+          </ul>
+        </section>
+        <section id="platforms">
+          <h2>D3D12 DXGI versus Vulkan</h2>
+          <h3>D3D12 and DXGI</h3>
+          <p>The D3D12 implementation creates an <code>IDXGISwapChain3</code> for the HWND and graphics command queue. It uses flip-discard, BGRA8 UNorm, one sample, render-target usage, and a fixed internal buffer count. Acquisition asks DXGI for <code>GetCurrentBackBufferIndex()</code>; no explicit acquire semaphore is required.</p>
+          <p><a href="api-reference.html#api-arda-backend-iardaswapchain-preparesubmit-a7c52b53"><code>PrepareSubmit()</code></a> is currently empty on D3D12. <a href="api-reference.html#api-arda-backend-iardaswapchain-present-84764540"><code>Present()</code></a> calls <code>IDXGISwapChain::Present(1, 0)</code>: synchronization interval 1 and no tearing flag.</p>
+          <h3>Vulkan surface and swapchain</h3>
+          <p>Vulkan first needs a VkSurfaceKHR tied to both the instance and native window system. The backend queries surface capabilities, formats, and extents; selects BGRA8 UNorm; clamps a caller-requested extent when the platform does not prescribe one; chooses FIFO present mode; and creates one more image than the surface minimum, capped by its maximum.</p>
+          <p>Each VkImage is imported as a borrowed Vulkan image with initial and kept state <code>Present</code>. Vulkan acquisition can return a different image index from the frame-in-flight index: image index chooses the framebuffer, while frame index chooses synchronization objects.</p>
+          <h3>Why the abstraction is intentionally asymmetric</h3>
+          <p>DXGI needs an HWND and internally tracks the current back buffer. Vulkan needs instance extensions, explicit surface creation, capability negotiation, image acquisition, and semaphores. The narrow bridge avoids binding ArdaBackend to GLFW, SDL, or a particular UI toolkit. The tradeoff is that the host must implement platform plumbing correctly and cannot configure every native presentation feature through the current public API.</p>
+        </section>
+        <section id="timeline">
+          <h2>Acquire, render, and present</h2>
+          <figure>
+            <img src="Assets/swapchain-frame-timeline.svg" alt="Swap-chain frame timeline from acquire through recording, PrepareSubmit, queue execution, and present, with resize and teardown ordering.">
+            <figcaption>Calls are platform-neutral. The lower lanes show the Vulkan semaphore edges and the simpler DXGI path.</figcaption>
+          </figure>
+          <ol>
+            <li><a href="api-reference.html#api-arda-backend-iardaswapchain-acquireframe-d830b77f"><code>AcquireFrame(outFramebuffer)</code></a> selects a usable image and returns its framebuffer.</li>
+            <li>Open a graphics command list, record rendering to that framebuffer, and close the list.</li>
+            <li>Call <code>PrepareSubmit()</code> immediately before the submission that produces the presented image.</li>
+            <li>Submit the closed graphics command list with <code>ExecuteCommandList</code>.</li>
+            <li>Call <code>Present()</code> only after that submission has been queued.</li>
+          </ol>
+          <h3>Vulkan semaphore ordering</h3>
+          <p><code>AcquireFrame()</code> asks <code>vkAcquireNextImageKHR</code> to signal <code>imageAvailable[frame]</code>. Arda then schedules the graphics queue to wait for that semaphore. This prevents rendering before the presentation engine releases the acquired image.</p>
+          <p><code>PrepareSubmit()</code> schedules the graphics queue to signal <code>renderFinished[frame]</code> after submitted work. <code>Present()</code> waits on that semaphore, ensuring scan-out cannot observe incomplete rendering. The required order is therefore:</p>
+          <pre><code>AcquireFrame
+  → record and Close
+  → PrepareSubmit
+  → ExecuteCommandList
+  → Present</code></pre>
+          <aside class="callout warning">
+            <h3>Explicit means order-sensitive</h3>
+            <p>Calling <code>PrepareSubmit()</code> after execution can attach the signal to the wrong submission boundary. Omitting it lets presentation wait on a semaphore that the rendered frame never signals. D3D12’s current no-op does not make either mistake portable.</p>
+          </aside>
+          <p><a href="api-reference.html#api-arda-backend-iardaswapchain-preparesubmit-a7c52b53"><code>PrepareSubmit()</code></a> returns <code>void</code>, so it provides no immediate portable status channel. Portable code must preserve the required ordering, then observe the later <a href="api-reference.html#api-arda-backend-iardaswapchain-present-84764540"><code>Present()</code></a> result and <a href="api-reference.html#api-arda-backend-iardaswapchain-geterror-0d91ba43"><code>GetError()</code></a>, together with the configured <a href="api-reference.html#api-arda-backend-fardabackendconfiguration-mmessagecallback-2ecd5edd">diagnostic callback</a> and <a href="api-reference.html#api-arda-backend-fardabackendconfiguration-mbenablevalidation-2f50a50d">native validation</a>, for failures. This is a limitation of the current API contract, not evidence that preparation cannot fail internally.</p>
+          <h3>Image state and ownership</h3>
+          <p>Acquisition controls presentation ownership, while RHI barriers control GPU resource state. These are related but not interchangeable. A semaphore does not transition a texture to render-target state; a texture barrier does not make the presentation engine release an image. Preserve both the RHI state model and swap-chain call order.</p>
+        </section>
+        <section id="pacing">
+          <h2>Frame latency, pacing, and vsync</h2>
+          <h3>General concepts</h3>
+          <dl>
+            <dt>Vertical synchronization</dt>
+            <dd>Presentation is aligned to display refresh to avoid tearing. A synchronized present may block or queue when rendering outruns refresh.</dd>
+            <dt>Frame pacing</dt>
+            <dd>Controlling when frames begin and are submitted so visible intervals remain even. High average FPS can still look poor when intervals oscillate.</dd>
+            <dt>Frames in flight</dt>
+            <dd>CPU/GPU work allowed to queue concurrently. More overlap improves utilization but can add latency and complicate per-frame resource reuse.</dd>
+            <dt>Present mode</dt>
+            <dd>A native policy such as Vulkan FIFO, mailbox, or immediate, or DXGI sync interval and tearing flags. Modes trade latency, tearing, power, and availability.</dd>
+          </dl>
+          <h3>What the current Arda API actually does</h3>
+          <p>Current D3D12 presentation uses <code>Present(1, 0)</code>. Current Vulkan presentation requests <code>vk::PresentModeKHR::eFifo</code> and uses two frame-indexed semaphore pairs. Both choices are synchronized/vsync-oriented.</p>
+          <p>Arda currently exposes no present-mode selector, tearing toggle, frame-latency waitable object, maximum frames-in-flight setting, adaptive-vsync policy, HDR mode, or timing statistics. Do not document those general mechanisms as application controls. If an application needs them, the public presentation configuration must first be extended with cross-platform semantics and backend-specific fallback rules.</p>
+          <h3>Practical pacing outside the swap-chain API</h3>
+          <p>A host can still avoid unbounded CPU work by limiting simulation/render submission, measuring frame intervals, and not generating frames while minimized. Avoid crude sleeps as the only pacing mechanism: scheduler granularity and variable GPU time produce jitter. Prefer display-aware timing when the backend eventually exposes it.</p>
+        </section>
+        <section id="resize">
+          <h2>Resize, minimize, and out-of-date handling</h2>
+          <h3>Drawable size is authoritative</h3>
+          <p>Window coordinates and framebuffer pixels can differ under DPI scaling. Pass nonzero drawable pixel dimensions to <a href="api-reference.html#api-arda-backend-iardaswapchain-resize-418d7a82"><code>Resize(width, height)</code></a>. After resize, query <a href="api-reference.html#api-arda-backend-iardaswapchain-getwidth-2672fbde"><code>GetWidth()</code></a> and <a href="api-reference.html#api-arda-backend-iardaswapchain-getheight-e9b1f565"><code>GetHeight()</code></a>; Vulkan surface rules may clamp or prescribe the actual extent.</p>
+          <h3>Minimization</h3>
+          <p>Both implementations treat a zero width or height as a successful no-op. This does not create a zero-sized swap chain. The application should enter a suspended presentation state, release the current framebuffer reference, process events, and resume only when drawable dimensions become nonzero.</p>
+          <h3>Replacement invalidates the generation</h3>
+          <p>Resize waits idle, releases old framebuffer wrappers and swap-chain images, recreates native images, reimports textures, and rebuilds framebuffers. Release every application reference derived from the old generation before requesting resize. Rebuild size-dependent depth buffers, render targets, viewport/scissor state, and temporal history.</p>
+          <h3>Vulkan out-of-date and suboptimal results</h3>
+          <p>On <code>eErrorOutOfDateKHR</code>, Vulkan acquisition recreates the swap chain and retries acquisition; presentation recreates and reports that recreation result. <code>eSuboptimalKHR</code> is accepted and the frame continues. This internal handling is useful but does not rebuild application-owned size-dependent resources, so the host must still react to window-size changes and compare queried dimensions.</p>
+          <p>A failed acquire or present is not automatically an out-of-date event. Read <a href="api-reference.html#api-arda-backend-iardaswapchain-geterror-0d91ba43"><code>GetError()</code></a> and classify the failure before retrying.</p>
+          <p>The public <a href="api-reference.html#api-arda-backend-iardaswapchain-acquireframe-d830b77f"><code>AcquireFrame()</code></a> interface does not guarantee the state of <code>OutFramebuffer</code> after failure on every backend. Clear the reference before each acquisition; whenever the call returns <code>false</code>, treat the reference as unusable, clear it again defensively, and inspect <code>GetError()</code>. The current Vulkan implementation clears the output on entry, but that behavior is an implementation detail rather than a portable contract.</p>
+        </section>
+        <section id="compatibility">
+          <h2>Format, sample count, and pipeline compatibility</h2>
+          <p><a href="api-reference.html#api-arda-backend-iardaswapchain-getformat-5a6a5623"><code>GetFormat()</code></a> currently returns <code>BGRA8UNorm</code> on both backends. D3D12 creates single-sample buffers, and Vulkan presentable images are likewise used as single-sample color attachments. A multisampled pipeline cannot render directly into the presentation image; render to an MSAA target and resolve to the swap-chain attachment.</p>
+          <p>Graphics pipeline compatibility includes framebuffer formats and sample counts. Resolve or cache framebuffer-compatible pipeline state using the current framebuffer. After any recreation, re-evaluate attachments rather than assuming future implementations retain today’s fixed format.</p>
+          <p>Current Vulkan initialization fails when the surface does not support BGRA8 UNorm. Current Arda presentation has no color-space negotiation or HDR contract. Treat monitor HDR, sRGB transfer behavior, and wide-gamut output as unsupported policy work, not implicit behavior.</p>
+        </section>
+        <section id="robust-loop">
+          <h2>Worked example: a robust frame loop</h2>
+          <pre><code>bool TickPresentation(Window&amp; window,
+                      IArdaSwapChain&amp; swapChain,
+                      IArdaRHIDevice&amp; device)
+{
+    const auto [width, height] = window.DrawableSize();
+    if (width == 0 || height == 0)
+        return true; // Minimized: process events, submit no frame.
+
+    if (window.ConsumeDrawableResize())
+    {
+        currentFramebuffer = nullptr;
+        ReleaseSizeDependentTargets();
+        if (!swapChain.Resize(width, height))
+            return ReportSwapChainFailure(swapChain.GetError());
+        RebuildSizeDependentTargets(
+            swapChain.GetWidth(), swapChain.GetHeight());
+    }
+
+    FArdaRHIFramebufferRef framebuffer;
+    framebuffer = nullptr;
+    if (!swapChain.AcquireFrame(framebuffer))
+    {
+        framebuffer = nullptr;
+        return ReportSwapChainFailure(swapChain.GetError());
+    }
+
+    auto command = AcquireGraphicsCommandList();
+    if (!command || !command->Open())
+        return false;
+
+    RecordFrame(*command, framebuffer,
+                swapChain.GetWidth(), swapChain.GetHeight());
+    if (!command->Close())
+        return false;
+
+    swapChain.PrepareSubmit();
+    if (!device.ExecuteCommandList(command))
+        return false;
+    if (!swapChain.Present())
+        return ReportSwapChainFailure(swapChain.GetError());
+    return true;
+}</code></pre>
+          <p>The example intentionally does not “retry forever.” Retry only after a state-changing event such as restored drawable size or successful recreation. Device loss, invalid native objects, and repeated native failures require controlled teardown or process-level recovery.</p>
+          <h3>Initialization and shutdown envelope</h3>
+          <pre><code>FArdaBackendConfiguration config;
+config.mBackend = DefaultBackend;
+config.mbEnableValidation = true;
+if (!ConfigureBackend(config))
+    return false;
+
+eastl::unique_ptr&lt;IArdaSwapChain&gt; swapChain;
+const auto result = InitializeBackendForPresentation(
+    windowSurface, width, height, swapChain);
+if (result != EArdaInitializeResult::Success)
+    return ReportStartup(result, GetBackendError());
+
+RunFrameLoop(*swapChain);
+
+swapChain->WaitForIdle();
+ReleaseRendererObjects();
+swapChain.reset();
+ShutdownBackend();</code></pre>
+        </section>
+        <section id="teardown">
+          <h2>Teardown, device idle, and multi-window use</h2>
+          <h3>Destruction order</h3>
+          <ol>
+            <li>Stop producing frames and prevent callbacks from issuing new work.</li>
+            <li>Call <a href="api-reference.html#api-arda-backend-iardaswapchain-waitforidle-25d1c81d"><code>WaitForIdle()</code></a>.</li>
+            <li>Release acquired framebuffer references and renderer-owned objects that depend on presentation attachments.</li>
+            <li>Destroy the swap chain, which also waits idle defensively and releases native images and Vulkan semaphores.</li>
+            <li>Release remaining application device references, then call <code>ShutdownBackend()</code>.</li>
+            <li>Destroy the host window only after its native surface is no longer used.</li>
+          </ol>
+          <p><code>WaitForIdle()</code> is deliberately expensive. Use it for resize, teardown, and exceptional reconfiguration—not as a normal per-frame pacing primitive.</p>
+          <aside class="callout warning">
+            <h3>Backend shutdown is not swap-chain destruction</h3>
+            <p>The API contract requires <code>OutSwapChain</code> to be destroyed first. Retained RHI references can extend wrapper lifetime, but they do not make reverse native destruction order correct.</p>
+          </aside>
+          <h3>Multi-window considerations</h3>
+          <p>General graphics APIs can present multiple surfaces from one device, with independent swap chains, extents, pacing, and occlusion. The current public Arda entry point initializes the process backend and returns one swap chain; no public factory creates additional swap chains after initialization.</p>
+          <p>Therefore multi-window presentation is not a supported current contract. Multiple calls would collide with process-global initialization assumptions. Supporting it requires a device-level swap-chain factory, per-window bridge lifetime rules, independent resize/error state, and policy for queue synchronization and mixed refresh rates.</p>
+        </section>
+        <section id="failures">
+          <h2>Failure analysis</h2>
+          <dl>
+            <dt>Initialization returns <code>Unavailable</code></dt>
+            <dd>The selected backend or required runtime is unavailable. Offer a supported backend fallback before creating renderer resources, or report the platform requirement.</dd>
+            <dt>Initialization returns <code>Failure</code></dt>
+            <dd>Inspect <code>GetBackendError()</code> and validation messages. Verify a live HWND, required Vulkan instance extensions, surface creation, nonzero dimensions, BGRA8 support, and presentation-capable hardware.</dd>
+            <dt>Acquire fails</dt>
+            <dd>Do not use the output framebuffer. Clear it defensively, inspect <code>GetError()</code>, and wait for a restore/resize event when the error indicates surface invalidation; do not spin. Vulkan’s current clearing behavior is not a cross-backend API guarantee.</dd>
+            <dt>Present fails</dt>
+            <dd>The submitted GPU work may already exist. Record the error and frame identity, stop further presentation, and distinguish successful recreation from terminal native/device failure.</dd>
+            <dt>Black frame</dt>
+            <dd>Check that rendering targets the newly acquired framebuffer, viewport and scissor use current dimensions, attachment load/store operations are correct, and the graphics pipeline matches BGRA8 single-sample output.</dd>
+            <dt>Vulkan hang at present</dt>
+            <dd>Audit <code>AcquireFrame → PrepareSubmit → ExecuteCommandList → Present</code>. Confirm exactly one intended submission is bracketed and validation is enabled.</dd>
+            <dt>Resize crashes or validation reports in-use objects</dt>
+            <dd>Release stale application framebuffer references, stop recording, and let resize wait idle before resource replacement.</dd>
+            <dt>Increasing latency</dt>
+            <dd>Measure CPU start, queue submission, and present intervals. Do not infer a configurable mailbox or frame-latency policy: current Arda exposes none.</dd>
+          </dl>
+        </section>
+        <section id="production">
+          <h2>Production guidance</h2>
+          <ul>
+            <li>Keep the window adapter small, deterministic, and free of rendering policy.</li>
+            <li>Store drawable size and a resize generation; rebuild dependent resources once per settled event batch.</li>
+            <li>Pause rendering at zero extent instead of flooding logs with acquisition or resize attempts.</li>
+            <li>Attach frame numbers and current extent to acquire/present failure logs.</li>
+            <li>Run validation builds on both backends; success on D3D12 does not verify Vulkan semaphore ordering.</li>
+            <li>Exercise restore, rapid resize, DPI migration, alt-tab, and shutdown with GPU work in flight.</li>
+            <li>Keep presentation format assumptions centralized so future HDR or color-space support is an explicit migration.</li>
+            <li>Never use per-frame <code>WaitForIdle()</code> to conceal resource lifetime bugs.</li>
+          </ul>
+        </section>
+        <section id="summary">
+          <h2>Summary</h2>
+          <p>Arda presents through a borrowed-image model: acquire a framebuffer for one native back buffer, render, arm backend-specific synchronization, submit, and present. DXGI tracks its current image implicitly; Vulkan uses explicit image-available and render-finished semaphores. Resize replaces the presentation generation, and teardown must drain and destroy it before backend shutdown.</p>
+          <h3>Checkpoints</h3>
+          <ol>
+            <li>Why can a live framebuffer reference still be stale after resize?</li>
+            <li>What distinct hazards are solved by a resource-state transition and by an acquire semaphore?</li>
+            <li>Why must <code>PrepareSubmit()</code> remain in cross-platform code when it is empty on D3D12?</li>
+            <li>Which vsync and pacing behaviors are fixed today, and which are merely general concepts?</li>
+            <li>What resources must be rebuilt when the drawable extent changes?</li>
+            <li>Why is a second presentation window not guaranteed by the current API?</li>
+          </ol>
+        </section>
+        <section id="further-reading">
+          <h2>Further reading</h2>
+          <ul>
+            <li><a href="commands.html">Commands</a> — recording, queue submission, synchronization, and markers.</li>
+            <li><a href="rhi.html">RHI types &amp; resources</a> — texture states, imported resources, framebuffers, and ownership.</li>
+            <li><a href="pipelines.html">Pipeline states</a> — framebuffer-compatible graphics pipeline creation.</li>
+            <li><a href="diagnostics.html">Diagnostics</a> — validation callbacks, error classification, and GPU failure triage.</li>
+            <li><a href="api-reference.html#api-arda-backend-iardaswapchain-7dc6e3a4"><code>IArdaSwapChain</code> reference</a> — exact callable surface.</li>
+          </ul>
+        </section>
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="commands.html">← Previous: Commands</a>
+          <a rel="next" href="diagnostics.html">Next: Diagnostics →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer">
+    <p>ArdaBackend documentation · <a href="api-reference.html">Central API reference</a></p>
+  </footer>
+</body>
+</html>

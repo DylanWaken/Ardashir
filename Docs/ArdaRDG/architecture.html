@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ArdaRenderGraph architecture: handles, registries, arena ownership, blackboard, sentinels, dependency derivation, lifecycle, compilation, and execution.">
+  <title>Architecture | ArdaRenderGraph | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaRenderGraph</a>
+      <a aria-current="page" href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
+      <h2>ArdaRenderGraph</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a aria-current="page" href="architecture.html">Architecture</a>
+        <a href="resources.html">Resources</a>
+        <a href="passes.html">Passes</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="debugging.html">Debugging</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaRenderGraph</a> /
+        Architecture
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Identity, causality, lowering, and lifetime</p>
+          <h1>Architecture</h1>
+          <p>ArdaRenderGraph is a builder-scoped compiler and executor. Dense typed handles name append-only arena records; reflective parameters create hazard history; prologue and epilogue sentinels define graph boundaries; compilation lowers declarations without recording GPU work; execution materializes physical resources, records dependency waves, and submits in deterministic registration order.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#derivation">Design derivation</a>
+          <a href="#handles">Handles and registries</a>
+          <a href="#arena">Arena and ownership</a>
+          <a href="#blackboard">Blackboard</a>
+          <a href="#sentinels">Boundary sentinels</a>
+          <a href="#dependencies">Dependency graph</a>
+          <a href="#compilation">Compilation pipeline</a>
+          <a href="#lifecycle">Lifecycle</a>
+          <a href="#call-chain">Complete call chain</a>
+          <a href="#worked-example">Worked graph</a>
+          <a href="#threading">Threading and performance</a>
+          <a href="#implementation-theory">Implementation versus theory</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#summary">Summary</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>derive ARDG's core data structures from stable identity, deterministic traversal, and bulk-lifetime requirements;</li>
+            <li>explain why typed handles are graph-local indices while logical <code>*Ref</code> aliases are non-owning record pointers;</li>
+            <li>trace ownership through the builder implementation, arena, registries, pass callbacks, RHI references, and GPU timeline;</li>
+            <li>use the blackboard without confusing type-keyed setup data with dependency-tracked resources;</li>
+            <li>explain prologue and epilogue roles in import history, output liveness, and final transitions;</li>
+            <li>derive RAW, WAW, and WAR edges from latest-writer and reader-epoch history;</li>
+            <li>explain why execution order is a registration-order subsequence and why manual backward edges are rejected;</li>
+            <li>trace build, compile, materialization, recording, queue waits, submission, extraction, and cleanup through current source; and</li>
+            <li>separate textbook render-graph theory from the exact optimizations and limits implemented today.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites</h2>
+          <p>Complete <a href="getting-started.html">Getting started</a>. Review <a class="term" data-term="dag" href="../glossary.html#term-dag">DAGs</a>, <a class="term" data-term="registration-order" href="../glossary.html#term-registration-order">registration order</a>, <a class="term" data-term="raw-war-waw-hazards" href="../glossary.html#term-raw-war-waw-hazards">resource hazards</a>, <a class="term" data-term="liveness" href="../glossary.html#term-liveness">liveness</a>, <a class="term" data-term="arena-allocator" href="../glossary.html#term-arena-allocator">arena allocation</a>, <a class="term" data-term="resource-aliasing" href="../glossary.html#term-resource-aliasing">resource aliasing</a>, and <a class="term" data-term="synchronization" href="../glossary.html#term-synchronization">synchronization</a>.</p>
+          <p>The primary public sources are <code>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</code>, <code>ArdaRenderGraphResources.h</code>, <code>ArdaRenderGraphParameters.h</code>, <code>ArdaRenderGraphPass.h</code>, <code>ArdaRenderGraphBlackboard.h</code>, and <code>ArdaRenderGraphBuilder.h</code>. Exact implementation facts below come from <code>Private/ArdaRenderGraphBuilder.cpp</code>, <code>ArdaRenderGraphCompiler.cpp</code>, <code>ArdaRenderGraphExecutor.cpp</code>, <code>ArdaRenderGraphRegistry.h</code>, <code>ArdaRenderGraphAllocator.*</code>, and <code>ArdaRenderGraphBuilderInternal.h</code>.</p>
+        </section>
+
+        <section id="derivation">
+          <h2>Design derivation: from requirements to structures</h2>
+          <p>Start with five requirements and derive the architecture rather than memorizing class names.</p>
+          <ol>
+            <li><strong>Stable identity.</strong> Pass setup stores references to graph records, compile products store pass/resource identities, and callbacks run later. Records cannot move or be individually invalidated during the graph.</li>
+            <li><strong>Category safety.</strong> A texture index must not accidentally index a pass or buffer collection.</li>
+            <li><strong>Determinism.</strong> Whole-registry traversal, output reports, culling, and submission need a stable order independent of pointer values or hash iteration.</li>
+            <li><strong>Cheap graph teardown.</strong> Hundreds of small records and parameter copies should share one lifetime and release as a unit while still running non-trivial destructors.</li>
+            <li><strong>Whole-workload reasoning.</strong> Resource accesses must become dependency and state data before callbacks record commands.</li>
+          </ol>
+          <p>The resulting design uses typed integer handles for category-safe identity, append-only vectors for deterministic registration order, arena allocation for stable addresses and bulk release, generated metadata for access discovery, and a stateful builder whose phases close mutation before analysis.</p>
+
+          <aside class="callout">
+            <h3>A graph is an intermediate representation</h3>
+            <p>Logical records are not a shadow copy of native API objects. They are the compiler's vocabulary: enough identity, descriptor, state, edge, and callback information to validate and lower rendering intent into RHI work.</p>
+          </aside>
+        </section>
+
+        <section id="handles">
+          <h2>Typed handles and append-only registries</h2>
+
+          <h3>Handle representation</h3>
+          <p><a href="api-reference.html#api-arda-rdg-tardghandle-fd7e052b"><code>TARDGHandle&lt;TagType&gt;</code></a> stores one <code>uint32_t</code>. The maximum value is <code>InvalidIndex</code>; a default-constructed handle names no entry. Empty tag types create distinct aliases such as pass, texture, buffer, acceleration-structure, view, and uniform-buffer handles. The source tests assert that pass handles are four bytes, trivially copyable, and not convertible to texture handles.</p>
+
+          <p>A handle is meaningful only with the matching registry in the builder that produced it. It contains no builder identifier or generation count. Copying a numeric handle into another builder does not make it portable; at best it resolves to an unrelated same-index record, and graph-owned pointer validation catches common cross-graph misuse.</p>
+
+          <h3>Registry representation</h3>
+          <p>The private <code>TARDGHandleRegistry&lt;ObjectType, HandleType&gt;</code> in <code>Private/ArdaRenderGraphRegistry.h</code> stores an <code>eastl::vector&lt;ObjectType*&gt;</code>. <code>Emplace</code> wraps the current vector size in the typed handle, constructs a record in the shared arena, and appends its pointer. No record is individually erased or moved.</p>
+
+          <pre><code>registration:  PassA, PassB, PassC
+vector slots:  [ 0 ], [ 1 ], [ 2 ]
+handles:        P0     P1     P2
+arena objects:  ^      ^      ^
+               stable addresses until builder destruction</code></pre>
+
+          <dl>
+            <dt><code>TryGet</code></dt>
+            <dd>Returns null for an invalid or out-of-range handle. Use this when absence is an expected query outcome.</dd>
+            <dt><code>Get</code></dt>
+            <dd>Performs the same lookup and raises a fatal check if no record exists. Use this only where invalid identity is a programming error.</dd>
+            <dt><code>GetEntries</code></dt>
+            <dd>Exposes stable handle-index order to builder and compiler stages. That order is also registration order.</dd>
+          </dl>
+
+          <h3>Logical references are not owners</h3>
+          <p><code>FARDGTextureRef</code>, <code>FARDGBufferRef</code>, and related aliases are raw pointers to arena-owned logical records. They provide convenient setup and callback parameter syntax but do not increment ownership. They expire with the builder. By contrast, fields such as <code>FARDGTexture::mTexture</code> hold intrusive RHI references to physical resources after import or materialization.</p>
+        </section>
+
+        <section id="arena">
+          <h2>Arena allocation and ownership</h2>
+          <p>The private <code>FARDGArena</code> owns aligned byte blocks. It allocates monotonically within compatible blocks and adds a new block when no current block fits. Existing objects never move. Non-trivially destructible objects register type-erased destructor callbacks; <code>Reset()</code> runs them in reverse construction order before releasing blocks.</p>
+
+          <h3>Why a graph arena fits</h3>
+          <ul>
+            <li>Passes, resource records, views, and frozen parameters share exactly one builder lifetime.</li>
+            <li>Stable pointers make logical <code>*Ref</code> aliases and frozen callback parameters safe across build and compile.</li>
+            <li>Allocation avoids one general-purpose heap transaction per small record.</li>
+            <li>Bulk reset is predictable while registered destructors preserve ordinary C++ cleanup for strings, vectors, and callbacks.</li>
+          </ul>
+
+          <h3>Builder implementation ownership</h3>
+          <p><code>FARDGBuilder::FImpl</code> in <code>Private/ArdaRenderGraphBuilderInternal.h</code> declares the context, then arena, then arena-using registries. It also owns frozen-address tracking, imported-identity maps, extraction records, the blackboard, compile and execution results, physical-access synchronization, and lifecycle flags.</p>
+
+          <dl>
+            <dt>Graph context</dt>
+            <dd>Retains the device and copies queue/debug policy for the complete builder lifetime.</dd>
+            <dt>Arena and registries</dt>
+            <dd>Own graph records and parameter bytes. Registries retain non-owning pointers into the arena.</dd>
+            <dt>Imported maps</dt>
+            <dd>Map non-owning physical identities to one logical wrapper and reject conflicting initial-state registration.</dd>
+            <dt>Extraction records</dt>
+            <dd>Retain logical pointers and caller-owned output addresses until execution publishes physical references.</dd>
+            <dt>Compile/execution results</dt>
+            <dd>Are builder-owned stable products. References returned by public methods expire with the builder.</dd>
+            <dt>RHI and GPU lifetime</dt>
+            <dd>Intrusive RHI references own physical objects on the CPU side. Submitted queue work imposes a separate effective lifetime until GPU completion.</dd>
+          </dl>
+
+          <h3>Tradeoff</h3>
+          <p>Arenas make per-object removal, long-lived individual records, and builder reuse unnatural. ARDG accepts that constraint because one graph is intentionally short-lived and one-shot. Long-lived state should live in renderer owners or extracted RHI references, not in logical graph records.</p>
+        </section>
+
+        <section id="blackboard">
+          <h2>Graph-scoped typed blackboard</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgblackboard-e315614c"><code>FARDGBlackboard</code></a> maps <code>std::type_index</code> to <code>eastl::any</code>. There is at most one copy-constructible value per C++ type. <code>Set</code> replaces, <code>Emplace</code> constructs then stores, <code>Contains</code> queries, <code>TryGet</code> returns null for absence, <code>Get</code> fatally checks absence, and <code>GetOrCreate</code> default-constructs when needed.</p>
+
+          <h3>Appropriate use</h3>
+          <p>The blackboard coordinates setup code that does not share a direct call chain: frame dimensions, renderer feature records, logical resource bundles, or pass handles can be stored by an application-defined type. The mutable <a href="api-reference.html#api-arda-rdg-fardgbuilder-getblackboard-d2ab6408"><code>GetBlackboard()</code></a> overload is legal only while building; the const overload remains readable later.</p>
+
+          <h3>What it does not do</h3>
+          <ul>
+            <li>It does not derive pass dependencies from values merely stored in it.</li>
+            <li>It does not provide string keys or multiple values of one type; define wrapper types when identities differ.</li>
+            <li>It does not make mutable shared setup data thread-safe.</li>
+            <li>References into it do not outlive the builder.</li>
+          </ul>
+          <p>When a blackboard value contains a logical resource, the resource becomes dependency-visible only when a pass parameter declaration references it. The blackboard is coordination storage, not an alternate resource declaration system.</p>
+        </section>
+
+        <section id="sentinels">
+          <h2>Prologue and epilogue sentinels</h2>
+          <p><code>FARDGSentinelPass</code> is a pass with <code>NeverCull</code> and <code>mbSentinel = true</code>. Sentinels execute no user callback; they anchor boundary state, liveness, and transitions.</p>
+
+          <h3>Prologue</h3>
+          <p><code>FARDGBuilder::FImpl</code> creates <code>GraphPrologue</code> as the first pass, so its handle is the first pass-registry index. Registering an external texture, buffer, or acceleration structure records the prologue as its latest producer. The first graph use therefore depends on graph-entry contents and state rather than appearing to read an unproduced graph resource.</p>
+
+          <h3>Epilogue</h3>
+          <p>The compiler appends <code>GraphEpilogue</code> after pre-compile validation. For external and extracted resources, the latest writer becomes an epilogue data producer and trailing readers become synchronization-only producers. This has three effects:</p>
+          <ol>
+            <li>the writer chain feeding observable outputs remains live;</li>
+            <li>trailing reads are ordered before graph exit without making dead read work a liveness root; and</li>
+            <li>final state transitions for external and extracted resources have one synthetic destination.</li>
+          </ol>
+
+          <aside class="callout">
+            <h3>Boundary-node pattern</h3>
+            <p>Synthetic source and sink vertices are a common graph technique. They turn many special entry/exit cases into ordinary edges and give algorithms one stable boundary to reason about.</p>
+          </aside>
+        </section>
+
+        <section id="dependencies">
+          <h2>Dependency graph and hazard derivation</h2>
+
+          <h3>Registration-time history</h3>
+          <p>Each viewable logical resource records one latest writer and a reader set since that write. During <code>AddPassInternal</code>, generated metadata is visited in declaration order. For each texture, buffer, or acceleration-structure access:</p>
+          <ol>
+            <li>validate that the logical record belongs to this graph and the requested state is known;</li>
+            <li>record the pass's state requirement and mark resource use;</li>
+            <li>add the latest writer as a data producer when one exists;</li>
+            <li>for a read, add the current pass to the reader epoch;</li>
+            <li>for a write, add every prior reader as a synchronization-only producer, clear readers, and make this pass the latest writer.</li>
+          </ol>
+
+          <h3>Why two edge kinds</h3>
+          <dl>
+            <dt>RAW: read after write</dt>
+            <dd>The reader consumes data from the latest writer. This is a data-producer edge and participates in backward liveness.</dd>
+            <dt>WAW: write after write</dt>
+            <dd>The later writer must follow the earlier writer. This also uses a data-producer edge.</dd>
+            <dt>WAR: write after read</dt>
+            <dd>The later writer must not race prior readers, but those readers do not produce its value. ARDG uses synchronization-only edges so ordering is preserved without keeping otherwise dead readers live.</dd>
+          </dl>
+
+          <h3>Granularity</h3>
+          <p>Build-time hazard history is whole-resource for both textures and buffers. Texture subresource ranges and buffer byte ranges are retained in pass state. Compilation tracks texture transitions and read-before-produce validation per mip and array slice, while buffer transition state remains whole-resource. This is a conservative dependency model: disjoint texture subresources can receive precise states, but their build-time hazard history can still order at whole-texture granularity.</p>
+
+          <h3>Forward-edge invariant</h3>
+          <p>Because accesses are processed when a pass is appended, inferred predecessors already have smaller handles. <a href="api-reference.html#api-arda-rdg-fardgbuilder-adddependency-0a07e4eb"><code>AddDependency()</code></a> enforces the same direction for manual causality. The compiler sorts producer lists, validates that every edge points strictly forward, and mirrors them into consumer lists.</p>
+          <p>This makes registration order a valid <a class="term" data-term="topological-order" href="../glossary.html#term-topological-order">topological order</a> by construction. Culling then emits live entries by registry traversal, so execution order is exactly a registration-order subsequence. ARDG does not run a general topological sort and does not reorder independent passes for an alternative schedule.</p>
+        </section>
+
+        <section id="compilation">
+          <h2>Device-independent compilation pipeline</h2>
+          <p><code>Private/ArdaRenderGraphCompiler.cpp</code> performs an ordered lowering pipeline. The important ordering constraints are:</p>
+          <ol>
+            <li><strong>Validate declarations first.</strong> Dead work cannot hide invalid resource declarations, ownership, flags, queue states, ranges, or read-before-produce defects.</li>
+            <li><strong>Validate extracted production.</strong> A graph-created extracted texture or buffer must have a producer.</li>
+            <li><strong>Append and connect the epilogue.</strong> External and extracted outputs become liveness and final-state roots.</li>
+            <li><strong>Assign pipelines.</strong> Immediate mode and sentinels use graphics. Eligible copy or async-compute passes use specialized queues only when capability and state checks pass; otherwise they fall back to graphics.</li>
+            <li><strong>Build reverse adjacency.</strong> Producer and synchronization-predecessor lists are validated and mirrored to consumers.</li>
+            <li><strong>Cull.</strong> Normal mode walks data producers backward from epilogue and <code>NeverCull</code> roots. Synchronization-only edges do not extend liveness. Immediate mode keeps every pass.</li>
+            <li><strong>Rebuild live intervals.</strong> Build-time usage includes dead declarations, so resource first/last use is cleared and replayed over only the live sequence.</li>
+            <li><strong>Emit lifetimes.</strong> Handles are translated to compact execution-order indices. Only graph-owned transient, non-external, non-extracted textures and buffers become reuse candidates.</li>
+            <li><strong>Lower logical barriers.</strong> Compatible reads merge, conflicting write states fail, texture cells and whole buffers advance through state history, equal UAV states request ordering, and epilogue transitions enforce final states.</li>
+            <li><strong>Validate transition continuity.</strong> Compiler products are checked before publication.</li>
+            <li><strong>Derive async metadata and cross-queue dependencies.</strong> Fork/join fields are descriptive; explicit queue-dependency records drive execution waits.</li>
+            <li><strong>Form raster groups.</strong> Adjacent compatible graphics raster passes sharing attachment signatures receive dense group indices.</li>
+            <li><strong>Publish last.</strong> <code>mbCompiled</code> becomes true only after all stages succeed.</li>
+          </ol>
+
+          <h3>Culling complexity and determinism</h3>
+          <p>Backward reachability uses a worklist over producer edges, then registry traversal emits the result. Producer lists are sorted. Resource lifetimes are emitted in deterministic registry order. Queue dependencies are emitted in consumer execution order. These choices make <a href="api-reference.html#api-arda-rdg-fardgbuilder-dumpgraph-c392d068"><code>DumpGraph()</code></a> stable for equivalent registration.</p>
+
+          <h3>Compile-time state versus runtime physical state</h3>
+          <p>Compilation reasons about logical resources. Execution-local pooling can bind two disjoint logical lifetimes to one physical object. Therefore <code>ArdaRenderGraphExecutor.cpp</code> rebuilds transitions after materialization, keyed by each RHI object's physical identity, so the second logical user inherits the actual state left by the first rather than an obsolete descriptor initial state.</p>
+        </section>
+
+        <section id="lifecycle">
+          <h2>Lifecycle state machine and invariants</h2>
+          <figure>
+            <img src="Assets/rdg-lifecycle.svg" alt="ArdaRenderGraph lifecycle showing mutable building, cached compilation, one-shot execution, rejected mutation, and terminal failure.">
+            <figcaption>The state machine is intentionally asymmetric: build advances to compile and execute, but no transition returns to mutable setup.</figcaption>
+          </figure>
+
+          <dl>
+            <dt>Building</dt>
+            <dd><code>mbCompiled</code>, <code>mbCompiling</code>, <code>mbExecutionStarted</code>, and <code>mbFailed</code> are false. Resource creation/import, parameter allocation, pass registration, dependencies, extraction, and mutable blackboard access are legal.</dd>
+            <dt>Compiling</dt>
+            <dd><code>mbCompiling</code> closes mutation and prevents compiler re-entry. Successful publication sets <code>mbCompiled</code>; subsequent <code>Compile()</code> returns the cache.</dd>
+            <dt>Executing</dt>
+            <dd><code>Execute()</code> first obtains the cached or first compile result, then permanently sets <code>mbExecutionStarted</code>. A second start is fatal.</dd>
+            <dt>Executed</dt>
+            <dd><code>mbExecuted</code> becomes true only after submission, extraction publication, and device garbage collection. The execution result is then available.</dd>
+            <dt>Failed</dt>
+            <dd>An execution scope guard sets sticky <code>mbFailed</code> unless the entire CPU submission path completes. This prevents accidental replay after partial recording or submission.</dd>
+          </dl>
+
+          <p>Compilation is logically one result even though repeated calls can query it. Execution is physically one attempt. Fatal checks represent violated programming contracts rather than status-return recovery. The safe recovery unit after execution failure is a new builder, coordinated with whatever GPU submissions may already have occurred.</p>
+        </section>
+
+        <section id="call-chain">
+          <h2>Complete source-backed call chain</h2>
+          <figure>
+            <img src="Assets/arda-render-graph-call-chain.svg" alt="Complete ArdaRenderGraph call chain from public build APIs through metadata visitation, compiler lowering, materialization, recording, queue submission, extraction publication, and garbage collection.">
+            <figcaption>The diagram follows current source order across <code>ArdaRenderGraphBuilder.cpp</code>, <code>ArdaRenderGraphCompiler.cpp</code>, and <code>ArdaRenderGraphExecutor.cpp</code>. It separates logical graph construction from device-independent compilation and physical execution.</figcaption>
+          </figure>
+
+          <h3>Build call chain</h3>
+          <ol>
+            <li><code>FARDGBuilder</code> creates <code>FImpl</code>, the arena-backed registries, and prologue.</li>
+            <li><code>Create*</code> or <code>RegisterExternal*</code> appends logical resources. External registration deduplicates by physical identity and installs prologue history.</li>
+            <li><code>AllocateParameters</code> constructs stable arena storage, or <code>AddPass</code> copies non-arena parameters.</li>
+            <li><code>AddPassInternal</code> appends a lambda pass, then <code>FARDGParameterMetadata::Enumerate</code> visits nested leaves in declaration order.</li>
+            <li><code>FARDGSetupContext</code> records exact views, states, raster bindings, resource use, producer edges, and synchronization-only edges.</li>
+            <li>Extraction marks a resource observable, sets final state, and stores caller output address.</li>
+          </ol>
+
+          <h3>Compile call chain</h3>
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-compile-97614587"><code>FARDGBuilder::Compile()</code></a> guards lifecycle and delegates to <code>FARDGCompiler::Compile</code>. Validation runs before culling; epilogue is appended; queue selection, adjacency, culling, intervals, lifetimes, barriers, validation, async metadata, queue dependencies, and raster groups are emitted; the compiled flag commits last.</p>
+
+          <h3>Execute call chain</h3>
+          <ol>
+            <li><a href="api-reference.html#api-arda-rdg-fardgbuilder-execute-462d7837"><code>FARDGBuilder::Execute()</code></a> delegates to <code>FARDGExecutor::Execute</code>.</li>
+            <li>Lifecycle, previous failure, and device presence are checked; compile runs on demand.</li>
+            <li>Transient heap layout is evaluated, but placed aliasing is not applied. Live textures and buffers acquire exact committed-resource matches or new resources; external handles are verified; uniform buffers get dedicated allocations.</li>
+            <li>Physical transition history is rebuilt by physical identity and optional first-write clobbers are planned.</li>
+            <li>Dependency levels partition CPU recording waves. Eligible passes record concurrently; <code>NeverParallel</code>, immediate mode, and configuration can serialize them.</li>
+            <li>Each <code>RecordPass</code> creates and opens a queue-specific command list, disables automatic barriers, establishes state tracking, emits barriers/clobbers, opens the physical-access gate, invokes the callback, closes the gate, and closes the command list.</li>
+            <li>Uniform-buffer uploads submit on graphics. Non-graphics queues wait on that upload before first relevant use.</li>
+            <li>Recorded lists submit in deterministic execution order. Cross-queue consumers wait on producer submission instances.</li>
+            <li>Extraction references are assigned, device garbage collection runs, execution commits, and counters are traced.</li>
+          </ol>
+
+          <aside class="callout warning">
+            <h3>The call chain ends at submission</h3>
+            <p>Extraction assignment and garbage-collection invocation occur after CPU submission. Neither operation is a wait for GPU retirement. Queue instance values are the bridge to later completion policy.</p>
+          </aside>
+        </section>
+
+        <section id="worked-example">
+          <h2>Worked example: producer, dead reader, overwrite, extraction</h2>
+          <p>Consider four passes registered in this order:</p>
+          <ol>
+            <li><strong>P1 Produce A.</strong> Writes graph-created texture A.</li>
+            <li><strong>P2 Read A for diagnostics.</strong> Reads A but produces no observable output.</li>
+            <li><strong>P3 Overwrite A.</strong> Writes A again.</li>
+            <li><strong>P4 Consume A into B.</strong> Reads A, writes B, and B is extracted.</li>
+          </ol>
+
+          <h3>Setup derivation</h3>
+          <ul>
+            <li>P1 becomes A's latest writer.</li>
+            <li>P2 adds P1 as a data producer and joins A's reader epoch.</li>
+            <li>P3 adds P1 as its data producer for WAW ordering, adds P2 as a synchronization-only producer for WAR ordering, clears readers, and becomes latest writer.</li>
+            <li>P4 adds P3 as a data producer, then becomes B's latest writer.</li>
+            <li>Extraction connects B's latest writer P4 to the epilogue.</li>
+          </ul>
+
+          <h3>Culling derivation</h3>
+          <p>Backward liveness starts at epilogue, reaches P4 through B, reaches P3 through A, and reaches P1 through P3's data producer. It does not traverse P3's synchronization-only predecessor P2. P2 is therefore culled even though its original read had to precede P3 if it were live. Execution order is <code>Prologue, P1, P3, P4, Epilogue</code>: the registration-order subsequence of live passes.</p>
+
+          <h3>State and lifetime derivation</h3>
+          <p>Compilation advances A through P1's write state, P3's write state with any required UAV ordering, and P4's read state. B advances from its normalized initial state through P4's write and the epilogue's requested extraction state. Live intervals are expressed in the compact execution-order index domain, so P2 contributes neither use nor lifetime extension.</p>
+
+          <h3>Execution derivation</h3>
+          <p>A and B materialize only after compilation. If another compatible transient logical texture has a strictly earlier last use and shares one queue domain, the execution-local pool may reuse its committed physical object. Runtime transition rebuilding then follows physical identity so state remains continuous. The extracted B reference is assigned after submission, while GPU completion remains outstanding.</p>
+
+          <h3>Checkpoint</h3>
+          <p>Can you identify why P2 must appear in setup hazard history but must not stay live, why P3 cannot register before P1 under this architecture, why B's extraction roots P4, and why B's published reference is not yet a CPU completion signal?</p>
+        </section>
+
+        <section id="threading">
+          <h2>Threading, platform, and performance architecture</h2>
+
+          <h3>Threading domains</h3>
+          <dl>
+            <dt>Build and compile</dt>
+            <dd>Treat as thread-confined. Append-only structures and stable pointers do not provide concurrent mutation safety.</dd>
+            <dt>Physical access validation</dt>
+            <dd><code>mPassAccessMutex</code> protects active pass gates and logical-to-physical resolution during parallel callback recording. One pass can have only one active execution context.</dd>
+            <dt>Parallel recording</dt>
+            <dd>Dependency levels include data and synchronization-only producers. Eligible same-level passes record to distinct command lists and result slots. Shared callback captures remain the caller's synchronization responsibility.</dd>
+            <dt>Submission</dt>
+            <dd>Occurs deterministically in live registration order after recording waves complete. RHI queue waits—not CPU recording order—establish cross-queue GPU dependencies.</dd>
+            <dt>Completion</dt>
+            <dd>Occurs asynchronously on GPU queues. The builder does not wait for all submitted work before returning.</dd>
+          </dl>
+
+          <h3>Performance model</h3>
+          <ul>
+            <li>Dense handles and vectors favor compact identity and deterministic linear traversal.</li>
+            <li>Arena allocation reduces small allocation overhead and guarantees stable setup pointers.</li>
+            <li>Culling removes callbacks, physical materialization, barriers, and submissions for dead chains.</li>
+            <li>Dependency waves expose CPU recording concurrency without changing deterministic submission order.</li>
+            <li>Exact descriptor equality follows hash bucketing before committed-resource reuse, so collisions cannot authorize incompatible reuse.</li>
+            <li>Reuse requires <code>availableAfter &lt; firstUse</code> because intervals are inclusive, and it is disabled for resources spanning queue domains.</li>
+            <li>Immediate mode intentionally disables culling, specialized queues, parallel recording, and narrow lifetimes to act as a correctness oracle.</li>
+          </ul>
+
+          <h3>Platform boundary</h3>
+          <p>ARDG has no D3D12/Vulkan scheduling branch. It consumes opaque RHI descriptors, interfaces, resource states, queue types, physical identities, and capabilities. Platform variability enters through ArdaBackend's device context and RHI behavior. This keeps graph theory and renderer policy portable while preserving capability-driven fallback.</p>
+        </section>
+
+        <section id="implementation-theory">
+          <h2>Implementation versus render-graph theory</h2>
+          <p>“A render graph can” is not the same as “this render graph currently does.” The distinctions below prevent theoretical expectations from becoming false operational assumptions.</p>
+
+          <dl>
+            <dt>Theory: any DAG can be topologically sorted</dt>
+            <dd><strong>Current ARDG:</strong> only forward edges are legal. Registration order is already topological, and execution preserves its live subsequence. There is no schedule search or arbitrary reordering.</dd>
+            <dt>Theory: hazard analysis can be range-precise</dt>
+            <dd><strong>Current ARDG:</strong> dependency history is whole-resource. Texture transitions and production validation are per mip/slice; buffer transitions are whole-resource even though byte ranges are retained.</dd>
+            <dt>Theory: transient resources can alias placed memory</dt>
+            <dd><strong>Current ARDG:</strong> an ideal interval layout is computed when capabilities permit, but physical placed aliasing is disabled because portable aliasing barriers and heap-compatibility queries are missing. Exact committed resources can still be recycled.</dd>
+            <dt>Theory: queue scheduling can optimize overlap globally</dt>
+            <dd><strong>Current ARDG:</strong> pass flags request copy or async compute; capability and state checks either accept the request or fall back to graphics. Fork/join metadata is descriptive, and explicit dependencies drive waits.</dd>
+            <dt>Theory: compatible raster passes can merge</dt>
+            <dd><strong>Current ARDG:</strong> adjacent compatible raster passes receive group metadata. The executor does not itself merge command lists or native render-pass objects from that grouping.</dd>
+            <dt>Theory: compiled graphs can be replayed</dt>
+            <dd><strong>Current ARDG:</strong> compile results are cached for one builder, but execution is one-shot and physical resources/callback state are bound to that attempt.</dd>
+            <dt>Theory: graph ownership can encompass all GPU resources</dt>
+            <dd><strong>Current ARDG:</strong> imports remain externally owned, extraction publishes retained RHI references, and callbacks can use a raw command-list escape hatch. External coordination remains explicit.</dd>
+            <dt>Theory: graph completion can include GPU retirement</dt>
+            <dd><strong>Current ARDG:</strong> execution completes CPU submission only. RHI synchronization handles later GPU completion.</dd>
+          </dl>
+        </section>
+
+        <section id="failures">
+          <h2>Failure modes: symptom, cause, prevention, recovery</h2>
+          <dl>
+            <dt>Handle resolves to null or the wrong graph record</dt>
+            <dd><strong>Cause:</strong> invalid, out-of-range, stale, or cross-builder identity. <strong>Prevention:</strong> keep handles and logical pointers within one builder lifetime and category. <strong>Recovery:</strong> use nullable lookup for expected absence; rebuild ownership routing when absence is unexpected.</dd>
+            <dt>A logical pointer remains non-null after builder destruction</dt>
+            <dd><strong>Cause:</strong> raw pointers do not self-clear when arena storage is released. <strong>Prevention:</strong> scope logical references under the builder owner. <strong>Recovery:</strong> discard the pointer; never dereference or convert it into an RHI owner.</dd>
+            <dt>Blackboard <code>Get</code> fatally checks</dt>
+            <dd><strong>Cause:</strong> no value exists for the exact C++ type. <strong>Prevention:</strong> use <code>Contains</code>, <code>TryGet</code>, or <code>GetOrCreate</code> when absence is normal. <strong>Recovery:</strong> initialize the expected wrapper type during build.</dd>
+            <dt>External import conflicts</dt>
+            <dd><strong>Cause:</strong> one physical identity was registered with different initial states. <strong>Prevention:</strong> centralize external state ownership. <strong>Recovery:</strong> reconcile actual state and register once; do not create two contradictory logical histories.</dd>
+            <dt>Backward or cyclic design cannot be expressed</dt>
+            <dd><strong>Cause:</strong> consumer was registered before producer or the conceptual workload contains a cycle. <strong>Prevention:</strong> register in dataflow order and break frame-to-frame cycles with external history resources. <strong>Recovery:</strong> reorder passes or import the previous iteration as a boundary value.</dd>
+            <dt>Dead diagnostic reader unexpectedly executes or disappears</dt>
+            <dd><strong>Cause:</strong> confusing data and synchronization-only edges, or applying <code>NeverCull</code> broadly. <strong>Prevention:</strong> make only observable side effects roots. <strong>Recovery:</strong> inspect producers, synchronization producers, and culling in <code>DumpGraph()</code>.</dd>
+            <dt>Physical resource reuses an unexpected prior object</dt>
+            <dd><strong>Cause:</strong> compatible transient lifetimes permit committed-object pooling. <strong>Prevention:</strong> reason in logical identity and declare complete state; do not rely on unique physical identity for transient resources. <strong>Recovery:</strong> inspect lifetime and reuse counters; mark persistent outputs by extraction or external ownership.</dd>
+            <dt>Parallel recording races renderer state</dt>
+            <dd><strong>Cause:</strong> callbacks capture shared mutable non-graph data without synchronization. <strong>Prevention:</strong> use immutable captures, thread-safe owners, or <code>NeverParallel</code>. <strong>Recovery:</strong> reproduce with parallel recording disabled, then repair the capture contract.</dd>
+            <dt>Builder appears reusable after compile but mutation fails</dt>
+            <dd><strong>Cause:</strong> cached compilation is query reuse, not a reopened build phase. <strong>Prevention:</strong> complete all setup before first compile. <strong>Recovery:</strong> construct a new builder with the changed workload.</dd>
+            <dt>Execution fails after some queues were submitted</dt>
+            <dd><strong>Cause:</strong> a later execution stage raised a fatal path or exception. <strong>Prevention:</strong> validate declarations and callback prerequisites early. <strong>Recovery:</strong> treat the builder as terminal, preserve diagnostics, coordinate potentially submitted GPU work, and build a new graph.</dd>
+            <dt>CPU consumes extraction too early</dt>
+            <dd><strong>Cause:</strong> output publication was mistaken for GPU completion. <strong>Prevention:</strong> carry submitted queue instances into frame retirement. <strong>Recovery:</strong> wait through RHI synchronization before CPU access or external destruction.</dd>
+          </dl>
+
+          <h3>Architectural invariants</h3>
+          <ol>
+            <li>All handles, logical pointers, parameters, blackboard references, and result references are scoped to one builder.</li>
+            <li>Pass and resource registries are append-only; registration establishes stable identity and order.</li>
+            <li>Every dependency points strictly forward in pass-handle order.</li>
+            <li>Every graph resource used through validated context access appears in that pass's frozen declarations.</li>
+            <li>External resources enter with one known state; extracted resources leave with one requested known state.</li>
+            <li>Compilation validates before culling and publishes only after every lowering stage succeeds.</li>
+            <li>Execution begins once; failure is sticky; no replay follows partial submission.</li>
+            <li>Physical reuse requires exact descriptor compatibility, non-overlapping inclusive lifetimes, and one queue domain.</li>
+            <li>Submission order and GPU completion are different dimensions.</li>
+          </ol>
+        </section>
+
+        <section id="summary">
+          <h2>Chapter summary</h2>
+          <ul>
+            <li>Typed handles provide compact category-safe indices; registries provide append-only deterministic identity; the arena provides stable addresses and bulk lifetime.</li>
+            <li>The blackboard is graph-scoped type-keyed setup coordination, not dependency-tracked storage.</li>
+            <li>Prologue models graph entry; epilogue roots observable outputs and owns final transitions.</li>
+            <li>Latest-writer and reader-epoch history derives data edges for RAW/WAW and synchronization-only edges for WAR.</li>
+            <li>Forward-only edges make registration order topological, so culling emits a live subsequence without reordering.</li>
+            <li>Compilation is device-independent logical lowering; execution resolves physical identity, records waves, submits queues, and publishes outputs.</li>
+            <li>Current ARDG pools committed objects but does not apply placed-memory aliasing, merge raster groups, replay builders, or wait for GPU completion.</li>
+          </ul>
+
+          <h3>Review and checkpoint questions</h3>
+          <ol>
+            <li>Why does a typed handle need both a tag type and a matching builder registry?</li>
+            <li>What does arena ownership guarantee, and what does it make intentionally difficult?</li>
+            <li>Why does a blackboard-held texture not create an edge until a pass declares it?</li>
+            <li>How do prologue and epilogue turn boundary state into ordinary graph relations?</li>
+            <li>Why is WAR represented differently from RAW and WAW?</li>
+            <li>What exact invariant makes a general topological sort unnecessary?</li>
+            <li>Why must transitions be rebuilt after physical resource pooling?</li>
+            <li>Which current features are metadata or ideal planning rather than applied GPU optimization?</li>
+            <li>What must an application do after CPU submission before CPU readback?</li>
+          </ol>
+
+          <h3>Further reading</h3>
+          <ul>
+            <li><a href="getting-started.html">Getting started: a complete build, extraction, execution, and cleanup workflow</a></li>
+            <li><a href="api-reference.html">Canonical API reference: exact types, overloads, ownership, errors, and threading</a></li>
+            <li><a href="../ArdaBackend/architecture.html">ArdaBackend architecture: the RHI and ownership boundary below ARDG</a></li>
+            <li><a href="../ArdaBackend/commands.html">ArdaBackend commands: command-list and queue semantics used by the executor</a></li>
+            <li><a href="../glossary.html">Global graphics and computer-science glossary</a></li>
+          </ul>
+        </section>
+
+        <aside class="callout">
+          <h3>Related API</h3>
+          <p>Use the canonical reference for signatures. Architectural entry points include <a href="api-reference.html#api-arda-rdg-tardghandle-fd7e052b"><code>TARDGHandle</code></a>, <a href="api-reference.html#api-arda-rdg-fardgblackboard-e315614c"><code>FARDGBlackboard</code></a>, <a href="api-reference.html#api-arda-rdg-fardgbuilder-e0fc26d2"><code>FARDGBuilder</code></a>, <a href="api-reference.html#api-arda-rdg-fardgcompileresult-192e7594"><code>FARDGCompileResult</code></a>, and <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-55e456b3"><code>FARDGExecutionResult</code></a>.</p>
+        </aside>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="getting-started.html">← Previous: Getting started</a>
+          <a rel="next" href="resources.html">Next: Resources →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaRenderGraph documentation · Source boundary: <code>Source/ArdaRenderGraph</code> · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

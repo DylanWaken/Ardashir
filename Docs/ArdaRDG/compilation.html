@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A textbook-depth guide to DAG compilation and the exact fourteen-stage FARDGCompiler pipeline.">
+  <title>Compilation and scheduling | ArdaRenderGraph | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaRenderGraph</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
+      <h2>ArdaRenderGraph</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="resources.html">Resources</a>
+        <a href="passes.html">Passes</a>
+        <a aria-current="page" href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="debugging.html">Debugging</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaRenderGraph</a> /
+        Compilation
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Graph theory made executable</p>
+          <h1>Compilation and scheduling</h1>
+          <p>Compilation turns a registered pass graph into a validated, deterministic execution plan. This chapter first derives the general compiler problem, then follows the current <code>FARDGCompiler</code> in its exact fourteen-stage source order. The result is device-independent metadata: no physical allocation, command recording, barrier command, or queue submission occurs here.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Objectives and prerequisites</a>
+          <a href="#dag-fundamentals">DAG fundamentals</a>
+          <a href="#design-derivation">Design derivation</a>
+          <a href="#pipeline">The exact fourteen stages</a>
+          <a href="#products">Exact compile products</a>
+          <a href="#culling-lifetimes">Culling and lifetimes</a>
+          <a href="#barriers">Barrier lowering</a>
+          <a href="#queues-groups">Queues, async metadata, and groups</a>
+          <a href="#worked-example">Worked multi-pass example</a>
+          <a href="#performance">Performance and scaling</a>
+          <a href="#alternatives">Alternatives and platforms</a>
+          <a href="#invariants">Invariants</a>
+          <a href="#failure-modes">Failure modes</a>
+          <a href="#summary">Summary and checkpoints</a>
+          <a href="#further-reading">Further reading</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Objectives and prerequisites</h2>
+          <p>By the end of this chapter, you should be able to:</p>
+          <ul>
+            <li>explain why a render graph is a <a class="term" data-term="dag" href="../glossary.html#term-dag">directed acyclic graph</a> and why ArdaRenderGraph does not run a separate topological sort;</li>
+            <li>predict which passes survive <a class="term" data-term="culling" href="../glossary.html#term-culling">culling</a>, including the different roles of data and synchronization-only edges;</li>
+            <li>derive inclusive resource lifetimes in compact execution-index space;</li>
+            <li>predict queue fallback, cross-queue dependencies, logical transitions, UAV ordering, and raster-group metadata; and</li>
+            <li>distinguish compilation metadata from the physical work deferred to execution.</li>
+          </ul>
+          <p>You should already understand a <a class="term" data-term="pass" href="../glossary.html#term-pass">pass</a>, a <a class="term" data-term="logical-resource" href="../glossary.html#term-logical-resource">logical resource</a>, a <a class="term" data-term="resource-state" href="../glossary.html#term-resource-state">resource state</a>, and basic read-after-write, write-after-read, and write-after-write hazards. The glossary entry for <a class="term" data-term="raw-war-waw-hazards" href="../glossary.html#term-raw-war-waw-hazards">RAW / WAR / WAW hazards</a> is the compact reference.</p>
+          <aside class="callout">
+            <h3>Public entry point</h3>
+            <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-compile-97614587"><code>FARDGBuilder::Compile</code></a> performs one-time, device-independent compilation and returns builder-owned metadata. A later call returns the cached result. Calling <code>Execute</code> also compiles first when necessary.</p>
+          </aside>
+        </section>
+
+        <section id="dag-fundamentals">
+          <h2>From a general DAG to an execution plan</h2>
+          <h3>Vertices, edges, and meaning</h3>
+          <p>A general directed graph consists of vertices and one-way edges. In a render graph, vertices are passes. An edge <var>u</var> → <var>v</var> says that <var>u</var> must precede <var>v</var>. The reason may be data flow—<var>v</var> consumes a value produced by <var>u</var>—or an ordering constraint that establishes safe sequencing without making <var>u</var>'s result semantically necessary.</p>
+          <p>A graph is acyclic when no directed path returns to its start. Every DAG has at least one <a class="term" data-term="topological-order" href="../glossary.html#term-topological-order">topological order</a>: a linear sequence in which every predecessor appears before every successor. A conventional compiler can discover this sequence with Kahn's algorithm or a depth-first traversal. If it cannot consume every vertex, a cycle exists.</p>
+
+          <h3>What a graph compiler usually derives</h3>
+          <p>Once an order exists, a general render-graph compiler can remove unreachable work, compute resource live intervals, assign queues, synthesize state transitions, and group compatible operations. Each result depends on an earlier fact:</p>
+          <ol>
+            <li>Declarations must be valid before optimization, or dead code could conceal an invalid program.</li>
+            <li>Observable outputs define the backward slice that must remain live.</li>
+            <li>Only live work should contribute to allocation intervals and transitions.</li>
+            <li>Queue selection must precede state normalization and cross-queue synchronization.</li>
+            <li>Final metadata must be internally replayable before it is published.</li>
+          </ol>
+
+          <h3>ArdaRenderGraph's stronger input contract</h3>
+          <p>ArdaRenderGraph requires every dependency edge to point strictly forward in stable pass-handle order. Consequently, <a class="term" data-term="registration-order" href="../glossary.html#term-registration-order">registration order</a> is already a valid topological order. Compilation verifies the invariant; it does not reorder passes. The final execution order is exactly the registration-order subsequence left after culling, including the synthetic boundary passes.</p>
+          <p>This is stronger than merely requiring an acyclic graph. It rejects a backward edge even when the overall graph would remain acyclic. In exchange, ordering is stable, cycle detection is reduced to a local handle comparison, and build-time hazard construction can reason only toward later passes.</p>
+          <aside class="callout">
+            <h3>Registration order is semantic</h3>
+            <p>If pass B was registered before pass A, compilation will not move A ahead of B to satisfy an A → B edge. The edge is invalid. Register producers before consumers and use <a href="api-reference.html#api-arda-rdg-fardgbuilder-adddependency-0a07e4eb"><code>AddDependency</code></a> only in that direction.</p>
+          </aside>
+        </section>
+
+        <section id="design-derivation">
+          <h2>Why the compiler has these stages</h2>
+          <p>The builder accumulates facts incrementally: stable pass and resource records, reflected access declarations, producer lists on consumers, resource readers and last producers, extraction requests, and context capabilities. These facts are convenient for registration but incomplete for execution. Compilation changes the representation rather than changing the declared algorithm.</p>
+          <dl>
+            <dt>Registration representation</dt>
+            <dd>Consumer-side predecessor lists, logical resource uses, requested pass flags, and builder-wide options.</dd>
+            <dt>Liveness representation</dt>
+            <dd>Observable roots and data-producer reachability, yielding a live registration-order subsequence.</dd>
+            <dt>State representation</dt>
+            <dd>Per-pass requirements lowered into before/after transition records with explicit ordering flags.</dd>
+            <dt>Scheduling representation</dt>
+            <dd>Selected pipelines, reverse adjacency, queue dependencies, descriptive async bounds, and raster compatibility groups.</dd>
+            <dt>Allocation representation</dt>
+            <dd>Inclusive first/last use intervals expressed in compact execution indices.</dd>
+          </dl>
+          <p>The ordering follows data dependencies between compiler phases. Pipeline selection is needed before async state normalization. Reverse edges are needed before forward async reachability. Culling must precede interval, lifetime, transition, dependency, and group output. Barrier compilation must precede transition replay. Publication is last so a failed intermediate stage never exposes a successful compiled flag.</p>
+        </section>
+
+        <section id="pipeline">
+          <h2>The exact current <code>FARDGCompiler</code> order</h2>
+          <figure>
+            <img src="Assets/rdg-compile-pipeline.svg" alt="Fourteen-stage FARDGCompiler pipeline from validation through publication">
+            <figcaption>The current source order is a contract worth reading literally: validation, extraction checks, epilogue, pipeline assignment, consumer mirroring, culling, intervals, lifetimes, barriers, transition validation, async metadata, queue dependencies, raster groups, and publication.</figcaption>
+          </figure>
+
+          <ol class="steps">
+            <li>
+              <h3>Validate before compile</h3>
+              <p>The compiler validates resource ownership flags and backing, legal initial and final states, known pass flags, texture ranges, buffer ranges, acceleration-structure accesses, extraction records, and produced-before-read behavior. Validation runs before culling, so an invalid dead pass is still invalid. Optimization is not a way to hide a broken declaration.</p>
+            </li>
+            <li>
+              <h3>Check extracted resources were produced</h3>
+              <p>A graph-owned extracted texture or buffer must have a valid last producer. External resources are exempt because their data enters the graph from outside. This stage is narrower than stage 1: it specifically prevents publishing uninitialized graph-owned storage. See the exact extraction contracts for <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuetextureextraction-920af16d"><code>QueueTextureExtraction</code></a> and <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuebufferextraction-2454eb04"><code>QueueBufferExtraction</code></a>.</p>
+            </li>
+            <li>
+              <h3>Append and wire <code>GraphEpilogue</code></h3>
+              <p>The compiler appends a synthetic <a class="term" data-term="epilogue" href="../glossary.html#term-epilogue">epilogue</a>. For each external or extracted resource, its last writer becomes a data producer of the epilogue. Readers become synchronization-only producers. This distinction is deliberate: a write that determines an externally visible result must stay live; a trailing read may need ordering if it survives for another reason, but must not become live merely because the epilogue exists.</p>
+            </li>
+            <li>
+              <h3>Assign pipelines</h3>
+              <p>Every pass starts from a deterministic graphics fallback. Outside <a class="term" data-term="immediate-mode" href="../glossary.html#term-immediate-mode">immediate mode</a>, a non-sentinel pass requesting <code>Copy</code> uses the copy pipeline only if a copy queue exists and every texture and buffer declaration is a nonzero subset of <code>CopySource | CopyDest</code>; any acceleration-structure declaration rejects copy compatibility. Otherwise, a pass requesting <code>AsyncCompute</code> uses async compute only if a compute queue exists and all states are compute-compatible. Graphics-only states—render target, depth read/write, and present—reject async. A pixel-shader read is accepted only when the non-pixel read bit is also present, after which the pixel bit is removed for async execution. Every failed eligibility test falls back to graphics rather than failing compilation.</p>
+              <p>The possible results are defined by <a href="api-reference.html#api-arda-rdg-eardgpipeline-188e6387"><code>EARDGPipeline</code></a>; availability comes from <a href="api-reference.html#api-arda-rdg-fardgqueuecapabilities-6104362a"><code>FARDGQueueCapabilities</code></a>.</p>
+            </li>
+            <li>
+              <h3>Build the consumer mirror</h3>
+              <p>Registration records predecessor handles on each consumer. Compilation clears reverse lists, sorts producer lists, verifies that every producer exists and has a strictly smaller handle than its consumer, and mirrors both data and synchronization edges onto producers. The products are data consumers and synchronization consumers. This is where the forward-edge invariant proves that registration order is topological and cycles are impossible.</p>
+            </li>
+            <li>
+              <h3>Cull passes</h3>
+              <p>Normal mode initially marks every non-sentinel pass dead, then starts a backward worklist from the epilogue and every pass carrying <code>NeverCull</code>. The walk follows data-producer edges only. Synchronization-only producers do not preserve <a class="term" data-term="liveness" href="../glossary.html#term-liveness">liveness</a>. Surviving passes are emitted by scanning the registry from beginning to end, so relative order never changes. Immediate mode skips the analysis and retains every pass.</p>
+            </li>
+            <li>
+              <h3>Rebuild live resource intervals</h3>
+              <p>Build-time first and last uses include declarations made by passes that may now be dead. The compiler therefore resets every resource's usage markers and replays texture, buffer, and acceleration-structure declarations in live execution order. External and extracted resources receive an additional epilogue use because graph-exit state and ownership extend through that boundary.</p>
+            </li>
+            <li>
+              <h3>Compile resource lifetimes</h3>
+              <p>Resource records store pass handles, but allocation needs positions in the compact live sequence. The compiler maps each live handle to an execution index and emits inclusive <code>[firstUse, lastUse]</code> intervals. Textures, then buffers, then acceleration structures are emitted in registry order. A texture or buffer is marked transient-eligible only when it carries the transient flag and is neither external nor extracted; acceleration structures are not transient candidates in the current implementation. Immediate mode or extended-lifetime debugging widens every interval to the full execution sequence.</p>
+            </li>
+            <li>
+              <h3>Compile barriers</h3>
+              <p>The compiler initializes unknown logical states as <code>Common</code>, replays only live passes, merges declarations that address the same tracked unit within a pass, and emits logical transition records. Textures are tracked independently per mip level × array slice. Buffers have one state slot for the whole logical buffer even though declared byte ranges remain available for bounds and execution-access validation. Acceleration structures also use whole-object state.</p>
+              <p>Equal UAV state is not a no-op: it emits a record marked for UAV ordering. Conservative-barrier mode can mark other equal, non-<code>Common</code> states as forced barriers. Conflicting states involving a write within the same pass fail; distinct compatible read-only states are combined. External and extracted resources receive graph-exit transitions on the epilogue.</p>
+            </li>
+            <li>
+              <h3>Validate transitions</h3>
+              <p>An independent replay starts from declared initial states, checks that every compiled <code>stateBefore</code> equals the replayed current state, applies <code>stateAfter</code>, and verifies that each pass's declaration is satisfied. It also verifies graph-exit final states. This stage tests compiler output rather than trusting barrier generation.</p>
+            </li>
+            <li>
+              <h3>Compile async metadata</h3>
+              <p>For each live async-compute pass, the compiler walks backward through both edge kinds across non-graphics work to find the latest reachable graphics predecessor, and forward to find the earliest reachable graphics successor. The prologue and epilogue are fallbacks. The resulting <a href="api-reference.html#api-arda-rdg-fardgpassstate-masyncfork-3c787e2a"><code>mAsyncFork</code></a> and <a href="api-reference.html#api-arda-rdg-fardgpassstate-masyncjoin-1a6866fc"><code>mAsyncJoin</code></a> are descriptive bounds only. They do not themselves insert a wait, signal, split, or submission.</p>
+            </li>
+            <li>
+              <h3>Compile queue dependencies</h3>
+              <p>For each live consumer, data and synchronization producers are combined, sorted, and deduplicated. A live edge whose endpoints use different pipelines produces one <a href="api-reference.html#api-arda-rdg-fardgqueuedependency-ccd4a634"><code>FARDGQueueDependency</code></a>; culled and same-pipeline edges produce none. These records—not fork/join descriptions—drive execution-time cross-queue waits.</p>
+            </li>
+            <li>
+              <h3>Compile raster groups</h3>
+              <p>A maximal adjacent run of graphics raster passes receives a dense group index when every pass is groupable and has an identical logical attachment signature. A non-raster pass, an async or copy pass, <code>SkipRenderPass</code>, or different bindings breaks the run. <a href="api-reference.html#api-arda-rdg-fardgpassstate-mrastergroup-50d75543"><code>mRasterGroup</code></a> and the group count are metadata only: compilation does not merge command lists, callbacks, or native render passes.</p>
+            </li>
+            <li>
+              <h3>Publish compiled state</h3>
+              <p>Only after all previous stages succeed does the compiler set the builder's compiled flag and return the stable <a href="api-reference.html#api-arda-rdg-fardgcompileresult-192e7594"><code>FARDGCompileResult</code></a>. Subsequent calls return that cache. Publication last gives the builder a simple all-or-not-published boundary.</p>
+            </li>
+          </ol>
+        </section>
+
+        <section id="products">
+          <h2>Exact data products</h2>
+          <p>Compilation mutates per-pass compiler state and fills the builder-owned result. The distinction matters when inspecting a graph.</p>
+          <h3>In <a href="api-reference.html#api-arda-rdg-fardgcompileresult-192e7594"><code>FARDGCompileResult</code></a></h3>
+          <ul>
+            <li><code>mPrologue</code>: the synthetic graph-entry handle created with the builder.</li>
+            <li><code>mEpilogue</code>: the synthetic graph-exit handle appended during compilation.</li>
+            <li><code>mExecutionOrder</code>: live pass handles in deterministic registration order, including sentinels.</li>
+            <li><code>mResourceLifetimes</code>: live logical intervals, with resource kind, registry index, inclusive first/last execution indices, and transient eligibility.</li>
+            <li><code>mQueueDependencies</code>: producer, consumer, and endpoint pipelines for cross-queue edges, emitted in consumer execution order.</li>
+            <li><code>mRasterGroupCount</code>: the number of dense raster compatibility groups.</li>
+          </ul>
+          <h3>In each <code>FARDGPassState</code></h3>
+          <ul>
+            <li>sorted data and synchronization predecessor lists plus their mirrored consumer and synchronization-consumer lists;</li>
+            <li>the selected <code>mPipeline</code> and <code>mbCulled</code> result;</li>
+            <li>texture, buffer, and acceleration-structure transition vectors;</li>
+            <li>descriptive async fork and join handles; and</li>
+            <li>the raster group index and logical raster binding signature.</li>
+          </ul>
+          <aside class="callout">
+            <h3>What compilation does not produce</h3>
+            <p>There are no physical resources, command lists, submitted queue instances, fences, native barriers, or GPU completion results. A compiled transition is an instruction for later recording, not an already executed <a class="term" data-term="barrier" href="../glossary.html#term-barrier">barrier</a>.</p>
+          </aside>
+        </section>
+
+        <section id="culling-lifetimes">
+          <h2>Culling and execution-index lifetimes</h2>
+          <figure>
+            <img src="Assets/rdg-culling-lifetimes.svg" alt="Backward producer-edge culling followed by inclusive execution-index lifetimes">
+            <figcaption>Observable roots preserve their data ancestry. Ordering-only edges are honored among surviving work but do not manufacture liveness.</figcaption>
+          </figure>
+
+          <h3>Roots answer “why must this run?”</h3>
+          <p>The epilogue is a root because external and extracted writes are observable after the graph. <code>NeverCull</code> passes are roots because the caller has declared an effect outside ordinary resource reachability. Sentinels remain live as graph boundaries. Starting from those roots, following <a class="term" data-term="producer" href="../glossary.html#term-producer">producer</a> edges backward retains precisely the data ancestry needed to compute them.</p>
+          <p>A synchronization-only predecessor answers a different question: “if both passes run, what order is safe?” It does not answer “is the predecessor's result needed?” Following it during culling would turn a WAR ordering edge into false liveness and retain dead readers or writers. The compiler therefore uses both edge kinds for queue synchronization and async reachability, but only producer edges for culling.</p>
+
+          <h3>Why compact execution indices matter</h3>
+          <p>Pass handles reflect stable registration positions and can contain gaps after culling. Allocation, however, cares about the sequence that will execute. If handles 2, 5, and 9 survive, their execution indices are 0, 1, and 2 within the relevant subsequence. A lifetime ending at handle 9 therefore ends at compact index 2, not at 9.</p>
+          <p>Intervals are inclusive. Two logical transient resources can be considered non-overlapping only when one's last use is strictly less than the other's first use. External and extracted resources extend to the epilogue and are never transient candidates. The compiler computes logical opportunities; execution decides whether a compatible physical object can actually be reused.</p>
+        </section>
+
+        <section id="barriers">
+          <h2>Barrier lowering: logical state over time</h2>
+          <figure>
+            <img src="Assets/rdg-barrier-grid.svg" alt="Texture mip by array-slice state grid beside whole-buffer state tracking">
+            <figcaption>Texture subresources have independent compiler state cells. Buffer byte ranges do not: current buffer state is whole-resource.</figcaption>
+          </figure>
+
+          <h3>Textures: mip × array slice</h3>
+          <p>For a texture with <var>M</var> mips and <var>S</var> array slices, the compiler keeps <var>M × S</var> state cells. A declared subresource range is resolved against the description and expanded into those cells. Aliasing views of the same logical texture meet in the same grid. Requirements are first merged per pass and per cell, then compared with the cell's current state to produce one-cell transition records with explicit before and after states.</p>
+
+          <h3>Buffers: one state slot</h3>
+          <p>Buffer access records preserve byte ranges for validation, but barrier compilation merges all accesses to a logical buffer into one required state. Disjoint ranges cannot simultaneously carry independent states in the current model. This is conservative and portable, but can produce more whole-buffer transitions than a range-aware backend compiler.</p>
+
+          <h3>Reads, writes, UAVs, and forced barriers</h3>
+          <p><code>Unknown</code> adopts the first requirement. Equal requirements remain equal. Distinct read-only states combine as a bit mask. If either conflicting requirement writes—render target, depth write, copy destination, resolve destination, acceleration-structure write, or unordered access—the pass is invalid because one tracked unit cannot safely satisfy both states at once.</p>
+          <p>An equal state normally needs no transition, but repeated <a class="term" data-term="uav" href="../glossary.html#term-uav">UAV</a> access still needs memory ordering: completion and visibility of earlier unordered writes cannot be inferred from an unchanged state enum. Such a record carries the UAV-barrier flag. With <a href="api-reference.html#api-arda-rdg-fardgdebugoptions-mbconservativebarriers-622ad184"><code>mbConservativeBarriers</code></a>, equal non-UAV, non-<code>Common</code> states can carry a forced-barrier flag to diagnose missing ordering assumptions.</p>
+
+          <h3>Logical continuity versus physical correction</h3>
+          <p>Compilation can validate only a logical resource's declared initial state and pass-to-pass continuity. At execution, a logical transient may receive a pooled <a class="term" data-term="physical-resource" href="../glossary.html#term-physical-resource">physical resource</a> last used in a different state. The executor therefore corrects the transition's physical before-state after materialization and pool reuse are known. This is not a compiler inconsistency: logical validation proves graph declarations; execution reconciles the chosen physical identity.</p>
+        </section>
+
+        <section id="queues-groups">
+          <h2>Queues, async descriptions, and raster groups</h2>
+          <h3>Queue requests are preferences with a safe fallback</h3>
+          <p><a class="term" data-term="async-compute" href="../glossary.html#term-async-compute">Async compute</a> and copy flags request specialized execution; they do not guarantee it. They are mutually exclusive: a pass requesting <code>Copy</code> cannot also request <code>Compute</code> or <code>AsyncCompute</code>, while <code>AsyncCompute</code> requires <code>Compute</code>. Queue capability, immediate mode, sentinel status, and every declared state then determine whether the legal request selects its specialized pipeline. If that pipeline is unavailable or the pass is incompatible, the pass runs on graphics.</p>
+          <p>This fallback keeps one graph portable across a device with dedicated copy and compute queues, a device exposing only graphics, and diagnostic immediate mode. It also prevents a supposedly copy-only command list from receiving shader or acceleration-structure state.</p>
+
+          <h3>Cross-queue edges are operational</h3>
+          <p>A <a class="term" data-term="queue-dependency" href="../glossary.html#term-queue-dependency">queue dependency</a> exists only when a live edge crosses selected pipelines. Execution uses the producer's submitted queue instance to make the consumer queue wait. Same-pipeline order is already provided by that ordered queue stream. Both data edges and ordering-only edges can produce cross-queue waits.</p>
+
+          <h3>Fork and join are descriptions, not synchronization</h3>
+          <p>Async fork/join fields summarize the nearest reachable graphics boundaries around async work. They are useful for inspection, scheduling visualization, and future optimization. The current synchronization authority is the explicit queue-dependency list. Treating fork or join as an implied barrier would duplicate or invent behavior not present in the compiler.</p>
+
+          <h3>Raster groups are compatibility labels</h3>
+          <p>A raster group says that adjacent live graphics raster passes have identical logical attachments and are candidates for coordinated handling. It does not promise a native subpass, render-pass merge, callback fusion, or one command list. A later execution strategy may use the label, but correctness cannot depend on such a merge occurring.</p>
+        </section>
+
+        <section id="worked-example">
+          <h2>Worked example: predict the compiled graph</h2>
+          <p>Assume normal mode, available copy and compute queues, all graph-owned resources initially <code>Common</code>, and the following registration order after the synthetic prologue. <code>Output</code> is extracted with final state <code>PixelShaderResource</code>.</p>
+          <ol>
+            <li><strong>UploadScene</strong> requests Copy, writes whole buffer <code>Scene</code> as <code>CopyDest</code>.</li>
+            <li><strong>BuildLightGrid</strong> requests AsyncCompute, reads <code>Scene</code> as <code>NonPixelShaderResource</code>, writes buffer <code>Grid</code> as UAV.</li>
+            <li><strong>Shadow</strong> is Raster, writes texture <code>ShadowMap</code> as <code>DepthWrite</code>.</li>
+            <li><strong>DeadHistogram</strong> is Compute, reads <code>ShadowMap</code> and has an ordering-only edge to <code>Tonemap</code>, but produces no consumed or external result.</li>
+            <li><strong>GBuffer</strong> is Raster, writes <code>SceneColor</code> and <code>Depth</code> with attachment signature A.</li>
+            <li><strong>Lighting</strong> is Raster, reads <code>Grid</code> and <code>ShadowMap</code>, and writes the same <code>SceneColor</code> and <code>Depth</code> attachments with signature A.</li>
+            <li><strong>Tonemap</strong> is Raster, reads <code>SceneColor</code> and writes extracted <code>Output</code> with attachment signature B.</li>
+          </ol>
+          <p>Data edges are UploadScene → BuildLightGrid, BuildLightGrid → Lighting, Shadow → Lighting, GBuffer → Lighting, and Lighting → Tonemap. Compilation appends GraphEpilogue and adds Tonemap → GraphEpilogue because Tonemap is the last producer of extracted Output. The explicit DeadHistogram → Tonemap edge is synchronization-only and therefore supplies no liveness.</p>
+
+          <h3>Prediction 1: culling and order</h3>
+          <p>GraphEpilogue retains Tonemap, which retains Lighting, which retains BuildLightGrid, Shadow, and GBuffer; BuildLightGrid retains UploadScene. DeadHistogram is reachable only through ordering-only edges, so it is culled. The compact execution order is:</p>
+          <p><code>0 Prologue, 1 UploadScene, 2 BuildLightGrid, 3 Shadow, 4 GBuffer, 5 Lighting, 6 Tonemap, 7 GraphEpilogue</code>.</p>
+          <p>No topological reordering has occurred. Removing DeadHistogram merely closes its registration-order gap.</p>
+
+          <h3>Prediction 2: pipelines and dependencies</h3>
+          <ul>
+            <li><code>UploadScene</code> selects Copy because all its states are copy-compatible.</li>
+            <li><code>BuildLightGrid</code> selects AsyncCompute because the compute queue exists and its shader/UAV states are compatible.</li>
+            <li><code>Shadow</code>, <code>GBuffer</code>, <code>Lighting</code>, and <code>Tonemap</code> select Graphics.</li>
+            <li>Queue dependency Copy → AsyncCompute is emitted for UploadScene → BuildLightGrid.</li>
+            <li>Queue dependency AsyncCompute → Graphics is emitted for BuildLightGrid → Lighting.</li>
+            <li>All other live edges are same-pipeline or sentinel relationships and need no specialized cross-queue record unless their endpoint pipelines differ.</li>
+          </ul>
+          <p>For BuildLightGrid, the latest reachable graphics predecessor is the prologue because UploadScene is copy work; its earliest reachable graphics successor is Lighting. These fork/join values describe the span, while the two queue dependencies enforce it.</p>
+
+          <h3>Prediction 3: lifetimes</h3>
+          <ul>
+            <li><code>Scene</code>: <code>[1,2]</code>.</li>
+            <li><code>Grid</code>: <code>[2,5]</code>.</li>
+            <li><code>ShadowMap</code>: <code>[3,5]</code>.</li>
+            <li><code>SceneColor</code>: <code>[4,6]</code>.</li>
+            <li><code>Depth</code>: <code>[4,5]</code>.</li>
+            <li><code>Output</code>: <code>[6,7]</code>, extended through the epilogue because it is extracted.</li>
+          </ul>
+          <p>No histogram resource receives a lifetime because its only pass was culled. Even if Output carries a transient creation flag, extraction makes its emitted transient eligibility false.</p>
+
+          <h3>Prediction 4: representative logical barriers</h3>
+          <ul>
+            <li><code>Scene</code>: Common → CopyDest at UploadScene, then CopyDest → NonPixelShaderResource at BuildLightGrid.</li>
+            <li><code>Grid</code>: Common → UnorderedAccess at BuildLightGrid, then UnorderedAccess → the graphics shader-read requirement at Lighting.</li>
+            <li><code>ShadowMap</code>: Common → DepthWrite at Shadow, then DepthWrite → shader read at Lighting for each addressed mip × slice cell.</li>
+            <li><code>SceneColor</code>: Common → RenderTarget at GBuffer; the equal RenderTarget requirement at Lighting is not a UAV barrier and is forced only in conservative mode; then RenderTarget → shader read at Tonemap.</li>
+            <li><code>Output</code>: Common → RenderTarget at Tonemap, then RenderTarget → PixelShaderResource on GraphEpilogue.</li>
+          </ul>
+          <p>If a second live pass accessed <code>Grid</code> again as UAV without changing state, its equal-state record would carry the UAV ordering flag. The before-state eventually recorded against a reused pooled buffer may be corrected at execution after the physical allocation is selected.</p>
+
+          <h3>Prediction 5: raster groups</h3>
+          <p>After culling, Shadow, GBuffer, Lighting, and Tonemap are adjacent raster passes. Shadow's attachment signature differs, so it starts group 0. GBuffer starts group 1 and Lighting joins group 1 because signature A is identical. Tonemap starts group 2 because signature B differs. The result reports three groups, but no callbacks or native render passes have been merged.</p>
+        </section>
+
+        <section id="performance">
+          <h2>Performance and scaling</h2>
+          <p>Let <var>P</var> be pass count, <var>E</var> edge count, <var>R</var> resource count, and <var>C</var> the number of addressed texture mip × slice cells replayed across live passes.</p>
+          <ul>
+            <li>Validation, culling, interval replay, lifetime emission, queue dependencies, and raster grouping are broadly linear in registered records, declarations, passes, and edges.</li>
+            <li>Consumer mirroring sorts each predecessor list, costing approximately the sum of <code>d log d</code> over consumer in-degrees.</li>
+            <li>Barrier compilation expands texture ranges to cells. Its cost grows with <var>C</var>, and the current implementation also sizes and scans resource-indexed temporary arrays per live pass. Large registries with sparse per-pass use therefore carry overhead beyond the declarations themselves.</li>
+            <li>Async fork/join performs graph walks per async pass. In a dense worst case it can approach <var>A</var> × (<var>P</var> + <var>E</var>), where <var>A</var> is the number of async passes.</li>
+            <li>Memory includes adjacency lists, execution order, lifetimes, queue dependencies, pass-local transition vectors, and temporary per-subresource state grids.</li>
+          </ul>
+          <p>Deterministic registry scans and stable handles favor reproducibility and debugging. If compilation becomes measurable, profile cell expansion, sparse-resource temporary arrays, and repeated async reachability before changing graph semantics. Culling can reduce later work substantially, which is why live intervals and barriers are rebuilt after it.</p>
+        </section>
+
+        <section id="alternatives">
+          <h2>Alternatives and platform implications</h2>
+          <h3>Explicit topological sorting</h3>
+          <p>A compiler could allow dependencies in any direction and run Kahn's algorithm. That accepts more registration patterns and can expose several valid schedules, but it needs cycle diagnostics and a tie-breaking policy. It would also make “registration order is execution order” false. ArdaRenderGraph chooses the stronger forward-edge invariant for determinism and simpler construction.</p>
+
+          <h3>Scheduler-driven reordering</h3>
+          <p>A more aggressive compiler could reorder independent passes to reduce peak memory, increase queue overlap, or improve render-pass locality. Such scheduling is an optimization problem constrained by hazards and queue capabilities. The current compiler does not perform it; authors influence order by registration and dependencies.</p>
+
+          <h3>Range-aware buffer state and coalesced texture transitions</h3>
+          <p>Tracking buffer byte intervals could permit disjoint ranges in different states, while coalescing adjacent texture cells with identical transitions could shrink metadata. Both approaches increase interval bookkeeping and backend translation complexity. The current texture-cell/whole-buffer split is explicit and predictable.</p>
+
+          <h3>Backend-specific barriers</h3>
+          <p>D3D12, Vulkan, and other explicit APIs differ in state vocabulary, ownership transfer, stage masks, layouts, and barrier forms. Compilation intentionally emits RHI-level logical transitions. Execution, after physical resources and selected queues are known, maps them to platform behavior. A graphics-only device remains valid because copy and async requests fall back to graphics.</p>
+
+          <h3>Native render-pass or subpass fusion</h3>
+          <p>A backend could use raster-group metadata to build native render-pass structures or preserve attachments across callbacks. That is a later execution optimization and must remain optional across platforms. Group membership alone is not an execution guarantee.</p>
+        </section>
+
+        <section id="invariants">
+          <h2>Compiler invariants</h2>
+          <ul>
+            <li>Every dependency producer handle is valid and strictly smaller than its consumer handle.</li>
+            <li>Execution order is the live registration-order subsequence; compilation never topologically reorders it.</li>
+            <li>Validation observes all declarations before dead-pass removal.</li>
+            <li>Epilogue data producers preserve externally visible writers; epilogue synchronization producers do not preserve liveness.</li>
+            <li>Only producer edges and roots determine normal-mode liveness.</li>
+            <li>Resource lifetimes use inclusive compact execution indices, not raw pass handles.</li>
+            <li>Extracted and external resources extend through the epilogue and are not transient candidates.</li>
+            <li>Texture state is tracked per mip × array slice; buffer state is tracked per whole logical buffer.</li>
+            <li>Equal UAV state still requests ordering; conservative mode can force other equal-state barriers.</li>
+            <li>Compiled transitions form a continuous logical replay and satisfy pass and graph-exit requirements.</li>
+            <li>Specialized queue selection requires both capability and compatible states; otherwise graphics is the fallback.</li>
+            <li>Async fork/join and raster groups are descriptive metadata, not synchronization or command merging.</li>
+            <li>Physical before-state correction waits until execution knows the materialized resource identity.</li>
+            <li>The compiled flag is published only after every stage succeeds.</li>
+          </ul>
+        </section>
+
+        <section id="failure-modes">
+          <h2>Failure modes and diagnosis</h2>
+          <dl>
+            <dt>Backward, self, or invalid dependency edge</dt>
+            <dd>The consumer-mirror stage rejects it. Register the producer first and ensure both handles belong to the graph.</dd>
+            <dt>Graph-owned extraction with no producer</dt>
+            <dd>Stage 2 rejects it. Add a write that produces the resource, import an external resource when data truly enters from outside, or remove the extraction.</dd>
+            <dt>Read before production</dt>
+            <dd>Pre-compile validation catches it even if the reading pass would later be culled. Declare/import the input or repair producer order.</dd>
+            <dt>Conflicting states in one pass</dt>
+            <dd>Two views resolve to the same texture cell or whole buffer and at least one requirement writes. Split the work, correct the ranges, or use compatible read-only declarations.</dd>
+            <dt>Expected async or copy pass runs on graphics</dt>
+            <dd>Check immediate mode, queue capabilities, sentinel status, requested flags, and every state. Render-target/depth/present state forbids async; any non-copy state or acceleration structure forbids copy.</dd>
+            <dt>Dead pass unexpectedly survives</dt>
+            <dd>Look for a data path to the epilogue, a <code>NeverCull</code> flag, a data dependency from another root, or immediate mode. A synchronization-only edge by itself is not the cause.</dd>
+            <dt>Pass unexpectedly culled despite an ordering edge</dt>
+            <dd>Ordering is not liveness. Give the pass a real consumed output, make its external effect explicit with <code>NeverCull</code>, or remove it if it is genuinely dead.</dd>
+            <dt>Lifetime appears longer than resource accesses</dt>
+            <dd>External/extracted resources include the epilogue; immediate or extended-lifetime debug mode spans the full graph. Remember that indices are compact execution positions.</dd>
+            <dt>Unexpected UAV barrier with no state change</dt>
+            <dd>This is intentional memory ordering between unordered accesses. An unchanged state does not make prior writes visible by itself.</dd>
+            <dt>Logical transition starts from the “wrong” pooled state at runtime</dt>
+            <dd>Compiler metadata describes logical continuity. Execution must correct the before-state using the actual reused physical object.</dd>
+            <dt>Raster passes share a group but remain separate</dt>
+            <dd>That is the current contract. Groups are compatibility metadata, not a merge promise.</dd>
+          </dl>
+        </section>
+
+        <section id="summary">
+          <h2>Summary and checkpoints</h2>
+          <p><code>FARDGCompiler</code> is a deterministic lowering pipeline. It validates the declared program, anchors observable outputs, selects feasible queues, verifies the forward DAG, removes dead data ancestry, rebuilds live usage, derives execution-index lifetimes and logical transitions, validates those transitions, and emits scheduling descriptions. It then publishes the result once. Execution remains responsible for physical allocation, physical-state correction, command recording, queue waits, submission, and completion.</p>
+          <h3>Check your understanding</h3>
+          <ol>
+            <li>Why can a backward edge be rejected without running a general cycle detector?</li>
+            <li>Why does an epilogue reader edge preserve ordering but not liveness?</li>
+            <li>If pass handles 1, 4, and 8 survive, what are their compact execution indices?</li>
+            <li>Can two disjoint byte ranges of one buffer hold independent compiled states today?</li>
+            <li>Why does UAV → UAV still require a barrier marker?</li>
+            <li>What happens when an async-compute pass declares <code>DepthRead</code>?</li>
+            <li>Which metadata actually drives a cross-queue wait: fork/join or queue dependencies?</li>
+            <li>Does sharing a raster group imply one native render pass?</li>
+          </ol>
+          <details>
+            <summary>Checkpoint answers</summary>
+            <ol>
+              <li>Every legal edge must point from a smaller to a larger stable handle, so registration order already proves acyclicity.</li>
+              <li>A reader may need to finish before graph exit if it remains live, but its read does not produce the externally observable value.</li>
+              <li>0, 1, and 2 within that subsequence, subject to any live sentinel positions included in the actual execution order.</li>
+              <li>No. Buffer barrier state is whole-resource.</li>
+              <li>State equality says nothing about ordering and visibility of unordered writes.</li>
+              <li>It is async-incompatible and falls back to graphics.</li>
+              <li>Explicit <code>FARDGQueueDependency</code> records.</li>
+              <li>No. The group is metadata only.</li>
+            </ol>
+          </details>
+        </section>
+
+        <section id="further-reading">
+          <h2>Further reading</h2>
+          <ul>
+            <li><a href="architecture.html">Architecture and lifecycle</a> for the declaration–compile–execute boundary.</li>
+            <li><a href="passes.html">Passes and parameter declarations</a> for the access facts consumed by compilation.</li>
+            <li><a href="execution.html">Execution and submission</a> for materialization, physical correction, command recording, waits, and submission.</li>
+            <li><a href="debugging.html">Validation and debugging</a> for immediate mode, conservative barriers, and extended lifetimes.</li>
+            <li><a href="api-reference.html#api-arda-rdg-fardgcompileresult-192e7594"><code>FARDGCompileResult</code></a>, <a href="api-reference.html#api-arda-rdg-fardgresourcelifetime-48c457ef"><code>FARDGResourceLifetime</code></a>, and <a href="api-reference.html#api-arda-rdg-fardgqueuedependency-ccd4a634"><code>FARDGQueueDependency</code></a> in the canonical API reference.</li>
+            <li><a href="../glossary.html#term-render-graph">Render graph</a>, <a href="../glossary.html#term-dependency-edge">dependency edge</a>, <a href="../glossary.html#term-extraction">extraction</a>, and <a href="../glossary.html#term-resource-aliasing">resource aliasing</a> in the glossary.</li>
+          </ul>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="passes.html">← Previous: Passes</a>
+          <a rel="next" href="execution.html">Next: Execution →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer">
+    <p>ArdaRenderGraph documentation · Compilation derives device-independent execution metadata.</p>
+  </footer>
+</body>
+</html>

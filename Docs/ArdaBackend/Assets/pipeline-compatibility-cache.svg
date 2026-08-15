@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="720" viewBox="0 0 900 720" role="img" aria-labelledby="pso-title pso-desc">
+  <title id="pso-title">Framebuffer-compatible pipeline completion and cache behavior</title>
+  <desc id="pso-desc">Graphics pipeline initializer and framebuffer formats combine into a completed normalized descriptor key. The FArdaPipelineStateCache serves hits, coordinates in-flight same-key misses, creates one pipeline, retains its reference, and evicts least-recently-used entries.</desc>
+  <defs>
+    <marker id="flow-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
+    <marker id="data-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#34d399"/></marker>
+    <marker id="guard-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#fbbf24"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.api{fill:#1f3656;stroke:#60a5fa;stroke-width:1.6}.cache{fill:#214b45;stroke:#34d399;stroke-width:1.6}.device{fill:#20364a;stroke:#38bdf8;stroke-width:1.6}.guard{fill:#493720;stroke:#fbbf24;stroke-width:1.6}.native{fill:#312c3f;stroke:#a78bfa;stroke-width:1.6}
+      .title{font:700 25px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 14px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.note{font:12px system-ui,sans-serif;fill:#c5d2e3}.tiny{font:11px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle}.flow{fill:none;stroke:#7dd3fc;stroke-width:2.2;marker-end:url(#flow-arrow)}.output{fill:none;stroke:#34d399;stroke-width:2.2;marker-end:url(#data-arrow)}.guardline{fill:none;stroke:#fbbf24;stroke-width:2.2;stroke-dasharray:7 5;marker-end:url(#guard-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="900" height="720"/>
+  <text class="title" x="32" y="42">Pipeline cache: compatibility completion precedes identity</text>
+  <text class="sub" x="32" y="68">Current implementation compares the completed semantic descriptor; debug labels do not define identity.</text>
+
+  <rect class="api" x="32" y="104" width="246" height="126" rx="10"/>
+  <text class="label" x="155" y="134">Graphics initializer</text>
+  <text class="small" x="155" y="160">VS / PS + binding layouts</text>
+  <text class="small" x="155" y="184">input + raster + blend + depth</text>
+  <text class="tiny" x="155" y="210">RT/depth formats may be unresolved</text>
+
+  <rect class="api" x="32" y="252" width="246" height="126" rx="10"/>
+  <text class="label" x="155" y="282">Framebuffer</text>
+  <text class="small" x="155" y="308">color and depth attachment formats</text>
+  <text class="small" x="155" y="332">sample count / compatibility facts</text>
+  <text class="tiny" x="155" y="358">GetOrCreateGraphics input</text>
+
+  <rect class="guard" x="326" y="162" width="246" height="158" rx="10"/>
+  <text class="label" x="449" y="192">CompleteGraphicsDesc</text>
+  <text class="small" x="449" y="219">fill dynamic formats from framebuffer</text>
+  <text class="small" x="449" y="243">validate explicit formats agree</text>
+  <text class="small" x="449" y="267">produce completed semantic descriptor</text>
+  <text class="tiny" x="449" y="298">failure returns FArdaRHIStatus</text>
+  <path class="flow" d="M278 167 H322"/><path class="flow" d="M278 315 H300 V267 H322"/>
+
+  <rect class="cache" x="620" y="162" width="248" height="158" rx="10"/>
+  <text class="label" x="744" y="192">Normalized cache key</text>
+  <text class="small" x="744" y="219">HashValue(Completed)</text>
+  <text class="small" x="744" y="243">equality uses semantic state</text>
+  <text class="small" x="744" y="267">same framebuffer formats &#8594; same key</text>
+  <text class="tiny" x="744" y="298">different completed formats &#8594; new PSO</text>
+  <path class="output" d="M572 241 H616"/>
+
+  <rect class="panel" x="24" y="408" width="852" height="210" rx="12"/>
+  <text class="label" x="450" y="436">FArdaPipelineStateCache lookup and retention</text>
+  <rect class="cache" x="48" y="462" width="150" height="96" rx="9"/>
+  <text class="label" x="123" y="488">Lookup</text><text class="small" x="123" y="512">completed key</text><text class="tiny" x="123" y="538">thread-safe mutex</text>
+  <rect class="cache" x="232" y="462" width="150" height="96" rx="9"/>
+  <text class="label" x="307" y="488">Hit</text><text class="small" x="307" y="512">increment mHits</text><text class="tiny" x="307" y="538">refresh mLastUse</text>
+  <rect class="guard" x="416" y="462" width="150" height="96" rx="9"/>
+  <text class="label" x="491" y="488">In flight</text><text class="small" x="491" y="512">same-key waiter</text><text class="tiny" x="491" y="538">mWaits + notify_all</text>
+  <rect class="device" x="600" y="462" width="150" height="96" rx="9"/>
+  <text class="label" x="675" y="488">Miss: create</text><text class="small" x="675" y="512">CreateGraphicsPipeline</text><text class="tiny" x="675" y="538">one creator per key</text>
+  <rect class="native" x="774" y="462" width="78" height="96" rx="9"/>
+  <text class="label" x="813" y="488">LRU</text><text class="small" x="813" y="512">Trim</text><text class="tiny" x="813" y="538">evict</text>
+  <path class="flow" d="M198 510 H228"/><path class="guardline" d="M382 510 H412"/><path class="flow" d="M566 510 H596"/><path class="guardline" d="M750 510 H770"/>
+  <path class="output" d="M675 558 V586 H307 V562"/>
+  <text class="note" x="350" y="602">Completed entry retains FArdaRHIGraphicsPipelineRef; caller receives another retained ref.</text>
+
+  <rect class="panel" x="24" y="642" width="852" height="54" rx="8"/>
+  <path class="flow" d="M50 669 H100"/><text class="note" x="111" y="673">processing</text>
+  <path class="output" d="M250 669 H300"/><text class="note" x="311" y="673">key / retained result</text>
+  <path class="guardline" d="M520 669 H570"/><text class="note" x="581" y="673">validation, wait, or eviction policy</text>
+</svg>

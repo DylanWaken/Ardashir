@@ -1,0 +1,517 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="3660" viewBox="0 0 1800 3660" role="img" aria-labelledby="title desc">
+  <title id="title">ArdaRenderGraph complete build, compile, and execute call chain</title>
+  <desc id="desc">Source ordered call graph from public builder APIs through logical dependency discovery, compiler lowering, resource materialization, command recording, queue submission, extraction, and completion.</desc>
+  <defs>
+    <view id="ardg-build-view" viewBox="20 120 1760 930"/>
+    <view id="ardg-compile-view" viewBox="20 1070 1760 1160"/>
+    <view id="ardg-execute-view" viewBox="20 2250 1760 1290"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="dataArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#34d399"/>
+    </marker>
+    <marker id="waitArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#fbbf24"/>
+    </marker>
+    <style>
+      .stage{rx:22;fill:#101a2c;stroke:#52647d;stroke-width:2}
+      .public{rx:11;fill:#1f3656;stroke:#60a5fa;stroke-width:2}
+      .internal{rx:11;fill:#3a294d;stroke:#c084fc;stroke-width:2}
+      .algorithm{rx:11;fill:#214b45;stroke:#34d399;stroke-width:2}
+      .validation{rx:11;fill:#493720;stroke:#fbbf24;stroke-width:2}
+      .data{rx:11;fill:#253247;stroke:#94a3b8;stroke-width:2}
+      .device{rx:11;fill:#20364a;stroke:#38bdf8;stroke-width:2}
+      .decision{fill:#493720;stroke:#fbbf24;stroke-width:2}
+      .title{font:700 30px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .stageTitle{font:700 25px system-ui,sans-serif;fill:#eef6ff}
+      .subtitle{font:15px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .label{font:600 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:13px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .tiny{font:12px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle}
+      .lane{font:700 13px system-ui,sans-serif;fill:#7dd3fc;letter-spacing:1px}
+      .flow{stroke:#7dd3fc;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+      .dataFlow{stroke:#34d399;stroke-width:2.5;fill:none;marker-end:url(#dataArrow)}
+      .wait{stroke:#fbbf24;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#waitArrow)}
+      .divider{stroke:#52647d;stroke-width:1.5;stroke-dasharray:6 6}
+    </style>
+  </defs>
+
+  <rect width="1800" height="3660" rx="24" fill="url(#bg)"/>
+  <text x="900" y="45" class="title">ArdaRenderGraph: complete source ordered call chain</text>
+  <text x="900" y="75" class="subtitle">Public API to logical graph to compiler products to physical resources to NVRHI queue submission</text>
+  <text x="900" y="100" class="subtitle">Cyan: function call | Green: stored output | Amber dashed: validation, guard, or queue wait</text>
+
+  <!-- BUILD STAGE -->
+  <g id="ardg-build-stage">
+    <rect class="stage" x="20" y="120" width="1760" height="930"/>
+    <text x="48" y="160" class="stageTitle">1 | BUILD - create logical records and discover incoming hazards</text>
+    <text x="48" y="186" class="lane">PUBLIC API</text>
+    <text x="446" y="186" class="lane">BUILDER INTERNALS</text>
+    <text x="910" y="186" class="lane">SETUP AND METADATA WALK</text>
+    <text x="1410" y="186" class="lane">PERSISTENT LOGICAL STATE</text>
+
+    <rect class="public" x="48" y="208" width="330" height="84"/>
+    <text x="213" y="236" class="label">FARDGBuilder(Context)</text>
+    <text x="213" y="260" class="small">make_unique of FImpl; validate graphics queue</text>
+    <text x="213" y="280" class="tiny">Builder.cpp 657-665</text>
+    <path class="flow" d="M378 250 H442"/>
+    <rect class="internal" x="446" y="208" width="390" height="84"/>
+    <text x="641" y="236" class="label">FImpl::FImpl</text>
+    <text x="641" y="260" class="small">mPasses.Emplace GraphPrologue sentinel</text>
+    <text x="641" y="280" class="tiny">BuilderInternal.h 22-32</text>
+    <path class="dataFlow" d="M836 250 H1406"/>
+    <rect class="data" x="1410" y="208" width="334" height="84"/>
+    <text x="1577" y="236" class="label">FImpl graph state</text>
+    <text x="1577" y="260" class="small">P0; arena registries; lifecycle flags</text>
+    <text x="1577" y="280" class="tiny">IsBuilding gates every mutation</text>
+
+    <rect class="public" x="48" y="324" width="330" height="176"/>
+    <text x="213" y="352" class="label">Resource and storage APIs</text>
+    <text x="213" y="378" class="small">AllocateParameters / CreateUniformBuffer</text>
+    <text x="213" y="401" class="small">CreateTexture / CreateBuffer</text>
+    <text x="213" y="424" class="small">CreateTextureSRV/UAV; BufferSRV/UAV</text>
+    <text x="213" y="447" class="small">RegisterExternalTexture / Buffer</text>
+    <text x="213" y="470" class="small">CreateUniformBuffer; QueueExtraction</text>
+    <text x="213" y="490" class="tiny">Builder.h and Builder.cpp 1290-1678</text>
+    <path class="flow" d="M378 412 H442"/>
+    <rect class="internal" x="446" y="324" width="390" height="176"/>
+    <text x="641" y="352" class="label">Validate then append logical objects</text>
+    <text x="641" y="378" class="small">FreezeParameters - PRIVATE IMPLEMENTATION DETAIL</text>
+    <text x="641" y="401" class="small">TARDGHandleRegistry::Emplace</text>
+    <text x="641" y="424" class="small">import map dedupe and initial state check</text>
+    <text x="641" y="447" class="small">external.SetLastProducer(P0)</text>
+    <text x="641" y="470" class="small">extraction sets flag and final state</text>
+    <text x="641" y="490" class="tiny">automatically invoked by AddPass/CreateUniformBuffer; never user-callable</text>
+    <path class="dataFlow" d="M836 412 H1406"/>
+    <rect class="data" x="1410" y="324" width="334" height="176"/>
+    <text x="1577" y="352" class="label">Logical registries and side maps</text>
+    <text x="1577" y="378" class="small">textures; buffers; views; uniform buffers</text>
+    <text x="1577" y="401" class="small">frozen parameter storage</text>
+    <text x="1577" y="424" class="small">imported texture and buffer maps</text>
+    <text x="1577" y="447" class="small">texture and buffer extraction arrays</text>
+    <text x="1577" y="470" class="small">descriptor; flags; initial/final state</text>
+    <text x="1577" y="490" class="tiny">no graph-created GPU object exists yet</text>
+
+    <rect class="public" x="48" y="532" width="330" height="174"/>
+    <text x="213" y="560" class="label">AddPass with parameters</text>
+    <text x="213" y="586" class="small">null check then automatic parameter snapshot</text>
+    <text x="213" y="609" class="small">wrap user lambda with InvokePassLambda</text>
+    <text x="213" y="632" class="small">GetStaticMetadata then AddPassInternal</text>
+    <text x="213" y="664" class="label">AddDispatchPass</text>
+    <text x="213" y="687" class="small">AddPass then setup callback then dispatch</text>
+    <path class="flow" d="M378 619 H442"/>
+    <rect class="internal" x="446" y="532" width="390" height="174"/>
+    <text x="641" y="560" class="label">AddPassInternal</text>
+    <text x="641" y="581" class="tiny">PRIVATE IMPLEMENTATION DETAIL</text>
+    <text x="641" y="605" class="small">IsBuilding; ValidatePassFlags</text>
+    <text x="641" y="628" class="small">Emplace FARDGLambdaPass</text>
+    <text x="641" y="651" class="small">construct FARDGSetupContext</text>
+    <text x="641" y="674" class="small">Setup.Visit(Metadata, Parameters)</text>
+    <text x="641" y="698" class="tiny">parameterless AddPass skips automatic edges</text>
+    <path class="flow" d="M836 619 H906"/>
+    <rect class="algorithm" x="910" y="532" width="444" height="174"/>
+    <text x="1132" y="560" class="label">FARDGSetupContext::Visit</text>
+    <text x="1132" y="586" class="small">FARDGParameterMetadata::Enumerate</text>
+    <text x="1132" y="609" class="small">member loop; arrays; nested structs</text>
+    <text x="1132" y="632" class="small">switch parameter type</text>
+    <text x="1132" y="655" class="small">AddTexture / AddBuffer / AddView</text>
+    <text x="1132" y="678" class="small">AddUniformBuffer recursively visits contents</text>
+    <text x="1132" y="698" class="tiny">render slots also build raster signature</text>
+    <path class="dataFlow" d="M1354 619 H1406"/>
+    <rect class="data" x="1410" y="532" width="334" height="174"/>
+    <text x="1577" y="560" class="label">FARDGPassState build inputs</text>
+    <text x="1577" y="586" class="small">texture and buffer states</text>
+    <text x="1577" y="609" class="small">views; uniform buffers; raster bindings</text>
+    <text x="1577" y="632" class="small">mProducers</text>
+    <text x="1577" y="655" class="small">mSynchronizationProducers</text>
+    <text x="1577" y="678" class="small">initial pipeline from pass flags</text>
+    <text x="1577" y="698" class="tiny">incoming edges only; consumers come later</text>
+
+    <rect class="public" x="48" y="738" width="330" height="116"/>
+    <text x="213" y="766" class="label">AddDependency; GetBlackboard</text>
+    <text x="213" y="792" class="small">manual edge must be distinct and forward</text>
+    <text x="213" y="815" class="small">mutable blackboard requires IsBuilding</text>
+    <text x="213" y="840" class="tiny">manual producer edges also affect culling</text>
+    <path class="dataFlow" d="M378 796 H1406"/>
+
+    <rect class="algorithm" x="446" y="738" width="908" height="196"/>
+    <text x="900" y="766" class="label">AddTexture / AddBuffer hazard state machine</text>
+    <text x="900" y="792" class="small">null returns; require same registry object and state not Unknown</text>
+    <text x="900" y="815" class="small">Pass.AddState; Resource.MarkUsed; AddProducer(Resource.GetLastProducer)</text>
+    <polygon class="decision" points="900,832 1000,866 900,900 800,866"/>
+    <text x="900" y="863" class="label">write?</text>
+    <text x="900" y="882" class="tiny">IsWriteState</text>
+    <text x="645" y="862" class="small">NO: Resource.AddReader(CurrentPass)</text>
+    <text x="1165" y="850" class="small">YES: each old reader becomes</text>
+    <text x="1165" y="872" class="small">a synchronization producer</text>
+    <text x="1165" y="896" class="small">ClearReaders; SetLastProducer</text>
+    <text x="900" y="923" class="tiny">producer = order plus liveness; synchronization producer = order only</text>
+    <path class="dataFlow" d="M1354 836 H1406"/>
+    <rect class="data" x="1410" y="738" width="334" height="196"/>
+    <text x="1577" y="766" class="label">Resource hazard history</text>
+    <text x="1577" y="792" class="small">mLastProducer</text>
+    <text x="1577" y="815" class="small">mReaders since last write</text>
+    <text x="1577" y="838" class="small">mFirstUse and mLastUse</text>
+    <line x1="1436" y1="858" x2="1718" y2="858" class="divider"/>
+    <text x="1577" y="884" class="small">history is whole logical resource</text>
+    <text x="1577" y="907" class="small">declared range remains in pass state</text>
+    <text x="1577" y="927" class="tiny">access order is metadata declaration order</text>
+
+    <rect class="validation" x="446" y="960" width="908" height="66"/>
+    <text x="900" y="988" class="label">FARDGBuilder::Compile</text>
+    <text x="900" y="1012" class="small">cached? return; reject bad lifecycle; set mbCompiling; call FARDGCompiler::Compile; clear mbCompiling</text>
+    <path class="flow" d="M900 1026 V1088"/>
+  </g>
+
+  <!-- COMPILE STAGE -->
+  <g id="ardg-compile-stage">
+    <rect class="stage" x="20" y="1070" width="1760" height="1160"/>
+    <text x="48" y="1110" class="stageTitle">2 | COMPILE - validate, cull, lower state, and publish executor metadata</text>
+    <text x="48" y="1136" class="lane">SOURCE ORDER</text>
+    <text x="448" y="1136" class="lane">HELPER CALL CHAIN AND INTERNAL LOGIC</text>
+    <text x="1380" y="1136" class="lane">OUTPUT OR INVARIANT</text>
+
+    <rect class="internal" x="48" y="1158" width="350" height="76"/>
+    <text x="223" y="1186" class="label">FARDGCompiler::Compile</text>
+    <text x="223" y="1210" class="small">timer; FImpl; cached result check</text>
+    <path class="flow" d="M223 1234 V1255"/>
+
+    <rect class="validation" x="48" y="1258" width="350" height="126"/>
+    <text x="223" y="1286" class="label">1 | ValidateBeforeCompile</text>
+    <text x="223" y="1312" class="small">resources; passes; extractions</text>
+    <text x="223" y="1335" class="small">ValidateProducedBeforeRead</text>
+    <text x="223" y="1358" class="tiny">all passes, including later culled work</text>
+    <path class="flow" d="M398 1321 H444"/>
+    <rect class="algorithm" x="448" y="1258" width="876" height="126"/>
+    <text x="886" y="1286" class="label">ValidateState; ValidateTextureAccess; ValidateBufferAccess</text>
+    <text x="886" y="1312" class="small">flags; backing; state legality; bounds; UAV and attachment capability; queue legality</text>
+    <text x="886" y="1335" class="small">replay produced texture cells and whole buffers; check reads; publish writes</text>
+    <text x="886" y="1358" class="tiny">external resources start produced; same-pass write may initialize same-pass read</text>
+    <path class="dataFlow" d="M1324 1321 H1376"/>
+    <rect class="data" x="1380" y="1258" width="364" height="126"/>
+    <text x="1562" y="1286" class="label">Validated build representation</text>
+    <text x="1562" y="1312" class="small">owned, bounded, legal, initialized access</text>
+    <text x="1562" y="1335" class="small">unique extraction records</text>
+    <text x="1562" y="1358" class="tiny">fatal check on any contract violation</text>
+    <path class="flow" d="M223 1384 V1405"/>
+
+    <rect class="validation" x="48" y="1408" width="350" height="112"/>
+    <text x="223" y="1436" class="label">2-3 | Close graph boundary</text>
+    <text x="223" y="1462" class="small">reject unproduced extraction</text>
+    <text x="223" y="1485" class="small">Emplace GraphEpilogue and wire edges</text>
+    <text x="223" y="1508" class="tiny">Compiler.cpp 948-1005</text>
+    <path class="flow" d="M398 1464 H444"/>
+    <rect class="algorithm" x="448" y="1408" width="876" height="112"/>
+    <text x="886" y="1436" class="label">For each external or extracted texture and buffer</text>
+    <text x="886" y="1462" class="small">last producer to Epilogue.AddProducer; trailing readers to AddSynchronizationProducer</text>
+    <text x="886" y="1485" class="small">data edges root observable output; trailing reads provide ordering only</text>
+    <text x="886" y="1508" class="tiny">P8 is appended after all user passes</text>
+    <path class="dataFlow" d="M1324 1464 H1376"/>
+    <rect class="data" x="1380" y="1408" width="364" height="112"/>
+    <text x="1562" y="1436" class="label">GraphEpilogue sentinel</text>
+    <text x="1562" y="1462" class="small">final boundary and normal culling root</text>
+    <text x="1562" y="1485" class="small">producer and sync producer lists</text>
+    <text x="1562" y="1508" class="tiny">final transitions are added later</text>
+    <path class="flow" d="M223 1520 V1541"/>
+
+    <rect class="internal" x="48" y="1544" width="350" height="126"/>
+    <text x="223" y="1572" class="label">4 | AssignPipelines</text>
+    <text x="223" y="1598" class="small">default Graphics</text>
+    <text x="223" y="1621" class="small">Copy branch then AsyncCompute</text>
+    <text x="223" y="1644" class="tiny">immediate mode and sentinels stay graphics</text>
+    <path class="flow" d="M398 1607 H444"/>
+    <rect class="algorithm" x="448" y="1544" width="410" height="126"/>
+    <text x="653" y="1572" class="label">IsCopyCompatible</text>
+    <text x="653" y="1598" class="small">flag, queue capability, copy-only states</text>
+    <text x="653" y="1621" class="label">IsAsyncComputeCompatible</text>
+    <text x="653" y="1644" class="small">flag, compute queue, no graphics-only states</text>
+    <path class="flow" d="M858 1607 H904"/>
+    <rect class="algorithm" x="908" y="1544" width="416" height="126"/>
+    <text x="1116" y="1572" class="label">NormalizeStateForPipeline</text>
+    <text x="1116" y="1598" class="small">normalize shader resource state for async</text>
+    <text x="1116" y="1621" class="small">capability fallback, not timing scheduling</text>
+    <text x="1116" y="1644" class="tiny">writes Pass.mPipeline</text>
+    <path class="dataFlow" d="M1324 1607 H1376"/>
+    <rect class="data" x="1380" y="1544" width="364" height="126"/>
+    <text x="1562" y="1572" class="label">Pass.mPipeline</text>
+    <text x="1562" y="1598" class="small">Graphics; AsyncCompute; Copy</text>
+    <text x="1562" y="1621" class="small">one selected queue domain per pass</text>
+    <text x="1562" y="1644" class="tiny">assigned before culling</text>
+    <path class="flow" d="M223 1670 V1691"/>
+
+    <rect class="internal" x="48" y="1694" width="350" height="126"/>
+    <text x="223" y="1722" class="label">5 | BuildConsumerEdges</text>
+    <text x="223" y="1748" class="small">clear reverse lists; sort incoming</text>
+    <text x="223" y="1771" class="small">validate forward handles; mirror edges</text>
+    <text x="223" y="1794" class="tiny">strictly increasing handles prevent cycles</text>
+    <path class="flow" d="M398 1757 H444"/>
+    <rect class="algorithm" x="448" y="1694" width="410" height="126"/>
+    <text x="653" y="1722" class="label">Producer.AddConsumer</text>
+    <text x="653" y="1748" class="small">mirror data adjacency</text>
+    <text x="653" y="1771" class="label">AddSynchronizationConsumer</text>
+    <text x="653" y="1794" class="small">mirror ordering adjacency</text>
+    <path class="flow" d="M858 1757 H904"/>
+    <rect class="algorithm" x="908" y="1694" width="416" height="126"/>
+    <text x="1116" y="1722" class="label">6 | CullPasses</text>
+    <text x="1116" y="1748" class="small">roots: epilogue plus NeverCull</text>
+    <text x="1116" y="1771" class="small">backward worklist follows data producers</text>
+    <text x="1116" y="1794" class="tiny">immediate mode keeps every pass</text>
+    <path class="dataFlow" d="M1324 1757 H1376"/>
+    <rect class="data" x="1380" y="1694" width="364" height="126"/>
+    <text x="1562" y="1722" class="label">Reverse edges and live topology</text>
+    <text x="1562" y="1748" class="small">mConsumers; sync consumers; mbCulled</text>
+    <text x="1562" y="1771" class="small">mExecutionOrder is live registry order</text>
+    <text x="1562" y="1794" class="tiny">no topological sort or reordering</text>
+    <path class="flow" d="M223 1820 V1841"/>
+
+    <rect class="internal" x="48" y="1844" width="350" height="126"/>
+    <text x="223" y="1872" class="label">7-8 | Compile live lifetimes</text>
+    <text x="223" y="1898" class="small">RebuildLiveResourceIntervals</text>
+    <text x="223" y="1921" class="small">CompileResourceLifetimes</text>
+    <text x="223" y="1944" class="tiny">live handle use to execution index interval</text>
+    <path class="flow" d="M398 1907 H444"/>
+    <rect class="algorithm" x="448" y="1844" width="876" height="126"/>
+    <text x="886" y="1872" class="label">ResetUsage then replay live pass texture and buffer states</text>
+    <text x="886" y="1898" class="small">external and extracted resources gain epilogue use; map pass handles to execution indices</text>
+    <text x="886" y="1921" class="small">transient only when Transient and not External or Extracted</text>
+    <text x="886" y="1944" class="tiny">extended lifetime or immediate mode widens every interval to the full graph</text>
+    <path class="dataFlow" d="M1324 1907 H1376"/>
+    <rect class="data" x="1380" y="1844" width="364" height="126"/>
+    <text x="1562" y="1872" class="label">mResourceLifetimes</text>
+    <text x="1562" y="1898" class="small">type; registry index; inclusive first/last</text>
+    <text x="1562" y="1921" class="small">whole logical resource lifetime</text>
+    <text x="1562" y="1944" class="tiny">executor allocation input</text>
+    <path class="flow" d="M223 1970 V1991"/>
+
+    <rect class="internal" x="48" y="1994" width="350" height="146"/>
+    <text x="223" y="2022" class="label">9-10 | Lower and validate state</text>
+    <text x="223" y="2048" class="small">CompileBarriers</text>
+    <text x="223" y="2071" class="small">ValidateTransitions</text>
+    <text x="223" y="2094" class="small">ordinary passes then epilogue final state</text>
+    <text x="223" y="2124" class="tiny">texture per mip/slice; buffer whole</text>
+    <path class="flow" d="M398 2067 H444"/>
+    <rect class="algorithm" x="448" y="1994" width="876" height="146"/>
+    <text x="886" y="2022" class="label">Initialize current state; NormalizeStateForPipeline; MergePassState</text>
+    <text x="886" y="2048" class="small">merge compatible reads; reject conflicting writes; emit before/after records</text>
+    <text x="886" y="2071" class="small">equal UAV requests ordering; conservative equal state requests a forced barrier</text>
+    <text x="886" y="2094" class="small">independent replay checks continuity, access satisfaction, and final states</text>
+    <text x="886" y="2124" class="tiny">transitions are still keyed by logical resource identity</text>
+    <path class="dataFlow" d="M1324 2067 H1376"/>
+    <rect class="data" x="1380" y="1994" width="364" height="146"/>
+    <text x="1562" y="2022" class="label">Per-pass logical transitions</text>
+    <text x="1562" y="2048" class="small">mTextureTransitions; mBufferTransitions</text>
+    <text x="1562" y="2071" class="small">before; after; UAV; force flags</text>
+    <text x="1562" y="2094" class="small">epilogue owns final transitions</text>
+    <text x="1562" y="2124" class="tiny">validated against every live declaration</text>
+
+    <rect class="algorithm" x="48" y="2162" width="610" height="48"/>
+    <text x="353" y="2192" class="label">11 | CompileAsyncMetadata: backward fork and forward join graph walks</text>
+    <path class="flow" d="M658 2186 H690"/>
+    <rect class="algorithm" x="694" y="2162" width="630" height="48"/>
+    <text x="1009" y="2192" class="label">12 | CompileQueueDependencies: live cross-pipeline edge pairs</text>
+    <path class="dataFlow" d="M1324 2186 H1356"/>
+    <rect class="data" x="1360" y="2162" width="384" height="48"/>
+    <text x="1552" y="2184" class="label">mAsyncFork / mAsyncJoin</text>
+    <text x="1552" y="2202" class="tiny">mQueueDependencies drive actual waits</text>
+
+    <rect class="internal" x="48" y="2216" width="810" height="0"/>
+    <text x="465" y="2220" class="tiny">13 | CompileRasterGroups assigns compatible consecutive raster runs</text>
+    <text x="1330" y="2220" class="tiny">14 | set mbCompiled; return FARDGCompileResult</text>
+    <path class="flow" d="M1330 2228 V2268"/>
+  </g>
+
+  <!-- EXECUTE STAGE -->
+  <g id="ardg-execute-stage">
+    <rect class="stage" x="20" y="2250" width="1760" height="1290"/>
+    <text x="48" y="2290" class="stageTitle">3 | EXECUTE - materialize, record, synchronize queues, submit, and publish outputs</text>
+    <text x="48" y="2316" class="lane">ORCHESTRATOR</text>
+    <text x="448" y="2316" class="lane">EXECUTOR HELPERS AND CPU RECORDING</text>
+    <text x="1380" y="2316" class="lane">NVRHI OR RESULT STATE</text>
+
+    <rect class="public" x="48" y="2338" width="350" height="112"/>
+    <text x="223" y="2366" class="label">FARDGBuilder::Execute</text>
+    <text x="223" y="2392" class="small">FARDGExecutor::Execute</text>
+    <text x="223" y="2415" class="small">once; not failed; device present</text>
+    <text x="223" y="2438" class="tiny">calls cached or first Builder.Compile</text>
+    <path class="flow" d="M398 2394 H444"/>
+    <rect class="internal" x="448" y="2338" width="876" height="112"/>
+    <text x="886" y="2366" class="label">set mbExecutionStarted; create FARDGExecutionFailureGuard</text>
+    <text x="886" y="2392" class="small">reset execution result; copy immediate mode; guard marks mbFailed unless completed</text>
+    <text x="886" y="2415" class="small">consume order, lifetimes, transitions, pipelines, edges, and queue dependencies</text>
+    <text x="886" y="2438" class="tiny">culled passes are absent; execution is one shot</text>
+    <path class="dataFlow" d="M1324 2394 H1376"/>
+    <rect class="data" x="1380" y="2338" width="364" height="112"/>
+    <text x="1562" y="2366" class="label">Execution lifecycle active</text>
+    <text x="1562" y="2392" class="small">build mutation permanently closed</text>
+    <text x="1562" y="2415" class="small">failure becomes sticky</text>
+    <text x="1562" y="2438" class="tiny">no GPU wait is implied</text>
+    <path class="flow" d="M223 2450 V2471"/>
+
+    <rect class="internal" x="48" y="2474" width="350" height="150"/>
+    <text x="223" y="2502" class="label">1 | MaterializeResources</text>
+    <text x="223" y="2528" class="small">EvaluateTransientHeapLayout</text>
+    <text x="223" y="2551" class="small">sort lifetimes; pool Acquire</text>
+    <text x="223" y="2574" class="small">BindTexture / BindBuffer</text>
+    <text x="223" y="2597" class="small">create uniform buffers</text>
+    <text x="223" y="2617" class="tiny">Executor.cpp 396-654</text>
+    <path class="flow" d="M398 2549 H444"/>
+    <rect class="algorithm" x="448" y="2474" width="876" height="150"/>
+    <text x="886" y="2502" class="label">VirtualResources feature?</text>
+    <text x="886" y="2528" class="small">yes: create virtual probes; query memory requirements; transient allocator computes ideal layout</text>
+    <text x="886" y="2551" class="small">actual path uses committed fallback; pool key uses normalized descriptor and exact equality</text>
+    <text x="886" y="2574" class="small">reuse requires same queue domain and availableAfter less than firstUse</text>
+    <text x="886" y="2597" class="small">external keeps imported handle; cross-queue and non-transient domain is minus one</text>
+    <text x="886" y="2617" class="tiny">execution-local pools do not persist across graphs</text>
+    <path class="dataFlow" d="M1324 2549 H1376"/>
+    <rect class="device" x="1380" y="2474" width="364" height="150"/>
+    <text x="1562" y="2502" class="label">Physical NVRHI resources</text>
+    <text x="1562" y="2528" class="small">IDevice.createTexture / createBuffer</text>
+    <text x="1562" y="2551" class="small">logical record binds physical handle</text>
+    <text x="1562" y="2574" class="small">pool reuse and fallback counters</text>
+    <text x="1562" y="2597" class="small">uniform storage allocated, not uploaded</text>
+    <text x="1562" y="2617" class="tiny">creation failures are fatal</text>
+    <path class="flow" d="M223 2624 V2645"/>
+
+    <rect class="internal" x="48" y="2648" width="350" height="150"/>
+    <text x="223" y="2676" class="label">2 | BuildPhysicalTransitions</text>
+    <text x="223" y="2702" class="small">walk execution order</text>
+    <text x="223" y="2725" class="small">state keyed by ITexture or IBuffer pointer</text>
+    <text x="223" y="2748" class="small">rewrite logical before states after reuse</text>
+    <text x="223" y="2771" class="small">optional first-write clobber plan</text>
+    <text x="223" y="2791" class="tiny">Executor.cpp 666-896</text>
+    <path class="flow" d="M398 2723 H444"/>
+    <rect class="algorithm" x="448" y="2648" width="876" height="150"/>
+    <text x="886" y="2676" class="label">Physical current state maps</text>
+    <text x="886" y="2702" class="small">runtime before from physical history; after from compiled logical requirement</text>
+    <text x="886" y="2725" class="small">recompute equal UAV ordering; keep forced barrier only while before equals after</text>
+    <text x="886" y="2748" class="small">mbClobberFirstWrites tracks first produced texture cells and whole buffers</text>
+    <text x="886" y="2771" class="small">plan supported depth, color, or UAV clears; copy passes skip clobber</text>
+    <text x="886" y="2791" class="tiny">this repairs state continuity when two logical lifetimes share one physical object</text>
+    <path class="dataFlow" d="M1324 2723 H1376"/>
+    <rect class="data" x="1380" y="2648" width="364" height="150"/>
+    <text x="1562" y="2676" class="label">Runtime transition bundles</text>
+    <text x="1562" y="2702" class="small">physical identity and corrected before state</text>
+    <text x="1562" y="2725" class="small">UAV and forced barrier bits</text>
+    <text x="1562" y="2748" class="small">texture and buffer clobber records</text>
+    <text x="1562" y="2771" class="small">one continuous physical state history</text>
+    <text x="1562" y="2791" class="tiny">ready for command recording</text>
+    <path class="flow" d="M223 2798 V2819"/>
+
+    <rect class="internal" x="48" y="2822" width="350" height="150"/>
+    <text x="223" y="2850" class="label">3-4 | Levels and recording</text>
+    <text x="223" y="2876" class="small">level = max of producer level plus one</text>
+    <text x="223" y="2899" class="small">data and synchronization edges count</text>
+    <text x="223" y="2922" class="small">parallel batches then serial passes</text>
+    <text x="223" y="2945" class="tiny">prologue and no-work sentinels skip</text>
+    <path class="flow" d="M398 2897 H444"/>
+    <rect class="algorithm" x="448" y="2822" width="876" height="150"/>
+    <text x="886" y="2850" class="label">Parallel eligible?</text>
+    <text x="886" y="2876" class="small">not immediate; option enabled; pass lacks NeverParallel</text>
+    <text x="886" y="2899" class="small">MaxWorkers from option or hardware concurrency; std::async per eligible pass</text>
+    <text x="886" y="2922" class="small">future.get joins a batch before the next batch or dependency level</text>
+    <text x="886" y="2945" class="tiny">this is CPU command encoding concurrency, not GPU submission order</text>
+    <path class="dataFlow" d="M1324 2897 H1376"/>
+    <rect class="data" x="1380" y="2822" width="364" height="150"/>
+    <text x="1562" y="2850" class="label">Recorded array by pass</text>
+    <text x="1562" y="2876" class="small">command list; queue; clobber count</text>
+    <text x="1562" y="2899" class="small">independent passes may record together</text>
+    <text x="1562" y="2922" class="small">dependent passes occupy later levels</text>
+    <text x="1562" y="2945" class="tiny">submission remains deterministic</text>
+    <path class="flow" d="M223 2972 V2993"/>
+
+    <rect class="internal" x="48" y="2996" width="350" height="230"/>
+    <text x="223" y="3024" class="label">RecordPass</text>
+    <text x="223" y="3050" class="small">GetCommandQueue; createCommandList</text>
+    <text x="223" y="3073" class="small">open; disable automatic barriers</text>
+    <text x="223" y="3096" class="small">beginTracking; force Common; set state</text>
+    <text x="223" y="3119" class="small">enable UAV barriers; commitBarriers</text>
+    <text x="223" y="3142" class="small">clobbers; marker; Pass.Execute</text>
+    <text x="223" y="3165" class="small">close command list</text>
+    <text x="223" y="3198" class="tiny">one command list per live pass with work</text>
+    <path class="flow" d="M398 3111 H444"/>
+    <rect class="algorithm" x="448" y="2996" width="876" height="230"/>
+    <text x="886" y="3024" class="label">FARDGLambdaPass::Execute to stored FARDGPassExecuteFunction</text>
+    <text x="886" y="3050" class="small">InvokePassLambda or InvokeParameterlessPassLambda</text>
+    <text x="886" y="3080" class="label">FARDGPassExecutionContext constructor to BeginPassAccess</text>
+    <text x="886" y="3106" class="small">ResolveTexture/View; ResolveBuffer/View; ResolveUniformBuffer</text>
+    <text x="886" y="3129" class="small">CreateBindingSetForPass validates declared ownership and access</text>
+    <text x="886" y="3152" class="small">user lambda records dispatch, draw, or copy through the command list</text>
+    <text x="886" y="3175" class="small">context destructor calls EndPassAccess</text>
+    <text x="886" y="3198" class="tiny">mPassAccessMutex protects active access gates during parallel recording</text>
+    <path class="dataFlow" d="M1324 3111 H1376"/>
+    <rect class="device" x="1380" y="2996" width="364" height="230"/>
+    <text x="1562" y="3024" class="label">nvrhi::ICommandList calls</text>
+    <text x="1562" y="3050" class="small">beginTrackingTextureState / BufferState</text>
+    <text x="1562" y="3073" class="small">setTextureState / setBufferState</text>
+    <text x="1562" y="3096" class="small">commitBarriers; clear calls; markers</text>
+    <text x="1562" y="3119" class="small">dispatch; draw; copy from user callback</text>
+    <line x1="1406" y1="3140" x2="1718" y2="3140" class="divider"/>
+    <text x="1562" y="3166" class="label">Access validation</text>
+    <text x="1562" y="3190" class="small">reject foreign, undeclared, or unbound access</text>
+    <text x="1562" y="3213" class="tiny">sentinels never invoke a user callback</text>
+    <path class="flow" d="M223 3226 V3247"/>
+
+    <rect class="internal" x="48" y="3250" width="350" height="118"/>
+    <text x="223" y="3278" class="label">5 | UploadUniformBuffers</text>
+    <text x="223" y="3304" class="small">none returns instance zero</text>
+    <text x="223" y="3327" class="small">graphics list writes frozen bytes</text>
+    <text x="223" y="3350" class="tiny">submit upload before pass lists</text>
+    <path class="flow" d="M398 3309 H444"/>
+    <rect class="device" x="448" y="3250" width="876" height="118"/>
+    <text x="886" y="3278" class="label">createCommandList Graphics; writeBuffer; ConstantBuffer state; executeCommandList</text>
+    <text x="886" y="3304" class="small">returns UploadInstance; graphics pass submission is naturally ordered after upload</text>
+    <text x="886" y="3327" class="small">first compute and copy consumer queue waits on the upload instance once</text>
+    <text x="886" y="3350" class="tiny">recording order does not establish GPU order; submission and waits do</text>
+    <path class="wait" d="M1324 3309 H1376"/>
+    <rect class="data" x="1380" y="3250" width="364" height="118"/>
+    <text x="1562" y="3278" class="label">UploadInstance</text>
+    <text x="1562" y="3304" class="small">zero means no upload list</text>
+    <text x="1562" y="3327" class="small">one waited bit per non-graphics queue</text>
+    <text x="1562" y="3350" class="tiny">uniform storage is now GPU initialized</text>
+    <path class="flow" d="M223 3368 V3389"/>
+
+    <rect class="internal" x="48" y="3392" width="350" height="106"/>
+    <text x="223" y="3420" class="label">6 | Submit in mExecutionOrder</text>
+    <text x="223" y="3446" class="small">skip no list; issue waits; execute list</text>
+    <text x="223" y="3469" class="small">store pass and per-queue instance IDs</text>
+    <text x="223" y="3489" class="tiny">record completion order is ignored</text>
+    <path class="flow" d="M398 3445 H444"/>
+    <rect class="algorithm" x="448" y="3392" width="876" height="106"/>
+    <text x="886" y="3420" class="label">For each queue dependency whose consumer is this pass</text>
+    <text x="886" y="3446" class="small">if producer instance is nonzero: queueWaitForCommandList on producer queue instance</text>
+    <text x="886" y="3469" class="small">same-queue edges rely on queue order; cross-queue edges use explicit waits</text>
+    <text x="886" y="3489" class="tiny">executeCommandList returns the instance used by later consumers</text>
+    <path class="wait" d="M1324 3445 H1376"/>
+    <rect class="device" x="1380" y="3392" width="364" height="106"/>
+    <text x="1562" y="3420" class="label">Graphics / Compute / Copy queues</text>
+    <text x="1562" y="3446" class="small">explicit waits allow independent overlap</text>
+    <text x="1562" y="3469" class="small">no waitForIdle or fence polling</text>
+    <text x="1562" y="3489" class="tiny">CPU submission only</text>
+
+    <rect class="internal" x="48" y="3510" width="810" height="20"/>
+    <text x="453" y="3526" class="tiny">7 | CompleteExtractions; runGarbageCollection</text>
+    <path class="dataFlow" d="M858 3520 H900"/>
+    <rect class="data" x="904" y="3510" width="840" height="20"/>
+    <text x="1324" y="3526" class="tiny">set mbExecuted; disarm guard; trace counters; return FARDGExecutionResult</text>
+  </g>
+
+  <g id="ardg-legend">
+    <rect class="data" x="20" y="3560" width="1760" height="72"/>
+    <rect class="public" x="45" y="3578" width="150" height="34"/><text x="120" y="3600" class="small">public API</text>
+    <rect class="internal" x="215" y="3578" width="160" height="34"/><text x="295" y="3600" class="small">orchestrator</text>
+    <rect class="algorithm" x="395" y="3578" width="170" height="34"/><text x="480" y="3600" class="small">algorithm/helper</text>
+    <rect class="validation" x="585" y="3578" width="170" height="34"/><text x="670" y="3600" class="small">guard/validation</text>
+    <rect class="data" x="775" y="3578" width="150" height="34"/><text x="850" y="3600" class="small">stored state</text>
+    <rect class="device" x="945" y="3578" width="150" height="34"/><text x="1020" y="3600" class="small">NVRHI/device</text>
+    <path class="flow" d="M1130 3595 H1225"/><text x="1178" y="3623" class="tiny">call</text>
+    <path class="dataFlow" d="M1260 3595 H1355"/><text x="1308" y="3623" class="tiny">output</text>
+    <path class="wait" d="M1390 3595 H1485"/><text x="1438" y="3623" class="tiny">wait/check</text>
+    <text x="1630" y="3600" class="small">P0/P8: sentinels</text>
+  </g>
+</svg>

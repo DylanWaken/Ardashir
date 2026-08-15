@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="3420" viewBox="0 0 1800 3420" role="img" aria-labelledby="title desc">
+  <title id="title">ArdaBackend architecture, concepts, and programming models</title>
+  <desc id="desc">Reference architecture showing backend initialization and ownership, shader registration and binding generation, pipeline and command recording, and platform presentation layers.</desc>
+  <defs>
+    <view id="backend-layers-view" viewBox="20 120 1760 730"/>
+    <view id="backend-shaders-view" viewBox="20 870 1760 850"/>
+    <view id="backend-rendering-view" viewBox="20 1740 1760 860"/>
+    <view id="backend-platform-view" viewBox="20 2620 1760 680"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#17233a"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#7dd3fc"/>
+    </marker>
+    <marker id="dataArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#34d399"/>
+    </marker>
+    <marker id="lifeArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#fbbf24"/>
+    </marker>
+    <style>
+      .stage{rx:22;fill:#101a2c;stroke:#52647d;stroke-width:2}
+      .public{rx:11;fill:#1f3656;stroke:#60a5fa;stroke-width:2}
+      .shader{rx:11;fill:#3a294d;stroke:#c084fc;stroke-width:2}
+      .cache{rx:11;fill:#214b45;stroke:#34d399;stroke-width:2}
+      .validation{rx:11;fill:#493720;stroke:#fbbf24;stroke-width:2}
+      .data{rx:11;fill:#253247;stroke:#94a3b8;stroke-width:2}
+      .device{rx:11;fill:#20364a;stroke:#38bdf8;stroke-width:2}
+      .native{rx:11;fill:#312c3f;stroke:#a78bfa;stroke-width:2}
+      .title{font:700 30px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .stageTitle{font:700 25px system-ui,sans-serif;fill:#eef6ff}
+      .subtitle{font:15px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .label{font:600 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}
+      .small{font:13px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .tiny{font:12px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle}
+      .lane{font:700 13px system-ui,sans-serif;fill:#7dd3fc;letter-spacing:1px}
+      .flow{stroke:#7dd3fc;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+      .dataFlow{stroke:#34d399;stroke-width:2.5;fill:none;marker-end:url(#dataArrow)}
+      .lifetime{stroke:#fbbf24;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#lifeArrow)}
+      .divider{stroke:#52647d;stroke-width:1.5;stroke-dasharray:6 6}
+    </style>
+  </defs>
+
+  <rect width="1800" height="3420" rx="24" fill="url(#bg)"/>
+  <text x="900" y="45" class="title">ArdaBackend: architecture and programming models</text>
+  <text x="900" y="75" class="subtitle">Process-wide device bootstrap, virtual shader sources, registered shaders, cached PSOs, opaque RHI commands, and presentation</text>
+  <text x="900" y="100" class="subtitle">Cyan: calls | Green: created or retained data | Amber dashed: lifetime, validation, or required ordering</text>
+
+  <!-- LAYERS AND PROCESS LIFETIME -->
+  <g id="backend-layers-stage">
+    <rect class="stage" x="20" y="120" width="1760" height="730"/>
+    <text x="48" y="160" class="stageTitle">1 | LAYERS AND LIFETIME - one configured backend, opaque resources, explicit ownership</text>
+    <text x="48" y="188" class="lane">APPLICATION</text>
+    <text x="430" y="188" class="lane">PUBLIC BACKEND</text>
+    <text x="860" y="188" class="lane">OPAQUE RHI</text>
+    <text x="1285" y="188" class="lane">PRIVATE IMPLEMENTATION</text>
+
+    <rect class="public" x="48" y="212" width="320" height="150"/>
+    <text x="208" y="242" class="label">Renderer or engine</text>
+    <text x="208" y="270" class="small">register shader directories</text>
+    <text x="208" y="293" class="small">configure and initialize backend</text>
+    <text x="208" y="316" class="small">own shader map, PSO cache, swap chain</text>
+    <text x="208" y="343" class="tiny">includes ArdaBackend.h; never NVRHI headers</text>
+    <path class="flow" d="M368 287 H426"/>
+
+    <rect class="public" x="430" y="212" width="372" height="150"/>
+    <text x="616" y="242" class="label">Process-wide backend API</text>
+    <text x="616" y="270" class="small">ConfigureBackend(FArdaBackendConfiguration)</text>
+    <text x="616" y="293" class="small">InitializeBackend or InitializeBackendForPresentation</text>
+    <text x="616" y="316" class="small">GetDeviceContext; GetDevice; ShutdownBackend</text>
+    <text x="616" y="343" class="tiny">FArdaBackendState serializes configuration and lifetime</text>
+    <path class="dataFlow" d="M802 287 H856"/>
+
+    <rect class="device" x="860" y="212" width="372" height="150"/>
+    <text x="1046" y="242" class="label">arda::rhi public boundary</text>
+    <text x="1046" y="270" class="small">IArdaRHIDevice; IArdaRHICommandList</text>
+    <text x="1046" y="293" class="small">Arda descriptors, enums, states, and results</text>
+    <text x="1046" y="316" class="small">IArdaRHIResource + TArdaRHIRef&lt;T&gt;</text>
+    <text x="1046" y="343" class="tiny">public source boundary rejects direct NVRHI use</text>
+    <path class="flow" d="M1232 287 H1281"/>
+
+    <rect class="native" x="1285" y="212" width="459" height="150"/>
+    <text x="1515" y="242" class="label">NVRHI-backed implementation</text>
+    <text x="1515" y="270" class="small">rhi::private_impl::FDevice and FCommandList</text>
+    <text x="1515" y="293" class="small">CreateArdaNvrhiDevice(nvrhi::DeviceHandle)</text>
+    <text x="1515" y="316" class="small">descriptor conversion and native handle import</text>
+    <text x="1515" y="343" class="tiny">NVRHI types remain private to ArdaBackend</text>
+
+    <rect class="data" x="48" y="400" width="754" height="188"/>
+    <text x="425" y="430" class="label">Published device context</text>
+    <text x="425" y="458" class="small">FArdaDeviceContext</text>
+    <text x="425" y="481" class="small">mDevice: FArdaRHIDeviceRef | mBackend | mQueueCapabilities</text>
+    <line x1="78" y1="505" x2="772" y2="505" class="divider"/>
+    <text x="425" y="531" class="small">returned refs retain resources through intrusive atomic AddRef / Release</text>
+    <text x="425" y="554" class="small">device ownership checks reject cross-device resource use</text>
+    <text x="425" y="578" class="tiny">TArdaRHIResult combines value and FArdaRHIStatus; no exceptions required</text>
+    <path class="dataFlow" d="M802 494 H856"/>
+
+    <rect class="validation" x="860" y="400" width="884" height="188"/>
+    <text x="1302" y="430" class="label">Lifetime contract</text>
+    <text x="1302" y="458" class="small">Backend owns IArdaBackendDevice; FDevice pins the D3D12 or Vulkan lifetime</text>
+    <text x="1302" y="481" class="small">Caller owns unique_ptr&lt;IArdaSwapChain&gt;, FArdaGlobalShaderMap, and FArdaPipelineStateCache</text>
+    <text x="1302" y="504" class="small">RHI refs may be copied or moved; cache entries retain their pipelines and layouts</text>
+    <line x1="890" y1="525" x2="1714" y2="525" class="divider"/>
+    <text x="1302" y="551" class="label">Shutdown ordering</text>
+    <text x="1302" y="575" class="small">WaitForIdle &#8594; destroy swap chain and renderer-owned GPU state &#8594; ShutdownBackend</text>
+
+    <rect class="validation" x="48" y="626" width="1696" height="190"/>
+    <text x="896" y="656" class="label">Initialization call chain and invariants</text>
+    <text x="896" y="684" class="small">ConfigureBackend &#8594; begin shader-directory registry use &#8594; scan and freeze sources &#8594; FArdaShaderTypeRegistration::CommitAll()</text>
+    <text x="896" y="707" class="small">&#8594; CreateD3D12BackendDevice or CreateVulkanBackendDevice &#8594; Initialize &#8594; CreateArdaNvrhiDevice &#8594; publish FArdaDeviceContext</text>
+    <text x="896" y="742" class="small">Configure before initialize | initialize once | shader mappings are immutable while a backend is live | validation defaults on</text>
+    <text x="896" y="765" class="small">Headless initialization creates a device only; presentation initialization also consumes IArdaWindowSurface and creates a swap chain</text>
+    <text x="896" y="793" class="tiny">Failure unwinds device state and releases the shader-directory registry for correction and retry</text>
+    <path class="lifetime" d="M616 362 V396"/>
+  </g>
+
+  <!-- SHADER PROGRAMMING MODEL -->
+  <g id="backend-shaders-stage">
+    <rect class="stage" x="20" y="870" width="1760" height="850"/>
+    <text x="48" y="910" class="stageTitle">2 | SHADER PROGRAMMING MODEL - virtual source paths, static types, metadata-driven bindings</text>
+    <text x="48" y="938" class="lane">SOURCE REGISTRATION</text>
+    <text x="455" y="938" class="lane">TYPE AND PARAMETER DECLARATION</text>
+    <text x="930" y="938" class="lane">GLOBAL SHADER MAP</text>
+    <text x="1400" y="938" class="lane">GPU OBJECTS</text>
+
+    <rect class="public" x="48" y="962" width="354" height="178"/>
+    <text x="225" y="992" class="label">Virtual shader directories</text>
+    <text x="225" y="1020" class="small">AddShaderSourceDirectory(real, virtualRoot)</text>
+    <text x="225" y="1043" class="small">AddShaderSourceDirectoryMapping(virtualRoot, real)</text>
+    <text x="225" y="1066" class="small">overlay roots or exclusive Unreal-style roots</text>
+    <text x="225" y="1089" class="small">ResolveVirtualShaderSource("/Path/File.hlsl")</text>
+    <text x="225" y="1120" class="tiny">all mappings must be added before backend initialization</text>
+    <path class="flow" d="M402 1051 H451"/>
+
+    <rect class="shader" x="455" y="962" width="420" height="178"/>
+    <text x="665" y="992" class="label">Static global shader type</text>
+    <text x="665" y="1020" class="small">ARDA_DECLARE_GLOBAL_SHADER(MyShader)</text>
+    <text x="665" y="1043" class="small">ARDA_IMPLEMENT_GLOBAL_SHADER(...)</text>
+    <text x="665" y="1066" class="small">source stem | artifact stem | entry point | stage</text>
+    <text x="665" y="1089" class="small">static FArdaShaderTypeRegistration node</text>
+    <text x="665" y="1120" class="tiny">deferred static registration avoids initialization-order dependence</text>
+    <path class="flow" d="M875 1051 H926"/>
+
+    <rect class="shader" x="930" y="962" width="420" height="178"/>
+    <text x="1140" y="992" class="label">Commit and validate registry</text>
+    <text x="1140" y="1020" class="small">FArdaShaderTypeRegistration::CommitAll()</text>
+    <text x="1140" y="1043" class="small">resolve virtual source; validate identity and metadata</text>
+    <text x="1140" y="1066" class="small">reject duplicate names, invalid slots, and collisions</text>
+    <text x="1140" y="1089" class="small">publish deterministic committed type list</text>
+    <text x="1140" y="1120" class="tiny">backend initialization commits before device publication</text>
+    <path class="dataFlow" d="M1350 1051 H1396"/>
+
+    <rect class="data" x="1400" y="962" width="344" height="178"/>
+    <text x="1572" y="992" class="label">Frozen shader manifest</text>
+    <text x="1572" y="1020" class="small">portable virtual path &#8594; canonical physical file</text>
+    <text x="1572" y="1043" class="small">auto-scanned shader extensions</text>
+    <text x="1572" y="1066" class="small">global virtual filename uniqueness</text>
+    <text x="1572" y="1089" class="small">collision reports both physical files</text>
+    <text x="1572" y="1120" class="tiny">registry remains frozen until shutdown</text>
+
+    <rect class="shader" x="48" y="1184" width="827" height="212"/>
+    <text x="462" y="1214" class="label">C++ parameter-struct reflection</text>
+    <text x="462" y="1242" class="small">ARDA_BEGIN_SHADER_PARAMETER_STRUCT &#8594; ARDA_SHADER_PARAMETER_* members &#8594; ARDA_END_SHADER_PARAMETER_STRUCT</text>
+    <text x="462" y="1265" class="small">generated FArdaShaderParameterMetadata records member type, byte offset, array size, register, space, and visibility</text>
+    <text x="462" y="1288" class="small">BuildBindingLayoutDescs() groups descriptors into binding layouts; BuildBindingSetDesc() validates supplied resources</text>
+    <text x="462" y="1311" class="small">ApplyPushConstants() copies declared constant ranges; nested parameter structs are recursively enumerated</text>
+    <line x1="78" y1="1334" x2="845" y2="1334" class="divider"/>
+    <text x="462" y="1360" class="tiny">metadata is authored in C++; it is not recovered from DXIL or SPIR-V reflection</text>
+    <path class="dataFlow" d="M875 1290 H926"/>
+
+    <rect class="cache" x="930" y="1184" width="814" height="212"/>
+    <text x="1337" y="1214" class="label">FArdaGlobalShaderMap::Initialize(DeviceContext, artifactDirectory)</text>
+    <text x="1337" y="1242" class="small">for every committed FArdaShaderType: choose .dxil for D3D12 or .spv for Vulkan</text>
+    <text x="1337" y="1265" class="small">load bytecode &#8594; IArdaRHIDevice::CreateShader &#8594; create all metadata-derived binding layouts</text>
+    <text x="1337" y="1288" class="small">store pointer-stable FArdaGlobalShaderInstance { type, shader, binding layouts }</text>
+    <text x="1337" y="1311" class="small">Find(MyShader::GetStaticType()) or Find("MyShader")</text>
+    <line x1="960" y1="1334" x2="1714" y2="1334" class="divider"/>
+    <text x="1337" y="1360" class="tiny">idempotent for the same device, backend, and artifact directory; Reset before changing them</text>
+
+    <rect class="data" x="48" y="1440" width="827" height="242"/>
+    <text x="462" y="1470" class="label">Renderer-facing shader instance</text>
+    <text x="462" y="1498" class="small">FArdaGlobalShaderInstance</text>
+    <text x="462" y="1521" class="small">mType + FArdaRHIShaderRef + eastl::vector&lt;FArdaRHIBindingLayoutRef&gt;</text>
+    <text x="462" y="1553" class="label">Binding creation</text>
+    <text x="462" y="1579" class="small">parameters.CreateBindingSet(device, shaderInstance, outSets)</text>
+    <text x="462" y="1602" class="small">explicit shader slots and visibility are preserved</text>
+    <text x="462" y="1625" class="small">missing, duplicate, or type-mismatched resources return a diagnostic status</text>
+    <text x="462" y="1654" class="tiny">the same metadata also bridges registered shaders into ArdaRenderGraph</text>
+    <path class="flow" d="M875 1561 H926"/>
+
+    <rect class="public" x="930" y="1440" width="814" height="242"/>
+    <text x="1337" y="1470" class="label">Shader to pipeline initializer</text>
+    <text x="1337" y="1498" class="small">FArdaComputePipelineStateInitializer::FromGlobalShader(instance)</text>
+    <text x="1337" y="1521" class="small">FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(vertex, pixel, inputLayout, fixedState)</text>
+    <text x="1337" y="1553" class="small">initializers copy shader refs and binding layouts into complete Arda RHI pipeline descriptors</text>
+    <line x1="960" y1="1574" x2="1714" y2="1574" class="divider"/>
+    <text x="1337" y="1600" class="label">Artifact contract</text>
+    <text x="1337" y="1626" class="small">source registration identifies the shader; offline compilation produces the backend artifact</text>
+    <text x="1337" y="1654" class="tiny">runtime loads artifacts; it does not compile shader source</text>
+    <path class="flow" d="M1337 1682 V1760"/>
+  </g>
+
+  <!-- PIPELINE AND COMMAND PROGRAMMING MODEL -->
+  <g id="backend-rendering-stage">
+    <rect class="stage" x="20" y="1740" width="1760" height="860"/>
+    <text x="48" y="1780" class="stageTitle">3 | RENDERING PROGRAMMING MODEL - immutable descriptors, lazy PSOs, explicit command submission</text>
+    <text x="48" y="1808" class="lane">RENDERER STATE</text>
+    <text x="450" y="1808" class="lane">PIPELINE CACHE</text>
+    <text x="930" y="1808" class="lane">COMMAND RECORDING</text>
+    <text x="1410" y="1808" class="lane">DEVICE EXECUTION</text>
+
+    <rect class="public" x="48" y="1832" width="354" height="194"/>
+    <text x="225" y="1862" class="label">Pipeline initializer</text>
+    <text x="225" y="1890" class="small">compute: shader + binding layouts</text>
+    <text x="225" y="1913" class="small">graphics: VS/PS + input + raster/blend/depth</text>
+    <text x="225" y="1936" class="small">render-target formats may be left unresolved</text>
+    <text x="225" y="1959" class="small">debug labels do not affect descriptor identity</text>
+    <text x="225" y="1996" class="tiny">descriptors compare and hash by semantic state</text>
+    <path class="flow" d="M402 1929 H446"/>
+
+    <rect class="cache" x="450" y="1832" width="424" height="194"/>
+    <text x="662" y="1862" class="label">FArdaPipelineStateCache</text>
+    <text x="662" y="1890" class="small">GetOrCreateCompute / GetOrCreateGraphics</text>
+    <text x="662" y="1913" class="small">complete graphics formats from framebuffer</text>
+    <text x="662" y="1936" class="small">thread-safe same-key creation and waiters</text>
+    <text x="662" y="1959" class="small">LRU retention, Trim, Clear, stats, diagnostics</text>
+    <text x="662" y="1996" class="tiny">Precache warms the same cache without binding</text>
+    <path class="dataFlow" d="M874 1929 H926"/>
+
+    <rect class="device" x="930" y="1832" width="424" height="194"/>
+    <text x="1142" y="1862" class="label">Create immutable PSO</text>
+    <text x="1142" y="1890" class="small">IArdaRHIDevice::CreateComputePipeline</text>
+    <text x="1142" y="1913" class="small">IArdaRHIDevice::CreateGraphicsPipeline</text>
+    <text x="1142" y="1936" class="small">cache retains FArdaRHI*PipelineRef</text>
+    <text x="1142" y="1959" class="small">different completed framebuffer formats form different keys</text>
+    <text x="1142" y="1996" class="tiny">graphics and compute PSOs are owned by this cache tier</text>
+    <path class="dataFlow" d="M1354 1929 H1406"/>
+
+    <rect class="data" x="1410" y="1832" width="334" height="194"/>
+    <text x="1577" y="1862" class="label">Other descriptor caches</text>
+    <text x="1577" y="1890" class="small">samplers and binding layouts</text>
+    <text x="1577" y="1913" class="small">input, raster, blend, and depth state</text>
+    <text x="1577" y="1936" class="small">RT / meshlet pipelines and native imports</text>
+    <text x="1577" y="1959" class="small">device-owned bounded descriptor caches</text>
+    <text x="1577" y="1996" class="tiny">TrimDescriptorCaches releases unused entries</text>
+
+    <rect class="public" x="48" y="2070" width="354" height="234"/>
+    <text x="225" y="2100" class="label">Set pipeline state</text>
+    <text x="225" y="2128" class="small">SetComputePipelineState(commandList, initializer, state)</text>
+    <text x="225" y="2151" class="small">SetGraphicsPipelineState(commandList, initializer, state)</text>
+    <text x="225" y="2174" class="small">resolve cached PSO and place it in the command state</text>
+    <line x1="78" y1="2195" x2="372" y2="2195" class="divider"/>
+    <text x="225" y="2221" class="small">binding sets remain explicit state inputs</text>
+    <text x="225" y="2244" class="small">push constants are applied through metadata</text>
+    <text x="225" y="2281" class="tiny">errors propagate as FArdaRHIStatus or callbacks</text>
+    <path class="flow" d="M402 2187 H446"/>
+
+    <rect class="device" x="450" y="2070" width="424" height="234"/>
+    <text x="662" y="2100" class="label">Command list lifecycle</text>
+    <text x="662" y="2128" class="small">CreateCommandList(queue, immediate)</text>
+    <text x="662" y="2151" class="small">Open &#8594; barriers and tracking &#8594; Set*State</text>
+    <text x="662" y="2174" class="small">Draw / DrawIndexed / Dispatch / TraceRays / Copy</text>
+    <text x="662" y="2197" class="small">Close</text>
+    <line x1="480" y1="2218" x2="844" y2="2218" class="divider"/>
+    <text x="662" y="2244" class="small">automatic barriers can be disabled for graph-managed state</text>
+    <text x="662" y="2281" class="tiny">one interface spans graphics, compute, copy, mesh, and RT work</text>
+    <path class="flow" d="M874 2187 H926"/>
+
+    <rect class="cache" x="930" y="2070" width="424" height="234"/>
+    <text x="1142" y="2100" class="label">Resource and synchronization model</text>
+    <text x="1142" y="2128" class="small">BeginTracking*State; Set*State; CommitBarriers</text>
+    <text x="1142" y="2151" class="small">explicit FArdaRHIResourceState transitions</text>
+    <text x="1142" y="2174" class="small">event query, timer query, GPU fence, QueueWait</text>
+    <text x="1142" y="2197" class="small">Borrowed-only portable native texture / buffer imports</text>
+    <line x1="960" y1="2218" x2="1324" y2="2218" class="divider"/>
+    <text x="1142" y="2244" class="small">queue capabilities expose graphics, compute, and copy availability</text>
+    <text x="1142" y="2281" class="tiny">resource device affinity is checked before native calls</text>
+    <path class="flow" d="M1354 2187 H1406"/>
+
+    <rect class="native" x="1410" y="2070" width="334" height="234"/>
+    <text x="1577" y="2100" class="label">Submit and maintain</text>
+    <text x="1577" y="2128" class="small">ExecuteCommandList(s)</text>
+    <text x="1577" y="2151" class="small">returns queue instance identifier</text>
+    <text x="1577" y="2174" class="small">QueueWait establishes cross-queue ordering</text>
+    <text x="1577" y="2197" class="small">RunGarbageCollection</text>
+    <text x="1577" y="2220" class="small">WaitForIdle</text>
+    <text x="1577" y="2244" class="small">TrimDescriptorCaches</text>
+    <text x="1577" y="2281" class="tiny">submission is explicit; recording alone creates no GPU order</text>
+
+    <rect class="validation" x="48" y="2348" width="1696" height="214"/>
+    <text x="896" y="2378" class="label">Minimal renderer flow</text>
+    <text x="896" y="2406" class="small">Find registered shader &#8594; build parameter binding sets &#8594; create pipeline initializer &#8594; Set*PipelineState</text>
+    <text x="896" y="2429" class="small">&#8594; Open command list &#8594; set resources and barriers &#8594; Draw or Dispatch &#8594; Close &#8594; ExecuteCommandList</text>
+    <line x1="78" y1="2452" x2="1714" y2="2452" class="divider"/>
+    <text x="896" y="2478" class="label">ArdaRenderGraph integration</text>
+    <text x="896" y="2504" class="small">ARDG owns logical lifetime, state lowering, and queue dependencies; it records the same IArdaRHICommandList API</text>
+    <text x="896" y="2532" class="tiny">The backend remains usable directly: the RHI does not require the render graph</text>
+  </g>
+
+  <!-- PLATFORM AND PRESENTATION -->
+  <g id="backend-platform-stage">
+    <rect class="stage" x="20" y="2620" width="1760" height="680"/>
+    <text x="48" y="2660" class="stageTitle">4 | PLATFORM AND PRESENTATION - shared public model over D3D12 and Vulkan</text>
+    <text x="48" y="2688" class="lane">WINDOW AND SWAP CHAIN</text>
+    <text x="520" y="2688" class="lane">BACKEND DEVICE</text>
+    <text x="1000" y="2688" class="lane">NVRHI</text>
+    <text x="1430" y="2688" class="lane">NATIVE API</text>
+
+    <rect class="public" x="48" y="2712" width="420" height="184"/>
+    <text x="258" y="2742" class="label">IArdaWindowSurface</text>
+    <text x="258" y="2770" class="small">D3D12: GetD3D12WindowHandle()</text>
+    <text x="258" y="2793" class="small">Vulkan: instance extensions + CreateVulkanSurface()</text>
+    <line x1="78" y1="2814" x2="438" y2="2814" class="divider"/>
+    <text x="258" y="2840" class="label">IArdaSwapChain</text>
+    <text x="258" y="2864" class="small">AcquireFrame; PrepareSubmit; Present; Resize</text>
+    <text x="258" y="2885" class="tiny">swap images are Borrowed native texture imports</text>
+    <path class="flow" d="M468 2804 H516"/>
+
+    <rect class="device" x="520" y="2712" width="420" height="184"/>
+    <text x="730" y="2742" class="label">IArdaBackendDevice</text>
+    <text x="730" y="2770" class="small">FArdaD3D12BackendDevice</text>
+    <text x="730" y="2793" class="small">or FArdaVulkanBackendDevice</text>
+    <text x="730" y="2816" class="small">Initialize; CreateSwapChain; GetArdaDevice</text>
+    <text x="730" y="2839" class="small">owns native queues and NVRHI device</text>
+    <text x="730" y="2885" class="tiny">platform implementation is selected by EArdaBackendType</text>
+    <path class="flow" d="M940 2804 H986"/>
+
+    <rect class="native" x="990" y="2712" width="390" height="184"/>
+    <text x="1185" y="2742" class="label">NVRHI device layer</text>
+    <text x="1185" y="2770" class="small">nvrhi::d3d12::createDevice</text>
+    <text x="1185" y="2793" class="small">or nvrhi::vulkan::createDevice</text>
+    <text x="1185" y="2816" class="small">optional nvrhi validation layer</text>
+    <text x="1185" y="2839" class="small">FArdaNvrhiMessageCallback</text>
+    <text x="1185" y="2885" class="tiny">mapped into Arda RHI by FDevice wrappers</text>
+    <path class="flow" d="M1380 2804 H1426"/>
+
+    <rect class="native" x="1430" y="2712" width="314" height="184"/>
+    <text x="1587" y="2742" class="label">Native APIs</text>
+    <text x="1587" y="2770" class="small">DXGI + D3D12</text>
+    <text x="1587" y="2793" class="small">HWND + IDXGISwapChain3</text>
+    <text x="1587" y="2827" class="small">Vulkan 1.3</text>
+    <text x="1587" y="2850" class="small">VkSurfaceKHR + VkSwapchainKHR</text>
+    <text x="1587" y="2885" class="tiny">graphics, compute, and copy queues</text>
+
+    <rect class="cache" x="48" y="2938" width="827" height="208"/>
+    <text x="462" y="2968" class="label">Per-frame presentation flow</text>
+    <text x="462" y="2996" class="small">AcquireFrame(OutFramebuffer) &#8594; record rendering to the imported back buffer &#8594; Close()</text>
+    <text x="462" y="3019" class="small">&#8594; PrepareSubmit() &#8594; ExecuteCommandList(s) &#8594; Present()</text>
+    <text x="462" y="3051" class="small">Vulkan: AcquireFrame queues the image-available wait; PrepareSubmit queues the render-finished signal before execution</text>
+    <text x="462" y="3074" class="small">D3D12: PrepareSubmit is empty; Present uses IDXGISwapChain3::Present</text>
+    <text x="462" y="3097" class="small">Resize waits for idle, recreates images, imports textures, and rebuilds framebuffers</text>
+    <text x="462" y="3124" class="tiny">AcquireFrame returns FArdaRHIFramebufferRef, so rendering code stays platform-neutral</text>
+    <path class="dataFlow" d="M875 3042 H926"/>
+
+    <rect class="validation" x="930" y="2938" width="814" height="208"/>
+    <text x="1337" y="2968" class="label">Diagnostics and failure channels</text>
+    <text x="1337" y="2996" class="small">GetBackendError() reports initialization failure | IArdaDiagnosticCallback receives GPU API messages</text>
+    <text x="1337" y="3019" class="small">ARDA_LOG provides categorized structured output | ARDA_CHECK / VERIFY / ENSURE enforce contracts</text>
+    <text x="1337" y="3042" class="small">shader directory, shader registration, global map, RHI, and PSO APIs return domain-specific status</text>
+    <line x1="960" y1="3063" x2="1714" y2="3063" class="divider"/>
+    <text x="1337" y="3089" class="small">NVRHI severity is translated into EArdaDiagnosticSeverity before reaching applications</text>
+    <text x="1337" y="3114" class="tiny">validation and diagnostics cross the abstraction boundary; native resource types do not</text>
+
+    <rect class="data" x="48" y="3182" width="1696" height="82"/>
+    <text x="896" y="3212" class="label">Core invariants</text>
+    <text x="896" y="3240" class="small">one process-wide device | frozen shader manifest while live | device-affine resources | immutable PSOs | explicit submission | swap chain destroyed before shutdown</text>
+  </g>
+
+  <g id="backend-legend">
+    <rect class="data" x="20" y="3320" width="1760" height="72"/>
+    <rect class="public" x="45" y="3338" width="150" height="34"/><text x="120" y="3360" class="small">public API</text>
+    <rect class="shader" x="215" y="3338" width="150" height="34"/><text x="290" y="3360" class="small">shader model</text>
+    <rect class="cache" x="385" y="3338" width="150" height="34"/><text x="460" y="3360" class="small">cache / state</text>
+    <rect class="validation" x="555" y="3338" width="160" height="34"/><text x="635" y="3360" class="small">contract / guard</text>
+    <rect class="device" x="735" y="3338" width="150" height="34"/><text x="810" y="3360" class="small">Arda RHI</text>
+    <rect class="native" x="905" y="3338" width="150" height="34"/><text x="980" y="3360" class="small">private / native</text>
+    <path class="flow" d="M1090 3355 H1185"/><text x="1138" y="3383" class="tiny">call</text>
+    <path class="dataFlow" d="M1220 3355 H1315"/><text x="1268" y="3383" class="tiny">output</text>
+    <path class="lifetime" d="M1350 3355 H1445"/><text x="1398" y="3383" class="tiny">lifetime</text>
+    <text x="1600" y="3360" class="small">Source: ArdaBackend public and private headers</text>
+  </g>
+</svg>
