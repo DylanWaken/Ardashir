@@ -24,6 +24,7 @@ namespace arda::render_graph
             eastl::vector<FARDGTextureTransition> mTextures;
             /** Physical buffer transitions emitted while recording this pass. */
             eastl::vector<FARDGBufferTransition> mBuffers;
+            eastl::vector<FARDGAccelStructTransition> mAccelStructs;
             /** First-write texture accesses selected for debug clearing in this pass. */
             eastl::vector<FARDGPassTextureState> mTextureClobbers;
             /** First-write buffer accesses selected for debug clearing in this pass. */
@@ -32,10 +33,10 @@ namespace arda::render_graph
 
         struct FARDGRecordedPass
         {
-            /** Command list owned by NVRHI and populated during the recording stage. */
-            nvrhi::CommandListHandle mCommandList;
+            /** RHI command list populated during the recording stage. */
+            rhi::FArdaRHICommandListRef mCommandList;
             /** Submission queue selected from the pass pipeline; graphics is the default. */
-            nvrhi::CommandQueue mQueue = nvrhi::CommandQueue::Graphics;
+            rhi::EArdaRHIQueueType mQueue = rhi::EArdaRHIQueueType::Graphics;
             /** Number of debug resource clears encoded into this pass's command list. */
             uint32_t mClobberedResourceCount = 0;
         };
@@ -63,46 +64,46 @@ namespace arda::render_graph
             }
         };
 
-        /** Maps the compiler-selected graph pipeline to its NVRHI submit queue. */
-        [[nodiscard]] nvrhi::CommandQueue GetCommandQueue(
+        /** Maps the compiler-selected graph pipeline to its RHI submit queue. */
+        [[nodiscard]] rhi::EArdaRHIQueueType GetCommandQueue(
             EARDGPipeline Pipeline) noexcept
         {
             switch (Pipeline)
             {
             case EARDGPipeline::Graphics:
-                return nvrhi::CommandQueue::Graphics;
+                return rhi::EArdaRHIQueueType::Graphics;
             case EARDGPipeline::AsyncCompute:
-                return nvrhi::CommandQueue::Compute;
+                return rhi::EArdaRHIQueueType::Compute;
             case EARDGPipeline::Copy:
-                return nvrhi::CommandQueue::Copy;
+                return rhi::EArdaRHIQueueType::Copy;
             }
-            return nvrhi::CommandQueue::Graphics;
+            return rhi::EArdaRHIQueueType::Graphics;
         }
 
-        /** Converts an NVRHI queue enum to the result-array bookkeeping index. */
+        /** Converts an RHI queue enum to the result-array bookkeeping index. */
         [[nodiscard]] size_t GetQueueIndex(
-            nvrhi::CommandQueue Queue) noexcept
+            rhi::EArdaRHIQueueType Queue) noexcept
         {
             return static_cast<size_t>(Queue);
         }
 
         /** Identifies states that require explicit unordered-access ordering. */
         [[nodiscard]] bool IsUAVState(
-            nvrhi::ResourceStates State) noexcept
+            rhi::EArdaRHIResourceState State) noexcept
         {
-            return (State & nvrhi::ResourceStates::UnorderedAccess) !=
-                nvrhi::ResourceStates::Unknown;
+            return (State & rhi::EArdaRHIResourceState::UnorderedAccess) !=
+                rhi::EArdaRHIResourceState::Unknown;
         }
 
         /**
          * Replaces an unspecified resource start state with the executable
          * Common state used during materialization and transition tracking.
          */
-        [[nodiscard]] nvrhi::ResourceStates NormalizeInitialState(
-            nvrhi::ResourceStates State) noexcept
+        [[nodiscard]] rhi::EArdaRHIResourceState NormalizeInitialState(
+            rhi::EArdaRHIResourceState State) noexcept
         {
-            return State == nvrhi::ResourceStates::Unknown
-                ? nvrhi::ResourceStates::Common
+            return State == rhi::EArdaRHIResourceState::Unknown
+                ? rhi::EArdaRHIResourceState::Common
                 : State;
         }
 
@@ -113,56 +114,33 @@ namespace arda::render_graph
          * relevant to the pool policy; hash equality alone is never trusted.
          */
         [[nodiscard]] bool TextureDescriptorsEqual(
-            const nvrhi::TextureDesc& Left,
-            const nvrhi::TextureDesc& Right) noexcept
+            const rhi::FArdaRHITextureDesc& Left,
+            const rhi::FArdaRHITextureDesc& Right) noexcept
         {
-            return Left.width == Right.width &&
-                Left.height == Right.height &&
-                Left.depth == Right.depth &&
-                Left.arraySize == Right.arraySize &&
-                Left.mipLevels == Right.mipLevels &&
-                Left.sampleCount == Right.sampleCount &&
-                Left.sampleQuality == Right.sampleQuality &&
-                Left.format == Right.format &&
-                Left.dimension == Right.dimension &&
-                Left.isShaderResource == Right.isShaderResource &&
-                Left.isRenderTarget == Right.isRenderTarget &&
-                Left.isUAV == Right.isUAV &&
-                Left.isTypeless == Right.isTypeless &&
-                Left.isShadingRateSurface == Right.isShadingRateSurface &&
-                Left.sharedResourceFlags == Right.sharedResourceFlags &&
-                Left.isTiled == Right.isTiled &&
-                Left.useClearValue == Right.useClearValue &&
-                (!Left.useClearValue ||
-                 std::memcmp(
-                     &Left.clearValue,
-                     &Right.clearValue,
-                     sizeof(Left.clearValue)) == 0);
+            return Left.mWidth == Right.mWidth &&
+                Left.mHeight == Right.mHeight &&
+                Left.mDepth == Right.mDepth &&
+                Left.mArraySize == Right.mArraySize &&
+                Left.mMipLevels == Right.mMipLevels &&
+                Left.mSampleCount == Right.mSampleCount &&
+                Left.mFormat == Right.mFormat &&
+                Left.mDimension == Right.mDimension &&
+                Left.mUsage == Right.mUsage &&
+                Left.mbUseClearValue == Right.mbUseClearValue &&
+                (!Left.mbUseClearValue || Left.mClearValue == Right.mClearValue);
         }
 
         /** Performs the definitive descriptor check for committed-buffer reuse. */
         [[nodiscard]] bool BufferDescriptorsEqual(
-            const nvrhi::BufferDesc& Left,
-            const nvrhi::BufferDesc& Right) noexcept
+            const rhi::FArdaRHIBufferDesc& Left,
+            const rhi::FArdaRHIBufferDesc& Right) noexcept
         {
-            return Left.byteSize == Right.byteSize &&
-                Left.structStride == Right.structStride &&
-                Left.maxVersions == Right.maxVersions &&
-                Left.format == Right.format &&
-                Left.canHaveUAVs == Right.canHaveUAVs &&
-                Left.canHaveTypedViews == Right.canHaveTypedViews &&
-                Left.canHaveRawViews == Right.canHaveRawViews &&
-                Left.isVertexBuffer == Right.isVertexBuffer &&
-                Left.isIndexBuffer == Right.isIndexBuffer &&
-                Left.isConstantBuffer == Right.isConstantBuffer &&
-                Left.isDrawIndirectArgs == Right.isDrawIndirectArgs &&
-                Left.isAccelStructBuildInput ==
-                    Right.isAccelStructBuildInput &&
-                Left.isAccelStructStorage == Right.isAccelStructStorage &&
-                Left.isShaderBindingTable == Right.isShaderBindingTable &&
-                Left.isVolatile == Right.isVolatile &&
-                Left.cpuAccess == Right.cpuAccess &&
-                Left.sharedResourceFlags == Right.sharedResourceFlags;
+            return Left.mByteSize == Right.mByteSize &&
+                Left.mStructureStride == Right.mStructureStride &&
+                Left.mMaxVersions == Right.mMaxVersions &&
+                Left.mFormat == Right.mFormat &&
+                Left.mUsage == Right.mUsage &&
+                Left.mCpuAccess == Right.mCpuAccess;
         }
 
         /**
@@ -186,22 +164,11 @@ namespace arda::render_graph
          * Omitted fields are checked by TextureDescriptorsEqual before reuse.
          */
         [[nodiscard]] size_t HashTextureDescriptor(
-            const nvrhi::TextureDesc& Desc)
+            const rhi::FArdaRHITextureDesc& Desc)
         {
-            size_t Hash = 0;
-            HashCombine(Hash, Desc.width);
-            HashCombine(Hash, Desc.height);
-            HashCombine(Hash, Desc.depth);
-            HashCombine(Hash, Desc.arraySize);
-            HashCombine(Hash, Desc.mipLevels);
-            HashCombine(Hash, Desc.sampleCount);
-            HashCombine(Hash, Desc.sampleQuality);
-            HashCombine(Hash, static_cast<uint8_t>(Desc.format));
-            HashCombine(Hash, static_cast<uint8_t>(Desc.dimension));
-            HashCombine(Hash, Desc.isRenderTarget);
-            HashCombine(Hash, Desc.isUAV);
-            HashCombine(Hash, Desc.isTypeless);
-            return Hash;
+            rhi::FArdaRHITextureDesc PoolDesc = Desc;
+            PoolDesc.mDebugName.clear();
+            return rhi::HashValue(PoolDesc);
         }
 
         /**
@@ -210,18 +177,11 @@ namespace arda::render_graph
          * Omitted fields are checked by BufferDescriptorsEqual before reuse.
          */
         [[nodiscard]] size_t HashBufferDescriptor(
-            const nvrhi::BufferDesc& Desc)
+            const rhi::FArdaRHIBufferDesc& Desc)
         {
-            size_t Hash = 0;
-            HashCombine(Hash, Desc.byteSize);
-            HashCombine(Hash, Desc.structStride);
-            HashCombine(Hash, static_cast<uint8_t>(Desc.format));
-            HashCombine(Hash, Desc.canHaveUAVs);
-            HashCombine(Hash, Desc.canHaveTypedViews);
-            HashCombine(Hash, Desc.canHaveRawViews);
-            HashCombine(Hash, Desc.isConstantBuffer);
-            HashCombine(Hash, static_cast<uint8_t>(Desc.cpuAccess));
-            return Hash;
+            rhi::FArdaRHIBufferDesc PoolDesc = Desc;
+            PoolDesc.mDebugName.clear();
+            return rhi::HashValue(PoolDesc);
         }
 
         class FARDGTexturePool final
@@ -229,7 +189,7 @@ namespace arda::render_graph
         public:
             /** Creates an execution-local texture pool and result counter sink. */
             FARDGTexturePool(
-                nvrhi::IDevice& Device,
+                rhi::IArdaRHIDevice& Device,
                 FARDGExecutionResult& Result)
                 : mDevice(Device)
                 , mResult(Result)
@@ -243,17 +203,17 @@ namespace arda::render_graph
              * compatibility, the same non-negative queue domain, and an
              * earlier inclusive lifetime whose last use precedes FirstUse.
              * Reuse advances the entry's availability and updates the report;
-             * otherwise a new NVRHI object is created.
+             * otherwise a new RHI object is created.
              */
-            [[nodiscard]] nvrhi::TextureHandle Acquire(
-                nvrhi::TextureDesc Desc,
+            [[nodiscard]] rhi::FArdaRHITextureRef Acquire(
+                rhi::FArdaRHITextureDesc Desc,
                 uint32_t FirstUse,
                 uint32_t LastUse,
                 int32_t ReuseDomain)
             {
-                Desc.initialState = NormalizeInitialState(Desc.initialState);
-                Desc.keepInitialState = false;
-                Desc.isVirtual = false;
+                Desc.mInitialState = NormalizeInitialState(Desc.mInitialState);
+                Desc.mbKeepInitialState = false;
+                Desc.mbVirtual = false;
                 const size_t Key = HashTextureDescriptor(Desc);
                 auto& Bucket = mEntries[Key];
                 if (ReuseDomain >= 0)
@@ -271,24 +231,24 @@ namespace arda::render_graph
                     }
                 }
 
-                nvrhi::TextureHandle Texture = mDevice.createTexture(Desc);
-                if (!Texture)
+                auto TextureResult = mDevice.CreateTexture(Desc);
+                if (!TextureResult)
                 {
                     ARDA_CHECK_MSG(
-                        "NVRHI failed to create a render-graph texture.");
+                        "The RHI failed to create a render-graph texture.");
                 }
                 Bucket.push_back(
-                    {eastl::move(Desc), Texture, LastUse, ReuseDomain});
-                return Texture;
+                    {eastl::move(Desc), TextureResult.mValue, LastUse, ReuseDomain});
+                return TextureResult.mValue;
             }
 
         private:
             struct FEntry
             {
                 /** Normalized descriptor used for definitive compatibility checks. */
-                nvrhi::TextureDesc mDesc;
+                rhi::FArdaRHITextureDesc mDesc;
                 /** Pool-owned reference to the reusable physical texture. */
-                nvrhi::TextureHandle mTexture;
+                rhi::FArdaRHITextureRef mTexture;
                 /** Inclusive execution-order index of the latest logical user's last use. */
                 uint32_t mAvailableAfter = 0;
                 /** Queue reuse domain index, or -1 when this entry cannot be recycled. */
@@ -296,7 +256,7 @@ namespace arda::render_graph
             };
 
             /** Non-owning device used to create textures during materialization. */
-            nvrhi::IDevice& mDevice;
+            rhi::IArdaRHIDevice& mDevice;
             /** Non-owning execution report updated with texture reuse statistics. */
             FARDGExecutionResult& mResult;
             /** Execution-local descriptor-hash buckets owning reusable texture handles. */
@@ -308,7 +268,7 @@ namespace arda::render_graph
         public:
             /** Creates an execution-local buffer pool and result counter sink. */
             FARDGBufferPool(
-                nvrhi::IDevice& Device,
+                rhi::IArdaRHIDevice& Device,
                 FARDGExecutionResult& Result)
                 : mDevice(Device)
                 , mResult(Result)
@@ -322,15 +282,15 @@ namespace arda::render_graph
              * and same-queue-domain invariants as texture acquisition. A
              * negative domain deliberately forces a fresh physical object.
              */
-            [[nodiscard]] nvrhi::BufferHandle Acquire(
-                nvrhi::BufferDesc Desc,
+            [[nodiscard]] rhi::FArdaRHIBufferRef Acquire(
+                rhi::FArdaRHIBufferDesc Desc,
                 uint32_t FirstUse,
                 uint32_t LastUse,
                 int32_t ReuseDomain)
             {
-                Desc.initialState = NormalizeInitialState(Desc.initialState);
-                Desc.keepInitialState = false;
-                Desc.isVirtual = false;
+                Desc.mInitialState = NormalizeInitialState(Desc.mInitialState);
+                Desc.mbKeepInitialState = false;
+                Desc.mbVirtual = false;
                 const size_t Key = HashBufferDescriptor(Desc);
                 auto& Bucket = mEntries[Key];
                 if (ReuseDomain >= 0)
@@ -348,24 +308,24 @@ namespace arda::render_graph
                     }
                 }
 
-                nvrhi::BufferHandle Buffer = mDevice.createBuffer(Desc);
-                if (!Buffer)
+                auto BufferResult = mDevice.CreateBuffer(Desc);
+                if (!BufferResult)
                 {
                     ARDA_CHECK_MSG(
-                        "NVRHI failed to create a render-graph buffer.");
+                        "The RHI failed to create a render-graph buffer.");
                 }
                 Bucket.push_back(
-                    {eastl::move(Desc), Buffer, LastUse, ReuseDomain});
-                return Buffer;
+                    {eastl::move(Desc), BufferResult.mValue, LastUse, ReuseDomain});
+                return BufferResult.mValue;
             }
 
         private:
             struct FEntry
             {
                 /** Normalized descriptor used for definitive compatibility checks. */
-                nvrhi::BufferDesc mDesc;
+                rhi::FArdaRHIBufferDesc mDesc;
                 /** Pool-owned reference to the reusable physical buffer. */
-                nvrhi::BufferHandle mBuffer;
+                rhi::FArdaRHIBufferRef mBuffer;
                 /** Inclusive execution-order index of the latest logical user's last use. */
                 uint32_t mAvailableAfter = 0;
                 /** Queue reuse domain index, or -1 when this entry cannot be recycled. */
@@ -373,7 +333,7 @@ namespace arda::render_graph
             };
 
             /** Non-owning device used to create buffers during materialization. */
-            nvrhi::IDevice& mDevice;
+            rhi::IArdaRHIDevice& mDevice;
             /** Non-owning execution report updated with buffer reuse statistics. */
             FARDGExecutionResult& mResult;
             /** Execution-local descriptor-hash buckets owning reusable buffer handles. */
@@ -385,21 +345,21 @@ namespace arda::render_graph
          *
          * Virtual probes provide size/alignment when the backend supports
          * them, but the computed aliasing layout is intentionally not applied:
-         * the portable NVRHI surface does not expose all required aliasing
+         * the portable RHI surface does not expose all required aliasing
          * safety operations. Every transient candidate is therefore reported
          * as using committed-resource fallback.
          *
          * TODO(ArdaRenderGraph): Enable physical placed-resource aliasing here
-         * after NVRHI provides portable aliasing barriers and heap-compatibility
+         * after the RHI provides portable aliasing barriers and heap-compatibility
          * queries; then consume the computed layout instead of discarding it.
          */
         void EvaluateTransientHeapLayout(
             FARDGBuilder::FImpl& Graph,
-            nvrhi::IDevice& Device,
+            rhi::IArdaRHIDevice& Device,
             FARDGExecutionResult& Result)
         {
             eastl::vector<FARDGTransientAllocationRequest> Requests;
-            if (!Device.queryFeatureSupport(nvrhi::Feature::VirtualResources))
+            if (!Device.GetCapabilities().mbVirtualResources)
             {
                 for (const FARDGResourceLifetime& Lifetime :
                      Graph.mCompileResult.mResourceLifetimes)
@@ -418,50 +378,56 @@ namespace arda::render_graph
                     continue;
                 }
 
-                nvrhi::MemoryRequirements Requirements;
+                rhi::FArdaRHIMemoryRequirements Requirements;
                 if (Lifetime.mType == EARDGResourceType::Texture)
                 {
-                    nvrhi::TextureDesc Desc =
+                    rhi::FArdaRHITextureDesc Desc =
                         Graph.mTextures
                             .Get(FARDGTextureHandle(Lifetime.mResourceIndex))
                             .GetDesc();
-                    Desc.initialState =
-                        NormalizeInitialState(Desc.initialState);
-                    Desc.keepInitialState = false;
-                    Desc.isVirtual = true;
-                    nvrhi::TextureHandle Probe = Device.createTexture(Desc);
+                    Desc.mInitialState = NormalizeInitialState(Desc.mInitialState);
+                    Desc.mbKeepInitialState = false;
+                    Desc.mbVirtual = true;
+                    auto Probe = Device.CreateTexture(Desc);
                     if (Probe)
                     {
-                        Requirements =
-                            Device.getTextureMemoryRequirements(Probe);
+                        auto Memory =
+                            Device.GetTextureMemoryRequirements(Probe.mValue);
+                        if (Memory)
+                        {
+                            Requirements = Memory.mValue;
+                        }
                     }
                 }
-                else
+                else if (Lifetime.mType == EARDGResourceType::Buffer)
                 {
-                    nvrhi::BufferDesc Desc =
+                    rhi::FArdaRHIBufferDesc Desc =
                         Graph.mBuffers
                             .Get(FARDGBufferHandle(Lifetime.mResourceIndex))
                             .GetDesc();
-                    Desc.initialState =
-                        NormalizeInitialState(Desc.initialState);
-                    Desc.keepInitialState = false;
-                    Desc.isVirtual = true;
-                    nvrhi::BufferHandle Probe = Device.createBuffer(Desc);
+                    Desc.mInitialState = NormalizeInitialState(Desc.mInitialState);
+                    Desc.mbKeepInitialState = false;
+                    Desc.mbVirtual = true;
+                    auto Probe = Device.CreateBuffer(Desc);
                     if (Probe)
                     {
-                        Requirements =
-                            Device.getBufferMemoryRequirements(Probe);
+                        auto Memory =
+                            Device.GetBufferMemoryRequirements(Probe.mValue);
+                        if (Memory)
+                        {
+                            Requirements = Memory.mValue;
+                        }
                     }
                 }
 
-                if (Requirements.size != 0 && Requirements.alignment != 0)
+                if (Requirements.mSize != 0 && Requirements.mAlignment != 0)
                 {
                     Requests.push_back(
                         {Identifier++,
                          Lifetime.mFirstUse,
                          Lifetime.mLastUse,
-                         Requirements.size,
-                         Requirements.alignment});
+                         Requirements.mSize,
+                         Requirements.mAlignment});
                 }
                 Result.mbUsedTransientFallback = true;
             }
@@ -471,7 +437,7 @@ namespace arda::render_graph
                 const FARDGTransientHeapLayout IdealLayout =
                     FARDGTransientHeapAllocator::Allocate(Requests, true);
                 (void)IdealLayout;
-                // NVRHI exposes placed resources but no portable aliasing
+                // The RHI exposes placed resources but no portable aliasing
                 // barrier or heap compatibility query. Using the ideal layout
                 // would therefore be unsafe on at least one supported backend.
             }
@@ -562,7 +528,7 @@ namespace arda::render_graph
          */
         void MaterializeResources(
             FARDGBuilder::FImpl& Graph,
-            nvrhi::IDevice& Device,
+            rhi::IArdaRHIDevice& Device,
             FARDGExecutionResult& Result)
         {
             EvaluateTransientHeapLayout(Graph, Device, Result);
@@ -614,7 +580,7 @@ namespace arda::render_graph
                                   Texture.GetHandle())
                             : -1));
                 }
-                else
+                else if (Lifetime.mType == EARDGResourceType::Buffer)
                 {
                     FARDGBuffer& Buffer = Graph.mBuffers.Get(
                         FARDGBufferHandle(Lifetime.mResourceIndex));
@@ -637,26 +603,46 @@ namespace arda::render_graph
                                   Buffer.GetHandle())
                             : -1));
                 }
+                else if (Lifetime.mType == EARDGResourceType::AccelStruct)
+                {
+                    FARDGAccelStruct& AccelStruct = Graph.mAccelStructs.Get(
+                        FARDGAccelStructHandle(Lifetime.mResourceIndex));
+                    if (AccelStruct.IsExternal())
+                    {
+                        if (!AccelStruct.GetAccelStruct())
+                        {
+                            ARDA_CHECK_MSG(
+                                "A render-graph external acceleration structure lost its handle.");
+                        }
+                        continue;
+                    }
+                    auto Created = Device.CreateAccelStruct(AccelStruct.GetDesc());
+                    if (!Created)
+                    {
+                        ARDA_CHECK_MSG(
+                            "The RHI failed to create a graph acceleration structure.");
+                    }
+                    AccelStruct.BindAccelStruct(eastl::move(Created.mValue));
+                }
             }
 
             for (FARDGUniformBuffer* UniformBuffer :
                  Graph.mUniformBuffers.GetEntries())
             {
-                nvrhi::BufferHandle Buffer =
-                    Device.createBuffer(UniformBuffer->GetDesc());
+                auto Buffer = Device.CreateBuffer(UniformBuffer->GetDesc());
                 if (!Buffer)
                 {
                     ARDA_CHECK_MSG(
-                        "NVRHI failed to create a graph uniform buffer.");
+                        "The RHI failed to create a graph uniform buffer.");
                 }
-                UniformBuffer->BindBuffer(eastl::move(Buffer));
+                UniformBuffer->BindBuffer(eastl::move(Buffer.mValue));
             }
         }
 
         /**
          * Rebuilds compiled logical transitions against physical identities.
          *
-         * Pooling may bind disjoint logical resources to one NVRHI object, so
+         * Pooling may bind disjoint logical resources to one RHI object, so
          * the second resource inherits the first resource's final state rather
          * than its own descriptor's initial state. This stage walks execution
          * order, tracks that physical history (per mip/slice for textures and
@@ -667,10 +653,10 @@ namespace arda::render_graph
         BuildPhysicalTransitions(FARDGBuilder::FImpl& Graph)
         {
             eastl::unordered_map<
-                nvrhi::ITexture*,
-                eastl::vector<nvrhi::ResourceStates>>
+                const void*,
+                eastl::vector<rhi::EArdaRHIResourceState>>
                 TextureStates;
-            eastl::unordered_map<nvrhi::IBuffer*, nvrhi::ResourceStates>
+            eastl::unordered_map<const void*, rhi::EArdaRHIResourceState>
                 BufferStates;
             eastl::vector<FARDGRuntimePassTransitions> Runtime(
                 Graph.mPasses.GetCount());
@@ -685,46 +671,43 @@ namespace arda::render_graph
                 {
                     const FARDGTexture& Texture =
                         Graph.mTextures.Get(Compiled.mTexture);
-                    nvrhi::ITexture* Physical = Texture.GetTexture();
+                    const void* Physical = Texture.GetTexture()->GetPhysicalIdentity();
                     if (Physical == nullptr)
                     {
                         ARDA_CHECK_MSG(
                             "A live graph texture was not materialized.");
                     }
                     auto& States = TextureStates[Physical];
-                    const nvrhi::TextureDesc& Desc = Texture.GetDesc();
+                    const rhi::FArdaRHITextureDesc& Desc = Texture.GetDesc();
                     if (States.empty())
                     {
                         // A physical texture enters history once; later logical
                         // aliases continue from the state left in this vector.
                         States.resize(
-                            static_cast<size_t>(Desc.mipLevels) * Desc.arraySize,
+                            static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize,
                             NormalizeInitialState(Texture.GetInitialState()));
                     }
-                    const nvrhi::TextureSubresourceSet Subresources =
-                        Compiled.mSubresources.resolve(Desc, false);
-                    for (uint32_t ArraySlice = Subresources.baseArraySlice;
+                    const rhi::FArdaRHITextureSubresourceRange Subresources =
+                        Compiled.mSubresources.Resolve(Desc);
+                    for (uint32_t ArraySlice = Subresources.mBaseArraySlice;
                          ArraySlice <
-                             Subresources.baseArraySlice +
-                                 Subresources.numArraySlices;
+                            Subresources.mBaseArraySlice +
+                                Subresources.mArraySliceCount;
                          ++ArraySlice)
                     {
-                        for (uint32_t MipLevel = Subresources.baseMipLevel;
+                        for (uint32_t MipLevel = Subresources.mBaseMipLevel;
                              MipLevel <
-                                 Subresources.baseMipLevel +
-                                     Subresources.numMipLevels;
+                                Subresources.mBaseMipLevel +
+                                    Subresources.mMipLevelCount;
                              ++MipLevel)
                         {
                             const size_t Index =
-                                static_cast<size_t>(ArraySlice) * Desc.mipLevels +
+                                static_cast<size_t>(ArraySlice) * Desc.mMipLevels +
                                 MipLevel;
                             Out.mTextures.push_back(
                                 {Compiled.mTexture,
-                                 nvrhi::TextureSubresourceSet(
-                                     MipLevel,
-                                     1,
-                                     ArraySlice,
-                                     1),
+                                 rhi::FArdaRHITextureSubresourceRange{
+                                     MipLevel, 1, ArraySlice, 1 },
                                  States[Index],
                                  Compiled.mStateAfter,
                                  States[Index] == Compiled.mStateAfter &&
@@ -741,7 +724,7 @@ namespace arda::render_graph
                 {
                     const FARDGBuffer& Buffer =
                         Graph.mBuffers.Get(Compiled.mBuffer);
-                    nvrhi::IBuffer* Physical = Buffer.GetBuffer();
+                    const void* Physical = Buffer.GetBuffer()->GetPhysicalIdentity();
                     if (Physical == nullptr)
                     {
                         ARDA_CHECK_MSG(
@@ -765,6 +748,11 @@ namespace arda::render_graph
                              Existing->second == Compiled.mStateAfter});
                     Existing->second = Compiled.mStateAfter;
                 }
+                for (const FARDGAccelStructTransition& Compiled :
+                     Pass.GetState().mAccelStructTransitions)
+                {
+                    Out.mAccelStructs.push_back(Compiled);
+                }
             }
 
             if (Graph.mContext.mDebugOptions.mbClobberFirstWrites)
@@ -776,9 +764,9 @@ namespace arda::render_graph
                 ProducedTextures.reserve(Graph.mTextures.GetCount());
                 for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
                 {
-                    const nvrhi::TextureDesc& Desc = Texture->GetDesc();
+                    const rhi::FArdaRHITextureDesc& Desc = Texture->GetDesc();
                     ProducedTextures.emplace_back(
-                        static_cast<size_t>(Desc.mipLevels) * Desc.arraySize,
+                        static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize,
                         Texture->IsExternal());
                 }
                 eastl::vector<bool> ProducedBuffers(
@@ -810,35 +798,36 @@ namespace arda::render_graph
                         }
                         const FARDGTexture& Texture =
                             Graph.mTextures.Get(Access.mTexture);
-                        const nvrhi::TextureDesc& Desc = Texture.GetDesc();
+                        const rhi::FArdaRHITextureDesc& Desc = Texture.GetDesc();
                         const auto Range =
-                            Access.mSubresources.resolve(Desc, false);
+                            Access.mSubresources.Resolve(Desc);
                         bool bAllUnproduced = !Texture.IsExternal();
-                        for (uint32_t Slice = Range.baseArraySlice;
+                        for (uint32_t Slice = Range.mBaseArraySlice;
                              Slice <
-                                 Range.baseArraySlice + Range.numArraySlices;
+                                Range.mBaseArraySlice + Range.mArraySliceCount;
                              ++Slice)
                         {
-                            for (uint32_t Mip = Range.baseMipLevel;
-                                 Mip < Range.baseMipLevel + Range.numMipLevels;
+                            for (uint32_t Mip = Range.mBaseMipLevel;
+                                 Mip < Range.mBaseMipLevel + Range.mMipLevelCount;
                                  ++Mip)
                             {
                                 bAllUnproduced &=
                                     !ProducedTextures
                                          [Access.mTexture.GetIndex()]
                                          [static_cast<size_t>(Slice) *
-                                              Desc.mipLevels +
+                                              Desc.mMipLevels +
                                           Mip];
                             }
                         }
-                        const nvrhi::FormatInfo& Format =
-                            nvrhi::getFormatInfo(Desc.format);
+                        const rhi::FArdaRHIFormatInfo& Format =
+                            rhi::GetArdaRHIFormatInfo(Desc.mFormat);
                         const bool bColorClear =
-                            !Format.hasDepth && !Format.hasStencil &&
-                            (Desc.isRenderTarget || Desc.isUAV);
+                            !Format.mbDepth && !Format.mbStencil &&
+                            (rhi::HasAnyFlags(Desc.mUsage, rhi::EArdaRHITextureUsage::RenderTarget) ||
+                             rhi::HasAnyFlags(Desc.mUsage, rhi::EArdaRHITextureUsage::UnorderedAccess));
                         const bool bDepthClear =
-                            (Format.hasDepth || Format.hasStencil) &&
-                            Desc.isRenderTarget &&
+                            (Format.mbDepth || Format.mbStencil) &&
+                            rhi::HasAnyFlags(Desc.mUsage, rhi::EArdaRHITextureUsage::DepthStencil) &&
                             Pass.GetState().mPipeline ==
                                 EARDGPipeline::Graphics;
                         if (bCanIssueClobber &&
@@ -847,19 +836,19 @@ namespace arda::render_graph
                         {
                             Out.mTextureClobbers.push_back(Access);
                         }
-                        for (uint32_t Slice = Range.baseArraySlice;
+                        for (uint32_t Slice = Range.mBaseArraySlice;
                              Slice <
-                                 Range.baseArraySlice + Range.numArraySlices;
+                                Range.mBaseArraySlice + Range.mArraySliceCount;
                              ++Slice)
                         {
-                            for (uint32_t Mip = Range.baseMipLevel;
-                                 Mip < Range.baseMipLevel + Range.numMipLevels;
+                            for (uint32_t Mip = Range.mBaseMipLevel;
+                                 Mip < Range.mBaseMipLevel + Range.mMipLevelCount;
                                  ++Mip)
                             {
                                 ProducedTextures
                                     [Access.mTexture.GetIndex()]
                                     [static_cast<size_t>(Slice) *
-                                         Desc.mipLevels +
+                                         Desc.mMipLevels +
                                      Mip] = true;
                             }
                         }
@@ -878,12 +867,11 @@ namespace arda::render_graph
                             bCanIssueClobber &&
                             !ProducedBuffers[Index] &&
                             !Buffer.IsExternal() &&
-                            Buffer.GetDesc().canHaveUAVs &&
-                            Access.mRange.resolve(Buffer.GetDesc())
-                                .isEntireBuffer(Buffer.GetDesc()) &&
+                            rhi::HasAnyFlags(Buffer.GetDesc().mUsage, rhi::EArdaRHIBufferUsage::UnorderedAccess) &&
+                            Access.mRange.IsWholeBuffer(Buffer.GetDesc()) &&
                             (Access.mState &
-                             nvrhi::ResourceStates::UnorderedAccess) !=
-                                nvrhi::ResourceStates::Unknown;
+                             rhi::EArdaRHIResourceState::UnorderedAccess) !=
+                                rhi::EArdaRHIResourceState::Unknown;
                         if (bCanClobber)
                         {
                             Out.mBufferClobbers.push_back(Access);
@@ -913,20 +901,19 @@ namespace arda::render_graph
             FARDGPass& Pass = Graph.mPasses.Get(Handle);
             FARDGRecordedPass Recorded;
             Recorded.mQueue = GetCommandQueue(Pass.GetState().mPipeline);
-            nvrhi::CommandListParameters Parameters;
-            Parameters.setEnableImmediateExecution(
-                          Graph.mContext.mDebugOptions.mbImmediateMode)
-                .setQueueType(Recorded.mQueue);
-            Recorded.mCommandList =
-                Graph.mContext.mDevice->createCommandList(Parameters);
-            if (!Recorded.mCommandList)
+            auto CommandListResult =
+                Graph.mContext.mDevice->CreateCommandList(
+                    Recorded.mQueue,
+                    Graph.mContext.mDebugOptions.mbImmediateMode);
+            if (!CommandListResult)
             {
                 ARDA_CHECK_MSG(
-                    "NVRHI failed to create a render-graph command list.");
+                    "The RHI failed to create a render-graph command list.");
             }
 
-            Recorded.mCommandList->open();
-            Recorded.mCommandList->setEnableAutomaticBarriers(false);
+            Recorded.mCommandList = eastl::move(CommandListResult.mValue);
+            Recorded.mCommandList->Open();
+            Recorded.mCommandList->SetAutomaticBarriers(false);
                 // Runtime records, rather than compiled logical before-states,
                 // are authoritative after physical pooling has been resolved.
                 for (const FARDGTextureTransition& Transition :
@@ -934,26 +921,26 @@ namespace arda::render_graph
                 {
                     FARDGTexture& Texture =
                         Graph.mTextures.Get(Transition.mTexture);
-                    Recorded.mCommandList->beginTrackingTextureState(
-                        Texture.GetTexture(),
+                    Recorded.mCommandList->BeginTrackingTextureState(
+                        *Texture.GetTexture(),
                         Transition.mSubresources,
                         Transition.mStateBefore);
                     if (Transition.mbForceBarrier)
                     {
-                        Recorded.mCommandList->setTextureState(
-                            Texture.GetTexture(),
+                        Recorded.mCommandList->SetTextureState(
+                            *Texture.GetTexture(),
                             Transition.mSubresources,
-                            nvrhi::ResourceStates::Common);
-                        Recorded.mCommandList->commitBarriers();
+                            rhi::EArdaRHIResourceState::Common);
+                        Recorded.mCommandList->CommitBarriers();
                     }
                     if (IsUAVState(Transition.mStateAfter))
                     {
-                        Recorded.mCommandList->setEnableUavBarriersForTexture(
-                            Texture.GetTexture(),
+                        Recorded.mCommandList->SetUAVBarriersForTexture(
+                            *Texture.GetTexture(),
                             true);
                     }
-                    Recorded.mCommandList->setTextureState(
-                        Texture.GetTexture(),
+                    Recorded.mCommandList->SetTextureState(
+                        *Texture.GetTexture(),
                         Transition.mSubresources,
                         Transition.mStateAfter);
                 }
@@ -962,58 +949,74 @@ namespace arda::render_graph
                 {
                     FARDGBuffer& Buffer =
                         Graph.mBuffers.Get(Transition.mBuffer);
-                    Recorded.mCommandList->beginTrackingBufferState(
-                        Buffer.GetBuffer(),
+                    Recorded.mCommandList->BeginTrackingBufferState(
+                        *Buffer.GetBuffer(),
                         Transition.mStateBefore);
                     if (Transition.mbForceBarrier)
                     {
-                        Recorded.mCommandList->setBufferState(
-                            Buffer.GetBuffer(),
-                            nvrhi::ResourceStates::Common);
-                        Recorded.mCommandList->commitBarriers();
+                        Recorded.mCommandList->SetBufferState(
+                            *Buffer.GetBuffer(),
+                            rhi::EArdaRHIResourceState::Common);
+                        Recorded.mCommandList->CommitBarriers();
                     }
                     if (IsUAVState(Transition.mStateAfter))
                     {
-                        Recorded.mCommandList->setEnableUavBarriersForBuffer(
-                            Buffer.GetBuffer(),
+                        Recorded.mCommandList->SetUAVBarriersForBuffer(
+                            *Buffer.GetBuffer(),
                             true);
                     }
-                    Recorded.mCommandList->setBufferState(
-                        Buffer.GetBuffer(),
+                    Recorded.mCommandList->SetBufferState(
+                        *Buffer.GetBuffer(),
                         Transition.mStateAfter);
                 }
-                Recorded.mCommandList->commitBarriers();
+                for (const FARDGAccelStructTransition& Transition :
+                     Transitions.mAccelStructs)
+                {
+                    FARDGAccelStruct& AccelStruct =
+                        Graph.mAccelStructs.Get(Transition.mAccelStruct);
+                    if (Transition.mbForceBarrier)
+                    {
+                        Recorded.mCommandList->SetAccelStructState(
+                            *AccelStruct.GetAccelStruct(),
+                            rhi::EArdaRHIResourceState::Common);
+                        Recorded.mCommandList->CommitBarriers();
+                    }
+                    Recorded.mCommandList->SetAccelStructState(
+                        *AccelStruct.GetAccelStruct(),
+                        Transition.mStateAfter);
+                }
+                Recorded.mCommandList->CommitBarriers();
 
                 for (const FARDGPassTextureState& Clobber :
                      Transitions.mTextureClobbers)
                 {
                     FARDGTexture& Texture =
                         Graph.mTextures.Get(Clobber.mTexture);
-                    const nvrhi::FormatInfo& Format =
-                        nvrhi::getFormatInfo(Texture.GetDesc().format);
-                    if (Format.hasDepth || Format.hasStencil)
+                    const rhi::FArdaRHIFormatInfo& Format =
+                        rhi::GetArdaRHIFormatInfo(Texture.GetDesc().mFormat);
+                    if (Format.mbDepth || Format.mbStencil)
                     {
-                        Recorded.mCommandList->clearDepthStencilTexture(
-                            Texture.GetTexture(),
+                        Recorded.mCommandList->ClearDepthStencilTexture(
+                            *Texture.GetTexture(),
                             Clobber.mSubresources,
-                            Format.hasDepth,
+                            Format.mbDepth,
                             0.12345f,
-                            Format.hasStencil,
+                            Format.mbStencil,
                             0xCDu);
                     }
-                    else if (Format.kind == nvrhi::FormatKind::Integer)
+                    else if (Format.mbInteger)
                     {
-                        Recorded.mCommandList->clearTextureUInt(
-                            Texture.GetTexture(),
+                        Recorded.mCommandList->ClearTextureUInt(
+                            *Texture.GetTexture(),
                             Clobber.mSubresources,
                             0xCDCDCDCDu);
                     }
                     else
                     {
-                        Recorded.mCommandList->clearTextureFloat(
-                            Texture.GetTexture(),
+                        Recorded.mCommandList->ClearTexture(
+                            *Texture.GetTexture(),
                             Clobber.mSubresources,
-                            nvrhi::Color(1.0f, 0.0f, 1.0f, 1.0f));
+                            rhi::FArdaRHIColor{1.0f, 0.0f, 1.0f, 1.0f});
                     }
                     ++Recorded.mClobberedResourceCount;
                 }
@@ -1022,24 +1025,24 @@ namespace arda::render_graph
                 {
                     FARDGBuffer& Buffer =
                         Graph.mBuffers.Get(Clobber.mBuffer);
-                    Recorded.mCommandList->clearBufferUInt(
-                        Buffer.GetBuffer(),
+                    Recorded.mCommandList->ClearBufferUInt(
+                        *Buffer.GetBuffer(),
                         0xCDCDCDCDu);
                     ++Recorded.mClobberedResourceCount;
                 }
 
                 if (!Pass.GetState().mbSentinel)
                 {
-                    Recorded.mCommandList->beginMarker(Pass.GetName().c_str());
+                    Recorded.mCommandList->BeginMarker(Pass.GetName().c_str());
                     FARDGPassExecutionContext Context(
                         Builder,
                         Handle,
                         *Recorded.mCommandList,
                         Pass.GetState().mPipeline);
                     Pass.Execute(Context);
-                    Recorded.mCommandList->endMarker();
+                    Recorded.mCommandList->EndMarker();
                 }
-                Recorded.mCommandList->close();
+                Recorded.mCommandList->Close();
             return Recorded;
         }
 
@@ -1058,38 +1061,34 @@ namespace arda::render_graph
                 return 0;
             }
 
-            nvrhi::CommandListParameters Parameters;
-            Parameters.setEnableImmediateExecution(
-                          Graph.mContext.mDebugOptions.mbImmediateMode)
-                .setQueueType(nvrhi::CommandQueue::Graphics);
-            nvrhi::CommandListHandle CommandList =
-                Graph.mContext.mDevice->createCommandList(Parameters);
-            if (!CommandList)
+            auto CommandListResult = Graph.mContext.mDevice->CreateCommandList(
+                rhi::EArdaRHIQueueType::Graphics);
+            if (!CommandListResult)
             {
                 ARDA_CHECK_MSG(
-                    "NVRHI failed to create a graph upload command list.");
+                    "The RHI failed to create a graph upload command list.");
             }
-            CommandList->open();
+            rhi::FArdaRHICommandListRef CommandList = eastl::move(CommandListResult.mValue);
+            CommandList->Open();
             for (const FARDGUniformBuffer* UniformBuffer :
                  Graph.mUniformBuffers.GetEntries())
             {
-                CommandList->beginTrackingBufferState(
-                    UniformBuffer->GetBuffer(),
+                CommandList->BeginTrackingBufferState(
+                    *UniformBuffer->GetBuffer(),
                     NormalizeInitialState(
-                        UniformBuffer->GetDesc().initialState));
-                CommandList->writeBuffer(
-                    UniformBuffer->GetBuffer(),
+                        UniformBuffer->GetDesc().mInitialState));
+                CommandList->WriteBuffer(
+                    *UniformBuffer->GetBuffer(),
                     UniformBuffer->GetContents(),
-                    UniformBuffer->GetDesc().byteSize);
-                CommandList->setBufferState(
-                    UniformBuffer->GetBuffer(),
-                    nvrhi::ResourceStates::ConstantBuffer);
+                    UniformBuffer->GetDesc().mByteSize);
+                CommandList->SetBufferState(
+                    *UniformBuffer->GetBuffer(),
+                    rhi::EArdaRHIResourceState::ConstantBuffer);
             }
-            CommandList->commitBarriers();
-            CommandList->close();
-            return Graph.mContext.mDevice->executeCommandList(
-                CommandList,
-                nvrhi::CommandQueue::Graphics);
+            CommandList->CommitBarriers();
+            CommandList->Close();
+            auto Result = Graph.mContext.mDevice->ExecuteCommandList(CommandList);
+            return Result ? Result.mValue : 0;
         }
 
         /**
@@ -1141,7 +1140,7 @@ namespace arda::render_graph
         if (!Graph.mContext.mDevice)
         {
             ARDA_CHECK_MSG(
-                "Render-graph execution requires an NVRHI device.");
+                "Render-graph execution requires an RHI device.");
         }
         (void)Builder.Compile();
         Graph.mbExecutionStarted = true;
@@ -1302,12 +1301,12 @@ namespace arda::render_graph
 
             const size_t ConsumerQueueIndex = GetQueueIndex(Pass.mQueue);
             if (UploadInstance != 0 &&
-                Pass.mQueue != nvrhi::CommandQueue::Graphics &&
+                Pass.mQueue != rhi::EArdaRHIQueueType::Graphics &&
                 !bUploadWaited[ConsumerQueueIndex])
             {
-                Graph.mContext.mDevice->queueWaitForCommandList(
+                Graph.mContext.mDevice->QueueWait(
                     Pass.mQueue,
-                    nvrhi::CommandQueue::Graphics,
+                    rhi::EArdaRHIQueueType::Graphics,
                     UploadInstance);
                 bUploadWaited[ConsumerQueueIndex] = true;
                 ++Graph.mExecutionResult.mQueueWaitCount;
@@ -1326,17 +1325,16 @@ namespace arda::render_graph
                 {
                     continue;
                 }
-                Graph.mContext.mDevice->queueWaitForCommandList(
+                Graph.mContext.mDevice->QueueWait(
                     GetCommandQueue(Dependency.mConsumerPipeline),
                     GetCommandQueue(Dependency.mProducerPipeline),
                     ProducerInstance);
                 ++Graph.mExecutionResult.mQueueWaitCount;
             }
 
-            const uint64_t Instance =
-                Graph.mContext.mDevice->executeCommandList(
-                    Pass.mCommandList,
-                    Pass.mQueue);
+            const auto SubmitResult =
+                Graph.mContext.mDevice->ExecuteCommandList(Pass.mCommandList);
+            const uint64_t Instance = SubmitResult ? SubmitResult.mValue : 0;
             PassInstances[Handle.GetIndex()] = Instance;
             Graph.mExecutionResult.mLastSubmittedInstances[
                 ConsumerQueueIndex] = Instance;
@@ -1346,7 +1344,7 @@ namespace arda::render_graph
         }
 
         CompleteExtractions(Graph);
-        Graph.mContext.mDevice->runGarbageCollection();
+        Graph.mContext.mDevice->RunGarbageCollection();
         Graph.mbExecuted = true;
         FailureGuard.mbCompleted = true;
         ARDA_TRACE_COUNTER(

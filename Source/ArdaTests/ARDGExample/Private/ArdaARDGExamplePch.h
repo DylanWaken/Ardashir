@@ -14,8 +14,7 @@
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
-#include <nvrhi/nvrhi.h>
-#include <nvrhi/utils.h>
+#include "RHIWrappers/ArdaRHI.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/array.h>

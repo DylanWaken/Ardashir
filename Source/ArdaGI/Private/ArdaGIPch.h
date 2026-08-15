@@ -6,4 +6,4 @@
 #include <EASTL/string.h>
 #include <EASTL/vector.h>
 
-#include <nvrhi/nvrhi.h>
+#include "RHIWrappers/ArdaRHI.h"

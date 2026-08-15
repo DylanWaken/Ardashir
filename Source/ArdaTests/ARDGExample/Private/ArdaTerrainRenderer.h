@@ -13,7 +13,7 @@ namespace arda::tests::ardg_example
     public:
         bool Initialize(
             const backend::FArdaDeviceContext& deviceContext,
-            nvrhi::Format swapChainFormat,
+            rhi::EArdaRHIFormat swapChainFormat,
             const std::filesystem::path& shaderDirectory);
         void UpdateCamera(
             float forward,
@@ -26,45 +26,35 @@ namespace arda::tests::ardg_example
         [[nodiscard]] const eastl::string& GetError() const { return mError; }
 
     private:
-        static bool LoadBinary(
-            const std::filesystem::path& path,
-            eastl::vector<uint8_t>& binary,
-            eastl::string& error);
         bool CreateShadersAndPipelines(
-            nvrhi::Format swapChainFormat,
-            const std::filesystem::path& shaderDirectory,
-            bool vulkan);
+            const backend::FArdaDeviceContext& deviceContext,
+            rhi::EArdaRHIFormat swapChainFormat,
+            const std::filesystem::path& shaderDirectory);
         bool CreateSettingsUploadBuffer();
         bool CreateCameraResources();
 
         [[nodiscard]] render_graph::FARDGRenderGraphContext
         CreateGraphContext() const;
 
-        nvrhi::DeviceHandle mDevice;
+        rhi::FArdaRHIDeviceRef mDevice;
         render_graph::FARDGQueueCapabilities mQueueCapabilities;
-
-        nvrhi::ShaderHandle mGenerateShader;
-        nvrhi::ShaderHandle mErodeShader;
-        nvrhi::ShaderHandle mTriangulateShader;
-        nvrhi::ShaderHandle mTerrainVertexShader;
-        nvrhi::ShaderHandle mTerrainPixelShader;
-        nvrhi::ShaderHandle mOverlayVertexShader;
-        nvrhi::ShaderHandle mOverlayPixelShader;
-
-        nvrhi::BindingLayoutHandle mGenerateBindingLayout;
-        nvrhi::BindingLayoutHandle mErodeBindingLayout;
-        nvrhi::BindingLayoutHandle mTriangulateBindingLayout;
-        nvrhi::BindingLayoutHandle mCameraBindingLayout;
-        nvrhi::BindingLayoutHandle mTerrainPixelBindingLayout;
-        nvrhi::ComputePipelineHandle mGeneratePipeline;
-        nvrhi::ComputePipelineHandle mErodePipeline;
-        nvrhi::ComputePipelineHandle mTriangulatePipeline;
-        nvrhi::InputLayoutHandle mTerrainInputLayout;
-        nvrhi::GraphicsPipelineHandle mTerrainPipeline;
-        nvrhi::GraphicsPipelineHandle mOverlayPipeline;
-        nvrhi::BufferHandle mSettingsUploadBuffer;
-        nvrhi::BufferHandle mCameraBuffer;
-        nvrhi::BindingSetHandle mCameraBindingSet;
+        backend::FArdaGlobalShaderMap mShaderMap;
+        const backend::FArdaGlobalShaderInstance* mGenerateShader = nullptr;
+        const backend::FArdaGlobalShaderInstance* mErodeShader = nullptr;
+        const backend::FArdaGlobalShaderInstance* mTriangulateShader = nullptr;
+        const backend::FArdaGlobalShaderInstance* mTerrainVertexShader = nullptr;
+        const backend::FArdaGlobalShaderInstance* mTerrainPixelShader = nullptr;
+        const backend::FArdaGlobalShaderInstance* mOverlayVertexShader = nullptr;
+        const backend::FArdaGlobalShaderInstance* mOverlayPixelShader = nullptr;
+        rhi::FArdaRHIComputePipelineRef mGeneratePipeline;
+        rhi::FArdaRHIComputePipelineRef mErodePipeline;
+        rhi::FArdaRHIComputePipelineRef mTriangulatePipeline;
+        rhi::FArdaRHIInputLayoutRef mTerrainInputLayout;
+        rhi::FArdaRHIGraphicsPipelineRef mTerrainPipeline;
+        rhi::FArdaRHIGraphicsPipelineRef mOverlayPipeline;
+        rhi::FArdaRHIBufferRef mSettingsUploadBuffer;
+        rhi::FArdaRHIBufferRef mCameraBuffer;
+        rhi::FArdaRHIBindingSetRef mCameraBindingSet;
 
         float mCameraPosition[3] = {-0.96875f, -0.96875f, 0.8125f};
         float mCameraYaw = 0.78539816f;

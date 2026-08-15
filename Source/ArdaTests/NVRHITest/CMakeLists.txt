@@ -23,63 +23,63 @@ add_custom_command(
     COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -spirv -fspv-target-env=vulkan1.3
         -T ps_6_0 -E PSMain -Fo "${SHADER_OUTPUT_DIR}/TrianglePS.spv" "${SHADER_SOURCE}"
     DEPENDS "${SHADER_SOURCE}"
-    COMMENT "Compiling NVRHITest shaders"
+    COMMENT "Compiling RHITest shaders"
     VERBATIM
 )
 
-add_custom_target(NVRHITestShaders DEPENDS ${SHADER_OUTPUTS})
-set_target_properties(NVRHITestShaders PROPERTIES FOLDER "Ardashir/Tests/NVRHI")
+add_custom_target(RHITestShaders DEPENDS ${SHADER_OUTPUTS})
+set_target_properties(RHITestShaders PROPERTIES FOLDER "Ardashir/Tests/RHI")
 
-file(GLOB_RECURSE ARDA_NVRHI_TEST_SOURCES CONFIGURE_DEPENDS
+file(GLOB_RECURSE ARDA_RHI_TEST_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
 
-add_executable(NVRHITest ${ARDA_NVRHI_TEST_SOURCES})
+add_executable(RHITest ${ARDA_RHI_TEST_SOURCES})
 
-add_dependencies(NVRHITest NVRHITestShaders)
-target_compile_features(NVRHITest PRIVATE cxx_std_17)
-target_compile_definitions(NVRHITest PRIVATE GLFW_INCLUDE_NONE)
-target_include_directories(NVRHITest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
-target_precompile_headers(NVRHITest PRIVATE Private/ArdaNVRHITestPch.h)
-target_link_libraries(NVRHITest PRIVATE
+add_dependencies(RHITest RHITestShaders)
+target_compile_features(RHITest PRIVATE cxx_std_17)
+target_compile_definitions(RHITest PRIVATE GLFW_INCLUDE_NONE)
+target_include_directories(RHITest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
+target_precompile_headers(RHITest PRIVATE Private/ArdaRHITestPch.h)
+target_link_libraries(RHITest PRIVATE
     Ardashir::ArdaBackend
     Ardashir::ArdaRenderGraph
     glfw
 )
 
 if(WIN32)
-    target_compile_definitions(NVRHITest PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_compile_definitions(RHITest PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 endif()
 
 if(TARGET Vulkan::Headers)
-    target_link_libraries(NVRHITest PRIVATE Vulkan::Headers)
+    target_link_libraries(RHITest PRIVATE Vulkan::Headers)
 elseif(TARGET Vulkan-Headers)
-    target_link_libraries(NVRHITest PRIVATE Vulkan-Headers)
+    target_link_libraries(RHITest PRIVATE Vulkan-Headers)
 endif()
 
-add_custom_command(TARGET NVRHITest POST_BUILD
+add_custom_command(TARGET RHITest POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-        ${SHADER_OUTPUTS} "$<TARGET_FILE_DIR:NVRHITest>"
+        ${SHADER_OUTPUTS} "$<TARGET_FILE_DIR:RHITest>"
     VERBATIM
 )
 
-set_target_properties(NVRHITest PROPERTIES FOLDER "Ardashir/Tests/NVRHI")
+set_target_properties(RHITest PROPERTIES FOLDER "Ardashir/Tests/RHI")
 
 if(ARDASHIR_BUILD_TESTS)
-    set(NVRHI_GPU_TESTS NVRHITest.Vulkan)
+    set(RHI_GPU_TESTS RHITest.Vulkan)
     if(WIN32)
         add_test(
-            NAME NVRHITest.D3D12
-            COMMAND NVRHITest --backend d3d12 --frames 1 --hidden
+            NAME RHITest.D3D12
+            COMMAND RHITest --backend d3d12 --frames 1 --hidden
         )
-        list(APPEND NVRHI_GPU_TESTS NVRHITest.D3D12)
+        list(APPEND RHI_GPU_TESTS RHITest.D3D12)
     endif()
     add_test(
-        NAME NVRHITest.Vulkan
-        COMMAND NVRHITest --backend vulkan --frames 1 --hidden
+        NAME RHITest.Vulkan
+        COMMAND RHITest --backend vulkan --frames 1 --hidden
     )
-    set_tests_properties(${NVRHI_GPU_TESTS} PROPERTIES
+    set_tests_properties(${RHI_GPU_TESTS} PROPERTIES
         LABELS "gpu"
         SKIP_RETURN_CODE 77
         TIMEOUT 30

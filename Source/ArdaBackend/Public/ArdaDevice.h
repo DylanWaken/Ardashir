@@ -1,11 +1,33 @@
 #pragma once
 
-#include <nvrhi/nvrhi.h>
+#include "RHIWrappers/ArdaRHI.h"
 
 #include <EASTL/string.h>
 
+#include <cstddef>
+#include <cstdint>
 namespace arda::backend
 {
+    enum class EArdaDiagnosticSeverity : uint8_t { Info, Warning, Error, Fatal };
+
+    class IArdaDiagnosticCallback
+    {
+    public:
+        virtual ~IArdaDiagnosticCallback() = default;
+        virtual void Message(EArdaDiagnosticSeverity Severity, const char* Text) = 0;
+    };
+
+    struct FArdaNativeObject
+    {
+        uintptr_t mValue = 0;
+        constexpr FArdaNativeObject() noexcept = default;
+        constexpr FArdaNativeObject(std::nullptr_t) noexcept {}
+        explicit constexpr FArdaNativeObject(uintptr_t Value) noexcept : mValue(Value) {}
+        template <typename T>
+        explicit FArdaNativeObject(T* Value) noexcept : mValue(reinterpret_cast<uintptr_t>(Value)) {}
+        [[nodiscard]] explicit constexpr operator bool() const noexcept { return mValue != 0; }
+        template <typename T> [[nodiscard]] T As() const noexcept { return reinterpret_cast<T>(mValue); }
+    };
     /** Selects the graphics API used by the backend. */
     enum class EArdaBackendType
     {
@@ -41,11 +63,11 @@ namespace arda::backend
         EArdaBackendType mBackend = DefaultBackend;
         /** Whether graphics API validation layers are enabled. */
         bool mbEnableValidation = true;
-        /** Receives NVRHI diagnostic messages, or null to use no callback. */
-        nvrhi::IMessageCallback* mMessageCallback = nullptr;
+        /** Receives backend diagnostic messages, or null to use the default callback. */
+        IArdaDiagnosticCallback* mMessageCallback = nullptr;
     };
 
-    /** Describes which NVRHI command queues are available on a backend device. */
+    /** Describes which RHI command queues are available on a backend device. */
     struct FArdaQueueCapabilities
     {
         /** Whether the required graphics queue is available. */
@@ -57,20 +79,20 @@ namespace arda::backend
 
         /**
          * Returns whether a command queue is available.
-         * @param Queue The NVRHI queue type to inspect.
+         * @param Queue The RHI queue type to inspect.
          * @return True when commands can be submitted to the requested queue.
          */
-        [[nodiscard]] bool IsQueueAvailable(nvrhi::CommandQueue Queue) const noexcept;
+        [[nodiscard]] bool IsQueueAvailable(rhi::EArdaRHIQueueType Queue) const noexcept;
     };
 
-    /** Provides the initialized NVRHI device and its backend type. */
+    /** Provides the initialized opaque RHI device and its backend type. */
     struct FArdaDeviceContext
     {
-        /** The initialized NVRHI device handle. */
-        nvrhi::DeviceHandle mDevice;
+        /** The initialized opaque RHI device reference. */
+        rhi::FArdaRHIDeviceRef mDevice;
         /** The graphics API that owns the device. */
         EArdaBackendType mBackend = DefaultBackend;
-        /** The command queues exposed by the initialized NVRHI device. */
+        /** The command queues exposed by the initialized RHI device. */
         FArdaQueueCapabilities mQueueCapabilities;
     };
 
@@ -108,8 +130,8 @@ namespace arda::backend
     /** Returns the command queues exposed by the initialized backend. */
     [[nodiscard]] const FArdaQueueCapabilities& GetQueueCapabilities() noexcept;
 
-    /** Returns the initialized NVRHI device, or an empty handle if unavailable. */
-    [[nodiscard]] nvrhi::DeviceHandle GetDevice() noexcept;
+    /** Returns the initialized opaque RHI device, or an empty reference. */
+    [[nodiscard]] rhi::FArdaRHIDeviceRef GetDevice() noexcept;
 
     /** Returns the most recent backend error message. */
     [[nodiscard]] eastl::string GetBackendError();

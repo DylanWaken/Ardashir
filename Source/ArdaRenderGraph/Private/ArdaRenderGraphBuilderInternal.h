@@ -24,6 +24,7 @@ namespace arda::render_graph
             , mPasses(mArena)
             , mTextures(mArena)
             , mBuffers(mArena)
+            , mAccelStructs(mArena)
             , mViews(mArena)
             , mUniformBuffers(mArena)
         {
@@ -46,6 +47,8 @@ namespace arda::render_graph
         /** Arena-backed logical buffer registry indexed exclusively by FARDGBufferHandle values. */
         TARDGHandleRegistry<FARDGBuffer, FARDGBufferHandle> mBuffers;
 
+        TARDGHandleRegistry<FARDGAccelStruct, FARDGAccelStructHandle> mAccelStructs;
+
         /** Arena-backed logical view registry spanning texture and buffer SRV/UAV records. */
         TARDGHandleRegistry<FARDGView, FARDGViewHandle> mViews;
 
@@ -56,10 +59,11 @@ namespace arda::render_graph
         eastl::unordered_set<const void*> mParameterStorage;
 
         /** Deduplication map from non-owning physical texture identity to its arena-owned logical wrapper. */
-        eastl::unordered_map<nvrhi::ITexture*, FARDGTextureRef> mImportedTextures;
+        eastl::unordered_map<const void*, FARDGTextureRef> mImportedTextures;
 
         /** Deduplication map from non-owning physical buffer identity to its arena-owned logical wrapper. */
-        eastl::unordered_map<nvrhi::IBuffer*, FARDGBufferRef> mImportedBuffers;
+        eastl::unordered_map<const void*, FARDGBufferRef> mImportedBuffers;
+        eastl::unordered_map<const void*, FARDGAccelStructRef> mImportedAccelStructs;
 
         /** Build-order texture extraction requests; output pointers remain caller-owned through execution. */
         eastl::vector<FARDGTextureExtraction> mTextureExtractions;

@@ -1,6 +1,7 @@
 #include "ArdaBackendPch.h"
 
 #include "ArdaBackendDevice.h"
+#include "RHIWrappers/ArdaNvrhiDevice.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/array.h>
@@ -15,6 +16,22 @@ namespace arda::backend
     namespace
     {
         constexpr uint32_t InvalidQueueFamily = eastl::numeric_limits<uint32_t>::max();
+
+        struct FArdaVulkanLifetime
+        {
+            FArdaNvrhiMessageCallback mMessageCallback;
+            eastl::shared_ptr<vk::detail::DynamicLoader> mLoader;
+            vk::Instance mInstance;
+            vk::SurfaceKHR mSurface;
+            vk::Device mDevice;
+
+            ~FArdaVulkanLifetime()
+            {
+                if (mDevice) mDevice.destroy();
+                if (mSurface && mInstance) mInstance.destroySurfaceKHR(mSurface);
+                if (mInstance) mInstance.destroy();
+            }
+        };
 
         struct FArdaVulkanQueueSelection
         {
@@ -190,12 +207,12 @@ namespace arda::backend
             return true;
         }
 
-        VkSurfaceKHR DecodeVulkanSurface(nvrhi::Object Surface)
+        VkSurfaceKHR DecodeVulkanSurface(FArdaNativeObject Surface)
         {
 #if VK_USE_64_BIT_PTR_DEFINES
-            return Surface;
+            return reinterpret_cast<VkSurfaceKHR>(Surface.mValue);
 #else
-            return static_cast<VkSurfaceKHR>(Surface.integer);
+            return static_cast<VkSurfaceKHR>(Surface.mValue);
 #endif
         }
 
@@ -203,20 +220,24 @@ namespace arda::backend
         {
         public:
             FArdaVulkanSwapChain(
+                eastl::shared_ptr<void> BackendLifetime,
                 vk::PhysicalDevice PhysicalDevice,
                 vk::Device VulkanDevice,
                 vk::Queue GraphicsQueue,
                 vk::SurfaceKHR Surface,
                 nvrhi::vulkan::DeviceHandle NativeDevice,
                 nvrhi::DeviceHandle Device,
+                rhi::FArdaRHIDeviceRef ArdaDevice,
                 uint32_t Width,
                 uint32_t Height)
-                : mPhysicalDevice(PhysicalDevice)
+                : mBackendLifetime(eastl::move(BackendLifetime))
+                , mPhysicalDevice(PhysicalDevice)
                 , mVulkanDevice(VulkanDevice)
                 , mGraphicsQueue(GraphicsQueue)
                 , mSurface(Surface)
                 , mNativeDevice(eastl::move(NativeDevice))
                 , mDevice(eastl::move(Device))
+                , mArdaDevice(eastl::move(ArdaDevice))
                 , mWidth(Width)
                 , mHeight(Height)
             {
@@ -263,7 +284,7 @@ namespace arda::backend
                 return CreateSwapChain(NewWidth, NewHeight);
             }
 
-            bool AcquireFrame(nvrhi::FramebufferHandle& OutFramebuffer) override
+            bool AcquireFrame(rhi::FArdaRHIFramebufferRef& OutFramebuffer) override
             {
                 OutFramebuffer = nullptr;
                 if (!mSwapChain)
@@ -297,8 +318,8 @@ namespace arda::backend
                     nvrhi::CommandQueue::Graphics,
                     mImageAvailable[mFrameIndex],
                     0);
-                OutFramebuffer = mFramebuffers[mImageIndex];
-                return OutFramebuffer != nullptr;
+                OutFramebuffer = mArdaFramebuffers[mImageIndex];
+                return static_cast<bool>(OutFramebuffer);
             }
 
             void PrepareSubmit() override
@@ -354,9 +375,9 @@ namespace arda::backend
                 }
             }
 
-            nvrhi::Format GetFormat() const noexcept override
+            rhi::EArdaRHIFormat GetFormat() const noexcept override
             {
-                return nvrhi::Format::BGRA8_UNORM;
+                return rhi::EArdaRHIFormat::BGRA8UNorm;
             }
 
             uint32_t GetWidth() const noexcept override
@@ -473,41 +494,53 @@ namespace arda::backend
                 }
                 mWidth = Extent.width;
                 mHeight = Extent.height;
-                mTextures.resize(Images.size());
-                mFramebuffers.resize(Images.size());
+                mArdaFramebuffers.resize(Images.size());
 
                 for (size_t Index = 0; Index < Images.size(); ++Index)
                 {
-                    const auto TextureDescription = nvrhi::TextureDesc()
-                        .setDimension(nvrhi::TextureDimension::Texture2D)
-                        .setWidth(mWidth)
-                        .setHeight(mHeight)
-                        .setFormat(nvrhi::Format::BGRA8_UNORM)
-                        .setIsRenderTarget(true)
-                        .setDebugName("Vulkan swap-chain image")
-                        .enableAutomaticStateTracking(nvrhi::ResourceStates::Present);
-
                     const auto NativeImage =
                         reinterpret_cast<uint64_t>(static_cast<VkImage>(Images[Index]));
-                    mTextures[Index] = mDevice->createHandleForNativeTexture(
-                        nvrhi::ObjectTypes::VK_Image,
-                        nvrhi::Object(NativeImage),
-                        TextureDescription);
-                    if (!mTextures[Index])
+                    rhi::FArdaRHINativeTextureImportDesc ImportDesc;
+                    ImportDesc.mNativeObject =
+                        static_cast<uintptr_t>(NativeImage);
+                    ImportDesc.mNativeType =
+                        rhi::EArdaRHINativeResourceType::VulkanImage;
+                    ImportDesc.mOwnership =
+                        rhi::EArdaRHINativeOwnership::Borrowed;
+                    ImportDesc.mInitialState =
+                        rhi::EArdaRHIResourceState::Present;
+                    ImportDesc.mTexture.mWidth = mWidth;
+                    ImportDesc.mTexture.mHeight = mHeight;
+                    ImportDesc.mTexture.mFormat =
+                        rhi::EArdaRHIFormat::BGRA8UNorm;
+                    ImportDesc.mTexture.mUsage =
+                        rhi::EArdaRHITextureUsage::RenderTarget;
+                    ImportDesc.mTexture.mInitialState =
+                        rhi::EArdaRHIResourceState::Present;
+                    ImportDesc.mTexture.mbKeepInitialState = true;
+                    ImportDesc.mTexture.mDebugName =
+                        "Vulkan swap-chain image";
+                    auto ArdaTexture =
+                        mArdaDevice->ImportNativeTexture(ImportDesc);
+                    if (!ArdaTexture)
                     {
-                        mError = "NVRHI failed to wrap a Vulkan swap-chain image.";
+                        mError = ArdaTexture.mStatus.mMessage;
                         ReleaseSwapChain();
                         return false;
                     }
-
-                    mFramebuffers[Index] = mDevice->createFramebuffer(
-                        nvrhi::FramebufferDesc().addColorAttachment(mTextures[Index]));
-                    if (!mFramebuffers[Index])
+                    rhi::FArdaRHIFramebufferDesc ArdaFramebufferDesc;
+                    ArdaFramebufferDesc.mColorAttachments.push_back(
+                        { ArdaTexture.mValue, {} });
+                    auto ArdaFramebuffer =
+                        mArdaDevice->CreateFramebuffer(ArdaFramebufferDesc);
+                    if (!ArdaFramebuffer)
                     {
-                        mError = "NVRHI failed to create a Vulkan framebuffer.";
+                        mError = ArdaFramebuffer.mStatus.mMessage;
                         ReleaseSwapChain();
                         return false;
                     }
+                    mArdaFramebuffers[Index] =
+                        eastl::move(ArdaFramebuffer.mValue);
                 }
 
                 mError.clear();
@@ -516,8 +549,11 @@ namespace arda::backend
 
             void ReleaseSwapChain()
             {
-                mFramebuffers.clear();
-                mTextures.clear();
+                mArdaFramebuffers.clear();
+                if (mArdaDevice)
+                {
+                    mArdaDevice->TrimDescriptorCaches();
+                }
                 if (mDevice)
                 {
                     mDevice->runGarbageCollection();
@@ -566,20 +602,21 @@ namespace arda::backend
                 return CreateSwapChain(mWidth, mHeight);
             }
 
+            eastl::shared_ptr<void> mBackendLifetime;
             vk::PhysicalDevice mPhysicalDevice;
             vk::Device mVulkanDevice;
             vk::Queue mGraphicsQueue;
             vk::SurfaceKHR mSurface;
             nvrhi::vulkan::DeviceHandle mNativeDevice;
             nvrhi::DeviceHandle mDevice;
+            rhi::FArdaRHIDeviceRef mArdaDevice;
             uint32_t mWidth = 0;
             uint32_t mHeight = 0;
             uint32_t mImageIndex = 0;
             uint32_t mFrameIndex = 0;
             eastl::string mError;
             vk::SwapchainKHR mSwapChain;
-            eastl::vector<nvrhi::TextureHandle> mTextures;
-            eastl::vector<nvrhi::FramebufferHandle> mFramebuffers;
+            eastl::vector<rhi::FArdaRHIFramebufferRef> mArdaFramebuffers;
             eastl::array<vk::Semaphore, mFramesInFlight> mImageAvailable;
             eastl::array<vk::Semaphore, mFramesInFlight> mRenderFinished;
         };
@@ -590,20 +627,19 @@ namespace arda::backend
             ~FArdaVulkanBackendDevice() override
             {
                 WaitForIdle();
+                mArdaDevice = nullptr;
                 mDevice = nullptr;
                 mNativeDevice = nullptr;
 
-                if (mVulkanDevice)
+                if (mLifetime)
                 {
-                    mVulkanDevice.destroy();
+                    mLifetime.reset();
                 }
-                if (mSurface && mInstance)
+                else
                 {
-                    mInstance.destroySurfaceKHR(mSurface);
-                }
-                if (mInstance)
-                {
-                    mInstance.destroy();
+                    if (mVulkanDevice) mVulkanDevice.destroy();
+                    if (mSurface && mInstance) mInstance.destroySurfaceKHR(mSurface);
+                    if (mInstance) mInstance.destroy();
                 }
             }
 
@@ -612,7 +648,7 @@ namespace arda::backend
                 IArdaWindowSurface* WindowSurface) override
             {
                 const auto GetInstanceProcAddress =
-                    mLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+                    mLoader->getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
                 if (!GetInstanceProcAddress)
                 {
                     mError = "The Vulkan loader is not installed.";
@@ -653,8 +689,8 @@ namespace arda::backend
                 if (WindowSurface)
                 {
                     eastl::string SurfaceError;
-                    const nvrhi::Object SurfaceObject = WindowSurface->CreateVulkanSurface(
-                        nvrhi::Object(static_cast<VkInstance>(mInstance)),
+                    const FArdaNativeObject SurfaceObject = WindowSurface->CreateVulkanSurface(
+                        FArdaNativeObject(reinterpret_cast<uintptr_t>(static_cast<VkInstance>(mInstance))),
                         SurfaceError);
                     const VkSurfaceKHR NativeSurface = DecodeVulkanSurface(SurfaceObject);
                     if (NativeSurface == VK_NULL_HANDLE)
@@ -727,6 +763,11 @@ namespace arda::backend
                     return EArdaInitializeResult::Unavailable;
                 }
                 mVulkanDevice = DeviceResult.value;
+                mLifetime = eastl::make_shared<FArdaVulkanLifetime>();
+                mLifetime->mLoader = mLoader;
+                mLifetime->mInstance = mInstance;
+                mLifetime->mSurface = mSurface;
+                mLifetime->mDevice = mVulkanDevice;
                 VULKAN_HPP_DEFAULT_DISPATCHER.init(mVulkanDevice);
                 mGraphicsQueue = mVulkanDevice.getQueue(
                     mQueueSelection.mGraphicsFamily,
@@ -745,7 +786,9 @@ namespace arda::backend
                 }
 
                 nvrhi::vulkan::DeviceDesc Description;
-                Description.errorCB = Configuration.mMessageCallback;
+                mLifetime->mMessageCallback.SetTarget(
+                    Configuration.mMessageCallback);
+                Description.errorCB = &mLifetime->mMessageCallback;
                 Description.instance = mInstance;
                 Description.physicalDevice = mPhysicalDevice;
                 Description.device = mVulkanDevice;
@@ -785,6 +828,13 @@ namespace arda::backend
                     mError = "Failed to create the NVRHI Vulkan device.";
                     return EArdaInitializeResult::Failure;
                 }
+                mArdaDevice = rhi::private_impl::CreateArdaNvrhiDevice(
+                    mDevice, mLifetime);
+                if (!mArdaDevice)
+                {
+                    mError = "Failed to create the opaque Arda Vulkan device.";
+                    return EArdaInitializeResult::Failure;
+                }
 
                 mQueueCapabilities.mbGraphics = true;
                 mQueueCapabilities.mbCompute =
@@ -807,12 +857,14 @@ namespace arda::backend
                 }
 
                 auto SwapChain = eastl::make_unique<FArdaVulkanSwapChain>(
+                    mLifetime,
                     mPhysicalDevice,
                     mVulkanDevice,
                     mGraphicsQueue,
                     mSurface,
                     mNativeDevice,
                     mDevice,
+                    mArdaDevice,
                     Width,
                     Height);
                 if (!SwapChain->Initialize())
@@ -836,9 +888,9 @@ namespace arda::backend
                 }
             }
 
-            nvrhi::DeviceHandle GetDevice() const noexcept override
+            rhi::FArdaRHIDeviceRef GetDevice() const noexcept override
             {
-                return mDevice;
+                return mArdaDevice;
             }
 
             FArdaQueueCapabilities GetQueueCapabilities() const noexcept override
@@ -935,8 +987,10 @@ namespace arda::backend
             }
 
             eastl::string mError;
-            vk::detail::DynamicLoader mLoader;
+            eastl::shared_ptr<vk::detail::DynamicLoader> mLoader =
+                eastl::make_shared<vk::detail::DynamicLoader>();
             eastl::vector<const char*> mInstanceExtensions;
+            eastl::shared_ptr<FArdaVulkanLifetime> mLifetime;
             vk::Instance mInstance;
             vk::SurfaceKHR mSurface;
             vk::PhysicalDevice mPhysicalDevice;
@@ -947,6 +1001,7 @@ namespace arda::backend
             FArdaVulkanQueueSelection mQueueSelection;
             nvrhi::vulkan::DeviceHandle mNativeDevice;
             nvrhi::DeviceHandle mDevice;
+            rhi::FArdaRHIDeviceRef mArdaDevice;
             FArdaQueueCapabilities mQueueCapabilities;
         };
     }

@@ -13,7 +13,7 @@ target_include_directories(ArdaRenderGraph
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private"
 )
 target_link_libraries(ArdaRenderGraph
-    PUBLIC nvrhi Ardashir::ArdaBackend Ardashir::EASTL
+    PUBLIC Ardashir::ArdaBackend Ardashir::EASTL
     PRIVATE Ardashir::ArdaTrace
 )
 target_precompile_headers(ArdaRenderGraph PRIVATE Private/ArdaRenderGraphPch.h)
@@ -26,8 +26,11 @@ if(ARDASHIR_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.cpp"
     )
     add_executable(ArdaGraphTests ${ARDA_RENDER_GRAPH_TEST_SOURCES})
+    add_dependencies(ArdaGraphTests ArdaBackendTestShaders)
     target_include_directories(ArdaGraphTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
-    target_compile_definitions(ArdaGraphTests PRIVATE ARDA_ENABLE_CHECKS)
+    target_compile_definitions(ArdaGraphTests PRIVATE
+        ARDA_ENABLE_CHECKS
+        ARDA_BACKEND_TEST_SHADER_DIR="${CMAKE_BINARY_DIR}/Source/ArdaBackend")
     target_link_libraries(ArdaGraphTests PRIVATE
         Ardashir::ArdaRenderGraph
         Ardashir::ArdaBackend

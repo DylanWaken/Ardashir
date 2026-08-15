@@ -1,0 +1,4 @@
+[shader("raygeneration")]
+void RayGen()
+{
+}

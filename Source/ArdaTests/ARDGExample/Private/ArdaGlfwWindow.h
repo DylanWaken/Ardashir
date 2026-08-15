@@ -36,10 +36,10 @@ namespace arda::tests::ardg_example
         [[nodiscard]] uint32_t GetHeight() const { return mHeight; }
         [[nodiscard]] const eastl::string& GetError() const { return mError; }
 
-        [[nodiscard]] nvrhi::Object GetD3D12WindowHandle() const noexcept override;
+        [[nodiscard]] backend::FArdaNativeObject GetD3D12WindowHandle() const noexcept override;
         [[nodiscard]] eastl::vector<const char*> GetVulkanInstanceExtensions() const override;
-        [[nodiscard]] nvrhi::Object CreateVulkanSurface(
-            nvrhi::Object vulkanInstance,
+        [[nodiscard]] backend::FArdaNativeObject CreateVulkanSurface(
+            backend::FArdaNativeObject vulkanInstance,
             eastl::string& outError) override;
 
     private:

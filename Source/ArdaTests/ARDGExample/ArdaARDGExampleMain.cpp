@@ -24,24 +24,24 @@ namespace arda::tests::ardg_example
             bool mbFullscreen = false;
         };
 
-        class FArdaMessageCallback final : public nvrhi::IMessageCallback
+        class FArdaMessageCallback final : public backend::IArdaDiagnosticCallback
         {
         public:
-            void message(
-                nvrhi::MessageSeverity severity,
+            void Message(
+                backend::EArdaDiagnosticSeverity severity,
                 const char* messageText) override
             {
                 const char* text = messageText ? messageText : "";
                 switch (severity)
                 {
-                case nvrhi::MessageSeverity::Warning:
+                case backend::EArdaDiagnosticSeverity::Warning:
                     ARDA_LOG(LogARDGExample, Warning, "%s", text);
                     break;
-                case nvrhi::MessageSeverity::Error:
+                case backend::EArdaDiagnosticSeverity::Error:
                     ++mErrorCount;
                     ARDA_LOG(LogARDGExample, Error, "%s", text);
                     break;
-                case nvrhi::MessageSeverity::Fatal:
+                case backend::EArdaDiagnosticSeverity::Fatal:
                     ++mErrorCount;
                     ARDA_LOG(LogARDGExample, Fatal, "%s", text);
                     break;

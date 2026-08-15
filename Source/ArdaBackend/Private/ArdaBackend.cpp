@@ -9,28 +9,28 @@ namespace arda::backend
 
     namespace
     {
-        class FArdaDefaultMessageCallback final : public nvrhi::IMessageCallback
+        class FArdaDefaultMessageCallback final : public IArdaDiagnosticCallback
         {
         public:
-            void message(nvrhi::MessageSeverity severity, const char* messageText) override
+            void Message(EArdaDiagnosticSeverity severity, const char* messageText) override
             {
                 switch (severity)
                 {
-                case nvrhi::MessageSeverity::Warning:
+                case EArdaDiagnosticSeverity::Warning:
                     ARDA_LOG(
                         LogArdaBackend,
                         Warning,
                         "%s",
                         messageText ? messageText : "");
                     break;
-                case nvrhi::MessageSeverity::Error:
+                case EArdaDiagnosticSeverity::Error:
                     ARDA_LOG(
                         LogArdaBackend,
                         Error,
                         "%s",
                         messageText ? messageText : "");
                     break;
-                case nvrhi::MessageSeverity::Fatal:
+                case EArdaDiagnosticSeverity::Fatal:
                     ARDA_LOG(
                         LogArdaBackend,
                         Fatal,
@@ -109,18 +109,16 @@ namespace arda::backend
 
     const EArdaBackendType& gCurrentBackend = currentBackend;
 
-    bool FArdaQueueCapabilities::IsQueueAvailable(nvrhi::CommandQueue Queue) const noexcept
+    bool FArdaQueueCapabilities::IsQueueAvailable(rhi::EArdaRHIQueueType Queue) const noexcept
     {
         switch (Queue)
         {
-        case nvrhi::CommandQueue::Graphics:
+        case rhi::EArdaRHIQueueType::Graphics:
             return mbGraphics;
-        case nvrhi::CommandQueue::Compute:
+        case rhi::EArdaRHIQueueType::Compute:
             return mbCompute;
-        case nvrhi::CommandQueue::Copy:
+        case rhi::EArdaRHIQueueType::Copy:
             return mbCopy;
-        case nvrhi::CommandQueue::Count:
-            return false;
         }
         return false;
     }
@@ -277,7 +275,7 @@ namespace arda::backend
         return GetState().mContext.mQueueCapabilities;
     }
 
-    nvrhi::DeviceHandle GetDevice() noexcept
+    rhi::FArdaRHIDeviceRef GetDevice() noexcept
     {
         return GetState().mContext.mDevice;
     }

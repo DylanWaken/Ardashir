@@ -184,12 +184,12 @@ namespace arda::tests::ardg_example
         return true;
     }
 
-    nvrhi::Object FArdaGlfwWindow::GetD3D12WindowHandle() const noexcept
+    backend::FArdaNativeObject FArdaGlfwWindow::GetD3D12WindowHandle() const noexcept
     {
 #if defined(_WIN32)
-        return nvrhi::Object(mWindow ? glfwGetWin32Window(mWindow) : nullptr);
+        return backend::FArdaNativeObject(mWindow ? glfwGetWin32Window(mWindow) : nullptr);
 #else
-        return nvrhi::Object(nullptr);
+        return backend::FArdaNativeObject(nullptr);
 #endif
     }
 
@@ -206,22 +206,22 @@ namespace arda::tests::ardg_example
         return { extensions, extensions + extensionCount };
     }
 
-    nvrhi::Object FArdaGlfwWindow::CreateVulkanSurface(
-        nvrhi::Object vulkanInstance,
+    backend::FArdaNativeObject FArdaGlfwWindow::CreateVulkanSurface(
+        backend::FArdaNativeObject vulkanInstance,
         eastl::string& outError)
     {
         outError.clear();
         if (!mWindow)
         {
             outError = "GLFW cannot create a Vulkan surface without a window.";
-            return nvrhi::Object(nullptr);
+            return backend::FArdaNativeObject(nullptr);
         }
 
-        const VkInstance instance = static_cast<VkInstance>(vulkanInstance);
+        const VkInstance instance = vulkanInstance.As<VkInstance>();
         if (instance == VK_NULL_HANDLE)
         {
             outError = "GLFW received a null Vulkan instance.";
-            return nvrhi::Object(nullptr);
+            return backend::FArdaNativeObject(nullptr);
         }
 
         VkSurfaceKHR surface = VK_NULL_HANDLE;
@@ -244,13 +244,13 @@ namespace arda::tests::ardg_example
                 outError += ": ";
                 outError += glfwError;
             }
-            return nvrhi::Object(nullptr);
+            return backend::FArdaNativeObject(nullptr);
         }
 
 #if VK_USE_64_BIT_PTR_DEFINES
-        return nvrhi::Object(surface);
+        return backend::FArdaNativeObject(surface);
 #else
-        return nvrhi::Object(static_cast<uint64_t>(surface));
+        return backend::FArdaNativeObject(static_cast<uintptr_t>(surface));
 #endif
     }
 

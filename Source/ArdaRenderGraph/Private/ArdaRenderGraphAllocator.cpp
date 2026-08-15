@@ -38,12 +38,12 @@ namespace arda::render_graph
      *
      * This execution-allocation model is deterministic: requests are visited
      * by first use and identifier, retired ranges are merged, and the first
-     * aligned free range is selected. It does not create NVRHI heaps or
+     * aligned free range is selected. It does not create RHI heaps or
      * resources; the executor can evaluate the result independently of the
      * backend policy it ultimately uses.
      *
      * TODO(ArdaRenderGraph): Physical placed-resource aliasing is currently
-     * disabled. Apply this layout only after NVRHI exposes portable aliasing
+     * disabled. Apply this layout only after the RHI exposes portable aliasing
      * barriers and heap-compatibility queries.
      */
     FARDGTransientHeapLayout FARDGTransientHeapAllocator::Allocate(

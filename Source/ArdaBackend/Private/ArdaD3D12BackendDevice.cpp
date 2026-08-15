@@ -1,6 +1,7 @@
 #include "ArdaBackendPch.h"
 
 #include "ArdaBackendDevice.h"
+#include "RHIWrappers/ArdaNvrhiDevice.h"
 
 #include <array>
 
@@ -8,6 +9,16 @@ namespace arda::backend
 {
     namespace
     {
+        struct FArdaD3D12Lifetime
+        {
+            FArdaNvrhiMessageCallback mMessageCallback;
+            Microsoft::WRL::ComPtr<IDXGIFactory6> mFactory;
+            Microsoft::WRL::ComPtr<ID3D12Device> mDevice;
+            Microsoft::WRL::ComPtr<ID3D12CommandQueue> mGraphicsQueue;
+            Microsoft::WRL::ComPtr<ID3D12CommandQueue> mComputeQueue;
+            Microsoft::WRL::ComPtr<ID3D12CommandQueue> mCopyQueue;
+        };
+
         class FArdaD3D12SwapChain final : public IArdaSwapChain
         {
         public:
@@ -15,12 +26,14 @@ namespace arda::backend
                 Microsoft::WRL::ComPtr<IDXGIFactory6> Factory,
                 Microsoft::WRL::ComPtr<ID3D12CommandQueue> GraphicsQueue,
                 nvrhi::DeviceHandle Device,
+                rhi::FArdaRHIDeviceRef ArdaDevice,
                 HWND Window,
                 uint32_t Width,
                 uint32_t Height)
                 : mFactory(eastl::move(Factory))
                 , mGraphicsQueue(eastl::move(GraphicsQueue))
                 , mDevice(eastl::move(Device))
+                , mArdaDevice(eastl::move(ArdaDevice))
                 , mWindow(Window)
                 , mWidth(Width)
                 , mHeight(Height)
@@ -93,7 +106,7 @@ namespace arda::backend
                 return CreateResources();
             }
 
-            bool AcquireFrame(nvrhi::FramebufferHandle& OutFramebuffer) override
+            bool AcquireFrame(rhi::FArdaRHIFramebufferRef& OutFramebuffer) override
             {
                 if (!mSwapChain)
                 {
@@ -102,8 +115,8 @@ namespace arda::backend
                     return false;
                 }
 
-                OutFramebuffer = mFramebuffers[mSwapChain->GetCurrentBackBufferIndex()];
-                return OutFramebuffer != nullptr;
+                OutFramebuffer = mArdaFramebuffers[mSwapChain->GetCurrentBackBufferIndex()];
+                return static_cast<bool>(OutFramebuffer);
             }
 
             void PrepareSubmit() override
@@ -134,9 +147,9 @@ namespace arda::backend
                 }
             }
 
-            nvrhi::Format GetFormat() const noexcept override
+            rhi::EArdaRHIFormat GetFormat() const noexcept override
             {
-                return nvrhi::Format::BGRA8_UNORM;
+                return rhi::EArdaRHIFormat::BGRA8UNorm;
             }
 
             uint32_t GetWidth() const noexcept override
@@ -169,34 +182,47 @@ namespace arda::backend
                         return false;
                     }
 
-                    const auto Description = nvrhi::TextureDesc()
-                        .setDimension(nvrhi::TextureDimension::Texture2D)
-                        .setWidth(mWidth)
-                        .setHeight(mHeight)
-                        .setFormat(nvrhi::Format::BGRA8_UNORM)
-                        .setIsRenderTarget(true)
-                        .setDebugName("D3D12 swap-chain image")
-                        .enableAutomaticStateTracking(nvrhi::ResourceStates::Present);
-
-                    mTextures[Index] = mDevice->createHandleForNativeTexture(
-                        nvrhi::ObjectTypes::D3D12_Resource,
-                        nvrhi::Object(Resource.Get()),
-                        Description);
-                    if (!mTextures[Index])
+                    rhi::FArdaRHINativeTextureImportDesc ImportDesc;
+                    ImportDesc.mNativeObject =
+                        reinterpret_cast<uintptr_t>(Resource.Get());
+                    ImportDesc.mNativeType =
+                        rhi::EArdaRHINativeResourceType::D3D12Resource;
+                    ImportDesc.mOwnership =
+                        rhi::EArdaRHINativeOwnership::Borrowed;
+                    ImportDesc.mInitialState =
+                        rhi::EArdaRHIResourceState::Present;
+                    ImportDesc.mTexture.mWidth = mWidth;
+                    ImportDesc.mTexture.mHeight = mHeight;
+                    ImportDesc.mTexture.mFormat =
+                        rhi::EArdaRHIFormat::BGRA8UNorm;
+                    ImportDesc.mTexture.mUsage =
+                        rhi::EArdaRHITextureUsage::RenderTarget;
+                    ImportDesc.mTexture.mInitialState =
+                        rhi::EArdaRHIResourceState::Present;
+                    ImportDesc.mTexture.mbKeepInitialState = true;
+                    ImportDesc.mTexture.mDebugName =
+                        "D3D12 swap-chain image";
+                    auto ArdaTexture =
+                        mArdaDevice->ImportNativeTexture(ImportDesc);
+                    if (!ArdaTexture)
                     {
-                        mError = "NVRHI failed to wrap a D3D12 swap-chain image.";
+                        mError = ArdaTexture.mStatus.mMessage;
                         ReleaseResources();
                         return false;
                     }
-
-                    mFramebuffers[Index] = mDevice->createFramebuffer(
-                        nvrhi::FramebufferDesc().addColorAttachment(mTextures[Index]));
-                    if (!mFramebuffers[Index])
+                    rhi::FArdaRHIFramebufferDesc ArdaFramebufferDesc;
+                    ArdaFramebufferDesc.mColorAttachments.push_back(
+                        { ArdaTexture.mValue, {} });
+                    auto ArdaFramebuffer =
+                        mArdaDevice->CreateFramebuffer(ArdaFramebufferDesc);
+                    if (!ArdaFramebuffer)
                     {
-                        mError = "NVRHI failed to create a D3D12 framebuffer.";
+                        mError = ArdaFramebuffer.mStatus.mMessage;
                         ReleaseResources();
                         return false;
                     }
+                    mArdaFramebuffers[Index] =
+                        eastl::move(ArdaFramebuffer.mValue);
                 }
 
                 mError.clear();
@@ -205,13 +231,11 @@ namespace arda::backend
 
             void ReleaseResources()
             {
-                for (auto& Framebuffer : mFramebuffers)
-                {
+                for (auto& Framebuffer : mArdaFramebuffers)
                     Framebuffer = nullptr;
-                }
-                for (auto& Texture : mTextures)
+                if (mArdaDevice)
                 {
-                    Texture = nullptr;
+                    mArdaDevice->TrimDescriptorCaches();
                 }
                 if (mDevice)
                 {
@@ -222,15 +246,13 @@ namespace arda::backend
             Microsoft::WRL::ComPtr<IDXGIFactory6> mFactory;
             Microsoft::WRL::ComPtr<ID3D12CommandQueue> mGraphicsQueue;
             nvrhi::DeviceHandle mDevice;
+            rhi::FArdaRHIDeviceRef mArdaDevice;
             HWND mWindow = nullptr;
             uint32_t mWidth = 0;
             uint32_t mHeight = 0;
             eastl::string mError;
             Microsoft::WRL::ComPtr<IDXGISwapChain3> mSwapChain;
-            // NVRHI RefCountPtr overloads operator&, which is incompatible with
-            // EASTL array's iterator implementation.
-            std::array<nvrhi::TextureHandle, mBufferCount> mTextures;
-            std::array<nvrhi::FramebufferHandle, mBufferCount> mFramebuffers;
+            std::array<rhi::FArdaRHIFramebufferRef, mBufferCount> mArdaFramebuffers;
         };
 
         class FArdaD3D12BackendDevice final : public IArdaBackendDevice
@@ -239,8 +261,10 @@ namespace arda::backend
             ~FArdaD3D12BackendDevice() override
             {
                 WaitForIdle();
+                mArdaDevice = nullptr;
                 mDevice = nullptr;
                 mNativeDevice = nullptr;
+                mLifetime.reset();
             }
 
             EArdaInitializeResult Initialize(
@@ -249,7 +273,7 @@ namespace arda::backend
             {
                 if (WindowSurface)
                 {
-                    mWindow = WindowSurface->GetD3D12WindowHandle();
+                    mWindow = WindowSurface->GetD3D12WindowHandle().As<HWND>();
                     if (!mWindow)
                     {
                         mError = "The window surface did not provide a Win32 window handle.";
@@ -328,12 +352,24 @@ namespace arda::backend
                     return EArdaInitializeResult::Failure;
                 }
 
+                mLifetime = eastl::make_shared<FArdaD3D12Lifetime>();
+                mLifetime->mFactory = mFactory;
+                mLifetime->mDevice = mD3DDevice;
+                mLifetime->mGraphicsQueue = mGraphicsQueue;
+                mLifetime->mComputeQueue = mComputeQueue;
+                mLifetime->mCopyQueue = mCopyQueue;
+                mLifetime->mMessageCallback.SetTarget(
+                    Configuration.mMessageCallback);
+
                 nvrhi::d3d12::DeviceDesc Description;
-                Description.errorCB = Configuration.mMessageCallback;
-                Description.pDevice = mD3DDevice.Get();
-                Description.pGraphicsCommandQueue = mGraphicsQueue.Get();
-                Description.pComputeCommandQueue = mComputeQueue.Get();
-                Description.pCopyCommandQueue = mCopyQueue.Get();
+                Description.errorCB = &mLifetime->mMessageCallback;
+                Description.pDevice = mLifetime->mDevice.Get();
+                Description.pGraphicsCommandQueue =
+                    mLifetime->mGraphicsQueue.Get();
+                Description.pComputeCommandQueue =
+                    mLifetime->mComputeQueue.Get();
+                Description.pCopyCommandQueue =
+                    mLifetime->mCopyQueue.Get();
                 mNativeDevice = nvrhi::d3d12::createDevice(Description);
                 if (!mNativeDevice)
                 {
@@ -347,6 +383,13 @@ namespace arda::backend
                 if (!mDevice)
                 {
                     mError = "Failed to create the NVRHI D3D12 device.";
+                    return EArdaInitializeResult::Failure;
+                }
+                mArdaDevice = rhi::private_impl::CreateArdaNvrhiDevice(
+                    mDevice, mLifetime);
+                if (!mArdaDevice)
+                {
+                    mError = "Failed to create the opaque Arda D3D12 device.";
                     return EArdaInitializeResult::Failure;
                 }
 
@@ -373,6 +416,7 @@ namespace arda::backend
                     mFactory,
                     mGraphicsQueue,
                     mDevice,
+                    mArdaDevice,
                     mWindow,
                     Width,
                     Height);
@@ -393,9 +437,9 @@ namespace arda::backend
                 }
             }
 
-            nvrhi::DeviceHandle GetDevice() const noexcept override
+            rhi::FArdaRHIDeviceRef GetDevice() const noexcept override
             {
-                return mDevice;
+                return mArdaDevice;
             }
 
             FArdaQueueCapabilities GetQueueCapabilities() const noexcept override
@@ -411,6 +455,7 @@ namespace arda::backend
         private:
             HWND mWindow = nullptr;
             eastl::string mError;
+            eastl::shared_ptr<FArdaD3D12Lifetime> mLifetime;
             Microsoft::WRL::ComPtr<IDXGIFactory6> mFactory;
             Microsoft::WRL::ComPtr<ID3D12Device> mD3DDevice;
             Microsoft::WRL::ComPtr<ID3D12CommandQueue> mGraphicsQueue;
@@ -418,6 +463,7 @@ namespace arda::backend
             Microsoft::WRL::ComPtr<ID3D12CommandQueue> mCopyQueue;
             nvrhi::d3d12::DeviceHandle mNativeDevice;
             nvrhi::DeviceHandle mDevice;
+            rhi::FArdaRHIDeviceRef mArdaDevice;
             FArdaQueueCapabilities mQueueCapabilities;
         };
     }

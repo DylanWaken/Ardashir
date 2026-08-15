@@ -61,7 +61,7 @@ namespace arda::render_graph
          * request's last use is strictly before the next request's first use.
          *
          * @todo Physical placed-resource aliasing is currently disabled. Wire
-         * this layout into execution only after NVRHI provides portable aliasing
+         * this layout into execution only after the RHI provides portable aliasing
          * barriers and heap-compatibility queries.
          *
          * @param Requests Resource sizes, alignments, and inclusive lifetimes.

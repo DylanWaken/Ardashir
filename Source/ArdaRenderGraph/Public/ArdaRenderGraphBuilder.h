@@ -81,7 +81,7 @@ namespace arda::render_graph
         /** Whether pass command lists were recorded concurrently. */
         bool mbUsedParallelRecording = false;
 
-        /** Whether NVRHI virtual-resource heaps were used. */
+        /** Whether RHI virtual-resource heaps were used. */
         bool mbUsedVirtualHeaps = false;
 
         /** Whether physical memory was safely aliased between resources. */
@@ -96,7 +96,7 @@ namespace arda::render_graph
         /** Number of resources clobbered before a safely supported first write. */
         uint32_t mClobberedResourceCount = 0;
 
-        /** Last submitted NVRHI instance for graphics, compute, and copy queues. */
+        /** Last submitted RHI instance for graphics, compute, and copy queues. */
         eastl::array<uint64_t, 3> mLastSubmittedInstances{};
     };
 
@@ -120,10 +120,10 @@ namespace arda::render_graph
         FARDGTextureRef mTexture = nullptr;
 
         /** Receives the physical handle after graph submission. */
-        nvrhi::TextureHandle* mOutput = nullptr;
+        rhi::FArdaRHITextureRef* mOutput = nullptr;
 
         /** The state required when graph execution completes. */
-        nvrhi::ResourceStates mFinalState = nvrhi::ResourceStates::Unknown;
+        rhi::EArdaRHIResourceState mFinalState = rhi::EArdaRHIResourceState::Unknown;
     };
 
     /** Describes a buffer handle requested from graph execution. */
@@ -133,10 +133,10 @@ namespace arda::render_graph
         FARDGBufferRef mBuffer = nullptr;
 
         /** Receives the physical handle after graph submission. */
-        nvrhi::BufferHandle* mOutput = nullptr;
+        rhi::FArdaRHIBufferRef* mOutput = nullptr;
 
         /** The state required when graph execution completes. */
-        nvrhi::ResourceStates mFinalState = nvrhi::ResourceStates::Unknown;
+        rhi::EArdaRHIResourceState mFinalState = rhi::EArdaRHIResourceState::Unknown;
     };
 
     /** Immutable products emitted by device-independent graph compilation. */
@@ -164,7 +164,7 @@ namespace arda::render_graph
     class FARDGCompiler;
     class FARDGExecutor;
 
-    /** Builds and compiles one deferred NVRHI render dependency graph. */
+    /** Builds and compiles one deferred RHI render dependency graph. */
     class FARDGBuilder final
     {
     public:
@@ -210,13 +210,18 @@ namespace arda::render_graph
 
         /** Creates a deferred logical texture. */
         [[nodiscard]] FARDGTextureRef CreateTexture(
-            nvrhi::TextureDesc Desc,
+            rhi::FArdaRHITextureDesc Desc,
             EARDGResourceFlags Flags = EARDGResourceFlags::Transient);
 
         /** Creates a deferred logical buffer. */
         [[nodiscard]] FARDGBufferRef CreateBuffer(
-            nvrhi::BufferDesc Desc,
+            rhi::FArdaRHIBufferDesc Desc,
             EARDGResourceFlags Flags = EARDGResourceFlags::Transient);
+
+        /** Creates a deferred logical acceleration structure. */
+        [[nodiscard]] FARDGAccelStructRef CreateAccelStruct(
+            rhi::FArdaRHIAccelStructDesc Desc,
+            EARDGResourceFlags Flags = EARDGResourceFlags::None);
 
         /** Creates a logical texture shader-resource view. */
         [[nodiscard]] FARDGTextureSRVRef CreateTextureSRV(
@@ -272,43 +277,49 @@ namespace arda::render_graph
 
         /** Imports an externally owned texture into the logical graph. */
         [[nodiscard]] FARDGTextureRef RegisterExternalTexture(
-            nvrhi::TextureHandle Texture,
-            nvrhi::ResourceStates InitialState,
+            rhi::FArdaRHITextureRef Texture,
+            rhi::EArdaRHIResourceState InitialState,
             eastl::string Name = {});
 
         /** Imports an externally owned buffer into the logical graph. */
         [[nodiscard]] FARDGBufferRef RegisterExternalBuffer(
-            nvrhi::BufferHandle Buffer,
-            nvrhi::ResourceStates InitialState,
+            rhi::FArdaRHIBufferRef Buffer,
+            rhi::EArdaRHIResourceState InitialState,
+            eastl::string Name = {});
+
+        /** Imports an externally owned acceleration structure. */
+        [[nodiscard]] FARDGAccelStructRef RegisterExternalAccelStruct(
+            rhi::FArdaRHIAccelStructRef AccelStruct,
+            rhi::EArdaRHIResourceState InitialState,
             eastl::string Name = {});
 
         /** Imports a texture using the initial state stored in its descriptor. */
         [[nodiscard]] FARDGTextureRef RegisterExternalTexture(
-            nvrhi::TextureHandle Texture,
+            rhi::FArdaRHITextureRef Texture,
             eastl::string Name = {})
         {
             if (!Texture)
             {
-                ARDA_CHECK_MSG("Cannot import a null NVRHI texture.");
+                ARDA_CHECK_MSG("Cannot import a null RHI texture.");
             }
             return RegisterExternalTexture(
                 Texture,
-                Texture->getDesc().initialState,
+                Texture->GetDesc().mInitialState,
                 eastl::move(Name));
         }
 
         /** Imports a buffer using the initial state stored in its descriptor. */
         [[nodiscard]] FARDGBufferRef RegisterExternalBuffer(
-            nvrhi::BufferHandle Buffer,
+            rhi::FArdaRHIBufferRef Buffer,
             eastl::string Name = {})
         {
             if (!Buffer)
             {
-                ARDA_CHECK_MSG("Cannot import a null NVRHI buffer.");
+                ARDA_CHECK_MSG("Cannot import a null RHI buffer.");
             }
             return RegisterExternalBuffer(
                 Buffer,
-                Buffer->getDesc().initialState,
+                Buffer->GetDesc().mInitialState,
                 eastl::move(Name));
         }
 
@@ -334,14 +345,14 @@ namespace arda::render_graph
         /** Declares that a logical texture must survive graph completion. */
         void QueueTextureExtraction(
             FARDGTextureRef Texture,
-            nvrhi::TextureHandle* Output,
-            nvrhi::ResourceStates FinalState);
+            rhi::FArdaRHITextureRef* Output,
+            rhi::EArdaRHIResourceState FinalState);
 
-        /** Declares texture extraction using an NVRHI handle reference. */
+        /** Declares texture extraction using an RHI reference. */
         void QueueTextureExtraction(
             FARDGTextureRef Texture,
-            nvrhi::TextureHandle& Output,
-            nvrhi::ResourceStates FinalState)
+            rhi::FArdaRHITextureRef& Output,
+            rhi::EArdaRHIResourceState FinalState)
         {
             QueueTextureExtraction(Texture, eastl::addressof(Output), FinalState);
         }
@@ -349,14 +360,14 @@ namespace arda::render_graph
         /** Declares that a logical buffer must survive graph completion. */
         void QueueBufferExtraction(
             FARDGBufferRef Buffer,
-            nvrhi::BufferHandle* Output,
-            nvrhi::ResourceStates FinalState);
+            rhi::FArdaRHIBufferRef* Output,
+            rhi::EArdaRHIResourceState FinalState);
 
-        /** Declares buffer extraction using an NVRHI handle reference. */
+        /** Declares buffer extraction using an RHI reference. */
         void QueueBufferExtraction(
             FARDGBufferRef Buffer,
-            nvrhi::BufferHandle& Output,
-            nvrhi::ResourceStates FinalState)
+            rhi::FArdaRHIBufferRef& Output,
+            rhi::EArdaRHIResourceState FinalState)
         {
             QueueBufferExtraction(Buffer, eastl::addressof(Output), FinalState);
         }
@@ -364,10 +375,10 @@ namespace arda::render_graph
         /**
          * Registers a typed lambda pass and freezes its parameter storage.
          *
-         * Supported lambda signatures accept a pass execution context or NVRHI
+         * Supported lambda signatures accept a pass execution context or RHI
          * command list, optionally followed by the immutable parameter object.
          * Context physical-resource getters validate declarations at pass time.
-         * A raw command-list callback can use independently retained NVRHI
+         * A raw command-list callback can use independently retained RHI
          * handles, so declaration completeness cannot be proven for that form.
          */
         template <typename ParameterType, typename ExecuteType>
@@ -425,7 +436,7 @@ namespace arda::render_graph
          * Registers a typed compute pass that dispatches after its setup lambda.
          *
          * The setup lambda uses the same supported signatures as AddPass. It
-         * should bind the NVRHI compute state required by the dispatch.
+         * should bind the RHI compute state required by the dispatch.
          */
         template <typename ParameterType, typename ExecuteType>
         [[nodiscard]] FARDGPassHandle AddDispatchPass(
@@ -450,7 +461,7 @@ namespace arda::render_graph
                         Function,
                         Context,
                         FrozenParameters);
-                    Context.mCommandList.dispatch(
+                    Context.mUnsafeRawCommandList.Dispatch(
                         Dispatch.mGroupCountX,
                         Dispatch.mGroupCountY,
                         Dispatch.mGroupCountZ);
@@ -466,7 +477,7 @@ namespace arda::render_graph
         /**
          * Compiles, records, and submits the graph once.
          *
-         * Submission is asynchronous with respect to GPU completion. NVRHI
+         * Submission is asynchronous with respect to GPU completion. RHI
          * retains command-list resources, and device garbage collection runs
          * once at this graph-submission boundary.
          */
@@ -514,6 +525,11 @@ namespace arda::render_graph
         /** Returns an immutable registered buffer, or null for an invalid handle. */
         [[nodiscard]] const FARDGBuffer* TryGetBuffer(
             FARDGBufferHandle Handle) const noexcept;
+
+        [[nodiscard]] FARDGAccelStruct* TryGetAccelStruct(
+            FARDGAccelStructHandle Handle) noexcept;
+        [[nodiscard]] const FARDGAccelStruct* TryGetAccelStruct(
+            FARDGAccelStructHandle Handle) const noexcept;
 
         /** Returns a registered logical view, or null for an invalid handle. */
         [[nodiscard]] FARDGView* TryGetView(FARDGViewHandle Handle) noexcept;
@@ -576,24 +592,35 @@ namespace arda::render_graph
 
         void BeginPassAccess(FARDGPassHandle Pass);
         void EndPassAccess(FARDGPassHandle Pass) noexcept;
-        [[nodiscard]] nvrhi::ITexture* ResolveTextureForPass(
+        [[nodiscard]] rhi::IArdaRHITexture* ResolveTextureForPass(
             FARDGPassHandle Pass,
             FARDGTexture* Texture) const;
-        [[nodiscard]] nvrhi::ITexture* ResolveTextureViewForPass(
+        [[nodiscard]] rhi::IArdaRHITexture* ResolveTextureViewForPass(
             FARDGPassHandle Pass,
             FARDGView* View) const;
-        [[nodiscard]] nvrhi::IBuffer* ResolveBufferForPass(
+        [[nodiscard]] rhi::IArdaRHIBuffer* ResolveBufferForPass(
             FARDGPassHandle Pass,
             FARDGBuffer* Buffer) const;
-        [[nodiscard]] nvrhi::IBuffer* ResolveBufferViewForPass(
+        [[nodiscard]] rhi::IArdaRHIBuffer* ResolveBufferViewForPass(
             FARDGPassHandle Pass,
             FARDGView* View) const;
-        [[nodiscard]] nvrhi::IBuffer* ResolveUniformBufferForPass(
+        [[nodiscard]] rhi::IArdaRHIAccelStruct* ResolveAccelStructForPass(
+            FARDGPassHandle Pass,
+            FARDGAccelStruct* AccelStruct) const;
+        [[nodiscard]] rhi::IArdaRHIBuffer* ResolveUniformBufferForPass(
             FARDGPassHandle Pass,
             FARDGUniformBuffer* UniformBuffer) const;
-        [[nodiscard]] nvrhi::BindingSetHandle CreateBindingSetForPass(
+        [[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSetForPass(
             FARDGPassHandle Pass,
-            nvrhi::IBindingLayout* BindingLayout) const;
+            rhi::IArdaRHIBindingLayout* BindingLayout) const;
+        [[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSetForPass(
+            FARDGPassHandle Pass,
+            const backend::FArdaShaderParameterMetadata& ShaderParameters,
+            rhi::IArdaRHIBindingLayout* BindingLayout) const;
+        [[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSetForPassInternal(
+            FARDGPassHandle Pass,
+            const backend::FArdaShaderParameterMetadata* ShaderParameters,
+            rhi::IArdaRHIBindingLayout* BindingLayout) const;
 
         template <typename ExecuteType, typename ParameterType>
         static void InvokePassLambda(
@@ -617,17 +644,17 @@ namespace arda::render_graph
             }
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
-                                   nvrhi::ICommandList&,
+                                   rhi::IArdaRHICommandList&,
                                    const ParameterType&>)
             {
-                Execute(Context.mCommandList, Parameters);
+                Execute(Context.mUnsafeRawCommandList, Parameters);
             }
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    const ParameterType&,
-                                   nvrhi::ICommandList&>)
+                                   rhi::IArdaRHICommandList&>)
             {
-                Execute(Parameters, Context.mCommandList);
+                Execute(Parameters, Context.mUnsafeRawCommandList);
             }
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
@@ -637,9 +664,9 @@ namespace arda::render_graph
             }
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
-                                   nvrhi::ICommandList&>)
+                                   rhi::IArdaRHICommandList&>)
             {
-                Execute(Context.mCommandList);
+                Execute(Context.mUnsafeRawCommandList);
             }
             else if constexpr (eastl::is_invocable_v<ExecuteType&, const ParameterType&>)
             {
@@ -666,9 +693,9 @@ namespace arda::render_graph
             {
                 Execute(Context);
             }
-            else if constexpr (eastl::is_invocable_v<ExecuteType&, nvrhi::ICommandList&>)
+            else if constexpr (eastl::is_invocable_v<ExecuteType&, rhi::IArdaRHICommandList&>)
             {
-                Execute(Context.mCommandList);
+                Execute(Context.mUnsafeRawCommandList);
             }
             else if constexpr (eastl::is_invocable_v<ExecuteType&>)
             {

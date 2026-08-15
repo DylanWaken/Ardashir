@@ -1,14 +1,14 @@
 #pragma once
 
-#include <nvrhi/nvrhi.h>
+#include "RHIWrappers/ArdaRHI.h"
 
 namespace arda::gi
 {
-    /** Provides the NVRHI device used by global-illumination workloads. */
+    /** Provides the opaque RHI device used by global-illumination workloads. */
     struct FArdaGIContext
     {
-        /** The NVRHI device used to execute global-illumination workloads. */
-        nvrhi::DeviceHandle mDevice;
+        /** The RHI device used to execute global-illumination workloads. */
+        rhi::FArdaRHIDeviceRef mDevice;
     };
 
     /** Returns the stable name of the global-illumination module. */

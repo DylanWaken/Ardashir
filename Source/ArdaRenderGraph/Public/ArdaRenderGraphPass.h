@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ShaderStructs/ArdaGlobalShaderMap.h"
 #include "ArdaRenderGraphDefinitions.h"
 
 #include <EASTL/algorithm.h>
@@ -9,8 +10,6 @@
 #include <EASTL/string.h>
 #include <EASTL/utility.h>
 #include <EASTL/vector.h>
-
-#include <nvrhi/nvrhi.h>
 
 namespace arda::render_graph
 {
@@ -32,10 +31,10 @@ namespace arda::render_graph
         FARDGTextureHandle mTexture;
 
         /** The affected texture subresources. */
-        nvrhi::TextureSubresourceSet mSubresources = nvrhi::AllSubresources;
+        rhi::FArdaRHITextureSubresourceRange mSubresources;
 
-        /** The NVRHI state required while the pass executes. */
-        nvrhi::ResourceStates mState = nvrhi::ResourceStates::Unknown;
+        /** The RHI state required while the pass executes. */
+        rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown;
 
         /** Whether the state permits the pass to modify the resource. */
         bool mbWrite = false;
@@ -48,25 +47,19 @@ namespace arda::render_graph
         FARDGBufferHandle mBuffer;
 
         /** The affected byte range. */
-        nvrhi::BufferRange mRange = nvrhi::EntireBuffer;
+        rhi::FArdaRHIBufferRange mRange;
 
-        /** The NVRHI state required while the pass executes. */
-        nvrhi::ResourceStates mState = nvrhi::ResourceStates::Unknown;
+        /** The RHI state required while the pass executes. */
+        rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown;
 
         /** Whether the state permits the pass to modify the resource. */
         bool mbWrite = false;
     };
 
-    /** Records one acceleration-structure state requirement contributed by a pass. */
     struct FARDGPassAccelStructState
     {
-        /** The logical acceleration structure whose state is required. */
         FARDGAccelStructHandle mAccelStruct;
-
-        /** The NVRHI state required while the pass executes. */
-        nvrhi::ResourceStates mState = nvrhi::ResourceStates::Unknown;
-
-        /** Whether the state permits the pass to modify the structure. */
+        rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown;
         bool mbWrite = false;
     };
 
@@ -77,13 +70,13 @@ namespace arda::render_graph
         FARDGTextureHandle mTexture;
 
         /** The texture subresources covered by the transition. */
-        nvrhi::TextureSubresourceSet mSubresources = nvrhi::AllSubresources;
+        rhi::FArdaRHITextureSubresourceRange mSubresources;
 
         /** The state known before the transition. */
-        nvrhi::ResourceStates mStateBefore = nvrhi::ResourceStates::Unknown;
+        rhi::EArdaRHIResourceState mStateBefore = rhi::EArdaRHIResourceState::Unknown;
 
         /** The state required after the transition. */
-        nvrhi::ResourceStates mStateAfter = nvrhi::ResourceStates::Unknown;
+        rhi::EArdaRHIResourceState mStateAfter = rhi::EArdaRHIResourceState::Unknown;
 
         /** Whether equal UAV states still require an ordering barrier. */
         bool mbUAVBarrier = false;
@@ -99,10 +92,10 @@ namespace arda::render_graph
         FARDGBufferHandle mBuffer;
 
         /** The state known before the transition. */
-        nvrhi::ResourceStates mStateBefore = nvrhi::ResourceStates::Unknown;
+        rhi::EArdaRHIResourceState mStateBefore = rhi::EArdaRHIResourceState::Unknown;
 
         /** The state required after the transition. */
-        nvrhi::ResourceStates mStateAfter = nvrhi::ResourceStates::Unknown;
+        rhi::EArdaRHIResourceState mStateAfter = rhi::EArdaRHIResourceState::Unknown;
 
         /** Whether equal UAV states still require an ordering barrier. */
         bool mbUAVBarrier = false;
@@ -111,19 +104,11 @@ namespace arda::render_graph
         bool mbForceBarrier = false;
     };
 
-    /** Describes one compiled acceleration-structure transition. */
     struct FARDGAccelStructTransition
     {
-        /** The logical acceleration structure being transitioned. */
         FARDGAccelStructHandle mAccelStruct;
-
-        /** The state known before the transition. */
-        nvrhi::ResourceStates mStateBefore = nvrhi::ResourceStates::Unknown;
-
-        /** The state required after the transition. */
-        nvrhi::ResourceStates mStateAfter = nvrhi::ResourceStates::Unknown;
-
-        /** Whether debug validation requests an ordering barrier for equal states. */
+        rhi::EArdaRHIResourceState mStateBefore = rhi::EArdaRHIResourceState::Unknown;
+        rhi::EArdaRHIResourceState mStateAfter = rhi::EArdaRHIResourceState::Unknown;
         bool mbForceBarrier = false;
     };
 
@@ -131,18 +116,17 @@ namespace arda::render_graph
     struct FARDGRasterBindingSignature
     {
         /** Color attachment handles indexed by render-target slot. */
-        eastl::array<FARDGTextureHandle, nvrhi::c_MaxRenderTargets> mColor;
+        eastl::array<FARDGTextureHandle, rhi::ArdaRHIMaxRenderTargets> mColor;
 
         /** Color attachment subresources indexed by render-target slot. */
-        eastl::array<nvrhi::TextureSubresourceSet, nvrhi::c_MaxRenderTargets>
+        eastl::array<rhi::FArdaRHITextureSubresourceRange, rhi::ArdaRHIMaxRenderTargets>
             mColorSubresources;
 
         /** The depth-stencil attachment handle. */
         FARDGTextureHandle mDepthStencil;
 
         /** Depth-stencil attachment subresources. */
-        nvrhi::TextureSubresourceSet mDepthStencilSubresources =
-            nvrhi::AllSubresources;
+        rhi::FArdaRHITextureSubresourceRange mDepthStencilSubresources;
 
         /** Returns whether both signatures bind the same logical attachments. */
         friend bool operator==(
@@ -184,8 +168,6 @@ namespace arda::render_graph
 
         /** Buffer-state requirements derived from parameter metadata. */
         eastl::vector<FARDGPassBufferState> mBufferStates;
-
-        /** Acceleration-structure requirements derived from parameter metadata. */
         eastl::vector<FARDGPassAccelStructState> mAccelStructStates;
 
         /** Uniform buffers declared through parameter metadata. */
@@ -199,8 +181,6 @@ namespace arda::render_graph
 
         /** Whole-buffer transitions lowered by graph compilation. */
         eastl::vector<FARDGBufferTransition> mBufferTransitions;
-
-        /** Acceleration-structure transitions lowered by graph compilation. */
         eastl::vector<FARDGAccelStructTransition> mAccelStructTransitions;
 
         /** The pipeline selected from the pass flags or by later compilation. */
@@ -225,7 +205,7 @@ namespace arda::render_graph
         bool mbSentinel = false;
     };
 
-    /** Supplies the active graph and NVRHI command list to a pass lambda. */
+    /** Supplies the active graph and opaque RHI command list to a pass lambda. */
     class FARDGPassExecutionContext final
     {
     public:
@@ -234,13 +214,13 @@ namespace arda::render_graph
          *
          * @param Graph The graph whose resources are materialized.
          * @param Pass The pass being recorded.
-         * @param CommandList The open NVRHI command list.
+         * @param CommandList The open RHI command list.
          * @param Pipeline The queue pipeline selected by compilation.
          */
         FARDGPassExecutionContext(
             FARDGBuilder& Graph,
             FARDGPassHandle Pass,
-            nvrhi::ICommandList& CommandList,
+            rhi::IArdaRHICommandList& CommandList,
             EARDGPipeline Pipeline);
 
         /** Closes the active physical-access gate for this pass. */
@@ -262,49 +242,70 @@ namespace arda::render_graph
         }
 
         /** Returns a declared texture's physical handle during this pass. */
-        [[nodiscard]] nvrhi::ITexture* GetTexture(FARDGTexture* Texture) const;
+        [[nodiscard]] rhi::IArdaRHITexture* GetTexture(FARDGTexture* Texture) const;
 
         /** Returns a declared texture SRV's parent physical texture. */
-        [[nodiscard]] nvrhi::ITexture* GetTexture(FARDGTextureSRV* View) const;
+        [[nodiscard]] rhi::IArdaRHITexture* GetTexture(FARDGTextureSRV* View) const;
 
         /** Returns a declared texture UAV's parent physical texture. */
-        [[nodiscard]] nvrhi::ITexture* GetTexture(FARDGTextureUAV* View) const;
+        [[nodiscard]] rhi::IArdaRHITexture* GetTexture(FARDGTextureUAV* View) const;
 
         /** Returns a declared buffer's physical handle during this pass. */
-        [[nodiscard]] nvrhi::IBuffer* GetBuffer(FARDGBuffer* Buffer) const;
+        [[nodiscard]] rhi::IArdaRHIBuffer* GetBuffer(FARDGBuffer* Buffer) const;
 
         /** Returns a declared buffer SRV's parent physical buffer. */
-        [[nodiscard]] nvrhi::IBuffer* GetBuffer(FARDGBufferSRV* View) const;
+        [[nodiscard]] rhi::IArdaRHIBuffer* GetBuffer(FARDGBufferSRV* View) const;
 
         /** Returns a declared buffer UAV's parent physical buffer. */
-        [[nodiscard]] nvrhi::IBuffer* GetBuffer(FARDGBufferUAV* View) const;
+        [[nodiscard]] rhi::IArdaRHIBuffer* GetBuffer(FARDGBufferUAV* View) const;
 
         /** Returns a declared uniform buffer's physical constant buffer. */
-        [[nodiscard]] nvrhi::IBuffer* GetUniformBuffer(
+        [[nodiscard]] rhi::IArdaRHIBuffer* GetUniformBuffer(
             FARDGUniformBuffer* UniformBuffer) const;
 
         /** Returns a declared acceleration structure's physical handle. */
-        [[nodiscard]] nvrhi::rt::IAccelStruct* GetAccelStruct(
+        [[nodiscard]] rhi::IArdaRHIAccelStruct* GetAccelStruct(
             FARDGAccelStruct* AccelStruct) const;
 
         /**
-         * Creates an NVRHI binding set from this pass's parameter descriptors.
+         * Creates an RHI binding set from this pass's parameter descriptors.
          *
          * Shader-resource, unordered-access, and uniform-buffer parameters are
          * matched to the supplied layout by register class and declaration order.
          * Direct access and render-target parameters are intentionally not bindings.
          */
-        [[nodiscard]] nvrhi::BindingSetHandle CreateBindingSet(
-            nvrhi::IBindingLayout* BindingLayout) const;
+        [[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSet(
+            rhi::IArdaRHIBindingLayout* BindingLayout) const;
+
+        /**
+         * Validates a generated shader layout, then resolves the active ARDG
+         * pass parameters through the existing graph reflection subsystem.
+         */
+        [[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSet(
+            const backend::FArdaShaderParameterMetadata& ShaderParameters,
+            rhi::IArdaRHIBindingLayout* BindingLayout) const;
+
+        /** Creates pass bindings for a registered shader's generated layout. */
+        [[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSet(
+            const backend::FArdaGlobalShaderInstance& Shader,
+            size_t LayoutIndex = 0) const;
+
+        /** Creates every generated binding set for a registered shader in layout order. */
+        [[nodiscard]] eastl::vector<rhi::FArdaRHIBindingSetRef> CreateBindingSets(
+            const backend::FArdaGlobalShaderInstance& Shader) const;
 
         /**
          * The command list currently recording the pass.
          *
          * Physical graph resources should be obtained through the validated
-         * getters above. Calls made with independently retained NVRHI handles
+         * getters above. Calls made with independently retained RHI references
          * cannot be proven against parameter declarations.
          */
-        nvrhi::ICommandList& mCommandList;
+        rhi::IArdaRHICommandList& mUnsafeRawCommandList;
+
+        /** Compatibility alias; raw command-list use bypasses declaration validation. */
+        [[deprecated("Use mUnsafeRawCommandList only for operations that cannot use validated context getters.")]]
+        rhi::IArdaRHICommandList& mCommandList;
 
         /** The command pipeline selected by graph compilation. */
         EARDGPipeline mPipeline = EARDGPipeline::Graphics;

@@ -6,14 +6,14 @@
 #include <filesystem>
 #include <EASTL/string.h>
 
-namespace arda::tests::nvrhi_test
+namespace arda::tests::rhi_test
 {
     class FArdaTriangleRenderer
     {
     public:
         bool Initialize(
             const backend::FArdaDeviceContext& deviceContext,
-            nvrhi::Format swapChainFormat,
+            rhi::EArdaRHIFormat swapChainFormat,
             const std::filesystem::path& shaderDirectory);
         bool RenderFrame(backend::IArdaSwapChain& swapChain);
 
@@ -26,14 +26,14 @@ namespace arda::tests::nvrhi_test
             eastl::string& error);
         [[nodiscard]] render_graph::FARDGRenderGraphContext CreateGraphContext() const;
 
-        nvrhi::DeviceHandle mDevice;
+        rhi::FArdaRHIDeviceRef mDevice;
         render_graph::FARDGQueueCapabilities mQueueCapabilities;
-        nvrhi::ShaderHandle mVertexShader;
-        nvrhi::ShaderHandle mPixelShader;
-        nvrhi::InputLayoutHandle mInputLayout;
-        nvrhi::GraphicsPipelineHandle mPipeline;
-        nvrhi::BufferHandle mVertexBuffer;
-        nvrhi::BufferHandle mIndexBuffer;
+        rhi::FArdaRHIShaderRef mVertexShader;
+        rhi::FArdaRHIShaderRef mPixelShader;
+        rhi::FArdaRHIInputLayoutRef mInputLayout;
+        rhi::FArdaRHIGraphicsPipelineRef mPipeline;
+        rhi::FArdaRHIBufferRef mVertexBuffer;
+        rhi::FArdaRHIBufferRef mIndexBuffer;
         eastl::string mError;
     };
 }

@@ -12,7 +12,7 @@ target_include_directories(ArdaPhys
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Public"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private"
 )
-target_link_libraries(ArdaPhys PUBLIC nvrhi Ardashir::EASTL)
+target_link_libraries(ArdaPhys PUBLIC Ardashir::ArdaBackend Ardashir::EASTL)
 target_precompile_headers(ArdaPhys PRIVATE Private/ArdaPhysPch.h)
 
 set_target_properties(ArdaPhys PROPERTIES FOLDER "Ardashir")

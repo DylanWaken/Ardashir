@@ -7,7 +7,7 @@
 
 struct GLFWwindow;
 
-namespace arda::tests::nvrhi_test
+namespace arda::tests::rhi_test
 {
     class FArdaGlfwWindow final : public backend::IArdaWindowSurface
     {
@@ -24,10 +24,10 @@ namespace arda::tests::nvrhi_test
         [[nodiscard]] uint32_t GetHeight() const { return mHeight; }
         [[nodiscard]] const eastl::string& GetError() const { return mError; }
 
-        [[nodiscard]] nvrhi::Object GetD3D12WindowHandle() const noexcept override;
+        [[nodiscard]] backend::FArdaNativeObject GetD3D12WindowHandle() const noexcept override;
         [[nodiscard]] eastl::vector<const char*> GetVulkanInstanceExtensions() const override;
-        [[nodiscard]] nvrhi::Object CreateVulkanSurface(
-            nvrhi::Object VulkanInstance,
+        [[nodiscard]] backend::FArdaNativeObject CreateVulkanSurface(
+            backend::FArdaNativeObject VulkanInstance,
             eastl::string& OutError) override;
 
     private:

@@ -22,21 +22,28 @@ target_include_directories(ArdaBackend
 )
 target_precompile_headers(ArdaBackend PRIVATE Private/ArdaBackendPch.h)
 
+string(CONCAT ARDA_RHI_COMMON_TARGET "nv" "rhi")
+string(CONCAT ARDA_RHI_VULKAN_TARGET "nv" "rhi_vk")
+string(CONCAT ARDA_RHI_D3D12_TARGET "nv" "rhi_d3d12")
+
 target_link_libraries(ArdaBackend PRIVATE
     ${CMAKE_DL_LIBS}
-    nvrhi_vk
+    ${ARDA_RHI_VULKAN_TARGET}
 )
 if(WIN32)
     target_link_libraries(ArdaBackend PRIVATE
-        nvrhi_d3d12
+        ${ARDA_RHI_D3D12_TARGET}
         d3d12
         dxgi
         dxguid
     )
 endif()
 
-# Keep the common NVRHI archive after its static backend archives for GNU ld.
-target_link_libraries(ArdaBackend PUBLIC nvrhi Ardashir::EASTL)
+# Keep the common RHI archive after its static backend archives for GNU ld.
+target_link_libraries(ArdaBackend
+    PUBLIC Ardashir::EASTL
+    PRIVATE ${ARDA_RHI_COMMON_TARGET}
+)
 
 if(TARGET Vulkan::Headers)
     target_link_libraries(ArdaBackend PRIVATE Vulkan::Headers)
@@ -46,14 +53,102 @@ endif()
 
 set_target_properties(ArdaBackend PROPERTIES FOLDER "Ardashir")
 
+# Compile every public header in isolation without the backend PCH or NVRHI
+# include paths. This guards the opaque public/private dependency boundary.
+file(GLOB_RECURSE ARDA_BACKEND_PUBLIC_HEADERS CONFIGURE_DEPENDS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/Public"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Public/*.h")
+set(ARDA_BACKEND_HEADER_TARGETS)
+foreach(ARDA_PUBLIC_HEADER IN LISTS ARDA_BACKEND_PUBLIC_HEADERS)
+    string(MAKE_C_IDENTIFIER "${ARDA_PUBLIC_HEADER}" ARDA_HEADER_ID)
+    set(ARDA_HEADER_SOURCE
+        "${CMAKE_CURRENT_BINARY_DIR}/PublicHeader_${ARDA_HEADER_ID}.cpp")
+    file(GENERATE OUTPUT "${ARDA_HEADER_SOURCE}"
+        CONTENT "#include \"${ARDA_PUBLIC_HEADER}\"\n")
+    set(ARDA_HEADER_TARGET "ArdaBackendHeader_${ARDA_HEADER_ID}")
+    add_library(${ARDA_HEADER_TARGET} OBJECT "${ARDA_HEADER_SOURCE}")
+    target_compile_features(${ARDA_HEADER_TARGET} PRIVATE cxx_std_17)
+    target_include_directories(${ARDA_HEADER_TARGET} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/Public")
+    target_link_libraries(${ARDA_HEADER_TARGET} PRIVATE Ardashir::EASTL)
+    set_target_properties(${ARDA_HEADER_TARGET} PROPERTIES
+        FOLDER "Ardashir/Tests/PublicHeaders")
+    list(APPEND ARDA_BACKEND_HEADER_TARGETS ${ARDA_HEADER_TARGET})
+endforeach()
+add_custom_target(ArdaBackendPublicHeaders ALL
+    DEPENDS ${ARDA_BACKEND_HEADER_TARGETS})
+set_target_properties(ArdaBackendPublicHeaders PROPERTIES
+    FOLDER "Ardashir/Tests")
+
 if(ARDASHIR_BUILD_TESTS)
+    set(ARDA_BACKEND_RT_SHADER_SOURCE
+        "${CMAKE_CURRENT_SOURCE_DIR}/Tests/ArdaRayTracingTest.hlsl")
+    set(ARDA_BACKEND_RT_SHADER_OUTPUTS
+        "${CMAKE_CURRENT_BINARY_DIR}/ArdaRayTracingTest.dxil"
+        "${CMAKE_CURRENT_BINARY_DIR}/ArdaRayTracingTest.spv")
+    set(ARDA_BACKEND_STRUCT_SHADER_SOURCE
+        "${CMAKE_CURRENT_SOURCE_DIR}/Tests/ArdaShaderStructTest.hlsl")
+    set(ARDA_BACKEND_STRUCT_SHADER_OUTPUTS
+        "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.dxil"
+        "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.spv")
+    add_custom_command(
+        OUTPUT ${ARDA_BACKEND_RT_SHADER_OUTPUTS}
+        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -T lib_6_3
+            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaRayTracingTest.dxil"
+            "${ARDA_BACKEND_RT_SHADER_SOURCE}"
+        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -spirv
+            -fspv-target-env=vulkan1.2
+            -fspv-extension=SPV_KHR_ray_tracing
+            -T lib_6_3
+            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaRayTracingTest.spv"
+            "${ARDA_BACKEND_RT_SHADER_SOURCE}"
+        DEPENDS "${ARDA_BACKEND_RT_SHADER_SOURCE}"
+        COMMENT "Compiling ArdaBackend ray-tracing test shaders"
+        VERBATIM)
+    add_custom_command(
+        OUTPUT ${ARDA_BACKEND_STRUCT_SHADER_OUTPUTS}
+        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -T cs_6_0
+            -E ShaderStructTestCS
+            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.dxil"
+            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
+        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -spirv
+            -fspv-target-env=vulkan1.2
+            -T cs_6_0
+            -E ShaderStructTestCS
+            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.spv"
+            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
+        DEPENDS "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
+        COMMENT "Compiling shader-struct test shaders"
+        VERBATIM)
+    add_custom_target(ArdaBackendTestShaders
+        DEPENDS ${ARDA_BACKEND_RT_SHADER_OUTPUTS}
+                ${ARDA_BACKEND_STRUCT_SHADER_OUTPUTS})
+    set_target_properties(ArdaBackendTestShaders PROPERTIES
+        FOLDER "Ardashir/Tests")
+
     file(GLOB_RECURSE ARDA_BACKEND_TEST_SOURCES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.cpp"
     )
+    list(FILTER ARDA_BACKEND_TEST_SOURCES EXCLUDE REGEX "ArdaRHITests\\.cpp$")
     add_executable(ArdaBackendTests ${ARDA_BACKEND_TEST_SOURCES})
-    target_compile_definitions(ArdaBackendTests PRIVATE ARDA_ENABLE_CHECKS)
+    add_dependencies(ArdaBackendTests ArdaBackendTestShaders)
+    target_compile_definitions(ArdaBackendTests PRIVATE
+        ARDA_ENABLE_CHECKS
+        ARDA_BACKEND_TEST_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}")
     target_link_libraries(ArdaBackendTests PRIVATE Ardashir::ArdaBackend GTest::gtest_main)
+    add_custom_command(TARGET ArdaBackendTests POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            ${ARDA_BACKEND_RT_SHADER_OUTPUTS}
+            ${ARDA_BACKEND_STRUCT_SHADER_OUTPUTS}
+            "$<TARGET_FILE_DIR:ArdaBackendTests>"
+        VERBATIM)
     set_target_properties(ArdaBackendTests PROPERTIES FOLDER "Ardashir/Tests")
     gtest_discover_tests(ArdaBackendTests)
+
+    add_executable(ArdaRHITests Tests/ArdaRHITests.cpp)
+    target_compile_definitions(ArdaRHITests PRIVATE ARDA_ENABLE_CHECKS)
+    target_link_libraries(ArdaRHITests PRIVATE Ardashir::ArdaBackend GTest::gtest_main)
+    set_target_properties(ArdaRHITests PROPERTIES FOLDER "Ardashir/Tests")
+    gtest_discover_tests(ArdaRHITests)
 endif()

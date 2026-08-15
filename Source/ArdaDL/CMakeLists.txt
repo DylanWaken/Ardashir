@@ -12,7 +12,7 @@ target_include_directories(ArdaDL
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Public"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private"
 )
-target_link_libraries(ArdaDL PUBLIC nvrhi Ardashir::EASTL)
+target_link_libraries(ArdaDL PUBLIC Ardashir::ArdaBackend Ardashir::EASTL)
 target_precompile_headers(ArdaDL PRIVATE Private/ArdaDLPch.h)
 
 set_target_properties(ArdaDL PROPERTIES FOLDER "Ardashir")

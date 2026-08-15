@@ -1,4 +1,4 @@
-#include "ArdaNVRHITestPch.h"
+#include "ArdaRHITestPch.h"
 
 #include "ArdaBackend.h"
 #include "ArdaGlfwWindow.h"
@@ -6,9 +6,9 @@
 
 #include <cstdlib>
 
-ARDA_DEFINE_LOG_CATEGORY_NAMED(LogNVRHITest, "NVRHITest", Log);
+ARDA_DEFINE_LOG_CATEGORY_NAMED(LogRHITest, "RHITest", Log);
 
-namespace arda::tests::nvrhi_test
+namespace arda::tests::rhi_test
 {
     namespace
     {
@@ -21,39 +21,39 @@ namespace arda::tests::nvrhi_test
             bool mbHidden = false;
         };
 
-        class FArdaMessageCallback final : public nvrhi::IMessageCallback
+        class FArdaMessageCallback final : public backend::IArdaDiagnosticCallback
         {
         public:
-            void message(nvrhi::MessageSeverity severity, const char* messageText) override
+            void Message(backend::EArdaDiagnosticSeverity severity, const char* messageText) override
             {
                 switch (severity)
                 {
-                case nvrhi::MessageSeverity::Warning:
+                case backend::EArdaDiagnosticSeverity::Warning:
                     ARDA_LOG(
-                        LogNVRHITest,
+                        LogRHITest,
                         Warning,
                         "%s",
                         messageText ? messageText : "");
                     break;
-                case nvrhi::MessageSeverity::Error:
+                case backend::EArdaDiagnosticSeverity::Error:
                     ++mErrorCount;
                     ARDA_LOG(
-                        LogNVRHITest,
+                        LogRHITest,
                         Error,
                         "%s",
                         messageText ? messageText : "");
                     break;
-                case nvrhi::MessageSeverity::Fatal:
+                case backend::EArdaDiagnosticSeverity::Fatal:
                     ++mErrorCount;
                     ARDA_LOG(
-                        LogNVRHITest,
+                        LogRHITest,
                         Fatal,
                         "%s",
                         messageText ? messageText : "");
                     break;
                 default:
                     ARDA_LOG(
-                        LogNVRHITest,
+                        LogRHITest,
                         Log,
                         "%s",
                         messageText ? messageText : "");
@@ -153,14 +153,14 @@ namespace arda::tests::nvrhi_test
             eastl::string error;
             if (!ParseOptions(argumentCount, arguments, options, error))
             {
-                ARDA_LOG(LogNVRHITest, Error, "%s", error.c_str());
+                ARDA_LOG(LogRHITest, Error, "%s", error.c_str());
                 return EXIT_FAILURE;
             }
 
             FArdaGlfwWindow window;
-            if (!window.Create("Ardashir - NVRHI Triangle", 1280, 720, !options.mbHidden))
+            if (!window.Create("Ardashir - RHI Triangle", 1280, 720, !options.mbHidden))
             {
-                ARDA_LOG(LogNVRHITest, Error, "%s", window.GetError().c_str());
+                ARDA_LOG(LogRHITest, Error, "%s", window.GetError().c_str());
                 return options.mbHidden ? SkippedExitCode : EXIT_FAILURE;
             }
 
@@ -172,7 +172,7 @@ namespace arda::tests::nvrhi_test
             if (!backend::ConfigureBackend(configuration))
             {
                 const eastl::string backendError = backend::GetBackendError();
-                ARDA_LOG(LogNVRHITest, Error, "%s", backendError.c_str());
+                ARDA_LOG(LogRHITest, Error, "%s", backendError.c_str());
                 return options.mBackend == backend::EArdaBackendType::D3D12
                     ? SkippedExitCode
                     : EXIT_FAILURE;
@@ -189,7 +189,7 @@ namespace arda::tests::nvrhi_test
             if (result != backend::EArdaInitializeResult::Success)
             {
                 const eastl::string backendError = backend::GetBackendError();
-                ARDA_LOG(LogNVRHITest, Error, "%s", backendError.c_str());
+                ARDA_LOG(LogRHITest, Error, "%s", backendError.c_str());
                 return result == backend::EArdaInitializeResult::Unavailable
                     ? SkippedExitCode
                     : EXIT_FAILURE;
@@ -201,7 +201,7 @@ namespace arda::tests::nvrhi_test
                 swapChain->GetFormat(),
                 GetExecutableDirectory(arguments[0])))
             {
-                ARDA_LOG(LogNVRHITest, Error, "%s", renderer.GetError().c_str());
+                ARDA_LOG(LogRHITest, Error, "%s", renderer.GetError().c_str());
                 return EXIT_FAILURE;
             }
 
@@ -212,13 +212,13 @@ namespace arda::tests::nvrhi_test
                 uint32_t height = 0;
                 if (window.ConsumeResize(width, height) && !swapChain->Resize(width, height))
                 {
-                    ARDA_LOG(LogNVRHITest, Error, "%s", swapChain->GetError().c_str());
+                    ARDA_LOG(LogRHITest, Error, "%s", swapChain->GetError().c_str());
                     return EXIT_FAILURE;
                 }
 
                 if (!renderer.RenderFrame(*swapChain))
                 {
-                    ARDA_LOG(LogNVRHITest, Error, "%s", renderer.GetError().c_str());
+                    ARDA_LOG(LogRHITest, Error, "%s", renderer.GetError().c_str());
                     return EXIT_FAILURE;
                 }
 
@@ -236,5 +236,5 @@ namespace arda::tests::nvrhi_test
 
 int main(int argumentCount, char** arguments)
 {
-    return arda::tests::nvrhi_test::Run(argumentCount, arguments);
+    return arda::tests::rhi_test::Run(argumentCount, arguments);
 }

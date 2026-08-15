@@ -10,8 +10,7 @@ namespace arda::tests::ardg_example
     {
         constexpr uint32_t HeightmapWidth = 128 * 5;
         constexpr uint32_t HeightmapHeight = 128 * 5;
-        constexpr uint32_t CellCount =
-            (HeightmapWidth - 1) * (HeightmapHeight - 1);
+        constexpr uint32_t CellCount = (HeightmapWidth - 1) * (HeightmapHeight - 1);
         constexpr uint32_t TerrainVertexCount = CellCount * 4;
         constexpr uint32_t TerrainIndexCount = CellCount * 6;
 
@@ -37,6 +36,66 @@ namespace arda::tests::ardg_example
             float mProjection[16];
         };
 
+        class FGenerateTerrainShader final : public backend::FArdaGlobalShader
+        {
+        public:
+            ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
+                ARDA_SHADER_BUFFER_SRV(mSettings, 0, 0, rhi::EArdaRHIShaderStage::Compute)
+                ARDA_SHADER_TEXTURE_UAV(mHeightmap, 0, 0, rhi::EArdaRHIShaderStage::Compute)
+            ARDA_END_SHADER_PARAMETER_STRUCT()
+            ARDA_DECLARE_GLOBAL_SHADER(FGenerateTerrainShader);
+        };
+
+        class FErodeTerrainShader final : public backend::FArdaGlobalShader
+        {
+        public:
+            ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
+                ARDA_SHADER_TEXTURE_UAV(mHeightmap, 0, 0, rhi::EArdaRHIShaderStage::Compute)
+            ARDA_END_SHADER_PARAMETER_STRUCT()
+            ARDA_DECLARE_GLOBAL_SHADER(FErodeTerrainShader);
+        };
+
+        class FTriangulateTerrainShader final : public backend::FArdaGlobalShader
+        {
+        public:
+            ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
+                ARDA_SHADER_TEXTURE_SRV(mHeightmap, 0, 0, rhi::EArdaRHIShaderStage::Compute)
+                ARDA_SHADER_BUFFER_UAV(mTerrainVertices, 0, 0, rhi::EArdaRHIShaderStage::Compute)
+                ARDA_SHADER_BUFFER_UAV(mTerrainIndices, 1, 0, rhi::EArdaRHIShaderStage::Compute)
+            ARDA_END_SHADER_PARAMETER_STRUCT()
+            ARDA_DECLARE_GLOBAL_SHADER(FTriangulateTerrainShader);
+        };
+
+        class FTerrainVertexShader final : public backend::FArdaGlobalShader
+        {
+        public:
+            ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
+                ARDA_SHADER_CONSTANT_BUFFER(mCamera, 0, 0, rhi::EArdaRHIShaderStage::Vertex)
+            ARDA_END_SHADER_PARAMETER_STRUCT()
+            ARDA_DECLARE_GLOBAL_SHADER(FTerrainVertexShader);
+        };
+
+        class FTerrainPixelShader final : public backend::FArdaGlobalShader
+        {
+        public:
+            ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
+                ARDA_SHADER_TEXTURE_SRV(mHeightmap, 0, 0, rhi::EArdaRHIShaderStage::Pixel)
+            ARDA_END_SHADER_PARAMETER_STRUCT()
+            ARDA_DECLARE_GLOBAL_SHADER(FTerrainPixelShader);
+        };
+
+        class FTerrainOverlayVertexShader final : public backend::FArdaGlobalShader
+        {
+        public:
+            ARDA_DECLARE_GLOBAL_SHADER(FTerrainOverlayVertexShader);
+        };
+
+        class FTerrainOverlayPixelShader final : public backend::FArdaGlobalShader
+        {
+        public:
+            ARDA_DECLARE_GLOBAL_SHADER(FTerrainOverlayPixelShader);
+        };
+
         constexpr uint32_t DivideRoundUp(uint32_t value, uint32_t divisor)
         {
             return (value + divisor - 1) / divisor;
@@ -45,31 +104,25 @@ namespace arda::tests::ardg_example
         ARDG_BEGIN_PARAMETER_STRUCT(FInitializeTerrainSettingsParameters)
             ARDG_BUFFER_ACCESS(mDestination)
         ARDG_END_PARAMETER_STRUCT()
-
         ARDG_BEGIN_PARAMETER_STRUCT(FUploadTerrainSettingsParameters)
             ARDG_BUFFER_ACCESS(mSource)
             ARDG_BUFFER_ACCESS(mDestination)
         ARDG_END_PARAMETER_STRUCT()
-
         ARDG_BEGIN_PARAMETER_STRUCT(FGenerateNoiseHeightmapParameters)
             ARDG_BUFFER_SRV(mSettings)
             ARDG_TEXTURE_UAV(mHeightmap)
         ARDG_END_PARAMETER_STRUCT()
-
         ARDG_BEGIN_PARAMETER_STRUCT(FDebugHeightmapParameters)
             ARDG_TEXTURE_SRV(mHeightmap)
         ARDG_END_PARAMETER_STRUCT()
-
         ARDG_BEGIN_PARAMETER_STRUCT(FErodeHeightmapParameters)
             ARDG_TEXTURE_UAV(mHeightmap)
         ARDG_END_PARAMETER_STRUCT()
-
         ARDG_BEGIN_PARAMETER_STRUCT(FTriangulateTerrainParameters)
             ARDG_TEXTURE_SRV(mHeightmap)
             ARDG_BUFFER_UAV(mTerrainVertices)
             ARDG_BUFFER_UAV(mTerrainIndices)
         ARDG_END_PARAMETER_STRUCT()
-
         ARDG_BEGIN_PARAMETER_STRUCT(FRenderTerrainParameters)
             ARDG_BUFFER_ACCESS(mTerrainVertices)
             ARDG_BUFFER_ACCESS(mTerrainIndices)
@@ -77,300 +130,236 @@ namespace arda::tests::ardg_example
             ARDG_TEXTURE_SRV(mHeightmap)
             ARDG_RENDER_TARGET_BINDING_SLOTS(mTargets)
         ARDG_END_PARAMETER_STRUCT()
-
         ARDG_BEGIN_PARAMETER_STRUCT(FTerrainOverlayParameters)
             ARDG_RENDER_TARGET_BINDING_SLOTS(mTargets)
         ARDG_END_PARAMETER_STRUCT()
+
+        template <typename T>
+        bool TakeResult(rhi::TArdaRHIResult<T>& Result, T& Output, eastl::string& Error)
+        {
+            if (!Result)
+            {
+                Error = Result.mStatus.mMessage;
+                return false;
+            }
+            Output = eastl::move(Result.mValue);
+            return true;
+        }
     }
+
+    ARDA_IMPLEMENT_GLOBAL_SHADER(
+        FGenerateTerrainShader, "ArdaTerrain", "TerrainGenerateCS",
+        "GenerateNoiseHeightmapCS", rhi::EArdaRHIShaderStage::Compute)
+    ARDA_IMPLEMENT_GLOBAL_SHADER(
+        FErodeTerrainShader, "ArdaTerrain", "TerrainErodeCS",
+        "ErodeHeightmapCS", rhi::EArdaRHIShaderStage::Compute)
+    ARDA_IMPLEMENT_GLOBAL_SHADER(
+        FTriangulateTerrainShader, "ArdaTerrain", "TerrainTriangulateCS",
+        "TriangulateTerrainCS", rhi::EArdaRHIShaderStage::Compute)
+    ARDA_IMPLEMENT_GLOBAL_SHADER(
+        FTerrainVertexShader, "ArdaTerrain", "TerrainVS",
+        "TerrainVS", rhi::EArdaRHIShaderStage::Vertex)
+    ARDA_IMPLEMENT_GLOBAL_SHADER(
+        FTerrainPixelShader, "ArdaTerrain", "TerrainPS",
+        "TerrainPS", rhi::EArdaRHIShaderStage::Pixel)
+    ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(
+        FTerrainOverlayVertexShader, "ArdaTerrain", "TerrainOverlayVS",
+        "TerrainOverlayVS", rhi::EArdaRHIShaderStage::Vertex)
+    ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(
+        FTerrainOverlayPixelShader, "ArdaTerrain", "TerrainOverlayPS",
+        "TerrainOverlayPS", rhi::EArdaRHIShaderStage::Pixel)
 
     bool FArdaTerrainRenderer::Initialize(
         const backend::FArdaDeviceContext& deviceContext,
-        nvrhi::Format swapChainFormat,
+        rhi::EArdaRHIFormat swapChainFormat,
         const std::filesystem::path& shaderDirectory)
     {
         mDevice = deviceContext.mDevice;
-        mQueueCapabilities.mbGraphics =
-            deviceContext.mQueueCapabilities.mbGraphics;
-        mQueueCapabilities.mbCompute =
-            deviceContext.mQueueCapabilities.mbCompute;
-        mQueueCapabilities.mbCopy =
-            deviceContext.mQueueCapabilities.mbCopy;
+        mQueueCapabilities = {
+            deviceContext.mQueueCapabilities.mbGraphics,
+            deviceContext.mQueueCapabilities.mbCompute,
+            deviceContext.mQueueCapabilities.mbCopy};
         if (!mDevice || !mQueueCapabilities.mbGraphics)
         {
             mError = "The initialized backend does not expose a graphics device.";
             return false;
         }
-
         if (!CreateShadersAndPipelines(
-                swapChainFormat,
-                shaderDirectory,
-                deviceContext.mBackend == backend::EArdaBackendType::Vulkan) ||
+                deviceContext, swapChainFormat, shaderDirectory) ||
             !CreateSettingsUploadBuffer() ||
             !CreateCameraResources())
         {
             return false;
         }
-
         mError.clear();
         return true;
     }
 
     bool FArdaTerrainRenderer::CreateShadersAndPipelines(
-        nvrhi::Format swapChainFormat,
-        const std::filesystem::path& shaderDirectory,
-        bool vulkan)
+        const backend::FArdaDeviceContext& deviceContext,
+        rhi::EArdaRHIFormat swapChainFormat,
+        const std::filesystem::path& shaderDirectory)
     {
-        const char* extension = vulkan ? ".spv" : ".dxil";
-        eastl::vector<uint8_t> binary;
-
-        auto createShader =
-            [this, &binary, &shaderDirectory, extension](
-                const char* fileStem,
-                const char* entry,
-                nvrhi::ShaderType type,
-                const char* debugName,
-                nvrhi::ShaderHandle& output) -> bool
+        if (!mShaderMap.Initialize(deviceContext, shaderDirectory))
         {
-            std::filesystem::path path =
-                shaderDirectory / (std::string(fileStem) + extension);
-            if (!LoadBinary(path, binary, mError))
-            {
-                return false;
-            }
+            const auto& Diagnostics = mShaderMap.GetDiagnostics();
+            mError = Diagnostics.empty()
+                ? "Global shader map initialization failed."
+                : Diagnostics.back().mMessage;
+            return false;
+        }
+        mGenerateShader = mShaderMap.Find(FGenerateTerrainShader::GetStaticType());
+        mErodeShader = mShaderMap.Find(FErodeTerrainShader::GetStaticType());
+        mTriangulateShader = mShaderMap.Find(FTriangulateTerrainShader::GetStaticType());
+        mTerrainVertexShader = mShaderMap.Find(FTerrainVertexShader::GetStaticType());
+        mTerrainPixelShader = mShaderMap.Find(FTerrainPixelShader::GetStaticType());
+        mOverlayVertexShader = mShaderMap.Find(FTerrainOverlayVertexShader::GetStaticType());
+        mOverlayPixelShader = mShaderMap.Find(FTerrainOverlayPixelShader::GetStaticType());
+        if (mGenerateShader == nullptr || mErodeShader == nullptr ||
+            mTriangulateShader == nullptr || mTerrainVertexShader == nullptr ||
+            mTerrainPixelShader == nullptr || mOverlayVertexShader == nullptr ||
+            mOverlayPixelShader == nullptr)
+        {
+            mError = "A registered terrain shader is absent from the global shader map.";
+            return false;
+        }
 
-            output = mDevice->createShader(
-                nvrhi::ShaderDesc()
-                    .setShaderType(type)
-                    .setEntryName(entry)
-                    .setDebugName(debugName),
-                binary.data(),
-                binary.size());
-            if (!output)
-            {
-                mError = "NVRHI failed to create shader: ";
-                mError += debugName;
-                return false;
-            }
-            return true;
+        auto createCompute = [this](
+            const backend::FArdaGlobalShaderInstance& shader,
+            const char* name,
+            rhi::FArdaRHIComputePipelineRef& output)
+        {
+            rhi::FArdaRHIComputePipelineDesc desc;
+            desc.mComputeShader = shader.GetShader();
+            desc.mBindingLayouts = shader.GetBindingLayouts();
+            desc.mDebugName = name;
+            auto result = mDevice->CreateComputePipeline(desc);
+            return TakeResult(result, output, mError);
         };
-
-        if (!createShader(
-                "TerrainGenerateCS",
-                "GenerateNoiseHeightmapCS",
-                nvrhi::ShaderType::Compute,
-                "Generate noise heightmap",
-                mGenerateShader) ||
-            !createShader(
-                "TerrainErodeCS",
-                "ErodeHeightmapCS",
-                nvrhi::ShaderType::Compute,
-                "Erode heightmap",
-                mErodeShader) ||
-            !createShader(
-                "TerrainTriangulateCS",
-                "TriangulateTerrainCS",
-                nvrhi::ShaderType::Compute,
-                "Triangulate terrain",
-                mTriangulateShader) ||
-            !createShader(
-                "TerrainVS",
-                "TerrainVS",
-                nvrhi::ShaderType::Vertex,
-                "Terrain vertex",
-                mTerrainVertexShader) ||
-            !createShader(
-                "TerrainPS",
-                "TerrainPS",
-                nvrhi::ShaderType::Pixel,
-                "Terrain pixel",
-                mTerrainPixelShader) ||
-            !createShader(
-                "TerrainOverlayVS",
-                "TerrainOverlayVS",
-                nvrhi::ShaderType::Vertex,
-                "Terrain overlay vertex",
-                mOverlayVertexShader) ||
-            !createShader(
-                "TerrainOverlayPS",
-                "TerrainOverlayPS",
-                nvrhi::ShaderType::Pixel,
-                "Terrain overlay pixel",
-                mOverlayPixelShader))
+        if (!createCompute(*mGenerateShader, "Generate pipeline", mGeneratePipeline) ||
+            !createCompute(*mErodeShader, "Erode pipeline", mErodePipeline) ||
+            !createCompute(*mTriangulateShader, "Triangulate pipeline", mTriangulatePipeline))
         {
             return false;
         }
 
-        mGenerateBindingLayout = mDevice->createBindingLayout(
-            nvrhi::BindingLayoutDesc()
-                .setVisibility(nvrhi::ShaderType::Compute)
-                .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(0))
-                .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0)));
-        mErodeBindingLayout = mDevice->createBindingLayout(
-            nvrhi::BindingLayoutDesc()
-                .setVisibility(nvrhi::ShaderType::Compute)
-                .addItem(nvrhi::BindingLayoutItem::Texture_UAV(0)));
-        mTriangulateBindingLayout = mDevice->createBindingLayout(
-            nvrhi::BindingLayoutDesc()
-                .setVisibility(nvrhi::ShaderType::Compute)
-                .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0))
-                .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_UAV(0))
-                .addItem(nvrhi::BindingLayoutItem::StructuredBuffer_UAV(1)));
-        mCameraBindingLayout = mDevice->createBindingLayout(
-            nvrhi::BindingLayoutDesc()
-                .setVisibility(nvrhi::ShaderType::Vertex)
-                .addItem(nvrhi::BindingLayoutItem::ConstantBuffer(0)));
-        mTerrainPixelBindingLayout = mDevice->createBindingLayout(
-            nvrhi::BindingLayoutDesc()
-                .setVisibility(nvrhi::ShaderType::Pixel)
-                .addItem(nvrhi::BindingLayoutItem::Texture_SRV(0)));
-        if (!mGenerateBindingLayout ||
-            !mErodeBindingLayout ||
-            !mTriangulateBindingLayout ||
-            !mCameraBindingLayout ||
-            !mTerrainPixelBindingLayout)
+        eastl::vector<rhi::FArdaRHIVertexAttributeDesc> attributes(2);
+        attributes[0].mSemanticName = "POSITION";
+        attributes[0].mFormat = rhi::EArdaRHIFormat::RGB32Float;
+        attributes[0].mOffset = offsetof(FTerrainVertex, mPosition);
+        attributes[0].mElementStride = sizeof(FTerrainVertex);
+        attributes[1].mSemanticName = "HEIGHT";
+        attributes[1].mFormat = rhi::EArdaRHIFormat::R32Float;
+        attributes[1].mOffset = offsetof(FTerrainVertex, mHeight);
+        attributes[1].mElementStride = sizeof(FTerrainVertex);
+        auto inputLayout = mDevice->CreateInputLayout(
+            attributes, mTerrainVertexShader->GetShader());
+        if (!TakeResult(inputLayout, mTerrainInputLayout, mError))
         {
-            mError = "NVRHI failed to create terrain binding layouts.";
             return false;
         }
 
-        mGeneratePipeline = mDevice->createComputePipeline(
-            nvrhi::ComputePipelineDesc()
-                .setComputeShader(mGenerateShader)
-                .addBindingLayout(mGenerateBindingLayout));
-        mErodePipeline = mDevice->createComputePipeline(
-            nvrhi::ComputePipelineDesc()
-                .setComputeShader(mErodeShader)
-                .addBindingLayout(mErodeBindingLayout));
-        mTriangulatePipeline = mDevice->createComputePipeline(
-            nvrhi::ComputePipelineDesc()
-                .setComputeShader(mTriangulateShader)
-                .addBindingLayout(mTriangulateBindingLayout));
-        if (!mGeneratePipeline || !mErodePipeline || !mTriangulatePipeline)
+        rhi::FArdaRHIGraphicsPipelineDesc terrainDesc;
+        terrainDesc.mInputLayout = mTerrainInputLayout;
+        terrainDesc.mVertexShader = mTerrainVertexShader->GetShader();
+        terrainDesc.mPixelShader = mTerrainPixelShader->GetShader();
+        terrainDesc.mBindingLayouts = mTerrainVertexShader->GetBindingLayouts();
+        terrainDesc.mBindingLayouts.insert(
+            terrainDesc.mBindingLayouts.end(),
+            mTerrainPixelShader->GetBindingLayouts().begin(),
+            mTerrainPixelShader->GetBindingLayouts().end());
+        terrainDesc.mRasterState.mCullMode = rhi::EArdaRHICullMode::None;
+        terrainDesc.mDepthStencilState.mDepthFunc = rhi::EArdaRHIComparisonFunc::GreaterOrEqual;
+        terrainDesc.mColorFormats.push_back(swapChainFormat);
+        terrainDesc.mDepthFormat = rhi::EArdaRHIFormat::D32;
+        terrainDesc.mDebugName = "Terrain pipeline";
+        auto terrainPipeline = mDevice->CreateGraphicsPipeline(terrainDesc);
+        if (!TakeResult(terrainPipeline, mTerrainPipeline, mError))
         {
-            mError = "NVRHI failed to create terrain compute pipelines.";
             return false;
         }
 
-        const nvrhi::VertexAttributeDesc attributes[] = {
-            nvrhi::VertexAttributeDesc()
-                .setName("POSITION")
-                .setFormat(nvrhi::Format::RGB32_FLOAT)
-                .setBufferIndex(0)
-                .setOffset(offsetof(FTerrainVertex, mPosition))
-                .setElementStride(sizeof(FTerrainVertex)),
-            nvrhi::VertexAttributeDesc()
-                .setName("HEIGHT")
-                .setFormat(nvrhi::Format::R32_FLOAT)
-                .setBufferIndex(0)
-                .setOffset(offsetof(FTerrainVertex, mHeight))
-                .setElementStride(sizeof(FTerrainVertex))
-        };
-        mTerrainInputLayout = mDevice->createInputLayout(
-            attributes,
-            static_cast<uint32_t>(eastl::size(attributes)),
-            mTerrainVertexShader);
-        if (!mTerrainInputLayout)
-        {
-            mError = "NVRHI failed to create the terrain input layout.";
-            return false;
-        }
-
-        nvrhi::RenderState terrainRenderState;
-        terrainRenderState.depthStencilState
-            .enableDepthTest()
-            .enableDepthWrite()
-            .setDepthFunc(nvrhi::ComparisonFunc::GreaterOrEqual);
-        terrainRenderState.rasterState.setCullNone();
-        mTerrainPipeline = mDevice->createGraphicsPipeline(
-            nvrhi::GraphicsPipelineDesc()
-                .setInputLayout(mTerrainInputLayout)
-                .setVertexShader(mTerrainVertexShader)
-                .setPixelShader(mTerrainPixelShader)
-                .addBindingLayout(mCameraBindingLayout)
-                .addBindingLayout(mTerrainPixelBindingLayout)
-                .setRenderState(terrainRenderState),
-            nvrhi::FramebufferInfo()
-                .addColorFormat(swapChainFormat)
-                .setDepthFormat(nvrhi::Format::D32));
-
-        nvrhi::RenderState overlayRenderState;
-        overlayRenderState.depthStencilState
-            .disableDepthTest()
-            .disableDepthWrite();
-        overlayRenderState.rasterState.setCullNone();
-        overlayRenderState.blendState.targets[0]
-            .enableBlend()
-            .setSrcBlend(nvrhi::BlendFactor::SrcAlpha)
-            .setDestBlend(nvrhi::BlendFactor::InvSrcAlpha);
-        mOverlayPipeline = mDevice->createGraphicsPipeline(
-            nvrhi::GraphicsPipelineDesc()
-                .setVertexShader(mOverlayVertexShader)
-                .setPixelShader(mOverlayPixelShader)
-                .setRenderState(overlayRenderState),
-            nvrhi::FramebufferInfo().addColorFormat(swapChainFormat));
-
-        if (!mTerrainPipeline || !mOverlayPipeline)
-        {
-            mError = "NVRHI failed to create terrain graphics pipelines.";
-            return false;
-        }
-        return true;
+        rhi::FArdaRHIGraphicsPipelineDesc overlayDesc;
+        overlayDesc.mVertexShader = mOverlayVertexShader->GetShader();
+        overlayDesc.mPixelShader = mOverlayPixelShader->GetShader();
+        overlayDesc.mRasterState.mCullMode = rhi::EArdaRHICullMode::None;
+        overlayDesc.mDepthStencilState.mbDepthTest = false;
+        overlayDesc.mDepthStencilState.mbDepthWrite = false;
+        overlayDesc.mBlendState.mTargets[0].mbEnable = true;
+        overlayDesc.mBlendState.mTargets[0].mSourceColor =
+            rhi::EArdaRHIBlendFactor::SourceAlpha;
+        overlayDesc.mBlendState.mTargets[0].mDestinationColor =
+            rhi::EArdaRHIBlendFactor::InverseSourceAlpha;
+        overlayDesc.mColorFormats.push_back(swapChainFormat);
+        overlayDesc.mDebugName = "Terrain overlay pipeline";
+        auto overlayPipeline = mDevice->CreateGraphicsPipeline(overlayDesc);
+        return TakeResult(overlayPipeline, mOverlayPipeline, mError);
     }
 
     bool FArdaTerrainRenderer::CreateCameraResources()
     {
-        mCameraBuffer = mDevice->createBuffer(
-            nvrhi::BufferDesc()
-                .setByteSize(sizeof(FCameraSettings))
-                .setIsConstantBuffer(true)
-                .setDebugName("Terrain camera")
-                .enableAutomaticStateTracking(nvrhi::ResourceStates::ConstantBuffer));
-        if (!mCameraBuffer)
+        rhi::FArdaRHIBufferDesc desc;
+        desc.mByteSize = sizeof(FCameraSettings);
+        desc.mUsage = rhi::EArdaRHIBufferUsage::Constant;
+        desc.mInitialState = rhi::EArdaRHIResourceState::ConstantBuffer;
+        desc.mbKeepInitialState = true;
+        desc.mDebugName = "Terrain camera";
+        auto buffer = mDevice->CreateBuffer(desc);
+        if (!TakeResult(buffer, mCameraBuffer, mError))
         {
-            mError = "NVRHI failed to create the terrain camera buffer.";
             return false;
         }
-
-        mCameraBindingSet = mDevice->createBindingSet(
-            nvrhi::BindingSetDesc().addItem(
-                nvrhi::BindingSetItem::ConstantBuffer(0, mCameraBuffer)),
-            mCameraBindingLayout);
-        if (!mCameraBindingSet)
+        if (mTerrainVertexShader == nullptr ||
+            mTerrainVertexShader->GetBindingLayouts().empty())
         {
-            mError = "NVRHI failed to create the terrain camera binding set.";
+            mError = "The registered terrain vertex shader has no camera layout.";
+            return false;
+        }
+        FTerrainVertexShader::FParameters parameters;
+        parameters.mCamera = mCameraBuffer;
+        const auto status =
+            FTerrainVertexShader::FParameters::GetStaticMetadata().CreateBindingSet(
+                *mDevice,
+                &parameters,
+                mTerrainVertexShader->GetBindingLayouts()[0],
+                mCameraBindingSet);
+        if (!status)
+        {
+            mError = status.mMessage;
             return false;
         }
         return true;
     }
 
+    bool FArdaTerrainRenderer::CreateSettingsUploadBuffer()
+    {
+        rhi::FArdaRHIBufferDesc desc;
+        desc.mByteSize = sizeof(FTerrainSettings);
+        desc.mStructureStride = sizeof(FTerrainSettings);
+        desc.mInitialState = rhi::EArdaRHIResourceState::CopySource;
+        desc.mbKeepInitialState = true;
+        desc.mDebugName = "Terrain settings upload";
+        auto buffer = mDevice->CreateBuffer(desc);
+        return TakeResult(buffer, mSettingsUploadBuffer, mError);
+    }
+
     void FArdaTerrainRenderer::UpdateCamera(
-        float forward,
-        float right,
-        float lookX,
-        float lookY,
-        float deltaSeconds)
+        float forward, float right, float lookX, float lookY, float deltaSeconds)
     {
         constexpr float LookSensitivity = 0.0025f;
         constexpr float MoveSpeed = 1.1f;
         constexpr float PitchLimit = 1.50f;
-
         mElapsedSeconds += eastl::min(deltaSeconds, 0.1f);
         mCameraYaw += lookX * LookSensitivity;
         mCameraPitch = eastl::clamp(
-            mCameraPitch - lookY * LookSensitivity,
-            -PitchLimit,
-            PitchLimit);
-
+            mCameraPitch - lookY * LookSensitivity, -PitchLimit, PitchLimit);
         const float cosPitch = std::cos(mCameraPitch);
         const float forwardVector[3] = {
             std::cos(mCameraYaw) * cosPitch,
             std::sin(mCameraYaw) * cosPitch,
             std::sin(mCameraPitch)};
         const float rightVector[3] = {
-            -std::sin(mCameraYaw),
-            std::cos(mCameraYaw),
-            0.0f};
-
+            -std::sin(mCameraYaw), std::cos(mCameraYaw), 0.0f};
         const float inputLength = std::sqrt(forward * forward + right * right);
         if (inputLength > 1.0f)
         {
@@ -381,237 +370,149 @@ namespace arda::tests::ardg_example
         for (uint32_t component = 0; component < 3; ++component)
         {
             mCameraPosition[component] +=
-                (forwardVector[component] * forward +
-                 rightVector[component] * right) *
-                distance;
+                (forwardVector[component] * forward + rightVector[component] * right) * distance;
         }
-    }
-
-    bool FArdaTerrainRenderer::CreateSettingsUploadBuffer()
-    {
-        mSettingsUploadBuffer = mDevice->createBuffer(
-            nvrhi::BufferDesc()
-                .setByteSize(sizeof(FTerrainSettings))
-                .setStructStride(sizeof(FTerrainSettings))
-                .setDebugName("Terrain settings upload")
-                .enableAutomaticStateTracking(nvrhi::ResourceStates::CopySource));
-        if (!mSettingsUploadBuffer)
-        {
-            mError = "NVRHI failed to create the terrain settings upload buffer.";
-            return false;
-        }
-        return true;
     }
 
     bool FArdaTerrainRenderer::RenderFrame(backend::IArdaSwapChain& swapChain)
     {
-        nvrhi::FramebufferHandle framebuffer;
+        rhi::FArdaRHIFramebufferRef framebuffer;
         if (!swapChain.AcquireFrame(framebuffer))
         {
             mError = swapChain.GetError();
             return false;
         }
-
-        const nvrhi::FramebufferDesc& framebufferDesc = framebuffer->getDesc();
-        if (framebufferDesc.colorAttachments.empty() ||
-            !framebufferDesc.colorAttachments[0].valid())
+        const auto& framebufferDesc = framebuffer->GetDesc();
+        if (framebufferDesc.mColorAttachments.empty() ||
+            !framebufferDesc.mColorAttachments[0].mTexture)
         {
             mError = "The acquired swap-chain framebuffer has no color attachment.";
             return false;
         }
-
-        const nvrhi::FramebufferAttachment colorAttachment =
-            framebufferDesc.colorAttachments[0];
+        const auto colorAttachment = framebufferDesc.mColorAttachments[0];
         render_graph::FARDGBuilder graph(CreateGraphContext());
+        auto* backBuffer = graph.RegisterExternalTexture(
+            colorAttachment.mTexture, rhi::EArdaRHIResourceState::Present, "BackBuffer");
+        auto* settingsUpload = graph.RegisterExternalBuffer(
+            mSettingsUploadBuffer, rhi::EArdaRHIResourceState::CopySource, "TerrainSettingsUpload");
+        auto* cameraBuffer = graph.RegisterExternalBuffer(
+            mCameraBuffer, rhi::EArdaRHIResourceState::ConstantBuffer, "TerrainCamera");
 
-        render_graph::FARDGTextureRef backBuffer =
-            graph.RegisterExternalTexture(
-                colorAttachment.texture,
-                nvrhi::ResourceStates::Present,
-                "BackBuffer");
-        render_graph::FARDGBufferRef settingsUpload =
-            graph.RegisterExternalBuffer(
-                mSettingsUploadBuffer,
-                nvrhi::ResourceStates::CopySource,
-                "TerrainSettingsUpload");
-        render_graph::FARDGBufferRef cameraBuffer =
-            graph.RegisterExternalBuffer(
-                mCameraBuffer,
-                nvrhi::ResourceStates::ConstantBuffer,
-                "TerrainCamera");
+        rhi::FArdaRHIBufferDesc settingsDesc;
+        settingsDesc.mDebugName = "TerrainSettings";
+        settingsDesc.mByteSize = sizeof(FTerrainSettings);
+        settingsDesc.mStructureStride = sizeof(FTerrainSettings);
+        settingsDesc.mUsage = rhi::EArdaRHIBufferUsage::Structured | rhi::EArdaRHIBufferUsage::ShaderResource;
+        auto* terrainSettings = graph.CreateBuffer(settingsDesc);
 
-        nvrhi::BufferDesc settingsDesc;
-        settingsDesc
-            .setDebugName("TerrainSettings")
-            .setByteSize(sizeof(FTerrainSettings))
-            .setStructStride(sizeof(FTerrainSettings));
-        render_graph::FARDGBufferRef terrainSettings =
-            graph.CreateBuffer(settingsDesc);
+        rhi::FArdaRHITextureDesc heightmapDesc;
+        heightmapDesc.mDebugName = "Heightmap";
+        heightmapDesc.mWidth = HeightmapWidth;
+        heightmapDesc.mHeight = HeightmapHeight;
+        heightmapDesc.mMipLevels = 2;
+        heightmapDesc.mFormat = rhi::EArdaRHIFormat::R32Float;
+        heightmapDesc.mUsage = rhi::EArdaRHITextureUsage::ShaderResource |
+            rhi::EArdaRHITextureUsage::UnorderedAccess;
+        auto* heightmap = graph.CreateTexture(heightmapDesc);
 
-        nvrhi::TextureDesc heightmapDesc;
-        heightmapDesc
-            .setDebugName("Heightmap")
-            .setWidth(HeightmapWidth)
-            .setHeight(HeightmapHeight)
-            .setMipLevels(2)
-            .setFormat(nvrhi::Format::R32_FLOAT)
-            .setIsUAV(true);
-        render_graph::FARDGTextureRef heightmap =
-            graph.CreateTexture(heightmapDesc);
+        rhi::FArdaRHIBufferDesc vertexDesc;
+        vertexDesc.mDebugName = "TerrainVertices";
+        vertexDesc.mByteSize = TerrainVertexCount * sizeof(FTerrainVertex);
+        vertexDesc.mStructureStride = sizeof(FTerrainVertex);
+        vertexDesc.mUsage = rhi::EArdaRHIBufferUsage::Structured |
+            rhi::EArdaRHIBufferUsage::UnorderedAccess | rhi::EArdaRHIBufferUsage::Vertex;
+        auto* terrainVertices = graph.CreateBuffer(vertexDesc);
+        rhi::FArdaRHIBufferDesc indexDesc;
+        indexDesc.mDebugName = "TerrainIndices";
+        indexDesc.mByteSize = TerrainIndexCount * sizeof(uint32_t);
+        indexDesc.mStructureStride = sizeof(uint32_t);
+        indexDesc.mUsage = rhi::EArdaRHIBufferUsage::Structured |
+            rhi::EArdaRHIBufferUsage::UnorderedAccess | rhi::EArdaRHIBufferUsage::Index;
+        auto* terrainIndices = graph.CreateBuffer(indexDesc);
 
-        nvrhi::BufferDesc vertexDesc;
-        vertexDesc
-            .setDebugName("TerrainVertices")
-            .setByteSize(TerrainVertexCount * sizeof(FTerrainVertex))
-            .setStructStride(sizeof(FTerrainVertex))
-            .setCanHaveUAVs(true)
-            .setIsVertexBuffer(true);
-        render_graph::FARDGBufferRef terrainVertices =
-            graph.CreateBuffer(vertexDesc);
-
-        nvrhi::BufferDesc indexDesc;
-        indexDesc
-            .setDebugName("TerrainIndices")
-            .setByteSize(TerrainIndexCount * sizeof(uint32_t))
-            .setStructStride(sizeof(uint32_t))
-            .setCanHaveUAVs(true)
-            .setIsIndexBuffer(true);
-        render_graph::FARDGBufferRef terrainIndices =
-            graph.CreateBuffer(indexDesc);
-
-        nvrhi::TextureDesc depthDesc;
-        depthDesc
-            .setDebugName("TerrainDepth")
-            .setWidth(swapChain.GetWidth())
-            .setHeight(swapChain.GetHeight())
-            .setFormat(nvrhi::Format::D32)
-            .setIsRenderTarget(true);
-        render_graph::FARDGTextureRef terrainDepth =
-            graph.CreateTexture(depthDesc);
+        rhi::FArdaRHITextureDesc depthDesc;
+        depthDesc.mDebugName = "TerrainDepth";
+        depthDesc.mWidth = swapChain.GetWidth();
+        depthDesc.mHeight = swapChain.GetHeight();
+        depthDesc.mFormat = rhi::EArdaRHIFormat::D32;
+        depthDesc.mUsage = rhi::EArdaRHITextureUsage::DepthStencil;
+        auto* terrainDepth = graph.CreateTexture(depthDesc);
 
         render_graph::FARDGTextureViewDesc heightmapView;
         heightmapView.mTexture = heightmap->GetHandle();
-        heightmapView.mSubresources =
-            nvrhi::TextureSubresourceSet(0, 1, 0, 1);
-        render_graph::FARDGTextureUAVRef heightmapUAV =
-            graph.CreateTextureUAV("Heightmap mip 0 UAV", heightmapView);
-        render_graph::FARDGTextureSRVRef heightmapSRV =
-            graph.CreateTextureSRV("Heightmap mip 0 SRV", heightmapView);
-
+        heightmapView.mSubresources = { 0, 1, 0, 1 };
+        auto* heightmapUAV = graph.CreateTextureUAV("Heightmap mip 0 UAV", heightmapView);
+        auto* heightmapSRV = graph.CreateTextureSRV("Heightmap mip 0 SRV", heightmapView);
         render_graph::FARDGBufferViewDesc settingsView;
         settingsView.mBuffer = terrainSettings->GetHandle();
-        settingsView.mRange = nvrhi::EntireBuffer;
-        render_graph::FARDGBufferSRVRef terrainSettingsSRV =
-            graph.CreateBufferSRV("TerrainSettings SRV", settingsView);
-
+        auto* terrainSettingsSRV = graph.CreateBufferSRV("TerrainSettings SRV", settingsView);
         render_graph::FARDGBufferViewDesc vertexView;
         vertexView.mBuffer = terrainVertices->GetHandle();
-        vertexView.mRange = nvrhi::EntireBuffer;
-        render_graph::FARDGBufferUAVRef terrainVerticesUAV =
-            graph.CreateBufferUAV("TerrainVertices UAV", vertexView);
-
+        auto* terrainVerticesUAV = graph.CreateBufferUAV("TerrainVertices UAV", vertexView);
         render_graph::FARDGBufferViewDesc indexView;
         indexView.mBuffer = terrainIndices->GetHandle();
-        indexView.mRange = nvrhi::EntireBuffer;
-        render_graph::FARDGBufferUAVRef terrainIndicesUAV =
-            graph.CreateBufferUAV("TerrainIndices UAV", indexView);
+        auto* terrainIndicesUAV = graph.CreateBufferUAV("TerrainIndices UAV", indexView);
 
         FTerrainSettings settingsData;
         settingsData.mTime = mElapsedSeconds;
         FInitializeTerrainSettingsParameters updateSettings;
         updateSettings.mDestination = {
-            settingsUpload,
-            nvrhi::ResourceStates::CopyDest,
-            nvrhi::EntireBuffer};
+            settingsUpload, rhi::EArdaRHIResourceState::CopyDest, {}};
         (void)graph.AddPass(
-            "UpdateTerrainSettings",
-            &updateSettings,
-            render_graph::EARDGPassFlags::None,
-            [settingsData](
-                render_graph::FARDGPassExecutionContext& context,
-                const FInitializeTerrainSettingsParameters& frozen)
+            "UpdateTerrainSettings", &updateSettings, render_graph::EARDGPassFlags::None,
+            [settingsData](render_graph::FARDGPassExecutionContext& context,
+                           const FInitializeTerrainSettingsParameters& frozen)
             {
-                context.mCommandList.writeBuffer(
-                    context.GetBuffer(frozen.mDestination.mBuffer),
-                    &settingsData,
-                    sizeof(settingsData));
+                (void)context.mCommandList.WriteBuffer(
+                    *context.GetBuffer(frozen.mDestination.mBuffer),
+                    &settingsData, sizeof(settingsData));
             });
 
         FUploadTerrainSettingsParameters upload;
-        upload.mSource = {
-            settingsUpload,
-            nvrhi::ResourceStates::CopySource,
-            nvrhi::EntireBuffer};
-        upload.mDestination = {
-            terrainSettings,
-            nvrhi::ResourceStates::CopyDest,
-            nvrhi::EntireBuffer};
+        upload.mSource = { settingsUpload, rhi::EArdaRHIResourceState::CopySource, {} };
+        upload.mDestination = { terrainSettings, rhi::EArdaRHIResourceState::CopyDest, {} };
         (void)graph.AddPass(
-            "UploadTerrainSettings",
-            &upload,
-            render_graph::EARDGPassFlags::Copy,
+            "UploadTerrainSettings", &upload, render_graph::EARDGPassFlags::Copy,
             [](render_graph::FARDGPassExecutionContext& context,
                const FUploadTerrainSettingsParameters& frozen)
             {
-                context.mCommandList.copyBuffer(
-                    context.GetBuffer(frozen.mDestination.mBuffer),
-                    0,
-                    context.GetBuffer(frozen.mSource.mBuffer),
-                    0,
-                    sizeof(FTerrainSettings));
+                (void)context.mCommandList.CopyBuffer(
+                    *context.GetBuffer(frozen.mDestination.mBuffer), 0,
+                    *context.GetBuffer(frozen.mSource.mBuffer), 0, sizeof(FTerrainSettings));
             });
 
         FGenerateNoiseHeightmapParameters generate;
         generate.mSettings = terrainSettingsSRV;
         generate.mHeightmap = heightmapUAV;
         (void)graph.AddDispatchPass(
-            "GenerateNoiseHeightmap",
-            &generate,
-            render_graph::FARDGDispatchArguments{
-                DivideRoundUp(HeightmapWidth, 8),
-                DivideRoundUp(HeightmapHeight, 8),
-                1},
-            [this](
-                render_graph::FARDGPassExecutionContext& context)
+            "GenerateNoiseHeightmap", &generate,
+            { DivideRoundUp(HeightmapWidth, 8), DivideRoundUp(HeightmapHeight, 8), 1 },
+            [this](render_graph::FARDGPassExecutionContext& context)
             {
-                nvrhi::BindingSetHandle bindings =
-                    context.CreateBindingSet(mGenerateBindingLayout);
-                context.mCommandList.setComputeState(
-                    nvrhi::ComputeState()
-                        .setPipeline(mGeneratePipeline)
-                        .addBindingSet(bindings));
+                rhi::FArdaRHIComputeState state;
+                state.mPipeline = mGeneratePipeline;
+                state.mBindings.push_back(context.CreateBindingSet(*mGenerateShader));
+                (void)context.mCommandList.SetComputeState(state);
             },
             render_graph::EARDGPassFlags::AsyncCompute);
 
         FDebugHeightmapParameters debugHeightmap;
         debugHeightmap.mHeightmap = heightmapSRV;
         (void)graph.AddPass(
-            "DebugHeightmap",
-            &debugHeightmap,
-            render_graph::EARDGPassFlags::None,
-            [](const FDebugHeightmapParameters&)
-            {
-                // Intentionally has no output. Compilation culls this pass.
-            });
+            "DebugHeightmap", &debugHeightmap, render_graph::EARDGPassFlags::None,
+            [](const FDebugHeightmapParameters&) {});
 
         FErodeHeightmapParameters erode;
         erode.mHeightmap = heightmapUAV;
         (void)graph.AddDispatchPass(
-            "ErodeHeightmap",
-            &erode,
-            render_graph::FARDGDispatchArguments{
-                DivideRoundUp(HeightmapWidth, 8),
-                DivideRoundUp(HeightmapHeight, 8),
-                1},
-            [this](
-                render_graph::FARDGPassExecutionContext& context)
+            "ErodeHeightmap", &erode,
+            { DivideRoundUp(HeightmapWidth, 8), DivideRoundUp(HeightmapHeight, 8), 1 },
+            [this](render_graph::FARDGPassExecutionContext& context)
             {
-                nvrhi::BindingSetHandle bindings =
-                    context.CreateBindingSet(mErodeBindingLayout);
-                context.mCommandList.setComputeState(
-                    nvrhi::ComputeState()
-                        .setPipeline(mErodePipeline)
-                        .addBindingSet(bindings));
+                rhi::FArdaRHIComputeState state;
+                state.mPipeline = mErodePipeline;
+                state.mBindings.push_back(context.CreateBindingSet(*mErodeShader));
+                (void)context.mCommandList.SetComputeState(state);
             },
             render_graph::EARDGPassFlags::AsyncCompute);
 
@@ -620,44 +521,24 @@ namespace arda::tests::ardg_example
         triangulate.mTerrainVertices = terrainVerticesUAV;
         triangulate.mTerrainIndices = terrainIndicesUAV;
         (void)graph.AddDispatchPass(
-            "TriangulateTerrain",
-            &triangulate,
-            render_graph::FARDGDispatchArguments{
-                DivideRoundUp(HeightmapWidth - 1, 8),
-                DivideRoundUp(HeightmapHeight - 1, 8),
-                1},
-            [this](
-                render_graph::FARDGPassExecutionContext& context)
+            "TriangulateTerrain", &triangulate,
+            { DivideRoundUp(HeightmapWidth - 1, 8), DivideRoundUp(HeightmapHeight - 1, 8), 1 },
+            [this](render_graph::FARDGPassExecutionContext& context)
             {
-                nvrhi::BindingSetHandle bindings =
-                    context.CreateBindingSet(mTriangulateBindingLayout);
-                context.mCommandList.setComputeState(
-                    nvrhi::ComputeState()
-                        .setPipeline(mTriangulatePipeline)
-                        .addBindingSet(bindings));
+                rhi::FArdaRHIComputeState state;
+                state.mPipeline = mTriangulatePipeline;
+                state.mBindings.push_back(context.CreateBindingSet(*mTriangulateShader));
+                (void)context.mCommandList.SetComputeState(state);
             },
             render_graph::EARDGPassFlags::AsyncCompute);
 
         FRenderTerrainParameters render;
-        render.mTerrainVertices = {
-            terrainVertices,
-            nvrhi::ResourceStates::VertexBuffer,
-            nvrhi::EntireBuffer};
-        render.mTerrainIndices = {
-            terrainIndices,
-            nvrhi::ResourceStates::IndexBuffer,
-            nvrhi::EntireBuffer};
-        render.mCamera = {
-            cameraBuffer,
-            nvrhi::ResourceStates::ConstantBuffer,
-            nvrhi::EntireBuffer};
+        render.mTerrainVertices = { terrainVertices, rhi::EArdaRHIResourceState::VertexBuffer, {} };
+        render.mTerrainIndices = { terrainIndices, rhi::EArdaRHIResourceState::IndexBuffer, {} };
+        render.mCamera = { cameraBuffer, rhi::EArdaRHIResourceState::ConstantBuffer, {} };
         render.mHeightmap = heightmapSRV;
-        render.mTargets.mColor[0] = {
-            backBuffer,
-            colorAttachment.subresources};
-        render.mTargets.mDepthStencil = {
-            terrainDepth,
-            nvrhi::AllSubresources};
+        render.mTargets.mColor[0] = { backBuffer, colorAttachment.mAttachment.mSubresources };
+        render.mTargets.mDepthStencil = { terrainDepth, {} };
 
         const uint32_t width = swapChain.GetWidth();
         const uint32_t height = swapChain.GetHeight();
@@ -666,29 +547,19 @@ namespace arda::tests::ardg_example
             std::cos(mCameraYaw) * cosPitch,
             std::sin(mCameraYaw) * cosPitch,
             std::sin(mCameraPitch)};
-        const float right[3] = {
-            -std::sin(mCameraYaw),
-            std::cos(mCameraYaw),
-            0.0f};
+        const float right[3] = {-std::sin(mCameraYaw), std::cos(mCameraYaw), 0.0f};
         const float up[3] = {
             forward[1] * right[2] - forward[2] * right[1],
             forward[2] * right[0] - forward[0] * right[2],
             forward[0] * right[1] - forward[1] * right[0]};
         const float viewTranslation[3] = {
-            -(mCameraPosition[0] * right[0] +
-              mCameraPosition[1] * right[1] +
-              mCameraPosition[2] * right[2]),
-            -(mCameraPosition[0] * up[0] +
-              mCameraPosition[1] * up[1] +
-              mCameraPosition[2] * up[2]),
-            -(mCameraPosition[0] * forward[0] +
-              mCameraPosition[1] * forward[1] +
-              mCameraPosition[2] * forward[2])};
+            -(mCameraPosition[0] * right[0] + mCameraPosition[1] * right[1] + mCameraPosition[2] * right[2]),
+            -(mCameraPosition[0] * up[0] + mCameraPosition[1] * up[1] + mCameraPosition[2] * up[2]),
+            -(mCameraPosition[0] * forward[0] + mCameraPosition[1] * forward[1] + mCameraPosition[2] * forward[2])};
         constexpr float NearPlane = 0.05f;
         constexpr float HorizontalHalfFov = 0.78539816f;
         const float xScale = 1.0f / std::tan(HorizontalHalfFov);
-        const float yScale =
-            xScale * static_cast<float>(width) / static_cast<float>(height);
+        const float yScale = xScale * static_cast<float>(width) / static_cast<float>(height);
         const FCameraSettings cameraSettings = {
             {
                 right[0], up[0], forward[0], 0.0f,
@@ -702,161 +573,97 @@ namespace arda::tests::ardg_example
                 0.0f, 0.0f, 0.0f, 1.0f,
                 0.0f, 0.0f, NearPlane, 0.0f
             }};
+
         (void)graph.AddPass(
-            "RenderTerrain",
-            &render,
-            render_graph::EARDGPassFlags::Raster,
+            "RenderTerrain", &render, render_graph::EARDGPassFlags::Raster,
             [this, width, height, cameraSettings](
                 render_graph::FARDGPassExecutionContext& context,
                 const FRenderTerrainParameters& frozen)
             {
-                (void)context.GetTexture(
-                    frozen.mTargets.mColor[0].mTexture);
-                nvrhi::ITexture* depthTexture = context.GetTexture(
-                    frozen.mTargets.mDepthStencil.mTexture);
-                nvrhi::FramebufferHandle terrainFramebuffer =
-                    mDevice->createFramebuffer(
-                        nvrhi::FramebufferDesc()
-                            .addColorAttachment(
-                                context.GetTexture(
-                                    frozen.mTargets.mColor[0].mTexture),
-                                frozen.mTargets.mColor[0].mSubresources)
-                            .setDepthAttachment(
-                                depthTexture,
-                                frozen.mTargets.mDepthStencil.mSubresources));
+                auto* color = context.GetTexture(frozen.mTargets.mColor[0].mTexture);
+                auto* depth = context.GetTexture(frozen.mTargets.mDepthStencil.mTexture);
+                rhi::FArdaRHIFramebufferDesc framebufferDesc;
+                framebufferDesc.mColorAttachments.push_back({
+                    rhi::FArdaRHITextureRef(color),
+                    { frozen.mTargets.mColor[0].mSubresources }});
+                framebufferDesc.mDepthAttachment = {
+                    rhi::FArdaRHITextureRef(depth),
+                    { frozen.mTargets.mDepthStencil.mSubresources }};
+                auto terrainFramebuffer = mDevice->CreateFramebuffer(framebufferDesc);
                 if (!terrainFramebuffer)
                 {
-                    ARDA_CHECK_MSG(
-                        "Failed to create the terrain depth framebuffer.");
+                    ARDA_CHECK_MSG("Failed to create the terrain depth framebuffer.");
                 }
-                nvrhi::utils::ClearColorAttachment(
-                    &context.mCommandList,
-                    terrainFramebuffer,
-                    0,
-                    nvrhi::Color(0.004f, 0.007f, 0.009f, 1.0f));
-                context.mCommandList.clearDepthStencilTexture(
-                    depthTexture,
-                    frozen.mTargets.mDepthStencil.mSubresources,
-                    true,
-                    0.0f,
-                    false,
-                    0);
-                context.mCommandList.writeBuffer(
-                    context.GetBuffer(frozen.mCamera.mBuffer),
-                    &cameraSettings,
-                    sizeof(cameraSettings));
-                nvrhi::BindingSetHandle terrainPixelBindings =
-                    context.CreateBindingSet(mTerrainPixelBindingLayout);
-
-                const nvrhi::ViewportState viewport =
-                    nvrhi::ViewportState().addViewportAndScissorRect(
-                        nvrhi::Viewport(
-                            static_cast<float>(width),
-                            static_cast<float>(height)));
-                nvrhi::GraphicsState state;
-                state
-                    .setPipeline(mTerrainPipeline)
-                    .setFramebuffer(terrainFramebuffer)
-                    .setViewport(viewport)
-                    .addBindingSet(mCameraBindingSet)
-                        .addBindingSet(terrainPixelBindings)
-                    .addVertexBuffer(
-                        nvrhi::VertexBufferBinding()
-                            .setBuffer(context.GetBuffer(
-                                frozen.mTerrainVertices.mBuffer))
-                            .setSlot(0)
-                            .setOffset(0))
-                    .setIndexBuffer(
-                        nvrhi::IndexBufferBinding()
-                            .setBuffer(context.GetBuffer(
-                                frozen.mTerrainIndices.mBuffer))
-                            .setFormat(nvrhi::Format::R32_UINT)
-                            .setOffset(0));
-                context.mCommandList.setGraphicsState(state);
-                context.mCommandList.drawIndexed(
-                    nvrhi::DrawArguments().setVertexCount(TerrainIndexCount));
+                (void)context.mCommandList.ClearTexture(
+                    *color, frozen.mTargets.mColor[0].mSubresources,
+                    { 0.004f, 0.007f, 0.009f, 1.0f });
+                (void)context.mCommandList.ClearDepthStencilTexture(
+                    *depth, frozen.mTargets.mDepthStencil.mSubresources,
+                    true, 0.0f, false, 0);
+                (void)context.mCommandList.WriteBuffer(
+                    *context.GetBuffer(frozen.mCamera.mBuffer),
+                    &cameraSettings, sizeof(cameraSettings));
+                rhi::FArdaRHIGraphicsState state;
+                state.mPipeline = mTerrainPipeline;
+                state.mFramebuffer = terrainFramebuffer.mValue;
+                state.mBindings = {
+                    mCameraBindingSet,
+                    context.CreateBindingSet(*mTerrainPixelShader)};
+                state.mVertexBuffers.push_back({
+                    rhi::FArdaRHIBufferRef(context.GetBuffer(frozen.mTerrainVertices.mBuffer)), 0, 0});
+                state.mIndexBuffer.Reset(context.GetBuffer(frozen.mTerrainIndices.mBuffer));
+                state.mIndexFormat = rhi::EArdaRHIFormat::R32UInt;
+                state.mViewports.push_back({
+                    0.f, static_cast<float>(width), 0.f, static_cast<float>(height), 0.f, 1.f});
+                state.mScissors.push_back({
+                    0, static_cast<int32_t>(width), 0, static_cast<int32_t>(height)});
+                (void)context.mCommandList.SetGraphicsState(state);
+                context.mCommandList.DrawIndexed({ TerrainIndexCount });
             });
 
         FTerrainOverlayParameters overlay;
         overlay.mTargets.mColor[0] = {
-            backBuffer,
-            colorAttachment.subresources};
+            backBuffer, colorAttachment.mAttachment.mSubresources };
         (void)graph.AddPass(
-            "TerrainOverlay",
-            &overlay,
-            render_graph::EARDGPassFlags::Raster,
+            "TerrainOverlay", &overlay, render_graph::EARDGPassFlags::Raster,
             [this, framebuffer, width, height](
                 render_graph::FARDGPassExecutionContext& context,
                 const FTerrainOverlayParameters& frozen)
             {
-                (void)context.GetTexture(
-                    frozen.mTargets.mColor[0].mTexture);
-                const nvrhi::ViewportState viewport =
-                    nvrhi::ViewportState().addViewportAndScissorRect(
-                        nvrhi::Viewport(
-                            static_cast<float>(width),
-                            static_cast<float>(height)));
-                context.mCommandList.setGraphicsState(
-                    nvrhi::GraphicsState()
-                        .setPipeline(mOverlayPipeline)
-                        .setFramebuffer(framebuffer)
-                        .setViewport(viewport));
-                context.mCommandList.draw(
-                    nvrhi::DrawArguments().setVertexCount(3));
+                (void)context.GetTexture(frozen.mTargets.mColor[0].mTexture);
+                rhi::FArdaRHIGraphicsState state;
+                state.mPipeline = mOverlayPipeline;
+                state.mFramebuffer = framebuffer;
+                state.mViewports.push_back({
+                    0.f, static_cast<float>(width), 0.f, static_cast<float>(height), 0.f, 1.f});
+                state.mScissors.push_back({
+                    0, static_cast<int32_t>(width), 0, static_cast<int32_t>(height)});
+                (void)context.mCommandList.SetGraphicsState(state);
+                context.mCommandList.Draw({ 3 });
             });
 
         swapChain.PrepareSubmit();
         (void)graph.Execute();
-
         if (!swapChain.Present())
         {
             mError = swapChain.GetError();
             return false;
         }
-
         mError.clear();
         return true;
     }
 
-    render_graph::FARDGRenderGraphContext
-    FArdaTerrainRenderer::CreateGraphContext() const
+    render_graph::FARDGRenderGraphContext FArdaTerrainRenderer::CreateGraphContext() const
     {
-        render_graph::FARDGRenderGraphContext context;
-        context.mDevice = mDevice;
-        context.mQueueCapabilities = mQueueCapabilities;
-        return context;
+        backend::FArdaDeviceContext DeviceContext;
+        DeviceContext.mDevice = mDevice;
+        DeviceContext.mQueueCapabilities.mbGraphics =
+            mQueueCapabilities.mbGraphics;
+        DeviceContext.mQueueCapabilities.mbCompute =
+            mQueueCapabilities.mbCompute;
+        DeviceContext.mQueueCapabilities.mbCopy =
+            mQueueCapabilities.mbCopy;
+        return render_graph::MakeRenderGraphContext(DeviceContext);
     }
 
-    bool FArdaTerrainRenderer::LoadBinary(
-        const std::filesystem::path& path,
-        eastl::vector<uint8_t>& binary,
-        eastl::string& error)
-    {
-        const std::string pathString = path.string();
-        const eastl::string displayPath(pathString.data(), pathString.size());
-        std::ifstream stream(path, std::ios::binary | std::ios::ate);
-        if (!stream)
-        {
-            error = "Unable to open shader: " + displayPath;
-            return false;
-        }
-
-        const auto size = stream.tellg();
-        if (size <= 0)
-        {
-            error = "Shader is empty: " + displayPath;
-            return false;
-        }
-
-        binary.resize(static_cast<size_t>(size));
-        stream.seekg(0);
-        stream.read(reinterpret_cast<char*>(binary.data()), size);
-        if (!stream)
-        {
-            error = "Unable to read shader: " + displayPath;
-            binary.clear();
-            return false;
-        }
-        return true;
-    }
 }

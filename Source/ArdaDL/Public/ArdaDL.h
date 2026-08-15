@@ -1,14 +1,14 @@
 #pragma once
 
-#include <nvrhi/nvrhi.h>
+#include "RHIWrappers/ArdaRHI.h"
 
 namespace arda::dl
 {
-    /** Provides the NVRHI device used by deep-learning workloads. */
+    /** Provides the opaque RHI device used by deep-learning workloads. */
     struct FArdaDLContext
     {
-        /** The NVRHI device used to execute deep-learning workloads. */
-        nvrhi::DeviceHandle mDevice;
+        /** The RHI device used to execute deep-learning workloads. */
+        rhi::FArdaRHIDeviceRef mDevice;
     };
 
     /** Returns the stable name of the deep-learning module. */

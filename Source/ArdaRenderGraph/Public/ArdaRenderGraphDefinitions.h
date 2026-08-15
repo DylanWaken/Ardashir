@@ -6,7 +6,7 @@
 #include <EASTL/numeric_limits.h>
 #include <EASTL/type_traits.h>
 
-#include <nvrhi/nvrhi.h>
+#include "RHIWrappers/ArdaRHI.h"
 
 namespace arda::render_graph
 {
@@ -105,6 +105,9 @@ namespace arda::render_graph
     {
     };
 
+    /** Distinguishes acceleration-structure handles from all other typed handles. */
+    struct FARDGAccelStructHandleTag final {};
+
     /** Distinguishes view handles from all other typed handles. */
     struct FARDGViewHandleTag final
     {
@@ -123,6 +126,7 @@ namespace arda::render_graph
 
     /** A stable index into the logical buffer registry. */
     using FARDGBufferHandle = TARDGHandle<FARDGBufferHandleTag>;
+    using FARDGAccelStructHandle = TARDGHandle<FARDGAccelStructHandleTag>;
 
     /** A stable index into the logical view registry. */
     using FARDGViewHandle = TARDGHandle<FARDGViewHandleTag>;
@@ -197,7 +201,7 @@ namespace arda::render_graph
         /** A pass that remains live even when it has no observable outputs. */
         NeverCull = 1u << 4u,
 
-        /** A raster pass that manages NVRHI framebuffer behavior explicitly. */
+        /** A raster pass that manages RHI framebuffer behavior explicitly. */
         SkipRenderPass = 1u << 5u,
 
         /** A pass that must not be recorded in parallel. */
@@ -237,10 +241,10 @@ namespace arda::render_graph
         /** No special ownership behavior. */
         None = 0,
 
-        /** The physical NVRHI resource is owned outside the graph. */
+        /** The physical RHI resource is owned outside the graph. */
         External = 1u << 0u,
 
-        /** The physical NVRHI resource must survive graph completion. */
+        /** The physical RHI resource must survive graph completion. */
         Extracted = 1u << 1u,
 
         /** Physical storage may be created and recycled within graph execution. */
@@ -304,14 +308,17 @@ namespace arda::render_graph
         BufferUnorderedAccessView,
 
         /** A logical uniform buffer. */
-        UniformBuffer
+        UniformBuffer,
+
+        /** A logical ray tracing acceleration structure. */
+        AccelStruct
     };
 
-    /** Supplies NVRHI execution state to a future render-graph builder and executor. */
+    /** Supplies opaque RHI execution state to a render-graph builder and executor. */
     struct FARDGRenderGraphContext
     {
-        /** The NVRHI device on which render-graph work is executed. */
-        nvrhi::DeviceHandle mDevice;
+        /** The RHI device on which render-graph work is executed. */
+        rhi::FArdaRHIDeviceRef mDevice;
 
         /** Queue capabilities used for deterministic pipeline fallback. */
         FARDGQueueCapabilities mQueueCapabilities;
