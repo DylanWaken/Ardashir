@@ -45,10 +45,20 @@ namespace arda::rhi::private_impl
         class TResource final : public FResource, public Interface
         {
         public:
-            TResource(const Desc& Descriptor, Handle NativeHandle, const void* Owner)
-                : FResource(Type, Descriptor.mDebugName, Owner), mDesc(Descriptor), mHandle(std::move(NativeHandle)) {}
+            TResource(
+                const Desc& Descriptor,
+                Handle NativeHandle,
+                const void* Owner,
+                eastl::shared_ptr<void> LifetimeToken = {})
+                : FResource(Type, Descriptor.mDebugName, Owner)
+                , mLifetimeToken(std::move(LifetimeToken))
+                , mHandle(std::move(NativeHandle))
+                , mDesc(Descriptor)
+            {
+            }
             const Desc& GetDesc() const noexcept override { return mDesc; }
             const void* GetPhysicalIdentity() const noexcept { return mHandle.Get(); }
+            eastl::shared_ptr<void> mLifetimeToken;
             Handle mHandle;
         private:
             Desc mDesc;
@@ -831,7 +841,8 @@ namespace arda::rhi::private_impl
                 Desc.mInitialState = D.mInitialState;
                 auto H = mDevice->createHandleForNativeTexture(Type, Object, ToNvrhi(Desc));
                 if (!H) return Fail<FArdaRHITextureRef>("NVRHI failed to import the native texture.");
-                FArdaRHITextureRef Result(new FTexture(Desc, H, this));
+                FArdaRHITextureRef Result(new FTexture(
+                    Desc, H, this, D.mLifetimeToken));
                 mImportedTextures.Insert(D, Result);
                 return Ok(Result);
             }
@@ -875,7 +886,8 @@ namespace arda::rhi::private_impl
                 Desc.mInitialState = D.mInitialState;
                 auto H = mDevice->createHandleForNativeBuffer(Type, Object, ToNvrhi(Desc));
                 if (!H) return Fail<FArdaRHIBufferRef>("NVRHI failed to import the native buffer.");
-                FArdaRHIBufferRef Result(new FBuffer(Desc, H, this));
+                FArdaRHIBufferRef Result(new FBuffer(
+                    Desc, H, this, D.mLifetimeToken));
                 mImportedBuffers.Insert(D, Result);
                 return Ok(Result);
             }

@@ -67,6 +67,15 @@ namespace arda::backend
         Vulkan
     };
 
+    /** Selects whether Arda creates the native device or wraps one supplied externally. */
+    enum class EArdaDeviceSource
+    {
+        /** Arda creates and owns the native graphics device and queues. */
+        ArdaCreated,
+        /** A registered external provider supplies non-owning native device handles. */
+        ExternalProvider
+    };
+
     /** Describes the outcome of backend initialization. */
     enum class EArdaInitializeResult
     {
@@ -91,6 +100,8 @@ namespace arda::backend
     {
         /** The graphics API to initialize. */
         EArdaBackendType mBackend = DefaultBackend;
+        /** The source from which the native graphics device is obtained. */
+        EArdaDeviceSource mDeviceSource = EArdaDeviceSource::ArdaCreated;
         /** Whether graphics API validation layers are enabled. */
         bool mbEnableValidation = true;
         /** Receives backend diagnostic messages, or null to use the default callback. */
@@ -122,6 +133,8 @@ namespace arda::backend
         rhi::FArdaRHIDeviceRef mDevice;
         /** The graphics API that owns the device. */
         EArdaBackendType mBackend = DefaultBackend;
+        /** The source from which the initialized native device was obtained. */
+        EArdaDeviceSource mDeviceSource = EArdaDeviceSource::ArdaCreated;
         /** The command queues exposed by the initialized RHI device. */
         FArdaQueueCapabilities mQueueCapabilities;
     };

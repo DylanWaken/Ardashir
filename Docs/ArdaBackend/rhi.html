@@ -31,6 +31,7 @@
         <a href="quick-guide.html">Quick user's guide</a>
         <a href="getting-started.html">Getting started</a>
         <a href="architecture.html">Architecture</a>
+        <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
         <a aria-current="page" href="rhi.html">RHI types &amp; resources</a>
@@ -196,7 +197,7 @@
             <li>All participating objects must come from the same device. Cross-device references return <code>WrongDevice</code> rather than being silently reinterpreted.</li>
           </ul>
           <h3>Borrowed native imports</h3>
-          <p><a href="api-reference.html#api-arda-rhi-fardarhinativetextureimportdesc-3e3eb803"><code>FArdaRHINativeTextureImportDesc</code></a> and <a href="api-reference.html#api-arda-rhi-fardarhinativebufferimportdesc-a01c0619"><code>FArdaRHINativeBufferImportDesc</code></a> pair a native identity with native API type, a complete RHI descriptor, ownership mode, and known initial state. <a href="api-reference.html#api-arda-rhi-eardarhinativeownership-bf0e2349"><code>Borrowed</code></a> leaves external ownership with the caller while the wrapper retains whatever native reference its backend requires.</p>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhinativetextureimportdesc-3e3eb803"><code>FArdaRHINativeTextureImportDesc</code></a> and <a href="api-reference.html#api-arda-rhi-fardarhinativebufferimportdesc-a01c0619"><code>FArdaRHINativeBufferImportDesc</code></a> pair a native identity with native API type, a complete RHI descriptor, ownership mode, known initial state, and an optional <a class="term" data-term="lifetime-token" href="../glossary.html#term-lifetime-token">lifetime token</a>. <a href="api-reference.html#api-arda-rhi-eardarhinativeownership-bf0e2349"><code>Borrowed</code></a> leaves external ownership with the caller while the wrapper retains whatever native reference its backend requires. The <a href="external-interop.html">External interop</a> chapter explains named providers, token identity, D3D12 versus Vulkan retention, and supported import limits.</p>
           <aside class="callout warning">
             <h3>Import does not repair a contract</h3>
             <p>The supplied format, dimensions, usage, and initial state must describe the native object truthfully. Transferred ownership is not portable and may return <code>Unsupported</code>. Prefer borrowed imports and coordinate destruction with the external owner.</p>
@@ -362,6 +363,7 @@ if (!srv || !mipOneUav || !framebuffer)
           <h2>Further reading</h2>
           <ul>
             <li><a href="commands.html">Commands</a> — states, barriers, hazards, queues, and submission.</li>
+            <li><a href="external-interop.html">External interop</a> — host-owned devices and named texture/buffer imports.</li>
             <li><a href="pipelines.html">Pipeline states</a> — attachment compatibility and immutable pipeline identity.</li>
             <li><a href="shaders.html">Shaders</a> — authored parameter metadata and binding-layout construction.</li>
             <li><a class="term" data-term="arda-render-graph" href="../glossary.html#term-arda-render-graph">ArdaRenderGraph</a> — logical resources, lifetime analysis, and transient allocation.</li>

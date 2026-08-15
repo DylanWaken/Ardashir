@@ -60,6 +60,7 @@ namespace arda::backend
             FArdaDeviceContext mContext;
             FArdaDefaultMessageCallback mDefaultMessageCallback;
             eastl::unique_ptr<IArdaBackendDevice> mBackendDevice;
+            IArdaExternalDeviceProvider* mExternalDeviceProvider = nullptr;
             eastl::string mError;
             std::atomic_bool mbInitialized{ false };
         };
@@ -74,6 +75,30 @@ namespace arda::backend
             FArdaBackendState& State,
             const FArdaBackendConfiguration& Configuration)
         {
+            if (Configuration.mDeviceSource == EArdaDeviceSource::ExternalProvider)
+            {
+                if (!State.mExternalDeviceProvider)
+                {
+                    State.mError =
+                        "ExternalProvider device source requires a registered provider.";
+                    return false;
+                }
+                if (State.mExternalDeviceProvider->GetBackendType() !=
+                    Configuration.mBackend)
+                {
+                    State.mError =
+                        "The external device provider backend does not match the configuration.";
+                    return false;
+                }
+                State.mBackendDevice = CreateExternalBackendDevice();
+                if (!State.mBackendDevice)
+                {
+                    State.mError = "Failed to create the external backend wrapper.";
+                    return false;
+                }
+                return true;
+            }
+
             switch (Configuration.mBackend)
             {
             case EArdaBackendType::D3D12:
@@ -104,6 +129,7 @@ namespace arda::backend
         {
             State.mContext.mDevice = State.mBackendDevice->GetDevice();
             State.mContext.mBackend = Configuration.mBackend;
+            State.mContext.mDeviceSource = Configuration.mDeviceSource;
             State.mContext.mQueueCapabilities =
                 State.mBackendDevice->GetQueueCapabilities();
             currentBackend = Configuration.mBackend;
@@ -183,6 +209,7 @@ namespace arda::backend
 
         state.mConfiguration = configuration;
         state.mContext.mBackend = configuration.mBackend;
+        state.mContext.mDeviceSource = configuration.mDeviceSource;
         currentBackend = configuration.mBackend;
         state.mError.clear();
         return true;
@@ -229,7 +256,12 @@ namespace arda::backend
             return false;
         }
 
-        if (state.mBackendDevice->Initialize(runtimeConfiguration, nullptr) !=
+        const IArdaExternalDeviceProvider* externalProvider =
+            runtimeConfiguration.mDeviceSource == EArdaDeviceSource::ExternalProvider
+            ? state.mExternalDeviceProvider
+            : nullptr;
+        if (state.mBackendDevice->Initialize(
+                runtimeConfiguration, nullptr, externalProvider) !=
             EArdaInitializeResult::Success)
         {
             state.mError = state.mBackendDevice->GetError();
@@ -286,8 +318,12 @@ namespace arda::backend
                 : EArdaInitializeResult::Failure;
         }
 
-        const EArdaInitializeResult result =
-            state.mBackendDevice->Initialize(runtimeConfiguration, &WindowSurface);
+        const IArdaExternalDeviceProvider* externalProvider =
+            runtimeConfiguration.mDeviceSource == EArdaDeviceSource::ExternalProvider
+            ? state.mExternalDeviceProvider
+            : nullptr;
+        const EArdaInitializeResult result = state.mBackendDevice->Initialize(
+            runtimeConfiguration, &WindowSurface, externalProvider);
         if (result != EArdaInitializeResult::Success)
         {
             state.mError = state.mBackendDevice->GetError();
@@ -320,6 +356,7 @@ namespace arda::backend
         }
         state.mContext.mDevice = nullptr;
         state.mContext.mQueueCapabilities = {};
+        state.mContext.mDeviceSource = state.mConfiguration.mDeviceSource;
         state.mBackendDevice.reset();
         state.mbInitialized.store(false, std::memory_order_release);
         private_api::ReleaseShaderDirectoryRegistryAfterShutdown();
@@ -350,6 +387,62 @@ namespace arda::backend
         auto& state = GetState();
         std::lock_guard<std::mutex> lock(state.mMutex);
         return state.mError;
+    }
+
+    bool RegisterExternalDeviceProvider(IArdaExternalDeviceProvider& Provider)
+    {
+        auto& state = GetState();
+        std::lock_guard<std::mutex> lock(state.mMutex);
+        if (state.mBackendDevice)
+        {
+            state.mError =
+                "External device provider registration cannot change while initialized.";
+            return false;
+        }
+        if (state.mExternalDeviceProvider &&
+            state.mExternalDeviceProvider != &Provider)
+        {
+            state.mError = "A different external device provider is already registered.";
+            return false;
+        }
+        state.mExternalDeviceProvider = &Provider;
+        state.mError.clear();
+        return true;
+    }
+
+    bool UnregisterExternalDeviceProvider(IArdaExternalDeviceProvider& Provider)
+    {
+        auto& state = GetState();
+        std::lock_guard<std::mutex> lock(state.mMutex);
+        if (state.mBackendDevice)
+        {
+            state.mError =
+                "External device provider registration cannot change while initialized.";
+            return false;
+        }
+        if (state.mExternalDeviceProvider &&
+            state.mExternalDeviceProvider != &Provider)
+        {
+            state.mError = "The specified external device provider is not registered.";
+            return false;
+        }
+        state.mExternalDeviceProvider = nullptr;
+        state.mError.clear();
+        return true;
+    }
+
+    const IArdaExternalDeviceProvider* GetExternalDeviceProvider() noexcept
+    {
+        auto& state = GetState();
+        std::lock_guard<std::mutex> lock(state.mMutex);
+        return state.mExternalDeviceProvider;
+    }
+
+    void SetBackendError(const char* Error)
+    {
+        auto& state = GetState();
+        std::lock_guard<std::mutex> lock(state.mMutex);
+        state.mError = Error ? Error : "";
     }
 
     const char* ToString(EArdaBackendType backend) noexcept

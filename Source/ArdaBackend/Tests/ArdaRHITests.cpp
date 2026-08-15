@@ -10,6 +10,11 @@
 
 namespace
 {
+    struct FBackendShutdownGuard
+    {
+        ~FBackendShutdownGuard() { arda::backend::ShutdownBackend(); }
+    };
+
     class FFakeResource final : public arda::rhi::IArdaRHIResource
     {
     public:
@@ -71,6 +76,35 @@ TEST(ArdaRHI, DescriptorEqualityAndHashAreStable)
     C.mMipLevels = 2;
     EXPECT_FALSE(A == C);
     EXPECT_NE(HashValue(A), HashValue(C));
+}
+
+TEST(ArdaRHI, NativeImportDescriptorEqualityIncludesLifetimeTokenIdentity)
+{
+    using namespace arda::rhi;
+    auto FirstToken = eastl::make_shared<int>(1);
+    auto SecondToken = eastl::make_shared<int>(1);
+
+    FArdaRHINativeTextureImportDesc Texture;
+    Texture.mNativeObject = 77;
+    Texture.mNativeType = EArdaRHINativeResourceType::D3D12Resource;
+    Texture.mTexture.mFormat = EArdaRHIFormat::RGBA8UNorm;
+    Texture.mLifetimeToken = FirstToken;
+    const auto SameTextureToken = Texture;
+    auto DifferentTextureToken = Texture;
+    DifferentTextureToken.mLifetimeToken = SecondToken;
+    EXPECT_EQ(Texture, SameTextureToken);
+    EXPECT_FALSE(Texture == DifferentTextureToken);
+
+    FArdaRHINativeBufferImportDesc Buffer;
+    Buffer.mNativeObject = 88;
+    Buffer.mNativeType = EArdaRHINativeResourceType::D3D12Resource;
+    Buffer.mBuffer.mByteSize = 64;
+    Buffer.mLifetimeToken = FirstToken;
+    const auto SameBufferToken = Buffer;
+    auto DifferentBufferToken = Buffer;
+    DifferentBufferToken.mLifetimeToken = SecondToken;
+    EXPECT_EQ(Buffer, SameBufferToken);
+    EXPECT_FALSE(Buffer == DifferentBufferToken);
 }
 
 TEST(ArdaRHI, CacheKeyDescriptorsIgnoreDebugLabels)
@@ -180,6 +214,68 @@ TEST(ArdaRHI, NativeImportRejectsNonPortableTransferredOwnership)
     EXPECT_FALSE(Result);
     EXPECT_EQ(Result.mStatus.mCode, rhi::EArdaRHIResult::Unsupported);
     backend::ShutdownBackend();
+}
+
+TEST(ArdaRHI, NativeBufferImportValidationIsDeterministic)
+{
+    using namespace arda;
+    backend::ShutdownBackend();
+    FBackendShutdownGuard Shutdown;
+    backend::FArdaBackendConfiguration Configuration;
+    Configuration.mBackend = backend::DefaultBackend;
+    Configuration.mbEnableValidation = false;
+    ASSERT_TRUE(backend::ConfigureBackend(Configuration));
+    if (!backend::InitializeBackend())
+        GTEST_SKIP() << backend::GetBackendError().c_str();
+
+    const rhi::FArdaRHIDeviceRef Device = backend::GetDevice();
+    ASSERT_TRUE(Device);
+
+    rhi::FArdaRHINativeBufferImportDesc Null;
+    Null.mBuffer.mByteSize = 64;
+    auto NullResult = Device->ImportNativeBuffer(Null);
+    EXPECT_FALSE(NullResult);
+    EXPECT_EQ(
+        NullResult.mStatus.mCode,
+        rhi::EArdaRHIResult::InvalidArgument);
+    EXPECT_NE(
+        NullResult.mStatus.mMessage.find("null"),
+        eastl::string::npos);
+
+    auto Transferred = Null;
+    Transferred.mNativeObject = 1;
+    Transferred.mOwnership = rhi::EArdaRHINativeOwnership::Transferred;
+    auto TransferredResult = Device->ImportNativeBuffer(Transferred);
+    EXPECT_FALSE(TransferredResult);
+    EXPECT_EQ(
+        TransferredResult.mStatus.mCode,
+        rhi::EArdaRHIResult::Unsupported);
+
+    auto InvalidDescriptor = Null;
+    InvalidDescriptor.mNativeObject = 1;
+    InvalidDescriptor.mBuffer.mByteSize = 0;
+    auto InvalidDescriptorResult =
+        Device->ImportNativeBuffer(InvalidDescriptor);
+    EXPECT_FALSE(InvalidDescriptorResult);
+    EXPECT_EQ(
+        InvalidDescriptorResult.mStatus.mCode,
+        rhi::EArdaRHIResult::InvalidArgument);
+
+    auto WrongType = Null;
+    WrongType.mNativeObject = 1;
+    WrongType.mNativeType =
+        backend::GetDeviceContext().mBackend ==
+            backend::EArdaBackendType::D3D12
+        ? rhi::EArdaRHINativeResourceType::VulkanBuffer
+        : rhi::EArdaRHINativeResourceType::D3D12Resource;
+    auto WrongTypeResult = Device->ImportNativeBuffer(WrongType);
+    EXPECT_FALSE(WrongTypeResult);
+    EXPECT_EQ(
+        WrongTypeResult.mStatus.mCode,
+        rhi::EArdaRHIResult::Unsupported);
+    EXPECT_NE(
+        WrongTypeResult.mStatus.mMessage.find("does not match"),
+        eastl::string::npos);
 }
 
 TEST(ArdaRHI, BindingItemsRetainTheirResources)

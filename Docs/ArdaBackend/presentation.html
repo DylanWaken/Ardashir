@@ -30,6 +30,7 @@
         <a href="quick-guide.html">Quick user's guide</a>
         <a href="getting-started.html">Getting started</a>
         <a href="architecture.html">Architecture</a>
+        <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
         <a href="rhi.html">RHI types &amp; resources</a>
@@ -111,6 +112,10 @@
             <figcaption>The public contract is narrow; the native object graph and synchronization differ substantially beneath it.</figcaption>
           </figure>
           <p>The application supplies a platform adapter and initial drawable dimensions to <a href="api-reference.html#api-arda-backend-initializebackendforpresentation-57fda7b3"><code>InitializeBackendForPresentation</code></a>. On success, Arda publishes the ordinary device context and returns a unique-owner swap chain. Initialization failures return <a href="api-reference.html#api-arda-backend-eardainitializeresult-2bf6fe00"><code>EArdaInitializeResult</code></a>; detailed process-level context comes from <a href="api-reference.html#api-arda-backend-getbackenderror-bd2c5f82"><code>GetBackendError()</code></a>.</p>
+          <aside class="callout">
+            <h3>External devices use host-managed presentation</h3>
+            <p>The external-device wrapper does not implement this swap-chain path and rejects presentation initialization. An engine that adopts its own device must acquire, import, synchronize, and present frame images itself as described in <a href="external-interop.html#presentation">External interop</a>.</p>
+          </aside>
           <h3>The opaque window bridge</h3>
           <p><a href="api-reference.html#api-arda-backend-fardanativeobject-04279ab9"><code>FArdaNativeObject</code></a> encodes pointer-sized native handles without putting Win32 or Vulkan headers in public signatures. Opacity prevents compile-time coupling; it does not make a wrong type safe. An HWND encoded as a Vulkan instance, a stale window handle, or a surface from another instance remains invalid native input.</p>
           <ul>
@@ -345,6 +350,7 @@ ShutdownBackend();</code></pre>
             <li><a href="rhi.html">RHI types &amp; resources</a> — texture states, imported resources, framebuffers, and ownership.</li>
             <li><a href="pipelines.html">Pipeline states</a> — framebuffer-compatible graphics pipeline creation.</li>
             <li><a href="diagnostics.html">Diagnostics</a> — validation callbacks, error classification, and GPU failure triage.</li>
+            <li><a href="external-interop.html#presentation">External interop</a> — host-managed acquisition, imported frame images, and present.</li>
             <li><a href="api-reference.html#api-arda-backend-iardaswapchain-7dc6e3a4"><code>IArdaSwapChain</code> reference</a> — exact callable surface.</li>
           </ul>
         </section>

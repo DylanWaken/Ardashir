@@ -9,11 +9,12 @@ window.ArdaBackendApi = {
     "namespace": "arda::backend / arda::rhi",
     "summary": "Public backend initialization, diagnostics, shader authoring, pipeline caching, presentation, and backend-neutral RHI API."
   },
-  "generatedFrom": "Source/ArdaBackend/Public (all 19 unique public headers)",
+  "generatedFrom": "Source/ArdaBackend/Public (all 20 unique public headers)",
   "headerProvenance": [
     "Source/ArdaBackend/Public/ArdaAssert.h",
     "Source/ArdaBackend/Public/ArdaBackend.h",
     "Source/ArdaBackend/Public/ArdaDevice.h",
+    "Source/ArdaBackend/Public/ArdaExternalInterop.h",
     "Source/ArdaBackend/Public/ArdaLog.h",
     "Source/ArdaBackend/Public/ArdaSwapChain.h",
     "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
@@ -37,6 +38,12 @@ window.ArdaBackendApi = {
       "name": "Core and initialization",
       "page": "api-reference.html",
       "summary": "Backend selection, initialization, native handles, device context, and process-wide lifecycle."
+    },
+    {
+      "id": "external-interop",
+      "name": "External interoperation",
+      "page": "api-reference.html",
+      "summary": "Host-owned native device registration, native resource providers, and lifetime-safe external imports."
     },
     {
       "id": "shaders",
@@ -1097,6 +1104,1232 @@ window.ArdaBackendApi = {
       "threading": "",
       "related": [
         "arda::backend"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardadevicesource-3877d02f",
+      "name": "EArdaDeviceSource",
+      "qualifiedName": "arda::backend::EArdaDeviceSource",
+      "kind": "enum",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaDeviceSource { ArdaCreated, ExternalProvider }",
+      "summary": "Selects whether Arda creates the native device or wraps one supplied externally.",
+      "details": "Selects the native-device source used during backend initialization. Every enumerator is inventoried separately.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardadevicesource-ardacreated-adcedeb8",
+      "name": "ArdaCreated",
+      "qualifiedName": "arda::backend::EArdaDeviceSource::ArdaCreated",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "ArdaCreated",
+      "summary": "Arda creates and owns the native graphics device and queues.",
+      "details": "Arda creates and owns the native graphics device and queues. Its numeric value follows declaration order because no explicit initializer is present.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::EArdaDeviceSource"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardadevicesource-externalprovider-f57a997c",
+      "name": "ExternalProvider",
+      "qualifiedName": "arda::backend::EArdaDeviceSource::ExternalProvider",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "ExternalProvider",
+      "summary": "A registered external provider supplies non-owning native device handles.",
+      "details": "A registered external provider supplies non-owning native device handles. Its numeric value follows declaration order because no explicit initializer is present.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::EArdaDeviceSource"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendconfiguration-mdevicesource-ef35d91b",
+      "name": "mDeviceSource",
+      "qualifiedName": "arda::backend::FArdaBackendConfiguration::mDeviceSource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "EArdaDeviceSource mDeviceSource = EArdaDeviceSource::ArdaCreated;",
+      "summary": "The source from which the native graphics device is obtained.",
+      "details": "The source from which the native graphics device is obtained. The declaration defaults to EArdaDeviceSource::ArdaCreated. The configuration value is copied at initialization and the context reports the selected source.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaBackendConfiguration"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardadevicecontext-mdevicesource-ef35d91b",
+      "name": "mDeviceSource",
+      "qualifiedName": "arda::backend::FArdaDeviceContext::mDeviceSource",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "EArdaDeviceSource mDeviceSource = EArdaDeviceSource::ArdaCreated;",
+      "summary": "The source from which the initialized native device was obtained.",
+      "details": "The source from which the initialized native device was obtained. The declaration defaults to EArdaDeviceSource::ArdaCreated. The configuration value is copied at initialization and the context reports the selected source.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaDeviceContext"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-7f1c5557",
+      "name": "FArdaExternalD3D12DeviceDesc",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc",
+      "kind": "struct",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "struct FArdaExternalD3D12DeviceDesc",
+      "summary": "Describes an externally owned Direct3D 12 device and its NVRHI configuration.",
+      "details": "Describes an externally owned Direct3D 12 device and its NVRHI configuration. All native pointers are non-owning and must remain valid through backend shutdown. NVRHI retains COM references to the supplied device and queues, but Arda never destroys the host-owned native device. External presentation is not supported by the current wrapper; the host should import frame images and manage presentation.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Native object pointers are non-owning; the copied provider lifetime token may retain their host lifetime.",
+      "errors": "",
+      "threading": "The host must synchronize native object destruction with backend shutdown and use.",
+      "related": [
+        "arda::backend"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mdevice-fa625697",
+      "name": "mDevice",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mDevice",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mDevice;",
+      "summary": "Required opaque ID3D12Device pointer.",
+      "details": "Required opaque ID3D12Device pointer. The opaque pointer is non-owning and the host must keep it valid through backend shutdown.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Non-owning native pointer; NVRHI retains a COM reference after initialization.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mgraphicsqueue-c1717ffe",
+      "name": "mGraphicsQueue",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mGraphicsQueue",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mGraphicsQueue;",
+      "summary": "Required opaque graphics ID3D12CommandQueue pointer.",
+      "details": "Required opaque graphics ID3D12CommandQueue pointer. The opaque pointer is non-owning and the host must keep it valid through backend shutdown.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Non-owning native pointer; NVRHI retains a COM reference after initialization.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mcomputequeue-72311393",
+      "name": "mComputeQueue",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mComputeQueue",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mComputeQueue;",
+      "summary": "Optional opaque compute ID3D12CommandQueue pointer.",
+      "details": "Optional opaque compute ID3D12CommandQueue pointer. The opaque pointer is non-owning and the host must keep it valid through backend shutdown.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Non-owning native pointer; NVRHI retains a COM reference after initialization.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mcopyqueue-817e03f5",
+      "name": "mCopyQueue",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mCopyQueue",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mCopyQueue;",
+      "summary": "Optional opaque copy ID3D12CommandQueue pointer.",
+      "details": "Optional opaque copy ID3D12CommandQueue pointer. The opaque pointer is non-owning and the host must keep it valid through backend shutdown.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Non-owning native pointer; NVRHI retains a COM reference after initialization.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mdxgifactory-adc271f4",
+      "name": "mDxgiFactory",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mDxgiFactory",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mDxgiFactory;",
+      "summary": "Optional opaque IDXGIFactory pointer used by presentation implementations.",
+      "details": "Optional opaque IDXGIFactory pointer used by presentation implementations. The opaque pointer is non-owning and the host must keep it valid through backend shutdown.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Non-owning native pointer; NVRHI retains a COM reference after initialization.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mrendertargetviewheapsize-9faf76e9",
+      "name": "mRenderTargetViewHeapSize",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mRenderTargetViewHeapSize",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "uint32_t mRenderTargetViewHeapSize = 1024;",
+      "summary": "NVRHI render-target-view descriptor heap capacity.",
+      "details": "NVRHI render-target-view descriptor heap capacity. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mdepthstencilviewheapsize-09f21c5b",
+      "name": "mDepthStencilViewHeapSize",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mDepthStencilViewHeapSize",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "uint32_t mDepthStencilViewHeapSize = 1024;",
+      "summary": "NVRHI depth-stencil-view descriptor heap capacity.",
+      "details": "NVRHI depth-stencil-view descriptor heap capacity. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mshaderresourceviewheapsize-bf8cbeac",
+      "name": "mShaderResourceViewHeapSize",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mShaderResourceViewHeapSize",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "uint32_t mShaderResourceViewHeapSize = 16384;",
+      "summary": "NVRHI shader-resource-view descriptor heap capacity.",
+      "details": "NVRHI shader-resource-view descriptor heap capacity. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-msamplerheapsize-bdb7c771",
+      "name": "mSamplerHeapSize",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mSamplerHeapSize",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "uint32_t mSamplerHeapSize = 1024;",
+      "summary": "NVRHI sampler descriptor heap capacity.",
+      "details": "NVRHI sampler descriptor heap capacity. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mmaxtimerqueries-e8d3a327",
+      "name": "mMaxTimerQueries",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mMaxTimerQueries",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "uint32_t mMaxTimerQueries = 256;",
+      "summary": "NVRHI timer-query capacity.",
+      "details": "NVRHI timer-query capacity. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mbenableheapdirectlyindexed-ff797f60",
+      "name": "mbEnableHeapDirectlyIndexed",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mbEnableHeapDirectlyIndexed",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "bool mbEnableHeapDirectlyIndexed = false;",
+      "summary": "Enables directly indexed descriptor heaps when supported by the device.",
+      "details": "Enables directly indexed descriptor heaps when supported by the device. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mbaftermathenabled-f1355a59",
+      "name": "mbAftermathEnabled",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mbAftermathEnabled",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "bool mbAftermathEnabled = false;",
+      "summary": "Enables NVRHI Aftermath integration when configured by the host.",
+      "details": "Enables NVRHI Aftermath integration when configured by the host. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mblogbufferlifetime-5429e8d5",
+      "name": "mbLogBufferLifetime",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mbLogBufferLifetime",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "bool mbLogBufferLifetime = false;",
+      "summary": "Enables NVRHI buffer-lifetime diagnostics.",
+      "details": "Enables NVRHI buffer-lifetime diagnostics. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mbenableraytracingvalidation-527fb763",
+      "name": "mbEnableRayTracingValidation",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mbEnableRayTracingValidation",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "bool mbEnableRayTracingValidation = false;",
+      "summary": "Enables NVAPI ray-tracing validation when available.",
+      "details": "Enables NVAPI ray-tracing validation when available. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternald3d12devicedesc-mbenableenhancedbarriers-8e5955da",
+      "name": "mbEnableEnhancedBarriers",
+      "qualifiedName": "arda::backend::FArdaExternalD3D12DeviceDesc::mbEnableEnhancedBarriers",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "bool mbEnableEnhancedBarriers = true;",
+      "summary": "Enables D3D12 enhanced barriers when supported.",
+      "details": "Enables D3D12 enhanced barriers when supported. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalD3D12DeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkanqueuedesc-d4c31a54",
+      "name": "FArdaExternalVulkanQueueDesc",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanQueueDesc",
+      "kind": "struct",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "struct FArdaExternalVulkanQueueDesc",
+      "summary": "Identifies an externally owned Vulkan queue.",
+      "details": "Identifies an externally owned Vulkan queue. The raw queue handle is host-owned and requires external synchronization with Arda submissions and destruction.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The VkQueue handle is non-owning and remains host-owned.",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkanqueuedesc-mqueue-a3262878",
+      "name": "mQueue",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanQueueDesc::mQueue",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mQueue;",
+      "summary": "Opaque VkQueue value, or null for an optional queue.",
+      "details": "Opaque VkQueue value, or null for an optional queue. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The raw queue handle is non-owning and remains host-owned.",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend::FArdaExternalVulkanQueueDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkanqueuedesc-mfamilyindex-994a4a05",
+      "name": "mFamilyIndex",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanQueueDesc::mFamilyIndex",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "uint32_t mFamilyIndex = 0;",
+      "summary": "Vulkan queue-family index containing the queue.",
+      "details": "Vulkan queue-family index containing the queue. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend::FArdaExternalVulkanQueueDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkanqueuedesc-mqueueindex-1290f022",
+      "name": "mQueueIndex",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanQueueDesc::mQueueIndex",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "uint32_t mQueueIndex = 0;",
+      "summary": "Queue index within the family, retained for host diagnostics and validation.",
+      "details": "Queue index within the family, retained for host diagnostics and validation. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend::FArdaExternalVulkanQueueDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-abe6ed7e",
+      "name": "FArdaExternalVulkanDeviceDesc",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc",
+      "kind": "struct",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "struct FArdaExternalVulkanDeviceDesc",
+      "summary": "Describes an externally owned Vulkan device for NVRHI.",
+      "details": "Describes an externally owned Vulkan 1.3-or-newer device for NVRHI. Raw Vulkan handles, queues, and allocation callbacks remain host-owned and must outlive backend use. The host must enable dynamicRendering, synchronization2, and timelineSemaphore, preserve extension contracts, and provide external synchronization. External presentation is not supported by the current wrapper; the host should import frame images and manage presentation.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Raw Vulkan handles and allocation callbacks are non-owning; copied strings and the provider token retain only their own storage or represented lifetime.",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-minstance-682d1262",
+      "name": "mInstance",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mInstance",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mInstance;",
+      "summary": "Required opaque VkInstance value.",
+      "details": "Required opaque VkInstance value. The raw handle or pointer is non-owning and must remain valid through backend shutdown.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Non-owning host-managed Vulkan handle or callback pointer.",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mphysicaldevice-a36dbc5c",
+      "name": "mPhysicalDevice",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mPhysicalDevice",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mPhysicalDevice;",
+      "summary": "Required opaque VkPhysicalDevice value.",
+      "details": "Required opaque VkPhysicalDevice value. The raw handle or pointer is non-owning and must remain valid through backend shutdown.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Non-owning host-managed Vulkan handle or callback pointer.",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mdevice-fa625697",
+      "name": "mDevice",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mDevice",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mDevice;",
+      "summary": "Required opaque VkDevice value.",
+      "details": "Required opaque VkDevice value. The raw handle or pointer is non-owning and must remain valid through backend shutdown.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Non-owning host-managed Vulkan handle or callback pointer.",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mgraphicsqueue-2aa682dd",
+      "name": "mGraphicsQueue",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mGraphicsQueue",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaExternalVulkanQueueDesc mGraphicsQueue;",
+      "summary": "Required graphics queue descriptor.",
+      "details": "Required graphics queue descriptor. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mcomputequeue-eac75e3f",
+      "name": "mComputeQueue",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mComputeQueue",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaExternalVulkanQueueDesc mComputeQueue;",
+      "summary": "Optional compute queue descriptor.",
+      "details": "Optional compute queue descriptor. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mcopyqueue-5e12830c",
+      "name": "mCopyQueue",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mCopyQueue",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaExternalVulkanQueueDesc mCopyQueue;",
+      "summary": "Optional copy/transfer queue descriptor.",
+      "details": "Optional copy/transfer queue descriptor. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-minstanceextensions-fc3a58cd",
+      "name": "mInstanceExtensions",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mInstanceExtensions",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<eastl::string> mInstanceExtensions;",
+      "summary": "Copied names of instance extensions enabled by the host.",
+      "details": "Copied names of instance extensions enabled by the host. The value is copied when the external device is initialized.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Copied into backend-owned descriptor storage at initialization.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mdeviceextensions-dd4167b7",
+      "name": "mDeviceExtensions",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mDeviceExtensions",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<eastl::string> mDeviceExtensions;",
+      "summary": "Copied names of device extensions enabled by the host.",
+      "details": "Copied names of device extensions enabled by the host. The value is copied when the external device is initialized.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Copied into backend-owned descriptor storage at initialization.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mallocationcallbacks-b7020e91",
+      "name": "mAllocationCallbacks",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mAllocationCallbacks",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mAllocationCallbacks;",
+      "summary": "Optional opaque pointer to persistent VkAllocationCallbacks storage.",
+      "details": "Optional opaque pointer to persistent VkAllocationCallbacks storage. The raw handle or pointer is non-owning and must remain valid through backend shutdown.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Non-owning host-managed Vulkan handle or callback pointer.",
+      "errors": "",
+      "threading": "The host must externally synchronize queue submissions, raw-handle use, and destruction according to Vulkan host-synchronization rules.",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mbbufferdeviceaddresssupported-802c05c9",
+      "name": "mbBufferDeviceAddressSupported",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mbBufferDeviceAddressSupported",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "bool mbBufferDeviceAddressSupported = false;",
+      "summary": "Whether bufferDeviceAddress was enabled when the host created the device.",
+      "details": "Whether bufferDeviceAddress was enabled when the host created the device. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mbaftermathenabled-f1355a59",
+      "name": "mbAftermathEnabled",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mbAftermathEnabled",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "bool mbAftermathEnabled = false;",
+      "summary": "Enables NVRHI Aftermath integration when configured by the host.",
+      "details": "Enables NVRHI Aftermath integration when configured by the host. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mblogbufferlifetime-5429e8d5",
+      "name": "mbLogBufferLifetime",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mbLogBufferLifetime",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "bool mbLogBufferLifetime = false;",
+      "summary": "Enables NVRHI buffer-lifetime diagnostics.",
+      "details": "Enables NVRHI buffer-lifetime diagnostics. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mmaxtimerqueries-e8d3a327",
+      "name": "mMaxTimerQueries",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mMaxTimerQueries",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "uint32_t mMaxTimerQueries = 256;",
+      "summary": "NVRHI timer-query capacity.",
+      "details": "NVRHI timer-query capacity. The field uses the type and initializer shown in the public declaration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalvulkandevicedesc-mvulkanlibraryname-27921510",
+      "name": "mVulkanLibraryName",
+      "qualifiedName": "arda::backend::FArdaExternalVulkanDeviceDesc::mVulkanLibraryName",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::string mVulkanLibraryName;",
+      "summary": "Vulkan loader library name, or empty to use NVRHI's platform default.",
+      "details": "Vulkan loader library name, or empty to use NVRHI's platform default. The value is copied when the external device is initialized.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "Copied into backend-owned descriptor storage at initialization.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::backend::FArdaExternalVulkanDeviceDesc"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternaldeviceprovider-f1c0d75e",
+      "name": "IArdaExternalDeviceProvider",
+      "qualifiedName": "arda::backend::IArdaExternalDeviceProvider",
+      "kind": "class",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "class IArdaExternalDeviceProvider",
+      "summary": "Supplies one externally owned native graphics device.",
+      "details": "Supplies one externally owned native graphics device. The provider remains host-owned. Arda copies the selected device descriptor and shared lifetime token before initialization returns; provider callbacks run under the registry lock and must not reenter.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The provider pointer is non-owning and the host must keep it alive until it is unregistered after shutdown.",
+      "errors": "",
+      "threading": "Provider callbacks execute while the backend registry lock is held. Implementations must not reenter backend registration or lifetime APIs.",
+      "related": [
+        "arda::backend"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternaldeviceprovider-iardaexternaldeviceprovider-aba23bac",
+      "name": "~IArdaExternalDeviceProvider",
+      "qualifiedName": "arda::backend::IArdaExternalDeviceProvider::~IArdaExternalDeviceProvider",
+      "kind": "destructor",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "virtual ~IArdaExternalDeviceProvider() = default",
+      "summary": "Destroys the provider after the host has unregistered it.",
+      "details": "Destroys the provider after the host has unregistered it.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The host owns and destroys the provider only after successful unregistration.",
+      "errors": "",
+      "threading": "Do not destroy the provider while registered or while a callback can execute.",
+      "related": [
+        "arda::backend::IArdaExternalDeviceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternaldeviceprovider-getbackendtype-0b2be64d",
+      "name": "GetBackendType",
+      "qualifiedName": "arda::backend::IArdaExternalDeviceProvider::GetBackendType",
+      "kind": "method",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] virtual EArdaBackendType GetBackendType() const noexcept = 0",
+      "summary": "Returns the graphics backend represented by this provider.",
+      "details": "Returns the graphics backend represented by this provider. Provider callbacks execute while the backend registry lock is held. Implementations must not reenter backend registration or lifetime APIs.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "The graphics backend represented by this provider.",
+      "ownership": "",
+      "errors": "",
+      "threading": "Provider callbacks execute while the backend registry lock is held. Implementations must not reenter backend registration or lifetime APIs.",
+      "related": [
+        "arda::backend::IArdaExternalDeviceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternaldeviceprovider-getd3d12devicedesc-ba338f24",
+      "name": "GetD3D12DeviceDesc",
+      "qualifiedName": "arda::backend::IArdaExternalDeviceProvider::GetD3D12DeviceDesc",
+      "kind": "method",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] virtual bool GetD3D12DeviceDesc(FArdaExternalD3D12DeviceDesc& OutDesc) const { return false; }",
+      "summary": "Copies the Direct3D 12 descriptor when supported.",
+      "details": "Copies the Direct3D 12 descriptor when supported. Provider callbacks execute while the backend registry lock is held. Implementations must not reenter backend registration or lifetime APIs.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "FArdaExternalD3D12DeviceDesc& OutDesc"
+      ],
+      "returns": "True when a valid Direct3D 12 descriptor was supplied.",
+      "ownership": "OutDesc is copied by Arda after the callback; its native pointers remain non-owning.",
+      "errors": "A false descriptor result reports that the requested backend descriptor is unavailable.",
+      "threading": "Provider callbacks execute while the backend registry lock is held. Implementations must not reenter backend registration or lifetime APIs.",
+      "related": [
+        "arda::backend::IArdaExternalDeviceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternaldeviceprovider-getvulkandevicedesc-41074b27",
+      "name": "GetVulkanDeviceDesc",
+      "qualifiedName": "arda::backend::IArdaExternalDeviceProvider::GetVulkanDeviceDesc",
+      "kind": "method",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] virtual bool GetVulkanDeviceDesc(FArdaExternalVulkanDeviceDesc& OutDesc) const { return false; }",
+      "summary": "Copies the Vulkan descriptor when supported.",
+      "details": "Copies the Vulkan descriptor when supported. Provider callbacks execute while the backend registry lock is held. Implementations must not reenter backend registration or lifetime APIs.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "FArdaExternalVulkanDeviceDesc& OutDesc"
+      ],
+      "returns": "True when a valid Vulkan descriptor was supplied.",
+      "ownership": "OutDesc, including extension names and strings, is copied by Arda after the callback; raw handles remain non-owning.",
+      "errors": "A false descriptor result reports that the requested backend descriptor is unavailable.",
+      "threading": "Provider callbacks execute while the backend registry lock is held. Implementations must not reenter backend registration or lifetime APIs.",
+      "related": [
+        "arda::backend::IArdaExternalDeviceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternaldeviceprovider-getlifetimetoken-41c38a66",
+      "name": "GetLifetimeToken",
+      "qualifiedName": "arda::backend::IArdaExternalDeviceProvider::GetLifetimeToken",
+      "kind": "method",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] virtual eastl::shared_ptr<void> GetLifetimeToken() const { return {}; }",
+      "summary": "Returns an optional token retaining the native device lifetime.",
+      "details": "Returns an optional token retaining the native device lifetime. Provider callbacks execute while the backend registry lock is held. Implementations must not reenter backend registration or lifetime APIs.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "A shared token copied and retained through backend shutdown, or empty.",
+      "ownership": "The returned shared token is copied and retained; it owns only the host lifetime represented by the token.",
+      "errors": "",
+      "threading": "Provider callbacks execute while the backend registry lock is held. Implementations must not reenter backend registration or lifetime APIs.",
+      "related": [
+        "arda::backend::IArdaExternalDeviceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-registerexternaldeviceprovider-5cccafb9",
+      "name": "RegisterExternalDeviceProvider",
+      "qualifiedName": "arda::backend::RegisterExternalDeviceProvider",
+      "kind": "function",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool RegisterExternalDeviceProvider(IArdaExternalDeviceProvider& Provider)",
+      "summary": "Registers the process-wide external device provider.",
+      "details": "Registers the process-wide external device provider. Registration is process-wide and thread-safe. The provider remains host-owned.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "IArdaExternalDeviceProvider& Provider"
+      ],
+      "returns": "True when the provider is registered.",
+      "ownership": "Provider references and returned pointers are non-owning; the host controls provider lifetime.",
+      "errors": "Returns false for a different existing provider or after backend initialization.",
+      "threading": "Registry access is synchronized. The host must prevent concurrent unregister while using a returned provider pointer.",
+      "related": [
+        "arda::backend::IArdaExternalDeviceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-unregisterexternaldeviceprovider-e66c81c0",
+      "name": "UnregisterExternalDeviceProvider",
+      "qualifiedName": "arda::backend::UnregisterExternalDeviceProvider",
+      "kind": "function",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool UnregisterExternalDeviceProvider(IArdaExternalDeviceProvider& Provider)",
+      "summary": "Unregisters the process-wide external device provider.",
+      "details": "Unregisters the process-wide external device provider. Registration is process-wide and thread-safe. The provider remains host-owned.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "IArdaExternalDeviceProvider& Provider"
+      ],
+      "returns": "True when absent or successfully unregistered; false on mismatch or active backend.",
+      "ownership": "Provider references and returned pointers are non-owning; the host controls provider lifetime.",
+      "errors": "Returns false when Provider does not match or the backend is active.",
+      "threading": "Registry access is synchronized. The host must prevent concurrent unregister while using a returned provider pointer.",
+      "related": [
+        "arda::backend::IArdaExternalDeviceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-getexternaldeviceprovider-abb17321",
+      "name": "GetExternalDeviceProvider",
+      "qualifiedName": "arda::backend::GetExternalDeviceProvider",
+      "kind": "function",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] const IArdaExternalDeviceProvider* GetExternalDeviceProvider() noexcept",
+      "summary": "Gets the registered provider without transferring ownership.",
+      "details": "Gets the registered provider without transferring ownership. Registration is process-wide and thread-safe. The provider remains host-owned.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "The registered provider, or null.",
+      "ownership": "Provider references and returned pointers are non-owning; the host controls provider lifetime.",
+      "errors": "",
+      "threading": "Registry access is synchronized. The host must prevent concurrent unregister while using a returned provider pointer.",
+      "related": [
+        "arda::backend::IArdaExternalDeviceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternalresourceprovider-4c32a8df",
+      "name": "IArdaExternalResourceProvider",
+      "qualifiedName": "arda::backend::IArdaExternalResourceProvider",
+      "kind": "class",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "class IArdaExternalResourceProvider",
+      "summary": "Resolves stable external resource identifiers into native import descriptors.",
+      "details": "Resolves stable external resource identifiers into complete native import descriptors. The provider remains host-owned, callbacks run under the registry lock, and Vulkan providers must enforce raw-handle lifetime and external synchronization.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The provider pointer is non-owning and must remain valid while registered.",
+      "errors": "",
+      "threading": "Resolve callbacks execute under the resource-provider registry lock and must not reenter this registry. The host must prevent concurrent provider unregistration.",
+      "related": [
+        "arda::backend"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternalresourceprovider-iardaexternalresourceprovider-fa7dfcf3",
+      "name": "~IArdaExternalResourceProvider",
+      "qualifiedName": "arda::backend::IArdaExternalResourceProvider::~IArdaExternalResourceProvider",
+      "kind": "destructor",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "virtual ~IArdaExternalResourceProvider() = default",
+      "summary": "Destroys the provider after the host has unregistered it.",
+      "details": "Destroys the provider after the host has unregistered it.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The host owns and destroys the provider only after successful unregistration.",
+      "errors": "",
+      "threading": "Do not destroy the provider while registered or while a callback can execute.",
+      "related": [
+        "arda::backend::IArdaExternalResourceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternalresourceprovider-getname-bafcfab5",
+      "name": "GetName",
+      "qualifiedName": "arda::backend::IArdaExternalResourceProvider::GetName",
+      "kind": "method",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] virtual const char* GetName() const noexcept = 0",
+      "summary": "Returns the provider stable registry name.",
+      "details": "Returns the provider stable registry name. Resolve callbacks execute under the resource-provider registry lock and must not reenter this registry. The host must prevent concurrent provider unregistration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Stable, non-empty registry name owned by the provider.",
+      "ownership": "The returned string is non-owning and remains provider-owned.",
+      "errors": "",
+      "threading": "Resolve callbacks execute under the resource-provider registry lock and must not reenter this registry. The host must prevent concurrent provider unregistration.",
+      "related": [
+        "arda::backend::IArdaExternalResourceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternalresourceprovider-getbackendtype-0b2be64d",
+      "name": "GetBackendType",
+      "qualifiedName": "arda::backend::IArdaExternalResourceProvider::GetBackendType",
+      "kind": "method",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] virtual EArdaBackendType GetBackendType() const noexcept = 0",
+      "summary": "Returns the graphics backend required by the provider native handles.",
+      "details": "Returns the graphics backend required by the provider native handles. Resolve callbacks execute under the resource-provider registry lock and must not reenter this registry. The host must prevent concurrent provider unregistration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Graphics backend required by the provider native handles.",
+      "ownership": "",
+      "errors": "",
+      "threading": "Resolve callbacks execute under the resource-provider registry lock and must not reenter this registry. The host must prevent concurrent provider unregistration.",
+      "related": [
+        "arda::backend::IArdaExternalResourceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternalresourceprovider-resolvenativetexture-1e51a7e4",
+      "name": "ResolveNativeTexture",
+      "qualifiedName": "arda::backend::IArdaExternalResourceProvider::ResolveNativeTexture",
+      "kind": "method",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] virtual rhi::FArdaRHIStatus ResolveNativeTexture(uint64_t Id, rhi::FArdaRHINativeTextureImportDesc& OutDesc) = 0",
+      "summary": "Resolves a stable texture identifier.",
+      "details": "Resolves a stable texture identifier. Resolve callbacks execute under the resource-provider registry lock and must not reenter this registry. The host must prevent concurrent provider unregistration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "uint64_t Id",
+        "rhi::FArdaRHINativeTextureImportDesc& OutDesc"
+      ],
+      "returns": "Success or a provider-specific failure status.",
+      "ownership": "OutDesc is copied for import; its native handle remains host-owned unless ownership explicitly transfers, and its shared lifetime token is retained.",
+      "errors": "Returns provider-specific status for an unknown identifier or invalid descriptor.",
+      "threading": "Resolve callbacks execute under the resource-provider registry lock and must not reenter this registry. The host must prevent concurrent provider unregistration.",
+      "related": [
+        "arda::backend::IArdaExternalResourceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternalresourceprovider-resolvenativebuffer-810e28cd",
+      "name": "ResolveNativeBuffer",
+      "qualifiedName": "arda::backend::IArdaExternalResourceProvider::ResolveNativeBuffer",
+      "kind": "method",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] virtual rhi::FArdaRHIStatus ResolveNativeBuffer(uint64_t Id, rhi::FArdaRHINativeBufferImportDesc& OutDesc) = 0",
+      "summary": "Resolves a stable buffer identifier.",
+      "details": "Resolves a stable buffer identifier. Resolve callbacks execute under the resource-provider registry lock and must not reenter this registry. The host must prevent concurrent provider unregistration.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "uint64_t Id",
+        "rhi::FArdaRHINativeBufferImportDesc& OutDesc"
+      ],
+      "returns": "Success or a provider-specific failure status.",
+      "ownership": "OutDesc is copied for import; its native handle remains host-owned unless ownership explicitly transfers, and its shared lifetime token is retained.",
+      "errors": "Returns provider-specific status for an unknown identifier or invalid descriptor.",
+      "threading": "Resolve callbacks execute under the resource-provider registry lock and must not reenter this registry. The host must prevent concurrent provider unregistration.",
+      "related": [
+        "arda::backend::IArdaExternalResourceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-registerexternalresourceprovider-e32dc182",
+      "name": "RegisterExternalResourceProvider",
+      "qualifiedName": "arda::backend::RegisterExternalResourceProvider",
+      "kind": "function",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool RegisterExternalResourceProvider(IArdaExternalResourceProvider& Provider)",
+      "summary": "Registers an external resource provider by its stable name.",
+      "details": "Registers an external resource provider by its stable name. Registry operations are synchronized and provider pointers remain host-owned.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "IArdaExternalResourceProvider& Provider"
+      ],
+      "returns": "True when the provider is registered.",
+      "ownership": "Provider references and returned pointers are non-owning; the host controls provider lifetime.",
+      "errors": "Returns false and records a backend error for an invalid name or a name collision.",
+      "threading": "Registry access is synchronized. The host must prevent concurrent unregister while using a returned provider pointer.",
+      "related": [
+        "arda::backend::IArdaExternalResourceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-unregisterexternalresourceprovider-bd34fad8",
+      "name": "UnregisterExternalResourceProvider",
+      "qualifiedName": "arda::backend::UnregisterExternalResourceProvider",
+      "kind": "function",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool UnregisterExternalResourceProvider(IArdaExternalResourceProvider& Provider)",
+      "summary": "Unregisters an external resource provider.",
+      "details": "Unregisters an external resource provider. Registry operations are synchronized and provider pointers remain host-owned.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "IArdaExternalResourceProvider& Provider"
+      ],
+      "returns": "True when absent or removed; false on a name collision or mismatch.",
+      "ownership": "Provider references and returned pointers are non-owning; the host controls provider lifetime.",
+      "errors": "Returns false when the provider name resolves to a different object.",
+      "threading": "Registry access is synchronized. The host must prevent concurrent unregister while using a returned provider pointer.",
+      "related": [
+        "arda::backend::IArdaExternalResourceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-getexternalresourceprovider-91d349a4",
+      "name": "GetExternalResourceProvider",
+      "qualifiedName": "arda::backend::GetExternalResourceProvider",
+      "kind": "function",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] const IArdaExternalResourceProvider* GetExternalResourceProvider(const char* Name) noexcept",
+      "summary": "Looks up a resource provider by stable name.",
+      "details": "Looks up a resource provider by stable name. Registry operations are synchronized and provider pointers remain host-owned.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "const char* Name"
+      ],
+      "returns": "Matching provider, or null.",
+      "ownership": "Provider references and returned pointers are non-owning; the host controls provider lifetime.",
+      "errors": "Returns null for a null, empty, or unregistered name.",
+      "threading": "Registry access is synchronized. The host must prevent concurrent unregister while using a returned provider pointer.",
+      "related": [
+        "arda::backend::IArdaExternalResourceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-importexternaltexture-6d277d20",
+      "name": "ImportExternalTexture",
+      "qualifiedName": "arda::backend::ImportExternalTexture",
+      "kind": "function",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] rhi::TArdaRHIResult<rhi::FArdaRHITextureRef> ImportExternalTexture(const char* ProviderName, uint64_t Id)",
+      "summary": "Resolves and imports an external texture into the active RHI device.",
+      "details": "Resolves and imports an external texture into the active RHI device. The imported wrapper retains mLifetimeToken. Reusing the same native handle with a different token is a descriptor conflict. External presentation is not supported by the current external wrapper; the host should import frame images and manage present.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "const char* ProviderName",
+        "uint64_t Id"
+      ],
+      "returns": "Imported texture and status using normal RHI result conventions.",
+      "ownership": "The returned intrusive reference owns the imported wrapper; the wrapper retains the descriptor shared lifetime token but does not otherwise assume host-native ownership.",
+      "errors": "Returns status for missing providers, backend mismatch, resolution failure, invalid descriptors, descriptor conflicts, or unsupported imports.",
+      "threading": "Resolve callbacks execute under the resource-provider registry lock and must not reenter this registry. The host must prevent concurrent provider unregistration. Vulkan raw handles additionally require host lifetime and external synchronization.",
+      "related": [
+        "arda::backend::IArdaExternalResourceProvider"
+      ]
+    },
+    {
+      "id": "api-arda-backend-importexternalbuffer-13f26bef",
+      "name": "ImportExternalBuffer",
+      "qualifiedName": "arda::backend::ImportExternalBuffer",
+      "kind": "function",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] rhi::TArdaRHIResult<rhi::FArdaRHIBufferRef> ImportExternalBuffer(const char* ProviderName, uint64_t Id)",
+      "summary": "Resolves and imports an external buffer into the active RHI device.",
+      "details": "Resolves and imports an external buffer into the active RHI device. The imported wrapper retains mLifetimeToken. Reusing the same native handle with a different token is a descriptor conflict. External presentation is not supported by the current external wrapper; the host should import frame images and manage present.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "const char* ProviderName",
+        "uint64_t Id"
+      ],
+      "returns": "Imported buffer and status using normal RHI result conventions.",
+      "ownership": "The returned intrusive reference owns the imported wrapper; the wrapper retains the descriptor shared lifetime token but does not otherwise assume host-native ownership.",
+      "errors": "Returns status for missing providers, backend mismatch, resolution failure, invalid descriptors, descriptor conflicts, or unsupported imports.",
+      "threading": "Resolve callbacks execute under the resource-provider registry lock and must not reenter this registry. The host must prevent concurrent provider unregistration. Vulkan raw handles additionally require host lifetime and external synchronization.",
+      "related": [
+        "arda::backend::IArdaExternalResourceProvider"
       ]
     },
     {
@@ -3433,7 +4666,7 @@ window.ArdaBackendApi = {
       "page": "api-reference.html",
       "signature": "[[nodiscard]] EArdaInitializeResult InitializeBackendForPresentation( IArdaWindowSurface& WindowSurface, uint32_t Width, uint32_t Height, eastl::unique_ptr<IArdaSwapChain>& OutSwapChain)",
       "summary": "Initializes the backend and a swap chain for a window surface.",
-      "details": "Initializes the backend and creates presentation resources through the supplied window-system adapter at the requested dimensions. The returned swap chain must be destroyed before ShutdownBackend.",
+      "details": "Initializes an ArdaCreated backend and creates presentation resources through the supplied window-system adapter at the requested dimensions. The returned swap chain must be destroyed before ShutdownBackend. The current external-device wrapper is headless and host-presented: when mDeviceSource is ExternalProvider this function returns Failure, so the host must call InitializeBackend, import acquired frame images, and perform native presentation itself.",
       "source": "Source/ArdaBackend/Public/ArdaSwapChain.h",
       "params": [
         "IArdaWindowSurface& WindowSurface",
@@ -3443,7 +4676,7 @@ window.ArdaBackendApi = {
       ],
       "returns": "The backend initialization outcome.",
       "ownership": "WindowSurface remains caller-owned. On success OutSwapChain receives unique ownership and must be destroyed before backend shutdown.",
-      "errors": "Returns Success, Unavailable, or Failure; platform surface creation can also write a diagnostic through the window-surface adapter.",
+      "errors": "Returns Success, Unavailable, or Failure; platform surface creation can also write a diagnostic through the window-surface adapter. ExternalProvider mode returns Failure because external presentation is not implemented.",
       "threading": "Process-wide backend configuration and lifetime operations must be externally serialized and must not run concurrently with device use.",
       "related": [
         "arda::backend"
@@ -21011,9 +22244,9 @@ window.ArdaBackendApi = {
       "kind": "operator",
       "component": "rhi-types",
       "page": "api-reference.html",
-      "signature": "bool operator==(const FArdaRHINativeBufferImportDesc& O) const noexcept { return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType && mOwnership == O.mOwnership && mBuffer == O.mBuffer && mInitialState == O.mInitialState; }",
+      "signature": "bool operator==(const FArdaRHINativeBufferImportDesc& O) const noexcept { return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType && mOwnership == O.mOwnership && mBuffer == O.mBuffer && mInitialState == O.mInitialState && !mLifetimeToken.owner_before(O.mLifetimeToken) && !O.mLifetimeToken.owner_before(mLifetimeToken); }",
       "summary": "Compares two values for equality.",
-      "details": "Compares two values for equality. The operation is declared noexcept and must not propagate exceptions. The operation does not mutate the observable state of the object through this interface.",
+      "details": "Compares native handle, type, ownership, resource description, initial state, and shared lifetime-token ownership identity. The operation is noexcept and does not mutate either descriptor.",
       "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHITypes.h",
       "params": [
         "const FArdaRHINativeBufferImportDesc& O"
@@ -21022,6 +22255,26 @@ window.ArdaBackendApi = {
       "ownership": "Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.",
       "errors": "False reports an unsuccessful operation or negative query as documented.",
       "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHINativeBufferImportDesc"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhinativebufferimportdesc-mlifetimetoken-ccb0f412",
+      "name": "mLifetimeToken",
+      "qualifiedName": "arda::rhi::FArdaRHINativeBufferImportDesc::mLifetimeToken",
+      "kind": "member variable",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<void> mLifetimeToken;",
+      "summary": "Optional shared token retained by the imported wrapper.",
+      "details": "Optional shared token retained by the imported wrapper. The token, rather than Arda, owns any native lifetime it represents. Reusing the same native handle with a different token is a descriptor conflict for the imported resource cache.",
+      "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The shared token is copied and retained by the imported wrapper.",
+      "errors": "A different token for an already imported native handle is a descriptor conflict.",
+      "threading": "The host must synchronize raw native-handle use and destruction; Vulkan also requires external host synchronization.",
       "related": [
         "arda::rhi::FArdaRHINativeBufferImportDesc"
       ]
@@ -21153,9 +22406,9 @@ window.ArdaBackendApi = {
       "kind": "operator",
       "component": "rhi-types",
       "page": "api-reference.html",
-      "signature": "bool operator==(const FArdaRHINativeTextureImportDesc& O) const noexcept { return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType && mOwnership == O.mOwnership && mTexture == O.mTexture && mInitialState == O.mInitialState; }",
+      "signature": "bool operator==(const FArdaRHINativeTextureImportDesc& O) const noexcept { return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType && mOwnership == O.mOwnership && mTexture == O.mTexture && mInitialState == O.mInitialState && !mLifetimeToken.owner_before(O.mLifetimeToken) && !O.mLifetimeToken.owner_before(mLifetimeToken); }",
       "summary": "Compares two values for equality.",
-      "details": "Compares two values for equality. The operation is declared noexcept and must not propagate exceptions. The operation does not mutate the observable state of the object through this interface.",
+      "details": "Compares native handle, type, ownership, resource description, initial state, and shared lifetime-token ownership identity. The operation is noexcept and does not mutate either descriptor.",
       "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHITypes.h",
       "params": [
         "const FArdaRHINativeTextureImportDesc& O"
@@ -21164,6 +22417,26 @@ window.ArdaBackendApi = {
       "ownership": "Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.",
       "errors": "False reports an unsuccessful operation or negative query as documented.",
       "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHINativeTextureImportDesc"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhinativetextureimportdesc-mlifetimetoken-ccb0f412",
+      "name": "mLifetimeToken",
+      "qualifiedName": "arda::rhi::FArdaRHINativeTextureImportDesc::mLifetimeToken",
+      "kind": "member variable",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "eastl::shared_ptr<void> mLifetimeToken;",
+      "summary": "Optional shared token retained by the imported wrapper.",
+      "details": "Optional shared token retained by the imported wrapper. The token, rather than Arda, owns any native lifetime it represents. Reusing the same native handle with a different token is a descriptor conflict for the imported resource cache.",
+      "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The shared token is copied and retained by the imported wrapper.",
+      "errors": "A different token for an already imported native handle is a descriptor conflict.",
+      "threading": "The host must synchronize raw native-handle use and destruction; Vulkan also requires external host synchronization.",
       "related": [
         "arda::rhi::FArdaRHINativeTextureImportDesc"
       ]

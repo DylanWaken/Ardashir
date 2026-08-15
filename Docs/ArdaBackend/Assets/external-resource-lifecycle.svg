@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="670" viewBox="0 0 1100 670" role="img" aria-labelledby="title desc">
+  <title id="title">External resource import and lifetime</title>
+  <desc id="desc">A stable provider name and resource ID resolve to a truthful native descriptor and canonical lifetime token. Import either creates or deduplicates a wrapper, GPU work uses it, completion is proven, and references are released. A lower comparison shows D3D12 COM retention versus Vulkan raw handles, which require explicit host and token lifetime.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker>
+    <style>
+      .title{font:700 28px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}
+      .box{rx:12;stroke-width:2}.identity{fill:#1f3656;stroke:#60a5fa}.resolve{fill:#3a294d;stroke:#c084fc}.wrapper{fill:#214b45;stroke:#34d399}.gpu{fill:#493720;stroke:#fbbf24}.danger{fill:#4a252a;stroke:#fb7185}
+      .label{font:700 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.body{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.left{font:13px system-ui,sans-serif;fill:#c5d2e3}
+      .flow{fill:none;stroke:#7dd3fc;stroke-width:2.5;marker-end:url(#arrow)}.life{fill:none;stroke:#fbbf24;stroke-width:2;stroke-dasharray:7 5}
+    </style>
+  </defs>
+  <rect width="1100" height="670" rx="20" fill="url(#bg)"/>
+  <text x="42" y="48" class="title">One stable identity, one truthful descriptor, one lifetime domain</text>
+  <text x="42" y="76" class="sub">Import deduplication is safe only when native identity, metadata, initial state, and token ownership identity agree.</text>
+
+  <rect x="36" y="128" width="176" height="100" class="box identity"/>
+  <text x="124" y="160" class="label">Stable key</text>
+  <text x="124" y="186" class="body">provider: Engine</text>
+  <text x="124" y="207" class="body">resource ID + generation</text>
+
+  <rect x="254" y="128" width="208" height="100" class="box resolve"/>
+  <text x="358" y="160" class="label">Resolve callback</text>
+  <text x="358" y="186" class="body">native handle + true desc</text>
+  <text x="358" y="207" class="body">state + canonical token</text>
+
+  <rect x="504" y="128" width="196" height="100" class="box wrapper"/>
+  <text x="602" y="160" class="label">Import / dedup</text>
+  <text x="602" y="186" class="body">same identity &#8594; reuse</text>
+  <text x="602" y="207" class="body">different token &#8594; conflict</text>
+
+  <rect x="742" y="128" width="150" height="100" class="box gpu"/>
+  <text x="817" y="160" class="label">GPU work</text>
+  <text x="817" y="186" class="body">record + submit</text>
+  <text x="817" y="207" class="body">retain to completion</text>
+
+  <rect x="934" y="128" width="130" height="100" class="box wrapper"/>
+  <text x="999" y="160" class="label">Release</text>
+  <text x="999" y="186" class="body">GPU done</text>
+  <text x="999" y="207" class="body">refs reset</text>
+
+  <path d="M212 178H250" class="flow"/><path d="M462 178H500" class="flow"/><path d="M700 178H738" class="flow"/><path d="M892 178H930" class="flow"/>
+  <path d="M358 228V278H999V232" class="life"/>
+  <text x="680" y="270" class="body">token/native host lifetime spans wrapper and GPU use</text>
+
+  <rect x="46" y="342" width="478" height="170" class="box wrapper"/>
+  <text x="285" y="378" class="label">D3D12 resource</text>
+  <text x="76" y="410" class="left">" NVRHI wrapper retains required COM reference</text>
+  <text x="76" y="436" class="left">" host ownership and coordination still remain external</text>
+  <text x="76" y="462" class="left">" final native destruction follows GPU completion and all refs</text>
+  <text x="76" y="488" class="left">" token can pin plugin/device lifetime beyond one resource</text>
+
+  <rect x="576" y="342" width="478" height="170" class="box danger"/>
+  <text x="815" y="378" class="label">Vulkan resource</text>
+  <text x="606" y="410" class="left">" VkImage/VkBuffer raw handles are not reference-counted</text>
+  <text x="606" y="436" class="left">" host/token must retain device, memory, and allocation state</text>
+  <text x="606" y="462" class="left">" Vulkan host synchronization remains the host's duty</text>
+  <text x="606" y="488" class="left">" destroying or recycling a handle early is use-after-free</text>
+
+  <rect x="178" y="558" width="744" height="66" class="box gpu"/>
+  <text x="550" y="584" class="label">Safe retirement condition</text>
+  <text x="550" y="608" class="body">host use finished + Arda GPU use completed + imported refs released + copied device refs released</text>
+</svg>

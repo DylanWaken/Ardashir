@@ -31,6 +31,7 @@
         <a href="quick-guide.html">Quick user's guide</a>
         <a href="getting-started.html">Getting started</a>
         <a aria-current="page" href="architecture.html">Architecture</a>
+        <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
         <a href="rhi.html">RHI types &amp; resources</a>
@@ -413,13 +414,13 @@ else
           <p><a href="api-reference.html#api-arda-backend-fardanativeobject-04279ab9"><code>FArdaNativeObject</code></a> encodes a pointer or integer handle as <code>uintptr_t</code>. <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a> exposes the minimum backend-specific operations needed to obtain an HWND or create a Vulkan surface without putting those native types in public signatures.</p>
 
           <h3>Native resource import</h3>
-          <p>Texture and buffer import descriptions identify native representation and ownership as borrowed or transferred. Before importing, establish:</p>
+          <p>Texture and buffer import descriptions identify native representation, ownership, initial state, and an optional retained lifetime token. The dedicated <a href="external-interop.html">External devices and resources</a> chapter covers host-owned device adoption, provider registries, queue coordination, and named imports. Before importing, establish:</p>
           <ol>
             <li>the native resource type matches the active backend;</li>
             <li>the resource was created on the compatible native device;</li>
             <li>the portable description exactly matches the native allocation;</li>
             <li>the initial state and external synchronization are known;</li>
-            <li>the selected ownership mode matches who will destroy the native object; and</li>
+            <li>the selected ownership mode matches who will destroy the native object and the token actually retains its host lifetime; and</li>
             <li>the external producer cannot invalidate the object while the RHI or GPU still uses it.</li>
           </ol>
 
@@ -501,6 +502,7 @@ else
           <h3>Further reading</h3>
           <ul>
             <li><a href="rhi.html">RHI resources: descriptors, validation, capabilities, and imports</a></li>
+            <li><a href="external-interop.html">External interop: host-owned devices, queues, resources, and presentation</a></li>
             <li><a href="commands.html">Commands: recording state, submission, and synchronization</a></li>
             <li><a href="diagnostics.html">Diagnostics: statuses, callbacks, assertions, and failure reports</a></li>
             <li><a href="../index.html">Documentation home: continue into adjacent Ardashir systems</a></li>
@@ -514,7 +516,7 @@ else
 
         <nav class="page-nav" aria-label="Page navigation">
           <a rel="prev" href="getting-started.html">← Previous: Getting started</a>
-          <a rel="next" href="shaders.html">Next: Shaders →</a>
+          <a rel="next" href="external-interop.html">Next: External interop →</a>
         </nav>
       </article>
     </main>

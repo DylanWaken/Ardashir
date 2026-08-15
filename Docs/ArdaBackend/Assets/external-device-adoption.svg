@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="650" viewBox="0 0 1100 650" role="img" aria-labelledby="title desc">
+  <title id="title">External graphics-device adoption and ownership</title>
+  <desc id="desc">The host engine owns a D3D12 or Vulkan device and queues. A non-owning provider is registered, its descriptor and optional lifetime token are copied into the external ArdaBackend wrapper, and the wrapper configures NVRHI. Blue arrows show configuration flow, green arrows show Arda-owned wrapper state, and amber arrows show host ownership that remains outside Arda.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/></linearGradient>
+    <marker id="flow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker>
+    <marker id="own" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#fbbf24"/></marker>
+    <style>
+      .title{font:700 28px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}
+      .box{rx:14;stroke-width:2}.host{fill:#493720;stroke:#fbbf24}.registry{fill:#1f3656;stroke:#60a5fa}.arda{fill:#214b45;stroke:#34d399}.native{fill:#3a294d;stroke:#c084fc}
+      .label{font:700 16px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.body{font:13px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}
+      .flow{fill:none;stroke:#7dd3fc;stroke-width:2.5;marker-end:url(#flow)}.own{fill:none;stroke:#fbbf24;stroke-width:2.5;stroke-dasharray:8 5;marker-end:url(#own)}
+      .brace{fill:none;stroke:#34d399;stroke-width:2}.legend{font:12px system-ui,sans-serif;fill:#c5d2e3}
+    </style>
+  </defs>
+  <rect width="1100" height="650" rx="20" fill="url(#bg)"/>
+  <text x="42" y="48" class="title">Adoption creates a wrapper, not a second native owner</text>
+  <text x="42" y="76" class="sub">Configuration flows left to right; native ownership remains anchored in the host.</text>
+
+  <rect x="42" y="130" width="220" height="116" class="box host"/>
+  <text x="152" y="164" class="label">Host engine</text>
+  <text x="152" y="190" class="body">lifecycle + presentation</text>
+  <text x="152" y="212" class="body">queue coordination</text>
+  <text x="152" y="234" class="body">plugin lifetime</text>
+
+  <rect x="318" y="130" width="220" height="116" class="box registry"/>
+  <text x="428" y="164" class="label">Provider registry</text>
+  <text x="428" y="190" class="body">host-owned provider pointer</text>
+  <text x="428" y="212" class="body">serialized callbacks</text>
+  <text x="428" y="234" class="body">descriptor copied once</text>
+
+  <rect x="594" y="130" width="220" height="116" class="box arda"/>
+  <text x="704" y="164" class="label">External wrapper</text>
+  <text x="704" y="190" class="body">copied descriptor + token</text>
+  <text x="704" y="212" class="body">RHI identity + validation</text>
+  <text x="704" y="234" class="body">headless / host-presented</text>
+
+  <rect x="870" y="130" width="188" height="116" class="box arda"/>
+  <text x="964" y="164" class="label">NVRHI</text>
+  <text x="964" y="190" class="body">internal heaps</text>
+  <text x="964" y="212" class="body">fences / semaphores</text>
+  <text x="964" y="234" class="body">direct queue submit</text>
+
+  <path d="M262 188H314" class="flow"/><path d="M538 188H590" class="flow"/><path d="M814 188H866" class="flow"/>
+  <text x="290" y="174" class="legend" text-anchor="middle">register</text>
+  <text x="566" y="174" class="legend" text-anchor="middle">copy</text>
+  <text x="840" y="174" class="legend" text-anchor="middle">configure</text>
+
+  <rect x="250" y="356" width="600" height="148" class="box native"/>
+  <text x="550" y="392" class="label">Host-owned native graphics domain</text>
+  <rect x="286" y="418" width="240" height="58" class="box host"/>
+  <text x="406" y="443" class="label">D3D12</text><text x="406" y="465" class="body">ID3D12Device + command queues</text>
+  <rect x="574" y="418" width="240" height="58" class="box host"/>
+  <text x="694" y="443" class="label">Vulkan</text><text x="694" y="465" class="body">instance + devices + queues</text>
+
+  <path d="M152 246C152 318 250 328 330 352" class="own"/>
+  <path d="M964 246C964 310 844 324 770 352" class="flow"/>
+  <text x="117" y="310" class="legend">owns until final release</text>
+  <text x="880" y="310" class="legend">uses; never assumes ownership</text>
+
+  <path d="M594 548H1058" class="brace"/>
+  <text x="826" y="577" class="body">Arda owns wrapper-side allocations only</text>
+  <path d="M42 548H538" class="own"/>
+  <text x="290" y="608" class="body">Host outlives every Arda reference and GPU use</text>
+  <text x="42" y="630" class="legend">Amber dashed: host ownership &#183; Cyan: configuration/use &#183; Green line: wrapper-owned implementation state</text>
+</svg>

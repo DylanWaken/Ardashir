@@ -14,6 +14,257 @@
 #define ARDA_BACKEND_TEST_SHADER_DIR "."
 #endif
 
+namespace
+{
+    class FExternalTestCleanup
+    {
+    public:
+        ~FExternalTestCleanup()
+        {
+            arda::backend::ShutdownBackend();
+            for (auto It = mResourceProviders.rbegin();
+                It != mResourceProviders.rend(); ++It)
+            {
+                static_cast<void>(
+                    arda::backend::UnregisterExternalResourceProvider(**It));
+            }
+            for (auto It = mDeviceProviders.rbegin();
+                It != mDeviceProviders.rend(); ++It)
+            {
+                static_cast<void>(
+                    arda::backend::UnregisterExternalDeviceProvider(**It));
+            }
+        }
+
+        bool Register(arda::backend::IArdaExternalDeviceProvider& Provider)
+        {
+            if (!arda::backend::RegisterExternalDeviceProvider(Provider))
+                return false;
+            for (const auto* Existing : mDeviceProviders)
+                if (Existing == &Provider)
+                    return true;
+            mDeviceProviders.push_back(&Provider);
+            return true;
+        }
+
+        bool Register(arda::backend::IArdaExternalResourceProvider& Provider)
+        {
+            if (!arda::backend::RegisterExternalResourceProvider(Provider))
+                return false;
+            for (const auto* Existing : mResourceProviders)
+                if (Existing == &Provider)
+                    return true;
+            mResourceProviders.push_back(&Provider);
+            return true;
+        }
+
+    private:
+        std::vector<arda::backend::IArdaExternalDeviceProvider*> mDeviceProviders;
+        std::vector<arda::backend::IArdaExternalResourceProvider*> mResourceProviders;
+    };
+
+    class FTestDeviceProvider final
+        : public arda::backend::IArdaExternalDeviceProvider
+    {
+    public:
+        arda::backend::EArdaBackendType mBackend =
+            arda::backend::DefaultBackend;
+        eastl::shared_ptr<void> mToken;
+#if defined(_WIN32)
+        arda::backend::FArdaExternalD3D12DeviceDesc mD3D12;
+        bool mbSupplyD3D12 = false;
+#endif
+
+        arda::backend::EArdaBackendType GetBackendType() const noexcept override
+        {
+            return mBackend;
+        }
+#if defined(_WIN32)
+        bool GetD3D12DeviceDesc(
+            arda::backend::FArdaExternalD3D12DeviceDesc& OutDesc) const override
+        {
+            OutDesc = mD3D12;
+            return mbSupplyD3D12;
+        }
+#endif
+        eastl::shared_ptr<void> GetLifetimeToken() const override
+        {
+            return mToken;
+        }
+    };
+
+    class FTestResourceProvider final
+        : public arda::backend::IArdaExternalResourceProvider
+    {
+    public:
+        const char* mName = "test.resources";
+        arda::backend::EArdaBackendType mBackend =
+            arda::backend::DefaultBackend;
+        arda::rhi::FArdaRHIStatus mTextureStatus =
+            arda::rhi::FArdaRHIStatus::Success();
+        arda::rhi::FArdaRHIStatus mBufferStatus =
+            arda::rhi::FArdaRHIStatus::Success();
+        arda::rhi::FArdaRHINativeTextureImportDesc mTexture;
+        arda::rhi::FArdaRHINativeBufferImportDesc mBuffer;
+        uint64_t mLastTextureId = 0;
+        uint64_t mLastBufferId = 0;
+
+        const char* GetName() const noexcept override { return mName; }
+        arda::backend::EArdaBackendType GetBackendType() const noexcept override
+        {
+            return mBackend;
+        }
+        arda::rhi::FArdaRHIStatus ResolveNativeTexture(
+            uint64_t Id,
+            arda::rhi::FArdaRHINativeTextureImportDesc& OutDesc) override
+        {
+            mLastTextureId = Id;
+            OutDesc = mTexture;
+            return mTextureStatus;
+        }
+        arda::rhi::FArdaRHIStatus ResolveNativeBuffer(
+            uint64_t Id,
+            arda::rhi::FArdaRHINativeBufferImportDesc& OutDesc) override
+        {
+            mLastBufferId = Id;
+            OutDesc = mBuffer;
+            return mBufferStatus;
+        }
+    };
+}
+
+TEST(ArdaBackend, ExternalDeviceProviderRegistrationIsDeterministic)
+{
+    using namespace arda::backend;
+    ShutdownBackend();
+    FTestDeviceProvider First;
+    FTestDeviceProvider Collision;
+    FExternalTestCleanup Cleanup;
+
+    EXPECT_EQ(GetExternalDeviceProvider(), nullptr);
+    ASSERT_TRUE(Cleanup.Register(First));
+    EXPECT_TRUE(RegisterExternalDeviceProvider(First));
+    EXPECT_EQ(GetExternalDeviceProvider(), &First);
+    EXPECT_FALSE(RegisterExternalDeviceProvider(Collision));
+    EXPECT_NE(GetBackendError().find("different"), eastl::string::npos);
+    EXPECT_FALSE(UnregisterExternalDeviceProvider(Collision));
+    EXPECT_EQ(GetExternalDeviceProvider(), &First);
+    EXPECT_TRUE(UnregisterExternalDeviceProvider(First));
+    EXPECT_EQ(GetExternalDeviceProvider(), nullptr);
+    EXPECT_TRUE(UnregisterExternalDeviceProvider(First));
+}
+
+TEST(ArdaBackend, ExternalDeviceSourceReportsMissingAndMismatchedProviders)
+{
+    using namespace arda::backend;
+    ShutdownBackend();
+    FTestDeviceProvider Provider;
+    FExternalTestCleanup Cleanup;
+    FArdaBackendConfiguration Configuration;
+    Configuration.mBackend = DefaultBackend;
+    Configuration.mDeviceSource = EArdaDeviceSource::ExternalProvider;
+    Configuration.mbEnableValidation = false;
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    EXPECT_EQ(
+        GetDeviceContext().mDeviceSource,
+        EArdaDeviceSource::ExternalProvider);
+    EXPECT_FALSE(InitializeBackend());
+    EXPECT_NE(GetBackendError().find("registered provider"), eastl::string::npos);
+
+    Provider.mBackend = DefaultBackend == EArdaBackendType::D3D12
+        ? EArdaBackendType::Vulkan
+        : EArdaBackendType::D3D12;
+    ASSERT_TRUE(Cleanup.Register(Provider));
+    EXPECT_FALSE(InitializeBackend());
+    EXPECT_NE(GetBackendError().find("does not match"), eastl::string::npos);
+}
+
+TEST(ArdaBackend, NamedExternalResourceProviderRegistryIsDeterministic)
+{
+    using namespace arda::backend;
+    ShutdownBackend();
+    FTestResourceProvider Empty;
+    Empty.mName = "";
+    FTestResourceProvider First;
+    FTestResourceProvider Collision;
+    FExternalTestCleanup Cleanup;
+
+    EXPECT_FALSE(RegisterExternalResourceProvider(Empty));
+    EXPECT_NE(GetBackendError().find("non-empty"), eastl::string::npos);
+    ASSERT_TRUE(Cleanup.Register(First));
+    EXPECT_TRUE(RegisterExternalResourceProvider(First));
+    EXPECT_EQ(GetExternalResourceProvider("test.resources"), &First);
+    EXPECT_EQ(GetExternalResourceProvider(""), nullptr);
+    EXPECT_FALSE(RegisterExternalResourceProvider(Collision));
+    EXPECT_NE(GetBackendError().find("already registered"), eastl::string::npos);
+    EXPECT_FALSE(UnregisterExternalResourceProvider(Collision));
+    EXPECT_EQ(GetExternalResourceProvider("test.resources"), &First);
+    EXPECT_TRUE(UnregisterExternalResourceProvider(First));
+    EXPECT_EQ(GetExternalResourceProvider("test.resources"), nullptr);
+    EXPECT_TRUE(UnregisterExternalResourceProvider(First));
+}
+
+TEST(ArdaBackend, NamedExternalResourceImportFailsCleanly)
+{
+    using namespace arda;
+    using namespace backend;
+    ShutdownBackend();
+    FTestResourceProvider Provider;
+    FExternalTestCleanup Cleanup;
+
+    auto Missing = ImportExternalBuffer("missing.resources", 11);
+    EXPECT_FALSE(Missing);
+    EXPECT_EQ(Missing.mStatus.mCode, rhi::EArdaRHIResult::InvalidArgument);
+
+    ASSERT_TRUE(Cleanup.Register(Provider));
+    auto Uninitialized = ImportExternalBuffer(Provider.mName, 12);
+    EXPECT_FALSE(Uninitialized);
+    EXPECT_EQ(
+        Uninitialized.mStatus.mCode,
+        rhi::EArdaRHIResult::InvalidState);
+
+    FArdaBackendConfiguration Configuration;
+    Configuration.mBackend = DefaultBackend;
+    Configuration.mbEnableValidation = false;
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    if (!InitializeBackend())
+        GTEST_SKIP() << GetBackendError().c_str();
+
+    Provider.mBackend = DefaultBackend == EArdaBackendType::D3D12
+        ? EArdaBackendType::Vulkan
+        : EArdaBackendType::D3D12;
+    auto WrongBackend = ImportExternalBuffer(Provider.mName, 13);
+    EXPECT_FALSE(WrongBackend);
+    EXPECT_EQ(WrongBackend.mStatus.mCode, rhi::EArdaRHIResult::WrongDevice);
+
+    Provider.mBackend = DefaultBackend;
+    Provider.mBufferStatus = rhi::FArdaRHIStatus::Error(
+        rhi::EArdaRHIResult::BackendFailure,
+        "provider-specific buffer failure");
+    auto ProviderFailure = ImportExternalBuffer(Provider.mName, 14);
+    EXPECT_FALSE(ProviderFailure);
+    EXPECT_EQ(
+        ProviderFailure.mStatus.mCode,
+        rhi::EArdaRHIResult::BackendFailure);
+    EXPECT_STREQ(
+        ProviderFailure.mStatus.mMessage.c_str(),
+        "provider-specific buffer failure");
+    EXPECT_EQ(Provider.mLastBufferId, 14u);
+
+    Provider.mTextureStatus = rhi::FArdaRHIStatus::Error(
+        rhi::EArdaRHIResult::InvalidArgument,
+        "provider-specific texture failure");
+    auto TextureFailure = ImportExternalTexture(Provider.mName, 15);
+    EXPECT_FALSE(TextureFailure);
+    EXPECT_EQ(
+        TextureFailure.mStatus.mCode,
+        rhi::EArdaRHIResult::InvalidArgument);
+    EXPECT_STREQ(
+        TextureFailure.mStatus.mMessage.c_str(),
+        "provider-specific texture failure");
+    EXPECT_EQ(Provider.mLastTextureId, 15u);
+}
+
 TEST(ArdaBackend, ExposesProcessWideConfigurationAndContext)
 {
     using namespace arda::backend;
@@ -55,6 +306,222 @@ TEST(ArdaBackend, EmptyOpaqueDeviceReferencesAreSafe)
 }
 
 #if defined(_WIN32)
+TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
+{
+    using namespace arda;
+    using namespace backend;
+    using namespace rhi;
+    ShutdownBackend();
+
+    Microsoft::WRL::ComPtr<ID3D12Device> NativeDevice;
+    if (FAILED(D3D12CreateDevice(
+            nullptr,
+            D3D_FEATURE_LEVEL_11_0,
+            IID_PPV_ARGS(&NativeDevice))))
+    {
+        GTEST_SKIP() << "D3D12 is unavailable.";
+    }
+
+    const auto CreateQueue = [&NativeDevice](D3D12_COMMAND_LIST_TYPE Type)
+    {
+        Microsoft::WRL::ComPtr<ID3D12CommandQueue> Queue;
+        D3D12_COMMAND_QUEUE_DESC Desc{};
+        Desc.Type = Type;
+        NativeDevice->CreateCommandQueue(&Desc, IID_PPV_ARGS(&Queue));
+        return Queue;
+    };
+    auto GraphicsQueue = CreateQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
+    auto ComputeQueue = CreateQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+    auto CopyQueue = CreateQueue(D3D12_COMMAND_LIST_TYPE_COPY);
+    ASSERT_TRUE(GraphicsQueue);
+
+    FTestDeviceProvider DeviceProvider;
+    DeviceProvider.mBackend = EArdaBackendType::D3D12;
+    DeviceProvider.mbSupplyD3D12 = true;
+    DeviceProvider.mD3D12.mDevice = FArdaNativeObject(NativeDevice.Get());
+    DeviceProvider.mD3D12.mGraphicsQueue =
+        FArdaNativeObject(GraphicsQueue.Get());
+    DeviceProvider.mD3D12.mComputeQueue =
+        FArdaNativeObject(ComputeQueue.Get());
+    DeviceProvider.mD3D12.mCopyQueue = FArdaNativeObject(CopyQueue.Get());
+
+    FTestResourceProvider ResourceProvider;
+    ResourceProvider.mBackend = EArdaBackendType::D3D12;
+    FExternalTestCleanup Cleanup;
+
+    auto Token = eastl::make_shared<int>(42);
+    eastl::weak_ptr<void> WeakToken(Token);
+    DeviceProvider.mToken = Token;
+
+    D3D12_HEAP_PROPERTIES HeapProperties{};
+    HeapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+    D3D12_RESOURCE_DESC BufferDesc{};
+    BufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    BufferDesc.Width = 4096;
+    BufferDesc.Height = 1;
+    BufferDesc.DepthOrArraySize = 1;
+    BufferDesc.MipLevels = 1;
+    BufferDesc.SampleDesc.Count = 1;
+    BufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    Microsoft::WRL::ComPtr<ID3D12Resource> NativeBuffer;
+    ASSERT_TRUE(SUCCEEDED(NativeDevice->CreateCommittedResource(
+        &HeapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &BufferDesc,
+        D3D12_RESOURCE_STATE_COMMON,
+        nullptr,
+        IID_PPV_ARGS(&NativeBuffer))));
+
+    D3D12_RESOURCE_DESC TextureDesc{};
+    TextureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    TextureDesc.Width = 4;
+    TextureDesc.Height = 4;
+    TextureDesc.DepthOrArraySize = 1;
+    TextureDesc.MipLevels = 1;
+    TextureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    TextureDesc.SampleDesc.Count = 1;
+    TextureDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    Microsoft::WRL::ComPtr<ID3D12Resource> NativeTexture;
+    ASSERT_TRUE(SUCCEEDED(NativeDevice->CreateCommittedResource(
+        &HeapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &TextureDesc,
+        D3D12_RESOURCE_STATE_COMMON,
+        nullptr,
+        IID_PPV_ARGS(&NativeTexture))));
+
+    ResourceProvider.mBuffer.mNativeObject =
+        reinterpret_cast<uintptr_t>(NativeBuffer.Get());
+    ResourceProvider.mBuffer.mNativeType =
+        EArdaRHINativeResourceType::D3D12Resource;
+    ResourceProvider.mBuffer.mInitialState = EArdaRHIResourceState::Common;
+    ResourceProvider.mBuffer.mBuffer.mByteSize = 4096;
+    ResourceProvider.mBuffer.mBuffer.mInitialState =
+        EArdaRHIResourceState::Common;
+    ResourceProvider.mBuffer.mLifetimeToken = Token;
+    ResourceProvider.mTexture.mNativeObject =
+        reinterpret_cast<uintptr_t>(NativeTexture.Get());
+    ResourceProvider.mTexture.mNativeType =
+        EArdaRHINativeResourceType::D3D12Resource;
+    ResourceProvider.mTexture.mInitialState = EArdaRHIResourceState::Common;
+    ResourceProvider.mTexture.mTexture.mWidth = 4;
+    ResourceProvider.mTexture.mTexture.mHeight = 4;
+    ResourceProvider.mTexture.mTexture.mFormat = EArdaRHIFormat::RGBA8UNorm;
+    ResourceProvider.mTexture.mTexture.mInitialState =
+        EArdaRHIResourceState::Common;
+    ResourceProvider.mTexture.mLifetimeToken = Token;
+
+    ASSERT_TRUE(Cleanup.Register(DeviceProvider));
+    ASSERT_TRUE(Cleanup.Register(ResourceProvider));
+    FArdaBackendConfiguration Configuration;
+    Configuration.mBackend = EArdaBackendType::D3D12;
+    Configuration.mDeviceSource = EArdaDeviceSource::ExternalProvider;
+    Configuration.mbEnableValidation = false;
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+
+    EXPECT_EQ(GetDeviceContext().mBackend, EArdaBackendType::D3D12);
+    EXPECT_EQ(
+        GetDeviceContext().mDeviceSource,
+        EArdaDeviceSource::ExternalProvider);
+    EXPECT_TRUE(GetQueueCapabilities().mbGraphics);
+    EXPECT_EQ(GetQueueCapabilities().mbCompute, ComputeQueue != nullptr);
+    EXPECT_EQ(GetQueueCapabilities().mbCopy, CopyQueue != nullptr);
+
+    FArdaRHIDeviceRef Device = GetDevice();
+    FArdaRHIDeviceRef SurvivingDevice = Device;
+    ASSERT_TRUE(Device);
+    FArdaRHIBufferDesc ArdaBufferDesc;
+    ArdaBufferDesc.mByteSize = 256;
+    EXPECT_TRUE(Device->CreateBuffer(ArdaBufferDesc));
+    auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+    ASSERT_TRUE(Commands);
+    EXPECT_TRUE(Commands.mValue->Open());
+    EXPECT_TRUE(Commands.mValue->Close());
+
+    auto FirstBuffer = ImportExternalBuffer(ResourceProvider.mName, 101);
+    auto SecondBuffer = ImportExternalBuffer(ResourceProvider.mName, 101);
+    auto FirstTexture = ImportExternalTexture(ResourceProvider.mName, 202);
+    auto SecondTexture = ImportExternalTexture(ResourceProvider.mName, 202);
+    ASSERT_TRUE(FirstBuffer);
+    ASSERT_TRUE(SecondBuffer);
+    ASSERT_TRUE(FirstTexture);
+    ASSERT_TRUE(SecondTexture);
+    EXPECT_EQ(FirstBuffer.mValue.Get(), SecondBuffer.mValue.Get());
+    EXPECT_EQ(FirstTexture.mValue.Get(), SecondTexture.mValue.Get());
+    EXPECT_EQ(ResourceProvider.mLastBufferId, 101u);
+    EXPECT_EQ(ResourceProvider.mLastTextureId, 202u);
+
+    Token.reset();
+    DeviceProvider.mToken.reset();
+    ResourceProvider.mBuffer.mLifetimeToken.reset();
+    ResourceProvider.mTexture.mLifetimeToken.reset();
+    EXPECT_FALSE(WeakToken.expired());
+
+    FirstBuffer.mValue = nullptr;
+    SecondBuffer.mValue = nullptr;
+    FirstTexture.mValue = nullptr;
+    SecondTexture.mValue = nullptr;
+    Commands.mValue = nullptr;
+    Device = nullptr;
+    ShutdownBackend();
+    EXPECT_FALSE(WeakToken.expired());
+    EXPECT_EQ(NativeDevice->GetNodeCount(), 1u);
+    EXPECT_EQ(
+        GraphicsQueue->GetDesc().Type,
+        D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+    SurvivingDevice = nullptr;
+    EXPECT_TRUE(WeakToken.expired());
+}
+
+TEST(ArdaBackend, InvalidExternalD3D12DescriptorsReportErrors)
+{
+    using namespace arda::backend;
+    ShutdownBackend();
+    Microsoft::WRL::ComPtr<ID3D12Device> NativeDevice;
+    if (FAILED(D3D12CreateDevice(
+            nullptr,
+            D3D_FEATURE_LEVEL_11_0,
+            IID_PPV_ARGS(&NativeDevice))))
+    {
+        GTEST_SKIP() << "D3D12 is unavailable.";
+    }
+
+    D3D12_COMMAND_QUEUE_DESC QueueDesc{};
+    QueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+    Microsoft::WRL::ComPtr<ID3D12CommandQueue> CopyQueue;
+    ASSERT_TRUE(SUCCEEDED(NativeDevice->CreateCommandQueue(
+        &QueueDesc, IID_PPV_ARGS(&CopyQueue))));
+
+    FTestDeviceProvider Provider;
+    FExternalTestCleanup Cleanup;
+    Provider.mBackend = EArdaBackendType::D3D12;
+    Provider.mbSupplyD3D12 = true;
+    Provider.mD3D12.mDevice = FArdaNativeObject(NativeDevice.Get());
+    ASSERT_TRUE(Cleanup.Register(Provider));
+
+    FArdaBackendConfiguration Configuration;
+    Configuration.mBackend = EArdaBackendType::D3D12;
+    Configuration.mDeviceSource = EArdaDeviceSource::ExternalProvider;
+    Configuration.mbEnableValidation = false;
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    EXPECT_FALSE(InitializeBackend());
+    EXPECT_NE(
+        GetBackendError().find("device and graphics queue"),
+        eastl::string::npos);
+
+    ASSERT_TRUE(UnregisterExternalDeviceProvider(Provider));
+    Provider.mD3D12.mGraphicsQueue = FArdaNativeObject(CopyQueue.Get());
+    ASSERT_TRUE(RegisterExternalDeviceProvider(Provider));
+    const bool bInitialized = InitializeBackend();
+    EXPECT_FALSE(bInitialized);
+    EXPECT_FALSE(GetBackendError().empty());
+    if (bInitialized)
+        ShutdownBackend();
+}
+
 TEST(ArdaBackend, BorrowedD3D12TextureImportDeduplicatesAndReleases)
 {
     using namespace arda;

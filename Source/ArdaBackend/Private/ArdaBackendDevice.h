@@ -11,6 +11,7 @@
 
 namespace arda::backend
 {
+    class IArdaExternalDeviceProvider;
     /** Forwards NVRHI diagnostic messages to an Arda diagnostic callback. */
     class FArdaNvrhiMessageCallback final : public nvrhi::IMessageCallback
     {
@@ -58,6 +59,24 @@ namespace arda::backend
             const FArdaBackendConfiguration& Configuration,
             IArdaWindowSurface* WindowSurface) = 0;
 
+        /** Initializes the backend with an optional external native-device provider.
+         *  This compatibility overload delegates owned initialization to the legacy
+         *  two-argument implementation.
+         *  @param Configuration Backend configuration used to initialize the device.
+         *  @param WindowSurface Optional presentation surface.
+         *  @param ExternalProvider Non-owning provider used only during this call, or null.
+         *  @return Result describing whether initialization succeeded.
+         */
+        [[nodiscard]] virtual EArdaInitializeResult Initialize(
+            const FArdaBackendConfiguration& Configuration,
+            IArdaWindowSurface* WindowSurface,
+            const IArdaExternalDeviceProvider* ExternalProvider)
+        {
+            return ExternalProvider
+                ? EArdaInitializeResult::Failure
+                : Initialize(Configuration, WindowSurface);
+        }
+
         /** Creates a swap chain for the initialized backend.
          *  @param Width Initial swap-chain width in pixels.
          *  @param Height Initial swap-chain height in pixels.
@@ -95,4 +114,14 @@ namespace arda::backend
      *  @return A newly allocated backend device.
      */
     [[nodiscard]] eastl::unique_ptr<IArdaBackendDevice> CreateVulkanBackendDevice();
+
+    /** Creates the private backend implementation that wraps externally supplied handles.
+     *  @return A newly allocated external backend device.
+     */
+    [[nodiscard]] eastl::unique_ptr<IArdaBackendDevice> CreateExternalBackendDevice();
+
+    /** Replaces the process-wide backend error while holding no backend-state lock.
+     *  @param Error Null-terminated diagnostic text.
+     */
+    void SetBackendError(const char* Error);
 }

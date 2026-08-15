@@ -31,6 +31,7 @@
         <a href="quick-guide.html">Quick user's guide</a>
         <a href="getting-started.html">Getting started</a>
         <a href="architecture.html">Architecture</a>
+        <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
         <a href="rhi.html">RHI types &amp; resources</a>
@@ -178,27 +179,31 @@
               <p>Study opaque interfaces, ownership, backend pinning, process state, device affinity, statuses, concurrency domains, and native interop.</p>
             </article>
             <article>
-              <h3>3. <a href="rhi.html">RHI resources</a></h3>
+              <h3>3. <a href="external-interop.html">External interop</a></h3>
+              <p>Adopt a host-owned D3D12 or Vulkan device, coordinate supplied queues, import named resources, and preserve native lifetime.</p>
+            </article>
+            <article>
+              <h3>4. <a href="rhi.html">RHI resources</a></h3>
               <p>Learn descriptors, validation, resource creation, capabilities, views, native imports, and retained references.</p>
             </article>
             <article>
-              <h3>4. <a href="shaders.html">Shaders</a></h3>
+              <h3>5. <a href="shaders.html">Shaders</a></h3>
               <p>Register virtual source paths and shader types, understand authored parameter metadata, and load the device-bound global shader map.</p>
             </article>
             <article>
-              <h3>5. <a href="pipelines.html">Pipeline states</a></h3>
+              <h3>6. <a href="pipelines.html">Pipeline states</a></h3>
               <p>Derive immutable PSOs, complete framebuffer-dependent formats, control cache retention, and diagnose creation failures.</p>
             </article>
             <article>
-              <h3>6. <a href="commands.html">Commands</a></h3>
+              <h3>7. <a href="commands.html">Commands</a></h3>
               <p>Record state transitions, draws, dispatches, and copies; submit queues; establish cross-queue ordering; and manage completion.</p>
             </article>
             <article>
-              <h3>7. <a href="presentation.html">Presentation</a></h3>
+              <h3>8. <a href="presentation.html">Presentation</a></h3>
               <p>Bridge native windows, acquire framebuffers, resize safely, submit presentation work, and recover from surface failures.</p>
             </article>
             <article>
-              <h3>8. <a href="diagnostics.html">Diagnostics</a></h3>
+              <h3>9. <a href="diagnostics.html">Diagnostics</a></h3>
               <p>Combine validation messages, status values, logs, cache diagnostics, assertions, and reproducible failure reports.</p>
             </article>
           </div>
@@ -207,6 +212,7 @@
           <ul>
             <li><strong>Compute or offline tool:</strong> Getting started → RHI resources → Commands → Diagnostics.</li>
             <li><strong>Windowed renderer:</strong> Getting started → Architecture → Shaders → Pipelines → Commands → Presentation.</li>
+            <li><strong>Engine-owned device and presentation:</strong> Getting started → Architecture → <a href="external-interop.html">External interop</a> → RHI resources → Commands → Diagnostics.</li>
             <li><strong>Preparing for render-graph integration:</strong> read Architecture → <a href="rhi.html">RHI resources</a> → <a href="commands.html">Commands</a>. This site currently teaches the Backend boundary that a render graph would target; dedicated RenderGraph coverage is a future documentation module.</li>
             <li><strong>Production incident:</strong> Diagnostics → the failing subsystem → Architecture failure containment.</li>
           </ul>

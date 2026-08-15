@@ -31,6 +31,7 @@
         <a href="quick-guide.html">Quick user's guide</a>
         <a href="getting-started.html">Getting started</a>
         <a href="architecture.html">Architecture</a>
+        <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
         <a href="rhi.html">RHI types &amp; resources</a>
@@ -135,6 +136,7 @@
             <h3>Parallel queues do not guarantee faster frames</h3>
             <p>Queues may share execution units, caches, and memory bandwidth. Overlap only independent work with enough duration to amortize synchronization. Measure GPU timelines rather than inferring concurrency from queue names.</p>
           </aside>
+          <p>When Arda adopts queues from another engine, same-queue order is not sufficient by itself: the host must establish an exclusive <a class="term" data-term="queue-coordination" href="../glossary.html#term-queue-coordination">queue-coordination</a> interval around Arda submission. See <a href="external-interop.html#queues">External interop queue synchronization</a>; there is no submission hook that safely interleaves an independent host RHI thread.</p>
         </section>
 
         <section id="state-machine">
@@ -415,6 +417,7 @@ if (!drawn)
             <li><a href="rhi.html">RHI resources and memory</a> — subresources, views, initial states, ownership, and heaps.</li>
             <li><a href="pipelines.html">Pipeline states</a> — PSO resolution and graphics compatibility.</li>
             <li><a href="presentation.html">Presentation</a> — swap-chain acquisition, present state, and frame boundaries.</li>
+            <li><a href="external-interop.html#queues">External interop</a> — coordinating host-owned native queues.</li>
             <li><a class="term" data-term="arda-render-graph" href="../glossary.html#term-arda-render-graph">ArdaRenderGraph</a> — pass declarations, compilation, transient lifetime, and execution.</li>
             <li><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-a83aba52">API: <code>IArdaRHICommandList</code></a>,
               <a href="api-reference.html#api-arda-rhi-iardarhidevice-createcommandlist-315fd719"><code>CreateCommandList</code></a>,

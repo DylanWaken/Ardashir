@@ -5,6 +5,7 @@
 #pragma once
 
 #include <EASTL/string.h>
+#include <EASTL/shared_ptr.h>
 #include <EASTL/vector.h>
 
 #include <cstddef>
@@ -456,6 +457,11 @@ namespace arda::rhi
         /** Stores the initial state. */
         EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Unknown;
         /**
+         * Optional shared token retained by the imported wrapper.
+         * The token, rather than Arda, owns any native lifetime it represents.
+         */
+        eastl::shared_ptr<void> mLifetimeToken;
+        /**
          * Compares two values for equality.
          * @param O The o.
          * @return True when the condition is satisfied; otherwise false.
@@ -464,7 +470,9 @@ namespace arda::rhi
         {
             return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType &&
                 mOwnership == O.mOwnership && mTexture == O.mTexture &&
-                mInitialState == O.mInitialState;
+                mInitialState == O.mInitialState &&
+                !mLifetimeToken.owner_before(O.mLifetimeToken) &&
+                !O.mLifetimeToken.owner_before(mLifetimeToken);
         }
     };
 
@@ -482,6 +490,11 @@ namespace arda::rhi
         /** Stores the initial state. */
         EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Unknown;
         /**
+         * Optional shared token retained by the imported wrapper.
+         * The token, rather than Arda, owns any native lifetime it represents.
+         */
+        eastl::shared_ptr<void> mLifetimeToken;
+        /**
          * Compares two values for equality.
          * @param O The o.
          * @return True when the condition is satisfied; otherwise false.
@@ -490,7 +503,9 @@ namespace arda::rhi
         {
             return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType &&
                 mOwnership == O.mOwnership && mBuffer == O.mBuffer &&
-                mInitialState == O.mInitialState;
+                mInitialState == O.mInitialState &&
+                !mLifetimeToken.owner_before(O.mLifetimeToken) &&
+                !O.mLifetimeToken.owner_before(mLifetimeToken);
         }
     };
 
