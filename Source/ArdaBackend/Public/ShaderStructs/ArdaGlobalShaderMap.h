@@ -27,6 +27,8 @@ namespace arda::backend
         EArdaGlobalShaderMapError mCode = EArdaGlobalShaderMapError::None;
         eastl::string mShaderType;
         eastl::string mPath;
+        eastl::string mVirtualSource;
+        eastl::string mPhysicalSource;
         eastl::string mMessage;
     };
 

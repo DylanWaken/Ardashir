@@ -1,5 +1,7 @@
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 
+#include "ShaderStructs/ArdaShaderDirectories.h"
+
 #include <fstream>
 
 namespace arda::backend
@@ -24,6 +26,19 @@ namespace arda::backend
             Result.mPath = ToEastlString(Path);
             Result.mMessage = Message;
             return Result;
+        }
+
+        void AttachSource(
+            FArdaGlobalShaderMapDiagnostic& Diagnostic,
+            const FArdaShaderType& Type)
+        {
+            const char* Source = Type.GetSourceStem();
+            if (Source == nullptr || Source[0] != '/')
+                return;
+            Diagnostic.mVirtualSource = Source;
+            std::filesystem::path PhysicalSource;
+            if (ResolveVirtualShaderSource(Source, PhysicalSource))
+                Diagnostic.mPhysicalSource = ToEastlString(PhysicalSource);
         }
     }
 
@@ -130,6 +145,7 @@ namespace arda::backend
             if (!Bytecode)
             {
                 Bytecode.mDiagnostic.mShaderType = Type->GetName();
+                AttachSource(Bytecode.mDiagnostic, *Type);
                 mDiagnostics.push_back(eastl::move(Bytecode.mDiagnostic));
                 return false;
             }
@@ -143,11 +159,13 @@ namespace arda::backend
             auto ShaderResult = DeviceContext.mDevice->CreateShader(ShaderDesc);
             if (!ShaderResult)
             {
-                mDiagnostics.push_back(MakeDiagnostic(
+                auto Diagnostic = MakeDiagnostic(
                     EArdaGlobalShaderMapError::ShaderCreationFailed,
                     Type->GetName(),
                     Path,
-                    ShaderResult.mStatus.mMessage));
+                    ShaderResult.mStatus.mMessage);
+                AttachSource(Diagnostic, *Type);
+                mDiagnostics.push_back(eastl::move(Diagnostic));
                 return false;
             }
 
@@ -163,11 +181,13 @@ namespace arda::backend
                     Metadata->BuildBindingLayoutDescs(LayoutDescs);
                 if (!LayoutStatus)
                 {
-                    mDiagnostics.push_back(MakeDiagnostic(
+                    auto Diagnostic = MakeDiagnostic(
                         EArdaGlobalShaderMapError::LayoutCreationFailed,
                         Type->GetName(),
                         Path,
-                        LayoutStatus.mMessage));
+                        LayoutStatus.mMessage);
+                    AttachSource(Diagnostic, *Type);
+                    mDiagnostics.push_back(eastl::move(Diagnostic));
                     return false;
                 }
                 for (const rhi::FArdaRHIBindingLayoutDesc& LayoutDesc : LayoutDescs)
@@ -176,11 +196,13 @@ namespace arda::backend
                         DeviceContext.mDevice->CreateBindingLayout(LayoutDesc);
                     if (!LayoutResult)
                     {
-                        mDiagnostics.push_back(MakeDiagnostic(
+                        auto Diagnostic = MakeDiagnostic(
                             EArdaGlobalShaderMapError::LayoutCreationFailed,
                             Type->GetName(),
                             Path,
-                            LayoutResult.mStatus.mMessage));
+                            LayoutResult.mStatus.mMessage);
+                        AttachSource(Diagnostic, *Type);
+                        mDiagnostics.push_back(eastl::move(Diagnostic));
                         return false;
                     }
                     Shader.mBindingLayouts.push_back(

@@ -2,6 +2,9 @@
 
 #include "ArdaBackend.h"
 #include "ArdaBackendDevice.h"
+#include "ShaderStructs/ArdaShaderDirectoriesPrivate.h"
+
+#include <atomic>
 
 namespace arda::backend
 {
@@ -58,6 +61,7 @@ namespace arda::backend
             FArdaDefaultMessageCallback mDefaultMessageCallback;
             eastl::unique_ptr<IArdaBackendDevice> mBackendDevice;
             eastl::string mError;
+            std::atomic_bool mbInitialized{ false };
         };
 
         FArdaBackendState& GetState()
@@ -103,7 +107,43 @@ namespace arda::backend
             State.mContext.mQueueCapabilities =
                 State.mBackendDevice->GetQueueCapabilities();
             currentBackend = Configuration.mBackend;
+            State.mbInitialized.store(true, std::memory_order_release);
             State.mError.clear();
+        }
+
+        bool FreezeAndValidateShaderSources(FArdaBackendState& State)
+        {
+            const FArdaShaderDirectoryStatus DirectoryStatus =
+                private_api::ScanAndFreezeShaderSourceDirectoriesForBackend();
+            if (!DirectoryStatus)
+            {
+                State.mError =
+                    eastl::string("Shader source directory registry failed: ") +
+                    DirectoryStatus.mMessage;
+                return false;
+            }
+            const FArdaShaderRegistrationStatus RegistrationStatus =
+                FArdaShaderTypeRegistration::CommitAll();
+            if (!RegistrationStatus)
+            {
+                State.mError =
+                    eastl::string("Global shader registration failed: ") +
+                    RegistrationStatus.mMessage;
+                return false;
+            }
+            return true;
+        }
+
+        bool BeginShaderDirectoryUse(FArdaBackendState& State)
+        {
+            const FArdaShaderDirectoryStatus Status =
+                private_api::BeginShaderDirectoryRegistryUse();
+            if (Status)
+                return true;
+            State.mError =
+                eastl::string("Shader source directory registry is unavailable: ") +
+                Status.mMessage;
+            return false;
         }
     }
 
@@ -175,8 +215,17 @@ namespace arda::backend
             runtimeConfiguration.mMessageCallback = &state.mDefaultMessageCallback;
         }
 
+        if (!BeginShaderDirectoryUse(state))
+            return false;
+        if (!FreezeAndValidateShaderSources(state))
+        {
+            private_api::CompleteShaderDirectoryRegistryUse(false);
+            return false;
+        }
+
         if (!CreateConfiguredDevice(state, runtimeConfiguration))
         {
+            private_api::CompleteShaderDirectoryRegistryUse(false);
             return false;
         }
 
@@ -185,10 +234,12 @@ namespace arda::backend
         {
             state.mError = state.mBackendDevice->GetError();
             state.mBackendDevice.reset();
+            private_api::CompleteShaderDirectoryRegistryUse(false);
             return false;
         }
 
         PublishInitializedDevice(state, runtimeConfiguration);
+        private_api::CompleteShaderDirectoryRegistryUse(true);
         return true;
     }
 
@@ -219,8 +270,17 @@ namespace arda::backend
             runtimeConfiguration.mMessageCallback = &state.mDefaultMessageCallback;
         }
 
+        if (!BeginShaderDirectoryUse(state))
+            return EArdaInitializeResult::Failure;
+        if (!FreezeAndValidateShaderSources(state))
+        {
+            private_api::CompleteShaderDirectoryRegistryUse(false);
+            return EArdaInitializeResult::Failure;
+        }
+
         if (!CreateConfiguredDevice(state, runtimeConfiguration))
         {
+            private_api::CompleteShaderDirectoryRegistryUse(false);
             return runtimeConfiguration.mBackend == EArdaBackendType::D3D12
                 ? EArdaInitializeResult::Unavailable
                 : EArdaInitializeResult::Failure;
@@ -232,6 +292,7 @@ namespace arda::backend
         {
             state.mError = state.mBackendDevice->GetError();
             state.mBackendDevice.reset();
+            private_api::CompleteShaderDirectoryRegistryUse(false);
             return result;
         }
 
@@ -240,10 +301,12 @@ namespace arda::backend
         {
             state.mError = state.mBackendDevice->GetError();
             state.mBackendDevice.reset();
+            private_api::CompleteShaderDirectoryRegistryUse(false);
             return EArdaInitializeResult::Failure;
         }
 
         PublishInitializedDevice(state, runtimeConfiguration);
+        private_api::CompleteShaderDirectoryRegistryUse(true);
         return EArdaInitializeResult::Success;
     }
 
@@ -258,11 +321,13 @@ namespace arda::backend
         state.mContext.mDevice = nullptr;
         state.mContext.mQueueCapabilities = {};
         state.mBackendDevice.reset();
+        state.mbInitialized.store(false, std::memory_order_release);
+        private_api::ReleaseShaderDirectoryRegistryAfterShutdown();
     }
 
     bool IsBackendInitialized() noexcept
     {
-        return GetState().mContext.mDevice != nullptr;
+        return GetState().mbInitialized.load(std::memory_order_acquire);
     }
 
     const FArdaDeviceContext& GetDeviceContext() noexcept

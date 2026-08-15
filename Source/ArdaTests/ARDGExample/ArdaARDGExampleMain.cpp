@@ -1,5 +1,6 @@
 #include "ArdaARDGExamplePch.h"
 
+#include "ArdaARDGExampleConfig.h"
 #include "ArdaBackend.h"
 #include "ArdaGlfwWindow.h"
 #include "ArdaTerrainRenderer.h"
@@ -198,6 +199,20 @@ namespace arda::tests::ardg_example
             }
 
             FArdaMessageCallback messageCallback;
+            const backend::FArdaShaderDirectoryStatus shaderDirectoryStatus =
+                backend::AddShaderSourceDirectoryMapping(
+                    "/ArdaTests/ARDGExample",
+                    GArdaARDGShaderSourceDirectory);
+            if (!shaderDirectoryStatus)
+            {
+                ARDA_LOG(
+                    LogARDGExample,
+                    Error,
+                    "%s",
+                    shaderDirectoryStatus.mMessage.c_str());
+                return EXIT_FAILURE;
+            }
+
             backend::FArdaBackendConfiguration configuration;
             configuration.mBackend = options.mBackend;
             configuration.mbEnableValidation = true;

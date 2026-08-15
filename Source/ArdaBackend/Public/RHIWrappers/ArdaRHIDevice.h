@@ -29,6 +29,8 @@ namespace arda::rhi
     class IArdaRHICommandList : public virtual IArdaRHIResource
     {
     public:
+        /** Opaque device that created this command list. */
+        [[nodiscard]] virtual IArdaRHIDevice* GetDevice() const noexcept = 0;
         [[nodiscard]] virtual EArdaRHIQueueType GetQueueType() const noexcept = 0;
         virtual FArdaRHIStatus Open() = 0;
         virtual FArdaRHIStatus Close() = 0;

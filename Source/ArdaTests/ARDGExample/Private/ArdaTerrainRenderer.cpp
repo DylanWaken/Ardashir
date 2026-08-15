@@ -3,6 +3,8 @@
 #include "ArdaTerrainRenderer.h"
 
 #include <cmath>
+#include <memory>
+#include <mutex>
 
 namespace arda::tests::ardg_example
 {
@@ -145,33 +147,60 @@ namespace arda::tests::ardg_example
             Output = eastl::move(Result.mValue);
             return true;
         }
+
+        class FFrameExecutionErrors final
+        {
+        public:
+            void Record(const char* Operation, const eastl::string& Detail)
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (!mFirstError.empty())
+                    return;
+                mFirstError = Operation ? Operation : "Terrain pass";
+                if (!Detail.empty())
+                {
+                    mFirstError += ": ";
+                    mFirstError += Detail;
+                }
+            }
+
+            [[nodiscard]] eastl::string GetFirstError() const
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                return mFirstError;
+            }
+
+        private:
+            mutable std::mutex mMutex;
+            eastl::string mFirstError;
+        };
     }
 
     ARDA_IMPLEMENT_GLOBAL_SHADER(
-        FGenerateTerrainShader, "ArdaTerrain", "TerrainGenerateCS",
+        FGenerateTerrainShader, "/ArdaTests/ARDGExample/ArdaTerrain.hlsl", "TerrainGenerateCS",
         "GenerateNoiseHeightmapCS", rhi::EArdaRHIShaderStage::Compute)
     ARDA_IMPLEMENT_GLOBAL_SHADER(
-        FErodeTerrainShader, "ArdaTerrain", "TerrainErodeCS",
+        FErodeTerrainShader, "/ArdaTests/ARDGExample/ArdaTerrain.hlsl", "TerrainErodeCS",
         "ErodeHeightmapCS", rhi::EArdaRHIShaderStage::Compute)
     ARDA_IMPLEMENT_GLOBAL_SHADER(
-        FTriangulateTerrainShader, "ArdaTerrain", "TerrainTriangulateCS",
+        FTriangulateTerrainShader, "/ArdaTests/ARDGExample/ArdaTerrain.hlsl", "TerrainTriangulateCS",
         "TriangulateTerrainCS", rhi::EArdaRHIShaderStage::Compute)
     ARDA_IMPLEMENT_GLOBAL_SHADER(
-        FTerrainVertexShader, "ArdaTerrain", "TerrainVS",
+        FTerrainVertexShader, "/ArdaTests/ARDGExample/ArdaTerrain.hlsl", "TerrainVS",
         "TerrainVS", rhi::EArdaRHIShaderStage::Vertex)
     ARDA_IMPLEMENT_GLOBAL_SHADER(
-        FTerrainPixelShader, "ArdaTerrain", "TerrainPS",
+        FTerrainPixelShader, "/ArdaTests/ARDGExample/ArdaTerrain.hlsl", "TerrainPS",
         "TerrainPS", rhi::EArdaRHIShaderStage::Pixel)
     ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(
-        FTerrainOverlayVertexShader, "ArdaTerrain", "TerrainOverlayVS",
+        FTerrainOverlayVertexShader, "/ArdaTests/ARDGExample/ArdaTerrain.hlsl", "TerrainOverlayVS",
         "TerrainOverlayVS", rhi::EArdaRHIShaderStage::Vertex)
     ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(
-        FTerrainOverlayPixelShader, "ArdaTerrain", "TerrainOverlayPS",
+        FTerrainOverlayPixelShader, "/ArdaTests/ARDGExample/ArdaTerrain.hlsl", "TerrainOverlayPS",
         "TerrainOverlayPS", rhi::EArdaRHIShaderStage::Pixel)
 
     bool FArdaTerrainRenderer::Initialize(
         const backend::FArdaDeviceContext& deviceContext,
-        rhi::EArdaRHIFormat swapChainFormat,
+        rhi::EArdaRHIFormat,
         const std::filesystem::path& shaderDirectory)
     {
         mDevice = deviceContext.mDevice;
@@ -184,8 +213,9 @@ namespace arda::tests::ardg_example
             mError = "The initialized backend does not expose a graphics device.";
             return false;
         }
-        if (!CreateShadersAndPipelines(
-                deviceContext, swapChainFormat, shaderDirectory) ||
+        mPipelineStateCache =
+            std::make_unique<backend::FArdaPipelineStateCache>(mDevice);
+        if (!CreateShadersAndInitializers(deviceContext, shaderDirectory) ||
             !CreateSettingsUploadBuffer() ||
             !CreateCameraResources())
         {
@@ -195,9 +225,8 @@ namespace arda::tests::ardg_example
         return true;
     }
 
-    bool FArdaTerrainRenderer::CreateShadersAndPipelines(
+    bool FArdaTerrainRenderer::CreateShadersAndInitializers(
         const backend::FArdaDeviceContext& deviceContext,
-        rhi::EArdaRHIFormat swapChainFormat,
         const std::filesystem::path& shaderDirectory)
     {
         if (!mShaderMap.Initialize(deviceContext, shaderDirectory))
@@ -224,24 +253,15 @@ namespace arda::tests::ardg_example
             return false;
         }
 
-        auto createCompute = [this](
-            const backend::FArdaGlobalShaderInstance& shader,
-            const char* name,
-            rhi::FArdaRHIComputePipelineRef& output)
-        {
-            rhi::FArdaRHIComputePipelineDesc desc;
-            desc.mComputeShader = shader.GetShader();
-            desc.mBindingLayouts = shader.GetBindingLayouts();
-            desc.mDebugName = name;
-            auto result = mDevice->CreateComputePipeline(desc);
-            return TakeResult(result, output, mError);
-        };
-        if (!createCompute(*mGenerateShader, "Generate pipeline", mGeneratePipeline) ||
-            !createCompute(*mErodeShader, "Erode pipeline", mErodePipeline) ||
-            !createCompute(*mTriangulateShader, "Triangulate pipeline", mTriangulatePipeline))
-        {
-            return false;
-        }
+        mGeneratePipelineInitializer =
+            backend::FArdaComputePipelineStateInitializer::FromGlobalShader(
+                *mGenerateShader, "Generate pipeline");
+        mErodePipelineInitializer =
+            backend::FArdaComputePipelineStateInitializer::FromGlobalShader(
+                *mErodeShader, "Erode pipeline");
+        mTriangulatePipelineInitializer =
+            backend::FArdaComputePipelineStateInitializer::FromGlobalShader(
+                *mTriangulateShader, "Triangulate pipeline");
 
         eastl::vector<rhi::FArdaRHIVertexAttributeDesc> attributes(2);
         attributes[0].mSemanticName = "POSITION";
@@ -259,41 +279,33 @@ namespace arda::tests::ardg_example
             return false;
         }
 
-        rhi::FArdaRHIGraphicsPipelineDesc terrainDesc;
-        terrainDesc.mInputLayout = mTerrainInputLayout;
-        terrainDesc.mVertexShader = mTerrainVertexShader->GetShader();
-        terrainDesc.mPixelShader = mTerrainPixelShader->GetShader();
-        terrainDesc.mBindingLayouts = mTerrainVertexShader->GetBindingLayouts();
-        terrainDesc.mBindingLayouts.insert(
-            terrainDesc.mBindingLayouts.end(),
-            mTerrainPixelShader->GetBindingLayouts().begin(),
-            mTerrainPixelShader->GetBindingLayouts().end());
-        terrainDesc.mRasterState.mCullMode = rhi::EArdaRHICullMode::None;
-        terrainDesc.mDepthStencilState.mDepthFunc = rhi::EArdaRHIComparisonFunc::GreaterOrEqual;
-        terrainDesc.mColorFormats.push_back(swapChainFormat);
-        terrainDesc.mDepthFormat = rhi::EArdaRHIFormat::D32;
-        terrainDesc.mDebugName = "Terrain pipeline";
-        auto terrainPipeline = mDevice->CreateGraphicsPipeline(terrainDesc);
-        if (!TakeResult(terrainPipeline, mTerrainPipeline, mError))
-        {
-            return false;
-        }
+        rhi::FArdaRHIGraphicsPipelineDesc terrainFixedState;
+        terrainFixedState.mRasterState.mCullMode = rhi::EArdaRHICullMode::None;
+        terrainFixedState.mDepthStencilState.mDepthFunc =
+            rhi::EArdaRHIComparisonFunc::GreaterOrEqual;
+        terrainFixedState.mSampleCount = 0;
+        terrainFixedState.mDebugName = "Terrain pipeline";
+        mTerrainPipelineInitializer =
+            backend::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
+                *mTerrainVertexShader, mTerrainPixelShader,
+                mTerrainInputLayout, terrainFixedState);
 
-        rhi::FArdaRHIGraphicsPipelineDesc overlayDesc;
-        overlayDesc.mVertexShader = mOverlayVertexShader->GetShader();
-        overlayDesc.mPixelShader = mOverlayPixelShader->GetShader();
-        overlayDesc.mRasterState.mCullMode = rhi::EArdaRHICullMode::None;
-        overlayDesc.mDepthStencilState.mbDepthTest = false;
-        overlayDesc.mDepthStencilState.mbDepthWrite = false;
-        overlayDesc.mBlendState.mTargets[0].mbEnable = true;
-        overlayDesc.mBlendState.mTargets[0].mSourceColor =
+        rhi::FArdaRHIGraphicsPipelineDesc overlayFixedState;
+        overlayFixedState.mRasterState.mCullMode = rhi::EArdaRHICullMode::None;
+        overlayFixedState.mDepthStencilState.mbDepthTest = false;
+        overlayFixedState.mDepthStencilState.mbDepthWrite = false;
+        overlayFixedState.mBlendState.mTargets[0].mbEnable = true;
+        overlayFixedState.mBlendState.mTargets[0].mSourceColor =
             rhi::EArdaRHIBlendFactor::SourceAlpha;
-        overlayDesc.mBlendState.mTargets[0].mDestinationColor =
+        overlayFixedState.mBlendState.mTargets[0].mDestinationColor =
             rhi::EArdaRHIBlendFactor::InverseSourceAlpha;
-        overlayDesc.mColorFormats.push_back(swapChainFormat);
-        overlayDesc.mDebugName = "Terrain overlay pipeline";
-        auto overlayPipeline = mDevice->CreateGraphicsPipeline(overlayDesc);
-        return TakeResult(overlayPipeline, mOverlayPipeline, mError);
+        overlayFixedState.mSampleCount = 0;
+        overlayFixedState.mDebugName = "Terrain overlay pipeline";
+        mOverlayPipelineInitializer =
+            backend::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
+                *mOverlayVertexShader, mOverlayPixelShader, {},
+                overlayFixedState);
+        return true;
     }
 
     bool FArdaTerrainRenderer::CreateCameraResources()
@@ -390,6 +402,7 @@ namespace arda::tests::ardg_example
             return false;
         }
         const auto colorAttachment = framebufferDesc.mColorAttachments[0];
+        auto executionErrors = std::make_shared<FFrameExecutionErrors>();
         render_graph::FARDGBuilder graph(CreateGraphContext());
         auto* backBuffer = graph.RegisterExternalTexture(
             colorAttachment.mTexture, rhi::EArdaRHIResourceState::Present, "BackBuffer");
@@ -487,12 +500,20 @@ namespace arda::tests::ardg_example
         (void)graph.AddDispatchPass(
             "GenerateNoiseHeightmap", &generate,
             { DivideRoundUp(HeightmapWidth, 8), DivideRoundUp(HeightmapHeight, 8), 1 },
-            [this](render_graph::FARDGPassExecutionContext& context)
+            [this, executionErrors](render_graph::FARDGPassExecutionContext& context)
             {
                 rhi::FArdaRHIComputeState state;
-                state.mPipeline = mGeneratePipeline;
                 state.mBindings.push_back(context.CreateBindingSet(*mGenerateShader));
-                (void)context.mCommandList.SetComputeState(state);
+                const auto status = mPipelineStateCache->SetComputePipelineState(
+                    context.mCommandList, mGeneratePipelineInitializer,
+                    eastl::move(state));
+                if (!status)
+                {
+                    executionErrors->Record(
+                        "GenerateNoiseHeightmap PSO bind failed",
+                        status.mMessage);
+                    return;
+                }
             },
             render_graph::EARDGPassFlags::AsyncCompute);
 
@@ -507,12 +528,19 @@ namespace arda::tests::ardg_example
         (void)graph.AddDispatchPass(
             "ErodeHeightmap", &erode,
             { DivideRoundUp(HeightmapWidth, 8), DivideRoundUp(HeightmapHeight, 8), 1 },
-            [this](render_graph::FARDGPassExecutionContext& context)
+            [this, executionErrors](render_graph::FARDGPassExecutionContext& context)
             {
                 rhi::FArdaRHIComputeState state;
-                state.mPipeline = mErodePipeline;
                 state.mBindings.push_back(context.CreateBindingSet(*mErodeShader));
-                (void)context.mCommandList.SetComputeState(state);
+                const auto status = mPipelineStateCache->SetComputePipelineState(
+                    context.mCommandList, mErodePipelineInitializer,
+                    eastl::move(state));
+                if (!status)
+                {
+                    executionErrors->Record(
+                        "ErodeHeightmap PSO bind failed", status.mMessage);
+                    return;
+                }
             },
             render_graph::EARDGPassFlags::AsyncCompute);
 
@@ -523,12 +551,20 @@ namespace arda::tests::ardg_example
         (void)graph.AddDispatchPass(
             "TriangulateTerrain", &triangulate,
             { DivideRoundUp(HeightmapWidth - 1, 8), DivideRoundUp(HeightmapHeight - 1, 8), 1 },
-            [this](render_graph::FARDGPassExecutionContext& context)
+            [this, executionErrors](render_graph::FARDGPassExecutionContext& context)
             {
                 rhi::FArdaRHIComputeState state;
-                state.mPipeline = mTriangulatePipeline;
                 state.mBindings.push_back(context.CreateBindingSet(*mTriangulateShader));
-                (void)context.mCommandList.SetComputeState(state);
+                const auto status = mPipelineStateCache->SetComputePipelineState(
+                    context.mCommandList, mTriangulatePipelineInitializer,
+                    eastl::move(state));
+                if (!status)
+                {
+                    executionErrors->Record(
+                        "TriangulateTerrain PSO bind failed",
+                        status.mMessage);
+                    return;
+                }
             },
             render_graph::EARDGPassFlags::AsyncCompute);
 
@@ -576,7 +612,7 @@ namespace arda::tests::ardg_example
 
         (void)graph.AddPass(
             "RenderTerrain", &render, render_graph::EARDGPassFlags::Raster,
-            [this, width, height, cameraSettings](
+            [this, width, height, cameraSettings, executionErrors](
                 render_graph::FARDGPassExecutionContext& context,
                 const FRenderTerrainParameters& frozen)
             {
@@ -592,7 +628,10 @@ namespace arda::tests::ardg_example
                 auto terrainFramebuffer = mDevice->CreateFramebuffer(framebufferDesc);
                 if (!terrainFramebuffer)
                 {
-                    ARDA_CHECK_MSG("Failed to create the terrain depth framebuffer.");
+                    executionErrors->Record(
+                        "RenderTerrain framebuffer creation failed",
+                        terrainFramebuffer.mStatus.mMessage);
+                    return;
                 }
                 (void)context.mCommandList.ClearTexture(
                     *color, frozen.mTargets.mColor[0].mSubresources,
@@ -604,7 +643,6 @@ namespace arda::tests::ardg_example
                     *context.GetBuffer(frozen.mCamera.mBuffer),
                     &cameraSettings, sizeof(cameraSettings));
                 rhi::FArdaRHIGraphicsState state;
-                state.mPipeline = mTerrainPipeline;
                 state.mFramebuffer = terrainFramebuffer.mValue;
                 state.mBindings = {
                     mCameraBindingSet,
@@ -617,7 +655,15 @@ namespace arda::tests::ardg_example
                     0.f, static_cast<float>(width), 0.f, static_cast<float>(height), 0.f, 1.f});
                 state.mScissors.push_back({
                     0, static_cast<int32_t>(width), 0, static_cast<int32_t>(height)});
-                (void)context.mCommandList.SetGraphicsState(state);
+                const auto status = mPipelineStateCache->SetGraphicsPipelineState(
+                    context.mCommandList, mTerrainPipelineInitializer,
+                    eastl::move(state));
+                if (!status)
+                {
+                    executionErrors->Record(
+                        "RenderTerrain PSO bind failed", status.mMessage);
+                    return;
+                }
                 context.mCommandList.DrawIndexed({ TerrainIndexCount });
             });
 
@@ -626,24 +672,39 @@ namespace arda::tests::ardg_example
             backBuffer, colorAttachment.mAttachment.mSubresources };
         (void)graph.AddPass(
             "TerrainOverlay", &overlay, render_graph::EARDGPassFlags::Raster,
-            [this, framebuffer, width, height](
+            [this, framebuffer, width, height, executionErrors](
                 render_graph::FARDGPassExecutionContext& context,
                 const FTerrainOverlayParameters& frozen)
             {
                 (void)context.GetTexture(frozen.mTargets.mColor[0].mTexture);
                 rhi::FArdaRHIGraphicsState state;
-                state.mPipeline = mOverlayPipeline;
                 state.mFramebuffer = framebuffer;
                 state.mViewports.push_back({
                     0.f, static_cast<float>(width), 0.f, static_cast<float>(height), 0.f, 1.f});
                 state.mScissors.push_back({
                     0, static_cast<int32_t>(width), 0, static_cast<int32_t>(height)});
-                (void)context.mCommandList.SetGraphicsState(state);
+                const auto status = mPipelineStateCache->SetGraphicsPipelineState(
+                    context.mCommandList, mOverlayPipelineInitializer,
+                    eastl::move(state));
+                if (!status)
+                {
+                    executionErrors->Record(
+                        "TerrainOverlay PSO bind failed", status.mMessage);
+                    return;
+                }
                 context.mCommandList.Draw({ 3 });
             });
 
         swapChain.PrepareSubmit();
-        (void)graph.Execute();
+        const auto& executionResult = graph.Execute();
+        mError = executionErrors->GetFirstError();
+        if (!mError.empty())
+            return false;
+        if (executionResult.mSubmittedCommandListCount == 0)
+        {
+            mError = "Terrain render graph submitted no command lists.";
+            return false;
+        }
         if (!swapChain.Present())
         {
             mError = swapChain.GetError();

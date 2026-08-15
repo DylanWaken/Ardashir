@@ -20,7 +20,10 @@ namespace arda::backend
         InvalidType,
         DuplicateTypeName,
         DuplicateIdentity,
-        InvalidParameterMetadata
+        InvalidParameterMetadata,
+        MissingVirtualSource,
+        DirectoryRegistryNotFrozen,
+        DirectoryRegistryFailure
     };
 
     struct FArdaShaderRegistrationStatus

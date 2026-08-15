@@ -420,11 +420,13 @@ namespace arda::rhi::private_impl
         {
         public:
             FCommandList(nvrhi::CommandListHandle Handle, EArdaRHIQueueType Queue, const void* Owner,
-                bool Meshlets, bool RayTracing, bool SamplerFeedback, bool OpacityMicromap)
+                IArdaRHIDevice* Device, bool Meshlets, bool RayTracing,
+                bool SamplerFeedback, bool OpacityMicromap)
                 : FResource(EArdaRHIResourceType::CommandList, "CommandList", Owner), mHandle(std::move(Handle)),
-                  mQueue(Queue), mbMeshlets(Meshlets), mbRayTracing(RayTracing),
+                  mDevice(Device), mQueue(Queue), mbMeshlets(Meshlets), mbRayTracing(RayTracing),
                   mbSamplerFeedback(SamplerFeedback), mbOpacityMicromap(OpacityMicromap) {}
 
+            IArdaRHIDevice* GetDevice() const noexcept override { return mDevice; }
             EArdaRHIQueueType GetQueueType() const noexcept override { return mQueue; }
             FArdaRHIStatus Open() override { if (mbOpen) return Error("Command list is already open."); mHandle->open(); mbOpen = true; return {}; }
             FArdaRHIStatus Close() override { if (!mbOpen) return Error("Command list is not open."); mHandle->close(); mbOpen = false; return {}; }
@@ -644,6 +646,7 @@ namespace arda::rhi::private_impl
                 return Owned(G.mIndexBuffer.Get()) && Owned(G.mVertexOrAABBBuffer.Get()) &&
                     Owned(G.mOpacityMicromap.Get()) && Owned(G.mOpacityMicromapIndexBuffer.Get());
             }
+            IArdaRHIDevice* mDevice = nullptr;
             EArdaRHIQueueType mQueue;
             bool mbOpen = false;
             bool mbMeshlets = false, mbRayTracing = false, mbSamplerFeedback = false, mbOpacityMicromap = false;
@@ -1038,8 +1041,6 @@ namespace arda::rhi::private_impl
             {
                 if (auto S = Validate(D); !S) return { {}, S };
                 auto* VS = Cast<FShader>(D.mVertexShader.Get()); if (!VS || !Owns(VS)) return Invalid<FArdaRHIGraphicsPipelineRef>("Graphics pipeline requires an owned vertex shader.");
-                std::lock_guard<std::mutex> Lock(mCacheMutex);
-                if (auto Existing = mGraphicsPipelines.Find(D)) return Ok(Existing);
                 nvrhi::GraphicsPipelineDesc N; N.primType = ToNvrhiPrimitive(D.mTopology); N.patchControlPoints = D.mPatchControlPoints; N.VS = VS->mHandle;
                 if (auto* V = Cast<FInputLayout>(D.mInputLayout.Get())) N.inputLayout = V->mHandle; else if (D.mInputLayout) return Wrong<FArdaRHIGraphicsPipelineRef>();
                 if (!SetShader(N.PS, D.mPixelShader) || !SetShader(N.HS, D.mHullShader) || !SetShader(N.DS, D.mDomainShader) || !SetShader(N.GS, D.mGeometryShader)) return Wrong<FArdaRHIGraphicsPipelineRef>();
@@ -1061,22 +1062,16 @@ namespace arda::rhi::private_impl
                 }
                 nvrhi::FramebufferInfo F; for (auto Format : D.mColorFormats) F.colorFormats.push_back(ToNvrhi(Format)); F.depthFormat = ToNvrhi(D.mDepthFormat); F.sampleCount = D.mSampleCount;
                 auto H = mDevice->createGraphicsPipeline(N, F); if (!H) return Fail<FArdaRHIGraphicsPipelineRef>("NVRHI failed to create graphics pipeline.");
-                FArdaRHIGraphicsPipelineRef Result(new FGraphicsPipeline(D, H, this));
-                mGraphicsPipelines.Insert(D, Result);
-                return Ok(Result);
+                return Ok(FArdaRHIGraphicsPipelineRef(new FGraphicsPipeline(D, H, this)));
             }
             TArdaRHIResult<FArdaRHIComputePipelineRef> CreateComputePipeline(const FArdaRHIComputePipelineDesc& D) override
             {
                 if (auto S = Validate(D); !S) return { {}, S };
                 auto* CS = Cast<FShader>(D.mComputeShader.Get()); if (!CS || !Owns(CS) || CS->mStage != EArdaRHIShaderStage::Compute) return Invalid<FArdaRHIComputePipelineRef>("Compute pipeline requires an owned compute shader.");
-                std::lock_guard<std::mutex> Lock(mCacheMutex);
-                if (auto Existing = mComputePipelines.Find(D)) return Ok(Existing);
                 nvrhi::ComputePipelineDesc N; N.CS = CS->mHandle;
                 for (const auto& B : D.mBindingLayouts) { auto* V = Cast<FBindingLayout>(B.Get()); if (!V || !Owns(V)) return Wrong<FArdaRHIComputePipelineRef>(); N.addBindingLayout(V->mHandle); }
                 auto H = mDevice->createComputePipeline(N); if (!H) return Fail<FArdaRHIComputePipelineRef>("NVRHI failed to create compute pipeline.");
-                FArdaRHIComputePipelineRef Result(new FComputePipeline(D, H, this));
-                mComputePipelines.Insert(D, Result);
-                return Ok(Result);
+                return Ok(FArdaRHIComputePipelineRef(new FComputePipeline(D, H, this)));
             }
             TArdaRHIResult<FArdaRHIMeshletPipelineRef> CreateMeshletPipeline(const FArdaRHIMeshletPipelineDesc& D) override
             {
@@ -1262,7 +1257,7 @@ namespace arda::rhi::private_impl
                         .setQueueType(ToNvrhi(Q))
                         .setEnableImmediateExecution(bImmediateExecution));
                 if (!H) return Fail<FArdaRHICommandListRef>("NVRHI failed to create command list.");
-                return Ok(FArdaRHICommandListRef(new FCommandList(H, Q, this,
+                return Ok(FArdaRHICommandListRef(new FCommandList(H, Q, this, this,
                     mCapabilities.mbMeshShaders, mCapabilities.mbRayTracing,
                     mCapabilities.mbSamplerFeedback, mCapabilities.mbRayTracingOpacityMicromap)));
             }
@@ -1363,8 +1358,6 @@ namespace arda::rhi::private_impl
                 mSamplers.Clear();
                 mBindingLayouts.Clear();
                 mInputLayouts.Clear();
-                mGraphicsPipelines.Clear();
-                mComputePipelines.Clear();
                 mMeshletPipelines.Clear();
                 mRayTracingPipelines.Clear();
                 mRasterStates.Clear();
@@ -1380,8 +1373,8 @@ namespace arda::rhi::private_impl
                     mSamplers.Size(),
                     mBindingLayouts.Size(),
                     mInputLayouts.Size(),
-                    mGraphicsPipelines.Size(),
-                    mComputePipelines.Size(),
+                    0,
+                    0,
                     mMeshletPipelines.Size(),
                     mRayTracingPipelines.Size(),
                     mRasterStates.Size(),
@@ -1432,8 +1425,6 @@ namespace arda::rhi::private_impl
             TDescriptorCache<FArdaRHISamplerDesc, FArdaRHISamplerRef> mSamplers;
             TDescriptorCache<FArdaRHIBindingLayoutDesc, FArdaRHIBindingLayoutRef> mBindingLayouts;
             TDescriptorCache<FArdaRHIInputLayoutDesc, FArdaRHIInputLayoutRef> mInputLayouts;
-            TDescriptorCache<FArdaRHIGraphicsPipelineDesc, FArdaRHIGraphicsPipelineRef> mGraphicsPipelines;
-            TDescriptorCache<FArdaRHIComputePipelineDesc, FArdaRHIComputePipelineRef> mComputePipelines;
             TDescriptorCache<FArdaRHIMeshletPipelineDesc, FArdaRHIMeshletPipelineRef> mMeshletPipelines;
             TDescriptorCache<FArdaRHIRayTracingPipelineDesc, FArdaRHIRayTracingPipelineRef> mRayTracingPipelines;
             TDescriptorCache<FArdaRHIRasterState, FArdaRHIRasterStateRef> mRasterStates;

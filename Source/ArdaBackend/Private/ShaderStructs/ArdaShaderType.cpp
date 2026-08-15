@@ -1,7 +1,10 @@
 #include "ShaderStructs/ArdaShaderType.h"
 
+#include "ShaderStructs/ArdaShaderDirectories.h"
+
 #include <EASTL/algorithm.h>
 #include <EASTL/sort.h>
+#include <filesystem>
 #include <mutex>
 
 namespace arda::backend
@@ -137,6 +140,36 @@ namespace arda::backend
                 return Error(
                     EArdaShaderRegistrationError::InvalidType,
                     "A global shader type has an invalid identity.");
+            }
+            if (Type->GetSourceStem()[0] == '/')
+            {
+                std::filesystem::path PhysicalSource;
+                const FArdaShaderDirectoryStatus SourceStatus =
+                    ResolveVirtualShaderSource(
+                        Type->GetSourceStem(),
+                        PhysicalSource);
+                if (!SourceStatus)
+                {
+                    const EArdaShaderRegistrationError Code =
+                        SourceStatus.mCode ==
+                            EArdaShaderDirectoryError::MissingVirtualSource
+                        ? EArdaShaderRegistrationError::MissingVirtualSource
+                        : SourceStatus.mCode ==
+                              EArdaShaderDirectoryError::NotFrozen
+                        ? EArdaShaderRegistrationError::DirectoryRegistryNotFrozen
+                        : EArdaShaderRegistrationError::DirectoryRegistryFailure;
+                    const eastl::string Guidance =
+                        SourceStatus.mCode ==
+                            EArdaShaderDirectoryError::NotFrozen
+                        ? " Call ScanAndFreezeShaderSourceDirectories() after all mappings are registered, or initialize the backend."
+                        : "";
+                    return Error(
+                        Code,
+                        eastl::string("Global shader type '") +
+                            Type->GetName() + "' has invalid virtual source '" +
+                            Type->GetSourceStem() + "': " +
+                            SourceStatus.mMessage + Guidance);
+                }
             }
             const FArdaShaderParameterMetadata* Metadata =
                 Type->GetParameterMetadata();

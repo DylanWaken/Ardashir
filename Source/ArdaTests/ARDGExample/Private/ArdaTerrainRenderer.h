@@ -2,9 +2,11 @@
 
 #include "ArdaBackend.h"
 #include "ArdaRenderGraph.h"
+#include "PipelineStateCache/ArdaPipelineStateCache.h"
 
 #include <filesystem>
 #include <EASTL/string.h>
+#include <memory>
 
 namespace arda::tests::ardg_example
 {
@@ -26,9 +28,8 @@ namespace arda::tests::ardg_example
         [[nodiscard]] const eastl::string& GetError() const { return mError; }
 
     private:
-        bool CreateShadersAndPipelines(
+        bool CreateShadersAndInitializers(
             const backend::FArdaDeviceContext& deviceContext,
-            rhi::EArdaRHIFormat swapChainFormat,
             const std::filesystem::path& shaderDirectory);
         bool CreateSettingsUploadBuffer();
         bool CreateCameraResources();
@@ -39,6 +40,7 @@ namespace arda::tests::ardg_example
         rhi::FArdaRHIDeviceRef mDevice;
         render_graph::FARDGQueueCapabilities mQueueCapabilities;
         backend::FArdaGlobalShaderMap mShaderMap;
+        std::unique_ptr<backend::FArdaPipelineStateCache> mPipelineStateCache;
         const backend::FArdaGlobalShaderInstance* mGenerateShader = nullptr;
         const backend::FArdaGlobalShaderInstance* mErodeShader = nullptr;
         const backend::FArdaGlobalShaderInstance* mTriangulateShader = nullptr;
@@ -46,12 +48,12 @@ namespace arda::tests::ardg_example
         const backend::FArdaGlobalShaderInstance* mTerrainPixelShader = nullptr;
         const backend::FArdaGlobalShaderInstance* mOverlayVertexShader = nullptr;
         const backend::FArdaGlobalShaderInstance* mOverlayPixelShader = nullptr;
-        rhi::FArdaRHIComputePipelineRef mGeneratePipeline;
-        rhi::FArdaRHIComputePipelineRef mErodePipeline;
-        rhi::FArdaRHIComputePipelineRef mTriangulatePipeline;
+        backend::FArdaComputePipelineStateInitializer mGeneratePipelineInitializer;
+        backend::FArdaComputePipelineStateInitializer mErodePipelineInitializer;
+        backend::FArdaComputePipelineStateInitializer mTriangulatePipelineInitializer;
         rhi::FArdaRHIInputLayoutRef mTerrainInputLayout;
-        rhi::FArdaRHIGraphicsPipelineRef mTerrainPipeline;
-        rhi::FArdaRHIGraphicsPipelineRef mOverlayPipeline;
+        backend::FArdaGraphicsPipelineStateInitializer mTerrainPipelineInitializer;
+        backend::FArdaGraphicsPipelineStateInitializer mOverlayPipelineInitializer;
         rhi::FArdaRHIBufferRef mSettingsUploadBuffer;
         rhi::FArdaRHIBufferRef mCameraBuffer;
         rhi::FArdaRHIBindingSetRef mCameraBindingSet;

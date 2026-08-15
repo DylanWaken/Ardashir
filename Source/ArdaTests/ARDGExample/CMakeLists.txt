@@ -72,12 +72,23 @@ file(GLOB_RECURSE ARDG_EXAMPLE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/Private/ArdaARDGExampleConfig.cpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/Generated/ArdaARDGExampleConfig.cpp"
+    @ONLY
+)
+list(APPEND ARDG_EXAMPLE_SOURCES
+    "${CMAKE_CURRENT_BINARY_DIR}/Generated/ArdaARDGExampleConfig.cpp")
 
 add_executable(ARDGExample ${ARDG_EXAMPLE_SOURCES})
 add_dependencies(ARDGExample ARDGExampleShaders)
 target_compile_features(ARDGExample PRIVATE cxx_std_17)
-target_compile_definitions(ARDGExample PRIVATE GLFW_INCLUDE_NONE)
-target_include_directories(ARDGExample PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
+target_compile_definitions(ARDGExample PRIVATE
+    GLFW_INCLUDE_NONE
+)
+target_include_directories(ARDGExample PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/Private"
+)
 target_precompile_headers(ARDGExample PRIVATE Private/ArdaARDGExamplePch.h)
 target_link_libraries(ARDGExample PRIVATE
     Ardashir::ArdaBackend

@@ -90,7 +90,11 @@ if(ARDASHIR_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/Tests/ArdaShaderStructTest.hlsl")
     set(ARDA_BACKEND_STRUCT_SHADER_OUTPUTS
         "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.dxil"
-        "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.spv")
+        "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.spv"
+        "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestVS.dxil"
+        "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestVS.spv"
+        "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestPS.dxil"
+        "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestPS.spv")
     add_custom_command(
         OUTPUT ${ARDA_BACKEND_RT_SHADER_OUTPUTS}
         COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -T lib_6_3
@@ -117,6 +121,24 @@ if(ARDASHIR_BUILD_TESTS)
             -E ShaderStructTestCS
             -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.spv"
             "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
+        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -T vs_6_0
+            -E PipelineStateTestVS
+            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestVS.dxil"
+            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
+        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -spirv
+            -fspv-target-env=vulkan1.2 -T vs_6_0
+            -E PipelineStateTestVS
+            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestVS.spv"
+            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
+        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -T ps_6_0
+            -E PipelineStateTestPS
+            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestPS.dxil"
+            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
+        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -spirv
+            -fspv-target-env=vulkan1.2 -T ps_6_0
+            -E PipelineStateTestPS
+            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestPS.spv"
+            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
         DEPENDS "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
         COMMENT "Compiling shader-struct test shaders"
         VERBATIM)
@@ -136,6 +158,8 @@ if(ARDASHIR_BUILD_TESTS)
     target_compile_definitions(ArdaBackendTests PRIVATE
         ARDA_ENABLE_CHECKS
         ARDA_BACKEND_TEST_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}")
+    target_include_directories(ArdaBackendTests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/Private")
     target_link_libraries(ArdaBackendTests PRIVATE Ardashir::ArdaBackend GTest::gtest_main)
     add_custom_command(TARGET ArdaBackendTests POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
