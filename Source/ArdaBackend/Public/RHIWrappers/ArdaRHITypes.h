@@ -1,3 +1,7 @@
+/** @file ArdaRHITypes.h
+ * Declares backend-neutral RHI enums, value types, descriptors, hashing, and validation helpers.
+ */
+
 #pragma once
 
 #include <EASTL/string.h>
@@ -9,13 +13,25 @@
 
 namespace arda::rhi
 {
+    /** Forward declaration of texture desc. */
     struct FArdaRHITextureDesc;
+    /** Forward declaration of buffer desc. */
     struct FArdaRHIBufferDesc;
 
+    /**
+     * Performs the max operation.
+     * @return The requested numeric value.
+     */
     inline constexpr uint32_t ArdaRHIAllSubresources = std::numeric_limits<uint32_t>::max();
+    /**
+     * Performs the max operation.
+     * @return The requested numeric value.
+     */
     inline constexpr uint64_t ArdaRHIWholeBuffer = std::numeric_limits<uint64_t>::max();
+    /** Maximum number of simultaneous render targets. */
     inline constexpr uint32_t ArdaRHIMaxRenderTargets = 8;
 
+    /** Enumerates result values. */
     enum class EArdaRHIResult : uint8_t
     {
         Success,
@@ -26,28 +42,57 @@ namespace arda::rhi
         WrongDevice
     };
 
+    /** Describes status. */
     struct FArdaRHIStatus
     {
+        /** Stores the code. */
         EArdaRHIResult mCode = EArdaRHIResult::Success;
+        /** Stores the message. */
         eastl::string mMessage;
 
+        /**
+         * Tests whether the status represents success.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         [[nodiscard]] bool IsSuccess() const noexcept { return mCode == EArdaRHIResult::Success; }
+        /**
+         * Converts the status to a success flag.
+         * @return True when the reference or result is valid; otherwise false.
+         */
         [[nodiscard]] explicit operator bool() const noexcept { return IsSuccess(); }
+        /**
+         * Performs the success operation.
+         * @return A status describing whether the operation succeeded.
+         */
         static FArdaRHIStatus Success() { return {}; }
+        /**
+         * Performs the error operation.
+         * @param Code The code.
+         * @param Message The message.
+         * @return A status describing whether the operation succeeded.
+         */
         static FArdaRHIStatus Error(EArdaRHIResult Code, const char* Message)
         {
             return { Code, Message ? Message : "" };
         }
     };
 
+    /** Describes result. */
     template <typename T>
     struct TArdaRHIResult
     {
+        /** Stores the value. */
         T mValue{};
+        /** Stores the status. */
         FArdaRHIStatus mStatus;
+        /**
+         * Converts the result to a success flag.
+         * @return True when the reference or result is valid; otherwise false.
+         */
         [[nodiscard]] explicit operator bool() const noexcept { return mStatus.IsSuccess(); }
     };
 
+    /** Enumerates format values. */
     enum class EArdaRHIFormat : uint8_t
     {
         Unknown,
@@ -69,15 +114,20 @@ namespace arda::rhi
         BC5UNorm, BC5SNorm, BC6HUFloat, BC6HSFloat, BC7UNorm, BC7UNormSRGB
     };
 
+    /** Enumerates texture dimension values. */
     enum class EArdaRHITextureDimension : uint8_t
     {
         Unknown, Texture1D, Texture1DArray, Texture2D, Texture2DArray,
         TextureCube, TextureCubeArray, Texture2DMS, Texture2DMSArray, Texture3D
     };
 
+    /** Enumerates CPU access values. */
     enum class EArdaRHICpuAccess : uint8_t { None, Read, Write };
+    /** Enumerates queue type values. */
     enum class EArdaRHIQueueType : uint8_t { Graphics, Compute, Copy };
+    /** Enumerates heap type values. */
     enum class EArdaRHIHeapType : uint8_t { DeviceLocal, Upload, Readback };
+    /** Enumerates bindless layout type values. */
     enum class EArdaRHIBindlessLayoutType : uint8_t
     {
         Immutable, MutableSrvUavCbv, MutableCounters, MutableSampler
@@ -95,12 +145,16 @@ namespace arda::rhi
         Borrowed,
         Transferred
     };
+    /** Enumerates sampler feedback format values. */
     enum class EArdaRHISamplerFeedbackFormat : uint8_t
     {
         MinMipOpaque, MipRegionUsedOpaque
     };
+    /** Enumerates ray tracing geometry type values. */
     enum class EArdaRHIRayTracingGeometryType : uint8_t { Triangles, AABBs };
+    /** Enumerates opacity micromap format values. */
     enum class EArdaRHIOpacityMicromapFormat : uint8_t { TwoState = 1, FourState = 2 };
+    /** Enumerates shader stage values. */
     enum class EArdaRHIShaderStage : uint16_t
     {
         None = 0, Vertex = 1u << 0, Hull = 1u << 1, Domain = 1u << 2,
@@ -112,6 +166,7 @@ namespace arda::rhi
         AllGraphics = 0x00df, AllRayTracing = 0x3f00, All = 0x3fff
     };
 
+    /** Enumerates resource state values. */
     enum class EArdaRHIResourceState : uint32_t
     {
         Unknown = 0, Common = 1u << 0, ConstantBuffer = 1u << 1,
@@ -128,6 +183,7 @@ namespace arda::rhi
         OpacityMicromapWrite = 1u << 21, OpacityMicromapBuildInput = 1u << 22
     };
 
+    /** Enumerates texture usage values. */
     enum class EArdaRHITextureUsage : uint16_t
     {
         None = 0, ShaderResource = 1u << 0, UnorderedAccess = 1u << 1,
@@ -135,6 +191,7 @@ namespace arda::rhi
         Typeless = 1u << 4
     };
 
+    /** Enumerates buffer usage values. */
     enum class EArdaRHIBufferUsage : uint16_t
     {
         None = 0, ShaderResource = 1u << 0, UnorderedAccess = 1u << 1,
@@ -144,10 +201,12 @@ namespace arda::rhi
         AccelStructStorage = 1u << 10, ShaderBindingTable = 1u << 11
     };
 
+    /** Enumerates ray tracing geometry flags values. */
     enum class EArdaRHIRayTracingGeometryFlags : uint8_t
     {
         None = 0, Opaque = 1u << 0, NoDuplicateAnyHitInvocation = 1u << 1
     };
+    /** Enumerates accel struct build flags values. */
     enum class EArdaRHIAccelStructBuildFlags : uint8_t
     {
         None = 0, AllowUpdate = 1u << 0, AllowCompaction = 1u << 1,
@@ -155,16 +214,22 @@ namespace arda::rhi
         MinimizeMemory = 1u << 4, PerformUpdate = 1u << 5,
         AllowEmptyInstances = 1u << 7
     };
+    /** Enumerates opacity micromap build flags values. */
     enum class EArdaRHIOpacityMicromapBuildFlags : uint8_t
     {
         None = 0, FastTrace = 1u << 0, FastBuild = 1u << 1,
         AllowCompaction = 1u << 2
     };
 
+/** Generates bitwise operators and flag testing for a scoped RHI enum. */
 #define ARDA_RHI_FLAG_OPERATORS(Type) \
+    /** Combines two flag sets. @param A Left flag set. @param B Right flag set. @return The combined flags. */ \
     constexpr Type operator|(Type A, Type B) noexcept { return static_cast<Type>(static_cast<uint32_t>(A) | static_cast<uint32_t>(B)); } \
+    /** Intersects two flag sets. @param A Left flag set. @param B Right flag set. @return The common flags. */ \
     constexpr Type operator&(Type A, Type B) noexcept { return static_cast<Type>(static_cast<uint32_t>(A) & static_cast<uint32_t>(B)); } \
+    /** Adds flags to a flag set. @param A Flag set to update. @param B Flags to add. @return The updated flag set. */ \
     constexpr Type& operator|=(Type& A, Type B) noexcept { A = A | B; return A; } \
+    /** Tests whether any requested flag is set. @param Value Flag set to inspect. @param Flags Flags to test. @return True when any requested flag is set. */ \
     constexpr bool HasAnyFlags(Type Value, Type Flags) noexcept { return static_cast<uint32_t>(Value & Flags) != 0; }
 
     ARDA_RHI_FLAG_OPERATORS(EArdaRHIShaderStage)
@@ -176,18 +241,26 @@ namespace arda::rhi
     ARDA_RHI_FLAG_OPERATORS(EArdaRHIOpacityMicromapBuildFlags)
 #undef ARDA_RHI_FLAG_OPERATORS
 
+    /** Enumerates sampler address mode values. */
     enum class EArdaRHISamplerAddressMode : uint8_t { Clamp, Wrap, Border, Mirror, MirrorOnce };
+    /** Enumerates sampler reduction values. */
     enum class EArdaRHISamplerReduction : uint8_t { Standard, Comparison, Minimum, Maximum };
+    /** Enumerates primitive topology values. */
     enum class EArdaRHIPrimitiveTopology : uint8_t { PointList, LineList, LineStrip, TriangleList, TriangleStrip, PatchList };
+    /** Enumerates fill mode values. */
     enum class EArdaRHIFillMode : uint8_t { Solid, Wireframe };
+    /** Enumerates cull mode values. */
     enum class EArdaRHICullMode : uint8_t { Back, Front, None };
+    /** Enumerates comparison func values. */
     enum class EArdaRHIComparisonFunc : uint8_t { Never, Less, Equal, LessOrEqual, Greater, NotEqual, GreaterOrEqual, Always };
+    /** Enumerates blend factor values. */
     enum class EArdaRHIBlendFactor : uint8_t
     {
         Zero, One, SourceColor, InverseSourceColor, SourceAlpha,
         InverseSourceAlpha, DestinationAlpha, InverseDestinationAlpha,
         DestinationColor, InverseDestinationColor
     };
+    /** Enumerates binding type values. */
     enum class EArdaRHIBindingType : uint8_t
     {
         TextureSRV, TextureUAV, TypedBufferSRV, TypedBufferUAV,
@@ -196,72 +269,172 @@ namespace arda::rhi
         RayTracingAccelStruct, SamplerFeedbackTextureUAV
     };
 
+    /** Describes color. */
     struct FArdaRHIColor
     {
-        float mR = 0.f, mG = 0.f, mB = 0.f, mA = 0.f;
+        /** Red component. */
+        float mR = 0.f;
+        /** Green component. */
+        float mG = 0.f;
+        /** Blue component. */
+        float mB = 0.f;
+        /** Alpha component. */
+        float mA = 0.f;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHIColor& O) const noexcept { return mR == O.mR && mG == O.mG && mB == O.mB && mA == O.mA; }
     };
 
+    /** Describes texture subresource range. */
     struct FArdaRHITextureSubresourceRange
     {
+        /** Stores the base mip level. */
         uint32_t mBaseMipLevel = 0;
+        /** Stores the mip level count. */
         uint32_t mMipLevelCount = ArdaRHIAllSubresources;
+        /** Stores the base array slice. */
         uint32_t mBaseArraySlice = 0;
+        /** Stores the array slice count. */
         uint32_t mArraySliceCount = ArdaRHIAllSubresources;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHITextureSubresourceRange& O) const noexcept
         {
             return mBaseMipLevel == O.mBaseMipLevel && mMipLevelCount == O.mMipLevelCount &&
                 mBaseArraySlice == O.mBaseArraySlice && mArraySliceCount == O.mArraySliceCount;
         }
+        /**
+         * Performs the resolve operation.
+         * @param Desc The desc.
+         * @return The requested value.
+         */
         [[nodiscard]] FArdaRHITextureSubresourceRange Resolve(
             const FArdaRHITextureDesc& Desc) const noexcept;
     };
 
+    /** Describes buffer range. */
     struct FArdaRHIBufferRange
     {
+        /** Stores the byte offset. */
         uint64_t mByteOffset = 0;
+        /** Stores the byte size. */
         uint64_t mByteSize = ArdaRHIWholeBuffer;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHIBufferRange& O) const noexcept { return mByteOffset == O.mByteOffset && mByteSize == O.mByteSize; }
+        /**
+         * Performs the resolve operation.
+         * @param Desc The desc.
+         * @return The requested value.
+         */
         [[nodiscard]] FArdaRHIBufferRange Resolve(const FArdaRHIBufferDesc& Desc) const noexcept;
+        /**
+         * Tests whether the whole buffer.
+         * @param Desc The desc.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         [[nodiscard]] bool IsWholeBuffer(const FArdaRHIBufferDesc& Desc) const noexcept;
     };
 
+    /** Describes texture desc. */
     struct FArdaRHITextureDesc
     {
-        uint32_t mWidth = 1, mHeight = 1, mDepth = 1, mArraySize = 1, mMipLevels = 1, mSampleCount = 1;
+        /** Texture width in texels. */
+        uint32_t mWidth = 1;
+        /** Texture height in texels. */
+        uint32_t mHeight = 1;
+        /** Texture depth in texels. */
+        uint32_t mDepth = 1;
+        /** Number of array slices. */
+        uint32_t mArraySize = 1;
+        /** Number of mip levels. */
+        uint32_t mMipLevels = 1;
+        /** Multisample count. */
+        uint32_t mSampleCount = 1;
+        /** Stores the format. */
         EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;
+        /** Stores the dimension. */
         EArdaRHITextureDimension mDimension = EArdaRHITextureDimension::Texture2D;
+        /** Stores the usage. */
         EArdaRHITextureUsage mUsage = EArdaRHITextureUsage::ShaderResource;
+        /** Stores the initial state. */
         EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Unknown;
+        /** Stores the keep initial state. */
         bool mbKeepInitialState = false;
+        /** Stores the virtual. */
         bool mbVirtual = false;
+        /** Stores the tiled. */
         bool mbTiled = false;
+        /** Stores the clear value. */
         FArdaRHIColor mClearValue;
+        /** Stores the use clear value. */
         bool mbUseClearValue = false;
+        /** Stores the debug name. */
         eastl::string mDebugName;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHITextureDesc& O) const noexcept;
     };
 
+    /** Describes buffer desc. */
     struct FArdaRHIBufferDesc
     {
+        /** Stores the byte size. */
         uint64_t mByteSize = 0;
-        uint32_t mStructureStride = 0, mMaxVersions = 0;
+        /** Structured-buffer element stride in bytes. */
+        uint32_t mStructureStride = 0;
+        /** Maximum number of backing-buffer versions. */
+        uint32_t mMaxVersions = 0;
+        /** Stores the format. */
         EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;
+        /** Stores the usage. */
         EArdaRHIBufferUsage mUsage = EArdaRHIBufferUsage::None;
+        /** Stores the CPU access. */
         EArdaRHICpuAccess mCpuAccess = EArdaRHICpuAccess::None;
+        /** Stores the initial state. */
         EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Common;
+        /** Stores the keep initial state. */
         bool mbKeepInitialState = false;
+        /** Stores the virtual. */
         bool mbVirtual = false;
+        /** Stores the debug name. */
         eastl::string mDebugName;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHIBufferDesc& O) const noexcept;
     };
 
+    /** Describes view desc. */
     struct FArdaRHIViewDesc
     {
+        /** Stores the format. */
         EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;
+        /** Stores the dimension. */
         EArdaRHITextureDimension mDimension = EArdaRHITextureDimension::Unknown;
+        /** Stores the texture range. */
         FArdaRHITextureSubresourceRange mTextureRange;
+        /** Stores the buffer range. */
         FArdaRHIBufferRange mBufferRange;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHIViewDesc& O) const noexcept
         {
             return mFormat == O.mFormat && mDimension == O.mDimension &&
@@ -272,11 +445,21 @@ namespace arda::rhi
     /** Backend-neutral description of a native texture import. */
     struct FArdaRHINativeTextureImportDesc
     {
+        /** Stores the native object. */
         uintptr_t mNativeObject = 0;
+        /** Stores the native type. */
         EArdaRHINativeResourceType mNativeType = EArdaRHINativeResourceType::D3D12Resource;
+        /** Stores the ownership. */
         EArdaRHINativeOwnership mOwnership = EArdaRHINativeOwnership::Borrowed;
+        /** Stores the texture. */
         FArdaRHITextureDesc mTexture;
+        /** Stores the initial state. */
         EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Unknown;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHINativeTextureImportDesc& O) const noexcept
         {
             return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType &&
@@ -288,11 +471,21 @@ namespace arda::rhi
     /** Backend-neutral description of a native buffer import. */
     struct FArdaRHINativeBufferImportDesc
     {
+        /** Stores the native object. */
         uintptr_t mNativeObject = 0;
+        /** Stores the native type. */
         EArdaRHINativeResourceType mNativeType = EArdaRHINativeResourceType::D3D12Resource;
+        /** Stores the ownership. */
         EArdaRHINativeOwnership mOwnership = EArdaRHINativeOwnership::Borrowed;
+        /** Stores the buffer. */
         FArdaRHIBufferDesc mBuffer;
+        /** Stores the initial state. */
         EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Unknown;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHINativeBufferImportDesc& O) const noexcept
         {
             return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType &&
@@ -301,71 +494,162 @@ namespace arda::rhi
         }
     };
 
+    /** Describes texture slice. */
     struct FArdaRHITextureSlice
     {
-        uint32_t mX = 0, mY = 0, mZ = 0;
+        /** X origin in texels. */
+        uint32_t mX = 0;
+        /** Y origin in texels. */
+        uint32_t mY = 0;
+        /** Z origin in texels. */
+        uint32_t mZ = 0;
+        /** Stores the width. */
         uint32_t mWidth = ArdaRHIAllSubresources;
+        /** Stores the height. */
         uint32_t mHeight = ArdaRHIAllSubresources;
+        /** Stores the depth. */
         uint32_t mDepth = ArdaRHIAllSubresources;
-        uint32_t mMipLevel = 0, mArraySlice = 0;
+        /** Mip level containing the slice. */
+        uint32_t mMipLevel = 0;
+        /** Array slice containing the region. */
+        uint32_t mArraySlice = 0;
     };
 
+    /** Describes tiled texture coordinate. */
     struct FArdaRHITiledTextureCoordinate
     {
-        uint16_t mMipLevel = 0, mArrayLevel = 0;
-        uint32_t mX = 0, mY = 0, mZ = 0;
+        /** Mip level containing the tile. */
+        uint16_t mMipLevel = 0;
+        /** Array level containing the tile. */
+        uint16_t mArrayLevel = 0;
+        /** Tile X coordinate. */
+        uint32_t mX = 0;
+        /** Tile Y coordinate. */
+        uint32_t mY = 0;
+        /** Tile Z coordinate. */
+        uint32_t mZ = 0;
     };
 
+    /** Describes tiled texture region. */
     struct FArdaRHITiledTextureRegion
     {
-        uint32_t mTileCount = 0, mWidth = 0, mHeight = 0, mDepth = 0;
+        /** Number of tiles in the region. */
+        uint32_t mTileCount = 0;
+        /** Region width in tiles. */
+        uint32_t mWidth = 0;
+        /** Region height in tiles. */
+        uint32_t mHeight = 0;
+        /** Region depth in tiles. */
+        uint32_t mDepth = 0;
     };
 
+    /** Describes packed mip desc. */
     struct FArdaRHIPackedMipDesc
     {
-        uint32_t mStandardMipCount = 0, mPackedMipCount = 0;
-        uint32_t mPackedMipTileCount = 0, mStartTileIndex = 0;
-    };
-
-    struct FArdaRHITileShape
-    {
-        uint32_t mWidthInTexels = 0, mHeightInTexels = 0, mDepthInTexels = 0;
-    };
-
-    struct FArdaRHISubresourceTiling
-    {
-        uint32_t mWidthInTiles = 0, mHeightInTiles = 0, mDepthInTiles = 0;
+        /** Number of standard tiled mip levels. */
+        uint32_t mStandardMipCount = 0;
+        /** Number of packed mip levels. */
+        uint32_t mPackedMipCount = 0;
+        /** Number of tiles occupied by packed mips. */
+        uint32_t mPackedMipTileCount = 0;
+        /** First tile index used by packed mips. */
         uint32_t mStartTileIndex = 0;
     };
 
+    /** Describes tile shape. */
+    struct FArdaRHITileShape
+    {
+        /** Tile width in texels. */
+        uint32_t mWidthInTexels = 0;
+        /** Tile height in texels. */
+        uint32_t mHeightInTexels = 0;
+        /** Tile depth in texels. */
+        uint32_t mDepthInTexels = 0;
+    };
+
+    /** Describes subresource tiling. */
+    struct FArdaRHISubresourceTiling
+    {
+        /** Subresource width in tiles. */
+        uint32_t mWidthInTiles = 0;
+        /** Subresource height in tiles. */
+        uint32_t mHeightInTiles = 0;
+        /** Subresource depth in tiles. */
+        uint32_t mDepthInTiles = 0;
+        /** Stores the start tile index. */
+        uint32_t mStartTileIndex = 0;
+    };
+
+    /** Describes sampler desc. */
     struct FArdaRHISamplerDesc
     {
+        /** Stores the border color. */
         FArdaRHIColor mBorderColor{ 1.f, 1.f, 1.f, 1.f };
-        float mMaxAnisotropy = 1.f, mMipBias = 0.f;
-        bool mbMinFilter = true, mbMagFilter = true, mbMipFilter = true;
+        /** Maximum anisotropy level. */
+        float mMaxAnisotropy = 1.f;
+        /** Mip-level-of-detail bias. */
+        float mMipBias = 0.f;
+        /** Whether minification filtering is enabled. */
+        bool mbMinFilter = true;
+        /** Whether magnification filtering is enabled. */
+        bool mbMagFilter = true;
+        /** Whether mip filtering is enabled. */
+        bool mbMipFilter = true;
+        /** Stores the address u. */
         EArdaRHISamplerAddressMode mAddressU = EArdaRHISamplerAddressMode::Clamp;
+        /** Stores the address v. */
         EArdaRHISamplerAddressMode mAddressV = EArdaRHISamplerAddressMode::Clamp;
+        /** Stores the address w. */
         EArdaRHISamplerAddressMode mAddressW = EArdaRHISamplerAddressMode::Clamp;
+        /** Stores the reduction. */
         EArdaRHISamplerReduction mReduction = EArdaRHISamplerReduction::Standard;
+        /** Stores the debug name. */
         eastl::string mDebugName;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHISamplerDesc& O) const noexcept;
     };
 
+    /** Describes shader desc. */
     struct FArdaRHIShaderDesc
     {
+        /** Stores the stage. */
         EArdaRHIShaderStage mStage = EArdaRHIShaderStage::None;
+        /** Stores the bytecode. */
         const void* mBytecode = nullptr;
+        /** Stores the bytecode size. */
         size_t mBytecodeSize = 0;
+        /** Stores the entry point. */
         eastl::string mEntryPoint = "main";
+        /** Stores the debug name. */
         eastl::string mDebugName;
     };
 
+    /** Describes vertex attribute desc. */
     struct FArdaRHIVertexAttributeDesc
     {
+        /** Stores the semantic name. */
         eastl::string mSemanticName;
+        /** Stores the format. */
         EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;
-        uint32_t mArraySize = 1, mBufferIndex = 0, mOffset = 0, mElementStride = 0;
+        /** Number of elements represented by the attribute. */
+        uint32_t mArraySize = 1;
+        /** Vertex-buffer binding index. */
+        uint32_t mBufferIndex = 0;
+        /** Byte offset within each vertex element. */
+        uint32_t mOffset = 0;
+        /** Vertex element stride in bytes. */
+        uint32_t mElementStride = 0;
+        /** Stores the instanced. */
         bool mbInstanced = false;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHIVertexAttributeDesc& O) const noexcept
         {
             return mSemanticName == O.mSemanticName && mFormat == O.mFormat &&
@@ -375,20 +659,41 @@ namespace arda::rhi
         }
     };
 
+    /** Describes binding layout item. */
     struct FArdaRHIBindingLayoutItem
     {
-        uint32_t mSlot = 0, mArraySize = 1;
+        /** Shader register slot. */
+        uint32_t mSlot = 0;
+        /** Number of array descriptors. */
+        uint32_t mArraySize = 1;
+        /** Stores the type. */
         EArdaRHIBindingType mType = EArdaRHIBindingType::TextureSRV;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHIBindingLayoutItem& O) const noexcept { return mSlot == O.mSlot && mArraySize == O.mArraySize && mType == O.mType; }
     };
 
+    /** Describes binding layout desc. */
     struct FArdaRHIBindingLayoutDesc
     {
+        /** Stores the visibility. */
         EArdaRHIShaderStage mVisibility = EArdaRHIShaderStage::None;
+        /** Stores the register space. */
         uint32_t mRegisterSpace = 0;
+        /** Stores the register space is descriptor set. */
         bool mbRegisterSpaceIsDescriptorSet = false;
+        /** Stores the items. */
         eastl::vector<FArdaRHIBindingLayoutItem> mItems;
+        /** Stores the debug name. */
         eastl::string mDebugName;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHIBindingLayoutDesc& O) const noexcept
         {
             return mVisibility == O.mVisibility && mRegisterSpace == O.mRegisterSpace &&
@@ -397,20 +702,35 @@ namespace arda::rhi
         }
     };
 
+    /** Describes framebuffer attachment. */
     struct FArdaRHIFramebufferAttachment
     {
+        /** Stores the subresources. */
         FArdaRHITextureSubresourceRange mSubresources;
+        /** Stores the format. */
         EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;
+        /** Stores the read only. */
         bool mbReadOnly = false;
     };
 
+    /** Describes raster state. */
     struct FArdaRHIRasterState
     {
+        /** Stores the fill mode. */
         EArdaRHIFillMode mFillMode = EArdaRHIFillMode::Solid;
+        /** Stores the cull mode. */
         EArdaRHICullMode mCullMode = EArdaRHICullMode::Back;
+        /** Stores the front counter clockwise. */
         bool mbFrontCounterClockwise = false;
+        /** Stores the depth clip. */
         bool mbDepthClip = true;
+        /** Stores the scissor. */
         bool mbScissor = false;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHIRasterState& O) const noexcept
         {
             return mFillMode == O.mFillMode && mCullMode == O.mCullMode &&
@@ -418,24 +738,44 @@ namespace arda::rhi
                 mbDepthClip == O.mbDepthClip && mbScissor == O.mbScissor;
         }
     };
+    /** Describes depth stencil state. */
     struct FArdaRHIDepthStencilState
     {
+        /** Stores the depth test. */
         bool mbDepthTest = true;
+        /** Stores the depth write. */
         bool mbDepthWrite = true;
+        /** Stores the depth func. */
         EArdaRHIComparisonFunc mDepthFunc = EArdaRHIComparisonFunc::Less;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHIDepthStencilState& O) const noexcept
         {
             return mbDepthTest == O.mbDepthTest && mbDepthWrite == O.mbDepthWrite &&
                 mDepthFunc == O.mDepthFunc;
         }
     };
+    /** Describes blend target state. */
     struct FArdaRHIBlendTargetState
     {
+        /** Stores the enable. */
         bool mbEnable = false;
+        /** Stores the source color. */
         EArdaRHIBlendFactor mSourceColor = EArdaRHIBlendFactor::One;
+        /** Stores the destination color. */
         EArdaRHIBlendFactor mDestinationColor = EArdaRHIBlendFactor::Zero;
+        /** Stores the source alpha. */
         EArdaRHIBlendFactor mSourceAlpha = EArdaRHIBlendFactor::One;
+        /** Stores the destination alpha. */
         EArdaRHIBlendFactor mDestinationAlpha = EArdaRHIBlendFactor::Zero;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHIBlendTargetState& O) const noexcept
         {
             return mbEnable == O.mbEnable && mSourceColor == O.mSourceColor &&
@@ -444,10 +784,18 @@ namespace arda::rhi
                 mDestinationAlpha == O.mDestinationAlpha;
         }
     };
+    /** Describes blend state. */
     struct FArdaRHIBlendState
     {
+        /** Stores the targets. */
         FArdaRHIBlendTargetState mTargets[ArdaRHIMaxRenderTargets]{};
+        /** Stores the alpha to coverage. */
         bool mbAlphaToCoverage = false;
+        /**
+         * Compares two values for equality.
+         * @param O The o.
+         * @return True when the condition is satisfied; otherwise false.
+         */
         bool operator==(const FArdaRHIBlendState& O) const noexcept
         {
             if (mbAlphaToCoverage != O.mbAlphaToCoverage) return false;
@@ -456,43 +804,183 @@ namespace arda::rhi
             return true;
         }
     };
-    struct FArdaRHIViewport { float mMinX = 0.f, mMaxX = 0.f, mMinY = 0.f, mMaxY = 0.f, mMinZ = 0.f, mMaxZ = 1.f; };
-    struct FArdaRHIRect { int32_t mMinX = 0, mMaxX = 0, mMinY = 0, mMaxY = 0; };
-    struct FArdaRHIDrawArguments { uint32_t mVertexCount = 0, mInstanceCount = 1, mStartIndex = 0, mStartVertex = 0, mStartInstance = 0; };
+    /** Describes viewport. */
+    struct FArdaRHIViewport
+    {
+        /** Minimum X coordinate. */
+        float mMinX = 0.f;
+        /** Maximum X coordinate. */
+        float mMaxX = 0.f;
+        /** Minimum Y coordinate. */
+        float mMinY = 0.f;
+        /** Maximum Y coordinate. */
+        float mMaxY = 0.f;
+        /** Minimum depth value. */
+        float mMinZ = 0.f;
+        /** Maximum depth value. */
+        float mMaxZ = 1.f;
+    };
+    /** Describes rect. */
+    struct FArdaRHIRect
+    {
+        /** Minimum X coordinate. */
+        int32_t mMinX = 0;
+        /** Maximum X coordinate. */
+        int32_t mMaxX = 0;
+        /** Minimum Y coordinate. */
+        int32_t mMinY = 0;
+        /** Maximum Y coordinate. */
+        int32_t mMaxY = 0;
+    };
+    /** Describes draw arguments. */
+    struct FArdaRHIDrawArguments
+    {
+        /** Number of vertices or indices to draw. */
+        uint32_t mVertexCount = 0;
+        /** Number of instances to draw. */
+        uint32_t mInstanceCount = 1;
+        /** First index for indexed draws. */
+        uint32_t mStartIndex = 0;
+        /** First vertex or base-vertex offset. */
+        uint32_t mStartVertex = 0;
+        /** First instance identifier. */
+        uint32_t mStartInstance = 0;
+    };
 
+    /** Describes format info. */
     struct FArdaRHIFormatInfo
     {
+        /** Stores the depth. */
         bool mbDepth = false;
+        /** Stores the stencil. */
         bool mbStencil = false;
+        /** Stores the integer. */
         bool mbInteger = false;
     };
 
+    /** Describes memory requirements. */
     struct FArdaRHIMemoryRequirements
     {
+        /** Stores the size. */
         uint64_t mSize = 0;
+        /** Stores the alignment. */
         uint64_t mAlignment = 0;
     };
 
+    /**
+     * Returns the arda rhiformat info.
+     * @param Format The format.
+     * @return A reference to the requested value.
+     */
     [[nodiscard]] const FArdaRHIFormatInfo& GetArdaRHIFormatInfo(EArdaRHIFormat Format) noexcept;
 
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHITextureSubresourceRange& Value) noexcept;
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHIBufferRange& Value) noexcept;
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHITextureDesc& Value) noexcept;
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHIBufferDesc& Value) noexcept;
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHIViewDesc& Value) noexcept;
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHISamplerDesc& Value) noexcept;
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHIVertexAttributeDesc& Value) noexcept;
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHIBindingLayoutDesc& Value) noexcept;
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHIRasterState& Value) noexcept;
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHIDepthStencilState& Value) noexcept;
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHIBlendTargetState& Value) noexcept;
+    /**
+     * Tests for the requested h value.
+     * @param Value The value.
+     * @return The requested numeric value.
+     */
     [[nodiscard]] size_t HashValue(const FArdaRHIBlendState& Value) noexcept;
 
-    /** Central descriptor validation used before cache lookup and native creation. */
+    /**
+     * Central descriptor validation used before cache lookup and native creation.
+     * @param Value The value.
+     * @return A status describing whether the operation succeeded.
+     */
     [[nodiscard]] FArdaRHIStatus Validate(const FArdaRHITextureDesc& Value) noexcept;
+    /**
+     * Validates the descriptor.
+     * @param Value The value.
+     * @return A status describing whether the operation succeeded.
+     */
     [[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIBufferDesc& Value) noexcept;
+    /**
+     * Validates the descriptor.
+     * @param Value The value.
+     * @return A status describing whether the operation succeeded.
+     */
     [[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIViewDesc& Value) noexcept;
+    /**
+     * Validates the descriptor.
+     * @param Value The value.
+     * @return A status describing whether the operation succeeded.
+     */
     [[nodiscard]] FArdaRHIStatus Validate(const FArdaRHISamplerDesc& Value) noexcept;
+    /**
+     * Validates the descriptor.
+     * @param Value The value.
+     * @return A status describing whether the operation succeeded.
+     */
     [[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIVertexAttributeDesc& Value) noexcept;
+    /**
+     * Validates the descriptor.
+     * @param Value The value.
+     * @return A status describing whether the operation succeeded.
+     */
     [[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIBindingLayoutDesc& Value) noexcept;
 }

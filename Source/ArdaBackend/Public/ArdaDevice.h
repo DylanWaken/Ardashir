@@ -1,3 +1,6 @@
+/** @file ArdaDevice.h
+ *  @brief Declares backend selection, device initialization, and diagnostics.
+ */
 #pragma once
 
 #include "RHIWrappers/ArdaRHI.h"
@@ -8,24 +11,51 @@
 #include <cstdint>
 namespace arda::backend
 {
+    /** Identifies the severity of a backend diagnostic message. */
     enum class EArdaDiagnosticSeverity : uint8_t { Info, Warning, Error, Fatal };
 
+    /** Receives diagnostic messages emitted by the backend. */
     class IArdaDiagnosticCallback
     {
     public:
+        /** Destroys the diagnostic callback. */
         virtual ~IArdaDiagnosticCallback() = default;
+        /**
+         * Handles a backend diagnostic message.
+         * @param Severity Severity assigned to the message.
+         * @param Text Null-terminated diagnostic text.
+         */
         virtual void Message(EArdaDiagnosticSeverity Severity, const char* Text) = 0;
     };
 
+    /** Stores a platform-native handle without exposing its native type. */
     struct FArdaNativeObject
     {
+        /** Integer representation of the native handle. */
         uintptr_t mValue = 0;
+        /** Creates an empty native object. */
         constexpr FArdaNativeObject() noexcept = default;
+        /** Creates an empty native object from null. */
         constexpr FArdaNativeObject(std::nullptr_t) noexcept {}
+        /**
+         * Creates a native object from an integer handle.
+         * @param Value Integer representation of the native handle.
+         */
         explicit constexpr FArdaNativeObject(uintptr_t Value) noexcept : mValue(Value) {}
+        /**
+         * Creates a native object from a pointer.
+         * @tparam T Pointed-to native type.
+         * @param Value Native pointer to encode.
+         */
         template <typename T>
         explicit FArdaNativeObject(T* Value) noexcept : mValue(reinterpret_cast<uintptr_t>(Value)) {}
+        /** @return True when the native handle is nonzero. */
         [[nodiscard]] explicit constexpr operator bool() const noexcept { return mValue != 0; }
+        /**
+         * Decodes the native handle as the requested type.
+         * @tparam T Pointer or integer type to return.
+         * @return The native handle converted to T.
+         */
         template <typename T> [[nodiscard]] T As() const noexcept { return reinterpret_cast<T>(mValue); }
     };
     /** Selects the graphics API used by the backend. */
@@ -112,35 +142,36 @@ namespace arda::backend
      * @return True when the backend selection was accepted.
      */
     [[nodiscard]] bool ConfigureBackend(EArdaBackendType backend);
-    /** Returns the current process-wide backend configuration. */
+    /** @return The current process-wide backend configuration. */
     [[nodiscard]] const FArdaBackendConfiguration& GetBackendConfiguration() noexcept;
 
-    /** Initializes a headless backend and reports whether it succeeded. */
+    /** @return True when a headless backend was initialized successfully. */
     [[nodiscard]] bool InitializeBackend();
 
     /** Releases the process-wide backend and its device resources. */
     void ShutdownBackend() noexcept;
 
-    /** Returns whether the process-wide backend is initialized. */
+    /** @return True when the process-wide backend is initialized. */
     [[nodiscard]] bool IsBackendInitialized() noexcept;
 
-    /** Returns the stable process-wide device context. */
+    /** @return The stable process-wide device context. */
     [[nodiscard]] const FArdaDeviceContext& GetDeviceContext() noexcept;
 
-    /** Returns the command queues exposed by the initialized backend. */
+    /** @return Command queues exposed by the initialized backend. */
     [[nodiscard]] const FArdaQueueCapabilities& GetQueueCapabilities() noexcept;
 
-    /** Returns the initialized opaque RHI device, or an empty reference. */
+    /** @return The initialized opaque RHI device, or an empty reference. */
     [[nodiscard]] rhi::FArdaRHIDeviceRef GetDevice() noexcept;
 
-    /** Returns the most recent backend error message. */
+    /** @return The most recent backend error message. */
     [[nodiscard]] eastl::string GetBackendError();
     /**
      * Returns a readable name for a backend type.
      * @param backend The backend type to name.
+     * @return A stable null-terminated backend name.
      */
     [[nodiscard]] const char* ToString(EArdaBackendType backend) noexcept;
 
-    /** Returns the stable name of the backend module. */
+    /** @return The stable name of the backend module. */
     [[nodiscard]] const char* GetModuleName() noexcept;
 }

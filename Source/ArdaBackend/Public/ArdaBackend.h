@@ -1,3 +1,6 @@
+/** @file ArdaBackend.h
+ *  @brief Aggregates the public Arda backend API.
+ */
 #pragma once
 
 #include "ArdaAssert.h"

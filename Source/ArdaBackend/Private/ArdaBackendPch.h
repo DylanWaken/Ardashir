@@ -1,10 +1,15 @@
+/** @file ArdaBackendPch.h
+ *  Collects platform, graphics API, NVRHI, and utility headers used by the backend.
+ */
 #pragma once
 
 #if defined(_WIN32)
     #ifndef NOMINMAX
+        /** Prevents Windows headers from defining the min and max macros. */
         #define NOMINMAX
     #endif
     #ifndef WIN32_LEAN_AND_MEAN
+        /** Excludes rarely used declarations from Windows headers. */
         #define WIN32_LEAN_AND_MEAN
     #endif
 
@@ -14,7 +19,9 @@
     #include <wrl/client.h>
 #endif
 
+/** Selects Vulkan-Hpp's runtime-configurable dispatch loader. */
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+/** Configures Vulkan-Hpp to report failures without C++ exceptions. */
 #define VULKAN_HPP_NO_EXCEPTIONS 1
 #include <vulkan/vulkan.hpp>
 

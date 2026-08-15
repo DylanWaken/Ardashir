@@ -1,3 +1,6 @@
+/** @file ArdaSwapChain.h
+ *  @brief Declares window-surface integration and presentation swap chains.
+ */
 #pragma once
 
 #include "ArdaDevice.h"
@@ -20,12 +23,13 @@ namespace arda::backend
         /** Destroys the window-surface adapter. */
         virtual ~IArdaWindowSurface() = default;
 
-        /** Returns the native HWND encoded as an object pointer on Windows. */
+        /** @return The native HWND encoded as an opaque object on Windows. */
         [[nodiscard]] virtual FArdaNativeObject GetD3D12WindowHandle() const noexcept = 0;
 
         /**
          * Returns Vulkan instance extensions required by the window system.
          * The returned name pointers must remain valid during initialization.
+         * @return Required null-terminated Vulkan extension names.
          */
         [[nodiscard]] virtual eastl::vector<const char*> GetVulkanInstanceExtensions() const = 0;
 
@@ -62,18 +66,18 @@ namespace arda::backend
         [[nodiscard]] virtual bool AcquireFrame(rhi::FArdaRHIFramebufferRef& OutFramebuffer) = 0;
         /** Transitions the acquired frame for queue submission. */
         virtual void PrepareSubmit() = 0;
-        /** Presents the submitted frame and reports whether presentation succeeded. */
+        /** @return True when the submitted frame was presented successfully. */
         [[nodiscard]] virtual bool Present() = 0;
         /** Blocks until pending swap-chain operations have completed. */
         virtual void WaitForIdle() noexcept = 0;
 
-        /** Returns the pixel format used by presentation images. */
+        /** @return The pixel format used by presentation images. */
         [[nodiscard]] virtual rhi::EArdaRHIFormat GetFormat() const noexcept = 0;
-        /** Returns the current presentation width in pixels. */
+        /** @return The current presentation width in pixels. */
         [[nodiscard]] virtual uint32_t GetWidth() const noexcept = 0;
-        /** Returns the current presentation height in pixels. */
+        /** @return The current presentation height in pixels. */
         [[nodiscard]] virtual uint32_t GetHeight() const noexcept = 0;
-        /** Returns the most recent swap-chain error message. */
+        /** @return The most recent swap-chain error message. */
         [[nodiscard]] virtual const eastl::string& GetError() const noexcept = 0;
     };
 
