@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A source-backed guide to ArdaRenderGraph passes, parameter metadata, setup visitation, hazards, raster bindings, shader binding, and compute-to-raster declarations.">
+  <title>Passes and parameters | ArdaRenderGraph | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaRenderGraph</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
+      <h2>ArdaRenderGraph</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="resources.html">Resources</a>
+        <a aria-current="page" href="passes.html">Passes</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="debugging.html">Debugging</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaRenderGraph</a> /
+        Passes and parameters
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Declarations become order, barriers, and bindings</p>
+          <h1>Passes and parameters</h1>
+          <p>A <a class="term" data-term="pass" href="../glossary.html#term-pass">pass</a> combines a name, behavior flags, frozen parameter data, generated metadata, and an execution callback. The parameter declaration is the compiler-visible contract: callback code is not inspected to discover resource dependencies.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#fundamentals">Pass fundamentals</a>
+          <a href="#flags">Flags and lambda forms</a>
+          <a href="#dsl">Parameter DSL</a>
+          <a href="#layout">Metadata layout</a>
+          <a href="#visitation">Setup visitation</a>
+          <a href="#hazards">Hazard algorithm and culling</a>
+          <a href="#raster">Raster binding slots</a>
+          <a href="#dispatch">Dispatch helper</a>
+          <a href="#blackboard">Blackboard</a>
+          <a href="#shader-bridge">Shader binding bridge</a>
+          <a href="#escape-hatch">Unsafe command list</a>
+          <a href="#derivation">Design derivation</a>
+          <a href="#worked-example">Worked compute-to-raster pass chain</a>
+          <a href="#invariants">Invariants</a>
+          <a href="#performance">Performance and threading</a>
+          <a href="#tradeoffs">Tradeoffs</a>
+          <a href="#failures">Failure table</a>
+          <a href="#summary">Summary</a>
+          <a href="#checkpoints">Checkpoints</a>
+          <a href="#reading">Further reading</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>Select legal pass flags and a supported callback form.</li>
+            <li>Define standard-layout ARDG parameter structs with values, arrays, nested structs, resources, views, accesses, uniform buffers, and raster bindings.</li>
+            <li>Explain how frozen metadata visitation produces pass state and dependency history.</li>
+            <li>Distinguish RAW/WAW producer edges from WAR synchronization-only edges and explain their different culling behavior.</li>
+            <li>Use raster binding slots, <code>AddDispatchPass</code>, the blackboard, and shader metadata binding helpers correctly.</li>
+            <li>Keep raw command-list access narrow and preserve declaration completeness.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites</h2>
+          <p>Read <a href="resources.html">Resources and ownership</a>. You should understand logical versus physical storage, graph-local handles, state declarations, <a class="term" data-term="srv" href="../glossary.html#term-srv">SRVs</a>, <a class="term" data-term="uav" href="../glossary.html#term-uav">UAVs</a>, and whole-resource dependency precision.</p>
+          <aside class="callout">
+            <h3>Setup and execution are separate</h3>
+            <p><code>AddPass</code> freezes parameters and immediately visits metadata while the graph is built. The callback runs later while an RHI <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command list</a> is recorded. Mutating the original parameter object after registration does not change the frozen copy.</p>
+          </aside>
+        </section>
+
+        <section id="fundamentals">
+          <h2>Fundamentals: a pass is declared work</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-addpass-eb5f83be"><code>AddPass</code></a> registers a typed lambda pass in stable handle order. The stored record contains immutable parameter storage and metadata; setup derives resource states, logical views, raster attachments, uniform-buffer references, and incoming edges. Compilation later decides liveness, queue pipeline, transitions, and recording waves.</p>
+          <p>The parameterless <a href="api-reference.html#api-arda-rdg-fardgbuilder-addpass-5e5f12c7"><code>AddPass</code></a> overload stores no metadata. It therefore contributes no automatic resource declarations or hazard edges. Use it for genuinely parameterless side effects, combine it with <code>NeverCull</code> when observability requires it, or add explicit causality with <a href="api-reference.html#api-arda-rdg-fardgbuilder-adddependency-0a07e4eb"><code>AddDependency</code></a>.</p>
+        </section>
+
+        <section id="flags">
+          <h2>Pass flags and lambda forms</h2>
+          <p><a href="api-reference.html#api-arda-rdg-eardgpassflags-6384e9b1"><code>EARDGPassFlags</code></a> describes operation category and scheduling constraints:</p>
+          <dl>
+            <dt><code>Raster</code></dt><dd>Graphics work with declared render-target bindings.</dd>
+            <dt><code>Compute</code></dt><dd>Compute dispatch on a graphics-capable pipeline.</dd>
+            <dt><code>AsyncCompute</code></dt><dd>Requests async compute and must be combined with <code>Compute</code>. Queue capability and state compatibility still decide whether compilation uses it.</dd>
+            <dt><code>Copy</code></dt><dd>Requests copy-queue work; all resource states must be copy compatible.</dd>
+            <dt><code>NeverCull</code></dt><dd>Makes the pass an observable liveness root even without extracted/external output.</dd>
+            <dt><code>SkipRenderPass</code></dt><dd>Valid only with <code>Raster</code>; the callback manages framebuffer behavior explicitly.</dd>
+            <dt><code>NeverParallel</code></dt><dd>Records the pass serially even when parallel recording is enabled.</dd>
+          </dl>
+          <p>Raster cannot combine with compute, async, or copy. Copy cannot combine with compute or async. Unknown bits are rejected during registration.</p>
+          <h3>Typed callback forms</h3>
+          <p>The typed overload accepts every shape below. The parameter-first forms are distinct supported overloads selected by the private invocation helper:</p>
+          <ul>
+            <li><code>(FARDGPassExecutionContext&amp;, const ParameterType&amp;)</code> — preferred;</li>
+            <li><code>(const ParameterType&amp;, FARDGPassExecutionContext&amp;)</code>;</li>
+            <li><code>(IArdaRHICommandList&amp;, const ParameterType&amp;)</code> — unsafe raw form;</li>
+            <li><code>(const ParameterType&amp;, IArdaRHICommandList&amp;)</code> — unsafe raw, parameter-first form;</li>
+            <li><code>(FARDGPassExecutionContext&amp;)</code>;</li>
+            <li><code>(IArdaRHICommandList&amp;)</code> — unsafe raw form;</li>
+            <li><code>(const ParameterType&amp;)</code>; or</li>
+            <li><code>()</code>.</li>
+          </ul>
+          <p>Parameterless passes accept context, raw command list, or no arguments. Unsupported signatures fail at compile time.</p>
+        </section>
+
+        <section id="dsl">
+          <h2>The ARDG parameter DSL</h2>
+          <p><a href="api-reference.html#api-arda-rdg-ardg-begin-parameter-struct-8584afa8"><code>ARDG_BEGIN_PARAMETER_STRUCT</code></a> and <a href="api-reference.html#api-arda-rdg-ardg-end-parameter-struct-2f93ccdd"><code>ARDG_END_PARAMETER_STRUCT</code></a> generate a C++ struct plus one immutable <code>GetStaticMetadata()</code> object. Member macros generate both storage and semantic metadata.</p>
+          <dl>
+            <dt>Ordinary values</dt>
+            <dd><code>ARDG_PARAMETER</code> and <code>ARDG_PARAMETER_ARRAY</code> preserve callback data but contribute no graph access.</dd>
+            <dt>Default reads</dt>
+            <dd><a href="api-reference.html#api-arda-rdg-ardg-texture-84675d28"><code>ARDG_TEXTURE</code></a>, <a href="api-reference.html#api-arda-rdg-ardg-buffer-84fb61fd"><code>ARDG_BUFFER</code></a>, and SRV forms imply shader-resource state.</dd>
+            <dt>Default writes</dt>
+            <dd><a href="api-reference.html#api-arda-rdg-ardg-texture-uav-1b1072bb"><code>ARDG_TEXTURE_UAV</code></a> and <a href="api-reference.html#api-arda-rdg-ardg-buffer-uav-63c57fd9"><code>ARDG_BUFFER_UAV</code></a> imply unordered-access state.</dd>
+            <dt>Runtime access</dt>
+            <dd><a href="api-reference.html#api-arda-rdg-ardg-texture-access-c74557a3"><code>ARDG_TEXTURE_ACCESS</code></a>, <a href="api-reference.html#api-arda-rdg-ardg-buffer-access-ea7e7a74"><code>ARDG_BUFFER_ACCESS</code></a>, and <a href="api-reference.html#api-arda-rdg-ardg-accel-struct-access-5d3edb29"><code>ARDG_ACCEL_STRUCT_ACCESS</code></a> carry explicit state plus range information where applicable.</dd>
+            <dt>Uniform buffers</dt>
+            <dd><a href="api-reference.html#api-arda-rdg-ardg-uniform-buffer-467db3ac"><code>ARDG_UNIFORM_BUFFER</code></a> declares a graph uniform buffer and recursively visits resources referenced by its frozen contents.</dd>
+            <dt>Nesting</dt>
+            <dd><a href="api-reference.html#api-arda-rdg-ardg-parameter-struct-e63d0e0a"><code>ARDG_PARAMETER_STRUCT</code></a> embeds another generated parameter struct. Array variants exist for every repeatable family.</dd>
+            <dt>Raster attachments</dt>
+            <dd><a href="api-reference.html#api-arda-rdg-ardg-render-target-binding-slots-04c99387"><code>ARDG_RENDER_TARGET_BINDING_SLOTS</code></a> declares color and depth/stencil output slots.</dd>
+          </dl>
+        </section>
+
+        <section id="layout">
+          <h2>Metadata layout, standard layout, arrays, and nesting</h2>
+          <p>The generated metadata records member name, semantic type, byte offset, total size, alignment, element count, element stride, default state, and optional nested metadata in <a href="api-reference.html#api-arda-rdg-fardgparametermember-af4eb6f7"><code>FARDGParameterMember</code></a>. <a href="api-reference.html#api-arda-rdg-fardgparametermetadata-8b7ec1e7"><code>FARDGParameterMetadata</code></a> stores struct name, size, alignment, and declaration-ordered members.</p>
+          <p><code>ARDG_END_PARAMETER_STRUCT</code> statically requires standard layout because metadata uses <code>offsetof</code> and byte arithmetic. <code>AllocateParameters&lt;T&gt;</code> imposes the same requirement. Standard layout does not mean trivial destruction: graph-arena allocation registers a destructor when needed.</p>
+          <ul>
+            <li>Arrays are represented by one member descriptor with count and stride. Enumeration produces paths such as <code>Inputs[2]</code>.</li>
+            <li>Nested structs recurse and produce dotted paths such as <code>Material.Textures[1]</code>.</li>
+            <li>Nested container records are omitted by default; leaf members are visited.</li>
+            <li>Metadata construction rejects null names, zero count/stride, out-of-bounds layout, and missing nested metadata.</li>
+          </ul>
+        </section>
+
+        <section id="visitation">
+          <h2>Setup visitation: metadata becomes pass state</h2>
+          <figure>
+            <img src="Assets/rdg-parameter-visit.svg" alt="AddPass freezes generated parameter metadata, enumerates arrays and nested structs, and dispatches resource leaves to setup handlers that produce pass state and hazards.">
+            <figcaption>Automatic dependency discovery comes from the frozen metadata walk, not from inspecting callback commands.</figcaption>
+          </figure>
+          <p>Registration first appends the pass, giving it a stable handle later than its existing predecessors. Setup then visits leaves in declaration order:</p>
+          <ul>
+            <li>plain values are ignored for graph state;</li>
+            <li>texture/buffer records add default or explicit state and range;</li>
+            <li>views preserve exact view identity and visit their parent storage;</li>
+            <li>uniform buffers are deduplicated per pass and recursively visited;</li>
+            <li>acceleration structures add direct state;</li>
+            <li>raster slots add attachment signatures and render-target/depth-write accesses;</li>
+            <li>null resource leaves are intentionally ignored.</li>
+          </ul>
+          <p>Every non-null logical pointer is checked against the current builder registry. An <code>Unknown</code> explicit access state is a programming error.</p>
+        </section>
+
+        <section id="hazards">
+          <h2>Producer-reader hazard algorithm and culling</h2>
+          <p>Each logical texture, buffer, or acceleration structure stores one latest writer and the set of readers since that write. This is the graph's source-backed implementation of <a class="term" data-term="raw-war-waw-hazards" href="../glossary.html#term-raw-war-waw-hazards">RAW, WAR, and WAW hazards</a>. For each declaration:</p>
+          <ol>
+            <li>Any access receives a producer edge from the latest writer, if present.</li>
+            <li>A read joins the current reader epoch.</li>
+            <li>A write receives synchronization-only edges from all current readers, clears that epoch, and becomes the latest writer.</li>
+          </ol>
+          <figure>
+            <img src="Assets/rdg-hazard-edges.svg" alt="RAW and WAW create producer edges followed by culling, while WAR creates synchronization-only order that does not keep dead readers alive; discovery is whole-resource.">
+            <figcaption>RAW/WAW and manual dependencies are producer edges: they impose order and carry liveness. WAR is synchronization-only: it imposes order but culling does not follow it backward.</figcaption>
+          </figure>
+          <dl>
+            <dt>RAW — read after write</dt>
+            <dd>The reader depends on the last writer. This producer edge preserves the writer when the read contributes to an observable output.</dd>
+            <dt>WAW — write after write</dt>
+            <dd>The later writer also depends on the last writer. It preserves deterministic replacement order and producer liveness.</dd>
+            <dt>WAR — write after read</dt>
+            <dd>The later writer must not begin before earlier reads finish, but those readers do not produce the new value. Synchronization-only edges order live work without making an otherwise dead reader live.</dd>
+          </dl>
+          <aside class="callout warning">
+            <h3>Edges are whole-resource; barriers can be finer</h3>
+            <p>The history above ignores texture subresource and buffer-range separation. Texture mip/slice ranges survive into per-subresource transition lowering; buffer ranges survive validation while buffer transitions remain whole-resource. This conservative edge policy can reduce parallelism but does not weaken correctness.</p>
+          </aside>
+          <p>Culling starts from the epilogue and <code>NeverCull</code> roots and walks only producer edges. A manual <code>AddDependency</code> is also a producer edge and therefore affects both execution order and liveness.</p>
+        </section>
+
+        <section id="raster">
+          <h2>Raster binding slots</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgrendertargetbindingslots-84e0c0e2"><code>FARDGRenderTargetBindingSlots</code></a> contains a fixed color array indexed by RHI render-target slot and one depth/stencil binding. Each binding carries a logical texture and selected subresources.</p>
+          <p>Setup records color textures as <code>RenderTarget</code> writes and depth/stencil as <code>DepthWrite</code>. It also builds an attachment signature from logical handles and ranges. Compilation groups adjacent graphics raster passes only when their signatures are identical and neither uses <code>SkipRenderPass</code>. Group metadata does not itself merge command lists or native render passes.</p>
+          <p>Unused color slots remain null. Attachment declarations are graph state; the callback still binds compatible pipeline, framebuffer, viewport, scissor, and draw state through the RHI.</p>
+        </section>
+
+        <section id="dispatch">
+          <h2><code>AddDispatchPass</code></h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-adddispatchpass-4e159d83"><code>AddDispatchPass</code></a> wraps typed <code>AddPass</code>, always adds <code>Compute</code>, invokes a setup callback, then calls <code>Dispatch(x, y, z)</code>. The setup callback must bind the compute pipeline and bindings; the helper supplies only the final dispatch dimensions.</p>
+          <p>Its default is graphics-capable compute. Add <code>AsyncCompute</code> to request the compute queue. Compilation falls back to graphics when the queue is unavailable, immediate mode is active, or declared states are incompatible. Thread-group counts are groups, not shader threads.</p>
+        </section>
+
+        <section id="blackboard">
+          <h2>Graph-scoped typed blackboard</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgblackboard-e315614c"><code>FARDGBlackboard</code></a> stores at most one copy-constructible value per C++ type. Use <a href="api-reference.html#api-arda-rdg-fardgbuilder-getblackboard-d2ab6408"><code>GetBlackboard()</code></a> during building to <code>Set</code>, <code>Emplace</code>, or <code>GetOrCreate</code> shared declarations such as scene textures. <code>Get</code> checks that a type exists; <code>TryGet</code> returns null when absence is expected.</p>
+          <p>The mutable builder accessor closes after building. A const accessor remains available later. The blackboard communicates graph-scoped CPU values; storing a logical pointer there does not itself declare any pass access. The consuming pass must still place it in its parameters.</p>
+        </section>
+
+        <section id="shader-bridge">
+          <h2>Shader metadata binding bridge</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-createbindingset-dc7ccbde"><code>CreateBindingSet(shaderMetadata, layout)</code></a> validates that the layout can be generated from registered shader metadata, flattens shader members, and matches compatible ARDG parameter leaves in declaration order. Register space, visibility, slot, array element, and binding type must agree.</p>
+          <p>The global-shader overload <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-createbindingset-92f0ea6b"><code>CreateBindingSet(shader, layoutIndex)</code></a> selects one generated layout directly; <code>CreateBindingSets</code> builds every layout in order. A layout-only overload assigns independent sequential SRV, UAV, and constant-buffer slots.</p>
+          <ul>
+            <li>Texture and buffer resources/views become binding items with physical resources and declared view ranges.</li>
+            <li>Uniform buffers become constant-buffer items.</li>
+            <li>Acceleration-structure access can become a ray-tracing acceleration-structure binding.</li>
+            <li>Plain values, direct texture/buffer accesses, nested containers, and raster slots are not descriptor bindings.</li>
+            <li>Every layout array element must be matched; missing or incompatible declarations trigger the check path.</li>
+          </ul>
+          <p>This is a metadata bridge, not binary reflection: authored ARDG semantics are reconciled with registered shader parameter metadata and RHI <a class="term" data-term="binding-layout" href="../glossary.html#term-binding-layout">binding layouts</a>.</p>
+        </section>
+
+        <section id="escape-hatch">
+          <h2>The unsafe command-list escape hatch</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-ead56b9c"><code>FARDGPassExecutionContext</code></a> exposes validated <code>GetTexture</code>, <code>GetBuffer</code>, <code>GetAccelStruct</code>, <code>GetUniformBuffer</code>, and binding-set helpers. They require an active callback, verify graph ownership and exact view declaration, and reject undeclared physical access.</p>
+          <p><a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-munsaferawcommandlist-7e7a9512"><code>mUnsafeRawCommandList</code></a> exists because not every RHI command has a typed graph wrapper. It does not make independently retained RHI references visible to graph analysis. Any graph resource used through it must still be declared in parameters and resolved through the context when possible. The deprecated <code>mCommandList</code> alias has the same bypass risk.</p>
+          <aside class="callout warning">
+            <h3>Unsafe means the compiler cannot prove completeness</h3>
+            <p>A raw callback can read or write an external RHI object without a graph edge, transition, lifetime, or queue wait. Reserve this form for narrow commands that cannot use validated helpers, and document any independently synchronized external object.</p>
+          </aside>
+        </section>
+
+        <section id="derivation">
+          <h2>Design derivation</h2>
+          <ol>
+            <li>Graph compilation needs resource accesses before callbacks execute.</li>
+            <li>C++ parameter structs provide convenient typed callback data, but C++ alone has no runtime member reflection.</li>
+            <li>The macro DSL generates stable layout metadata alongside ordinary members.</li>
+            <li>Freezing gives metadata a stable immutable instance to enumerate.</li>
+            <li>Declaration-order visitation produces deterministic states, views, bindings, and hazard history.</li>
+            <li>Separating producer from synchronization edges lets WAR impose safety without incorrectly retaining dead readers.</li>
+            <li>Validated execution getters check that callback behavior remains inside the declared graph contract.</li>
+          </ol>
+        </section>
+
+        <section id="worked-example">
+          <h2>Worked example: compute to raster declaration</h2>
+          <aside class="callout">
+            <h3>Illustrative pseudocode</h3>
+            <p>This example emphasizes graph declarations and dependency flow. It omits app-specific shader objects, pipeline-state cache and initializer setup, graphics state and framebuffer construction, swap-chain acquisition, dispatch dimensions, and draw arguments.</p>
+          </aside>
+          <pre><code>using namespace arda::render_graph;
+
+ARDG_BEGIN_PARAMETER_STRUCT(FLightingParameters)
+    ARDG_TEXTURE_UAV(Output)
+ARDG_END_PARAMETER_STRUCT()
+
+ARDG_BEGIN_PARAMETER_STRUCT(FCompositeParameters)
+    ARDG_TEXTURE_SRV(Lighting)
+    ARDG_RENDER_TARGET_BINDING_SLOTS(RenderTargets)
+ARDG_END_PARAMETER_STRUCT()
+
+FARDGTextureRef lighting = graph.CreateTexture(lightingDesc);
+FARDGTextureUAVRef lightingUAV = graph.CreateTextureUAV(
+    "Lighting.UAV", {lighting-&gt;GetHandle(), {0, 1, 0, 1}});
+FARDGTextureSRVRef lightingSRV = graph.CreateTextureSRV(
+    "Lighting.SRV", {lighting-&gt;GetHandle(), {0, 1, 0, 1}});
+FARDGTextureRef backBuffer = graph.RegisterExternalTexture(
+    swapchainTexture,
+    rhi::EArdaRHIResourceState::Present,
+    "BackBuffer");
+
+auto* lightingParameters = graph.AllocateParameters&lt;FLightingParameters&gt;();
+lightingParameters-&gt;Output = lightingUAV;
+
+graph.AddDispatchPass(
+    "Lighting",
+    lightingParameters,
+    {groupCountX, groupCountY, 1},
+    [&amp;lightingShader, &amp;pipelineStateCache, &amp;lightingInitializer](
+        FARDGPassExecutionContext&amp; context,
+        const FLightingParameters&amp;)
+    {
+        rhi::FArdaRHIComputeState state;
+        state.mBindings = context.CreateBindingSets(lightingShader);
+        (void)pipelineStateCache.SetComputePipelineState(
+            context.mUnsafeRawCommandList,
+            lightingInitializer,
+            eastl::move(state));
+    },
+    EARDGPassFlags::AsyncCompute);
+
+auto* compositeParameters = graph.AllocateParameters&lt;FCompositeParameters&gt;();
+compositeParameters-&gt;Lighting = lightingSRV;
+compositeParameters-&gt;RenderTargets.mColor[0] =
+    {backBuffer, {0, 1, 0, 1}};
+
+graph.AddPass(
+    "Composite",
+    compositeParameters,
+    EARDGPassFlags::Raster,
+    [&amp;compositeShader, &amp;pipelineStateCache,
+     &amp;compositeInitializer, &amp;graphicsState, &amp;fullscreenDrawArguments](
+        FARDGPassExecutionContext&amp; context,
+        const FCompositeParameters&amp;)
+    {
+        auto state = graphicsState; // includes a compatible framebuffer
+        state.mBindings = context.CreateBindingSets(compositeShader);
+        (void)pipelineStateCache.SetGraphicsPipelineState(
+            context.mUnsafeRawCommandList,
+            compositeInitializer,
+            eastl::move(state));
+        context.mUnsafeRawCommandList.Draw(fullscreenDrawArguments);
+    });</code></pre>
+          <p>The compute parameter declares a UAV write to <code>lighting</code>. The raster parameter declares an SRV read of the same logical texture, creating a RAW producer edge from <code>Lighting</code> to <code>Composite</code>. If async compute is selected, compilation emits a cross-queue dependency; otherwise same-queue order applies. The texture range drives the UAV-to-shader-resource barrier, while the dependency itself is whole-texture.</p>
+          <p>The raster binding slot declares a render-target write to the imported back buffer. That observable external write anchors the composite pass at the epilogue, which in turn keeps the compute producer live. The callbacks use shader metadata to create bindings, then use the raw command list only for state and draw/dispatch commands that the context does not wrap.</p>
+        </section>
+
+        <section id="invariants">
+          <h2>Pass and parameter invariants</h2>
+          <ol>
+            <li>A pass is named, has a callable body, and uses a legal flag combination.</li>
+            <li>Typed parameters expose generated metadata and satisfy standard layout.</li>
+            <li>Parameters are frozen before setup and remain immutable through callback execution.</li>
+            <li>Every graph resource used by a callback appears in that pass’s declarations with a truthful state and range.</li>
+            <li>All logical pointers and views resolve in the same builder.</li>
+            <li>RAW/WAW/manual producer edges carry liveness; WAR synchronization edges carry order only.</li>
+            <li>Whole-resource edges are not confused with subresource-specific texture barriers.</li>
+            <li>Raster flags, attachment declarations, pipeline, framebuffer, and callback commands agree.</li>
+            <li>Shader metadata, ARDG parameter order/types, and binding layout agree for every required element.</li>
+          </ol>
+        </section>
+
+        <section id="performance">
+          <h2>Performance and threading</h2>
+          <ul>
+            <li>Keep pass declarations coarse enough to amortize command-list and submission cost, but expose meaningful producer boundaries.</li>
+            <li>Use precise texture ranges to reduce barriers. Current whole-resource edges can still serialize disjoint ranges, so measure before splitting passes for subresource concurrency.</li>
+            <li>Use <code>AsyncCompute</code> only for compatible, substantial work with useful overlap. Queue waits and bandwidth contention can erase gains.</li>
+            <li>Avoid <code>NeverCull</code> unless the pass has a real side effect not represented by graph output.</li>
+            <li>Avoid <code>NeverParallel</code> unless callback CPU code touches thread-affine or unsafely shared state.</li>
+            <li>Parallel recording invokes independent callbacks concurrently. Capture immutable state or provide synchronization; never mutate shared graphics state, allocators, or descriptor data without a threading contract.</li>
+            <li>Use uniform buffers to share frozen parameter trees deliberately; recursive visitation is deduplicated per pass.</li>
+            <li>Prefer shader metadata overloads over positional layout-only binding when registered metadata exists; validation catches slot and array mismatches earlier.</li>
+          </ul>
+        </section>
+
+        <section id="tradeoffs">
+          <h2>Tradeoffs</h2>
+          <dl>
+            <dt>Macro metadata versus handwritten declarations</dt>
+            <dd>The DSL adds generated boilerplate and a standard-layout constraint, but keeps C++ storage and graph semantics synchronized.</dd>
+            <dt>Frozen copies versus late mutation</dt>
+            <dd>Freezing makes compilation and parallel recording deterministic at the cost of copying stack-authored parameters.</dd>
+            <dt>Conservative edges versus concurrency</dt>
+            <dd>Whole-resource tracking is easier to validate and less expensive than per-range histories, but can over-order disjoint work.</dd>
+            <dt>Automatic edges versus explicit dependencies</dt>
+            <dd>Resource declarations express data flow naturally. <code>AddDependency</code> covers non-resource causality but can accidentally retain work because it is a producer edge.</dd>
+            <dt>Validated context versus raw command list</dt>
+            <dd>The context proves declaration membership. The raw list exposes the full RHI but can bypass the graph’s knowledge.</dd>
+          </dl>
+        </section>
+
+        <section id="failures">
+          <h2>Failure table</h2>
+          <table>
+            <thead><tr><th>Symptom</th><th>Likely contract violation</th><th>Correction</th></tr></thead>
+            <tbody>
+              <tr><td>Compile-time standard-layout assertion</td><td>The parameter type uses layout-incompatible inheritance, virtual members, or mixed access patterns.</td><td>Keep ARDG parameter structs simple standard-layout aggregates and move behavior elsewhere.</td></tr>
+              <tr><td>Metadata construction check</td><td>Invalid offset/size/count/stride or missing nested metadata.</td><td>Use public ARDG macros and ensure nested types also use begin/end macros.</td></tr>
+              <tr><td>Pass registration check</td><td>Null parameters, empty name/body, or incompatible flags.</td><td>Allocate/provide valid parameters and choose one legal operation category.</td></tr>
+              <tr><td>Resource setup check</td><td>Cross-graph pointer/view or explicit <code>Unknown</code> state.</td><td>Use records from this builder and declare the exact required state.</td></tr>
+              <tr><td>Pass unexpectedly culled</td><td>No producer path reaches an external/extracted output or <code>NeverCull</code> root.</td><td>Declare the actual output, extract it, or use <code>NeverCull</code> only for a genuine side effect.</td></tr>
+              <tr><td>Unnecessary pass retained</td><td>A manual dependency or producer edge made it part of a live chain.</td><td>Remove artificial causality; remember WAR edges intentionally do not carry liveness.</td></tr>
+              <tr><td>Binding-set creation check</td><td>Shader parameter kind/order, slot, space, visibility, array size, or RHI binding type does not match ARDG parameters/layout.</td><td>Compare flattened shader metadata with declaration-ordered bindable ARDG leaves.</td></tr>
+              <tr><td>Undeclared physical-access check</td><td>The callback requested a resource or exact view absent from its parameters.</td><td>Add the declaration and resolve it through the active execution context.</td></tr>
+              <tr><td>Stale data despite valid states</td><td>Raw command-list code used an independently retained object unknown to the graph.</td><td>Import and declare it, or provide explicit external synchronization and document the escape hatch.</td></tr>
+              <tr><td>Async request executes on graphics</td><td>Compute queue unavailable, immediate mode active, or declared state is graphics-only.</td><td>Treat async as eligibility, inspect compiled pipeline, and preserve a graphics fallback.</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="summary">
+          <h2>Summary</h2>
+          <p>Pass registration freezes typed parameters and visits generated metadata to derive states, views, raster attachments, uniform-buffer recursion, and hazard history. RAW and WAW produce liveness-carrying producer edges; WAR produces synchronization-only order. Current edge discovery is whole-resource even when texture barriers target specific subresources. Raster slots declare attachments, <code>AddDispatchPass</code> standardizes compute dispatch, the blackboard shares graph-scoped values, and shader metadata bridges declarations to binding sets. Validated context getters preserve the contract; raw command-list access remains an explicit escape hatch.</p>
+        </section>
+
+        <section id="checkpoints">
+          <h2>Checkpoints</h2>
+          <ol>
+            <li>Why does a parameterless pass contribute no automatic resource dependencies?</li>
+            <li>Why must an ARDG parameter struct be standard layout, and how are arrays and nested paths represented?</li>
+            <li>Why does WAR impose order without making the reader live?</li>
+            <li>How can a texture dependency be whole-resource while its transition is one mip?</li>
+            <li>What does <code>AddDispatchPass</code> do, and what compute setup remains the callback’s responsibility?</li>
+            <li>Why does putting a resource in the blackboard not declare pass access?</li>
+            <li>Which guarantees are lost when a callback uses independently retained RHI references through the raw command list?</li>
+          </ol>
+        </section>
+
+        <section id="further-reading">
+          <span id="reading"></span>
+          <h2>Further reading</h2>
+          <ul>
+            <li><a href="resources.html">Resources and ownership</a> — logical identity, views, state ranges, and materialization.</li>
+            <li><a href="compilation.html">Compilation</a> — culling, pipeline assignment, transition lowering, and queue dependencies.</li>
+            <li><a href="execution.html">Execution</a> — recording waves, validated access, and submission.</li>
+            <li><a href="../ArdaBackend/shaders.html">Backend shaders</a> — generated shader metadata and binding layouts.</li>
+            <li><a href="../ArdaBackend/commands.html">Backend commands</a> — command state, barriers, dispatch, draw, and queue order.</li>
+            <li><a href="api-reference.html#api-component-parameters">API: parameter component</a>, <a href="api-reference.html#api-component-passes">pass component</a>, and <a href="api-reference.html#api-arda-rdg-fardgbuilder-addpass-eb5f83be"><code>AddPass</code></a>.</li>
+            <li><a class="term" data-term="render-graph" href="../glossary.html#term-render-graph">Glossary: render graph</a>, <a class="term" data-term="barrier" href="../glossary.html#term-barrier">barrier</a>, and <a class="term" data-term="binding-set" href="../glossary.html#term-binding-set">binding set</a>.</li>
+          </ul>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="resources.html">← Previous: Resources</a>
+          <a rel="next" href="compilation.html">Next: Compilation →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer">
+    <p>ArdaRenderGraph documentation · <a href="api-reference.html">Central API reference</a></p>
+  </footer>
+</body>
+</html>

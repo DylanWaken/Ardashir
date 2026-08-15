@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Engineering documentation for Ardashir, a modular rendering and graphics systems project.">
+  <title>Ardashir Documentation</title>
+  <link rel="stylesheet" href="assets/site.css">
+  <script src="assets/glossary-data.js" defer></script>
+  <script src="assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="index.html">Ardashir</a>
+      <button class="nav-toggle" type="button" data-nav-toggle aria-controls="site-navigation" aria-expanded="false">Menu</button>
+      <nav class="site-nav" id="site-navigation" data-site-nav aria-label="Primary">
+        <ul>
+          <li><a href="index.html">Overview</a></li>
+          <li><a href="ArdaBackend/index.html">ArdaBackend</a></li>
+          <li><a href="ArdaRDG/index.html">ArdaRDG</a></li>
+          <li><a href="glossary.html">Glossary</a></li>
+        </ul>
+      </nav>
+      <button class="theme-toggle" type="button" data-theme-toggle>Dark theme</button>
+    </div>
+  </header>
+
+  <main class="site-main" id="main-content">
+    <section class="hero" aria-labelledby="hero-title">
+      <p class="eyebrow">Rendering systems documentation</p>
+      <h1 id="hero-title">Understand and build with Ardashir.</h1>
+      <p class="lede">Ardashir is a modular C++ rendering project that connects engine-level rendering systems to portable and native graphics APIs. These pages document its architecture, contracts, and practical use.</p>
+      <div class="hero__actions">
+        <a class="button button--primary" href="ArdaBackend/quick-guide.html">ArdaBackend quick guide</a>
+        <a class="button" href="ArdaRDG/quick-guide.html">ArdaRenderGraph quick guide</a>
+        <a class="button" href="glossary.html">Browse the glossary</a>
+      </div>
+    </section>
+
+    <section aria-labelledby="quick-guides-heading">
+      <h2 id="quick-guides-heading">Quick user's guides</h2>
+      <p class="section-intro">Follow source-backed paths through startup, compute, raster, submission, and presentation. Both guides also map a capability-gated hardware ray-tracing path assembled from implemented and tested components, clearly distinguished from a checked-in end-to-end RT sample.</p>
+      <div class="card-grid">
+        <article class="card card--featured">
+          <p class="eyebrow">Backend workflow</p>
+          <h3><a href="ArdaBackend/quick-guide.html">ArdaBackend quick user's guide</a></h3>
+          <p>Build the device, resources, pipelines, command lists, and presented frame directly on the backend.</p>
+        </article>
+        <article class="card card--featured">
+          <p class="eyebrow">Render-graph workflow</p>
+          <h3><a href="ArdaRDG/quick-guide.html">ArdaRenderGraph quick user's guide</a></h3>
+          <p>Declare frame resources and passes, compile dependencies, execute the graph, and present the result.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="start-heading">
+      <h2 id="start-heading">Start with the graphics backend</h2>
+      <p class="section-intro">ArdaBackend is the documented entry point into resource creation, shader integration, pipeline state, command recording, and native graphics interoperability.</p>
+      <article class="card card--featured">
+        <p class="eyebrow">Available now</p>
+        <h3><a href="ArdaBackend/index.html">ArdaBackend</a></h3>
+        <p>Learn how Ardashir wraps <a href="glossary.html#term-nvrhi" data-term="nvrhi">NVRHI</a>, manages shaders and pipeline state, and exposes D3D12 and Vulkan interoperation.</p>
+        <p><a href="ArdaBackend/index.html">Open the ArdaBackend guide</a></p>
+      </article>
+    </section>
+
+    <section aria-labelledby="modules-heading">
+      <h2 id="modules-heading">Project modules</h2>
+      <p class="section-intro">Published guides cover the graphics backend and render graph. Modules without published guides are listed for orientation and intentionally have no link yet.</p>
+      <div class="card-grid">
+        <article class="card">
+          <span class="status">Available now</span>
+          <h3><a href="ArdaRDG/index.html">ArdaRenderGraph / ArdaRDG</a></h3>
+          <p>Declarative render passes, transient resources, dependency analysis, and execution scheduling.</p>
+          <p><a href="ArdaRDG/index.html">Open the ArdaRenderGraph guide</a></p>
+        </article>
+        <article class="card">
+          <span class="status">Documentation forthcoming</span>
+          <h3>ArdaScene</h3>
+          <p>Scene representation and the bridge between application data and rendering work.</p>
+        </article>
+        <article class="card">
+          <span class="status">Documentation forthcoming</span>
+          <h3>ArdaTrace</h3>
+          <p>Instrumentation, event capture, and tooling for understanding runtime behavior.</p>
+        </article>
+        <article class="card">
+          <span class="status">Documentation forthcoming</span>
+          <h3>NVRHI notes</h3>
+          <p>Project-specific guidance for the rendering hardware interface used beneath ArdaBackend.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="reading-heading">
+      <h2 id="reading-heading">How to use these docs</h2>
+      <div class="card-grid">
+        <article class="card">
+          <h3>Learn the design</h3>
+          <p>Begin with module overviews, then follow component pages for data flow, invariants, and tradeoffs.</p>
+        </article>
+        <article class="card">
+          <h3>Find a contract</h3>
+          <p>Use each module's centralized API reference for canonical symbol contracts, then follow its chapter links for the surrounding design explanation.</p>
+        </article>
+        <article class="card">
+          <h3>Resolve terminology</h3>
+          <p>Linked technical terms work as normal glossary links. With JavaScript enabled, focus or hover also reveals a concise definition.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner">
+      <p>Ardashir engineering documentation</p>
+      <p><a href="glossary.html">Global glossary</a></p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A systematic guide to ArdaRenderGraph validation, check-based contracts, graph dumps, differential debug modes, traces, and production diagnosis.">
+  <title>Validation and debugging | ArdaRenderGraph | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaRenderGraph</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
+      <h2>ArdaRenderGraph</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="resources.html">Resources</a>
+        <a href="passes.html">Passes</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a aria-current="page" href="debugging.html">Debugging</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaRenderGraph</a> /
+        Validation and debugging
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Fail early, compare modes, preserve evidence</p>
+          <h1>Validation and debugging</h1>
+          <p>ArdaRenderGraph turns declaration mistakes into attributable check failures before GPU submission whenever possible. When a defect survives that boundary, deterministic dumps and one-variable debug modes narrow the missing dependency, state, <a class="term" data-term="lifetime" href="../glossary.html#term-lifetime">lifetime</a>, or initialization contract.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Objectives and prerequisites</a>
+          <a href="#taxonomy">Error taxonomy</a>
+          <a href="#contracts">Check-based contracts</a>
+          <a href="#precompile">Precompile validation</a>
+          <a href="#violations">Common declaration violations</a>
+          <a href="#transition-replay">Independent transition replay</a>
+          <a href="#dump">DumpGraph interpretation</a>
+          <a href="#oracles">Differential debug oracles</a>
+          <a href="#observability">Logs, timers, and counters</a>
+          <a href="#worked-examples">Worked examples</a>
+          <a href="#failure-matrix">Failure analysis</a>
+          <a href="#workflow">Production diagnostic workflow</a>
+          <a href="#limits">Diagnostic limits</a>
+          <a href="#summary">Summary</a>
+          <a href="#checkpoints">Checkpoints</a>
+          <a href="#further-reading">Further reading</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>classify build, compile, execution, RHI, asynchronous GPU, and performance failures;</li>
+            <li>distinguish fatal programmer contracts from recoverable runtime outcomes;</li>
+            <li>explain precompile validation and independent transition replay;</li>
+            <li>interpret every major section of <a href="api-reference.html#api-arda-rdg-fardgbuilder-dumpgraph-c392d068"><code>DumpGraph</code></a>;</li>
+            <li>use immediate mode, conservative barriers, extended lifetimes, and first-write clobbering as differential oracles; and</li>
+            <li>run a production-safe diagnostic workflow while respecting what these tools cannot prove.</li>
+          </ul>
+          <h3>Prerequisites</h3>
+          <p>Read <a href="architecture.html">Architecture and lifecycle</a>, <a href="passes.html">Pass declarations</a>, <a href="compilation.html">Compilation</a>, and <a href="execution.html">Execution</a>. This chapter assumes familiarity with pass flags, logical resources, subresource ranges, queue pipelines, barriers, extraction, and CPU/GPU asynchrony.</p>
+        </section>
+
+        <section id="taxonomy">
+          <h2>Error taxonomy</h2>
+          <p>Start by naming the failed layer. Each layer owns different evidence and recovery authority.</p>
+          <dl>
+            <dt>Build-time contract violation</dt>
+            <dd>Mutation outside the building phase, null required input, invalid logical ownership, incompatible pass flags, duplicate extraction, or invalid metadata. The caller constructed an impossible graph.</dd>
+            <dt>Precompile declaration violation</dt>
+            <dd>Invalid handle, state, range, usage capability, extraction record, or read-before-produce path. Compilation has not yet mutated scheduling state.</dd>
+            <dt>Compiler invariant violation</dt>
+            <dd>Independent transition replay disagrees with generated transitions, final state, or access containment. This can indicate a compiler defect or corrupted internal graph state.</dd>
+            <dt>Execution contract violation</dt>
+            <dd>Repeated execution, execution after sticky failure, missing device, undeclared physical access through the checked context, or failed physical materialization.</dd>
+            <dt>RHI/backend outcome</dt>
+            <dd>Command-list or resource creation, upload, close, wait, or submit fails. Preserve the backend status and device diagnostics; a graph check message may only identify the failed stage.</dd>
+            <dt>Asynchronous GPU failure</dt>
+            <dd>Device removal, hang, stale data, invalid native descriptor, or out-of-bounds shader access appears after CPU submission. Correlate native validation, markers, and queue instances.</dd>
+            <dt>Performance or scheduling defect</dt>
+            <dd>Excessive queue waits, command-list count, forced barriers, committed fallback, serial recording, or overlong lifetimes produce correct but slow work.</dd>
+          </dl>
+          <p>Do not “recover” from a programmer contract by continuing with a partially valid graph. Conversely, do not label an environmental device loss as proof that a source invariant failed.</p>
+        </section>
+
+        <section id="contracts">
+          <h2>Check-based contracts and lifecycle</h2>
+          <figure>
+            <img src="Assets/rdg-lifecycle.svg" alt="Single-use ArdaRenderGraph lifecycle from mutable building through cached compilation to one-shot execution, with sticky failure paths.">
+            <figcaption>Build mutation closes permanently when compilation or execution begins. Compile is cached; execute is one-shot.</figcaption>
+          </figure>
+          <p>ARDG uses fatal checks for conditions correct callers must prevent. Typical examples include:</p>
+          <ul>
+            <li>adding a pass or creating a resource after building closes;</li>
+            <li>compiling or executing a failed graph;</li>
+            <li>executing more than once or without an RHI device;</li>
+            <li>dereferencing a checked invalid handle;</li>
+            <li>requesting a physical resource that the active pass did not declare; and</li>
+            <li>calling <code>DumpGraph</code> before compilation.</li>
+          </ul>
+          <p>Checks are not status returns. They identify programming defects for tests, crash reporting, and controlled diagnosis. Use nullable <code>TryGet*</code> accessors when absence is expected. Use checked access only when absence would invalidate the algorithm.</p>
+          <aside class="callout warning">
+            <h3>The raw command-list path weakens proof</h3>
+            <p><a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-ead56b9c"><code>FARDGPassExecutionContext</code></a> validates declared physical access. A callback that accepts a raw RHI command list can retain and use independent RHI handles, so ARDG cannot prove that declarations cover those accesses.</p>
+          </aside>
+        </section>
+
+        <section id="precompile">
+          <h2>Precompile validation before mutation</h2>
+          <p>Compilation first validates the complete build representation, including passes that may later be culled. Dead work cannot hide an invalid declaration. Validation is read-only and covers:</p>
+          <ol>
+            <li><strong>Known flags.</strong> Pass and resource masks contain only recognized bits.</li>
+            <li><strong>Ownership and backing.</strong> External resources have physical backing, created resources do not, external resources are not transient, and acceleration structures do not claim unsupported transient behavior.</li>
+            <li><strong>Entry and exit states.</strong> Initial/final states are legal for the resource kind; imported and extracted resources have valid final contracts.</li>
+            <li><strong>Pass access identity.</strong> Every logical handle resolves in this builder.</li>
+            <li><strong>State legality.</strong> State masks are non-unknown, internally compatible, resource-kind appropriate, and legal for explicit copy or async-compute requests.</li>
+            <li><strong>Range legality.</strong> Texture mip/slice ranges and buffer byte ranges resolve to nonempty in-bounds regions.</li>
+            <li><strong>Descriptor capabilities.</strong> UAV access requires UAV usage; attachment states require render-target or depth/stencil usage.</li>
+            <li><strong>Extraction uniqueness.</strong> Resource and caller output address each participate in only one valid queued extraction.</li>
+            <li><strong>Production replay.</strong> Every graph-created read has an earlier or same-pass write for the required tracking unit.</li>
+          </ol>
+          <p>After this validation, compilation separately rejects extraction of a graph-created texture or buffer with no producer. Only then does it add the epilogue and mutate scheduling metadata.</p>
+        </section>
+
+        <section id="violations">
+          <h2>Common declaration violations</h2>
+          <h3>Read before produce</h3>
+          <p>External resources begin produced. Created resources do not. Validation replays pass registration order, gathers all writes in the current pass, validates reads against earlier production or those same-pass writes, and publishes writes only after that pass is checked.</p>
+          <p>Texture production is per mip and array slice. Writing mip 0 does not initialize mip 1. Buffer and acceleration-structure production are whole-resource. A same-pass read may rely on a same-pass declared write, but this only validates declaration structure; the callback must still issue correct commands.</p>
+
+          <h3>Invalid subresource or byte range</h3>
+          <p>A texture range must resolve to nonzero counts and remain inside declared mip and array dimensions. A buffer range must resolve to nonzero bytes without offset-plus-size overflow. Preserve the resolved range in diagnostics; an authored “all remaining” range can fail because the parent descriptor changed.</p>
+
+          <h3>Illegal state or flags</h3>
+          <p><code>Unknown</code> is not a pass access. Write states cannot be combined with incompatible state bits. Texture declarations reject buffer-only states; buffer declarations reject attachment-only states. Copy passes accept copy states only. Async-compute requests reject graphics-only states. <a href="api-reference.html#api-arda-rdg-eardgpassflags-6384e9b1"><code>EARDGPassFlags</code></a> must also describe one compatible pipeline role: for example, raster plus async compute is invalid.</p>
+
+          <h3>Extraction violations</h3>
+          <p>Extraction must be queued while building, target a resource from the same builder, supply a non-null output address, and use a legal final state. A resource cannot be extracted twice, and one output address cannot receive two extraction records. A created resource must have a producer; extraction cannot manufacture initialized contents.</p>
+
+          <h3>Undeclared execution access</h3>
+          <p>Checked getters such as <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-gettexture-835f8625"><code>GetTexture</code></a> and <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-getbuffer-7bf14520"><code>GetBuffer</code></a> open only for the active pass and validate its declarations. A failure here means the callback and reflected parameter contract disagree.</p>
+        </section>
+
+        <section id="transition-replay">
+          <h2>Independent transition replay</h2>
+          <p>After barrier compilation, ARDG validates the generated transitions with an independent state machine. This is not the execution-time physical-state correction used after committed resource reuse; it is a compiler correctness check over logical identities.</p>
+          <figure>
+            <img src="Assets/rdg-barrier-grid.svg" alt="Texture state tracked independently per mip and array slice, while buffer state is tracked for the whole resource despite byte-range declarations.">
+            <figcaption>Range validation and transition granularity differ: textures have per-cell state; buffers retain byte ranges for validation but one whole-resource transition state.</figcaption>
+          </figure>
+          <p>The replay normalizes <code>Unknown</code> initial state to <code>Common</code>, then:</p>
+          <ul>
+            <li>requires every transition’s before-state to equal the independently tracked current state;</li>
+            <li>advances texture cells independently and buffers as whole resources;</li>
+            <li>requires writes to use the exact normalized declared state;</li>
+            <li>allows a declared read when the tracked read-state mask contains it;</li>
+            <li>checks forced and UAV ordering metadata; and</li>
+            <li>requires used external and extracted resources to reach their promised final states.</li>
+          </ul>
+          <p>If this replay fails, the declaration may be valid while the compiler’s lowered transitions are not. Capture the deterministic dump and reduce the graph; changing callback code cannot repair a pre-execution transition mismatch.</p>
+        </section>
+
+        <section id="dump">
+          <h2>Interpreting DumpGraph</h2>
+          <p>Call <a href="api-reference.html#api-arda-rdg-fardgbuilder-dumpgraph-c392d068"><code>DumpGraph</code></a> only after <a href="api-reference.html#api-arda-rdg-fardgbuilder-compile-97614587"><code>Compile</code></a>. The string is deterministic for the same graph and exposes compiler products, not an executable serialization.</p>
+          <dl>
+            <dt>Header</dt>
+            <dd><code>Prologue</code>, <code>Epilogue</code>, and <code>RasterGroups</code> identify synthetic boundaries and raster grouping count.</dd>
+            <dt>Debug line</dt>
+            <dd><code>immediate</code>, <code>conservativeBarriers</code>, <code>extendedLifetimes</code>, and <code>clobberFirstWrites</code> prove which diagnostic variant produced the dump.</dd>
+            <dt><code>ExecutionOrder [P…]</code></dt>
+            <dd>The deterministic live schedule, including sentinels. It is the order used for CPU submission.</dd>
+            <dt>Textures and buffers</dt>
+            <dd>Stable IDs, names, external/extracted flags, and last producer. An invalid producer on a created extracted resource is an error; on a never-written non-output resource it may explain culling.</dd>
+            <dt>Pass records</dt>
+            <dd>Flags, selected pipeline, culled/sentinel bits, raster group, async fork/join, data producers, and synchronization producers. A synchronization-only edge orders work but does not make the producer live.</dd>
+            <dt>Transitions</dt>
+            <dd>Resource ID, texture range, before/after states, <code>uav</code>, and <code>forced</code>. Equal-state UAV writes can still require ordering. <code>forced=1</code> often reflects conservative mode.</dd>
+            <dt>Lifetimes</dt>
+            <dd>Inclusive first/last execution indices and transient eligibility. Compare baseline and extended-lifetime dumps to confirm the oracle changed only the intended interval policy.</dd>
+            <dt>QueueDependencies</dt>
+            <dd>Producer/consumer pass IDs and pipeline pair. Each live cross-queue consumer edge can become a queue wait during execution.</dd>
+          </dl>
+          <pre><code>const FARDGCompileResult&amp; compiled = graph.Compile();
+const eastl::string dump = graph.DumpGraph();
+PersistWithFrameId(frameId, dump);</code></pre>
+          <p>Persist the dump before execution when chasing intermittent GPU faults. Later device loss may make live graph inspection impossible.</p>
+        </section>
+
+        <section id="oracles">
+          <h2>Differential debug oracles</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgdebugoptions-e1513d7e"><code>FARDGDebugOptions</code></a> changes correctness-relevant scheduling one dimension at a time. A mode that makes the symptom disappear does not prove a cause, but it sharply changes the next hypothesis.</p>
+
+          <h3>Immediate mode</h3>
+          <p><a href="api-reference.html#api-arda-rdg-fardgdebugoptions-mbimmediatemode-8a47e1e4"><code>mbImmediateMode</code></a> keeps every registered pass, assigns graphics, extends lifetimes, and records/submits serially. If only this mode works, investigate culling assumptions, queue transfer/waits, callback thread safety, or premature lifetime reuse. Because it changes several variables together, refine the result with narrower modes.</p>
+
+          <h3>Conservative barriers</h3>
+          <p><a href="api-reference.html#api-arda-rdg-fardgdebugoptions-mbconservativebarriers-622ad184"><code>mbConservativeBarriers</code></a> forces ordering between otherwise equal states. If it fixes output, suspect missing UAV/memory ordering or incomplete access declarations, not necessarily a state-transition error. Inspect <code>forced=1</code> in the dump.</p>
+
+          <h3>Extended resource lifetimes</h3>
+          <p><a href="api-reference.html#api-arda-rdg-fardgdebugoptions-mbextendresourcelifetimes-262fb0e3"><code>mbExtendResourceLifetimes</code></a> stretches live intervals across the graph. If it fixes output while immediate mode also fixes it, suspect undeclared use, retained physical handles, or unsafe reuse. Current execution uses committed descriptor reuse rather than placed aliasing, so this oracle primarily changes pooling opportunities and lifetime assumptions.</p>
+
+          <h3>Clobber first writes</h3>
+          <p><a href="api-reference.html#api-arda-rdg-fardgdebugoptions-mbclobberfirstwrites-e353a8f1"><code>mbClobberFirstWrites</code></a> clears safely supported resources immediately before first declared writes. Magenta, <code>0xCD</code>, or depth <code>0.12345</code> leaking into output indicates that a purported full overwrite is partial, skipped, masked, or reads prior contents. Unsupported resources and copy-pass writes are intentionally not clobbered.</p>
+
+          <h3>Oracle matrix</h3>
+          <ul>
+            <li><strong>Only conservative barriers fix it:</strong> prioritize missing ordering or undeclared same-state UAV hazards.</li>
+            <li><strong>Only extended lifetimes fix it:</strong> prioritize retained/undeclared physical use or reuse assumptions.</li>
+            <li><strong>Only clobbering exposes it:</strong> prioritize partial writes and hidden initialization dependence.</li>
+            <li><strong>Only immediate mode fixes it:</strong> split the test into queue, culling, lifetime, and parallel-recording hypotheses.</li>
+            <li><strong>No mode changes it:</strong> inspect shader math, descriptor layout, bounds, external initial state, backend validation, and non-graph work.</li>
+          </ul>
+        </section>
+
+        <section id="observability">
+          <h2>Logs, timers, trace counters, and markers</h2>
+          <p>The <code>ArdaRenderGraph</code> log category is the module’s stable channel. Check failures include a pass name when the violation is pass-local. Preserve the first message verbatim; secondary failures often describe damage rather than cause.</p>
+          <p>Compilation and execution expose CPU scoped timers named <code>ARDG Compile</code> and <code>ARDG Execute</code>. Execution emits:</p>
+          <ul>
+            <li><code>ARDG Submitted Command Lists</code>;</li>
+            <li><code>ARDG Queue Waits</code>; and</li>
+            <li><code>ARDG Clobbered Resources</code>.</li>
+          </ul>
+          <p>Each non-sentinel pass records an RHI marker using its pass name. Keep names stable and unique enough to correlate graph dumps, CPU traces, native GPU captures, and device-removal breadcrumbs.</p>
+          <p>Also log selected fields from <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-55e456b3"><code>FARDGExecutionResult</code></a>: parallel recording, committed pool reuse, transient fallback, immediate mode, clobber count, and queue-specific last instances. Counters measure CPU decisions and submissions, not GPU duration or completion.</p>
+        </section>
+
+        <section id="worked-examples">
+          <h2>Worked diagnostic examples</h2>
+
+          <h3>Example 1: partial mip production</h3>
+          <p><strong>Setup:</strong> a compute pass writes mip 0 of a created two-mip texture; a later pass reads mip 1.</p>
+          <p><strong>Observed failure:</strong> <code>reads a texture subresource before it is produced</code>.</p>
+          <p><strong>Reasoning:</strong> texture production is per mip/slice. The mip-0 write does not initialize mip 1.</p>
+          <p><strong>Prevention:</strong> declare and execute a write covering mip 1, import already initialized storage, or constrain the consumer to mip 0.</p>
+          <p><strong>Recovery:</strong> fix the declaration and algorithm; do not disable validation or add an unrelated dependency.</p>
+
+          <h3>Example 2: output fixed by conservative barriers</h3>
+          <p><strong>Setup:</strong> two passes use one UAV in the same state; baseline flickers, conservative mode is stable.</p>
+          <p><strong>Reasoning:</strong> equal state does not mean ordered memory. Confirm both accesses are declared and that the compiler emits <code>uav=1</code> or an appropriate dependency.</p>
+          <p><strong>Prevention:</strong> preserve write semantics in parameter metadata and do not access the UAV through an undeclared raw handle.</p>
+          <p><strong>Recovery:</strong> repair the missing declaration or compiler lowering. Leaving conservative mode enabled globally can hide the defect and over-synchronize unrelated work.</p>
+
+          <h3>Example 3: magenta appears under clobbering</h3>
+          <p><strong>Setup:</strong> a pass declares a first write to a render target but uses scissor or branch logic that updates only part of it.</p>
+          <p><strong>Reasoning:</strong> downstream code depended on prior contents even though the graph modeled a fresh produced resource.</p>
+          <p><strong>Prevention:</strong> issue an explicit clear/full overwrite or model the old contents as an input dependency.</p>
+          <p><strong>Recovery:</strong> choose the intended semantic contract, then keep clobbering in targeted regression tests.</p>
+
+          <h3>Example 4: extracted result is stale on CPU</h3>
+          <p><strong>Setup:</strong> <code>Execute</code> returns and the output reference is non-null, but immediate CPU readback is stale.</p>
+          <p><strong>Reasoning:</strong> extraction publication follows CPU submission, not GPU completion.</p>
+          <p><strong>Prevention:</strong> associate queue instances with a fence/query or readback workflow.</p>
+          <p><strong>Recovery:</strong> wait for the producing queue and correct frame retirement; do not add arbitrary sleeps.</p>
+        </section>
+
+        <section id="failure-matrix">
+          <h2>Failure analysis: symptom, cause, prevention, recovery</h2>
+          <dl>
+            <dt><code>Cannot add/create … outside graph building</code></dt>
+            <dd><strong>Cause:</strong> mutation after compile or execution start. <strong>Prevention:</strong> complete registration before compile. <strong>Recovery:</strong> create a new builder and replay construction.</dd>
+            <dt><code>Incompatible render-graph pass flags</code></dt>
+            <dd><strong>Cause:</strong> contradictory pipeline roles such as raster plus async compute. <strong>Prevention:</strong> choose one operation family per pass. <strong>Recovery:</strong> split mixed work into ordered passes.</dd>
+            <dt><code>declares an invalid … range</code></dt>
+            <dd><strong>Cause:</strong> empty or out-of-bounds resolved range. <strong>Prevention:</strong> derive ranges from current descriptors. <strong>Recovery:</strong> log descriptor dimensions and the resolved range, then repair it.</dd>
+            <dt><code>uses unordered access on a non-UAV …</code></dt>
+            <dd><strong>Cause:</strong> descriptor usage and state disagree. <strong>Prevention:</strong> author required usage at resource creation. <strong>Recovery:</strong> recreate the resource with valid usage or change the operation.</dd>
+            <dt><code>declares a state unsupported by a copy queue</code></dt>
+            <dd><strong>Cause:</strong> copy pass declares shader/attachment state. <strong>Prevention:</strong> use copy source/destination states only. <strong>Recovery:</strong> move non-copy work to graphics/compute or split the pass.</dd>
+            <dt><code>extraction is invalid or duplicated</code></dt>
+            <dd><strong>Cause:</strong> null/stale target, wrong builder, duplicate resource, or duplicate output address. <strong>Prevention:</strong> centralize one extraction request per output. <strong>Recovery:</strong> rebuild the graph with one valid record.</dd>
+            <dt>Transition replay check</dt>
+            <dd><strong>Cause:</strong> compiler output disagrees with independent state history or final-state contracts. <strong>Prevention:</strong> retain validation in tests. <strong>Recovery:</strong> save <code>DumpGraph</code>, minimize the graph, and treat it as a compiler defect unless internal state was corrupted.</dd>
+            <dt>Works serially, fails with parallel recording</dt>
+            <dd><strong>Cause:</strong> shared mutable CPU state or unsafe callback capture. <strong>Prevention:</strong> immutable captures and per-pass recording state. <strong>Recovery:</strong> apply <a href="api-reference.html#api-arda-rdg-eardgpassflags-neverparallel-8aecc94b"><code>NeverParallel</code></a> narrowly while fixing ownership.</dd>
+            <dt>GPU fault after successful Execute</dt>
+            <dd><strong>Cause:</strong> asynchronous shader, descriptor, bounds, lifetime, native-state, or external-work defect. <strong>Prevention:</strong> native validation, stable markers, checked context, and fence-based retirement. <strong>Recovery:</strong> inspect the first failing pass marker and backend device-fault data.</dd>
+            <dt>Correct output but severe slowdown</dt>
+            <dd><strong>Cause:</strong> debug modes, queue ping-pong, forced barriers, long lifetimes, list count, or serial recording. <strong>Prevention:</strong> keep oracles opt-in and measure baseline. <strong>Recovery:</strong> compare dumps/counters and revert one diagnostic variable at a time.</dd>
+          </dl>
+        </section>
+
+        <section id="workflow">
+          <h2>Production diagnostic workflow</h2>
+          <ol>
+            <li><strong>Preserve the first evidence.</strong> Record frame/build ID, fatal-check text or RHI status, backend, device, pass marker, queue, and last submitted instance.</li>
+            <li><strong>Classify the layer.</strong> Decide whether failure happened during build, precompile validation, transition replay, materialization/recording, submission, or later GPU execution.</li>
+            <li><strong>Freeze a reproducible graph.</strong> Compile and persist <code>DumpGraph</code> before execution, plus feature/queue capabilities and debug-option bits.</li>
+            <li><strong>Reduce external variability.</strong> Hold camera, random seeds, frame inputs, shader artifacts, and backend configuration constant.</li>
+            <li><strong>Run the baseline again.</strong> Confirm the defect is repeatable and compare deterministic dumps. A changed dump means graph construction changed.</li>
+            <li><strong>Apply one oracle.</strong> Try conservative barriers, extended lifetimes, clobbering, or serial/immediate behavior individually where possible.</li>
+            <li><strong>Inspect the narrowed contract.</strong> Check ranges, usage flags, producers, synchronization edges, selected queues, transitions, final states, and callback captures around the first divergent pass.</li>
+            <li><strong>Escalate to native evidence.</strong> Enable D3D12/Vulkan validation and capture markers/device-fault information when graph validation passes but the GPU fails.</li>
+            <li><strong>Fix the declaration or ownership.</strong> Avoid shipping a global oracle as the repair unless that conservative behavior is the intended permanent contract.</li>
+            <li><strong>Add a focused regression.</strong> Assert the expected check, dump fragment, transition, queue edge, telemetry field, or clobber behavior.</li>
+            <li><strong>Remove sensitive capture data.</strong> Production reports should bound dump size and avoid user data, raw resource contents, or unstable addresses.</li>
+          </ol>
+        </section>
+
+        <section id="limits">
+          <h2>Limits of the diagnostic model</h2>
+          <ul>
+            <li>Validation proves declared graph structure, not shader correctness, memory bounds, numerical stability, or native driver behavior.</li>
+            <li>Raw command-list callbacks and independently retained RHI handles can bypass declaration completeness.</li>
+            <li>Buffer transitions are whole-resource even though byte ranges are validated and preserved for access checks.</li>
+            <li>Immediate mode changes culling, queue assignment, lifetimes, and serialization together; it is broad evidence, not a single-cause proof.</li>
+            <li>Conservative barriers can mask missing dependencies while increasing synchronization cost.</li>
+            <li>Extended lifetimes can mask retained-handle bugs while inflating memory and suppressing pool reuse.</li>
+            <li>First-write clobbering covers only supported texture/buffer writes and never proves a write is complete when the pattern happens to be overwritten.</li>
+            <li><code>DumpGraph</code> describes logical compiler products before execution-time physical pooling correction.</li>
+            <li>Trace counters report CPU-side decisions; they do not measure GPU completion, overlap, or queue latency.</li>
+            <li>Successful extraction publication and garbage collection do not establish GPU completion.</li>
+          </ul>
+        </section>
+
+        <section id="summary">
+          <h2>Summary</h2>
+          <p>ARDG diagnosis begins with fatal build and declaration contracts, validates all work before culling, and independently replays compiled transitions. Deterministic graph dumps connect passes, resources, transitions, lifetimes, and queues. Differential modes isolate ordering, lifetime, initialization, culling, queue, and threading hypotheses, while logs, markers, timers, and execution counters preserve cross-layer evidence. None replaces native validation or GPU completion tracking.</p>
+        </section>
+
+        <section id="checkpoints">
+          <h2>Checkpoints</h2>
+          <ol>
+            <li>Why does precompile validation inspect passes that compilation will later cull?</li>
+            <li>How can a same-pass read satisfy production validation, and what does that not prove?</li>
+            <li>What is the difference between logical transition replay and execution-time physical-state correction?</li>
+            <li>Which <code>DumpGraph</code> sections explain culling, queue waits, and resource reuse opportunity?</li>
+            <li>If conservative barriers fix a defect, which hypotheses become stronger?</li>
+            <li>Why is immediate mode a broad oracle rather than proof of one root cause?</li>
+            <li>Which evidence must accompany an asynchronous GPU failure?</li>
+            <li>Why do extraction publication and garbage collection not permit immediate CPU readback?</li>
+          </ol>
+        </section>
+
+        <section id="further-reading">
+          <h2>Further reading</h2>
+          <ul>
+            <li><a href="compilation.html">Compilation and scheduling</a> — culling, transitions, lifetimes, and queue-edge construction.</li>
+            <li><a href="execution.html">Execution and submission</a> — physical-state correction, recording waves, waits, extraction, and telemetry.</li>
+            <li><a href="../ArdaBackend/diagnostics.html">ArdaBackend diagnostics</a> — statuses, native validation, logging, and production reporting.</li>
+            <li><a href="../ArdaBackend/commands.html">ArdaBackend commands</a> — barriers, queues, markers, fences, and asynchronous completion.</li>
+            <li><a href="api-reference.html#api-arda-rdg-fardgbuilder-dumpgraph-c392d068">API: <code>DumpGraph</code></a>,
+              <a href="api-reference.html#api-arda-rdg-fardgdebugoptions-e1513d7e"><code>FARDGDebugOptions</code></a>, and
+              <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-ead56b9c"><code>FARDGPassExecutionContext</code></a>.</li>
+            <li><a class="term" data-term="barrier" href="../glossary.html#term-barrier">Glossary: barrier</a>,
+              <a class="term" data-term="resource-state" href="../glossary.html#term-resource-state">resource state</a>,
+              <a class="term" data-term="mip-level" href="../glossary.html#term-mip-level">mip level</a>, and
+              <a class="term" data-term="synchronization" href="../glossary.html#term-synchronization">synchronization</a>.</li>
+          </ul>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="execution.html">← Previous: Execution</a>
+          <a rel="next" href="api-reference.html">Next: API reference →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer">
+    <p>ArdaRenderGraph documentation · <a href="api-reference.html">Canonical API reference</a></p>
+  </footer>
+</body>
+</html>

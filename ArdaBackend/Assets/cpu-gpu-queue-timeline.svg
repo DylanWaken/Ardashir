@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="740" viewBox="0 0 900 740" role="img" aria-labelledby="queue-title queue-desc">
+  <title id="queue-title">CPU recording and graphics, compute, and copy queue timeline</title>
+  <desc id="queue-desc">Timeline shows CPU command-list recording followed by explicit submissions to copy, compute, and graphics queues. Same-queue submissions preserve order, barriers control resource states within work, and QueueWait establishes a cross-queue dependency using returned submission instance identifiers and native fence values.</desc>
+  <defs>
+    <marker id="flow-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
+    <marker id="wait-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#fbbf24"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.cpu{fill:#1f3656;stroke:#60a5fa;stroke-width:1.6}.graphics{fill:#20364a;stroke:#38bdf8;stroke-width:1.6}.compute{fill:#214b45;stroke:#34d399;stroke-width:1.6}.copy{fill:#312c3f;stroke:#a78bfa;stroke-width:1.6}.barrier{fill:#493720;stroke:#fbbf24;stroke-width:1.5}
+      .title{font:700 25px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 13px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:11.5px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.note{font:12px system-ui,sans-serif;fill:#c5d2e3}.lane{font:700 11px system-ui,sans-serif;fill:#7dd3fc;letter-spacing:1px}.axis{stroke:#52647d;stroke-width:1.2}.submit{fill:none;stroke:#7dd3fc;stroke-width:2.2;marker-end:url(#flow-arrow)}.wait{fill:none;stroke:#fbbf24;stroke-width:2.2;stroke-dasharray:7 5;marker-end:url(#wait-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="900" height="740"/>
+  <text class="title" x="32" y="42">CPU and GPU queues: recording is not execution order</text>
+  <text class="sub" x="32" y="68">ExecuteCommandList(s) returns an instance ID; QueueWait makes cross-queue order explicit.</text>
+  <rect class="panel" x="24" y="96" width="852" height="500" rx="12"/>
+
+  <text class="lane" x="44" y="132">CPU RECORDING</text><line class="axis" x1="154" y1="128" x2="850" y2="128"/>
+  <rect class="cpu" x="176" y="106" width="172" height="48" rx="7"/><text class="label" x="262" y="127">Open &#8594; Copy &#8594; Close</text><text class="small" x="262" y="145">copy command list</text>
+  <rect class="cpu" x="374" y="106" width="172" height="48" rx="7"/><text class="label" x="460" y="127">Open &#8594; Dispatch &#8594; Close</text><text class="small" x="460" y="145">compute command list</text>
+  <rect class="cpu" x="572" y="106" width="198" height="48" rx="7"/><text class="label" x="671" y="127">Open &#8594; Draw &#8594; Close</text><text class="small" x="671" y="145">graphics command list</text>
+
+  <text class="lane" x="44" y="238">COPY QUEUE</text><line class="axis" x1="154" y1="234" x2="850" y2="234"/>
+  <rect class="copy" x="196" y="200" width="224" height="68" rx="8"/><text class="label" x="308" y="224">Upload A &#8212; instance 17</text><text class="small" x="308" y="245">CopyDest barriers &#8594; copy &#8594; CopySource</text><text class="small" x="308" y="261">native fence value maps to ID 17</text>
+  <rect class="copy" x="456" y="200" width="164" height="68" rx="8"/><text class="label" x="538" y="224">Upload B &#8212; ID 18</text><text class="small" x="538" y="245">same queue follows A</text><text class="small" x="538" y="261">without QueueWait</text>
+
+  <text class="lane" x="44" y="354">COMPUTE QUEUE</text><line class="axis" x1="154" y1="350" x2="850" y2="350"/>
+  <rect class="compute" x="430" y="316" width="226" height="68" rx="8"/><text class="label" x="543" y="340">Dispatch &#8212; instance 42</text><text class="small" x="543" y="361">wait Copy ID 17, then UAV work</text><text class="small" x="543" y="377">CommitBarriers before access</text>
+
+  <text class="lane" x="44" y="470">GRAPHICS QUEUE</text><line class="axis" x1="154" y1="466" x2="850" y2="466"/>
+  <rect class="graphics" x="620" y="432" width="212" height="68" rx="8"/><text class="label" x="726" y="456">Draw &#8212; instance 105</text><text class="small" x="726" y="477">wait Compute ID 42</text><text class="small" x="726" y="493">UAV &#8594; ShaderResource barrier</text>
+
+  <path class="submit" d="M262 154 V196"/><path class="submit" d="M460 154 V300 H500 V312"/><path class="submit" d="M671 154 V416 H690 V428"/>
+  <path class="wait" d="M390 268 C390 292 448 288 448 312"/>
+  <text class="small" x="412" y="286">QueueWait(Compute, Copy, 17)</text>
+  <path class="wait" d="M626 384 C626 408 650 404 650 428"/>
+  <text class="small" x="724" y="407">QueueWait(Graphics, Compute, 42)</text>
+
+  <rect class="barrier" x="48" y="526" width="784" height="50" rx="8"/>
+  <text class="label" x="440" y="548">Two different relations</text>
+  <text class="small" x="440" y="568">resource barriers order/transition accesses inside queue work; QueueWait orders submissions across queues</text>
+
+  <rect class="panel" x="24" y="620" width="852" height="90" rx="10"/>
+  <text class="note" x="48" y="646">Same-queue order: submissions execute in submission order (A before B).</text>
+  <text class="note" x="48" y="670">Cross-queue order: no dependency exists until QueueWait(waiting queue, executing queue, instance ID).</text>
+  <path class="submit" d="M50 692 H100"/><text class="note" x="111" y="696">CPU submit</text>
+  <path class="wait" d="M250 692 H300"/><text class="note" x="311" y="696">cross-queue wait / fence edge</text>
+</svg>

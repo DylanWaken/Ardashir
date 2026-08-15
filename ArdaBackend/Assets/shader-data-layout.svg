@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="740" viewBox="0 0 900 740" role="img" aria-labelledby="shader-layout-title shader-layout-desc">
+  <title id="shader-layout-title">Shader parameter data layout and cross-backend ABI agreement</title>
+  <desc id="shader-layout-desc">A C++ parameter struct is flattened into metadata containing offsets, binding kinds, slots, register spaces, and visibility. Metadata generates Arda RHI binding layouts and sets while separately compiled DXIL and SPIR-V artifacts must agree with that authored ABI.</desc>
+  <defs>
+    <marker id="flow-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
+    <marker id="data-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#34d399"/></marker>
+    <marker id="guard-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#fbbf24"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.code{fill:#3a294d;stroke:#c084fc;stroke-width:1.6}.data{fill:#214b45;stroke:#34d399;stroke-width:1.6}.rhi{fill:#20364a;stroke:#38bdf8;stroke-width:1.6}.guard{fill:#493720;stroke:#fbbf24;stroke-width:1.6}
+      .title{font:700 25px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 14px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.left{font:12px ui-monospace,Consolas,monospace;fill:#dbeafe}.tiny{font:11px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle}.flow{fill:none;stroke:#7dd3fc;stroke-width:2.2;marker-end:url(#flow-arrow)}.output{fill:none;stroke:#34d399;stroke-width:2.2;marker-end:url(#data-arrow)}.guardline{fill:none;stroke:#fbbf24;stroke-width:2.2;stroke-dasharray:7 5;marker-end:url(#guard-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="900" height="740"/>
+  <text class="title" x="32" y="42">Shader data layout: one authored contract, two binary backends</text>
+  <text class="sub" x="32" y="68">Current Arda metadata is authored in C++; it is not recovered from bytecode reflection.</text>
+
+  <rect class="code" x="28" y="102" width="260" height="250" rx="10"/>
+  <text class="label" x="158" y="130">C++ parameter struct</text>
+  <text class="left" x="48" y="160">offset  0  ViewConstants</text>
+  <text class="left" x="48" y="184">offset 64  AlbedoTexture</text>
+  <text class="left" x="48" y="208">offset 72  OutputTexture</text>
+  <text class="left" x="48" y="232">offset 80  LinearSampler</text>
+  <text class="left" x="48" y="256">offset 88  PushData</text>
+  <text class="small" x="158" y="286">ARDA_SHADER_PARAMETER_* macros</text>
+  <text class="tiny" x="158" y="310">size &#183; alignment &#183; arrays &#183; nesting</text>
+  <text class="tiny" x="158" y="334">example offsets teach the model</text>
+
+  <rect class="data" x="320" y="102" width="272" height="250" rx="10"/>
+  <text class="label" x="456" y="130">FArdaShaderParameterMetadata</text>
+  <text class="small" x="456" y="160">FArdaShaderParameterMember</text>
+  <text class="small" x="456" y="186">mOffset + mSize + mElementStride</text>
+  <text class="small" x="456" y="212">mBindingType + mSlot</text>
+  <text class="small" x="456" y="238">mRegisterSpace + mVisibility</text>
+  <text class="small" x="456" y="264">mArrayCount + mNestedMetadata</text>
+  <text class="tiny" x="456" y="294">flatten nested members deterministically</text>
+  <text class="tiny" x="456" y="318">reject duplicate registers and bad visibility</text>
+  <path class="output" d="M288 227 H316"/>
+
+  <rect class="rhi" x="624" y="102" width="248" height="116" rx="10"/>
+  <text class="label" x="748" y="130">Binding layout descriptions</text>
+  <text class="small" x="748" y="157">BuildBindingLayoutDescs()</text>
+  <text class="small" x="748" y="181">one layout per space + visibility</text>
+  <text class="tiny" x="748" y="204">FArdaRHIBindingLayoutDesc</text>
+  <path class="flow" d="M592 158 H620"/>
+
+  <rect class="rhi" x="624" y="236" width="248" height="116" rx="10"/>
+  <text class="label" x="748" y="264">Concrete binding sets</text>
+  <text class="small" x="748" y="291">BuildBindingSetDesc()</text>
+  <text class="small" x="748" y="315">CreateBindingSet() + push constants</text>
+  <text class="tiny" x="748" y="338">resource refs read at C++ offsets</text>
+  <path class="flow" d="M592 294 H620"/>
+
+  <rect class="panel" x="28" y="390" width="844" height="246" rx="12"/>
+  <text class="label" x="450" y="420">ABI agreement required at runtime</text>
+  <rect class="code" x="54" y="446" width="242" height="132" rx="9"/>
+  <text class="label" x="175" y="474">Offline HLSL compile</text>
+  <text class="small" x="175" y="500">register t0, space1 &#183; visibility</text>
+  <text class="small" x="175" y="524">constant packing and push range</text>
+  <text class="tiny" x="175" y="550">compiler produces backend artifacts</text>
+
+  <rect class="data" x="329" y="446" width="242" height="132" rx="9"/>
+  <text class="label" x="450" y="474">Same logical ABI</text>
+  <text class="small" x="450" y="500">slot + register space + type</text>
+  <text class="small" x="450" y="524">stage visibility + byte layout</text>
+  <text class="tiny" x="450" y="550">Arda metadata must match shader source</text>
+  <path class="guardline" d="M296 512 H325"/>
+
+  <rect class="code" x="604" y="446" width="242" height="132" rx="9"/>
+  <text class="label" x="725" y="474">Runtime artifacts</text>
+  <text class="small" x="725" y="500">D3D12 loads .dxil</text>
+  <text class="small" x="725" y="524">Vulkan loads .spv</text>
+  <text class="tiny" x="725" y="550">both must honor the authored contract</text>
+  <path class="guardline" d="M571 512 H600"/>
+  <text class="small" x="450" y="610">Mismatch is an authoring/build error; metadata generation does not prove DXIL/SPIR-V compatibility.</text>
+
+  <rect class="panel" x="24" y="658" width="852" height="54" rx="8"/>
+  <path class="flow" d="M50 685 H100"/><text class="small" x="165" y="689">generation / call</text>
+  <path class="output" d="M292 685 H342"/><text class="small" x="420" y="689">derived metadata</text>
+  <path class="guardline" d="M556 685 H606"/><text class="small" x="722" y="689">required ABI agreement</text>
+</svg>

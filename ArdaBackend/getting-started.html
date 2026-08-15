@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Production startup and teardown for ArdaBackend, including backend selection, validation, headless and presentation modes.">
+  <title>Getting started | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a aria-current="page" href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a aria-current="page" href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a>
+        <a href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaBackend</a> /
+        Getting started
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Production bootstrap</p>
+          <h1>Getting started</h1>
+          <p>Backend startup is a transaction: choose policy, register immutable inputs, create a native <a class="term" data-term="device" href="../glossary.html#term-device">device</a>, publish one coherent context, run GPU work, then reverse ownership in a controlled teardown.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#gpu-model">Adapter, device, queue</a>
+          <a href="#selection">Backend selection</a>
+          <a href="#configuration">Configuration</a>
+          <a href="#phases">Initialization phases</a>
+          <a href="#headless">Headless startup</a>
+          <a href="#presentation">Presentation startup</a>
+          <a href="#lifetime">Lifetime and teardown</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#checklist">Production checklist</a>
+          <a href="#summary">Summary</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>distinguish a graphics API backend, physical adapter, logical device, and command queue;</li>
+            <li>select D3D12 or Vulkan without confusing platform defaults with guaranteed availability;</li>
+            <li>configure validation and diagnostic callbacks with correct lifetime;</li>
+            <li>choose between headless and presentation initialization;</li>
+            <li>explain each initialization gate and its rollback behavior;</li>
+            <li>retain the device safely and tear down renderer-owned objects in dependency order; and</li>
+            <li>turn startup failures into actionable production diagnostics.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites</h2>
+          <p>Read the <a href="index.html#backend-fundamentals">backend fundamentals</a> first. You should also understand the glossary definitions of <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a>, <a class="term" data-term="lifetime" href="../glossary.html#term-lifetime">lifetime</a>, <a class="term" data-term="queue" href="../glossary.html#term-queue">queue</a>, <a class="term" data-term="swap-chain" href="../glossary.html#term-swap-chain">swap chain</a>, and <a class="term" data-term="validation-layer" href="../glossary.html#term-validation-layer">validation layer</a>.</p>
+          <p>At build time, include <code>ArdaBackend.h</code> and link the ArdaBackend target plus the native backend dependencies enabled by the project. Runtime initialization can still fail even when compilation and linking succeed.</p>
+        </section>
+
+        <section id="gpu-model">
+          <h2>Fundamentals: adapter, device, and queue</h2>
+          <p>These terms describe different layers of the GPU execution model.</p>
+          <dl>
+            <dt>Backend</dt>
+            <dd>The implementation family—D3D12 or Vulkan—that creates native objects and translates Arda RHI operations.</dd>
+            <dt>Adapter or physical device</dt>
+            <dd>A discoverable GPU implementation. A system may expose an integrated GPU, discrete GPUs, remote adapters, or software adapters.</dd>
+            <dt>Logical device</dt>
+            <dd>The application's active connection to a selected adapter. It owns object creation facilities and exposes capabilities. ArdaBackend publishes this as an opaque <a href="api-reference.html#api-arda-rhi-fardarhideviceref-bbf7458c"><code>FArdaRHIDeviceRef</code></a>.</dd>
+            <dt>Queue</dt>
+            <dd>An ordered stream of GPU submissions. Graphics is required. Distinct compute and copy queues are optional capabilities rather than portable assumptions.</dd>
+          </dl>
+
+          <p>ArdaBackend currently owns adapter policy inside each private native backend. D3D12 enumerates high-performance adapters that can create the required device and may fall back to WARP; Vulkan selects a physical device that satisfies required extensions, features, and queue-family constraints. There is no public adapter-index field in <a href="api-reference.html#api-arda-backend-fardabackendconfiguration-b6f71e2e"><code>FArdaBackendConfiguration</code></a>, so do not imply that callers can select a particular GPU through this API.</p>
+
+          <aside class="callout">
+            <h3>Derivation: why queue capabilities are published</h3>
+            <p>A device can support compute commands without exposing a distinct compute queue. Publishing <a href="api-reference.html#api-arda-backend-fardaqueuecapabilities-a54ce0dd"><code>FArdaQueueCapabilities</code></a> separates “the operation exists” from “a specialized submission stream exists,” allowing portable fallback to graphics.</p>
+          </aside>
+        </section>
+
+        <section id="selection">
+          <h2>Selecting a backend</h2>
+          <p><a href="api-reference.html#api-arda-backend-defaultbackend-def1cc2f"><code>DefaultBackend</code></a> is D3D12 on Windows and Vulkan elsewhere. It is a compile-time platform preference, not a runtime guarantee. D3D12 is rejected on non-Windows platforms. Vulkan can still be unavailable because a loader, driver, required feature, extension, or queue family is missing.</p>
+
+          <h3>Selection policy</h3>
+          <ol>
+            <li>Use an explicit command-line or configuration-file override for engineering and compatibility testing.</li>
+            <li>Use the platform default when no override is supplied.</li>
+            <li>Log the requested backend before initialization and the published backend after success.</li>
+            <li>Do not silently switch APIs after an arbitrary failure unless product policy explicitly permits it; fallback can conceal driver defects and produce different artifacts or behavior.</li>
+          </ol>
+
+          <pre><code>arda::backend::EArdaBackendType ChooseBackend(bool requestVulkan)
+{
+    using arda::backend::EArdaBackendType;
+    return requestVulkan
+        ? EArdaBackendType::Vulkan
+        : arda::backend::DefaultBackend;
+}</code></pre>
+
+          <p>Backend choice also selects shader artifact representation: D3D12 consumes DXIL and Vulkan consumes SPIR-V. Confirm that deployment includes the matching artifacts before treating native device startup as sufficient.</p>
+        </section>
+
+        <section id="configuration">
+          <h2>Configuration strategy</h2>
+          <p><a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> replaces process-wide configuration before a backend device exists. The complete configuration contains only the backend, validation flag, and message callback. Keep product policy outside the structure and derive these fields once at startup.</p>
+
+          <h3>Validation policy</h3>
+          <p>Validation defaults to enabled. Keep it enabled in development, continuous integration smoke tests, and reproducible diagnostic builds. Production shipping policy may disable it for performance and external-dependency reasons, but a validation-enabled build should remain available for field reproduction.</p>
+          <p>Validation is not a correctness mechanism. It can report invalid API use, but it cannot replace descriptor validation, resource-state reasoning, queue synchronization, or lifetime discipline.</p>
+
+          <h3>Diagnostic callback lifetime</h3>
+          <p><a href="api-reference.html#api-arda-backend-iardadiagnosticcallback-f00c8ba0"><code>IArdaDiagnosticCallback</code></a> is caller-owned. The pointer stored in configuration must remain valid for as long as it may receive backend messages. A process service or an object that outlives backend shutdown is appropriate; a stack-local callback that dies after a helper returns is not.</p>
+
+          <pre><code>arda::backend::FArdaBackendConfiguration BuildConfiguration(
+    arda::backend::EArdaBackendType backend,
+    bool enableValidation,
+    arda::backend::IArdaDiagnosticCallback&amp; diagnostics)
+{
+    arda::backend::FArdaBackendConfiguration config;
+    config.mBackend = backend;
+    config.mbEnableValidation = enableValidation;
+    config.mMessageCallback = &amp;diagnostics;
+    return config;
+}</code></pre>
+
+          <aside class="callout warning">
+            <h3>Serialize lifecycle policy</h3>
+            <p>The public contract forbids racing configuration or lifetime calls with device use. Choose one owner thread or application lifecycle coordinator for configure, initialize, and shutdown.</p>
+          </aside>
+        </section>
+
+        <section id="phases">
+          <h2>Initialization phases and commit point</h2>
+          <figure>
+            <img src="Assets/backend-initialization-flow.svg" alt="Initialization transaction from configuration through shader registry gates, native device and optional swap-chain creation, context publication, and failure rollback.">
+            <figcaption>The process-wide context is published only after every required phase succeeds. Failure releases provisional state so callers can diagnose, correct inputs, and retry.</figcaption>
+          </figure>
+
+          <ol>
+            <li><strong>Accept configuration.</strong> The selected backend, validation flag, and callback become process policy.</li>
+            <li><strong>Acquire shader-directory use.</strong> Initialization ensures that the registry is available for a live backend.</li>
+            <li><strong>Scan and freeze shader sources.</strong> Virtual mappings become an immutable manifest; collisions and invalid paths fail before device publication.</li>
+            <li><strong>Commit shader types.</strong> Deferred global-shader registrations are validated into a deterministic set.</li>
+            <li><strong>Create the private backend.</strong> D3D12 or Vulkan implementation state is allocated.</li>
+            <li><strong>Create adapter/device/queues.</strong> Required native capabilities are checked and the opaque RHI device is constructed.</li>
+            <li><strong>Create presentation state, if requested.</strong> The window surface and swap chain must succeed before publication.</li>
+            <li><strong>Publish.</strong> Device, selected backend, and queue capabilities become the stable <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>; initialized state is released atomically afterward.</li>
+          </ol>
+
+          <p>This ordering is a design derivation: publishing early would force every caller to handle half-initialized states. A late commit point makes success mean “the complete selected startup mode is ready.”</p>
+        </section>
+
+        <section id="headless">
+          <h2>Worked example: headless startup</h2>
+          <p>Headless means “no presentation surface,” not “no GPU.” Use it for compute tools, offline processing, tests, servers, and renderer bootstrap that creates presentation later through another design. <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend()</code></a> returns <code>bool</code>.</p>
+
+          <pre><code>#include "ArdaBackend.h"
+
+int RunHeadlessGpuJob()
+{
+    using namespace arda::backend;
+
+    FArdaBackendConfiguration config;
+    config.mBackend = DefaultBackend;
+    config.mbEnableValidation = true;
+
+    if (!ConfigureBackend(config))
+        return 1;
+
+    if (!InitializeBackend())
+    {
+        const eastl::string error = GetBackendError();
+        // Log `error` with the requested backend and validation setting.
+        ShutdownBackend();
+        return 2;
+    }
+
+    arda::rhi::FArdaRHIDeviceRef device = GetDevice();
+    if (!device)
+    {
+        ShutdownBackend();
+        return 3;
+    }
+
+    const FArdaQueueCapabilities queues = GetQueueCapabilities();
+    if (!queues.mbGraphics)
+    {
+        device = nullptr;
+        ShutdownBackend();
+        return 4;
+    }
+
+    // Create resources, record command lists, and submit work here.
+
+    const arda::rhi::FArdaRHIStatus idle = device->WaitForIdle();
+    device = nullptr;
+    ShutdownBackend();
+    return idle ? 0 : 5;
+}</code></pre>
+
+          <p><a href="api-reference.html#api-arda-backend-getdevice-740751f4"><code>GetDevice()</code></a> returns a retained intrusive reference. Copy it into long-lived subsystems that own GPU objects; do not cache a raw pointer extracted from a temporary reference.</p>
+        </section>
+
+        <section id="presentation">
+          <h2>Worked example: presentation startup</h2>
+          <p>Presentation initialization is a distinct transaction because native adapter/device selection can depend on the window surface. It returns <a href="api-reference.html#api-arda-backend-eardainitializeresult-2bf6fe00"><code>EArdaInitializeResult</code></a>, distinguishing success, backend unavailability, and another failure.</p>
+
+          <pre><code>eastl::unique_ptr&lt;arda::backend::IArdaSwapChain&gt; swapChain;
+
+const arda::backend::EArdaInitializeResult result =
+    arda::backend::InitializeBackendForPresentation(
+        windowSurface,
+        initialWidth,
+        initialHeight,
+        swapChain);
+
+if (result != arda::backend::EArdaInitializeResult::Success)
+{
+    const eastl::string error = arda::backend::GetBackendError();
+    // `swapChain` is empty on failure. Report result and error.
+    arda::backend::ShutdownBackend();
+    return false;
+}
+
+arda::rhi::FArdaRHIDeviceRef device = arda::backend::GetDevice();
+// Own both `device` and `swapChain` in the renderer lifetime object.</code></pre>
+
+          <p>Width and height must be non-zero. The supplied <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a> abstracts an HWND for D3D12 or Vulkan instance extensions and surface creation. The returned <code>eastl::unique_ptr&lt;IArdaSwapChain&gt;</code> is caller-owned and must be destroyed before backend shutdown.</p>
+
+          <aside class="callout warning">
+            <h3>Choose one initialization path</h3>
+            <p>Do not call headless initialization and then call presentation initialization on the same live process state. The presentation function rejects an already initialized backend with <code>Failure</code>.</p>
+          </aside>
+        </section>
+
+        <section id="lifetime">
+          <h2>Lifetime and teardown</h2>
+          <figure>
+            <img src="Assets/backend-lifetime-ownership.svg" alt="Ownership graph from process state and caller-owned renderer systems to device, swap chain, caches, command lists, and GPU resources, with reverse teardown order.">
+            <figcaption>Strong references can outlive the process-wide slot. Production teardown still reverses dependency order so GPU completion and native destruction remain predictable.</figcaption>
+          </figure>
+
+          <h3>Why references can outlive shutdown</h3>
+          <p>The process context owns one intrusive device reference. <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a> waits for the private backend to become idle, clears the context reference and queue capabilities, resets private backend state, and releases shader-directory use. Other copied <a class="term" data-term="intrusive-reference-counting" href="../glossary.html#term-intrusive-reference-counting">intrusive references</a> remain owners. Clearing a global slot is therefore not the same operation as forcibly invalidating every object.</p>
+
+          <h3>Production teardown sequence</h3>
+          <ol>
+            <li>Prevent new render, upload, compilation, and submission work from being scheduled.</li>
+            <li>Join or quiesce threads that can access renderer or RHI objects.</li>
+            <li>Stop the frame loop and wait for swap-chain operations or device work to become idle.</li>
+            <li>Destroy swap chains and presentation framebuffers.</li>
+            <li>Reset global shader maps, pipeline caches, render-graph pools, and renderer-owned resources.</li>
+            <li>Release retained command lists, resource references, and the caller's device reference.</li>
+            <li>Call <code>ShutdownBackend()</code> from the lifecycle owner.</li>
+            <li>Destroy the diagnostic callback only after no backend messages can arrive.</li>
+          </ol>
+
+          <p>Calling shutdown repeatedly is harmless in current behavior, but idempotence should support cleanup paths—not substitute for a well-defined owner state machine.</p>
+        </section>
+
+        <section id="failures">
+          <h2>Failure analysis</h2>
+          <dl>
+            <dt><code>ConfigureBackend</code> returns false</dt>
+            <dd>The configuration is unsupported in the current process or a backend device already exists. Read <code>GetBackendError()</code>; on non-Windows, selecting D3D12 is rejected here.</dd>
+            <dt>Shader registry gate fails</dt>
+            <dd>A mapping, scan, collision, or global shader registration error occurred before native device creation. Correct the shader setup described in <a href="shaders.html">Shaders</a> and retry.</dd>
+            <dt>Initialization returns unavailable</dt>
+            <dd>The requested presentation backend cannot be provided. Treat this separately from malformed configuration and log the selected API plus platform details.</dd>
+            <dt>Device creation fails</dt>
+            <dd>Capture the callback stream and latest backend error. Driver support, required native features, validation setup, or adapter suitability may be responsible.</dd>
+            <dt>Startup succeeds but a queue is absent</dt>
+            <dd>This is a capability outcome, not failed initialization. Query <code>IsQueueAvailable</code> and fall back to the graphics queue where the algorithm permits.</dd>
+            <dt>Startup succeeds but a feature is absent</dt>
+            <dd>Inspect device capabilities before creating feature-specific resources or pipelines. Backend type does not imply ray tracing, mesh shaders, bindless resources, or sparse residency.</dd>
+          </dl>
+
+          <p>Always copy <a href="api-reference.html#api-arda-backend-getbackenderror-bd2c5f82"><code>GetBackendError()</code></a> into durable logging before later lifecycle operations can replace the process-wide error.</p>
+        </section>
+
+        <section id="checklist">
+          <h2>Production startup checklist</h2>
+          <ul>
+            <li>Backend choice and fallback policy are explicit and logged.</li>
+            <li>Matching DXIL or SPIR-V shader artifacts are deployed.</li>
+            <li>Diagnostic callback storage outlives the backend.</li>
+            <li>Validation policy is derived from the build/run profile, not scattered call sites.</li>
+            <li>Virtual shader directories are registered before initialization.</li>
+            <li>Exactly one lifecycle owner serializes configure, initialize, and shutdown.</li>
+            <li>Headless versus presentation mode is selected before initialization.</li>
+            <li>Presentation dimensions are non-zero and the window-surface adapter is ready.</li>
+            <li>Every failure path records backend, mode, phase, result, error, and validation messages.</li>
+            <li>Device capabilities and queue availability are queried after success.</li>
+            <li>Renderer systems receive retained references rather than borrowed pointers.</li>
+            <li>Teardown stops producers, waits for GPU completion, reverses ownership, then shuts down.</li>
+          </ul>
+        </section>
+
+        <section id="summary">
+          <h2>Chapter summary</h2>
+          <ul>
+            <li>The backend chooses an implementation; the adapter is physical capability; the logical device creates objects; queues execute ordered submissions.</li>
+            <li>Configuration is process-wide and must be complete before initialization.</li>
+            <li>Headless and presentation startup share prerequisite gates but have different outputs and result types.</li>
+            <li>The live device context is published only after all required work succeeds.</li>
+            <li>Shutdown clears process ownership but copied intrusive references can retain objects, so deliberate reverse-order teardown remains essential.</li>
+          </ul>
+
+          <h3>Review and checkpoint questions</h3>
+          <ol>
+            <li>Why does <code>DefaultBackend</code> not guarantee successful initialization?</li>
+            <li>When should a tool use headless startup rather than presentation startup?</li>
+            <li>Why must the diagnostic callback outlive initialization?</li>
+            <li>What is the commit point of initialization, and what problem does it prevent?</li>
+            <li>Why should an application query queue capabilities even after device creation succeeds?</li>
+            <li>What must stop before the final device references are released?</li>
+          </ol>
+
+          <h3>Further reading</h3>
+          <ul>
+            <li><a href="architecture.html">Architecture: object ownership, process state, affinity, and threading</a></li>
+            <li><a href="shaders.html">Shaders: inputs that must freeze before initialization</a></li>
+            <li><a href="presentation.html">Presentation: swap-chain and window-surface lifetime</a></li>
+            <li><a href="diagnostics.html">Diagnostics: preserving validation and failure context</a></li>
+          </ul>
+        </section>
+
+        <aside class="callout">
+          <h3>Related API</h3>
+          <p>Exact lifecycle signatures are centralized in the <a href="api-reference.html">API reference</a>. See <a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a>, <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend</code></a>, <a href="api-reference.html#api-arda-backend-initializebackendforpresentation-57fda7b3"><code>InitializeBackendForPresentation</code></a>, and <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend</code></a>.</p>
+        </aside>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="index.html">← Previous: Overview</a>
+          <a rel="next" href="architecture.html">Next: Architecture →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend documentation · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

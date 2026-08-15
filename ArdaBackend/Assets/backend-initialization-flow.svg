@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="760" viewBox="0 0 900 760" role="img" aria-labelledby="backend-init-title backend-init-desc">
+  <title id="backend-init-title">ArdaBackend initialization and rollback flow</title>
+  <desc id="backend-init-desc">Flow from the public ConfigureBackend and initialization calls through explicitly labeled private implementation helpers for shader directory use, source scanning and freeze, shader registration commit, platform backend creation, NVRHI wrapping, context publication, and failure rollback.</desc>
+  <defs>
+    <marker id="call-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
+    <marker id="data-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#34d399"/></marker>
+    <marker id="guard-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#fbbf24"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.api{fill:#1f3656;stroke:#60a5fa;stroke-width:1.5}.data{fill:#214b45;stroke:#34d399;stroke-width:1.5}.guard{fill:#493720;stroke:#fbbf24;stroke-width:1.5}.native{fill:#312c3f;stroke:#a78bfa;stroke-width:1.5}
+      .title{font:700 25px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:600 14px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.method{font:600 9px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.note{font:12px system-ui,sans-serif;fill:#c5d2e3}.tag{font:700 9px system-ui,sans-serif;fill:#fbbf24;text-anchor:middle;letter-spacing:.7px}.publicTag{font:700 9px system-ui,sans-serif;fill:#7dd3fc;text-anchor:middle;letter-spacing:.7px}.lane{font:700 10px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle;letter-spacing:.5px}.call{fill:none;stroke:#7dd3fc;stroke-width:2.2;marker-end:url(#call-arrow)}.output{fill:none;stroke:#34d399;stroke-width:2.2;marker-end:url(#data-arrow)}.rollback{fill:none;stroke:#fbbf24;stroke-width:2.2;stroke-dasharray:7 5;marker-end:url(#guard-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="900" height="760"/>
+  <text class="title" x="32" y="42">Backend initialization: publish only after every gate succeeds</text>
+  <text class="sub" x="32" y="68">Headless and presentation paths share the same serialized process-wide bootstrap.</text>
+
+  <rect class="panel" x="24" y="92" width="852" height="480" rx="12"/>
+  <text class="lane" x="450" y="110">BLUE TAGS: PUBLIC API | AMBER TAGS: PRIVATE IMPLEMENTATION DETAIL</text>
+  <rect class="api" x="52" y="122" width="220" height="70" rx="8"/>
+  <text class="publicTag" x="162" y="138">PUBLIC API</text>
+  <text class="label" x="162" y="157">ConfigureBackend(configuration)</text>
+  <text class="small" x="162" y="178">store backend, callback, validation</text>
+
+  <rect class="api" x="340" y="122" width="220" height="70" rx="8"/>
+  <text class="publicTag" x="450" y="138">PUBLIC API</text>
+  <text class="label" x="450" y="157">InitializeBackend()</text>
+  <text class="small" x="450" y="178">InitializeBackendForPresentation(...)</text>
+  <path class="call" d="M272 157 H336"/>
+
+  <rect class="guard" x="628" y="122" width="220" height="70" rx="8"/>
+  <text class="tag" x="738" y="138">PRIVATE IMPLEMENTATION DETAIL</text>
+  <text class="label" x="738" y="157">BeginShaderDirectoryUse</text>
+  <text class="small" x="738" y="178">registry must be available</text>
+  <path class="call" d="M560 157 H624"/>
+
+  <text class="tag" x="450" y="216">PRIVATE STATE: FArdaBackendState (mutex-serialized)</text>
+
+  <rect class="guard" x="628" y="232" width="220" height="76" rx="8"/>
+  <text class="tag" x="738" y="248">PRIVATE IMPLEMENTATION DETAIL</text>
+  <text class="method" x="738" y="269">ScanAndFreezeShaderSourceDirectoriesForBackend</text>
+  <text class="small" x="738" y="296">resolve mappings; freeze manifest</text>
+  <path class="call" d="M738 192 V228"/>
+
+  <rect class="guard" x="340" y="232" width="220" height="76" rx="8"/>
+  <text class="tag" x="450" y="248">REGISTRATION GATE</text>
+  <text class="label" x="450" y="269">FArdaShaderTypeRegistration</text>
+  <text class="label" x="450" y="286">::CommitAll()</text>
+  <text class="small" x="450" y="301">validate deterministic type list</text>
+  <path class="call" d="M628 270 H564"/>
+
+  <rect class="native" x="52" y="232" width="220" height="76" rx="8"/>
+  <text class="tag" x="162" y="248">PRIVATE IMPLEMENTATION DETAIL</text>
+  <text class="label" x="162" y="269">CreateConfiguredDevice</text>
+  <text class="small" x="162" y="286">CreateD3D12BackendDevice or</text>
+  <text class="small" x="162" y="301">CreateVulkanBackendDevice</text>
+  <path class="call" d="M340 270 H276"/>
+
+  <rect class="native" x="52" y="350" width="220" height="82" rx="8"/>
+  <text class="tag" x="162" y="366">PRIVATE IMPLEMENTATION DETAIL</text>
+  <text class="label" x="162" y="385">IArdaBackendDevice::Initialize</text>
+  <text class="small" x="162" y="403">create native device + NVRHI device</text>
+  <text class="small" x="162" y="420">CreateArdaNvrhiDevice(handle)</text>
+  <path class="call" d="M162 308 V346"/>
+
+  <rect class="native" x="340" y="350" width="220" height="82" rx="8"/>
+  <text class="tag" x="450" y="366">PRIVATE IMPLEMENTATION DETAIL</text>
+  <text class="label" x="450" y="385">Presentation path only</text>
+  <text class="small" x="450" y="403">CreateSwapChain(width, height)</text>
+  <text class="small" x="450" y="420">must succeed before publication</text>
+  <path class="call" d="M272 391 H336"/>
+
+  <rect class="data" x="628" y="350" width="220" height="82" rx="8"/>
+  <text class="tag" x="738" y="366">PRIVATE IMPLEMENTATION DETAIL</text>
+  <text class="label" x="738" y="385">PublishInitializedDevice</text>
+  <text class="small" x="738" y="403">FArdaDeviceContext: device,</text>
+  <text class="small" x="738" y="420">backend, queue capabilities</text>
+  <path class="output" d="M560 391 H624"/>
+
+  <rect class="data" x="628" y="476" width="220" height="62" rx="8"/>
+  <text class="tag" x="738" y="491">PRIVATE IMPLEMENTATION DETAIL</text>
+  <text class="method" x="738" y="510">CompleteShaderDirectoryRegistryUse(true)</text>
+  <text class="small" x="738" y="528">commit successful registry use</text>
+  <path class="output" d="M738 432 V472"/>
+
+  <rect class="guard" x="52" y="476" width="508" height="62" rx="8"/>
+  <text class="tag" x="306" y="491">PRIVATE ROLLBACK DETAIL</text>
+  <text class="label" x="306" y="510">Any failure after BeginShaderDirectoryUse</text>
+  <text class="small" x="306" y="528">reset device if created; CompleteShaderDirectoryRegistryUse(false)</text>
+  <path class="rollback" d="M628 270 C590 270 590 507 564 507"/>
+  <path class="rollback" d="M162 432 V472"/>
+  <path class="rollback" d="M450 432 V472"/>
+
+  <rect class="guard" x="24" y="594" width="852" height="98" rx="10"/>
+  <text class="label" x="450" y="620">Nearby invariants</text>
+  <text class="note" x="48" y="646">&#8226; Configure before initialize; configuration cannot change after a backend device exists.</text>
+  <text class="note" x="48" y="668">&#8226; Shader mappings remain immutable while live; mbInitialized is published only after context (and optional swap chain) succeeds.</text>
+  <text class="note" x="48" y="686">&#8226; Failure releases directory use for correction and retry; it never publishes a partial FArdaDeviceContext.</text>
+
+  <rect class="panel" x="24" y="710" width="852" height="34" rx="7"/>
+  <path class="call" d="M48 727 H94"/><text class="note" x="103" y="731">call</text>
+  <path class="output" d="M174 727 H220"/><text class="note" x="229" y="731">created / published data</text>
+  <path class="rollback" d="M410 727 H456"/><text class="note" x="465" y="731">guard or rollback</text>
+</svg>

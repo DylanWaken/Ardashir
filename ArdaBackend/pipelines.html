@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A production-oriented chapter on ArdaBackend graphics and compute pipeline state, framebuffer compatibility, and concurrent bounded caching.">
+  <title>Pipeline states | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary"><a href="index.html">ArdaBackend</a><a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a><a href="getting-started.html">Get started</a><a href="api-reference.html">API</a><a href="../glossary.html">Glossary</a></nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav><a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a><a href="getting-started.html">Getting started</a><a href="architecture.html">Architecture</a><a href="shaders.html">Shaders</a><a aria-current="page" href="pipelines.html">Pipeline states</a><a href="rhi.html">RHI types &amp; resources</a><a href="commands.html">Commands</a><a href="presentation.html">Presentation</a><a href="diagnostics.html">Diagnostics</a><a href="api-reference.html">API reference</a></nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a> / Pipeline states</nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">From rendering intent to reusable native state</p>
+          <h1>Pipeline states</h1>
+          <p>A pipeline state object packages a compatible set of programmable and fixed-function choices for the GPU. ArdaBackend lets renderer code describe graphics or compute intent, completes target-dependent fields, validates compatibility, and resolves the result through a bounded thread-safe <a class="term" data-term="cache" href="../glossary.html#term-cache">cache</a>.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#theory">Why immutable PSOs</a>
+          <a href="#architecture">Project architecture</a>
+          <a href="#graphics-state">Graphics state</a>
+          <a href="#compute-state">Compute state</a>
+          <a href="#compatibility">Framebuffer compatibility</a>
+          <a href="#identity">Equality and hash identity</a>
+          <a href="#flow">Resolution flow</a>
+          <a href="#worked-example">Worked graphics example</a>
+          <a href="#concurrency">Concurrent creation</a>
+          <a href="#lru">LRU and ownership</a>
+          <a href="#precache">Precaching</a>
+          <a href="#sizing">Sizing and thrashing</a>
+          <a href="#strategy">Production strategy</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#summary">Summary</a>
+          <a href="#checkpoints">Checkpoints</a>
+          <a href="#further-reading">Further reading</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>By the end of this chapter, you should be able to:</p>
+          <ul>
+            <li>name the shader, vertex-input, raster, depth/stencil, blend, topology, format, and sample state captured by a graphics <a class="term" data-term="pso" href="../glossary.html#term-pso">PSO</a>;</li>
+            <li>explain why explicit APIs favor immutable PSOs over independent mutable state calls;</li>
+            <li>distinguish graphics and compute pipeline descriptors from dynamic command state;</li>
+            <li>derive a complete graphics descriptor from an ArdaBackend initializer and <a class="term" data-term="framebuffer" href="../glossary.html#term-framebuffer">framebuffer</a>;</li>
+            <li>predict whether two descriptors compare equal and share a cache entry;</li>
+            <li>reason about same-key creation, waiters, failures, and ownership across eviction;</li>
+            <li>measure cache sizing and diagnose thrashing; and</li>
+            <li>design a production precache and runtime cache strategy.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites and chapter scope</h2>
+          <p>Read <a href="shaders.html">Shaders</a> first: pipeline descriptors retain shader objects and shader-derived binding layouts. Read <a href="rhi.html">RHI types &amp; resources</a> for device affinity, descriptors, formats, and intrusive references. This chapter assumes familiarity with rasterization, depth testing, blending, and multisampling.</p>
+          <p>The renderer-facing cache currently covers graphics and compute pipelines. The RHI exposes other pipeline families, but their creation and caching policies are outside this class. Viewports, scissors, framebuffers, vertex/index buffer bindings, resource binding sets, and push-constant values are command state rather than cache-key PSO state.</p>
+        </section>
+
+        <section id="theory">
+          <h2>Foundational theory: why immutable PSOs?</h2>
+          <p>Older graphics APIs presented shaders, blend modes, depth tests, vertex declarations, and render targets as independent mutable state. Drivers had to discover the effective combination at draw time, validate it, compile hidden native state, and cache the result heuristically. That made a nominally cheap draw call capable of triggering unpredictable CPU work.</p>
+          <p>Explicit APIs move the combination step earlier. An <a class="term" data-term="immutable" href="../glossary.html#term-immutable">immutable</a> <a class="term" data-term="pipeline" href="../glossary.html#term-pipeline">pipeline</a> state object captures the compatibility-sensitive choices. Creation may be expensive because the driver can validate interfaces, specialize machine code, and configure hardware state; binding the completed object can then be predictable.</p>
+          <p>Immutability also gives a stable cache key. If state could mutate after insertion, the key would stop describing the object. With value-like descriptors, the cache can ask two questions:</p>
+          <ol>
+            <li>Does this complete descriptor equal one already retained?</li>
+            <li>If not, can exactly one thread create it while peers wait?</li>
+          </ol>
+          <p>The tradeoff is combinatorial growth. If a renderer has 20 shader combinations, 4 blend variants, 3 depth modes, 2 sample counts, and 3 target-format families, the theoretical graphics space is <code>20 × 4 × 3 × 2 × 3 = 1,440</code> PSOs. Real workloads use a sparse subset, so production strategy centers on identifying and warming the working set rather than creating every possible Cartesian product.</p>
+        </section>
+
+        <section id="architecture">
+          <h2>ArdaBackend pipeline architecture</h2>
+          <p><a href="api-reference.html#api-arda-backend-fardacomputepipelinestateinitializer-ec43cb04"><code>arda::backend::FArdaComputePipelineStateInitializer</code></a> and <a href="api-reference.html#api-arda-backend-fardagraphicspipelinestateinitializer-bfc2348a"><code>arda::backend::FArdaGraphicsPipelineStateInitializer</code></a> are renderer-facing descriptions, never concrete RHI pipeline objects. Each wraps an RHI descriptor. The graphics initializer adds a convention: omitted target formats and a zero sample count can be completed from the actual framebuffer. Its default constructor sets zero; the <code>FromGlobalShaders</code> factory copies the supplied fixed-state descriptor, whose own default sample count is one, so set the result back to zero when framebuffer-derived samples are intended.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>arda::backend::FArdaPipelineStateCache</code></a> is permanently bound to one RHI <a class="term" data-term="device" href="../glossary.html#term-device">device</a>. It owns cache entries, synchronization, statistics, and bounded diagnostics. It returns intrusive RHI references, so the cache and caller can share <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a> of a created pipeline.</p>
+          <p>The device's direct <code>CreateComputePipeline</code> and <code>CreateGraphicsPipeline</code> operations remain predictable construction primitives: current tests show repeated direct calls return distinct objects and do not populate a device descriptor cache. Renderer-level reuse, framebuffer completion, LRU policy, and same-key coordination belong to <code>FArdaPipelineStateCache</code>.</p>
+
+          <h3>Initializer, completed descriptor, cached object, command state</h3>
+          <dl>
+            <dt>Initializer</dt>
+            <dd>Reusable renderer intent. Graphics compatibility fields may be unspecified.</dd>
+            <dt>Completed descriptor</dt>
+            <dd>Concrete, validated PSO identity after framebuffer-derived fields are filled.</dd>
+            <dt>Cached pipeline</dt>
+            <dd>Device-created immutable RHI object retained under descriptor equality.</dd>
+            <dt>Command state</dt>
+            <dd>Dynamic state such as framebuffer, viewports, scissors, bindings, and vertex buffers combined with a resolved pipeline for recording.</dd>
+          </dl>
+        </section>
+
+        <section id="graphics-state">
+          <h2>What a graphics PSO captures</h2>
+          <p><code>FArdaRHIGraphicsPipelineDesc</code> contains the state that affects how vertex data becomes fragments and how those fragments interact with attachments:</p>
+          <ul>
+            <li><strong>Primitive topology:</strong> point, line, triangle, or patch interpretation, plus patch control-point count for tessellation.</li>
+            <li><strong>Input layout:</strong> attribute semantics, formats, buffer slots, offsets, and per-vertex or per-instance stepping, associated with the vertex shader.</li>
+            <li><strong>Programmable stages:</strong> vertex and optional hull, domain, geometry, and pixel shader references.</li>
+            <li><strong>Binding layouts:</strong> the resource schema visible to the participating stages.</li>
+            <li><strong>Raster state:</strong> fill/cull mode, front-face convention, depth bias, clipping, scissor and multisample behavior.</li>
+            <li><strong>Depth/stencil state:</strong> depth enable/write/compare and stencil masks and operations.</li>
+            <li><strong>Blend state:</strong> alpha-to-coverage and per-target source/destination blend factors and write behavior.</li>
+            <li><strong>Attachment compatibility:</strong> ordered color formats, optional depth format, and sample count.</li>
+          </ul>
+
+          <h3>Vertex and input stages</h3>
+          <p>The input assembler interprets bound <a class="term" data-term="vertex-buffer" href="../glossary.html#term-vertex-buffer">vertex buffers</a> according to the input layout and topology. A semantic mismatch may fail pipeline creation or produce incorrect attributes. Input-layout identity includes its attributes and associated vertex shader object; changing only the command-time vertex buffer does not require a new PSO when its stride/layout contract remains compatible.</p>
+          <p>Indexed draws additionally bind an <a class="term" data-term="index-buffer" href="../glossary.html#term-index-buffer">index buffer</a> and format as command state. The index buffer selects vertices but does not alter shader interfaces or fixed-function compilation, so it is not in the graphics descriptor.</p>
+
+          <h3>Fixed-function stages and platform detail</h3>
+          <p>Raster, depth/stencil, and blend state are “fixed function” because specialized hardware executes them, but their configuration still affects native pipeline compilation. D3D12 and Vulkan expose similar concepts with different object boundaries and optional dynamic-state features. ArdaBackend chooses a portable descriptor identity; do not assume a field can be varied dynamically merely because one Vulkan extension permits it.</p>
+          <p>Viewport and <a class="term" data-term="scissor" href="../glossary.html#term-scissor">scissor</a> rectangles are deliberately dynamic in <code>FArdaRHIGraphicsState</code>. Their values commonly change with resolution, atlas tiles, shadow cascades, or split-screen views. Keeping them outside the PSO prevents unnecessary variants.</p>
+        </section>
+
+        <section id="compute-state">
+          <h2>What a compute PSO captures</h2>
+          <p>A compute PSO is smaller: <code>FArdaRHIComputePipelineDesc</code> contains one compute shader and its binding layouts. There is no vertex assembly, rasterization, blend state, depth/stencil state, framebuffer format, or sample count. Dispatch dimensions and concrete bindings are command state.</p>
+          <pre><code>using namespace arda;
+using namespace arda::backend;
+
+const FArdaGlobalShaderInstance* shader =
+    shaderMap.Find(FBlurCS::GetStaticType());
+if (!shader)
+    return false;
+
+FArdaPipelineStateCache cache(GetDevice());
+auto initializer =
+    FArdaComputePipelineStateInitializer::FromGlobalShader(
+        *shader, "Blur compute");
+
+rhi::FArdaRHIComputePipelineRef pipeline;
+auto status = cache.GetOrCreateCompute(initializer, pipeline);
+if (!status)
+    return Report(status.mMessage);</code></pre>
+          <p><a href="api-reference.html#api-arda-backend-fardacomputepipelinestateinitializer-fromglobalshader-cab318f7"><code>arda::backend::FArdaComputePipelineStateInitializer::FromGlobalShader</code></a> copies the global shader object's RHI reference and binding layouts and supplies the requested debug name, or the shader type name by default.</p>
+
+          <h3>Bind and dispatch</h3>
+          <pre><code>auto command = GetDevice()-&gt;CreateCommandList(
+    rhi::EArdaRHIQueueType::Compute);
+if (!command)
+    return Report(command.mStatus.mMessage);
+if (auto opened = command.mValue-&gt;Open(); !opened)
+    return Report(opened.mMessage);
+
+rhi::FArdaRHIComputeState state;
+state.mBindings.push_back(bindingSet);
+if (auto bound = cache.SetComputePipelineState(
+        *command.mValue, initializer, eastl::move(state)); !bound)
+    return Report(bound.mMessage);
+
+command.mValue-&gt;Dispatch(groupsX, groupsY, 1);
+if (auto closed = command.mValue-&gt;Close(); !closed)
+    return Report(closed.mMessage);
+return GetDevice()-&gt;ExecuteCommandList(command.mValue).mStatus;</code></pre>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-setcomputepipelinestate-5e0a55bc"><code>arda::backend::FArdaPipelineStateCache::SetComputePipelineState</code></a> resolves the pipeline into <code>state.mPipeline</code> and then calls the command list. It passes the command list's device as the requesting device, making cross-device cache use a recoverable <code>WrongDevice</code> failure.</p>
+        </section>
+
+        <section id="compatibility">
+          <h2>Render-target, depth, and sample compatibility</h2>
+          <p>A graphics PSO must be compatible with the attachments used at draw time. Color attachment count and ordered formats determine pixel-output interpretation and blend-target structure. The depth/stencil format determines available depth and stencil aspects. The sample count controls multisample rasterization and must agree across attachments and pipeline state.</p>
+          <p>ArdaBackend lets a graphics initializer omit these fields:</p>
+          <ul>
+            <li>an empty <code>mColorFormats</code> means derive the complete ordered vector;</li>
+            <li><code>mDepthFormat == Unknown</code> means derive the depth format, or remain <code>Unknown</code> when no depth attachment exists; and</li>
+            <li><code>mSampleCount == 0</code> means derive one common attachment sample count.</li>
+          </ul>
+
+          <h3>Framebuffer completion derivation</h3>
+          <p>For each color attachment and then the optional depth attachment, resolution performs:</p>
+          <pre><code>effectiveFormat(target) =
+    target.attachment.format != Unknown
+        ? target.attachment.format
+        : target.texture.desc.format
+
+samples(target) = target.texture.desc.sampleCount</code></pre>
+          <p>Every attachment must contain a texture and have a known effective format. The first attachment establishes <var>S</var>, the common sample count; every later attachment must have <code>samples(target) == S</code>. A framebuffer with no color or depth attachment cannot establish <var>S</var> and is rejected.</p>
+          <p>The completed descriptor is then:</p>
+          <pre><code>completed.colorFormats =
+    initializer.colorFormats.empty()
+        ? framebuffer.colorFormats
+        : requireEqual(initializer.colorFormats, framebuffer.colorFormats)
+
+completed.depthFormat =
+    initializer.depthFormat == Unknown
+        ? framebuffer.depthFormat
+        : requireEqual(initializer.depthFormat, framebuffer.depthFormat)
+
+completed.sampleCount =
+    initializer.sampleCount == 0
+        ? framebuffer.sampleCount
+        : requireEqual(initializer.sampleCount, framebuffer.sampleCount)</code></pre>
+          <p>Order matters. <code>[RGBA8, RG16F]</code> is not equal to <code>[RG16F, RGBA8]</code> because shader output locations and blend targets are positional. Format compatibility is exact descriptor equality here, not a broad “same byte width” rule.</p>
+          <figure>
+            <img src="Assets/pipeline-compatibility-cache.svg" alt="A partial graphics initializer is completed from framebuffer formats and sample count before equality, hashing, cache lookup, creation, and LRU retention.">
+            <figcaption>The compatibility/cache diagram makes the key boundary explicit: completion and validation happen before cache identity is computed.</figcaption>
+          </figure>
+          <aside class="callout warning">
+            <h3>Null framebuffer is only conditionally legal</h3>
+            <p>Without a framebuffer, graphics resolution requires explicit color formats and a nonzero sample count, then validates the descriptor directly. A partially specified initializer always requires the real framebuffer. In normal binding through <code>SetGraphicsPipelineState</code>, put the target framebuffer in the dynamic state.</p>
+          </aside>
+        </section>
+
+        <section id="identity">
+          <h2>Descriptor equality and hash identity</h2>
+          <p>Equality decides identity. A <a class="term" data-term="hash" href="../glossary.html#term-hash">hash</a> provides a stable compact summary and is recorded in diagnostics; the current outer cache still scans candidate descriptors with full equality rather than using the hash as a unique key. Correctness requires the implication <code>a == b ⇒ HashValue(a) == HashValue(b)</code>. A collision in the opposite direction cannot merge entries because full descriptors are compared.</p>
+          <p>Graphics equality includes topology, patch count, input layout reference, shader references, ordered binding-layout references, blend/raster/depth state values, ordered color formats, depth format, and sample count. Compute equality includes shader and ordered binding-layout references. Object references are identity-bearing: two separately created equivalent shader objects generally produce different pipeline keys.</p>
+
+          <h3>Why debug names are excluded</h3>
+          <p><code>mDebugName</code> is diagnostic-only. Both descriptor equality and <code>HashValue</code> omit it. Thus changing <code>"Depth prepass"</code> to <code>"Main camera depth"</code> reuses the same PSO when all semantic fields match. Including labels would fragment the cache for no GPU-state difference and make localization or marker improvements expensive.</p>
+          <p>The exclusion has a diagnostic consequence: on a hit, the returned native object may retain the label from the first creator, while a later request has another label. Treat names as breadcrumbs, not identity. Creation failures still record the requesting initializer's name alongside the normalized descriptor hash.</p>
+
+          <h3>Worked identity examples</h3>
+          <pre><code>A: shader=S, layouts=[L0], debug="Blur X"
+B: shader=S, layouts=[L0], debug="Blur Y"   -&gt; equal, same cache entry
+
+C: shader=S, layouts=[L0, L1]
+D: shader=S, layouts=[L1, L0]              -&gt; not equal; order differs
+
+E: graphics initializer formats=[]
+F: graphics initializer formats=[RGBA8]
+Framebuffer formats=[RGBA8]                -&gt; completed E equals completed F
+
+G: same state, sampleCount=1
+H: same state, sampleCount=4                -&gt; not equal</code></pre>
+          <p>This is why graphics lookup hashes the completed descriptor, not the partial initializer. Two ways of expressing the same concrete compatibility become one key.</p>
+        </section>
+
+        <section id="flow">
+          <h2>PSO resolution and command flow</h2>
+          <figure>
+            <img src="Assets/pso-command-flow.svg" alt="PSO flow from initializer validation and framebuffer completion through descriptor lookup or creation, state binding, and draw or dispatch.">
+            <figcaption>Pipeline resolution is a CPU-side prerequisite; command recording receives an already compatible pipeline reference.</figcaption>
+          </figure>
+          <ol>
+            <li>Receive a compute initializer or a graphics initializer plus framebuffer.</li>
+            <li>For graphics, derive omitted compatibility fields and reject explicit mismatches.</li>
+            <li>Compute a diagnostic hash from the complete descriptor.</li>
+            <li>Validate the optional requesting device against the cache's permanent device.</li>
+            <li>Search by full descriptor equality.</li>
+            <li>Return and touch a completed hit, wait for matching in-flight creation, or insert one in-flight miss.</li>
+            <li>Create the native pipeline outside the cache mutex.</li>
+            <li>Publish success and apply capacity, or remove the failed placeholder and retain a bounded diagnostic.</li>
+            <li>Optionally write the pipeline into dynamic state and bind that state to the <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command list</a>.</li>
+            <li>Record draw or dispatch operations.</li>
+          </ol>
+
+          <h3>Framebuffer-compatible graphics example</h3>
+          <pre><code>auto initializer =
+    FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
+        *vertexShader, pixelShader, inputLayout);
+initializer.mDesc.mDebugName = "Main pass";
+// The factory copied fixed-state sample count 1; opt into derivation.
+initializer.mDesc.mSampleCount = 0;
+
+rhi::FArdaRHIGraphicsState state;
+state.mFramebuffer = framebuffer;
+state.mBindings = passBindings;
+state.mViewports.push_back({0.f, width, 0.f, height, 0.f, 1.f});
+state.mScissors.push_back(
+    {0, int32_t(width), 0, int32_t(height)});
+
+auto status = cache.SetGraphicsPipelineState(
+    *commandList, initializer, eastl::move(state));
+if (!status)
+    LogPipelineFailure(status.mMessage);</code></pre>
+          <p><a href="api-reference.html#api-arda-backend-fardagraphicspipelinestateinitializer-fromglobalshaders-4f811f06"><code>arda::backend::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders</code></a> starts from optional fixed state, then supplies the input layout, vertex shader, optional pixel shader, and their layouts. Pixel layouts already present by reference are not duplicated.</p>
+        </section>
+
+        <section id="worked-example">
+          <h2>Worked example: a cached graphics draw across two frames</h2>
+          <p>This example follows one realistic renderer path from registered global shaders to a second-frame cache hit. The calls to <code>AcquireMainFramebuffer()</code>, <code>AcquireSceneInputLayout()</code>, <code>BuildSceneBindings()</code>, <code>Report()</code>, and the logging functions are application helpers; all ArdaBackend and RHI calls use their current signatures. The cache is deliberately created outside the frame function—constructing it every frame would discard reuse.</p>
+
+          <h3>1. Resolve long-lived shader and target inputs</h3>
+          <pre><code>using namespace arda;
+using namespace arda::backend;
+
+rhi::FArdaRHIDeviceRef device = GetDevice();
+if (!device)
+    return false;
+
+// Borrowed pointers into shaderMap; shaderMap must outlive this setup.
+const FArdaGlobalShaderInstance* vertexShader =
+    shaderMap.Find(FSceneVS::GetStaticType());
+const FArdaGlobalShaderInstance* pixelShader =
+    shaderMap.Find(FScenePS::GetStaticType());
+if (!vertexShader || !pixelShader)
+    return false;
+
+// Application helpers: omitted resource/render-target setup.
+rhi::FArdaRHIInputLayoutRef inputLayout =
+    AcquireSceneInputLayout(*device, vertexShader-&gt;GetShader());
+rhi::FArdaRHIFramebufferRef framebuffer =
+    AcquireMainFramebuffer();
+eastl::vector&lt;rhi::FArdaRHIBindingSetRef&gt; passBindings =
+    BuildSceneBindings(*device, *vertexShader, *pixelShader);
+if (!inputLayout || !framebuffer)
+    return false;
+
+auto initializer =
+    FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
+        *vertexShader,
+        pixelShader,
+        inputLayout);
+initializer.mDesc.mDebugName = "Scene opaque";
+
+// Opt into framebuffer-derived sample count. Color formats are already
+// empty and depth format is Unknown in the default fixed-state descriptor.
+initializer.mDesc.mSampleCount = 0;
+
+// Persist this cache across every frame that should share PSOs.
+FArdaPipelineStateCache cache(device);</code></pre>
+          <p><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-find-5c8b97fb"><code>arda::backend::FArdaGlobalShaderMap::Find</code></a> returns borrowed pointers to <a href="api-reference.html#api-arda-backend-fardaglobalshaderinstance-ff1b9952"><code>arda::backend::FArdaGlobalShaderInstance</code></a> objects owned by the map. The instances retain their RHI shaders and binding layouts. Do not reset the global shader map while an initializer or cached PSO still depends on those objects.</p>
+
+          <h3>2. Understand the reusable initializer and cache</h3>
+          <p><a href="api-reference.html#api-arda-backend-fardagraphicspipelinestateinitializer-fromglobalshaders-4f811f06"><code>arda::backend::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders</code></a> copies RHI references for the input layout, shaders, and merged shader binding layouts into the initializer descriptor. Those references keep their objects alive. The <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>arda::backend::FArdaPipelineStateCache</code></a> then retains the device and, after a miss, the created pipeline.</p>
+
+          <h3>3. Record, bind, draw, and submit</h3>
+          <pre><code>auto recordAndSubmitFrame = [&amp;]() -&gt; rhi::FArdaRHIStatus
+{
+    auto commandResult =
+        device-&gt;CreateCommandList(rhi::EArdaRHIQueueType::Graphics);
+    if (!commandResult)
+        return commandResult.mStatus;
+    auto commandList = eastl::move(commandResult.mValue);
+
+    if (auto status = commandList-&gt;Open(); !status)
+        return status;
+
+    rhi::FArdaRHIGraphicsState state;
+    state.mFramebuffer = framebuffer;
+    state.mBindings = passBindings;
+    state.mViewports.push_back(
+        {0.f, float(width), 0.f, float(height), 0.f, 1.f});
+    state.mScissors.push_back(
+        {0, int32_t(width), 0, int32_t(height)});
+
+    auto status = cache.SetGraphicsPipelineState(
+        *commandList, initializer, eastl::move(state));
+    if (!status)
+        return status;
+
+    // SetGraphicsPipelineState has already called SetGraphicsState with
+    // the resolved pipeline inserted into state.mPipeline.
+    commandList-&gt;Draw({3, 1, 0, 0, 0});
+
+    if (status = commandList-&gt;Close(); !status)
+        return status;
+    auto submission = device-&gt;ExecuteCommandList(commandList);
+    return submission.mStatus;
+};</code></pre>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-setgraphicspipelinestate-259a2286"><code>arda::backend::FArdaPipelineStateCache::SetGraphicsPipelineState</code></a> first resolves the PSO, places it in <code>state.mPipeline</code>, and then invokes <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setgraphicsstate-c7eb13f7"><code>arda::rhi::IArdaRHICommandList::SetGraphicsState</code></a>. Calling <code>SetGraphicsState</code> again is unnecessary. Only after that status succeeds is <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-draw-472d77cb"><code>arda::rhi::IArdaRHICommandList::Draw</code></a> safe to record.</p>
+
+          <h3>4. Derive the key and observe the second-frame hit</h3>
+          <p>On frame one, resolution reads the framebuffer attachments. Each attachment's explicit view format wins over its texture format; all attachment sample counts must agree. Because the initializer left color formats empty, depth format <code>Unknown</code>, and sample count zero, those fields are copied into a temporary complete descriptor. The resulting key is the full descriptor: topology, patch count, input-layout reference, shader references, ordered binding-layout references, blend/raster/depth-stencil values, ordered color formats, depth format, and sample count. The framebuffer object itself is not part of the key.</p>
+          <pre><code>const auto before = cache.GetStats();
+if (auto status = recordAndSubmitFrame(); !status) // frame 1: cold
+    return Report(status.mMessage);
+const auto afterFirst = cache.GetStats();
+
+if (auto status = recordAndSubmitFrame(); !status) // frame 2: same key
+    return Report(status.mMessage);
+const auto afterSecond = cache.GetStats();
+
+const bool observedColdMiss =
+    afterFirst.mMisses == before.mMisses + 1;
+const bool observedSecondFrameHit =
+    afterSecond.mHits == afterFirst.mHits + 1;
+LogCacheObservation(observedColdMiss, observedSecondFrameHit);</code></pre>
+          <p>The first request inserts an in-flight entry, creates the native PSO, and records one miss. The second frame rebuilds dynamic <a href="api-reference.html#api-arda-rhi-fardarhigraphicsstate-38f88d04"><code>arda::rhi::FArdaRHIGraphicsState</code></a>, but completion produces the same descriptor, so equality finds the retained pipeline and records a hit. New viewport/scissor values, concrete binding sets, or another framebuffer with the same ordered formats and sample count do not change this PSO key.</p>
+
+          <h3>5. Inspect failures and clean up in ownership order</h3>
+          <pre><code>for (const FArdaPipelineStateDiagnostic&amp; diagnostic :
+     cache.GetDiagnostics())
+{
+    LogPipelineFailure(
+        diagnostic.mDescriptorHash,
+        diagnostic.mDebugName,
+        diagnostic.mMessage);
+}
+
+const FArdaPipelineStateCacheStats finalStats = cache.GetStats();
+LogCacheTotals(
+    finalStats.mHits,
+    finalStats.mMisses,
+    finalStats.mCreateFailures,
+    finalStats.mGraphicsEntries);
+
+// Shutdown/device-recovery path, not ordinary per-frame code.
+if (auto idle = device-&gt;WaitForIdle(); !idle)
+    return Report(idle.mMessage);
+cache.Clear();       // releases cache-owned completed PSO references
+passBindings.clear();
+framebuffer.Reset();
+inputLayout.Reset();</code></pre>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-getdiagnostics-f56c2938"><code>arda::backend::FArdaPipelineStateCache::GetDiagnostics</code></a> returns bounded records for compatibility, device, and creation failures; <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-getstats-1f8e93c5"><code>arda::backend::FArdaPipelineStateCache::GetStats</code></a> returns cumulative counters and current occupancy. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-clear-56766c39"><code>arda::backend::FArdaPipelineStateCache::Clear</code></a> removes completed cache entries but does not reset statistics or diagnostics and cannot invalidate pipeline references retained elsewhere.</p>
+
+          <h3>Errors and changes that produce a miss</h3>
+          <ul>
+            <li>A null shader lookup, input layout, or framebuffer fails before recording.</li>
+            <li>Missing attachments, unknown formats, mixed sample counts, or explicit initializer/framebuffer disagreement return <code>InvalidArgument</code> during completion.</li>
+            <li>A command list from another device returns <code>WrongDevice</code>; native descriptor or state-binding rejection propagates its RHI status.</li>
+            <li>Changing shader object identity, input-layout identity, binding-layout identity or order, topology, patch count, blend/raster/depth-stencil state, completed color/depth formats, or sample count produces a different descriptor and therefore a miss.</li>
+            <li>Changing only <code>mDebugName</code>, viewport, scissor, vertex/index buffers, binding-set resources, or framebuffer identity with unchanged compatibility fields does not produce a miss.</li>
+            <li><code>Draw</code> returns <code>void</code>; propagate the preceding state-binding status, then use command close/submission status and native validation output to diagnose later failures.</li>
+          </ul>
+          <aside class="callout warning">
+            <h3>Do not clear a live frame's ownership</h3>
+            <p>A submitted <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command list</a> may keep GPU work alive after the CPU function returns. Normal frame code should retain its cache and resources. Wait for the relevant <a class="term" data-term="synchronization" href="../glossary.html#term-synchronization">synchronization</a> point before teardown or device recovery; <code>WaitForIdle</code> is intentionally used only in the cleanup path above.</p>
+          </aside>
+        </section>
+
+        <section id="concurrency">
+          <h2>Thread-safe same-key creation</h2>
+          <p>Pipeline construction is expensive enough that worker threads may request the same key concurrently during scene loading or parallel command preparation. A naïve “check, unlock, create, insert” implementation races: every thread can miss and create a duplicate. Holding one global mutex during driver creation avoids duplicates but blocks unrelated keys.</p>
+          <p>ArdaBackend uses an in-flight placeholder:</p>
+          <ol>
+            <li>The first requester inserts the complete descriptor with <code>mbInFlight = true</code>, increments misses and in-flight count, then unlocks.</li>
+            <li>A same-key requester finds the placeholder, increments waits, and sleeps on a condition variable.</li>
+            <li>Different-key requests can inspect or insert entries while creation runs.</li>
+            <li>The creator reacquires the lock and either publishes the pipeline or removes the placeholder on failure.</li>
+            <li>All waiters wake. On success they loop, observe a completed hit, update recency, and share the same pipeline reference. On failure one awakened requester may retry creation.</li>
+          </ol>
+          <p>Current tests launch eight same-key requests and require one miss, seven hits, one retained entry, zero final in-flight operations, and identical pipeline object identity. <code>mWaits</code> can be less than the number of hits when creation finishes before some threads reach the placeholder.</p>
+          <p>Creation happens outside the mutex, which protects throughput, but descriptor objects and every referenced shader/layout must remain valid through the call. RHI references stored in the copied descriptor provide that ownership.</p>
+        </section>
+
+        <section id="lru">
+          <h2>LRU behavior, eviction, and ownership</h2>
+          <p>Each access receives a monotonically increasing use serial. A cache hit updates the entry's serial; successful creation updates it again. When occupancy exceeds configured capacity, ArdaBackend evicts the completed entry with the smallest serial—the <a class="term" data-term="lru" href="../glossary.html#term-lru">least recently used</a> pipeline. Compute and graphics have independent capacities.</p>
+          <pre><code>capacity = 2
+
+request A: cache [A]
+request B: cache [A, B]
+hit A:     recency B &lt; A
+request C: create C, evict B -&gt; cache [A, C]
+request B: miss and recreate B</code></pre>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-trim-5e67d209"><code>arda::backend::FArdaPipelineStateCache::Trim</code></a> waits until internal creation count reaches zero, then evicts to caller-supplied compute and graphics limits. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-clear-56766c39"><code>arda::backend::FArdaPipelineStateCache::Clear</code></a> similarly waits and removes every completed entry.</p>
+          <p>Eviction releases only the cache's intrusive reference. A caller-held <code>FArdaRHIComputePipelineRef</code> or <code>FArdaRHIGraphicsPipelineRef</code> keeps the object alive. Therefore eviction removes lookup reuse; it does not invalidate already recorded state or a live caller reference. Once all references are released, destruction follows the RHI object's ownership rules.</p>
+          <aside class="callout">
+            <h3>Capacity zero is valid but specialized</h3>
+            <p>A zero capacity can make each successful request return a valid pipeline while retaining no reusable entry after capacity enforcement. This may be useful for tests or explicit external ownership, but repeated lookups will recreate and should not be used as a normal frame-loop policy.</p>
+          </aside>
+        </section>
+
+        <section id="precache">
+          <h2>Precaching and startup work</h2>
+          <p>Precaching calls the same get-or-create path but discards the returned local reference after the cache retains it. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-precachecompute-2608a22e"><code>arda::backend::FArdaPipelineStateCache::PrecacheCompute</code></a> requires only the compute initializer. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-precachegraphics-d7023d3d"><code>arda::backend::FArdaPipelineStateCache::PrecacheGraphics</code></a> also needs the framebuffer so its key is the same complete descriptor later used for binding.</p>
+          <pre><code>for (const auto&amp; pass : startupPasses)
+{
+    auto status = cache.PrecacheGraphics(
+        pass.mInitializer,
+        pass.mRepresentativeFramebuffer);
+    if (!status)
+        return Report(status.mMessage);
+}
+
+for (const auto&amp; job : startupComputeJobs)
+{
+    auto status = cache.PrecacheCompute(job.mInitializer);
+    if (!status)
+        return Report(status.mMessage);
+}</code></pre>
+          <p>The key word is representative. A PSO warmed for <code>RGBA8, 1×</code> will not satisfy <code>RGBA16F, 1×</code> or <code>RGBA8, 4×</code>. Build the warmup list from actual pass format families and quality settings. Warm after the global shader map and required input layouts exist, but before latency-sensitive recording.</p>
+          <p>Precaching can be parallelized across different keys because native creation runs outside the outer mutex. Measure the driver and platform: excessive parallel compilation can saturate CPU, serialize inside the native driver, or increase startup memory. A bounded worker pool is usually safer than one task per PSO.</p>
+        </section>
+
+        <section id="sizing">
+          <h2>Cache sizing, performance, and thrashing</h2>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecacheconfiguration-e7f7a046"><code>arda::backend::FArdaPipelineStateCacheConfiguration</code></a> defaults to 128 compute entries, 128 graphics entries, and 64 diagnostics. Those are policy defaults, not universal performance targets. A deferred desktop renderer, a compute-only tool, and a memory-constrained mobile workload have different working sets.</p>
+
+          <h3>Working-set reasoning</h3>
+          <p>Let <var>W</var> be the number of distinct complete descriptors reused within the observation window and <var>C</var> the relevant capacity. If <code>C ≥ W</code>, compulsory misses dominate and steady-state hit rate can approach 100%. If <code>C &lt; W</code> and access cycles evenly through all <var>W</var> keys, LRU can miss every request.</p>
+          <pre><code>capacity C = 3
+cyclic workload = A, B, C, D, A, B, C, D, ...
+
+after A B C: cache holds A B C
+D evicts A
+A evicts B
+B evicts C
+C evicts D
+
+steady-state hit rate = 0%</code></pre>
+          <p>This is cache thrashing: bounded memory is achieved by repeatedly paying the most expensive operation. Raising capacity above the active set fixes this pattern; so can reducing unnecessary descriptor variants, separating phase-specific caches, or keeping strong caller references and avoiding repeated cache lookups for very hot pipelines.</p>
+
+          <h3>Measurements</h3>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-getstats-1f8e93c5"><code>arda::backend::FArdaPipelineStateCache::GetStats</code></a> returns cumulative hits, misses, waits, creation failures, current in-flight count, and retained compute/graphics counts. Derive:</p>
+          <pre><code>requests = hits + misses
+hitRate = requests != 0 ? hits / requests : 0
+creationFailureRate =
+    misses != 0 ? createFailures / misses : 0
+sameKeyContention =
+    requests != 0 ? waits / requests : 0</code></pre>
+          <p>Sample per loading phase and gameplay interval, not only over process lifetime. A high aggregate hit rate can hide a frame spike caused by one new PSO. Correlate misses with frame time, descriptor hash, debug name, pass, format family, sample count, and content transition.</p>
+          <p>Cache memory is not just the small C++ entry. Native driver pipeline objects may retain compiled code and metadata. Profile process and driver-visible memory on each platform while changing capacities. Keep diagnostics bounded because failure storms should not create a second unbounded cache.</p>
+        </section>
+
+        <section id="strategy">
+          <h2>Why this cache, and a production strategy</h2>
+          <h3>Why a shared renderer cache?</h3>
+          <p>An unbounded global map maximizes reuse but retains every transient variant. Per-thread maps reduce lock contention but duplicate expensive native PSOs and make warmup fragmented. ArdaBackend chooses a shared same-key creation domain with bounded LRU retention. The costs are mutex traffic, waiter coordination, and possible eviction churn; the benefits are one object per active descriptor and centralized telemetry.</p>
+
+          <h3>Recommended layered strategy</h3>
+          <ol>
+            <li><strong>Control permutations:</strong> remove shader defines and fixed-state variants that do not materially change output or performance.</li>
+            <li><strong>Enumerate known passes:</strong> derive expected descriptors from render-graph passes, materials, format families, quality levels, and sample counts.</li>
+            <li><strong>Warm the stable set:</strong> precache startup, menu, first-scene, and common transition pipelines against representative framebuffers.</li>
+            <li><strong>Allow bounded runtime discovery:</strong> let uncommon content create on miss, but capture telemetry and avoid doing so on latency-critical threads where possible.</li>
+            <li><strong>Size from traces:</strong> choose compute and graphics capacities above measured simultaneous working sets with headroom for transitions.</li>
+            <li><strong>Preserve native caches where available:</strong> ArdaBackend's in-memory object cache is not a replacement for API/driver pipeline libraries persisted across runs.</li>
+            <li><strong>Version persistent data:</strong> include application build, shader artifact hashes, backend, adapter/driver identity, and pipeline schema version.</li>
+            <li><strong>Plan invalidation:</strong> reset cache ownership during device loss, shader-map replacement, or incompatible render-target reconfiguration.</li>
+          </ol>
+          <p>ArdaBackend does not currently expose serialization of its renderer cache. Persistent native pipeline caches, where supported below the RHI, should be treated as an additional layer: the Arda cache avoids duplicate live objects, while native persistence can reduce the cost of creating those objects after process restart.</p>
+
+          <h3>Platform considerations</h3>
+          <ul>
+            <li><strong>D3D12:</strong> PSO creation can compile driver-specific machine state; pipeline libraries may reduce repeat cost but require careful versioning.</li>
+            <li><strong>Vulkan:</strong> pipeline caches and newer pipeline compilation features can shift cost, yet render-target formats, sample counts, layouts, and fixed state still define compatibility.</li>
+            <li><strong>Mobile and integrated GPUs:</strong> smaller memory budgets favor tighter capacities, but thermal and CPU limits make runtime churn especially undesirable.</li>
+            <li><strong>Console-style fixed hardware:</strong> offline enumeration and controlled content can support more comprehensive warmup.</li>
+            <li><strong>Multi-device systems:</strong> each <code>FArdaPipelineStateCache</code> belongs to exactly one device; descriptors referencing another device are invalid even if semantically equivalent.</li>
+          </ul>
+        </section>
+
+        <section id="failures">
+          <h2>Failure analysis</h2>
+          <dl>
+            <dt><code>InvalidArgument</code> before native creation</dt>
+            <dd>The graphics descriptor could not be completed: a framebuffer is missing, an attachment has no texture or unknown format, attachments disagree on sample count, the framebuffer is empty, or explicit fields mismatch. Compare the complete ordered formats and samples rather than only checking dimensions.</dd>
+
+            <dt><code>InvalidArgument</code> during native creation</dt>
+            <dd>A required shader is absent, shader stages are wrong, binding layouts are incompatible, tessellation fields are malformed, or fixed state is unsupported. Read the retained RHI message and enable native validation.</dd>
+
+            <dt><code>WrongDevice</code></dt>
+            <dd>The requesting command list or explicit requesting device differs from the cache's device, or dynamic state references a foreign framebuffer/resource. Rebuild shaders, layouts, framebuffer, pipeline cache, and command list in one device domain.</dd>
+
+            <dt>One request fails while peers wait</dt>
+            <dd>The failed creator removes the in-flight placeholder and wakes waiters. A waiter can become a new miss and retry. If the failure is deterministic, repeated concurrent retries can amplify work; stop scheduling the bad descriptor and surface the first diagnostic.</dd>
+
+            <dt>Unexpected miss after changing only a label</dt>
+            <dd>Debug names are excluded, so another semantic field changed. Compare shader and layout object identity, layout order, input layout, fixed state, completed formats, and sample count.</dd>
+
+            <dt>Unexpected hit</dt>
+            <dd>Verify the field you intended to vary actually participates in descriptor equality. Dynamic viewport, scissor, binding resources, and framebuffer object identity do not create different PSOs when completed compatibility fields are equal.</dd>
+
+            <dt>High <code>mWaits</code></dt>
+            <dd>Many threads converge on cold keys. Precache earlier, deduplicate scheduling, or designate compilation workers. Waits are not duplicate creation, but they can stall parallel recording.</dd>
+
+            <dt>High misses with occupancy pinned at capacity</dt>
+            <dd>This is likely LRU churn. Trace descriptor hashes and reuse distance, increase capacity, reduce variants, or separate workload phases. Merely calling precache cannot help if warm entries are evicted before use.</dd>
+
+            <dt>Pipeline remains alive after <code>Clear</code></dt>
+            <dd>This is expected when a caller or recorded state retains an intrusive reference. Clear removes cache ownership and future hits; it is not a forced destruction API.</dd>
+
+            <dt>Stutter despite high hit rate</dt>
+            <dd>Inspect misses at the exact spike, native driver compilation below a nominal cache hit elsewhere, command synchronization, shader loading, and resource transitions. Aggregate cache ratios do not establish causality.</dd>
+
+            <dt>Diagnostic buffer lacks the oldest failure</dt>
+            <dd>Diagnostics are bounded. When full, the oldest record is removed. Increase <code>mMaxDiagnostics</code> during investigation or stream failures to the application log as they occur.</dd>
+          </dl>
+        </section>
+
+        <section id="summary">
+          <h2>Chapter summary</h2>
+          <ul>
+            <li>Immutable PSOs move compatibility validation and potentially expensive driver compilation ahead of draw or dispatch.</li>
+            <li>Graphics PSOs capture shader stages, input and fixed-function state, layouts, ordered attachment formats, depth format, and sample count; compute PSOs capture one shader and layouts.</li>
+            <li>Framebuffer completion converts partial graphics intent into a concrete descriptor before hashing and lookup.</li>
+            <li>Equality defines identity; hashes accelerate it; debug names are deliberately excluded from both.</li>
+            <li>An in-flight placeholder guarantees one same-key creation while allowing different keys to progress.</li>
+            <li>LRU eviction removes cache ownership but does not invalidate references retained by callers.</li>
+            <li>Precaching removes known cold misses only when warmed descriptors exactly match runtime compatibility.</li>
+            <li>Capacity must be based on measured working sets; undersized cyclic workloads can produce zero steady-state hits.</li>
+          </ul>
+        </section>
+
+        <section id="checkpoints">
+          <h2>Checkpoint questions</h2>
+          <ol>
+            <li>Which graphics state belongs in a PSO, and which commonly changing state remains on the command list?</li>
+            <li>Why does PSO immutability improve both driver predictability and cache correctness?</li>
+            <li>What fields distinguish a compute descriptor from a graphics descriptor?</li>
+            <li>Given two color attachments with sample counts 1 and 4, can framebuffer completion succeed?</li>
+            <li>If an attachment view format is known and its texture format differs, which one does completion use?</li>
+            <li>Why must format completion occur before hash lookup?</li>
+            <li>Will changing only <code>mDebugName</code> produce a new cache entry? What diagnostic ambiguity follows?</li>
+            <li>How does the in-flight placeholder prevent duplicate creation without serializing all keys behind driver work?</li>
+            <li>Why can an evicted PSO remain valid?</li>
+            <li>In a four-key cyclic workload with capacity three, why does LRU reach a zero percent steady-state hit rate?</li>
+            <li>Why must graphics precaching use a representative framebuffer?</li>
+            <li>Which statistics would distinguish cold-start misses, same-key contention, creation failure, and capacity thrashing?</li>
+          </ol>
+        </section>
+
+        <section id="further-reading">
+          <h2>Further reading within these docs</h2>
+          <ul>
+            <li><a href="shaders.html">Shaders</a> — understand artifact, stage, binding-layout, and global shader lifetimes feeding pipeline descriptors.</li>
+            <li><a href="rhi.html">RHI types &amp; resources</a> — study descriptor equality, formats, framebuffers, input layouts, and intrusive references.</li>
+            <li><a href="commands.html">Commands</a> — bind graphics/compute state and record draws or dispatches with correct resource transitions.</li>
+            <li><a href="presentation.html">Presentation</a> — see how swap-chain format and sample strategy influence the final graphics compatibility family.</li>
+            <li><a href="diagnostics.html">Diagnostics</a> — combine cache diagnostics with D3D12 or Vulkan validation output.</li>
+            <li><a href="../glossary.html">Glossary</a> — revisit PSO, pipeline, immutable, hash, framebuffer, format, sample count, cache, LRU, and ownership.</li>
+            <li><a href="api-reference.html">API reference</a> — search exact signatures after learning the subsystem model here.</li>
+          </ul>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation"><a rel="prev" href="shaders.html">← Previous: Shaders</a><a rel="next" href="rhi.html">Next: RHI types &amp; resources →</a></nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend documentation · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="760" viewBox="0 0 900 760" role="img" aria-labelledby="shader-flow-title shader-flow-desc">
+  <title id="shader-flow-title">Global shader registration and instance creation</title>
+  <desc id="shader-flow-desc">Virtual shader directory mappings, static global shader macros, and parameter metadata converge at CommitAll, then FArdaGlobalShaderMap Initialize loads backend artifacts and creates shader and binding layout instances.</desc>
+  <defs>
+    <marker id="call-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
+    <marker id="data-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#34d399"/></marker>
+    <marker id="guard-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#fbbf24"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.api{fill:#1f3656;stroke:#60a5fa;stroke-width:1.5}.shader{fill:#3a294d;stroke:#c084fc;stroke-width:1.5}.data{fill:#214b45;stroke:#34d399;stroke-width:1.5}.guard{fill:#493720;stroke:#fbbf24;stroke-width:1.5}
+      .title{font:700 25px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:600 14px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.note{font:12px system-ui,sans-serif;fill:#c5d2e3}.lane{font:700 11px system-ui,sans-serif;fill:#7dd3fc;letter-spacing:1px}.call{fill:none;stroke:#7dd3fc;stroke-width:2.2;marker-end:url(#call-arrow)}.output{fill:none;stroke:#34d399;stroke-width:2.2;marker-end:url(#data-arrow)}.guardline{fill:none;stroke:#fbbf24;stroke-width:2.2;stroke-dasharray:7 5;marker-end:url(#guard-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="900" height="760"/>
+  <text class="title" x="32" y="42">Shader registration: three declarations become runtime instances</text>
+  <text class="sub" x="32" y="68">Source identity and C++ metadata are validated before artifacts become device objects.</text>
+
+  <rect class="panel" x="24" y="92" width="852" height="500" rx="12"/>
+  <text class="lane" x="48" y="118">STATIC INPUTS</text>
+  <text class="lane" x="352" y="118">COMMIT</text>
+  <text class="lane" x="628" y="118">DEVICE MATERIALIZATION</text>
+
+  <rect class="api" x="48" y="138" width="250" height="104" rx="8"/>
+  <text class="label" x="173" y="164">Directory mappings</text>
+  <text class="small" x="173" y="187">AddShaderSourceDirectory(...)</text>
+  <text class="small" x="173" y="207">virtual root &#8594; physical directory</text>
+  <text class="small" x="173" y="227">scan + frozen source manifest</text>
+
+  <rect class="shader" x="48" y="268" width="250" height="104" rx="8"/>
+  <text class="label" x="173" y="294">Static global shader type</text>
+  <text class="small" x="173" y="317">ARDA_DECLARE_GLOBAL_SHADER</text>
+  <text class="small" x="173" y="337">ARDA_IMPLEMENT_GLOBAL_SHADER</text>
+  <text class="small" x="173" y="357">name, stems, entry point, stage</text>
+
+  <rect class="shader" x="48" y="398" width="250" height="118" rx="8"/>
+  <text class="label" x="173" y="424">Parameter metadata</text>
+  <text class="small" x="173" y="447">ARDA_BEGIN_SHADER_PARAMETER_STRUCT</text>
+  <text class="small" x="173" y="467">ARDA_SHADER_PARAMETER_* members</text>
+  <text class="small" x="173" y="487">offset, count, slot, space, visibility</text>
+  <text class="small" x="173" y="505">ARDA_END_SHADER_PARAMETER_STRUCT</text>
+
+  <rect class="guard" x="352" y="240" width="220" height="174" rx="8"/>
+  <text class="label" x="462" y="268">FArdaShaderTypeRegistration</text>
+  <text class="label" x="462" y="287">::CommitAll()</text>
+  <text class="small" x="462" y="315">resolve virtual source stems</text>
+  <text class="small" x="462" y="335">sort deterministic candidate list</text>
+  <text class="small" x="462" y="355">validate identity + metadata layouts</text>
+  <text class="small" x="462" y="375">reject duplicate names / identities</text>
+  <text class="small" x="462" y="398">publish committed FArdaShaderType list</text>
+  <path class="call" d="M298 190 C326 190 326 274 348 274"/>
+  <path class="call" d="M298 320 H348"/>
+  <path class="call" d="M298 457 C326 457 326 380 348 380"/>
+
+  <rect class="api" x="628" y="138" width="224" height="104" rx="8"/>
+  <text class="label" x="740" y="164">FArdaGlobalShaderMap</text>
+  <text class="label" x="740" y="183">::Initialize(context, directory)</text>
+  <text class="small" x="740" y="207">CommitAll then Enumerate()</text>
+  <text class="small" x="740" y="227">one pass over committed types</text>
+  <path class="call" d="M572 282 C602 282 600 190 624 190"/>
+
+  <rect class="data" x="628" y="268" width="224" height="118" rx="8"/>
+  <text class="label" x="740" y="294">Per committed shader type</text>
+  <text class="small" x="740" y="317">load outputStem.dxil or .spv</text>
+  <text class="small" x="740" y="337">IArdaRHIDevice::CreateShader</text>
+  <text class="small" x="740" y="357">BuildBindingLayoutDescs()</text>
+  <text class="small" x="740" y="377">CreateBindingLayout for each desc</text>
+  <path class="call" d="M740 242 V264"/>
+
+  <rect class="data" x="628" y="414" width="224" height="102" rx="8"/>
+  <text class="label" x="740" y="440">FArdaGlobalShaderInstance</text>
+  <text class="small" x="740" y="463">mType + FArdaRHIShaderRef</text>
+  <text class="small" x="740" y="483">+ binding layout refs</text>
+  <text class="small" x="740" y="503">stored pointer-stable in map</text>
+  <path class="output" d="M740 386 V410"/>
+
+  <rect class="guard" x="352" y="448" width="220" height="68" rx="8"/>
+  <text class="label" x="462" y="473">Failure is transactional</text>
+  <text class="small" x="462" y="494">diagnostic; map stays uninitialized</text>
+  <path class="guardline" d="M628 327 C594 327 602 482 576 482"/>
+
+  <rect class="data" x="48" y="542" width="804" height="32" rx="7"/>
+  <text class="small" x="450" y="563">Find(GetStaticType()) or Find(name) returns the shader/layout instance used to build binding sets and pipeline initializers.</text>
+
+  <rect class="guard" x="24" y="612" width="852" height="82" rx="10"/>
+  <text class="label" x="450" y="636">Nearby invariants</text>
+  <text class="note" x="48" y="659">" Register mappings before backend initialization; committed virtual sources require the directory registry to be frozen.</text>
+  <text class="note" x="48" y="680">" Runtime loads precompiled artifacts; metadata is authored in C++, not recovered from DXIL or SPIR-V reflection.</text>
+
+  <rect class="panel" x="24" y="712" width="852" height="34" rx="7"/>
+  <path class="call" d="M48 729 H94"/><text class="note" x="103" y="733">call / validation input</text>
+  <path class="output" d="M280 729 H326"/><text class="note" x="335" y="733">created data</text>
+  <path class="guardline" d="M450 729 H496"/><text class="note" x="505" y="733">guard / failure</text>
+</svg>

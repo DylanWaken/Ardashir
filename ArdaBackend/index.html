@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A conceptual guide and reading roadmap for the ArdaBackend cross-platform production graphics backend.">
+  <title>ArdaBackend | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a aria-current="page" href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a aria-current="page" href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a>
+        <a href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a>
+        <span aria-hidden="true">/</span>
+        ArdaBackend
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Cross-platform production graphics</p>
+          <h1>ArdaBackend</h1>
+          <p>ArdaBackend is the boundary between renderer intent and a native graphics API. It turns portable descriptions of GPU work into validated <a class="term" data-term="resource" href="../glossary.html#term-resource">resources</a>, pipelines, <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command lists</a>, queue submissions, and presentation on <a class="term" data-term="d3d12" href="../glossary.html#term-d3d12">D3D12</a> or <a class="term" data-term="vulkan" href="../glossary.html#term-vulkan">Vulkan</a>.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#backend-fundamentals">Backend fundamentals</a>
+          <a href="#boundaries">System boundaries</a>
+          <a href="#worked-frame">Worked frame</a>
+          <a href="#roadmap">Reading roadmap</a>
+          <a href="#invariants">Production invariants</a>
+          <a href="#tradeoffs">Tradeoffs</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#summary">Summary</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>explain why a renderer needs a graphics backend in addition to a native API;</li>
+            <li>place ArdaBackend between application policy, rendering algorithms, platform code, and GPU drivers;</li>
+            <li>distinguish a backend, an <a class="term" data-term="rhi" href="../glossary.html#term-rhi">RHI</a>, a render graph, and a renderer;</li>
+            <li>trace one frame from resource descriptions to command execution and presentation;</li>
+            <li>identify the process-wide, device-affine, and GPU-timeline invariants that production code must preserve; and</li>
+            <li>choose an efficient path through the remaining chapters.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites</h2>
+          <p>This guide assumes working knowledge of C++ object <a class="term" data-term="lifetime" href="../glossary.html#term-lifetime">lifetime</a> and basic raster rendering. Review the glossary entries for <a class="term" data-term="device" href="../glossary.html#term-device">device</a>, <a class="term" data-term="queue" href="../glossary.html#term-queue">queue</a>, <a class="term" data-term="descriptor" href="../glossary.html#term-descriptor">descriptor</a>, <a class="term" data-term="shader" href="../glossary.html#term-shader">shader</a>, <a class="term" data-term="pso" href="../glossary.html#term-pso">pipeline state object</a>, and <a class="term" data-term="swap-chain" href="../glossary.html#term-swap-chain">swap chain</a> if those terms are unfamiliar.</p>
+          <p>For a first integration, read this chapter and then <a href="getting-started.html">Getting started</a>. For an engine-level integration, follow with <a href="architecture.html">Architecture</a> before writing resource or threading code.</p>
+        </section>
+
+        <section id="backend-fundamentals">
+          <h2>What a cross-platform graphics backend is</h2>
+          <p>A renderer expresses a picture as algorithms and data: visibility results, material parameters, lights, geometry, post-processing passes, and output targets. A GPU API accepts a different vocabulary: memory-backed objects, descriptor bindings, immutable pipelines, command buffers, queues, barriers, and synchronization primitives. A graphics backend is the translation and governance layer between those vocabularies.</p>
+
+          <h3>Three jobs of a backend</h3>
+          <ol>
+            <li><strong>Normalize representation.</strong> A portable texture description becomes the appropriate native image or resource description. A portable state transition becomes the backend-specific barrier sequence.</li>
+            <li><strong>Preserve semantics.</strong> “Sample this texture after a copy” must remain correct even though D3D12 and Vulkan represent states, ownership, and synchronization differently.</li>
+            <li><strong>Contain variability.</strong> Adapter discovery, validation setup, native handles, queue families, swap-chain construction, and API-specific errors stay below a stable project boundary.</li>
+          </ol>
+
+          <p>The abstraction is not valuable merely because two APIs have different function names. Its real value is that the rest of the engine can rely on one model for <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a>, error handling, <a class="term" data-term="device-affinity" href="../glossary.html#term-device-affinity">device affinity</a>, command ordering, and diagnostics.</p>
+
+          <h3>What ArdaBackend does</h3>
+          <ul>
+            <li>Selects and initializes one process-wide native backend and publishes an opaque <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>.</li>
+            <li>Exposes backend-neutral resource descriptions, object interfaces, capability queries, status values, and intrusive references.</li>
+            <li>Loads authored shader artifacts and constructs binding layouts from C++ parameter metadata.</li>
+            <li>Creates and caches immutable pipeline state.</li>
+            <li>Records explicit graphics, compute, and copy work and submits it to available queues.</li>
+            <li>Bridges platform windows to a backend-owned presentation path without leaking window-system types into the RHI.</li>
+            <li>Routes native validation and backend diagnostics into project-level reporting.</li>
+          </ul>
+
+          <h3>What ArdaBackend does not do</h3>
+          <ul>
+            <li>It does not decide which objects are visible, which lighting model to use, or how to schedule game systems. Those are renderer and engine responsibilities.</li>
+            <li>It does not infer a complete frame graph from commands. ArdaRenderGraph provides logical pass scheduling and transient-resource planning above this layer.</li>
+            <li>It does not compile shader source at runtime. The <a href="shaders.html">shader system</a> resolves registered types to precompiled <code>.dxil</code> or <code>.spv</code> artifacts.</li>
+            <li>It does not erase hardware differences. Callers must query capabilities and queue availability instead of assuming every backend exposes every feature.</li>
+            <li>It does not make arbitrary concurrent access safe. Thread-safety is a contract of each subsystem, not a side effect of abstraction.</li>
+          </ul>
+        </section>
+
+        <section id="boundaries">
+          <h2>System boundaries</h2>
+          <p>A useful boundary answers two questions: “Who is allowed to make this decision?” and “Who owns the resulting object?” ArdaBackend keeps those answers explicit.</p>
+          <figure>
+            <img src="Assets/backend-layer-boundaries.svg" alt="Layer diagram showing engine and renderer policy above ArdaBackend public systems, the opaque RHI, private wrappers, and D3D12 or Vulkan native APIs.">
+            <figcaption>Policy flows downward as portable descriptions and commands. Results, capabilities, status, and diagnostics flow upward. Native types stop at the private boundary.</figcaption>
+          </figure>
+
+          <dl>
+            <dt>Application and engine</dt>
+            <dd>Choose startup policy, own the window adapter, install diagnostics, coordinate threads, and define shutdown order.</dd>
+            <dt>Renderer and render graph</dt>
+            <dd>Choose algorithms, frame resources, pass dependencies, shader permutations, and pipeline descriptions.</dd>
+            <dt>ArdaBackend authored systems</dt>
+            <dd>Resolve shader registrations, build binding layouts, cache pipelines, and provide presentation integration.</dd>
+            <dt>Opaque Arda RHI</dt>
+            <dd>Define portable object interfaces and executable GPU operations while preserving device identity and structured status.</dd>
+            <dt>Private backend implementation</dt>
+            <dd>Select native adapters and queues, translate descriptions, wrap implementation objects, and enforce native lifetime requirements.</dd>
+            <dt>Driver and operating system</dt>
+            <dd>Schedule work on hardware, manage display integration, and report device- or API-level failures.</dd>
+          </dl>
+
+          <aside class="callout">
+            <h3>A boundary, not a lowest common denominator</h3>
+            <p>Portability does not require pretending all GPUs are identical. <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> exposes optional features, while stable RHI types prevent backend checks from spreading through ordinary renderer code.</p>
+          </aside>
+        </section>
+
+        <section id="worked-frame">
+          <h2>Worked example: one frame through the system</h2>
+          <p>Consider a windowed renderer that draws an opaque mesh and presents it.</p>
+          <ol>
+            <li><strong>Startup.</strong> The application configures validation and the selected API, supplies an <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a>, and initializes a device plus swap chain.</li>
+            <li><strong>Acquire.</strong> The swap chain provides a backend-neutral framebuffer. The renderer does not receive an <code>ID3D12Resource*</code> or <code>VkImage</code>.</li>
+            <li><strong>Describe.</strong> The renderer chooses registered vertex and pixel shaders, fixed-function state, vertex format, and framebuffer formats. These values form a portable pipeline description.</li>
+            <li><strong>Resolve.</strong> The pipeline cache validates and normalizes the description, then returns an intrusive pipeline reference. A cache hit avoids native pipeline creation.</li>
+            <li><strong>Bind.</strong> Shader parameter metadata turns C++ fields into binding-set descriptions that retain the required RHI resources.</li>
+            <li><strong>Record.</strong> A command list is opened, resource states are established, pipeline and bindings are set, and a draw is recorded.</li>
+            <li><strong>Submit.</strong> Closing a command list makes it executable; submitting it establishes ordered work on a particular queue. Recording alone does not execute anything.</li>
+            <li><strong>Present.</strong> The swap chain coordinates the native acquire/render/present synchronization and displays the completed image.</li>
+          </ol>
+          <p>The same renderer-facing sequence works on D3D12 and Vulkan because ArdaBackend standardizes the contract, not because the underlying APIs perform identical operations.</p>
+        </section>
+
+        <section id="roadmap">
+          <h2>Reading roadmap</h2>
+          <p>The chapters are organized from lifetime foundations toward increasingly specialized work.</p>
+          <div class="card-grid">
+            <article>
+              <h3>1. <a href="getting-started.html">Getting started</a></h3>
+              <p>Choose a backend, understand adapters/devices/queues, initialize headless or presentation mode, configure validation, and tear down safely.</p>
+            </article>
+            <article>
+              <h3>2. <a href="architecture.html">Architecture</a></h3>
+              <p>Study opaque interfaces, ownership, backend pinning, process state, device affinity, statuses, concurrency domains, and native interop.</p>
+            </article>
+            <article>
+              <h3>3. <a href="rhi.html">RHI resources</a></h3>
+              <p>Learn descriptors, validation, resource creation, capabilities, views, native imports, and retained references.</p>
+            </article>
+            <article>
+              <h3>4. <a href="shaders.html">Shaders</a></h3>
+              <p>Register virtual source paths and shader types, understand authored parameter metadata, and load the device-bound global shader map.</p>
+            </article>
+            <article>
+              <h3>5. <a href="pipelines.html">Pipeline states</a></h3>
+              <p>Derive immutable PSOs, complete framebuffer-dependent formats, control cache retention, and diagnose creation failures.</p>
+            </article>
+            <article>
+              <h3>6. <a href="commands.html">Commands</a></h3>
+              <p>Record state transitions, draws, dispatches, and copies; submit queues; establish cross-queue ordering; and manage completion.</p>
+            </article>
+            <article>
+              <h3>7. <a href="presentation.html">Presentation</a></h3>
+              <p>Bridge native windows, acquire framebuffers, resize safely, submit presentation work, and recover from surface failures.</p>
+            </article>
+            <article>
+              <h3>8. <a href="diagnostics.html">Diagnostics</a></h3>
+              <p>Combine validation messages, status values, logs, cache diagnostics, assertions, and reproducible failure reports.</p>
+            </article>
+          </div>
+
+          <h3>Goal-directed paths</h3>
+          <ul>
+            <li><strong>Compute or offline tool:</strong> Getting started → RHI resources → Commands → Diagnostics.</li>
+            <li><strong>Windowed renderer:</strong> Getting started → Architecture → Shaders → Pipelines → Commands → Presentation.</li>
+            <li><strong>Preparing for render-graph integration:</strong> read Architecture → <a href="rhi.html">RHI resources</a> → <a href="commands.html">Commands</a>. This site currently teaches the Backend boundary that a render graph would target; dedicated RenderGraph coverage is a future documentation module.</li>
+            <li><strong>Production incident:</strong> Diagnostics → the failing subsystem → Architecture failure containment.</li>
+          </ul>
+        </section>
+
+        <section id="invariants">
+          <h2>Production invariants</h2>
+          <p>These rules are more important than memorizing individual method names:</p>
+          <ol>
+            <li><strong>One published backend context per process.</strong> Configure and initialize under application-level lifecycle sequencing.</li>
+            <li><strong>No partial publication.</strong> Shader registration, native device creation, and optional swap-chain creation must all succeed before the live context becomes visible.</li>
+            <li><strong>Device affinity is transitive.</strong> Resources, views, framebuffers, pipelines, caches, and command lists combined in an operation must originate from the same device.</li>
+            <li><strong>CPU lifetime and GPU lifetime differ.</strong> Releasing the last CPU reference is safe only after submitted GPU work no longer needs the object.</li>
+            <li><strong>Capabilities precede optional operations.</strong> Backend selection alone proves neither feature support nor the presence of distinct compute/copy queues.</li>
+            <li><strong>Submission creates execution order.</strong> Command-list recording order is not cross-queue synchronization.</li>
+            <li><strong>Failures are data.</strong> Preserve status codes, messages, selected backend, validation output, and relevant descriptors.</li>
+          </ol>
+        </section>
+
+        <section id="tradeoffs">
+          <h2>Design tradeoffs and alternatives</h2>
+          <h3>Direct native API calls</h3>
+          <p>Direct D3D12 or Vulkan code offers maximum control and immediate access to new extensions. It also duplicates lifecycle, memory, synchronization, diagnostics, and presentation logic across APIs. ArdaBackend accepts a translation cost to centralize those contracts.</p>
+
+          <h3>A third-party RHI exposed directly</h3>
+          <p>Exposing an implementation library can reduce wrapper code. It makes that library's types part of the engine-wide source and ABI contract. ArdaBackend adds an opaque project boundary so the private implementation can change without rewriting renderer-facing code.</p>
+
+          <h3>A single “universal” feature set</h3>
+          <p>A strict lowest-common-denominator API simplifies portability but strands capable hardware. Capability-driven interfaces retain one programming model while allowing guarded use of richer features.</p>
+
+          <h3>One global renderer object</h3>
+          <p>A monolithic object can make startup look simple, but it conflates process state, authored rendering policy, GPU object ownership, presentation, and frame scheduling. ArdaBackend keeps a narrow process facade and returns references to explicit RHI objects.</p>
+        </section>
+
+        <section id="failures">
+          <h2>Failure analysis by boundary</h2>
+          <dl>
+            <dt>Before device creation</dt>
+            <dd>Configuration is unsupported, shader paths collide, registration is invalid, or the requested backend is unavailable. Correct inputs and retry; no live context should have been published.</dd>
+            <dt>During native initialization</dt>
+            <dd>Adapter requirements, native feature levels, validation setup, queue discovery, or device creation failed. Capture <a href="api-reference.html#api-arda-backend-getbackenderror-bd2c5f82"><code>GetBackendError()</code></a> and diagnostic callback output.</dd>
+            <dt>During object creation</dt>
+            <dd>A descriptor is invalid, unsupported, or belongs to the wrong device. Inspect the complete <a href="api-reference.html#api-arda-rhi-fardarhistatus-a19f9625"><code>FArdaRHIStatus</code></a>, not only its Boolean conversion.</dd>
+            <dt>During recording or submission</dt>
+            <dd>The command list is in the wrong state, queue capability is absent, a resource state is incorrect, or cross-queue ordering is missing.</dd>
+            <dt>During presentation</dt>
+            <dd>The window dimensions are invalid, surface creation failed, the swap chain is out of date, or display/device state changed. Consult the <a href="presentation.html">presentation lifecycle</a>.</dd>
+          </dl>
+          <aside class="callout warning">
+            <h3>Do not diagnose portability by backend name</h3>
+            <p>“It fails on Vulkan” is not yet a cause. Record the initialization phase, selected adapter/device, queue capabilities, status code, validation message, and the descriptor or command sequence that crossed the failing boundary.</p>
+          </aside>
+        </section>
+
+        <section id="summary">
+          <h2>Chapter summary</h2>
+          <ul>
+            <li>A graphics backend converts renderer intent into native GPU objects and ordered work while governing ownership, diagnostics, and portability.</li>
+            <li>ArdaBackend owns backend startup, an opaque RHI, authored shader/pipeline systems, command submission, and presentation integration.</li>
+            <li>Rendering policy and frame scheduling remain above the backend; native API and driver details remain below it.</li>
+            <li>Production correctness depends on process lifecycle, device affinity, GPU-aware lifetime, capability checks, and explicit synchronization.</li>
+          </ul>
+
+          <h3>Review and checkpoint questions</h3>
+          <ol>
+            <li>Why is replacing native type names insufficient to create a useful cross-platform backend?</li>
+            <li>Which decisions belong to a renderer, and which belong to ArdaBackend?</li>
+            <li>Why can a copied resource reference remain alive after the process-wide backend slot is cleared?</li>
+            <li>What evidence should accompany a backend-specific failure report?</li>
+            <li>Where should a render graph sit relative to the RHI, and why?</li>
+          </ol>
+
+          <h3>Further reading</h3>
+          <ul>
+            <li><a href="getting-started.html">Getting started: startup and teardown as a transaction</a></li>
+            <li><a href="architecture.html">Architecture: boundaries, ownership, affinity, and threading</a></li>
+            <li><a href="rhi.html">RHI resources: the portable resource boundary</a></li>
+            <li><a href="commands.html">Commands: the execution boundary used by higher-level scheduling</a></li>
+            <li><a href="../glossary.html">Central graphics and engine glossary</a></li>
+          </ul>
+        </section>
+
+        <aside class="callout">
+          <h3>Related API</h3>
+          <p>Use the centralized <a href="api-reference.html">ArdaBackend API reference</a> when you need exact signatures. Natural entry points from this chapter are <a href="api-reference.html#api-arda-backend-fardabackendconfiguration-b6f71e2e"><code>FArdaBackendConfiguration</code></a>, <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>, and <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a>.</p>
+        </aside>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <span></span>
+          <a rel="next" href="getting-started.html">Next: Getting started →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

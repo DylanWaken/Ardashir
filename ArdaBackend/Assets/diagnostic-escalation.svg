@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="700" viewBox="0 0 900 700" role="img" aria-labelledby="diag-title diag-desc">
+  <title id="diag-title">ArdaBackend diagnostic escalation and recovery</title>
+  <desc id="diag-desc">Errors originate in validation, native APIs, NVRHI, or backend policy. Domain status values and NVRHI callbacks feed logs, diagnostic callbacks, assertions, and caller decisions ending in recovery for expected failures or fatal handling for broken invariants.</desc>
+  <defs>
+    <marker id="flow-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
+    <marker id="data-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#34d399"/></marker>
+    <marker id="fatal-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#fb7185"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.source{fill:#312c3f;stroke:#a78bfa;stroke-width:1.6}.status{fill:#20364a;stroke:#38bdf8;stroke-width:1.6}.diag{fill:#214b45;stroke:#34d399;stroke-width:1.6}.guard{fill:#493720;stroke:#fbbf24;stroke-width:1.6}.fatalbox{fill:#4a2430;stroke:#fb7185;stroke-width:1.7}.recover{fill:#1f3656;stroke:#60a5fa;stroke-width:1.6}
+      .title{font:700 25px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 14px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.note{font:12px system-ui,sans-serif;fill:#c5d2e3}.flow{fill:none;stroke:#7dd3fc;stroke-width:2.2;marker-end:url(#flow-arrow)}.dataflow{fill:none;stroke:#34d399;stroke-width:2.2;marker-end:url(#data-arrow)}.fatal{fill:none;stroke:#fb7185;stroke-width:2.2;stroke-dasharray:7 5;marker-end:url(#fatal-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="900" height="700"/>
+  <text class="title" x="32" y="42">Diagnostics: preserve domain context, then choose escalation</text>
+  <text class="sub" x="32" y="68">Expected runtime failures return status; assertions protect violated internal contracts.</text>
+
+  <rect class="panel" x="24" y="94" width="852" height="140" rx="12"/>
+  <text class="label" x="450" y="120">Error origins</text>
+  <rect class="source" x="48" y="142" width="180" height="66" rx="8"/><text class="label" x="138" y="167">Arda validation</text><text class="small" x="138" y="190">argument / state / device</text>
+  <rect class="source" x="256" y="142" width="180" height="66" rx="8"/><text class="label" x="346" y="167">Native API</text><text class="small" x="346" y="190">D3D12, DXGI, Vulkan</text>
+  <rect class="source" x="464" y="142" width="180" height="66" rx="8"/><text class="label" x="554" y="167">NVRHI</text><text class="small" x="554" y="190">severity + message text</text>
+  <rect class="source" x="672" y="142" width="180" height="66" rx="8"/><text class="label" x="762" y="167">Backend domains</text><text class="small" x="762" y="190">init / shader / PSO</text>
+
+  <rect class="status" x="48" y="270" width="364" height="150" rx="10"/>
+  <text class="label" x="230" y="300">Status and result path</text>
+  <text class="small" x="230" y="328">FArdaRHIStatus + EArdaRHIResult</text>
+  <text class="small" x="230" y="352">TArdaRHIResult&lt;T&gt;: value + status</text>
+  <text class="small" x="230" y="376">shader directory / struct / registration /</text>
+  <text class="small" x="230" y="400">global map and pipeline domain diagnostics</text>
+  <path class="flow" d="M138 208 V266"/><path class="flow" d="M346 208 V266"/>
+
+  <rect class="diag" x="488" y="270" width="364" height="150" rx="10"/>
+  <text class="label" x="670" y="300">Callback, log, and assertion path</text>
+  <text class="small" x="670" y="328">FArdaNvrhiMessageCallback translates severity</text>
+  <text class="small" x="670" y="352">&#8594; EArdaDiagnosticSeverity</text>
+  <text class="small" x="670" y="376">&#8594; IArdaDiagnosticCallback::Message()</text>
+  <text class="small" x="670" y="400">ARDA_LOG; ARDA_CHECK / VERIFY / ENSURE</text>
+  <path class="dataflow" d="M554 208 V266"/><path class="dataflow" d="M762 208 V242 H670 V266"/>
+
+  <rect class="guard" x="300" y="454" width="300" height="78" rx="10"/>
+  <text class="label" x="450" y="482">Escalation decision</text>
+  <text class="small" x="450" y="507">expected failure, recoverable issue, or invariant?</text>
+  <path class="flow" d="M230 420 V442 H396 V450"/><path class="dataflow" d="M670 420 V442 H504 V450"/>
+
+  <rect class="recover" x="48" y="564" width="364" height="82" rx="10"/>
+  <text class="label" x="230" y="591">Caller recovery / controlled failure</text>
+  <text class="small" x="230" y="616">inspect status &#8594; add context &#8594; retry, fallback,</text>
+  <text class="small" x="230" y="636">skip work, unwind initialization, or return error</text>
+  <path class="flow" d="M396 532 C360 548 300 548 260 560"/>
+
+  <rect class="fatalbox" x="488" y="564" width="364" height="82" rx="10"/>
+  <text class="label" x="670" y="591">Fatal contract handling</text>
+  <text class="small" x="670" y="616">assert / debugger break / fatal callback</text>
+  <text class="small" x="670" y="636">terminate when continued execution is unsafe</text>
+  <path class="fatal" d="M504 532 C540 548 600 548 640 560"/>
+
+  <rect class="panel" x="24" y="666" width="852" height="26" rx="7"/>
+  <path class="flow" d="M48 679 H88"/><text class="note" x="98" y="684">status/control flow</text>
+  <path class="dataflow" d="M270 679 H310"/><text class="note" x="320" y="684">diagnostic message</text>
+  <path class="fatal" d="M520 679 H560"/><text class="note" x="570" y="684">fatal escalation</text>
+</svg>

@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A systematic guide to ArdaBackend errors, validation, logging, assertions, shader and PSO diagnostics, observability, and production policy.">
+  <title>Diagnostics | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a>
+        <a href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a aria-current="page" href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaBackend</a> /
+        Diagnostics
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Observe, classify, escalate</p>
+          <h1>Diagnostics</h1>
+          <p>Reliable diagnosis starts by preserving the first failure at the layer that understands it, then adding lifecycle, resource, and platform context without confusing recoverable outcomes with violated invariants.</p>
+        </header>
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Objectives and prerequisites</a>
+          <a href="#taxonomy">Layered error taxonomy</a>
+          <a href="#recoverability">Recoverable and invariant failures</a>
+          <a href="#channels">Diagnostic channels</a>
+          <a href="#validation">Native validation</a>
+          <a href="#logging">Structured logging</a>
+          <a href="#assertions">Check, verify, and ensure</a>
+          <a href="#context">Preserving context</a>
+          <a href="#asynchronous">Asynchronous GPU failures</a>
+          <a href="#workflow">Debugging workflow</a>
+          <a href="#injection">Failure injection</a>
+          <a href="#observability">Performance observability</a>
+          <a href="#production">Production policy</a>
+          <a href="#summary">Summary and checkpoints</a>
+          <a href="#further-reading">Further reading</a>
+        </nav>
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>locate a failure in configuration, RHI status, shader setup, shader-map loading, PSO creation, or native validation;</li>
+            <li>choose between ordinary branching, retained diagnostics, logging, ensures, verifies, and fatal checks;</li>
+            <li>retain enough context to reproduce failures without keeping temporary pointers;</li>
+            <li>reason about GPU faults that appear later than the command that caused them;</li>
+            <li>apply a repeatable triage workflow rather than changing several variables at once; and</li>
+            <li>design failure-injection, telemetry, cache-statistics, and production reporting policy.</li>
+          </ul>
+          <h3>Prerequisites</h3>
+          <p>Read <a href="getting-started.html">Getting started</a> for configuration and lifecycle, <a href="shaders.html">Shaders</a> for directory and registration phases, <a href="pipelines.html">Pipeline states</a> for cache behavior, and <a href="commands.html">Commands</a> for queue and marker concepts.</p>
+        </section>
+        <section id="taxonomy">
+          <h2>A layered error taxonomy</h2>
+          <p>A useful taxonomy answers two questions: which layer can explain the failure, and which caller has enough authority to recover? Start at the narrowest failed operation, then escalate outward only when needed.</p>
+          <figure>
+            <img src="Assets/diagnostic-escalation.svg" alt="Diagnostic escalation ladder from configuration and immediate status through shader and PSO diagnostics to validation, native capture, and controlled shutdown.">
+            <figcaption>Escalation adds evidence. It should not discard the original status code, message, object identity, or call sequence.</figcaption>
+          </figure>
+          <h3>1. Configuration and lifecycle</h3>
+          <p><a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a>, initialization, and shutdown operate on process-wide state. Failures include reconfiguration at an invalid time, unavailable runtime or adapter, invalid window bridge, and native device creation failure. Use <a href="api-reference.html#api-arda-backend-getbackenderror-bd2c5f82"><code>GetBackendError()</code></a> immediately after the failed lifecycle call.</p>
+          <p><a href="api-reference.html#api-arda-backend-eardainitializeresult-2bf6fe00"><code>EArdaInitializeResult</code></a> distinguishes success, backend unavailability, and general failure. Preserve that distinction: “try a different supported backend” can be valid for <code>Unavailable</code>, while malformed configuration should be fixed rather than retried.</p>
+          <h3>2. Immediate RHI status and result</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhistatus-a19f9625"><code>FArdaRHIStatus</code></a> reports operations that do not return a resource. <a href="api-reference.html#api-arda-rhi-tardarhiresult-3000786e"><code>TArdaRHIResult&lt;T&gt;</code></a> combines status with a value such as a command list, texture, shader, or pipeline. Test the result before touching <code>mValue</code>; retain both the result code and message.</p>
+          <p>Typical RHI classes are invalid argument, invalid state/order, unsupported capability, wrong-device ownership, native creation failure, and missing resource. These are operation outcomes, not assertion conditions.</p>
+          <h3>3. Shader directories and registration</h3>
+          <p>Shader setup has distinct phases: virtual directory mapping, manifest freeze, type registration, and artifact loading. Directory status explains malformed or duplicate virtual roots, physical path problems, and mutation after the registry is in use. Registration failures should include shader type and virtual source, not just “shader failed.”</p>
+          <p>Check directory configuration before blaming the compiler or native API. A missing virtual-to-physical mapping prevents the system from identifying the intended source long before bytecode creation.</p>
+          <h3>4. Global shader map</h3>
+          <p><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-getdiagnostics-195019a4"><code>FArdaGlobalShaderMap::GetDiagnostics()</code></a> retains typed failures from the most recent initialization. <a href="api-reference.html#api-arda-backend-eardaglobalshadermaperror-8d8515b2"><code>EArdaGlobalShaderMapError</code></a> separates registration, invalid device, missing/empty/unreadable bytecode, shader creation, layout creation, and reset-required cases.</p>
+          <p>Each <a href="api-reference.html#api-arda-backend-fardaglobalshadermapdiagnostic-e1b497c4"><code>FArdaGlobalShaderMapDiagnostic</code></a> can preserve shader type, artifact path, virtual source, physical source, and human-readable message. Export all of those fields while reproducing build/deployment mismatches.</p>
+          <h3>5. Pipeline state creation</h3>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-getdiagnostics-f56c2938"><code>FArdaPipelineStateCache::GetDiagnostics()</code></a> returns retained creation failures. A <a href="api-reference.html#api-arda-backend-fardapipelinestatediagnostic-b43853a8"><code>FArdaPipelineStateDiagnostic</code></a> records compute/graphics kind, RHI code, normalized descriptor hash, debug name, and message.</p>
+          <p>Use the descriptor hash to correlate repeated failures and the debug name to identify authored intent. Neither substitutes for logging the framebuffer format, sample count, shader identities, and requesting device when those values determine compatibility.</p>
+          <h3>6. Native validation and device failure</h3>
+          <p>The deepest layer includes D3D12 debug-layer messages, Vulkan validation messages, failed HRESULT or VkResult values, and device-removal or loss information. These often identify synchronization, descriptor, lifetime, or state violations invisible to a backend-neutral status.</p>
+        </section>
+        <section id="recoverability">
+          <h2>Recoverable outcomes versus violated invariants</h2>
+          <p>A failure is recoverable when the caller can choose a documented alternative without corrupting state. An invariant failure means the program has already violated a contract that correct code must maintain.</p>
+          <dl>
+            <dt>Recoverable or expected</dt>
+            <dd>Unsupported optional capability, missing deployment artifact, out-of-date presentation surface, unavailable backend, invalid user-supplied descriptor, cache creation failure, and ordinary I/O failure.</dd>
+            <dt>Programmer invariant</dt>
+            <dd>Using a command list in an impossible lifecycle phase, executing a failed render graph, combining objects from different devices after validation was required, or continuing after internal state corruption.</dd>
+            <dt>Environment-fatal</dt>
+            <dd>Device loss or native runtime failure may make the current rendering session unrecoverable without implying a source-code invariant. Classify it separately so crash policy and telemetry remain accurate.</dd>
+          </dl>
+          <p>Use statuses and branch logic for expected failures. Use an ensure to report a suspicious but containable condition. Use a check only when continuing would make behavior misleading or unsafe. Do not turn malformed external input into a process abort merely because it is inconvenient to handle.</p>
+        </section>
+        <section id="channels">
+          <h2>Diagnostic channels and their roles</h2>
+          <dl>
+            <dt>Status/result</dt>
+            <dd>Synchronous control flow for one operation. It is the first and most precise evidence.</dd>
+            <dt>Backend error string</dt>
+            <dd>Latest process-facade initialization or configuration context. Read it promptly; do not treat it as a historical log.</dd>
+            <dt>Swap-chain error</dt>
+            <dd>Latest error scoped to one <code>IArdaSwapChain</code>, especially acquire, resize, and present.</dd>
+            <dt>Retained subsystem diagnostics</dt>
+            <dd>Shader-map and PSO records with domain-specific fields useful after a compound operation returns.</dd>
+            <dt><a href="api-reference.html#api-arda-backend-iardadiagnosticcallback-f00c8ba0"><code>IArdaDiagnosticCallback</code></a></dt>
+            <dd>Backend and native validation messages with Info, Warning, Error, or Fatal severity.</dd>
+            <dt>Structured log output</dt>
+            <dd>Process-wide category, verbosity, text, source file, line, and function delivered synchronously.</dd>
+            <dt>Assertions</dt>
+            <dd>Development-time invariant enforcement and recoverable anomaly reporting.</dd>
+            <dt>GPU markers and native captures</dt>
+            <dd>Asynchronous execution context visible in RenderDoc, PIX, validation, or vendor tools.</dd>
+          </dl>
+          <aside class="callout">
+            <h3>Channels complement one another</h3>
+            <p>A validation message explains the native rule; the RHI status identifies the failed operation; a debug name identifies the authored object; a marker identifies the executing frame. Preserve all four when available.</p>
+          </aside>
+        </section>
+        <section id="validation">
+          <h2>Validation layers and callbacks</h2>
+          <p><a href="api-reference.html#api-arda-backend-fardabackendconfiguration-mbenablevalidation-2f50a50d"><code>FArdaBackendConfiguration::mbEnableValidation</code></a> defaults to true. Enable validation during development, automated graphics tests, and pre-release qualification. Validation changes timing and consumes CPU/memory, so profile performance separately with it disabled.</p>
+          <pre><code>class FBackendMessages final
+    : public arda::backend::IArdaDiagnosticCallback
+{
+public:
+    void Message(EArdaDiagnosticSeverity severity,
+                 const char* text) override
+    {
+        // Copy now; the source does not promise retained storage.
+        queue.Push({severity, text ? text : "", CurrentFrameId()});
+    }
+
+    ConcurrentDiagnosticQueue queue;
+};
+
+FBackendMessages messages;
+FArdaBackendConfiguration config;
+config.mbEnableValidation = true;
+config.mMessageCallback = &amp;messages;
+if (!ConfigureBackend(config))
+    return Report(GetBackendError());
+// messages remains alive until after ShutdownBackend().</code></pre>
+          <p>The configuration is copied, but <a href="api-reference.html#api-arda-backend-fardabackendconfiguration-mmessagecallback-2ecd5edd"><code>mMessageCallback</code></a> remains caller-owned. Keep it alive for every backend use that can report through it. Copy message text during the callback, avoid throwing, and make the handler safe for the threads on which native validation can call it.</p>
+          <h3>D3D12-specific validation</h3>
+          <p>Use the D3D12 debug layer to catch resource-state, descriptor-heap, command-list, fence, and lifetime misuse. For GPU-based validation or device-removed diagnosis, expect much higher overhead and altered timing. Pair Arda debug names and command markers with PIX or DRED evidence where available.</p>
+          <h3>Vulkan-specific validation</h3>
+          <p>Install the required validation layer and debug callback through the backend configuration path. Vulkan validation is especially valuable for object lifetime, image layouts, access masks, queue ownership, descriptor validity, and semaphore ordering. Availability depends on the installed runtime/layers; production systems may not provide them.</p>
+          <p>A clean run on one API is not proof of correctness on the other. D3D12 and Vulkan expose different implicit behavior, validation coverage, and timing.</p>
+        </section>
+        <section id="logging">
+          <h2>Structured logging and verbosity</h2>
+          <p><a href="api-reference.html#api-arda-backend-fardalogrecord-955eb9fb"><code>FArdaLogRecord</code></a> carries category, <a href="api-reference.html#api-arda-backend-eardalogverbosity-1a13fc75"><code>EArdaLogVerbosity</code></a>, formatted message, source file, line, and function. Categories provide runtime minimum verbosity using an atomic threshold.</p>
+          <pre><code>ARDA_DEFINE_LOG_CATEGORY(LogRenderer, Log);
+
+void Output(const FArdaLogRecord&amp; record, void* context) noexcept
+{
+    auto&amp; sink = *static_cast&lt;OwnedSink*&gt;(context);
+    sink.CopyAndEnqueue(
+        record.mCategory,
+        record.mVerbosity,
+        record.mMessage,
+        record.mFile,
+        record.mLine,
+        record.mFunction);
+}
+
+SetLogOutput(&amp;Output, &amp;sink);
+ARDA_LOG(LogRenderer, Display,
+         "backend=%s frame=%llu renderer initialized",
+         ToString(gCurrentBackend), frameId);
+// Before sink destruction:
+ResetLogOutput();</code></pre>
+          <p><a href="api-reference.html#api-arda-backend-setlogoutput-9ba3244d"><code>SetLogOutput()</code></a> installs a process-wide synchronous callback. It may receive recursive logging and must not throw. All text pointers in the record are valid only during the callback. Copy fields before queueing them to another thread.</p>
+          <h3>Verbosity policy</h3>
+          <ul>
+            <li><code>VeryVerbose</code>: high-volume per-resource or per-command details used briefly.</li>
+            <li><code>Verbose</code>: frame and cache decisions useful during focused investigation.</li>
+            <li><code>Log</code>: normal subsystem lifecycle and durable diagnostic milestones.</li>
+            <li><code>Display</code>: operator-visible state changes and important startup information.</li>
+            <li><code>Warning</code>: degraded behavior or suspicious recoverable conditions.</li>
+            <li><code>Error</code>: failed operations requiring caller action.</li>
+            <li><code>Fatal</code>: terminal invariant reporting before termination.</li>
+            <li><code>Off</code>: category suppression.</li>
+          </ul>
+          <p>Do not log every successful draw or cache hit at production verbosity. Prefer counters for high-frequency events and reserve records for transitions, sampled anomalies, and context-rich failures.</p>
+        </section>
+        <section id="assertions">
+          <h2>Check, verify, and ensure semantics</h2>
+          <h3>Fatal checks</h3>
+          <p><a href="api-reference.html#api-arda-check-77a5e0a7"><code>ARDA_CHECK(condition)</code></a> and <a href="api-reference.html#api-arda-checkf-a5eb2496"><code>ARDA_CHECKF</code></a> report and terminate when checks are enabled. In builds where checks are disabled, the condition is not evaluated; only <code>sizeof(condition)</code> is formed. Use checks for side-effect-free invariants.</p>
+          <h3>Verify</h3>
+          <p><a href="api-reference.html#api-arda-verify-0254c2ad"><code>ARDA_VERIFY(condition)</code></a> and <code>ARDA_VERIFYF</code> always evaluate the condition. Failure is fatal when checks are enabled; with checks disabled they return the expression’s truth value without fatal reporting. Use verify only when evaluation must happen and failure still represents a development invariant.</p>
+          <h3>Ensure</h3>
+          <p><a href="api-reference.html#api-arda-ensure-3b66ed2c"><code>ARDA_ENSURE(condition)</code></a> and <code>ARDA_ENSURE_MSGF</code> always evaluate, report failure, and return false without terminating by default. <a href="api-reference.html#api-arda-backend-eardaensurebehavior-32097409"><code>EArdaEnsureBehavior</code></a> selects Log or Break through <a href="api-reference.html#api-arda-backend-setensurebehavior-24edbce1"><code>SetEnsureBehavior()</code></a>.</p>
+          <h3>Unconditional programmer error</h3>
+          <p><a href="api-reference.html#api-arda-check-msg-604bfcf7"><code>ARDA_CHECK_MSG</code></a> is an unconditional formatted fatal check. Use it for unreachable internal branches, not for user input or unavailable hardware.</p>
+          <aside class="callout warning">
+            <h3>Never hide required work in a check</h3>
+            <p><code>ARDA_CHECK(InitializeThing())</code> may skip initialization in release builds. Write the call separately and handle its status, or use verify only when its exact cross-build semantics are intended.</p>
+          </aside>
+          <h3>Decision guide</h3>
+          <ul>
+            <li>Can the caller recover? Return status.</li>
+            <li>Should execution continue while reporting an anomaly? Ensure and branch on false.</li>
+            <li>Must the expression run in every build and represent an invariant? Verify.</li>
+            <li>Would continued execution violate internal correctness? Check.</li>
+          </ul>
+        </section>
+        <section id="context">
+          <h2>Preserving diagnostic context</h2>
+          <p>A bare “creation failed” message is rarely actionable. Capture the smallest stable context that reconstructs intent without serializing sensitive or enormous state.</p>
+          <ul>
+            <li>backend type, adapter/device identity, validation state, and build identifier;</li>
+            <li>frame number, command queue, queue instance, and command-list debug name;</li>
+            <li>resource or pipeline debug name, descriptor hash, dimensions, format, samples, and state;</li>
+            <li>shader type, virtual source, physical source, artifact path, extension, and content/build identifier;</li>
+            <li>immediate RHI code/message and nearby native validation messages;</li>
+            <li>lifecycle phase, operation sequence, and whether resize or shutdown was active.</li>
+          </ul>
+          <p>Copy temporary callback strings. Snapshot retained diagnostic vectors before resetting their owners. Preserve the first failure as primary; secondary cleanup failures belong in a causal chain rather than replacing it.</p>
+          <h3>Debug names are evidence, not identity</h3>
+          <p>Names make logs and captures readable, while descriptor hashes correlate semantically identical PSO requests. Names can be missing or duplicated, and hashes can collide in principle. Use them together with typed fields and call context.</p>
+        </section>
+        <section id="asynchronous">
+          <h2>The challenge of asynchronous GPU failure</h2>
+          <p>CPU API calls usually enqueue work; the GPU executes later. A bad descriptor written in frame N may be consumed in frame N+1, and device loss may surface at submission, wait, present, or an unrelated allocation. The reporting call is often the detection point, not the root cause.</p>
+          <h3>Reduce the search interval</h3>
+          <ul>
+            <li>Add <code>BeginMarker(name)</code>/<code>EndMarker()</code> around passes and major phases.</li>
+            <li>Assign stable debug names before native object creation.</li>
+            <li>Record queue instance numbers and CPU frame identifiers.</li>
+            <li>Temporarily reduce frames in flight or insert targeted waits in a diagnostic build.</li>
+            <li>Bisect command recording by disabling passes, not by randomly changing synchronization.</li>
+            <li>Capture the first validation error; later cascades often describe consequences.</li>
+          </ul>
+          <p>Targeted serialization can localize a fault but is not a fix. Remove diagnostic waits and restore the original schedule after identifying the violated lifetime or synchronization rule.</p>
+        </section>
+        <section id="workflow">
+          <h2>A systematic debugging workflow</h2>
+          <ol>
+            <li><strong>Freeze evidence.</strong> Save the first status, message, validation output, frame/queue identity, and current configuration.</li>
+            <li><strong>Locate the layer.</strong> Decide whether failure began in configuration, directories, registration, map loading, descriptor validation, PSO creation, submission, or native execution.</li>
+            <li><strong>Classify recoverability.</strong> Separate expected unsupported/input errors from invariant violations and device-session failure.</li>
+            <li><strong>Reproduce minimally.</strong> Fix backend, adapter, scene, resolution, shader artifacts, and validation setting. Remove unrelated workloads.</li>
+            <li><strong>Validate preconditions.</strong> Check lifecycle phase, non-null objects, same-device ownership, capabilities, command-list state, formats, and resource states.</li>
+            <li><strong>Read retained diagnostics.</strong> Export shader-map and PSO records before reset or teardown.</li>
+            <li><strong>Correlate native evidence.</strong> Match validation object names and markers to Arda logs and descriptor hashes.</li>
+            <li><strong>Bisect one dimension.</strong> Disable half the passes, replace one shader, or isolate one queue edge; do not change backend and content simultaneously.</li>
+            <li><strong>Prove the cause.</strong> Create a test that fails before the correction and passes afterward, including validation output when practical.</li>
+            <li><strong>Restore production conditions.</strong> Remove diagnostic serialization, restore concurrency, and rerun on both backends.</li>
+          </ol>
+          <h3>Worked flow: PSO creation failure</h3>
+          <pre><code>FArdaRHIGraphicsPipelineRef pipeline;
+const FArdaRHIStatus status =
+    cache.GetOrCreateGraphics(initializer, framebuffer, pipeline);
+if (!status)
+{
+    ARDA_LOG(LogRenderer, Error,
+             "PSO request failed code=%u message=%s",
+             unsigned(status.mCode), status.mMessage.c_str());
+
+    for (const auto&amp; diagnostic : cache.GetDiagnostics())
+        ExportPipelineDiagnostic(diagnostic);
+    return false;
+}</code></pre>
+          <p>Then compare the framebuffer’s color/depth formats and sample count with the initializer, verify shader stages and layouts belong to the cache device, search native validation by debug name, and use the descriptor hash to determine whether many callers share one malformed initializer.</p>
+          <h3>Worked flow: shader artifact missing</h3>
+          <ol>
+            <li>Inspect the map diagnostic code for <code>BytecodeMissing</code>, not just the final false return.</li>
+            <li>Record shader type, virtual/physical source, expected artifact path, and backend extension.</li>
+            <li>Confirm the deployment contains <code>.dxil</code> for D3D12 or <code>.spv</code> for Vulkan as selected by the backend.</li>
+            <li>Verify directory mapping and registration were finalized before map initialization.</li>
+            <li>Fix build/deployment generation; do not silently substitute another backend’s artifact.</li>
+          </ol>
+        </section>
+        <section id="injection">
+          <h2>Failure injection and diagnostic testing</h2>
+          <p>Diagnostics that are never tested tend to deadlock, omit fields, or fail during shutdown. Inject failures at boundaries where behavior is deterministic and does not depend on physically damaging a GPU session.</p>
+          <ul>
+            <li>select an unavailable backend/runtime in a controlled environment;</li>
+            <li>provide duplicate or invalid virtual shader directories;</li>
+            <li>remove, empty, truncate, or deny access to a compiled shader artifact;</li>
+            <li>initialize a shader map with the wrong device or without the required reset;</li>
+            <li>submit descriptors with invalid formats, dimensions, samples, or cross-device resources;</li>
+            <li>force PSO creation failure and set a small diagnostic retention limit;</li>
+            <li>make log callbacks recurse once to verify the sink does not deadlock;</li>
+            <li>exercise callback installation, reset, and owner destruction order;</li>
+            <li>resize/minimize presentation repeatedly while validation is enabled;</li>
+            <li>run assertion unit tests under both check-enabled and check-disabled configurations.</li>
+          </ul>
+          <h3>What to assert in tests</h3>
+          <p>Verify typed code, stable contextual fields, output value state, retention bounds, callback lifetime behavior, and whether recovery leaves the subsystem reusable. Avoid exact matching of an entire native driver message; match Arda’s stable classification and essential identifiers.</p>
+          <aside class="callout warning">
+            <h3>Do not inject undefined behavior</h3>
+            <p>Deliberately using freed native handles or racing destruction can crash outside the harness. Prefer backend mocks, invalid descriptors rejected before native calls, and vendor-supported device-loss tests.</p>
+          </aside>
+        </section>
+        <section id="observability">
+          <h2>Performance observability and cache statistics</h2>
+          <p>Performance problems are failures of budget rather than correctness, but they need the same contextual discipline. Use counters for high-frequency behavior and logs for transitions or threshold breaches.</p>
+          <h3>PSO cache statistics</h3>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-getstats-1f8e93c5"><code>FArdaPipelineStateCache::GetStats()</code></a> returns hits, misses, waits for in-flight creation, create failures, in-flight count, and retained compute/graphics entry counts. Interpret them as trends:</p>
+          <ul>
+            <li>high hits with stable occupancy indicate effective reuse;</li>
+            <li>persistent misses suggest unstable keys, insufficient precaching, or working-set churn;</li>
+            <li>waits reveal concurrent demand for the same not-yet-created pipeline;</li>
+            <li>create failures must be correlated with retained diagnostics;</li>
+            <li>occupancy near configured limits plus misses can indicate eviction churn.</li>
+          </ul>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecacheconfiguration-mmaxdiagnostics-9b16fc00"><code>mMaxDiagnostics</code></a> bounds retained PSO failures. A bounded history protects memory but can discard early evidence during a failure storm. Export promptly and rate-limit repeated reports by descriptor hash.</p>
+          <h3>Descriptor cache and GPU timing</h3>
+          <p><a href="api-reference.html#api-arda-rhi-iardarhidevice-getdescriptorcachestats-ce4916c3"><code>GetDescriptorCacheStats()</code></a> exposes lower-level descriptor-cache behavior. Timer queries measure GPU intervals; event queries and queue instances establish completion; markers label captures. Keep CPU wall-clock, queue delay, and GPU execution time distinct.</p>
+          <h3>Sampling policy</h3>
+          <p>Snapshot counters at coarse intervals or scene transitions. Export deltas, cache capacity, backend, build, and workload label. Per-frame telemetry should be aggregated to avoid turning observation into the bottleneck being measured.</p>
+        </section>
+        <section id="production">
+          <h2>Production diagnostic policy</h2>
+          <ul>
+            <li>Keep status handling, error codes, and essential logs enabled in every build.</li>
+            <li>Compile fatal checks according to product policy, but never depend on a check’s expression for required work.</li>
+            <li>Use ensure logging sparingly and rate-limit repeated frame-level anomalies.</li>
+            <li>Default native validation off in shipping performance builds unless a support mode explicitly enables available layers.</li>
+            <li>Copy callback data into a bounded, nonthrowing queue; define overflow and shutdown behavior.</li>
+            <li>Scrub user paths, source content, and hardware identifiers according to privacy policy before upload.</li>
+            <li>Attach build ID, backend, adapter/driver, OS, configuration, and recent marker trail to crash reports.</li>
+            <li>Stop new GPU submissions after terminal device/session failure; preserve evidence before orderly release.</li>
+            <li>Test diagnostics under low memory, missing files, recursive logs, and shutdown races.</li>
+          </ul>
+          <h3>Escalation policy</h3>
+          <p>Retry only documented transient conditions. Degrade optional features when a capability is absent. Abort the rendering session for device loss or unrecoverable native state. Terminate the process for confirmed internal invariants when continued execution would corrupt evidence or state.</p>
+          <h3>When diagnostics fail</h3>
+          <dl>
+            <dt>Callback owner dies early</dt>
+            <dd>The backend stores a caller-owned pointer. Keep it alive through shutdown and uninstall process-wide outputs before destroying their context.</dd>
+            <dt>Log sink deadlocks</dt>
+            <dd>Callbacks are synchronous and can recurse. Avoid non-reentrant locks and backend calls from the sink.</dd>
+            <dt>Text becomes garbage</dt>
+            <dd>Record fields are borrowed for callback duration. Deep-copy before asynchronous processing.</dd>
+            <dt>Early PSO evidence disappears</dt>
+            <dd>The diagnostic history is bounded. Export on first failure and deduplicate externally.</dd>
+            <dt>Validation changes the symptom</dt>
+            <dd>Timing-sensitive races can move. Reproduce with and without validation, then use targeted synchronization to isolate the lifetime error.</dd>
+          </dl>
+        </section>
+        <section id="summary">
+          <h2>Summary</h2>
+          <p>Arda’s diagnostic system is layered: immediate status drives control flow; retained shader and PSO records preserve domain context; callbacks and structured logs report backend and native evidence; assertions enforce invariants; markers and captures connect asynchronous GPU execution to authored work. Good triage preserves the first failure and escalates without losing it.</p>
+          <h3>Checkpoints</h3>
+          <ol>
+            <li>Why is <code>GetBackendError()</code> not a substitute for an RHI status?</li>
+            <li>Which shader-map fields distinguish deployment failure from registration failure?</li>
+            <li>When should an ensure be preferred to a check?</li>
+            <li>Why can the API call reporting device loss be innocent?</li>
+            <li>How do PSO descriptor hashes, debug names, and validation messages complement one another?</li>
+            <li>What changes when <code>ARDA_CHECK_ENABLED</code> is zero?</li>
+            <li>Which metrics indicate cache churn rather than ordinary warm-up?</li>
+          </ol>
+        </section>
+        <section id="further-reading">
+          <h2>Further reading</h2>
+          <ul>
+            <li><a href="getting-started.html">Getting started</a> — backend configuration and initialization outcomes.</li>
+            <li><a href="shaders.html">Shaders</a> — directory mapping, registration, artifacts, and shader-map diagnostics.</li>
+            <li><a href="pipelines.html">Pipeline states</a> — PSO validation, cache keys, retention, and statistics.</li>
+            <li><a href="commands.html">Commands</a> — command lifecycle, queue instances, queries, and markers.</li>
+            <li><a href="presentation.html">Presentation</a> — acquire/present errors, resize, and synchronization.</li>
+            <li><a href="api-reference.html#api-arda-backend-fardalogrecord-955eb9fb"><code>FArdaLogRecord</code> reference</a> — exact structured-log fields and lifetime contract.</li>
+          </ul>
+        </section>
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="presentation.html">← Previous: Presentation</a>
+          <a rel="next" href="api-reference.html">Next: API reference →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer">
+    <p>ArdaBackend documentation · <a href="api-reference.html">Central API reference</a></p>
+  </footer>
+</body>
+</html>

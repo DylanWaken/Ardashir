@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A source-backed first ArdaRenderGraph integration from context and pass declaration through submission and cleanup.">
+  <title>Getting started | ArdaRenderGraph | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaRenderGraph</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a aria-current="page" href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
+      <h2>ArdaRenderGraph</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a aria-current="page" href="getting-started.html">Getting started</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="resources.html">Resources</a>
+        <a href="passes.html">Passes</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="debugging.html">Debugging</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaRenderGraph</a> /
+        Getting started
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">One faithful graph, end to end</p>
+          <h1>Getting started</h1>
+          <p>A first integration follows one disciplined sequence: initialize ArdaBackend, derive an ARDG context, construct one builder, declare logical resources and immutable pass parameters, register passes, make outputs observable, compile or execute once, synchronize where required, and release graph-dependent objects before backend shutdown.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#mental-model">Mental model</a>
+          <a href="#include-context">Include and context</a>
+          <a href="#builder">Builder and ownership</a>
+          <a href="#parameters">Parameters and resources</a>
+          <a href="#passes">Pass registration</a>
+          <a href="#outputs">Extraction and presentation</a>
+          <a href="#worked-example">Worked example</a>
+          <a href="#compile-execute">Compile and execute</a>
+          <a href="#cleanup">Cleanup</a>
+          <a href="#performance">Threading and performance</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#checklist">Production checklist</a>
+          <a href="#summary">Summary</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>include the aggregate public header and derive graph execution context from a live backend context;</li>
+            <li>explain which objects the builder owns and which objects remain caller- or backend-owned;</li>
+            <li>declare resource access through generated standard-layout parameter metadata;</li>
+            <li>create graph-owned logical resources and register external physical resources with truthful initial states;</li>
+            <li>register a callback that obtains declared physical resources through the pass execution context;</li>
+            <li>choose extraction for a retained result or external import/final state for presentation;</li>
+            <li>compile explicitly for inspection or rely on compile-on-demand during one execution;</li>
+            <li>separate CPU submission success from GPU completion; and</li>
+            <li>tear down graph, extracted, presentation, and backend objects in safe order.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites</h2>
+          <p>Read the <a href="index.html">overview</a> and complete ArdaBackend <a href="../ArdaBackend/getting-started.html">initialization</a>. You need a valid <code>backend::FArdaDeviceContext</code> whose device remains alive through graph execution. Review <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a>, <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command lists</a>, <a class="term" data-term="queue" href="../glossary.html#term-queue">queues</a>, <a class="term" data-term="resource-state" href="../glossary.html#term-resource-state">resource states</a>, and <a class="term" data-term="extraction" href="../glossary.html#term-extraction">extraction</a>.</p>
+          <p>At build time, link the <code>ArdaRenderGraph</code> target and its ArdaBackend dependency. The public include directory is <code>Source/ArdaRenderGraph/Public</code>; consumers normally include the aggregate header rather than private compiler or executor headers.</p>
+        </section>
+
+        <section id="mental-model">
+          <h2>Mental model: describe, lower, submit</h2>
+          <p>Treat the builder as a short-lived compiler object for one GPU workload:</p>
+          <ol>
+            <li><strong>Describe.</strong> Logical resources and frozen parameters form an intermediate representation. A logical resource is a name and descriptor plus graph history, not necessarily a physical allocation.</li>
+            <li><strong>Lower.</strong> Compilation turns declarations into a live pass sequence, inclusive resource intervals, per-pass transitions, pipeline choices, cross-queue dependencies, and raster-group metadata.</li>
+            <li><strong>Submit.</strong> Execution materializes physical backing, rebuilds state against actual physical identities, records command lists, inserts waits, submits, and publishes retained outputs.</li>
+          </ol>
+          <p>This separation is the transferable compiler idea behind render graphs: author semantic intent in a high-level representation, validate it while the whole program is visible, then lower it to a target execution model.</p>
+        </section>
+
+        <section id="include-context">
+          <h2>Step 1: include the public surface and derive context</h2>
+          <p><code>Source/ArdaRenderGraph/Public/ArdaRenderGraph.h</code> aggregates definitions, resources, parameters, passes, blackboard, builder, and the bridge from ArdaBackend. Its <a href="api-reference.html#api-arda-rdg-makerendergraphcontext-ddc93cbb"><code>MakeRenderGraphContext()</code></a> helper copies the retained device reference and the backend's actual graphics, compute, and copy queue capabilities.</p>
+
+          <pre><code>#include "ArdaBackend.h"
+#include "ArdaRenderGraph.h"
+
+using namespace arda;
+
+const backend::FArdaDeviceContext&amp; deviceContext =
+    backend::GetDeviceContext();
+
+render_graph::FARDGRenderGraphContext graphContext =
+    render_graph::MakeRenderGraphContext(deviceContext);</code></pre>
+
+          <p>The resulting <a href="api-reference.html#api-arda-rdg-fardgrendergraphcontext-0e7e7f3f"><code>FARDGRenderGraphContext</code></a> retains the RHI device. It also stores queue capabilities and optional debug behavior. Do not hard-code compute or copy support: the compiler uses these bits to decide whether eligible passes remain on a specialized queue or fall back to graphics.</p>
+
+          <aside class="callout warning">
+            <h3>Graphics capability is mandatory</h3>
+            <p>The builder constructor performs a fatal check if the graph context lacks graphics capability. Prologue, epilogue, fallback, uniform upload, and ordinary graphics work rely on that baseline.</p>
+          </aside>
+        </section>
+
+        <section id="builder">
+          <h2>Step 2: create one builder and assign ownership</h2>
+          <p>Construct <a href="api-reference.html#api-arda-rdg-fardgbuilder-e0fc26d2"><code>FARDGBuilder</code></a> after all long-lived objects captured by pass callbacks exist. The builder is non-copyable and non-movable because its private arena, registries, stable pointers, mutex, and execution state have one identity.</p>
+
+          <pre><code>render_graph::FARDGBuilder graph(graphContext);</code></pre>
+
+          <dl>
+            <dt>Builder-owned</dt>
+            <dd>Logical records, copied or allocated parameters, pass callbacks, compile products, physical references bound during execution, extraction declarations, and blackboard values.</dd>
+            <dt>Caller-owned</dt>
+            <dd>The builder itself, output reference variables supplied for extraction, objects captured by reference in callbacks, and external presentation or imported-resource policy.</dd>
+            <dt>Retained but externally created</dt>
+            <dd>The RHI device in the graph context and RHI references passed to external registration. Retention keeps objects alive but does not transfer conceptual ownership.</dd>
+            <dt>GPU-effective lifetime</dt>
+            <dd>Submitted work may continue after <code>Execute()</code> returns. Command submission retains required resources under the RHI contract, but CPU-visible reuse and external destruction still require explicit completion reasoning.</dd>
+          </dl>
+
+          <p>Keep the builder on one setup thread. Current public mutation methods do not promise concurrent graph construction. Parallelism occurs later during command-list recording, where each eligible pass owns a distinct command list and the execution context guards physical access.</p>
+        </section>
+
+        <section id="parameters">
+          <h2>Step 3: declare parameters and logical resources</h2>
+
+          <h3>Parameter structs are executable contracts</h3>
+          <p><a href="api-reference.html#api-arda-rdg-ardg-begin-parameter-struct-8584afa8"><code>ARDG_BEGIN_PARAMETER_STRUCT</code></a> and <a href="api-reference.html#api-arda-rdg-ardg-end-parameter-struct-2f93ccdd"><code>ARDG_END_PARAMETER_STRUCT</code></a> generate a standard-layout C++ type plus immutable metadata. Resource macros contribute member offset, size, alignment, element count, semantic type, and default state. At pass registration, ARDG recursively visits leaves in declaration order to derive accesses and edges.</p>
+
+          <pre><code>ARDG_BEGIN_PARAMETER_STRUCT(FClearParameters)
+    ARDG_BUFFER_ACCESS(mOutput)
+ARDG_END_PARAMETER_STRUCT()</code></pre>
+
+          <p><a href="api-reference.html#api-arda-rdg-ardg-buffer-access-ea7e7a74"><code>ARDG_BUFFER_ACCESS</code></a> uses <a href="api-reference.html#api-arda-rdg-fardgbufferaccess-919444b2"><code>FARDGBufferAccess</code></a>, so setup supplies both the logical buffer and its required state. Direct access is appropriate when the pass operates on the parent buffer and does not need a logical SRV or UAV descriptor.</p>
+
+          <h3>Create a graph-owned logical resource</h3>
+          <pre><code>rhi::FArdaRHIBufferDesc outputDesc;
+outputDesc.mDebugName = "GettingStarted.Output";
+outputDesc.mByteSize = 1024;
+outputDesc.mStructureStride = sizeof(uint32_t);
+outputDesc.mUsage =
+    rhi::EArdaRHIBufferUsage::Structured |
+    rhi::EArdaRHIBufferUsage::UnorderedAccess;
+
+render_graph::FARDGBufferRef output =
+    graph.CreateBuffer(outputDesc);</code></pre>
+
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-createbuffer-3391cbe2"><code>CreateBuffer()</code></a> validates a non-empty name and nonzero size, appends a logical record to the buffer registry, and returns a raw graph-owned pointer. The default resource flag is transient. The call does not create an RHI buffer; materialization happens only for live resources during execution.</p>
+
+          <h3>Allocate stable parameter storage</h3>
+          <pre><code>FClearParameters* parameters =
+    graph.AllocateParameters&lt;FClearParameters&gt;();
+parameters-&gt;mOutput.mBuffer = output;
+parameters-&gt;mOutput.mState =
+    rhi::EArdaRHIResourceState::UnorderedAccess;</code></pre>
+
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-allocateparameters-de82be20"><code>AllocateParameters()</code></a> constructs the object in graph arena storage and registers a destructor when needed. Passing a stack parameter object to <code>AddPass</code> is also supported. The private <code>FreezeParameters</code> implementation helper is invoked automatically by <code>AddPass</code> and <code>CreateUniformBuffer</code> to copy caller-owned parameters into immutable arena storage when needed; it is never a user-callable step. Later mutations to the original stack object do not change the pass.</p>
+        </section>
+
+        <section id="passes">
+          <h2>Step 4: register the pass</h2>
+          <p>Register producers before consumers. <a href="api-reference.html#api-arda-rdg-fardgbuilder-addpass-eb5f83be"><code>AddPass()</code></a> appends the pass first, then visits the frozen parameters. That stable, later handle allows resource history to point from existing producers and readers toward the new pass.</p>
+
+          <pre><code>graph.AddPass(
+    "ClearOutput",
+    parameters,
+    render_graph::EARDGPassFlags::Compute,
+    [](render_graph::FARDGPassExecutionContext&amp; context,
+       const FClearParameters&amp; frozen)
+    {
+        rhi::IArdaRHIBuffer* physical =
+            context.GetBuffer(frozen.mOutput.mBuffer);
+        context.mUnsafeRawCommandList.ClearBufferUInt(
+            *physical,
+            0x12345678u);
+    });</code></pre>
+
+          <p>The callback runs during command recording, not registration. The <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-getbuffer-7bf14520"><code>GetBuffer()</code></a> call verifies that the logical buffer belongs to this graph, has physical backing, is declared by this pass, and is requested while this pass's access gate is open. The raw command list performs the operation, but the graph resource is obtained through the validated context.</p>
+
+          <h3>Pass flags are constraints</h3>
+          <p><a href="api-reference.html#api-arda-rdg-eardgpassflags-6384e9b1"><code>EARDGPassFlags</code></a> identifies raster, compute, async-compute, copy, never-cull, render-pass, and parallel-recording behavior. Illegal combinations are fatal. <code>AsyncCompute</code> requires <code>Compute</code>; <code>SkipRenderPass</code> requires <code>Raster</code>; raster, copy, and compute categories cannot be combined arbitrarily.</p>
+
+          <h3>When to add a manual dependency</h3>
+          <p>Resource declarations derive most dependencies. Use <a href="api-reference.html#api-arda-rdg-fardgbuilder-adddependency-0a07e4eb"><code>AddDependency()</code></a> only for real causality not represented by a resource, such as an externally visible side effect. Both handles must already exist and the producer handle must precede the consumer. A manual dependency participates in both ordering and culling reachability.</p>
+        </section>
+
+        <section id="outputs">
+          <h2>Step 5: choose an output workflow</h2>
+
+          <h3>Workflow A: extract a graph-created result</h3>
+          <p>Extraction makes a graph-created resource observable, keeps it live through the epilogue, removes transient eligibility, requests a known final state, and assigns a retained RHI reference after submission.</p>
+
+          <pre><code>rhi::FArdaRHIBufferRef extractedOutput;
+graph.QueueBufferExtraction(
+    output,
+    extractedOutput,
+    rhi::EArdaRHIResourceState::CopySource);</code></pre>
+
+          <p>The address of <code>extractedOutput</code> is stored until execution. It must remain valid and uniquely associated with this extraction. <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuebufferextraction-54e67cf9"><code>QueueBufferExtraction()</code></a> rejects nulls, foreign graph records, unknown final states, duplicate resources, and duplicate output addresses with fatal checks.</p>
+
+          <h3>Workflow B: render to an external presentable image</h3>
+          <p>A swap-chain image is already physical and externally owned. Register it with its truthful current state—normally <code>Present</code> at graph entry—then declare it in a raster pass and leave its final state as <code>Present</code>:</p>
+
+          <pre><code>render_graph::FARDGTextureRef backBuffer =
+    graph.RegisterExternalTexture(
+        acquiredTexture,
+        rhi::EArdaRHIResourceState::Present,
+        "BackBuffer");
+
+// In a raster parameter struct:
+// ARDG_RENDER_TARGET_BINDING_SLOTS(mRenderTargets)
+// parameters-&gt;mRenderTargets.mColor[0].mTexture = backBuffer;
+
+backBuffer-&gt;SetFinalState(
+    rhi::EArdaRHIResourceState::Present);</code></pre>
+
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-registerexternaltexture-4853552d"><code>RegisterExternalTexture()</code></a> retains the RHI texture, marks it external, sets the prologue as its initial producer, and deduplicates repeated registration by physical identity when the initial states agree. Writes to an external resource become observable through the epilogue, so they root the required producer chain. After graph submission, the application's normal swap-chain workflow presents the image; ARDG does not own acquisition, presentation, resize, or frame pacing.</p>
+
+          <aside class="callout warning">
+            <h3>Never guess an imported state</h3>
+            <p>The graph cannot reconstruct commands issued before import. A wrong initial state makes later transition derivation start from false history. Coordinate the state contract with the external owner and register one consistent state for each physical identity.</p>
+          </aside>
+        </section>
+
+        <section id="worked-example">
+          <h2>Worked example: create, clear, extract, submit</h2>
+          <p>The following function assumes ArdaBackend is already initialized. It creates one structured buffer, clears it in a compute pass, extracts it in copy-source state, submits the graph, and waits before returning the buffer for CPU-coordinated follow-up work.</p>
+
+          <pre><code>ARDG_BEGIN_PARAMETER_STRUCT(FClearParameters)
+    ARDG_BUFFER_ACCESS(mOutput)
+ARDG_END_PARAMETER_STRUCT()
+
+arda::rhi::FArdaRHIBufferRef BuildClearGraph(
+    const arda::backend::FArdaDeviceContext&amp; deviceContext)
+{
+    using namespace arda;
+    using namespace render_graph;
+
+    FARDGBuilder graph(MakeRenderGraphContext(deviceContext));
+
+    rhi::FArdaRHIBufferDesc desc;
+    desc.mDebugName = "GettingStarted.Output";
+    desc.mByteSize = 1024;
+    desc.mStructureStride = sizeof(uint32_t);
+    desc.mUsage =
+        rhi::EArdaRHIBufferUsage::Structured |
+        rhi::EArdaRHIBufferUsage::UnorderedAccess;
+
+    FARDGBufferRef output = graph.CreateBuffer(desc);
+    FClearParameters* parameters =
+        graph.AllocateParameters&lt;FClearParameters&gt;();
+    parameters-&gt;mOutput = {
+        output,
+        rhi::EArdaRHIResourceState::UnorderedAccess,
+        {}};
+
+    graph.AddPass(
+        "ClearOutput",
+        parameters,
+        EARDGPassFlags::Compute,
+        [](FARDGPassExecutionContext&amp; context,
+           const FClearParameters&amp; frozen)
+        {
+            context.mUnsafeRawCommandList.ClearBufferUInt(
+                *context.GetBuffer(frozen.mOutput.mBuffer),
+                0x12345678u);
+        });
+
+    rhi::FArdaRHIBufferRef extracted;
+    graph.QueueBufferExtraction(
+        output,
+        extracted,
+        rhi::EArdaRHIResourceState::CopySource);
+
+    FARDGExecuteOptions options;
+    options.mbParallelRecording = false;
+    const FARDGExecutionResult&amp; result = graph.Execute(options);
+    (void)result; // Record counters and submitted instances in production.
+
+    // This simple boundary waits before returning CPU-coordinated ownership.
+    // A frame renderer would normally use submitted instances asynchronously.
+    if (!deviceContext.mDevice-&gt;WaitForIdle())
+        return nullptr;
+
+    return extracted;
+}</code></pre>
+
+          <h3>Why every line exists</h3>
+          <ol>
+            <li>The generated parameter metadata tells setup that the pass writes the buffer in unordered-access state.</li>
+            <li>The descriptor's usage permits the clear operation; the logical descriptor also drives physical materialization.</li>
+            <li>The parameter allocation gives the callback stable immutable storage through recording.</li>
+            <li>The execution-context getter proves that the requested buffer was declared for this pass.</li>
+            <li>Extraction gives culling an observable root and requests the state needed by follow-up copy or readback work.</li>
+            <li>Disabling parallel recording is unnecessary for one pass but makes the first example's CPU behavior simple. Production code can keep the default.</li>
+            <li>The explicit idle wait is intentionally conservative. It converts submission into completion before the reference crosses this function's CPU coordination boundary.</li>
+          </ol>
+        </section>
+
+        <section id="compile-execute">
+          <h2>Step 6: compile for inspection, then execute once</h2>
+          <p>You may call <a href="api-reference.html#api-arda-rdg-fardgbuilder-compile-97614587"><code>Compile()</code></a> explicitly before execution:</p>
+
+          <pre><code>const render_graph::FARDGCompileResult&amp; plan = graph.Compile();
+const eastl::string report = graph.DumpGraph();
+
+const render_graph::FARDGExecutionResult&amp; submitted =
+    graph.Execute();</code></pre>
+
+          <p>This is useful for deterministic diagnostics, plan inspection, and tests. Repeated compile calls return the same builder-owned result. <code>Execute()</code> calls compile automatically when needed, so explicit compilation is optional.</p>
+
+          <h3>What compilation establishes</h3>
+          <ul>
+            <li>all declarations pass pre-compile validation, including read-before-produce and queue-state legality;</li>
+            <li>the epilogue is appended and observable producer chains are rooted;</li>
+            <li>execution order is the live registration-order subsequence;</li>
+            <li>resource lifetimes, logical transitions, queue dependencies, async fork/join metadata, and raster groups are stable.</li>
+          </ul>
+
+          <h3>What execution establishes</h3>
+          <ul>
+            <li>live resources were materialized or verified as external;</li>
+            <li>runtime transitions were rebuilt against physical identities;</li>
+            <li>pass command lists and any epilogue transition list were recorded and submitted;</li>
+            <li>required cross-queue waits were issued and extraction outputs were assigned;</li>
+            <li>the builder is terminally executed and cannot execute again.</li>
+          </ul>
+
+          <h3>What execution does not establish</h3>
+          <p>It does not establish that graphics, compute, or copy queues have completed. <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-55e456b3"><code>FARDGExecutionResult</code></a> reports submission counters, pool behavior, debug behavior, and the last submitted instance per queue. Use those values with backend completion mechanisms instead of assuming the CPU return point is a GPU fence.</p>
+        </section>
+
+        <section id="cleanup">
+          <h2>Step 7: clean up in dependency order</h2>
+          <p>The builder destructor releases graph-scoped registries, callbacks, frozen parameters, blackboard values, and held physical references. Arena destructors run in reverse construction order before backing blocks are freed. That CPU cleanup is independent from GPU retirement.</p>
+
+          <h3>Per-frame or per-workload cleanup</h3>
+          <ol>
+            <li>Submit the graph once.</li>
+            <li>Move or copy required extracted RHI references into their next owner.</li>
+            <li>Preserve any completion instances required by frame-resource retirement.</li>
+            <li>Let the builder leave scope; never retain its logical pointers, handles, parameter pointers, blackboard references, or compile-result references.</li>
+            <li>Release extracted references only after both application use and required GPU use have ended.</li>
+          </ol>
+
+          <h3>Application shutdown</h3>
+          <ol>
+            <li>Stop scheduling new graphs and join setup or recording producers.</li>
+            <li>Wait for relevant submitted GPU instances or device idle.</li>
+            <li>Destroy builders, swap chains, extracted resources, caches, and renderer systems.</li>
+            <li>Release retained device references derived into graph contexts.</li>
+            <li>Shut down ArdaBackend last.</li>
+          </ol>
+
+          <aside class="callout">
+            <h3>Captured references are your contract</h3>
+            <p>Pass callbacks are stored until execution. Values captured by copy must be copyable and valid for recording; references and pointers captured by reference must outlive every callback invocation, including worker-thread recording. Prefer graph parameters for graph resource declarations and narrow value captures for non-resource setup.</p>
+          </aside>
+        </section>
+
+        <section id="performance">
+          <h2>Threading, platform, and performance notes</h2>
+          <dl>
+            <dt>Setup thread</dt>
+            <dd>Build the graph serially unless a future API explicitly documents concurrent mutation. Append-only registries provide stable identity, not a concurrent writer contract.</dd>
+            <dt>Recording workers</dt>
+            <dd>Execution groups passes into dependency levels. Eligible passes at one level may record through <code>std::async</code>, bounded by <code>mMaxRecordingThreads</code>. Each pass writes a distinct command list and result slot.</dd>
+            <dt>Serial exceptions</dt>
+            <dd>Immediate mode, disabled parallel recording, and <code>NeverParallel</code> force serial recording. Use <code>NeverParallel</code> when callback-side non-graph state cannot safely be accessed concurrently.</dd>
+            <dt>Submission order</dt>
+            <dd>Submission remains deterministic in execution order even if CPU recording completes out of order. Cross-queue producer instances become wait tokens for consumers.</dd>
+            <dt>Platform boundary</dt>
+            <dd>ARDG code is backend-neutral. D3D12/Vulkan behavior, native queues, and presentation surfaces stay below Arda RHI and ArdaBackend.</dd>
+            <dt>Transient resources</dt>
+            <dd>Current execution can reuse exact committed-resource matches across non-overlapping lifetimes in one queue domain. It does not apply physical placed-memory aliasing.</dd>
+            <dt>Debug modes</dt>
+            <dd>Immediate mode, conservative barriers, extended lifetimes, and first-write clobbering are correctness tools. They deliberately trade performance or normal scheduling for diagnostic clarity.</dd>
+          </dl>
+        </section>
+
+        <section id="failures">
+          <h2>Failure modes: symptom, cause, prevention, recovery</h2>
+          <dl>
+            <dt>Fatal check at builder construction</dt>
+            <dd><strong>Symptom:</strong> “requires graphics queue capability.” <strong>Cause:</strong> an incomplete or fabricated context. <strong>Prevention:</strong> use <code>MakeRenderGraphContext</code> with a live backend context. <strong>Recovery:</strong> correct backend initialization and rebuild the graph.</dd>
+            <dt>Fatal check while creating a resource</dt>
+            <dd><strong>Symptom:</strong> invalid logical declaration. <strong>Cause:</strong> empty debug name, zero dimensions/size, or illegal ownership flags. <strong>Prevention:</strong> fully initialize RHI descriptors and use registration—not creation—for external objects. <strong>Recovery:</strong> correct the descriptor before adding passes.</dd>
+            <dt>Pass is culled</dt>
+            <dd><strong>Symptom:</strong> callback never records. <strong>Cause:</strong> no path to an observable root. <strong>Prevention:</strong> model the real external write or extraction. <strong>Recovery:</strong> inspect <code>DumpGraph()</code>; use <code>NeverCull</code> only for a genuine side effect.</dd>
+            <dt>Fatal check during compile</dt>
+            <dd><strong>Symptom:</strong> read-before-produce, conflicting states, or illegal queue state. <strong>Cause:</strong> declarations describe an impossible program. <strong>Prevention:</strong> define every input source and one compatible state per resource unit in a pass. <strong>Recovery:</strong> repair parameters and pass order, then build a fresh graph if execution had started.</dd>
+            <dt>Fatal check during callback</dt>
+            <dd><strong>Symptom:</strong> unavailable or undeclared graph resource. <strong>Cause:</strong> wrong graph, wrong exact view, omitted parameter, or access outside the active callback. <strong>Prevention:</strong> route graph resources through frozen parameters and context getters. <strong>Recovery:</strong> correct the declaration; do not retain raw logical pointers beyond the builder.</dd>
+            <dt>Extracted reference is null</dt>
+            <dd><strong>Symptom:</strong> no output after expected work. <strong>Cause:</strong> execution did not complete its CPU submission path or an earlier fatal failure made the builder terminal. <strong>Prevention:</strong> queue extraction during build and keep output storage alive. <strong>Recovery:</strong> discard the failed builder and diagnose the first failure.</dd>
+            <dt>Stale or corrupted CPU readback</dt>
+            <dd><strong>Symptom:</strong> extracted object exists but contents are not ready. <strong>Cause:</strong> submission was mistaken for completion. <strong>Prevention:</strong> synchronize with the relevant RHI queue instance or use a device wait at a conservative boundary. <strong>Recovery:</strong> wait before access and audit external lifetime.</dd>
+          </dl>
+        </section>
+
+        <section id="checklist">
+          <h2>Production integration checklist</h2>
+          <ul>
+            <li>ArdaBackend and the device outlive every builder and submitted graph dependency.</li>
+            <li><code>ArdaRenderGraph.h</code> is used; no private compiler, executor, registry, or allocator header leaks into consumers.</li>
+            <li>Graph context comes from the live device context, including actual queue capabilities.</li>
+            <li>One builder represents one workload and executes at most once.</li>
+            <li>Passes are registered in producer-before-consumer order.</li>
+            <li>Every resource access is present in generated parameter metadata with a truthful state and range.</li>
+            <li>Graph-created descriptors have non-empty diagnostic names and valid usage flags.</li>
+            <li>External resources have a known, coordinated initial state and remain externally valid.</li>
+            <li>Each required output is an external write, extraction, or deliberate never-cull side effect.</li>
+            <li>Extraction output locations remain valid and unique through execution.</li>
+            <li>Pass callbacks use execution-context getters for graph resources.</li>
+            <li>Raw command-list use does not smuggle undeclared graph resources into callbacks.</li>
+            <li>Reference captures are safe under possible parallel recording, or the pass is deliberately <code>NeverParallel</code>.</li>
+            <li>Compile dumps and execution counters are retained in diagnostic builds.</li>
+            <li>GPU completion is established before CPU readback or externally constrained destruction/reuse.</li>
+            <li>Logical pointers, handles, parameter pointers, and blackboard references never outlive the builder.</li>
+            <li>Graphs and renderer-held RHI references are released before backend shutdown.</li>
+          </ul>
+        </section>
+
+        <section id="summary">
+          <h2>Chapter summary</h2>
+          <ul>
+            <li>Use the aggregate header and derive context from the initialized backend rather than fabricating capabilities.</li>
+            <li>The builder owns logical graph state and frozen parameters; callers own external objects, extraction destinations, and backend lifecycle.</li>
+            <li>Parameter metadata is the dependency, state, and physical-access contract for a pass.</li>
+            <li>Extraction retains a graph-created result; external import plus a final <code>Present</code> state supports swap-chain workflow.</li>
+            <li>Compilation is cached, execution is one-shot, and successful execution means submission rather than GPU completion.</li>
+          </ul>
+
+          <h3>Review and checkpoint questions</h3>
+          <ol>
+            <li>Why should queue capabilities be copied from the backend context?</li>
+            <li>What is the difference between <code>CreateBuffer</code> and <code>RegisterExternalBuffer</code>?</li>
+            <li>When does a stack parameter object become safe for deferred callback use?</li>
+            <li>Why might a correctly registered pass never invoke its callback?</li>
+            <li>What must remain alive for a queued extraction?</li>
+            <li>Why is an extracted RHI reference insufficient evidence for CPU readback?</li>
+            <li>Which graph values become invalid when the builder is destroyed?</li>
+          </ol>
+
+          <h3>Further reading</h3>
+          <ul>
+            <li><a href="architecture.html">Architecture: identity, ownership, dependency derivation, and complete call chain</a></li>
+            <li><a href="api-reference.html">Canonical API reference: exact signatures and contracts</a></li>
+            <li><a href="../ArdaBackend/commands.html">ArdaBackend commands: recording, submission, and synchronization</a></li>
+            <li><a href="../ArdaBackend/presentation.html">ArdaBackend presentation: acquire, render, and present lifetime</a></li>
+            <li><a href="../glossary.html">Global glossary</a></li>
+          </ul>
+        </section>
+
+        <aside class="callout">
+          <h3>Related API</h3>
+          <p>Exact contracts are centralized in the API reference. Key entry points are <a href="api-reference.html#api-arda-rdg-makerendergraphcontext-ddc93cbb"><code>MakeRenderGraphContext()</code></a>, <a href="api-reference.html#api-arda-rdg-fardgbuilder-e0fc26d2"><code>FARDGBuilder</code></a>, <a href="api-reference.html#api-arda-rdg-fardgbuilder-addpass-eb5f83be"><code>AddPass()</code></a>, <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuebufferextraction-54e67cf9"><code>QueueBufferExtraction()</code></a>, and <a href="api-reference.html#api-arda-rdg-fardgbuilder-execute-462d7837"><code>Execute()</code></a>.</p>
+        </aside>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="index.html">← Previous: Overview</a>
+          <a rel="next" href="architecture.html">Next: Architecture →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaRenderGraph documentation · Source boundary: <code>Source/ArdaRenderGraph</code> · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

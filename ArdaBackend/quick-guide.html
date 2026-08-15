@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A practical quick guide to building a presented compute, raster, and capability-gated ray tracing application with ArdaBackend.">
+  <title>Quick user's guide | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a aria-current="page" href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a aria-current="page" href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a>
+        <a href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaBackend</a> /
+        Quick user's guide
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Build a small presented application</p>
+          <h1>ArdaBackend quick user's guide</h1>
+          <p>This is the shortest source-backed path from a CMake target to a window that runs compute work, draws indexed geometry, and can add hardware ray tracing when the device exposes the required capabilities. It favors executable sequences and ownership rules over architectural exposition.</p>
+        </header>
+
+        <aside class="callout">
+          <h2>Evidence badges used on this page</h2>
+          <p><span class="status">DEMONSTRATED</span> means the sequence appears in <code>NVRHITest</code> or <code>ARDGExample</code> and is exercised by their GPU test targets. <span class="status">TESTED API PATH</span> means focused backend tests exercise the API components, but not necessarily as a complete application. <span class="status">SYNTHESIZED / NOT YET COVERED BY AN END-TO-END SAMPLE</span> means the sequence is assembled from public contracts and implemented API paths; integration remains the application's responsibility.</p>
+        </aside>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#build">Build and artifacts</a>
+          <a href="#window">Window surface</a>
+          <a href="#startup">Configure and initialize</a>
+          <a href="#shaders">Shaders</a>
+          <a href="#resources">Persistent resources</a>
+          <a href="#pipelines">Pipeline cache</a>
+          <a href="#frame">Presented frame order</a>
+          <a href="#compute">Compute recipe</a>
+          <a href="#raster">Raster recipe</a>
+          <a href="#ray-tracing">Ray tracing recipe</a>
+          <a href="#resize">Resize</a>
+          <a href="#errors">Diagnostics and status</a>
+          <a href="#lifetime">Lifetime and shutdown</a>
+          <a href="#api-paths">Curated API paths</a>
+          <a href="#summary">Summary</a>
+          <a href="#next-steps">Next steps</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Objectives</h2>
+          <p>After following this guide, you should be able to:</p>
+          <ul>
+            <li>build and initialize a D3D12 or Vulkan presentation application;</li>
+            <li>adapt GLFW to <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a> without leaking native API types into renderer code;</li>
+            <li>choose the global-shader system or direct bytecode creation;</li>
+            <li>create persistent resources, views, binding layouts, binding sets, and cached pipelines;</li>
+            <li>record, close, submit, and present compute and raster commands in the required order;</li>
+            <li>gate hardware ray tracing and assemble its BLAS, TLAS, pipeline, shader-table, and dispatch path without mistaking it for an existing complete sample; and</li>
+            <li>propagate status, resize safely, and tear down in reverse ownership order.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites and scope</h2>
+          <ul>
+            <li>C++17, CMake, a supported compiler, GLFW, and the dependencies configured by the repository root.</li>
+            <li>DXC available through <code>ARDASHIR_DXC_EXECUTABLE</code>.</li>
+            <li>On Windows, a D3D12-capable system for D3D12; for Vulkan, a Vulkan loader/driver and Vulkan 1.3-compatible shader artifacts.</li>
+            <li>Working knowledge of command lists, resource states, descriptors, thread-group dimensions, vertex/index buffers, and acceleration structures.</li>
+          </ul>
+          <p>Read <a href="getting-started.html">Getting started</a> for lifecycle rationale, <a href="shaders.html">Shaders</a> for registry contracts, and <a href="commands.html">Commands</a> for synchronization depth. This guide uses direct RHI calls where order matters and cites <code>ARDGExample</code> where the render graph supplies transitions and queue scheduling.</p>
+        </section>
+
+        <section id="build">
+          <h2>1. Link the target and produce backend-specific shaders</h2>
+          <p><span class="status">DEMONSTRATED</span> Both checked-in applications link the exported backend and render-graph targets, GLFW, and Vulkan headers when available. Direct RHI users can omit <code>ArdaRenderGraph</code>.</p>
+          <p>The repository currently defines these targets only from its source tree; it does not install a CMake package or provide a supported <code>find_package(Ardashir)</code> flow. Build your application from a parent CMake project that brings this repository in with <code>add_subdirectory(path/to/Ardashir)</code>, or add the application target beneath this repository's root build after the root has added <code>Source/ArdaBackend</code>. In either case, the root build must run first so <code>Dependencies.cmake</code> configures EASTL, NVRHI, GLFW, Vulkan headers, and <code>ARDASHIR_DXC_EXECUTABLE</code> before the following link step.</p>
+          <pre><code>add_executable(MyGpuApp ${MY_SOURCES})
+target_compile_features(MyGpuApp PRIVATE cxx_std_17)
+target_compile_definitions(MyGpuApp PRIVATE GLFW_INCLUDE_NONE)
+target_link_libraries(MyGpuApp PRIVATE
+    Ardashir::ArdaBackend
+    glfw
+)
+
+if(TARGET Vulkan::Headers)
+    target_link_libraries(MyGpuApp PRIVATE Vulkan::Headers)
+elseif(TARGET Vulkan-Headers)
+    target_link_libraries(MyGpuApp PRIVATE Vulkan-Headers)
+endif()</code></pre>
+          <p>Include the aggregate header in application code:</p>
+          <pre><code>#include "ArdaBackend.h"</code></pre>
+
+          <h3>Shader artifact contract</h3>
+          <p>D3D12 consumes DXIL; Vulkan consumes SPIR-V. <code>NVRHITest</code> compiles <code>vs_6_0</code>/<code>ps_6_0</code> twice, while <code>ARDGExample</code> also compiles <code>cs_6_0</code> and applies Vulkan binding shifts matching Arda's register classes.</p>
+          <pre><code># D3D12
+dxc -nologo -T cs_6_0 -E MainCS -Fo MainCS.dxil MyShaders.hlsl
+
+# Vulkan
+dxc -nologo -spirv -fspv-target-env=vulkan1.3 \
+    -fvk-t-shift 0 0 -fvk-s-shift 128 0 \
+    -fvk-b-shift 256 0 -fvk-u-shift 384 0 \
+    -T cs_6_0 -E MainCS -Fo MainCS.spv MyShaders.hlsl</code></pre>
+          <p>Copy outputs beside the executable or pass their actual deployment directory to your shader loader or global shader map. A successful native device initialization does not prove that the matching artifact set exists.</p>
+
+          <h3>Exact ray-tracing test artifacts</h3>
+          <p><span class="status">TESTED API PATH</span> With <code>ARDASHIR_BUILD_TESTS=ON</code>, <code>Source/ArdaBackend/CMakeLists.txt</code> invokes the fetched <code>ARDASHIR_DXC_EXECUTABLE</code> with the following effective commands for <code>Source/ArdaBackend/Tests/ArdaRayTracingTest.hlsl</code>:</p>
+          <pre><code># D3D12: DXIL library, deliberately no -E
+${ARDASHIR_DXC_EXECUTABLE} -nologo -T lib_6_3 \
+    -Fo ArdaRayTracingTest.dxil ArdaRayTracingTest.hlsl
+
+# Vulkan: Vulkan 1.2 SPIR-V with the KHR ray-tracing extension,
+# deliberately no -E and no -fvk-*-shift flags
+${ARDASHIR_DXC_EXECUTABLE} -nologo -spirv \
+    -fspv-target-env=vulkan1.2 \
+    -fspv-extension=SPV_KHR_ray_tracing \
+    -T lib_6_3 -Fo ArdaRayTracingTest.spv ArdaRayTracingTest.hlsl</code></pre>
+          <p>The source contains exactly one <code>[shader("raygeneration")]</code> function named <code>RayGen</code>. D3D12 loads <code>ArdaRayTracingTest.dxil</code> as a library and requests the <code>RayGen</code> export; Vulkan loads <code>ArdaRayTracingTest.spv</code> and creates the ray-generation stage with entry point <code>RayGen</code>. The tested RT shader declares no resources, so its Vulkan command has no register shifts. Do not infer the ARDG example's <code>t=0</code>, <code>s=128</code>, <code>b=256</code>, and <code>u=384</code> shifts for this artifact; if you add resource bindings, define and apply a binding policy consistently in both shader metadata and compilation. CMake writes both exact filenames to the ArdaBackend binary directory, makes <code>ArdaBackendTests</code> depend on them, defines that directory as <code>ARDA_BACKEND_TEST_SHADER_DIR</code>, and copies the artifacts beside the test executable.</p>
+        </section>
+
+        <section id="window">
+          <h2>2. Give the backend a native window surface</h2>
+          <p><span class="status">DEMONSTRATED</span> Create GLFW with <code>GLFW_CLIENT_API = GLFW_NO_API</code>. Your adapter implements three <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a> responsibilities:</p>
+          <ul>
+            <li>return an encoded HWND from <code>glfwGetWin32Window</code> for D3D12 on Windows;</li>
+            <li>copy the names returned by <code>glfwGetRequiredInstanceExtensions</code> for Vulkan initialization; and</li>
+            <li>call <code>glfwCreateWindowSurface</code> with the backend-provided Vulkan instance, returning the encoded surface or a useful error string.</li>
+          </ul>
+          <pre><code>glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+GLFWwindow* window = glfwCreateWindow(width, height, "My GPU app", nullptr, nullptr);
+
+class GlfwSurface final : public arda::backend::IArdaWindowSurface
+{
+public:
+    explicit GlfwSurface(GLFWwindow* window) : mWindow(window) {}
+
+    arda::backend::FArdaNativeObject GetD3D12WindowHandle() const noexcept override;
+    eastl::vector&lt;const char*&gt; GetVulkanInstanceExtensions() const override;
+    arda::backend::FArdaNativeObject CreateVulkanSurface(
+        arda::backend::FArdaNativeObject instance,
+        eastl::string&amp; outError) override;
+private:
+    GLFWwindow* mWindow = nullptr; // Borrowed; window outlives swap chain.
+};</code></pre>
+          <p>The checked-in GLFW adapters are the canonical implementation pattern. Keep extension-name storage valid through initialization, keep the GLFW window alive through swap-chain destruction, and do not destroy the Vulkan surface yourself: the backend owns the surface created through this callback.</p>
+        </section>
+
+        <section id="startup">
+          <h2>3. Configure, initialize, and retain the context</h2>
+          <p><span class="status">DEMONSTRATED</span> Register shader directories first, configure once, initialize for presentation once, and retain the resulting device and swap chain.</p>
+          <figure>
+            <img src="Assets/backend-initialization-flow.svg" alt="Backend initialization transaction from configuration and shader registration through device and presentation creation to context publication.">
+            <figcaption>Initialization publishes the process-wide context only after shader-registry, device, queue, and optional presentation gates succeed.</figcaption>
+          </figure>
+          <pre><code>using namespace arda;
+
+backend::FArdaBackendConfiguration config;
+config.mBackend = backend::DefaultBackend; // Or an explicit D3D12/Vulkan option.
+config.mbEnableValidation = true;
+config.mMessageCallback = &amp;diagnostics;     // Must outlive the backend.
+
+if (!backend::ConfigureBackend(config))
+    return Fail(backend::GetBackendError());
+
+eastl::unique_ptr&lt;backend::IArdaSwapChain&gt; swapChain;
+const auto init = backend::InitializeBackendForPresentation(
+    glfwSurface, framebufferWidth, framebufferHeight, swapChain);
+if (init != backend::EArdaInitializeResult::Success)
+    return Fail(backend::GetBackendError());
+
+const backend::FArdaDeviceContext&amp; context = backend::GetDeviceContext();
+rhi::FArdaRHIDeviceRef device = context.mDevice; // Retained reference.
+if (!device || !context.mQueueCapabilities.mbGraphics)
+    return Fail("A graphics queue is required for presentation.");</code></pre>
+          <p>Use one lifecycle owner and one initialization mode. <a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> must precede <a href="api-reference.html#api-arda-backend-initializebackendforpresentation-57fda7b3"><code>InitializeBackendForPresentation</code></a>. Do not initialize headless first and then add presentation.</p>
+        </section>
+
+        <section id="shaders">
+          <h2>4. Choose a shader-loading path</h2>
+          <figure>
+            <img src="Assets/shader-registration-flow.svg" alt="Virtual shader directory mapping, deferred global shader registration, global shader map loading, and runtime shader lookup.">
+            <figcaption>Global shader metadata is registered before backend initialization freezes the source manifest; the map later loads backend-specific artifacts and exposes shader objects and binding layouts.</figcaption>
+          </figure>
+
+          <h3>Path A: virtual directory and global shader map</h3>
+          <p><span class="status">DEMONSTRATED</span> This is the <code>ARDGExample</code> path and is convenient when typed parameters and pipeline initializers should derive from registered shaders.</p>
+          <pre><code>class FMyComputeShader final : public arda::backend::FArdaGlobalShader
+{
+public:
+    ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
+        ARDA_SHADER_TEXTURE_UAV(mOutput, 0, 0,
+            arda::rhi::EArdaRHIShaderStage::Compute)
+    ARDA_END_SHADER_PARAMETER_STRUCT()
+    ARDA_DECLARE_GLOBAL_SHADER(FMyComputeShader);
+};
+
+ARDA_IMPLEMENT_GLOBAL_SHADER(
+    FMyComputeShader,
+    "/MyApp/Shaders/MyCompute.hlsl",
+    "MyComputeCS", "MainCS",
+    arda::rhi::EArdaRHIShaderStage::Compute)</code></pre>
+          <p>Before configuration/initialization, map the virtual root; after initialization, load artifacts and find the registered shader:</p>
+          <pre><code>auto directoryStatus = arda::backend::AddShaderSourceDirectoryMapping(
+    "/MyApp/Shaders", MY_APP_SHADER_SOURCE_DIRECTORY);
+if (!directoryStatus)
+    return Fail(directoryStatus.mMessage);
+
+// ConfigureBackend + InitializeBackendForPresentation happen here.
+
+arda::backend::FArdaGlobalShaderMap shaderMap;
+if (!shaderMap.Initialize(arda::backend::GetDeviceContext(), artifactDirectory))
+{
+    const auto&amp; diagnostics = shaderMap.GetDiagnostics();
+    return Fail(diagnostics.empty()
+        ? "Global shader map initialization failed without diagnostics."
+        : diagnostics.back().mMessage);
+}
+
+const auto* shader = shaderMap.Find(FMyComputeShader::GetStaticType());
+if (!shader)
+    return Fail("Registered compute shader is absent from the global map.");</code></pre>
+          <p>Virtual paths must be rooted, unique, and beneath the mapped root. The artifact basename passed to the implementation macro is resolved as <code>.dxil</code> or <code>.spv</code> by the selected backend.</p>
+
+          <h3>Path B: direct bytecode</h3>
+          <p><span class="status">DEMONSTRATED</span> <code>NVRHITest</code> loads files into byte vectors, fills <a href="api-reference.html#api-arda-rhi-fardarhishaderdesc-647dc39c"><code>FArdaRHIShaderDesc</code></a>, and calls <a href="api-reference.html#api-arda-rhi-iardarhidevice-createshader-d1c4d59c"><code>CreateShader</code></a>. The byte vector only needs to remain valid during creation.</p>
+          <pre><code>arda::rhi::FArdaRHIShaderDesc desc;
+desc.mStage = arda::rhi::EArdaRHIShaderStage::Compute;
+desc.mBytecode = bytes.data();
+desc.mBytecodeSize = bytes.size();
+desc.mEntryPoint = "MainCS";
+desc.mDebugName = "My compute shader";
+auto shaderResult = device->CreateShader(desc);
+if (!shaderResult)
+    return Fail(shaderResult.mStatus.mMessage);
+arda::rhi::FArdaRHIShaderRef computeShader = eastl::move(shaderResult.mValue);</code></pre>
+        </section>
+
+        <section id="resources">
+          <h2>5. Create persistent resources, views, and bindings</h2>
+          <p><span class="status">TESTED API PATH</span> Device-created resources are intrusive references. Store persistent buffers, textures, views, layouts, sets, shaders, and pipelines in a renderer object whose device reference outlives them.</p>
+          <pre><code>// Persistent structured buffer.
+arda::rhi::FArdaRHIBufferDesc bufferDesc;
+bufferDesc.mByteSize = elementCount * sizeof(Element);
+bufferDesc.mStructureStride = sizeof(Element);
+bufferDesc.mUsage = arda::rhi::EArdaRHIBufferUsage::Structured |
+                    arda::rhi::EArdaRHIBufferUsage::ShaderResource |
+                    arda::rhi::EArdaRHIBufferUsage::UnorderedAccess;
+bufferDesc.mInitialState = arda::rhi::EArdaRHIResourceState::UnorderedAccess;
+bufferDesc.mbKeepInitialState = true;
+bufferDesc.mDebugName = "Persistent elements";
+auto buffer = device->CreateBuffer(bufferDesc);
+if (!buffer) return Fail(buffer.mStatus.mMessage);
+
+// Persistent storage texture.
+arda::rhi::FArdaRHITextureDesc textureDesc;
+textureDesc.mWidth = width;
+textureDesc.mHeight = height;
+textureDesc.mFormat = arda::rhi::EArdaRHIFormat::RGBA8UNorm;
+textureDesc.mUsage = arda::rhi::EArdaRHITextureUsage::ShaderResource |
+                     arda::rhi::EArdaRHITextureUsage::UnorderedAccess;
+textureDesc.mDebugName = "Compute output";
+auto texture = device->CreateTexture(textureDesc);
+if (!texture) return Fail(texture.mStatus.mMessage);</code></pre>
+          <p>Views select interpretation and subresources; layouts declare shader-visible slots; binding sets attach actual resources. The exact descriptor items are application-specific. In the following pattern, <code>MakeOutputUavView()</code>, <code>MakeComputeLayout()</code>, and <code>MakeComputeBindings(...)</code> are explicit placeholders that must return valid <a href="api-reference.html#api-arda-rhi-fardarhiviewdesc-0a3012d6"><code>FArdaRHIViewDesc</code></a>, <a href="api-reference.html#api-arda-rhi-fardarhibindinglayoutdesc-22781e84"><code>FArdaRHIBindingLayoutDesc</code></a>, and <a href="api-reference.html#api-arda-rhi-fardarhibindingsetdesc-4bad2558"><code>FArdaRHIBindingSetDesc</code></a>. Consult their canonical member contracts and <a href="rhi.html">RHI types &amp; resources</a>.</p>
+          <pre><code>auto uav = device->CreateUnorderedAccessView(
+    texture.mValue, MakeOutputUavView());               // PLACEHOLDER
+if (!uav)
+    return Fail(uav.mStatus.mMessage);
+
+auto layout = device->CreateBindingLayout(
+    MakeComputeLayout());                              // PLACEHOLDER
+if (!layout)
+    return Fail(layout.mStatus.mMessage);
+
+auto bindings = device->CreateBindingSet(
+    MakeComputeBindings(layout.mValue, uav.mValue));   // PLACEHOLDER
+if (!bindings)
+    return Fail(bindings.mStatus.mMessage);</code></pre>
+          <p>With global-shader parameters, prefer metadata-driven creation: populate the generated parameter struct and call its static metadata <a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-createbindingset-9f1c23fe"><code>CreateBindingSet</code></a> against the shader's binding layout, as <code>ARDGExample</code> does for its camera constant buffer.</p>
+        </section>
+
+        <section id="pipelines">
+          <h2>6. Create PSO initializers and a cache</h2>
+          <p><span class="status">DEMONSTRATED</span> <code>ARDGExample</code> owns one <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>FArdaPipelineStateCache</code></a> per renderer/device and keeps reusable initializers.</p>
+          <figure>
+            <img src="Assets/pso-command-flow.svg" alt="Global shader and fixed-state inputs forming a pipeline initializer, cache lookup or creation, and command-list state binding.">
+            <figcaption>Initializers describe stable shader and fixed-function inputs; the cache resolves compatible concrete PSOs and binds a complete command state.</figcaption>
+          </figure>
+          <pre><code>arda::backend::FArdaPipelineStateCache psoCache(device);
+
+auto computeInit =
+    arda::backend::FArdaComputePipelineStateInitializer::FromGlobalShader(
+        *computeGlobalShader, "Compute pipeline");
+
+arda::rhi::FArdaRHIGraphicsPipelineDesc fixedState;
+fixedState.mRasterState.mCullMode = arda::rhi::EArdaRHICullMode::None;
+fixedState.mDepthStencilState.mbDepthTest = false;
+fixedState.mDepthStencilState.mbDepthWrite = false;
+fixedState.mDebugName = "Raster pipeline";
+auto graphicsInit =
+    arda::backend::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
+        *vertexGlobalShader, pixelGlobalShader, inputLayout, fixedState);</code></pre>
+          <p>The initializer path is designed for global shaders. Direct-bytecode users may instead create <a href="api-reference.html#api-arda-rhi-fardarhicomputepipelinedesc-698735b5"><code>FArdaRHIComputePipelineDesc</code></a> or <a href="api-reference.html#api-arda-rhi-fardarhigraphicspipelinedesc-e352046e"><code>FArdaRHIGraphicsPipelineDesc</code></a> and call the device creation methods directly, as <code>NVRHITest</code> does for raster.</p>
+        </section>
+
+        <section id="frame">
+          <h2>7. Run the presented frame in the required order</h2>
+          <p><span class="status">DEMONSTRATED</span> The portable frame invariant is:</p>
+          <p><strong>AcquireFrame → PrepareSubmit → execute submitted graphics work → Present.</strong></p>
+          <p>Recording can occur after acquisition and before <code>PrepareSubmit</code>. For direct RHI, call <code>PrepareSubmit</code> immediately before <a href="api-reference.html#api-arda-rhi-iardarhidevice-executecommandlist-ad20081d"><code>ExecuteCommandList</code></a>. This is not cosmetic: the Vulkan implementation queues the image-available wait during acquisition and queues the render-finished signal in <code>PrepareSubmit</code>; the following graphics submission sits between those semaphore operations. D3D12 currently implements <code>PrepareSubmit</code> as a no-op, but portable code must still call it.</p>
+          <figure>
+            <img src="Assets/swapchain-frame-timeline.svg" alt="Swap-chain frame timeline showing image acquisition, command recording, submission preparation, graphics execution, and presentation.">
+            <figcaption>Prepare submission before executing the graphics command list that writes the acquired image; present only after submission succeeds.</figcaption>
+          </figure>
+          <pre><code>arda::rhi::FArdaRHIFramebufferRef framebuffer;
+if (!swapChain->AcquireFrame(framebuffer))
+    return Fail(swapChain->GetError());
+
+auto commandResult = device->CreateCommandList(
+    arda::rhi::EArdaRHIQueueType::Graphics);
+if (!commandResult) return Fail(commandResult.mStatus.mMessage);
+auto commandList = eastl::move(commandResult.mValue);
+
+if (auto s = commandList->Open(); !s) return Fail(s.mMessage);
+
+// Record transitions, compute/raster/RT commands, and transition back to Present.
+
+if (auto s = commandList->Close(); !s) return Fail(s.mMessage);
+swapChain->PrepareSubmit();
+auto submission = device->ExecuteCommandList(commandList);
+if (!submission) return Fail(submission.mStatus.mMessage);
+if (!swapChain->Present()) return Fail(swapChain->GetError());</code></pre>
+          <p><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-open-4d45e66c"><code>Open</code></a> begins recording, <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-close-0ffddad9"><code>Close</code></a> ends it, and only a closed list is submitted. Backend tests exercise <code>CreateCommandList → Open → Close → ExecuteCommandList</code>, then <code>Reset → Close → ExecuteCommandList</code>. Check every returned status.</p>
+          <figure>
+            <img src="Assets/cpu-gpu-queue-timeline.svg" alt="CPU command recording and graphics, compute, and copy queue execution timeline with synchronization points.">
+            <figcaption>CPU completion of recording is not GPU completion; retain referenced resources until queue progress or an explicit idle/fence proves they are no longer in use.</figcaption>
+          </figure>
+        </section>
+
+        <section id="compute">
+          <h2>8. Record compute work</h2>
+          <p><span class="status">DEMONSTRATED</span> <code>ARDGExample</code> creates a compute state, attaches a binding set, asks the cache to bind the compute PSO, and dispatches thread groups through render-graph dispatch passes.</p>
+          <pre><code>arda::rhi::FArdaRHIComputeState computeState;
+computeState.mBindings.push_back(computeBindingSet);
+
+auto status = psoCache.SetComputePipelineState(
+    *commandList, computeInit, eastl::move(computeState));
+if (!status) return Fail(status.mMessage);
+
+const uint32_t groupsX = (width  + 7) / 8; // Shader uses [numthreads(8,8,1)].
+const uint32_t groupsY = (height + 7) / 8;
+commandList->Dispatch(groupsX, groupsY, 1);</code></pre>
+          <p>For a directly created pipeline, set <a href="api-reference.html#api-arda-rhi-fardarhicomputestate-e1f56cfa"><code>FArdaRHIComputeState</code></a> fields according to its canonical contract, then call <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setcomputestate-b43b4184"><code>SetComputeState</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-dispatch-bd749b8e"><code>Dispatch</code></a>. Transition SRVs to shader-resource state and UAVs to unordered-access state first; retain automatic barriers or explicitly call state/barrier methods consistently. Dispatch dimensions are group counts, not thread counts.</p>
+        </section>
+
+        <section id="raster">
+          <h2>9. Record raster work</h2>
+          <p><span class="status">DEMONSTRATED</span> The acquired framebuffer already identifies the swap-chain color target. Off-screen or depth attachments use a caller-created <a href="api-reference.html#api-arda-rhi-fardarhiframebufferdesc-eedce2f9"><code>FArdaRHIFramebufferDesc</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhidevice-createframebuffer-3987951d"><code>CreateFramebuffer</code></a>.</p>
+          <pre><code>const uint32_t width = swapChain->GetWidth();
+const uint32_t height = swapChain->GetHeight();
+
+arda::rhi::FArdaRHIGraphicsState graphics;
+graphics.mPipeline = graphicsPipeline; // Omit when cache call supplies it.
+graphics.mFramebuffer = framebuffer;
+graphics.mBindings = { cameraBindings, materialBindings };
+graphics.mVertexBuffers.push_back({ vertexBuffer, 0, 0 });
+graphics.mIndexBuffer = indexBuffer;
+graphics.mIndexFormat = arda::rhi::EArdaRHIFormat::R32UInt;
+graphics.mViewports.push_back(
+    { 0.f, float(width), 0.f, float(height), 0.f, 1.f });
+graphics.mScissors.push_back(
+    { 0, int32_t(width), 0, int32_t(height) });
+
+const uint32_t indexCount = meshIndexCount; // Actual uploaded R32 index count.
+auto status = commandList->SetGraphicsState(graphics);
+if (!status) return Fail(status.mMessage);
+commandList->DrawIndexed({ indexCount });
+// Or for a procedural triangle:
+// commandList->Draw({ 3 });</code></pre>
+          <p><code>meshIndexCount</code> is an application value: set it to the number of uploaded indices, not the index-buffer byte size or vertex count.</p>
+          <p>With the cache, replace <code>SetGraphicsState</code> with <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-setgraphicspipelinestate-259a2286"><code>SetGraphicsPipelineState</code></a>, passing the initializer and state. Ensure color/depth formats, sample count, input layout, and bound framebuffer are pipeline-compatible. Transition the acquired color texture from <code>Present</code> to render-target use before drawing and back to <code>Present</code> before closing; the checked-in render-graph examples declare the external texture's initial <code>Present</code> state and let the graph insert these transitions.</p>
+        </section>
+
+        <div id="ray-tracing">
+          <h2>10. Add capability-gated hardware ray tracing</h2>
+          <p><span class="status">SYNTHESIZED / NOT YET COVERED BY AN END-TO-END SAMPLE</span> ArdaBackend exposes the complete component path, but the repository does <strong>not</strong> contain a checked-in application that builds geometry, creates BLAS/TLAS, populates a shader table, and calls <code>DispatchRays</code>. <code>ArdaBackendTests</code> verifies capability gating, an empty TLAS creation path, D3D12 library extraction or Vulkan direct RT shader creation, and RT pipeline cache behavior. Treat the sequence below as an integration checklist, not a demonstrated sample.</p>
+
+          <section id="rt-capabilities">
+          <h3>10.1 Gate both levels of support</h3>
+          <pre><code>const auto&amp; caps = device->GetCapabilities();
+if (!caps.mbRayTracing || !caps.mbRayTracingAccelStruct)
+{
+    // Disable the RT renderer and keep the raster path.
+    return UseRasterFallback();
+}</code></pre>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhicapabilities-mbraytracing-48caf09a"><code>mbRayTracing</code></a> gates RT shaders/pipelines; <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-mbraytracingaccelstruct-ca875a45"><code>mbRayTracingAccelStruct</code></a> gates acceleration structures. Do not infer either from the selected backend name.</p>
+          </section>
+
+          <section id="rt-shaders">
+          <h3>10.2 Create stage shaders</h3>
+          <p>The public stage enum includes ray generation, miss, closest-hit, any-hit, intersection, and callable. The tested D3D12 path calls <a href="api-reference.html#api-arda-rhi-iardarhidevice-createshaderlibrary-18c2932b"><code>CreateShaderLibrary</code></a> and extracts exports with <a href="api-reference.html#api-arda-rhi-iardarhidevice-getshaderfromlibrary-9250734a"><code>GetShaderFromLibrary</code></a>. The tested Vulkan path creates each stage from SPIR-V with <code>CreateShader</code>.</p>
+          <pre><code>// D3D12 library example; repeat extraction for Miss/ClosestHit/etc.
+auto library = device->CreateShaderLibrary(
+    rtBytes.data(), rtBytes.size(), "My RT library");
+if (!library) return Fail(library.mStatus.mMessage);
+auto rayGen = device->GetShaderFromLibrary(
+    library.mValue, "RayGen",
+    arda::rhi::EArdaRHIShaderStage::RayGeneration, "RayGen");
+if (!rayGen) return Fail(rayGen.mStatus.mMessage);
+
+// Vulkan alternative: FArdaRHIShaderDesc with RayGeneration/Miss/etc.,
+// SPIR-V bytecode, and each entry point, then device->CreateShader(desc).</code></pre>
+          </section>
+
+          <section id="rt-acceleration-structures">
+          <h3>10.3 Create and build BLAS, then TLAS</h3>
+          <p>The following names are intentional placeholders:</p>
+          <ul>
+            <li><code>geometry</code>: a valid <a href="api-reference.html#api-arda-rhi-fardarhiraytracinggeometrydesc-b330f0c8"><code>FArdaRHIRayTracingGeometryDesc</code></a> describing retained vertex/index or AABB resources;</li>
+            <li><code>blasDesc</code>/<code>tlasDesc</code>: valid <a href="api-reference.html#api-arda-rhi-fardarhiaccelstructdesc-b231d489"><code>FArdaRHIAccelStructDesc</code></a> values with level, capacity, and build inputs consistent with the canonical contract;</li>
+            <li><code>instance</code>: a valid <a href="api-reference.html#api-arda-rhi-fardarhiraytracinginstancedesc-39d67eac"><code>FArdaRHIRayTracingInstanceDesc</code></a> referencing the built BLAS with transform, mask, and hit-group contribution; and</li>
+            <li><code>buildFlags</code>: an <a href="api-reference.html#api-arda-rhi-eardarhiaccelstructbuildflags-3712197d"><code>EArdaRHIAccelStructBuildFlags</code></a> choice applied consistently to creation/build policy.</li>
+          </ul>
+          <pre><code>auto blas = device->CreateAccelStruct(blasDesc); // PLACEHOLDER descriptor
+if (!blas) return Fail(blas.mStatus.mMessage);
+auto tlas = device->CreateAccelStruct(tlasDesc); // PLACEHOLDER descriptor
+if (!tlas) return Fail(tlas.mStatus.mMessage);
+
+eastl::vector&lt;arda::rhi::FArdaRHIRayTracingGeometryDesc&gt; geometries{geometry};
+auto s = commandList->BuildBottomLevelAccelStruct(
+    *blas.mValue, geometries, buildFlags);
+if (!s) return Fail(s.mMessage);
+
+eastl::vector&lt;arda::rhi::FArdaRHIRayTracingInstanceDesc&gt; instances{instance};
+s = commandList->BuildTopLevelAccelStruct(
+    *tlas.mValue, instances, buildFlags);
+if (!s) return Fail(s.mMessage);</code></pre>
+          <p>Build commands are asynchronous GPU work. Preserve geometry buffers and BLAS/TLAS references, order TLAS after its BLAS build, and insert the state/barrier dependencies required by the command-list contract.</p>
+          </section>
+
+          <section id="rt-pipeline-table">
+          <h3>10.4 Create the pipeline and populate the shader table</h3>
+          <p><code>pipelineDesc</code> is a placeholder <a href="api-reference.html#api-arda-rhi-fardarhiraytracingpipelinedesc-83c3a852"><code>FArdaRHIRayTracingPipelineDesc</code></a>. Populate shader exports/hit groups and choose payload, attribute, and recursion sizes that exactly match HLSL. <code>tableDesc</code> is a placeholder <a href="api-reference.html#api-arda-rhi-fardarhishadertabledesc-922eab80"><code>FArdaRHIShaderTableDesc</code></a> with capacities sufficient for every record.</p>
+          <pre><code>auto pipeline = device->CreateRayTracingPipeline(pipelineDesc); // PLACEHOLDER
+if (!pipeline) return Fail(pipeline.mStatus.mMessage);
+
+auto table = device->CreateShaderTable(
+    pipeline.mValue, tableDesc);                              // PLACEHOLDER
+if (!table) return Fail(table.mStatus.mMessage);
+
+auto s = device->SetShaderTableRayGeneration(
+    table.mValue, "RayGen", rayGenLocalBindings);              // Optional bindings
+if (!s) return Fail(s.mMessage);
+auto missIndex = device->AddShaderTableMiss(
+    table.mValue, "Miss", missLocalBindings);
+if (!missIndex) return Fail(missIndex.mStatus.mMessage);
+auto hitIndex = device->AddShaderTableHitGroup(
+    table.mValue, "PrimaryHitGroup", hitLocalBindings);
+if (!hitIndex) return Fail(hitIndex.mStatus.mMessage);</code></pre>
+          </section>
+
+          <section id="rt-dispatch">
+          <h3>10.5 Bind and dispatch</h3>
+          <p><code>rtGlobalBindings</code> is a placeholder binding set containing the TLAS, output UAV, camera/constants, and any scene resources declared by the pipeline layouts.</p>
+          <pre><code>arda::rhi::FArdaRHIRayTracingState rtState;
+rtState.mPipeline = pipeline.mValue;
+rtState.mShaderTable = table.mValue;
+rtState.mBindings = { rtGlobalBindings }; // PLACEHOLDER
+
+auto s = commandList->SetRayTracingState(rtState);
+if (!s) return Fail(s.mMessage);
+s = commandList->DispatchRays(width, height, 1);
+if (!s) return Fail(s.mMessage);</code></pre>
+          <p>Transition the output to UAV before dispatch and to its next consumer state afterward. If the output is the swap-chain image, return it to <code>Present</code> before submission; if it is an intermediate texture, transition it for copy or raster sampling. Validate shader export spelling, table capacity, local/global binding compatibility, TLAS completion, and backend-specific artifacts before debugging shader logic.</p>
+          </section>
+        </div>
+
+        <section id="resize">
+          <h2>11. Handle resize at the frame boundary</h2>
+          <p><span class="status">DEMONSTRATED</span> GLFW callbacks record only positive framebuffer dimensions. The main loop consumes the pending size before acquiring the next frame and calls <a href="api-reference.html#api-arda-backend-iardaswapchain-resize-418d7a82"><code>IArdaSwapChain::Resize</code></a>.</p>
+          <pre><code>uint32_t newWidth = 0, newHeight = 0;
+if (window.ConsumeResize(newWidth, newHeight))
+{
+    if (!swapChain->Resize(newWidth, newHeight))
+        return Fail(swapChain->GetError());
+    RecreateSizeDependentResources(newWidth, newHeight);
+}</code></pre>
+          <p>The swap chain waits as needed and recreates its presentation resources. Your application must also recreate depth buffers, size-dependent storage textures, framebuffers, camera projection data, and any descriptor sets that reference replaced resources. Never call resize with zero dimensions; defer while minimized.</p>
+        </section>
+
+        <section id="errors">
+          <h2>12. Preserve diagnostics and propagate status</h2>
+          <p><span class="status">DEMONSTRATED</span> Install a long-lived <a href="api-reference.html#api-arda-backend-iardadiagnosticcallback-f00c8ba0"><code>IArdaDiagnosticCallback</code></a>, enable validation in development, and turn each failed operation into the caller's error immediately.</p>
+          <pre><code>template&lt;class T&gt;
+bool Take(arda::rhi::TArdaRHIResult&lt;T&gt;&amp; result, T&amp; out, eastl::string&amp; error)
+{
+    if (!result)
+    {
+        error = result.mStatus.mMessage;
+        return false;
+    }
+    out = eastl::move(result.mValue);
+    return true;
+}
+
+bool Check(const arda::rhi::FArdaRHIStatus&amp; status, eastl::string&amp; error)
+{
+    if (status) return true;
+    error = status.mMessage;
+    return false;
+}</code></pre>
+          <p>Use <a href="api-reference.html#api-arda-rhi-fardarhistatus-a19f9625"><code>FArdaRHIStatus</code></a> for status-returning calls and <a href="api-reference.html#api-arda-rhi-tardarhiresult-3000786e"><code>TArdaRHIResult</code></a> for value-plus-status calls. Copy <a href="api-reference.html#api-arda-backend-getbackenderror-bd2c5f82"><code>GetBackendError</code></a> immediately after lifecycle failure and <code>swapChain-&gt;GetError()</code> immediately after presentation failure. Add operation name, backend, frame, queue, resource debug names, and dimensions to logs. A successful submission ID proves acceptance, not GPU completion.</p>
+        </section>
+
+        <section id="lifetime">
+          <h2>13. Shut down in reverse dependency order</h2>
+          <p><span class="status">DEMONSTRATED</span> The sample shutdown guards wait for the swap chain, destroy it, then call backend shutdown. A production renderer should release all dependent objects explicitly first.</p>
+          <ol>
+            <li>Stop frame production, background uploads, and pipeline/shader work.</li>
+            <li>Wait for the swap chain or device to become idle.</li>
+            <li>Release command lists and per-frame framebuffers.</li>
+            <li>Release shader tables, RT pipelines, TLAS, BLAS, graphics/compute pipelines, binding sets/layouts, views, textures, and buffers.</li>
+            <li>Clear the PSO cache and global shader map.</li>
+            <li>Destroy the caller-owned swap chain before the GLFW window.</li>
+            <li>Release retained device references, then call <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend</code></a>.</li>
+            <li>Destroy the diagnostic callback only after shutdown.</li>
+          </ol>
+          <p>Intrusive references can keep a device/resource alive after the process-wide context is cleared, but relying on that behavior makes native teardown timing unpredictable. Keep object ownership visibly nested under the renderer's device lifetime.</p>
+        </section>
+
+        <section id="api-paths">
+          <h2>Curated API path checklists</h2>
+          <p>These are task paths, not an API dump. Each link targets the exact stable canonical anchor.</p>
+
+          <h3>Presented startup</h3>
+          <ol>
+            <li><a href="api-reference.html#api-arda-backend-addshadersourcedirectorymapping-0a243cb3"><code>AddShaderSourceDirectoryMapping</code></a> when using global shaders.</li>
+            <li><a href="api-reference.html#api-arda-backend-fardabackendconfiguration-b6f71e2e"><code>FArdaBackendConfiguration</code></a> and <a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a> and <a href="api-reference.html#api-arda-backend-initializebackendforpresentation-57fda7b3"><code>InitializeBackendForPresentation</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-backend-getdevicecontext-1ba97e9b"><code>GetDeviceContext</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhidevice-getcapabilities-0ed4a202"><code>GetCapabilities</code></a>.</li>
+          </ol>
+
+          <h3>Global shaders and cached PSOs</h3>
+          <ol>
+            <li><a href="api-reference.html#api-arda-declare-global-shader-ef01ed1f"><code>ARDA_DECLARE_GLOBAL_SHADER</code></a> and <a href="api-reference.html#api-arda-implement-global-shader-704d9c72"><code>ARDA_IMPLEMENT_GLOBAL_SHADER</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-b7046fe0"><code>FArdaGlobalShaderMap</code></a>, <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-initialize-4ea3e035"><code>Initialize</code></a>, and <a href="api-reference.html#api-arda-backend-fardaglobalshadermap-find-8934ebdc"><code>Find</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-backend-fardacomputepipelinestateinitializer-fromglobalshader-cab318f7"><code>FromGlobalShader</code></a> or <a href="api-reference.html#api-arda-backend-fardagraphicspipelinestateinitializer-fromglobalshaders-4f811f06"><code>FromGlobalShaders</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-setcomputepipelinestate-5e0a55bc"><code>SetComputePipelineState</code></a> or <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-setgraphicspipelinestate-259a2286"><code>SetGraphicsPipelineState</code></a>.</li>
+          </ol>
+
+          <h3>Direct resources and commands</h3>
+          <ol>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhidevice-createbuffer-b17fba39"><code>CreateBuffer</code></a>, <a href="api-reference.html#api-arda-rhi-iardarhidevice-createtexture-4da61138"><code>CreateTexture</code></a>, <a href="api-reference.html#api-arda-rhi-iardarhidevice-createshaderresourceview-95d099be"><code>CreateShaderResourceView</code></a>, and <a href="api-reference.html#api-arda-rhi-iardarhidevice-createunorderedaccessview-9229bd75"><code>CreateUnorderedAccessView</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhidevice-createbindinglayout-5419f609"><code>CreateBindingLayout</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhidevice-createbindingset-0f70b811"><code>CreateBindingSet</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhidevice-createcommandlist-315fd719"><code>CreateCommandList</code></a>, <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-open-4d45e66c"><code>Open</code></a>, <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-close-0ffddad9"><code>Close</code></a>, and <a href="api-reference.html#api-arda-rhi-iardarhidevice-executecommandlist-ad20081d"><code>ExecuteCommandList</code></a>.</li>
+          </ol>
+
+          <h3>Presented compute and raster</h3>
+          <ol>
+            <li><a href="api-reference.html#api-arda-backend-iardaswapchain-acquireframe-d830b77f"><code>AcquireFrame</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setcomputestate-b43b4184"><code>SetComputeState</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-dispatch-bd749b8e"><code>Dispatch</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setgraphicsstate-c7eb13f7"><code>SetGraphicsState</code></a>, <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-draw-472d77cb"><code>Draw</code></a>, or <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-drawindexed-62dcf937"><code>DrawIndexed</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-backend-iardaswapchain-preparesubmit-a7c52b53"><code>PrepareSubmit</code></a>, execute, then <a href="api-reference.html#api-arda-backend-iardaswapchain-present-84764540"><code>Present</code></a>.</li>
+          </ol>
+
+          <h3>Hardware ray tracing</h3>
+          <ol>
+            <li><a href="api-reference.html#api-arda-rhi-fardarhicapabilities-mbraytracing-48caf09a"><code>mbRayTracing</code></a> and <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-mbraytracingaccelstruct-ca875a45"><code>mbRayTracingAccelStruct</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhidevice-createshaderlibrary-18c2932b"><code>CreateShaderLibrary</code></a>/<a href="api-reference.html#api-arda-rhi-iardarhidevice-getshaderfromlibrary-9250734a"><code>GetShaderFromLibrary</code></a> or <a href="api-reference.html#api-arda-rhi-iardarhidevice-createshader-d1c4d59c"><code>CreateShader</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhidevice-createaccelstruct-fed6b987"><code>CreateAccelStruct</code></a>, <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-buildbottomlevelaccelstruct-ec03355a"><code>BuildBottomLevelAccelStruct</code></a>, and <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-buildtoplevelaccelstruct-65604af5"><code>BuildTopLevelAccelStruct</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhidevice-createraytracingpipeline-0e50b396"><code>CreateRayTracingPipeline</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhidevice-createshadertable-eb4966a3"><code>CreateShaderTable</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhidevice-setshadertableraygeneration-1b13a341"><code>SetShaderTableRayGeneration</code></a>, <a href="api-reference.html#api-arda-rhi-iardarhidevice-addshadertablemiss-61ad4ffa"><code>AddShaderTableMiss</code></a>, and <a href="api-reference.html#api-arda-rhi-iardarhidevice-addshadertablehitgroup-c0dd891c"><code>AddShaderTableHitGroup</code></a>.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setraytracingstate-ed9e7a1c"><code>SetRayTracingState</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-dispatchrays-0c6f40b2"><code>DispatchRays</code></a>.</li>
+          </ol>
+        </section>
+
+        <section id="summary">
+          <h2>Summary</h2>
+          <ul>
+            <li>Build both DXIL and SPIR-V artifacts and select them by the initialized backend.</li>
+            <li>Register virtual shader roots before backend initialization; alternatively create shaders directly from bytes.</li>
+            <li>Keep device-owned objects in a renderer lifetime and check every status/result.</li>
+            <li>For direct presentation, acquire, record and close, prepare submission, execute on graphics, then present.</li>
+            <li>Compute requires compatible bindings/state before dispatch; raster requires compatible framebuffer, pipeline, bindings, viewport/scissor, and geometry before draw.</li>
+            <li>Ray tracing is capability-gated and available as implemented/tested API components, but the complete dispatch recipe remains synthesized because no end-to-end RT sample is checked in.</li>
+            <li>Resize before the next acquire and recreate all application-owned size-dependent resources.</li>
+            <li>Stop work, wait, release dependents, destroy the swap chain, release the device, and shut down the backend.</li>
+          </ul>
+        </section>
+
+        <section id="next-steps">
+          <h2>Next steps and further reading</h2>
+          <ul>
+            <li><a href="getting-started.html">Getting started</a> — backend selection, initialization transaction, and teardown rationale.</li>
+            <li><a href="shaders.html">Shaders</a> — virtual directories, registration, artifacts, metadata, and diagnostics.</li>
+            <li><a href="pipelines.html">Pipeline states</a> — compatibility keys and cache behavior.</li>
+            <li><a href="rhi.html">RHI types &amp; resources</a> — descriptor, view, binding, state, and ownership contracts.</li>
+            <li><a href="commands.html">Commands</a> — command-list states, barriers, queues, submission, and synchronization.</li>
+            <li><a href="presentation.html">Presentation</a> — swap-chain platform behavior and resize details.</li>
+            <li><a href="diagnostics.html">Diagnostics</a> — callbacks, result propagation, and escalation.</li>
+            <li><a href="api-reference.html">Canonical API reference</a> — exact signatures and member-level contracts.</li>
+          </ul>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="index.html">← Previous: Overview</a>
+          <a rel="next" href="getting-started.html">Next: Getting started →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend documentation · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

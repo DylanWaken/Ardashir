@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A production-oriented guide to ArdaBackend command recording, hazards, barriers, queues, synchronization, render graphs, and frame submission.">
+  <title>Commands and submission | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a>
+        <a aria-current="page" href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaBackend</a> /
+        Commands and submission
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Record on CPUs, execute on queues</p>
+          <h1>Commands and submission</h1>
+          <p>A <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command list</a> is a CPU-authored program for a GPU <a class="term" data-term="queue" href="../glossary.html#term-queue">queue</a>. Correct production submission requires more than valid calls: it requires resource visibility, queue ordering, lifetime, and bounded CPU/GPU overlap.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#execution-model">CPU/GPU model</a>
+          <a href="#queues">Queues and ordering</a>
+          <a href="#state-machine">Command-list state</a>
+          <a href="#binding-state">Graphics and compute state</a>
+          <a href="#operations">Operation families</a>
+          <a href="#hazards">Hazards and barriers</a>
+          <a href="#synchronization">Fences, waits, and queries</a>
+          <a href="#recording-modes">Immediate and deferred</a>
+          <a href="#render-graph">ArdaRenderGraph</a>
+          <a href="#worked-example">Worked example</a>
+          <a href="#invariants">Invariants</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#production">Production frame loop</a>
+          <a href="#summary">Summary</a>
+          <a href="#checkpoints">Checkpoints</a>
+          <a href="#reading">Further reading</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>Separate CPU recording, queue submission, GPU start, GPU completion, and CPU retirement as distinct events.</li>
+            <li>Choose graphics, compute, and copy queues and establish same-queue or cross-queue order correctly.</li>
+            <li>Operate the Arda command-list state machine and preserve one device/queue domain.</li>
+            <li>Assemble complete graphics, compute, mesh, or ray-tracing binding state before execution commands.</li>
+            <li>Classify RAW, WAR, and WAW hazards and select transitions, memory/UAV ordering, or queue waits.</li>
+            <li>Decide when automatic tracking, explicit tracking, immediate execution, deferred recording, or ArdaRenderGraph is appropriate.</li>
+            <li>Design a production frame submission pipeline with parallel CPU recording and bounded in-flight resources.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites</h2>
+          <p>Read <a href="rhi.html">RHI resources and memory</a> and <a href="pipelines.html">Pipeline states</a>. You should understand resource usage versus current state, subresource ranges, views, binding sets, framebuffers, intrusive ownership, and device affinity.</p>
+          <aside class="callout">
+            <h3>Commands do not execute when called</h3>
+            <p>Unless immediate execution is explicitly selected, methods on <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-a83aba52"><code>IArdaRHICommandList</code></a> encode work. They do not imply that the GPU has observed, started, or completed that work.</p>
+          </aside>
+        </section>
+
+        <section id="execution-model">
+          <h2>Fundamentals: CPU recording versus GPU execution</h2>
+          <p>Rendering spans two asynchronous timelines. CPU threads build descriptors, resolve pipelines, and record commands into backend command memory. Submission places closed lists into a queue. The GPU later consumes that queue. Completion is observed through returned submission instances, queue waits, event queries, GPU fences, or device idle.</p>
+          <figure>
+            <img src="Assets/cpu-gpu-queue-timeline.svg" alt="Timeline showing CPU recording followed by copy, compute, and graphics submissions, same-queue ordering, resource barriers, and cross-queue waits keyed by submission instance IDs.">
+            <figcaption>Recording alone creates no GPU order: same-queue submissions retain submission order, resource barriers govern accesses within queue work, and <code>QueueWait</code> connects producer instances across queues.</figcaption>
+          </figure>
+          <h3>Five events that must not be conflated</h3>
+          <ol>
+            <li><strong>Recorded:</strong> a CPU call was encoded into an open command list.</li>
+            <li><strong>Closed:</strong> recording was finalized and can be submitted.</li>
+            <li><strong>Submitted:</strong> <a href="api-reference.html#api-arda-rhi-iardarhidevice-executecommandlist-ad20081d"><code>ExecuteCommandList</code></a> or <a href="api-reference.html#api-arda-rhi-iardarhidevice-executecommandlists-5f6de033"><code>ExecuteCommandLists</code></a> accepted the work and returned a nonzero instance.</li>
+            <li><strong>Executing:</strong> the queue scheduler has begun GPU processing; this is usually not directly observed by the application.</li>
+            <li><strong>Completed:</strong> a completion primitive proves the GPU no longer needs the associated transient CPU/GPU objects.</li>
+          </ol>
+          <p><strong>Design rationale:</strong> deferred recording enables driver batching, command reuse, and multi-threaded CPU construction. Its cost is temporal distance: invalid synchronization or lifetime may fail long after the recording call that caused it.</p>
+        </section>
+
+        <section id="queues">
+          <h2>Queue types, capabilities, and ordering</h2>
+          <p><a href="api-reference.html#api-arda-rhi-eardarhiqueuetype-9833da01"><code>EArdaRHIQueueType</code></a> exposes three logical queue classes. Query <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-isqueuesupported-6b6557e2"><code>IsQueueSupported</code></a> before creating a list.</p>
+          <dl>
+            <dt>Graphics</dt>
+            <dd>Supports raster work and normally compute/copy operations. It is the required portable baseline and the safe fallback when dedicated queues are absent.</dd>
+            <dt>Compute</dt>
+            <dd>Supports dispatch-oriented work without rasterization. A distinct asynchronous compute queue can overlap graphics only when dependencies, bandwidth, and hardware scheduling allow it.</dd>
+            <dt>Copy</dt>
+            <dd>Specializes transfers. It can isolate uploads/readbacks from graphics, but queue ownership and waits may outweigh benefit for small transfers.</dd>
+          </dl>
+          <h3>Same-queue order</h3>
+          <p>Commands within one list retain encoded order. Lists submitted to the same queue execute in submission order. That establishes execution order, but resources still need correct states and memory visibility. A barrier is not a substitute for queue submission; queue order is not a substitute for a required barrier.</p>
+          <h3>Cross-queue order</h3>
+          <p>Different queues can progress independently. If compute consumes a buffer produced on graphics, call <a href="api-reference.html#api-arda-rhi-iardarhidevice-queuewait-c65eb18c"><code>QueueWait(waitQueue, executionQueue, instance)</code></a> so the waiting queue does not pass the producer instance. The returned instance belongs to the execution queue that produced it.</p>
+          <aside class="callout warning">
+            <h3>Parallel queues do not guarantee faster frames</h3>
+            <p>Queues may share execution units, caches, and memory bandwidth. Overlap only independent work with enough duration to amortize synchronization. Measure GPU timelines rather than inferring concurrency from queue names.</p>
+          </aside>
+        </section>
+
+        <section id="state-machine">
+          <h2>The command-list state machine</h2>
+          <p><a href="api-reference.html#api-arda-rhi-iardarhidevice-createcommandlist-315fd719"><code>CreateCommandList</code></a> fixes the owning device, queue type, and immediate-execution mode. <code>GetDevice()</code> and <code>GetQueueType()</code> make that affinity inspectable.</p>
+          <ol>
+            <li><strong>Created:</strong> the list exists for one queue and device.</li>
+            <li><strong>Recording:</strong> <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-open-4d45e66c"><code>Open()</code></a> begins encoding.</li>
+            <li><strong>Closed:</strong> <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-close-0ffddad9"><code>Close()</code></a> finalizes encoded work.</li>
+            <li><strong>Submitted:</strong> device execution returns a queue instance ID. Submission does not mutate the list into a completion primitive.</li>
+            <li><strong>Reusable:</strong> <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-reset-31e55aa7"><code>Reset()</code></a> reopens a closed list and discards its prior recording. Reuse only after any native allocator and referenced-work constraints are satisfied by the implementation contract.</li>
+          </ol>
+          <p>Lifecycle calls return <a href="api-reference.html#api-arda-rhi-fardarhistatus-a19f9625"><code>FArdaRHIStatus</code></a> because open/close/reset ordering and backend finalization can fail. Record only while open; submit only after close; never treat a successful close as GPU completion.</p>
+          <h3>Submission instance IDs</h3>
+          <p><a href="api-reference.html#api-arda-rhi-tardarhiresult-3000786e"><code>TArdaRHIResult&lt;uint64_t&gt;</code></a> from execution contains a nonzero instance on success. It names a point in one queue’s submission stream. Store it with the queue identity. Passing zero to <code>QueueWait</code> is invalid; comparing instance values from unrelated queues has no ordering meaning.</p>
+        </section>
+
+        <section id="binding-state">
+          <h2>Graphics, compute, mesh, and ray-tracing state</h2>
+          <p>Execution commands consume state previously bound into the command list. Arda packages related state into retained value objects rather than exposing every native state mutation independently.</p>
+          <h3>Graphics state</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhigraphicsstate-38f88d04"><code>FArdaRHIGraphicsState</code></a> carries the graphics pipeline, framebuffer, binding sets, vertex buffers, optional index buffer and format, viewports, and scissors. <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setgraphicsstate-c7eb13f7"><code>SetGraphicsState</code></a> must succeed before draw calls that depend on it.</p>
+          <ul>
+            <li>Pipeline color/depth formats and sample count must match the framebuffer.</li>
+            <li>Binding sets must match pipeline binding layouts and shader visibility.</li>
+            <li><a class="term" data-term="vertex-buffer" href="../glossary.html#term-vertex-buffer">Vertex buffers</a> must satisfy the input layout.</li>
+            <li><a class="term" data-term="index-buffer" href="../glossary.html#term-index-buffer">Index buffer</a> format, offset, and range must cover indexed draw arguments.</li>
+            <li><a class="term" data-term="viewport" href="../glossary.html#term-viewport">Viewports</a> and <a class="term" data-term="scissor" href="../glossary.html#term-scissor">scissors</a> must describe intended framebuffer regions.</li>
+          </ul>
+          <h3>Compute and specialized state</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhicomputestate-e1f56cfa"><code>FArdaRHIComputeState</code></a> binds a compute pipeline and binding sets before <code>Dispatch</code>. <a href="api-reference.html#api-arda-rhi-fardarhimeshletstate-1509c015"><code>FArdaRHIMeshletState</code></a> adds framebuffer and raster regions for <code>DispatchMesh</code>. <a href="api-reference.html#api-arda-rhi-fardarhiraytracingstate-9fa7b333"><code>FArdaRHIRayTracingState</code></a> binds a shader table and global sets before <code>DispatchRays</code>. The latter two are capability-gated.</p>
+          <figure>
+            <img src="Assets/pso-command-flow.svg" alt="Flow from a global shader and pipeline initializer through framebuffer completion and pipeline-cache hit or miss resolution into command-list binding, draw or dispatch, close, and explicit execution.">
+            <figcaption>Semantic descriptors and framebuffer compatibility determine the cached immutable PSO; binding that PSO records work, while only <code>ExecuteCommandList(s)</code> submits it and returns a queue instance.</figcaption>
+          </figure>
+          <p>Use <a href="pipelines.html"><code>FArdaPipelineStateCache::SetGraphicsPipelineState</code> and <code>SetComputePipelineState</code></a> when renderer code starts from high-level pipeline initializers. These resolve the PSO and place it into command state before binding.</p>
+        </section>
+
+        <section id="operations">
+          <h2>Command families</h2>
+          <dl>
+            <dt>Draw and indexed draw</dt>
+            <dd><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-draw-472d77cb"><code>Draw</code></a> consumes vertex/instance counts; <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-drawindexed-62dcf937"><code>DrawIndexed</code></a> consumes index data and base-vertex semantics through <a href="api-reference.html#api-arda-rhi-fardarhidrawarguments-755341a9"><code>FArdaRHIDrawArguments</code></a>.</dd>
+            <dt>Dispatch</dt>
+            <dd><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-dispatch-bd749b8e"><code>Dispatch</code></a> launches compute thread groups. Group counts are not thread counts; the shader declares threads per group. Mesh and ray dispatches require their capabilities and state.</dd>
+            <dt>Copy and upload</dt>
+            <dd><code>WriteBuffer</code>, <code>CopyBuffer</code>, <code>CopyTextureFromStaging</code>, and <code>CopyTextureToStaging</code> move data. Bounds, alignment, states, pitches, and queue support remain caller-visible contracts.</dd>
+            <dt>Clear</dt>
+            <dd><code>ClearTexture</code>, <code>ClearTextureUInt</code>, <code>ClearDepthStencilTexture</code>, and <code>ClearBufferUInt</code> initialize compatible resources. A clear is an ordered write and participates in hazards.</dd>
+            <dt>Ray-tracing builds</dt>
+            <dd><code>BuildBottomLevelAccelStruct</code>, <code>BuildTopLevelAccelStruct</code>, and <code>BuildTopLevelAccelStructFromBuffer</code> consume build inputs and write acceleration storage. Build flags affect update, compaction, speed, and memory tradeoffs.</dd>
+            <dt>Opacity and sampler feedback</dt>
+            <dd><code>BuildOpacityMicromap</code>, <code>ClearSamplerFeedbackTexture</code>, and <code>DecodeSamplerFeedbackTexture</code> encode specialized workflows and must be capability-gated.</dd>
+            <dt>Markers and timer queries</dt>
+            <dd><code>BeginMarker</code>/<code>EndMarker</code> create nested diagnostic regions. <code>BeginTimerQuery</code>/<code>EndTimerQuery</code> record GPU timestamps; poll and read only after availability.</dd>
+          </dl>
+        </section>
+
+        <section id="hazards">
+          <h2>Resource hazards, states, and barriers</h2>
+          <p>A hazard exists when accesses can overlap without the required execution order and memory visibility. Classify the earlier and later accesses:</p>
+          <dl>
+            <dt>RAW — read after write</dt>
+            <dd>A later read must observe an earlier write. Examples: sample a render target, consume compute output, or draw from an uploaded vertex buffer.</dd>
+            <dt>WAR — write after read</dt>
+            <dd>A later write must not overwrite storage while an earlier read still consumes it. This matters across queues and when aliasing/reusing transient memory.</dd>
+            <dt>WAW — write after write</dt>
+            <dd>Two writes require deterministic order when the latter depends on replacing or accumulating after the former.</dd>
+          </dl>
+          <h3>Resource states</h3>
+          <p><a href="api-reference.html#api-arda-rhi-eardarhiresourcestate-73bda157"><code>EArdaRHIResourceState</code></a> communicates intended access and layout: copy source/destination, render target, depth read/write, shader resource, unordered access, present, acceleration-structure roles, and more. A transition barrier reconciles previous and next state and establishes native synchronization as required.</p>
+          <pre><code>const rhi::FArdaRHITextureSubresourceRange mipZero{0, 1, 0, 1};
+
+if (auto status = command-&gt;SetTextureState(
+        *sceneColor,
+        mipZero,
+        rhi::EArdaRHIResourceState::RenderTarget); !status)
+    return status;
+
+command-&gt;CommitBarriers();
+command-&gt;ClearTexture(*sceneColor, mipZero, {0.f, 0.f, 0.f, 1.f});
+
+// After rendering, make mip zero visible to shader reads.
+command-&gt;SetTextureState(
+    *sceneColor,
+    mipZero,
+    rhi::EArdaRHIResourceState::ShaderResource);
+command-&gt;CommitBarriers();</code></pre>
+          <h3>Automatic versus explicit tracking</h3>
+          <p>With automatic barriers enabled, <code>SetTextureState</code>, <code>SetBufferState</code>, and <code>SetAccelStructState</code> update tracked intent; <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-commitbarriers-86e2d913"><code>CommitBarriers</code></a> emits pending work. <code>BeginTrackingTextureState</code> and <code>BeginTrackingBufferState</code> seed externally known state.</p>
+          <p><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setautomaticbarriers-158f3c1c"><code>SetAutomaticBarriers(false)</code></a> transfers correctness to the caller. Use it only when a higher-level scheduler has complete access information and can prove boundary states. Mixing external transitions with stale internal tracking is worse than choosing one coherent authority.</p>
+          <h3>UAV ordering</h3>
+          <p>Consecutive UAV uses can remain in <code>UnorderedAccess</code> state yet still have RAW or WAW dependencies. A state transition may therefore be unnecessary while a UAV memory-ordering barrier is still required. <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setuavbarriersfortexture-41c5a233"><code>SetUAVBarriersForTexture</code></a> and the buffer equivalent control per-resource automatic UAV barriers for advanced batching.</p>
+          <aside class="callout warning">
+            <h3>Optimization requires a proof</h3>
+            <p>Disable a UAV barrier only when accesses are disjoint or ordering is otherwise guaranteed. “Same state” and “same queue” do not prove that writes are visible to later shader invocations.</p>
+          </aside>
+        </section>
+
+        <section id="synchronization">
+          <h2>Cross-queue waits, fences, and queries</h2>
+          <h3>Queue-to-queue dependencies</h3>
+          <p>Use submission instance IDs and <code>QueueWait</code> for GPU-side cross-queue order. The CPU can continue recording while the waiting queue stalls at the dependency. Place the wait before submitting dependent work according to the backend contract and keep producer/consumer queue identities explicit.</p>
+          <h3>Event queries</h3>
+          <p><a href="api-reference.html#api-arda-rhi-iardarhidevice-signaleventquery-66bd68bd"><code>SignalEventQuery</code></a> inserts completion on a queue. <code>PollEventQuery</code> supports non-blocking retirement; <code>WaitEventQuery</code> blocks the CPU; <code>ResetEventQuery</code> prepares reuse after completion.</p>
+          <h3>GPU fences</h3>
+          <p><a class="term" data-term="fence" href="../glossary.html#term-fence">Fences</a> expose the same signal/poll/wait/reset pattern through <code>SignalGpuFence</code>, <code>PollGpuFence</code>, <code>WaitGpuFence</code>, and <code>ResetGpuFence</code>. Arda’s facade tracks one signal at a time, so use a ring of fences for multiple frames in flight.</p>
+          <h3>Timer queries</h3>
+          <p>Begin and end a timer query while recording. After GPU completion, poll availability, read <a href="api-reference.html#api-arda-rhi-iardarhidevice-gettimerqueryseconds-49b046a4"><code>GetTimerQuerySeconds</code></a>, then reset. Timer queries measure GPU intervals, not CPU recording or queue wait time unless the measured region includes those effects.</p>
+          <p><a href="api-reference.html#api-arda-rhi-iardarhidevice-waitforidle-d34034da"><code>WaitForIdle</code></a> is appropriate for teardown, tests, initialization transitions, and rare recovery. Calling it every frame serializes CPU and GPU and destroys queue overlap.</p>
+        </section>
+
+        <section id="recording-modes">
+          <h2>Immediate versus deferred command lists</h2>
+          <p>The second <code>CreateCommandList</code> argument, <code>bImmediateExecution</code>, configures backend immediate execution. The default <code>false</code> creates a conventional deferred list that records a batch for explicit submission.</p>
+          <dl>
+            <dt>Deferred</dt>
+            <dd>Preferred for production frames. It amortizes submission, supports parallel CPU recording, preserves clear list boundaries, and allows queue scheduling.</dd>
+            <dt>Immediate</dt>
+            <dd>Useful for narrow bring-up, tools, tiny synchronous setup paths, and diagnosis where simplified latency matters more than batching. It does not erase resource-state, ownership, or completion requirements.</dd>
+          </dl>
+          <p><strong>Tradeoff:</strong> immediate execution can make a simple experiment easier to reason about but can hide accidental serialization and produce a frame architecture that scales poorly. Keep the production path deferred and measure any exception.</p>
+        </section>
+
+        <section id="render-graph">
+          <h2>ArdaRenderGraph integration</h2>
+          <p><a class="term" data-term="arda-render-graph" href="../glossary.html#term-arda-render-graph">ArdaRenderGraph</a> raises command scheduling from imperative transitions to declared pass accesses. <code>FARDGBuilder</code> compiles live passes, resource lifetimes, queue assignments, raster groups, and <code>FARDGQueueDependency</code> values before recording.</p>
+          <ul>
+            <li>Logical textures, buffers, views, and acceleration structures are materialized at execution.</li>
+            <li>Declared access lets compilation derive boundary barriers and cross-queue waits.</li>
+            <li>Transient lifetimes permit pool reuse and safe heap aliasing when supported.</li>
+            <li><code>FARDGExecuteOptions::mbParallelRecording</code> records independent pass waves concurrently.</li>
+            <li><code>FARDGExecutionResult</code> reports submitted-list count, queue waits, pool reuse, immediate mode, virtual heaps, aliasing, and last submitted instances.</li>
+          </ul>
+          <p>Pass callbacks that use <code>FARDGPassExecutionContext</code> can validate declared physical-resource access. A raw <code>IArdaRHICommandList&amp;</code> callback can use independently retained resources, so the graph cannot prove declaration completeness. Reserve the unsafe raw path for operations the typed context cannot express.</p>
+          <p><strong>Design rationale:</strong> direct RHI recording maximizes local control but distributes hazard reasoning across call sites. A render graph centralizes whole-frame dependency knowledge and parallel scheduling, at the cost of declaration discipline and compilation machinery.</p>
+        </section>
+
+        <section id="worked-example">
+          <h2>Worked example: copy, compute, then graphics</h2>
+          <pre><code>using namespace arda;
+
+auto copyResult = device-&gt;CreateCommandList(rhi::EArdaRHIQueueType::Copy);
+auto computeResult = device-&gt;CreateCommandList(rhi::EArdaRHIQueueType::Compute);
+auto graphicsResult = device-&gt;CreateCommandList(rhi::EArdaRHIQueueType::Graphics);
+if (!copyResult || !computeResult || !graphicsResult)
+    return rhi::FArdaRHIStatus::Error(
+        rhi::EArdaRHIResult::Unsupported,
+        "Required queue is unavailable.");
+
+auto copy = eastl::move(copyResult.mValue);
+copy-&gt;Open();
+copy-&gt;SetBufferState(*workBuffer, rhi::EArdaRHIResourceState::CopyDest);
+copy-&gt;CommitBarriers();
+copy-&gt;WriteBuffer(*workBuffer, uploadData, uploadBytes);
+copy-&gt;Close();
+auto copied = device-&gt;ExecuteCommandList(copy);
+if (!copied)
+    return copied.mStatus;
+
+device-&gt;QueueWait(
+    rhi::EArdaRHIQueueType::Compute,
+    rhi::EArdaRHIQueueType::Copy,
+    copied.mValue);
+
+auto compute = eastl::move(computeResult.mValue);
+compute-&gt;Open();
+compute-&gt;SetBufferState(
+    *workBuffer, rhi::EArdaRHIResourceState::UnorderedAccess);
+compute-&gt;CommitBarriers();
+compute-&gt;SetComputeState(computeState);
+compute-&gt;Dispatch(groupCount, 1, 1);
+compute-&gt;Close();
+auto computed = device-&gt;ExecuteCommandList(compute);
+if (!computed)
+    return computed.mStatus;
+
+device-&gt;QueueWait(
+    rhi::EArdaRHIQueueType::Graphics,
+    rhi::EArdaRHIQueueType::Compute,
+    computed.mValue);
+
+auto graphics = eastl::move(graphicsResult.mValue);
+graphics-&gt;Open();
+graphics-&gt;SetBufferState(
+    *workBuffer, rhi::EArdaRHIResourceState::VertexBuffer);
+graphics-&gt;CommitBarriers();
+graphics-&gt;SetGraphicsState(graphicsState);
+graphics-&gt;Draw(drawArguments);
+graphics-&gt;Close();
+auto drawn = device-&gt;ExecuteCommandList(graphics);
+if (!drawn)
+    return drawn.mStatus;</code></pre>
+          <p>This illustrates the dependency chain, not a universal recommendation. If dedicated queues are absent, record all three phases on graphics. In production, propagate every returned status, retain all state/resources through completion, and signal a frame fence after the final submission.</p>
+        </section>
+
+        <section id="invariants">
+          <h2>Command and submission invariants</h2>
+          <ol>
+            <li>A command list records only while open and submits only after successful close.</li>
+            <li>The list, every bound object, and every accessed resource belong to one device.</li>
+            <li>Every operation is supported by the list’s queue and the device capabilities.</li>
+            <li>Pipeline, binding sets, framebuffer, vertex/index data, and dynamic state are mutually compatible.</li>
+            <li>Every RAW, WAR, and WAW dependency has sufficient execution order and memory visibility.</li>
+            <li>Tracked state begins from the actual state and ends in the state promised to the next owner.</li>
+            <li>Submission instances are nonzero, paired with their producer queue, and used only for valid waits.</li>
+            <li>All CPU and GPU objects referenced by submitted work survive until completion is proven.</li>
+            <li>Frame-resource reuse is bounded by fences or queries, never by elapsed CPU time.</li>
+          </ol>
+        </section>
+
+        <section id="failures">
+          <h2>Failure analysis</h2>
+          <dl>
+            <dt><code>InvalidState</code> while recording</dt>
+            <dd>Check open/close/reset phase, required bound state, timer-query pairing, marker nesting, and whether an operation is legal after finalization. Repair the lifecycle; blind retry preserves the defect.</dd>
+            <dt><code>WrongDevice</code></dt>
+            <dd>Trace command-list and resource creation. Pipeline-cache objects, framebuffers, views, queries, and imported resources must all belong to the same device domain.</dd>
+            <dt><code>Unsupported</code></dt>
+            <dd>Check queue availability and exact feature flags for mesh dispatch, ray tracing, sampler feedback, opacity micromaps, queries, or other specialized commands. Select a graphics-queue or feature fallback.</dd>
+            <dt>GPU data is stale or intermittently corrupt</dt>
+            <dd>Classify the accesses, then inspect subresource range, initial state, transition point, UAV ordering, cross-queue wait, and CPU flush/upload lifetime. A CPU-success status does not validate GPU memory dependency.</dd>
+            <dt>GPU hang or device removal</dt>
+            <dd>Enable native validation, preserve marker breadcrumbs, capture the first failing frame, and inspect out-of-bounds draw/dispatch/copy, invalid descriptors, released resources, and cyclic queue waits.</dd>
+            <dt>Frame rate collapses despite low GPU work</dt>
+            <dd>Look for per-frame <code>WaitForIdle</code>, tiny submissions, excessive barriers, synchronous query waits, command-list churn, serialized recording, and queue ping-pong.</dd>
+            <dt>Parallel recording is nondeterministic</dt>
+            <dd>Audit shared CPU allocators, mutable descriptor tables, global caches, pass parameter lifetime, and submission ordering. Recording different lists can be parallel; mutating shared state without a threading contract cannot.</dd>
+          </dl>
+        </section>
+
+        <section id="production">
+          <h2>Performance guidance and production frame submission</h2>
+          <ol>
+            <li><strong>Retire a frame slot.</strong> Poll or wait for that slot’s completion fence before reusing command allocators, upload ranges, transient descriptors, and dynamic buffers.</li>
+            <li><strong>Acquire presentation state.</strong> Obtain the next swap-chain image and its known initial/present state.</li>
+            <li><strong>Build work.</strong> Update immutable pass data, compile ArdaRenderGraph, or construct a direct dependency schedule.</li>
+            <li><strong>Record in parallel.</strong> Assign independent pass waves to worker threads. Give each worker private transient recording storage and avoid mutable shared descriptors.</li>
+            <li><strong>Submit coarse batches.</strong> Preserve dependency order while batching compatible same-queue lists with <code>ExecuteCommandLists</code>.</li>
+            <li><strong>Insert cross-queue waits.</strong> Wait only at the first true consumer, not at arbitrary frame-wide boundaries.</li>
+            <li><strong>Transition and present.</strong> Return the swap-chain image to <code>Present</code> state and submit/present through the presentation contract.</li>
+            <li><strong>Signal completion.</strong> Signal the frame slot’s fence/query after the last submission that touches its resources.</li>
+            <li><strong>Retire asynchronously.</strong> Continue CPU work for later frames; release deferred resources and run garbage collection only when completion proves safety.</li>
+          </ol>
+          <h3>Practical optimization rules</h3>
+          <ul>
+            <li>Batch enough work per list to amortize close/submit costs, but preserve parallel recording and useful queue overlap.</li>
+            <li>Place barriers near the first consumer while coalescing compatible transitions. Avoid transitioning a whole texture when one mip is sufficient.</li>
+            <li>Use async compute only for proven overlap. Queue waits and cache/bandwidth contention can make a nominally parallel schedule slower.</li>
+            <li>Use markers on frame, pass, and major algorithm boundaries. Keep labels stable so captures compare across builds.</li>
+            <li>Measure CPU recording, queue latency, and GPU duration separately. Timer queries alone do not expose CPU bottlenecks.</li>
+            <li>Keep two or three frame contexts only when latency requirements permit; more buffering can improve throughput while increasing latency and memory.</li>
+            <li>Prefer graph-derived barriers for graph-owned resources and explicit direct-RHI barriers for external/manual work. Document the state handoff between authorities.</li>
+          </ul>
+        </section>
+
+        <section id="summary">
+          <h2>Summary</h2>
+          <p>Command recording constructs a future GPU program; closing finalizes it; submission orders it on one queue; barriers make resource accesses visible and legal; waits connect otherwise independent queues; fences and queries prove completion. Arda exposes direct control through <code>IArdaRHICommandList</code> and whole-frame scheduling through ArdaRenderGraph. Production performance comes from correct batching, parallel recording, selective queue overlap, and fence-based resource retirement—not from removing synchronization blindly.</p>
+        </section>
+
+        <section id="checkpoints">
+          <h2>Checkpoints</h2>
+          <ol>
+            <li>Why does successful <code>Close()</code> prove neither submission nor completion?</li>
+            <li>For compute writing a UAV and graphics reading it as a vertex buffer, which hazard, state changes, and queue dependency are required?</li>
+            <li>When can two UAV operations remain in one state yet still require ordering?</li>
+            <li>What information must accompany a submission instance ID for it to be meaningful?</li>
+            <li>Which frame resources must be retired by a fence before reuse?</li>
+            <li>What declaration does ArdaRenderGraph need in order to derive a barrier or cross-queue wait?</li>
+          </ol>
+        </section>
+
+        <section id="further-reading">
+          <span id="reading"></span>
+          <h2>Further reading</h2>
+          <ul>
+            <li><a href="rhi.html">RHI resources and memory</a> — subresources, views, initial states, ownership, and heaps.</li>
+            <li><a href="pipelines.html">Pipeline states</a> — PSO resolution and graphics compatibility.</li>
+            <li><a href="presentation.html">Presentation</a> — swap-chain acquisition, present state, and frame boundaries.</li>
+            <li><a class="term" data-term="arda-render-graph" href="../glossary.html#term-arda-render-graph">ArdaRenderGraph</a> — pass declarations, compilation, transient lifetime, and execution.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-a83aba52">API: <code>IArdaRHICommandList</code></a>,
+              <a href="api-reference.html#api-arda-rhi-iardarhidevice-createcommandlist-315fd719"><code>CreateCommandList</code></a>,
+              <a href="api-reference.html#api-arda-rhi-iardarhidevice-executecommandlists-5f6de033"><code>ExecuteCommandLists</code></a>, and
+              <a href="api-reference.html#api-arda-rhi-iardarhidevice-queuewait-c65eb18c"><code>QueueWait</code></a>.</li>
+            <li><a href="../glossary.html#term-command-list">Glossary: command list</a>,
+              <a href="../glossary.html#term-barrier">barrier</a>,
+              <a href="../glossary.html#term-resource-state">resource state</a>, and
+              <a href="../glossary.html#term-fence">fence</a>.</li>
+          </ul>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="rhi.html">← Previous: RHI types &amp; resources</a>
+          <a rel="next" href="presentation.html">Next: Presentation →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer">
+    <p>ArdaBackend documentation · <a href="api-reference.html">Central API reference</a></p>
+  </footer>
+</body>
+</html>

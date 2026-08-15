@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A source-backed guide to ArdaRenderGraph logical resources, views, ownership boundaries, state declarations, lifetimes, and current transient pooling.">
+  <title>Resources and ownership | ArdaRenderGraph | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaRenderGraph</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
+      <h2>ArdaRenderGraph</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="architecture.html">Architecture</a>
+        <a aria-current="page" href="resources.html">Resources</a>
+        <a href="passes.html">Passes</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="debugging.html">Debugging</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaRenderGraph</a> /
+        Resources and ownership
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Declare identity now, materialize storage later</p>
+          <h1>Resources and ownership</h1>
+          <p>ArdaRenderGraph separates a <a class="term" data-term="logical-resource" href="../glossary.html#term-logical-resource">logical resource</a> used to describe work from the <a class="term" data-term="physical-resource" href="../glossary.html#term-physical-resource">physical resource</a> used to execute it. That separation gives the compiler enough information to cull passes, derive lifetimes, lower <a class="term" data-term="resource-state" href="../glossary.html#term-resource-state">resource states</a>, and safely recycle selected transient allocations.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#fundamentals">Logical and physical resources</a>
+          <a href="#handles">Handles and registries</a>
+          <a href="#hierarchy">Resource hierarchy</a>
+          <a href="#descriptors">Descriptors and views</a>
+          <a href="#ownership">Create, import, extract</a>
+          <a href="#access">Access and subresources</a>
+          <a href="#lifetime">Transient lifetime and pooling</a>
+          <a href="#derivation">Design derivation</a>
+          <a href="#worked-example">Worked lifecycle</a>
+          <a href="#invariants">Invariants</a>
+          <a href="#performance">Performance and threading</a>
+          <a href="#tradeoffs">Tradeoffs</a>
+          <a href="#failures">Failure table</a>
+          <a href="#summary">Summary</a>
+          <a href="#checkpoints">Checkpoints</a>
+          <a href="#reading">Further reading</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>Distinguish a graph-owned logical record from its materialized RHI backing.</li>
+            <li>Explain why typed handles and append-only registries provide stable graph-local identity.</li>
+            <li>Choose among texture, buffer, acceleration-structure, uniform-buffer, and view records.</li>
+            <li>State the ownership contracts for creation, external registration, and extraction.</li>
+            <li>Declare required states and ranges without overstating current dependency precision.</li>
+            <li>Explain inclusive lifetimes, committed-resource reuse, and the current placed-aliasing limitation.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites</h2>
+          <p>Read <a href="architecture.html">Architecture and lifecycle</a> and the Backend chapters on <a href="../ArdaBackend/rhi.html">RHI resources</a> and <a href="../ArdaBackend/commands.html">commands and barriers</a>. You should understand descriptors, <a class="term" data-term="srv" href="../glossary.html#term-srv">SRVs</a>, <a class="term" data-term="uav" href="../glossary.html#term-uav">UAVs</a>, subresources, <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a>, and asynchronous GPU completion.</p>
+          <aside class="callout">
+            <h3>Two meanings of “resource”</h3>
+            <p>In this chapter, <em>logical resource</em> means a graph record. <em>Physical resource</em> means an RHI texture, buffer, or acceleration structure. A type ending in <code>Ref</code>, such as <code>FARDGTextureRef</code>, is a nullable pointer to the logical record—not an owning RHI smart reference.</p>
+          </aside>
+        </section>
+
+        <section id="fundamentals">
+          <h2>Fundamentals: logical intent versus physical storage</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-createtexture-1c683c9b"><code>CreateTexture</code></a> and <a href="api-reference.html#api-arda-rdg-fardgbuilder-createbuffer-3391cbe2"><code>CreateBuffer</code></a> append records containing names, descriptors, flags, state history, and live-use bounds. They do not immediately allocate GPU storage. During execution, live records receive physical objects; imported records already carry them.</p>
+          <dl>
+            <dt>Logical identity</dt>
+            <dd>Stable only inside the builder that created it and only for that builder’s lifetime. Pass declarations, edges, culling, and compile-time state refer to this identity.</dd>
+            <dt>Physical identity</dt>
+            <dd>An RHI object identity used by command recording. Different non-overlapping logical resources can intentionally map to the same committed object.</dd>
+            <dt>Materialization</dt>
+            <dd>The execution stage that binds live logical records to imported or newly acquired physical objects before callbacks run.</dd>
+          </dl>
+          <p>Logical descriptors are therefore promises about what execution may create. Calling <code>GetTexture()</code> or <code>GetBuffer()</code> on a newly created record yields an empty RHI reference until materialization. Pass code should instead use validated getters on the execution context.</p>
+        </section>
+
+        <section id="handles">
+          <h2>Typed handles and append-only registries</h2>
+          <p><a href="api-reference.html#api-arda-rdg-tardghandle-fd7e052b"><code>TARDGHandle&lt;TagType&gt;</code></a> is a compact <code>uint32_t</code> index. Empty tag types make pass, texture, buffer, view, acceleration-structure, and uniform-buffer handles incompatible at compile time. The invalid index is <code>UINT32_MAX</code>; <code>IsValid()</code> reports whether an index is present, not whether it belongs to a particular builder.</p>
+          <p>Private append-only registries own records and assign handles in registration order. This design gives:</p>
+          <ul>
+            <li>stable indices while the graph is built and compiled;</li>
+            <li>deterministic ordering and inexpensive vector-indexed compiler state;</li>
+            <li>typed rejection of accidentally passing a buffer handle where a texture handle is required;</li>
+            <li>nullable <code>TryGet*</code> lookup at builder boundaries.</li>
+          </ul>
+          <aside class="callout warning">
+            <h3>A valid index is not universal identity</h3>
+            <p>Handle index 3 in one builder is unrelated to index 3 in another. Setup validates that pointers resolve to the same registry record; cross-graph references trigger the project check path.</p>
+          </aside>
+        </section>
+
+        <section id="hierarchy">
+          <h2>Resource and view hierarchy</h2>
+          <p>The public hierarchy distinguishes storage-owning records from interpretations:</p>
+          <dl>
+            <dt><a href="api-reference.html#api-arda-rdg-fardgtexture-cf497813"><code>FARDGTexture</code></a></dt>
+            <dd>Stores a texture descriptor, typed handle, optional imported/materialized RHI texture, initial/final states, and ownership flags.</dd>
+            <dt><a href="api-reference.html#api-arda-rdg-fardgbuffer-1b6b47fe"><code>FARDGBuffer</code></a></dt>
+            <dd>Provides the equivalent logical record for linear storage.</dd>
+            <dt><a href="api-reference.html#api-arda-rdg-fardgaccelstruct-d3221204"><code>FARDGAccelStruct</code></a></dt>
+            <dd>Represents BLAS/TLAS storage. It can be created or imported, but it is not included in transient committed pooling.</dd>
+            <dt><a href="api-reference.html#api-arda-rdg-fardguniformbuffer-b1336a8c"><code>FARDGUniformBuffer</code></a></dt>
+            <dd>Pairs frozen ARDG parameter contents and metadata with a dedicated constant-buffer allocation uploaded at execution.</dd>
+            <dt>Texture views</dt>
+            <dd><a href="api-reference.html#api-arda-rdg-fardgtexturesrv-e546d9b0"><code>FARDGTextureSRV</code></a> and <a href="api-reference.html#api-arda-rdg-fardgtextureuav-ba03d8c6"><code>FARDGTextureUAV</code></a> retain a parent handle, subresource range, and optional format/dimension override.</dd>
+            <dt>Buffer views</dt>
+            <dd><a href="api-reference.html#api-arda-rdg-fardgbuffersrv-e477409e"><code>FARDGBufferSRV</code></a> and <a href="api-reference.html#api-arda-rdg-fardgbufferuav-5e29308a"><code>FARDGBufferUAV</code></a> retain a parent handle, byte range, and optional typed format.</dd>
+          </dl>
+          <p>Views are logical metadata, not independent storage. Setup preserves exact view identity for execution-time declaration validation and also records access to the parent resource.</p>
+        </section>
+
+        <section id="descriptors">
+          <h2>Descriptors are deferred allocation contracts</h2>
+          <p>Texture and buffer creation copy the complete RHI descriptors. Names must be non-empty; texture extents, array size, and mip count must be nonzero; buffer byte size must be nonzero. The builder accepts only <a href="api-reference.html#api-arda-rdg-eardgresourceflags-7032a490"><code>Transient</code></a> as an optional create-time resource flag—<code>External</code> and <code>Extracted</code> are established by their dedicated APIs.</p>
+          <p><a href="api-reference.html#api-arda-rdg-fardgtextureviewdesc-44408d5b"><code>FARDGTextureViewDesc</code></a> selects parent, mip/slice range, format, and dimension. <a href="api-reference.html#api-arda-rdg-fardgbufferviewdesc-bd892a43"><code>FARDGBufferViewDesc</code></a> selects parent, byte range, and format. Their parent handles must resolve in the same builder at view creation.</p>
+          <p>During committed pooling, descriptor hashes are only buckets. Reuse follows a full normalized equality check: texture shape, format, dimension, usage, sample count, and clear value must agree; buffer size, stride, versions, format, usage, and CPU access must agree. Debug names and initial-state bookkeeping are deliberately normalized away from pool identity.</p>
+        </section>
+
+        <section id="ownership">
+          <h2>Create, import, and extract ownership</h2>
+          <h3>Create: graph-owned logical record</h3>
+          <p>Created textures and buffers default to <code>Transient</code>. The builder owns their logical records. If live, execution acquires a physical object. Without extraction, no durable physical reference is published to the caller.</p>
+          <h3>Import: caller-owned physical object</h3>
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-registerexternaltexture-4853552d"><code>RegisterExternalTexture</code></a> and <a href="api-reference.html#api-arda-rdg-fardgbuilder-registerexternalbuffer-fa9aa334"><code>RegisterExternalBuffer</code></a> retain an RHI reference while preserving external ownership. A known non-<code>Unknown</code> entry state is required. Re-registering the same physical identity returns one logical record only when entry states agree. The prologue becomes its initial producer, making pre-graph contents available to first use.</p>
+          <h3>Extract: publish created physical storage</h3>
+          <p><a class="term" data-term="extraction" href="../glossary.html#term-extraction">Extraction</a> is the explicit boundary operation that turns graph-created storage into a retained output without extending the logical record beyond its builder.</p>
+          <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-queuetextureextraction-920af16d"><code>QueueTextureExtraction</code></a> and <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuebufferextraction-2454eb04"><code>QueueBufferExtraction</code></a> mark a resource observable, remove transient eligibility, request a known final state, and store a caller-owned output address. Each resource and each output address may appear once. The output location must remain valid through <code>Execute</code>.</p>
+          <p>Publication happens after command submission, not after GPU completion. The extracted RHI reference is durable, but the logical record remains builder-owned and expires with the graph.</p>
+        </section>
+
+        <section id="access">
+          <h2>Access states, ranges, and two granularities</h2>
+          <p><a href="api-reference.html#api-arda-rdg-fardgtextureaccess-8ba7b0ad"><code>FARDGTextureAccess</code></a> combines a texture, required state, and mip/slice range. <a href="api-reference.html#api-arda-rdg-fardgbufferaccess-919444b2"><code>FARDGBufferAccess</code></a> combines a buffer, state, and byte range. View parameters provide equivalent state defaults through SRV/UAV semantics.</p>
+          <aside class="callout warning">
+            <h3>Dependency edges are whole-resource today</h3>
+            <p>Setup hazard history is maintained for the whole logical texture, buffer, or acceleration structure. Two passes touching disjoint texture mips or buffer ranges can still receive an edge. The selected texture subresources are preserved for validation and per-mip/per-slice barrier lowering; buffer ranges are validated, but buffer state lowering remains whole-buffer. Do not infer subresource-parallel dependency discovery from subresource-specific barriers.</p>
+          </aside>
+          <p>For textures, compilation resolves a range against the descriptor and tracks each mip/slice cell independently. For buffers, one state slot represents the whole buffer. Compatible read states within one pass can merge; any conflicting declaration involving a write is rejected. Equal consecutive UAV states still request memory ordering even though no layout/state transition is needed.</p>
+        </section>
+
+        <section id="lifetime">
+          <h2>Transient lifetime and current committed pooling</h2>
+          <p>A live <a class="term" data-term="transient-resource" href="../glossary.html#term-transient-resource">transient resource</a> has an inclusive interval: the first and last execution-order indices that use it. Culling runs before intervals are rebuilt, so dead passes do not extend storage lifetime. External and extracted resources extend through the epilogue. Only graph-created, non-external, non-extracted textures and buffers marked <code>Transient</code> are reuse candidates.</p>
+          <figure>
+            <img src="Assets/rdg-resource-materialization.svg" alt="Logical resource lifetimes feed an ideal transient layout analysis, but the current execution path uses exact-descriptor committed-resource pooling and repairs physical state after reuse.">
+            <figcaption>Current execution computes ideal virtual-heap metrics when supported but deliberately bypasses that layout and uses committed resources.</figcaption>
+          </figure>
+          <p>Committed reuse requires all of the following:</p>
+          <ul>
+            <li>exact normalized descriptor compatibility;</li>
+            <li>non-overlapping inclusive lifetimes: the previous <code>lastUse</code> is strictly less than the next <code>firstUse</code>;</li>
+            <li>all uses of each logical resource remain in the same queue domain;</li>
+            <li>reuse occurs within this one execution-local pool.</li>
+          </ul>
+          <p><strong>Current limitation:</strong> virtual resources may be probed and an ideal heap packing may be calculated, but the result is diagnostic only. Portable aliasing barriers and heap-compatibility queries are not yet available through the RHI surface, so placed-resource aliasing is not applied. Execution reports committed fallback and cannot claim virtual heaps or physical transient aliasing.</p>
+          <p>Because committed pooling can bind logical B to the object previously used by logical A, runtime transition rebuilding tracks actual physical identity. B starts from the state A left behind, not blindly from B’s descriptor initial state.</p>
+        </section>
+
+        <section id="derivation">
+          <h2>Design derivation</h2>
+          <ol>
+            <li>Passes must be declared before GPU recording, so resources first need stable graph-local identity.</li>
+            <li>Stable identity plus declared reads/writes permits dependency and liveness analysis.</li>
+            <li>Liveness produces bounded intervals for live logical resources.</li>
+            <li>Bounded, non-overlapping intervals permit conservative reuse of compatible physical objects.</li>
+            <li>Reuse changes physical state continuity, so transitions must be repaired after materialization.</li>
+            <li>Validated execution getters close the loop by preventing a callback from silently using undeclared graph storage.</li>
+          </ol>
+          <p>This split adds indirection, but it makes allocation and synchronization consequences derivable from declarations rather than scattered command-list code.</p>
+        </section>
+
+        <section id="worked-example">
+          <h2>Worked example: faithful resource lifecycle</h2>
+          <pre><code>using namespace arda::render_graph;
+
+ARDG_BEGIN_PARAMETER_STRUCT(FClearOutputsParameters)
+    ARDG_TEXTURE_ACCESS(Lighting)
+    ARDG_TEXTURE_ACCESS(BackBuffer)
+ARDG_END_PARAMETER_STRUCT()
+
+rhi::FArdaRHITextureDesc lightingDesc;
+lightingDesc.mDebugName = "Lighting";
+lightingDesc.mWidth = width;
+lightingDesc.mHeight = height;
+lightingDesc.mDepth = 1;
+lightingDesc.mArraySize = 1;
+lightingDesc.mMipLevels = 1;
+lightingDesc.mFormat = rhi::EArdaRHIFormat::RGBA16Float;
+lightingDesc.mDimension = rhi::EArdaRHITextureDimension::Texture2D;
+lightingDesc.mUsage = rhi::EArdaRHITextureUsage::RenderTarget |
+                      rhi::EArdaRHITextureUsage::ShaderResource;
+lightingDesc.mInitialState = rhi::EArdaRHIResourceState::Common;
+
+FARDGTextureRef lighting = graph.CreateTexture(lightingDesc);
+
+// Import retains the physical object but does not transfer its ownership.
+FARDGTextureRef backBuffer = graph.RegisterExternalTexture(
+    swapchainTexture,
+    rhi::EArdaRHIResourceState::Present,
+    "BackBuffer");
+
+FClearOutputsParameters clear;
+clear.Lighting = {
+    lighting,
+    rhi::EArdaRHIResourceState::RenderTarget,
+    {0, 1, 0, 1}};
+clear.BackBuffer = {
+    backBuffer,
+    rhi::EArdaRHIResourceState::RenderTarget,
+    backBufferSubresources};
+
+(void)graph.AddPass(
+    "ClearOutputs",
+    &amp;clear,
+    EARDGPassFlags::None,
+    [](FARDGPassExecutionContext&amp; context,
+       const FClearOutputsParameters&amp; parameters)
+    {
+        (void)context.mUnsafeRawCommandList.ClearTexture(
+            *context.GetTexture(parameters.Lighting.mTexture),
+            parameters.Lighting.mSubresources,
+            {0.02f, 0.03f, 0.05f, 1.0f});
+        (void)context.mUnsafeRawCommandList.ClearTexture(
+            *context.GetTexture(parameters.BackBuffer.mTexture),
+            parameters.BackBuffer.mSubresources,
+            {0.0f, 0.0f, 0.0f, 1.0f});
+    });
+
+rhi::FArdaRHITextureRef extractedLighting;
+graph.QueueTextureExtraction(
+    lighting,
+    extractedLighting,
+    rhi::EArdaRHIResourceState::ShaderResource);
+
+// Execute materializes Lighting, records transitions, submits, and only then
+// assigns extractedLighting. GPU completion still requires an RHI fence/query.
+const FARDGExecutionResult&amp; result = graph.Execute();</code></pre>
+          <ol>
+            <li><code>lighting</code> is initially logical only; its descriptor supplies the later allocation contract.</li>
+            <li><code>backBuffer</code> already has physical storage and remains externally owned.</li>
+            <li>The pass declares both writes before recording. Setup creates whole-resource hazard history while preserving the selected texture ranges for barriers.</li>
+            <li>Extraction makes <code>lighting</code> an observable output, keeps <code>ClearOutputs</code> live, and prevents transient reuse.</li>
+            <li>Execution materializes live records before the callback, rebuilds physical transitions, submits work, and publishes <code>extractedLighting</code>.</li>
+            <li>The returned execution result proves CPU submission, not GPU completion.</li>
+          </ol>
+        </section>
+
+        <section id="invariants">
+          <h2>Resource invariants</h2>
+          <ol>
+            <li>Every logical pointer and handle belongs to the builder whose registry resolves it.</li>
+            <li>Created descriptors are complete, named, and valid for later RHI materialization.</li>
+            <li>Every declared access has a known state; write-capable state bits classify the whole declaration as a write for dependency history.</li>
+            <li>A logical view names a parent in the same graph and remains an interpretation, not storage.</li>
+            <li>An imported physical identity has one consistent entry state per graph.</li>
+            <li>An extraction resource and destination address are each unique, and the destination outlives execution.</li>
+            <li>Physical graph resources are obtained through the active pass context and must have been declared by that pass.</li>
+            <li>Committed reuse occurs only for exact descriptors, disjoint inclusive lifetimes, and one queue domain.</li>
+          </ol>
+        </section>
+
+        <section id="performance">
+          <h2>Performance and threading</h2>
+          <ul>
+            <li>Mark short-lived graph-created textures and buffers transient; extraction deliberately trades reuse for persistence.</li>
+            <li>Use precise texture ranges to reduce barrier scope, while remembering that current dependency edges remain whole-texture.</li>
+            <li>Avoid creating multiple logical views when one immutable view declaration is sufficient; exact view identity is retained per pass.</li>
+            <li>Keep descriptors semantically identical when reuse is intended. A changed format, usage, sample count, stride, or clear contract prevents pooling.</li>
+            <li>Keep transient use on one queue when practical. Multi-queue use disables committed-object recycling for that resource.</li>
+            <li>Builder mutation is a setup-phase activity. Parallel pass recording reads frozen graph state; do not mutate resources, blackboard values, or parameter storage after compilation begins.</li>
+            <li>Uniform-buffer contents are copied into graph-owned storage, then uploaded before dependent non-graphics submissions wait on the graphics upload instance.</li>
+          </ul>
+        </section>
+
+        <section id="tradeoffs">
+          <h2>Tradeoffs</h2>
+          <dl>
+            <dt>Logical indirection versus immediate access</dt>
+            <dd>Deferred records prevent early raw RHI use but enable culling, validation, state lowering, and allocation reuse.</dd>
+            <dt>Whole-resource edges versus graph size</dt>
+            <dd>Whole-resource hazard history is conservative and simple. It can over-order disjoint subresources; per-subresource edge discovery would improve concurrency at substantial bookkeeping cost.</dd>
+            <dt>Committed pooling versus placed aliasing</dt>
+            <dd>Committed reuse is portable and state-repairable but retains full objects and only reuses exact descriptors. Placed aliasing could pack unlike resources more tightly, but requires portable compatibility and aliasing synchronization guarantees not currently exposed.</dd>
+            <dt>Extraction versus transience</dt>
+            <dd>Extraction bridges graph output to later work, but extends lifetime through the epilogue and removes the resource from transient reuse.</dd>
+          </dl>
+        </section>
+
+        <section id="failures">
+          <h2>Failure table</h2>
+          <table>
+            <thead><tr><th>Symptom</th><th>Likely contract violation</th><th>Correction</th></tr></thead>
+            <tbody>
+              <tr><td>Check while creating a logical resource</td><td>Empty name, zero texture extent/mips/layers, zero buffer size, or illegal ownership flags.</td><td>Build a complete RHI descriptor and use only <code>Transient</code> at creation.</td></tr>
+              <tr><td>Cross-graph resource check during pass setup</td><td>A logical pointer or parent view handle came from another builder.</td><td>Create/import and consume the record in one builder.</td></tr>
+              <tr><td>External registration conflicts</td><td>The same physical identity was imported with different initial states.</td><td>Establish one truthful graph-entry state before registration.</td></tr>
+              <tr><td>Extraction check or missing producer</td><td>Null/duplicate output, unknown final state, or a graph-created output was never written.</td><td>Use one durable output location, declare a final state, and produce the resource.</td></tr>
+              <tr><td>Pass requests unavailable physical storage</td><td>The callback used an undeclared record, wrong view identity, wrong graph, or accessed outside its active context.</td><td>Declare it in parameters and resolve it through <code>FARDGPassExecutionContext</code>.</td></tr>
+              <tr><td>Expected transient reuse does not occur</td><td>Descriptors differ, lifetimes overlap, resource is external/extracted, or uses span queues.</td><td>Inspect compiled lifetimes and execution reuse counters; do not assume approximate descriptor matches.</td></tr>
+              <tr><td>State corruption after pool reuse</td><td>Code bypassed graph transitions or assumed each logical descriptor’s initial state was the physical state.</td><td>Keep graph-owned transitions authoritative and avoid undeclared raw RHI access.</td></tr>
+              <tr><td>Memory remains higher than ideal heap estimate</td><td>The current implementation computes but does not apply placed-resource aliasing.</td><td>Treat ideal layout as diagnostic; budget for committed fallback.</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="summary">
+          <h2>Summary</h2>
+          <p>ArdaRenderGraph records logical identity, descriptors, ownership, states, and use intervals before physical storage exists. Created resources are materialized for live work; imports retain caller-owned RHI objects; extractions publish durable outputs after submission. Texture ranges drive subresource barriers, but dependency edges remain whole-resource and buffer state remains whole-buffer. Current transient optimization reuses exact committed resources within one execution and one queue domain; placed heap aliasing is explicitly not yet applied.</p>
+        </section>
+
+        <section id="checkpoints">
+          <h2>Checkpoints</h2>
+          <ol>
+            <li>Why is <code>FARDGTextureRef</code> neither an owning smart pointer nor a physical texture?</li>
+            <li>What conditions must hold before two logical textures can reuse one committed object?</li>
+            <li>Why can two disjoint mip accesses still create a dependency edge while receiving separate barriers?</li>
+            <li>How do import and extraction differ in physical ownership and boundary state?</li>
+            <li>Why must runtime transitions be rebuilt after physical pooling?</li>
+          </ol>
+        </section>
+
+        <section id="further-reading">
+          <span id="reading"></span>
+          <h2>Further reading</h2>
+          <ul>
+            <li><a href="passes.html">Passes and parameters</a> — how declarations become accesses and edges.</li>
+            <li><a href="compilation.html">Compilation</a> — culling, lifetimes, queues, and transition lowering.</li>
+            <li><a href="execution.html">Execution</a> — materialization, recording, submission, and extraction publication.</li>
+            <li><a href="../ArdaBackend/rhi.html">Backend RHI resources</a> — physical descriptors, views, states, and ownership.</li>
+            <li><a href="api-reference.html#api-component-resources">API: resource component</a> and <a href="api-reference.html#api-arda-rdg-fardgbuilder-e0fc26d2"><code>FARDGBuilder</code></a>.</li>
+            <li><a class="term" data-term="transient-resource" href="../glossary.html#term-transient-resource">Glossary: transient resource</a>, <a class="term" data-term="resource-state" href="../glossary.html#term-resource-state">resource state</a>, and <a class="term" data-term="barrier" href="../glossary.html#term-barrier">barrier</a>.</li>
+          </ul>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="architecture.html">← Previous: Architecture</a>
+          <a rel="next" href="passes.html">Next: Passes →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer">
+    <p>ArdaRenderGraph documentation · <a href="api-reference.html">Central API reference</a></p>
+  </footer>
+</body>
+</html>

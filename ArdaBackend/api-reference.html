@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Search and read the complete canonical reference for all 1,401 ArdaBackend public API symbols.">
+  <title>API reference | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script><script src="../assets/backend-api.js" defer></script><script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header"><a class="site-brand" href="../index.html">Ardashir Docs</a><nav aria-label="Primary"><a href="index.html">ArdaBackend</a><a href="architecture.html">Architecture</a><a href="quick-guide.html">Quick guide</a><a href="getting-started.html">Get started</a><a aria-current="page" href="api-reference.html">API</a><a href="../glossary.html">Glossary</a></nav></header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages"><h2>ArdaBackend</h2><nav><a href="index.html">Overview</a><a href="quick-guide.html">Quick user's guide</a><a href="getting-started.html">Getting started</a><a href="architecture.html">Architecture</a><a href="shaders.html">Shaders</a><a href="pipelines.html">Pipeline states</a><a href="rhi.html">RHI types &amp; resources</a><a href="commands.html">Commands</a><a href="presentation.html">Presentation</a><a href="diagnostics.html">Diagnostics</a><a aria-current="page" href="api-reference.html">API reference</a></nav></aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a> / API reference</nav>
+      <article>
+        <header class="page-header"><p class="eyebrow">Canonical generated reference</p><h1>ArdaBackend API reference</h1><p>Search, filter, and read the complete public surface in one place. Every symbol has a stable fragment link for direct navigation and discoverability.</p></header>
+        <nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#search">Search</a><a href="#reading-the-api">Reading the API</a><a href="#components">Components</a><a href="#symbol-index">Symbol index</a><a href="#detailed-reference">Detailed reference</a></nav>
+        <section id="search">
+          <h2>Search the public API</h2>
+          <form class="api-search" role="search">
+            <label for="api-search-input">Symbol, type, method, or concept</label>
+            <input id="api-search-input" name="q" type="search" autocomplete="off" placeholder="For example: CreateCommandList">
+            <button type="submit">Search</button>
+          </form>
+          <p>The authored search and generated index search stay synchronized. Common entry terms include <a class="term" data-term="device" href="../glossary.html#term-device">device</a>, <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command list</a>, <a class="term" data-term="resource" href="../glossary.html#term-resource">resource</a>, and <a class="term" data-term="descriptor" href="../glossary.html#term-descriptor">descriptor</a>.</p>
+        </section>
+        <section id="reading-the-api">
+          <h2>How to read this reference</h2>
+          <h3>Namespaces</h3>
+          <p>Lifecycle, shaders, pipelines, logging, and presentation live in <code>arda::backend</code>. Backend-neutral GPU types and interfaces live in <code>arda::rhi</code>. Qualified names show the owning namespace or type; short names are convenient search terms but may match overloads or members in several types.</p>
+          <h3>Status and result conventions</h3>
+          <p>A <code>bool</code> result reports whether an operation was accepted or completed according to its contract; read the Returns and Errors rows for the precise meaning. Result and status enums carry richer outcomes where a binary answer is insufficient. A successful call can still require later GPU synchronization, so success does not imply that queued work has finished.</p>
+          <h3>Ownership and threading notation</h3>
+          <p>The Ownership row says whether an argument is borrowed, copied, retained, transferred, or returned through an intrusive reference. “Caller-owned” means the caller must preserve the object for the stated lifetime. The Threading row distinguishes externally serialized process-wide operations, thread-safe APIs, recording-thread restrictions, and GPU ordering requirements. These contracts are part of the API, not optional guidance.</p>
+          <h3>Descriptor naming</h3>
+          <p>Types named <code>*Desc</code>, <code>*Descriptor</code>, <code>*CreateInfo</code>, or <code>*Initializer</code> collect configuration rather than representing a live GPU object. Their member-variable entries document defaults, validity, and relationships. Resource and state objects created from them can have different ownership and synchronization rules.</p>
+          <h3>Signatures and entries</h3>
+          <p>Each entry begins with its qualified symbol name and declaration. Parameter rows describe individual inputs when source documentation provides them. Returns, Ownership, Errors, Threading, Source, and Audience appear only when recorded. Overloads have separate stable IDs even when their qualified names are identical.</p>
+        </section>
+        <section id="components">
+          <h2>Component index</h2>
+          <ul>
+            <li><a href="#api-component-core">Core lifecycle and device context</a></li>
+            <li><a href="#api-component-shaders">Shader directories, parameter metadata, types, and global map</a> — <a class="term" data-term="shader" href="../glossary.html#term-shader">shader</a>, <a class="term" data-term="bytecode" href="../glossary.html#term-bytecode">bytecode</a>, and binding contracts.</li>
+            <li><a href="#api-component-pipelines">Pipeline state initializers and cache</a> — <a class="term" data-term="pso" href="../glossary.html#term-pso">PSO</a> creation and reuse.</li>
+            <li><a href="#api-component-rhi-types">RHI value types, descriptors, ranges, hashing, and validation</a></li>
+            <li><a href="#api-component-rhi-resources">RHI references, interfaces, descriptors, bindings, and resources</a></li>
+            <li><a href="#api-component-rhi-device">RHI device creation, command recording, submission, and synchronization</a></li>
+            <li><a href="#api-component-presentation">Window surface and swap chain</a> — presentation and <a class="term" data-term="synchronization" href="../glossary.html#term-synchronization">synchronization</a>.</li>
+            <li><a href="#api-component-diagnostics">Logging, assertions, callbacks, and diagnostic contracts</a></li>
+          </ul>
+          <aside class="callout"><h3>Header choice</h3><p>Include <code>ArdaBackend.h</code> for the aggregate public surface or a focused public header for narrower dependencies.</p></aside>
+        </section>
+        <section id="symbol-index">
+          <h2>Symbol index</h2>
+          <div data-api-index="ArdaBackend"></div>
+          <noscript>
+            <aside class="callout">
+              <h3>JavaScript is required for canonical detail rendering</h3>
+              <p>By the site’s current design, the canonical searchable index and all 1,401 generated detail entries are rendered from the API inventory with JavaScript. Without JavaScript, use the textbook component chapters for authored guidance:</p>
+              <ul>
+                <li><a href="getting-started.html">Core lifecycle and initialization</a></li>
+                <li><a href="shaders.html">Shaders</a></li>
+                <li><a href="pipelines.html">Pipeline states</a></li>
+                <li><a href="rhi.html">RHI types and resources</a></li>
+                <li><a href="commands.html">Devices, commands, and synchronization</a></li>
+                <li><a href="presentation.html">Presentation and swap chains</a></li>
+                <li><a href="diagnostics.html">Diagnostics</a></li>
+              </ul>
+              <p>For the exhaustive generated inventory, <a href="../assets/backend-api.js" download>download or open the raw <code>backend-api.js</code> data</a>.</p>
+            </aside>
+          </noscript>
+        </section>
+        <section id="detailed-reference">
+          <h2>Detailed reference</h2>
+          <p>Entries are grouped by component and then symbol kind. Filter controls apply to both this reference and the compact symbol index above.</p>
+          <div data-api-reference></div>
+        </section>
+        <nav class="page-nav" aria-label="Page navigation"><a rel="prev" href="diagnostics.html">← Previous: Diagnostics</a><a href="index.html">Back to overview ↑</a></nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend documentation · Generated API data is rendered from <code>backend-api.js</code>.</p></footer>
+</body>
+</html>

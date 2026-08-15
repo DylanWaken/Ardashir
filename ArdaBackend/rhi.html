@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A production-oriented guide to ArdaBackend RHI resources, memory, views, bindings, ownership, and capability-gated resource families.">
+  <title>RHI resources and memory | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a aria-current="page" href="rhi.html">RHI types &amp; resources</a>
+        <a href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaBackend</a> /
+        RHI resources and memory
+      </nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Portable storage, interpretation, and ownership</p>
+          <h1>RHI resources and memory</h1>
+          <p>A production <a class="term" data-term="rhi" href="../glossary.html#term-rhi">RHI</a> does more than rename native handles. It defines portable storage, interpretation, lifetime, state, and feature contracts so one renderer can remain correct across <a class="term" data-term="d3d12" href="../glossary.html#term-d3d12">D3D12</a>, <a class="term" data-term="vulkan" href="../glossary.html#term-vulkan">Vulkan</a>, and materially different GPUs.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#fundamentals">Storage fundamentals</a>
+          <a href="#textures">Textures and subresources</a>
+          <a href="#views">Views and descriptors</a>
+          <a href="#memory">CPU access and heaps</a>
+          <a href="#ownership">Ownership and affinity</a>
+          <a href="#bindings">Bindings and framebuffers</a>
+          <a href="#capabilities">Advanced families</a>
+          <a href="#worked-example">Worked example</a>
+          <a href="#invariants">Invariants</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#production">Production guidance</a>
+          <a href="#summary">Summary</a>
+          <a href="#checkpoints">Checkpoints</a>
+          <a href="#reading">Further reading</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>Reason about a GPU resource as storage whose meaning comes from descriptors, views, bindings, and command state.</li>
+            <li>Choose between buffers and textures, then specify texture dimensions, formats, mip levels, array slices, and sample counts coherently.</li>
+            <li>Identify a texture subresource precisely and explain why barriers and views may target only part of an allocation.</li>
+            <li>Distinguish SRV, UAV, RTV, and DSV access and explain why resource/view separation is essential.</li>
+            <li>Select device-local, upload, readback, staging, virtual, or tiled memory strategies without assuming universal support.</li>
+            <li>Preserve intrusive ownership, GPU lifetime, and <a class="term" data-term="device-affinity" href="../glossary.html#term-device-affinity">device affinity</a>.</li>
+            <li>Build compatible binding layouts, binding sets, and framebuffers and gate advanced resource families by capability.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites</h2>
+          <p>Read <a href="architecture.html">Architecture</a> and <a href="getting-started.html">Getting started</a>. You should understand one logical <a class="term" data-term="device" href="../glossary.html#term-device">device</a>, asynchronous GPU execution, shader stages, and basic <a class="term" data-term="synchronization" href="../glossary.html#term-synchronization">synchronization</a>. The next chapter, <a href="commands.html">Commands</a>, explains how storage transitions between uses.</p>
+          <aside class="callout">
+            <h3>Vocabulary boundary</h3>
+            <p>This chapter uses <em>descriptor</em> in two related senses: Arda creation/view structs are CPU value descriptions, while native APIs may materialize shader-visible descriptor records from them. An Arda descriptor is not itself GPU storage.</p>
+          </aside>
+        </section>
+
+        <section id="fundamentals">
+          <h2>Fundamentals: resources are abstract GPU storage</h2>
+          <p>A <a class="term" data-term="resource" href="../glossary.html#term-resource">resource</a> answers “where do bytes live and what operations are permitted?” It does not fully answer “what do these bytes mean to this shader or render pass?” Arda represents primary storage with <a href="api-reference.html#api-arda-rhi-iardarhibuffer-48e47285"><code>IArdaRHIBuffer</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhitexture-a36c0ceb"><code>IArdaRHITexture</code></a>. Their immutable creation descriptions are available through <code>GetDesc()</code>.</p>
+          <h3>Buffers: linear byte-addressable storage</h3>
+          <p>A buffer is a one-dimensional byte range. <a href="api-reference.html#api-arda-rhi-fardarhibufferdesc-191bf415"><code>FArdaRHIBufferDesc</code></a> fixes byte size, optional structure stride or typed <a class="term" data-term="format" href="../glossary.html#term-format">format</a>, permitted usage flags, CPU access, initial state, and versioning policy. The same allocation may serve as a vertex buffer, index buffer, constant buffer, indirect-argument buffer, typed/structured/raw SRV, or UAV only when its creation usage permits that role.</p>
+          <ul>
+            <li><strong>Typed buffers</strong> interpret elements through an <a href="api-reference.html#api-arda-rhi-eardarhiformat-7d5b2658"><code>EArdaRHIFormat</code></a>.</li>
+            <li><strong>Structured buffers</strong> use <code>mStructureStride</code>; the shader and CPU must agree on element layout.</li>
+            <li><strong>Raw buffers</strong> expose byte/word-oriented access and demand explicit offset discipline.</li>
+            <li><strong>Vertex and index buffers</strong> receive meaning from graphics state, not from storage alone.</li>
+          </ul>
+          <h3>Textures: shaped, formatted storage</h3>
+          <p>A texture adds dimensionality, texel format, mip hierarchy, array layering, and possibly multiple samples per pixel. Hardware may swizzle or compress physical storage; callers address logical texels rather than assuming row-major bytes. Use a texture when filtering, normalized coordinates, render attachment semantics, compression, or image-oriented caching matter.</p>
+          <p><strong>Design tradeoff:</strong> one universal byte buffer would be conceptually simple but would discard native image layout, compression, sampling, and attachment optimizations. Separate buffer and texture contracts preserve those capabilities while forcing the caller to choose deliberately.</p>
+        </section>
+
+        <section id="textures">
+          <h2>Texture geometry, formats, and subresources</h2>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhitexturedesc-719fb8a3"><code>FArdaRHITextureDesc</code></a> combines fields that must describe one physically possible image:</p>
+          <dl>
+            <dt><code>mDimension</code></dt>
+            <dd><a href="api-reference.html#api-arda-rhi-eardarhitexturedimension-dfbcbdde"><code>EArdaRHITextureDimension</code></a> distinguishes 1D, 2D, 3D, cube, array, and multisampled forms. A cube is six square faces per cube; a 3D texture has depth rather than independent array layers.</dd>
+            <dt><code>mWidth</code>, <code>mHeight</code>, <code>mDepth</code></dt>
+            <dd>Logical texel extents at mip zero. Unused axes remain one. Mip dimensions shrink toward one.</dd>
+            <dt><code>mFormat</code></dt>
+            <dd>Defines component count, bit width, numeric interpretation, compression, and depth/stencil behavior. UNorm, integer, float, sRGB, block-compressed, and depth formats are not interchangeable.</dd>
+            <dt><code>mMipLevels</code></dt>
+            <dd>The number of image resolutions. Each <a class="term" data-term="mip-level" href="../glossary.html#term-mip-level">mip level</a> is distinct storage; sampling may blend adjacent levels, but copies, views, and barriers address them explicitly.</dd>
+            <dt><code>mArraySize</code></dt>
+            <dd>The number of same-shaped layers. Array slices do not shrink. Cube arrays count faces according to the backend-neutral descriptor contract.</dd>
+            <dt><code>mSampleCount</code></dt>
+            <dd>The number of coverage samples per pixel. <a class="term" data-term="sample-count-msaa" href="../glossary.html#term-sample-count-msaa">MSAA</a> storage is not a larger mip chain: multisampled dimensions have restricted view, mip, copy, and resolve behavior.</dd>
+          </dl>
+          <h3>Texels are formatted values, not always bytes</h3>
+          <p>A texel is one logical texture element. <code>RGBA8UNorm</code> stores four normalized eight-bit channels, while <code>RGBA16Float</code> stores four half-precision channels. BC formats encode blocks of texels, so copy regions and pitches must respect block boundaries. Depth/stencil formats may expose aspect-specific native behavior even when Arda presents one format.</p>
+          <h3>Subresource identity</h3>
+          <p>For ordinary arrays, a texture subresource is the intersection of one mip level and one array slice; depth/stencil aspects may add native distinctions. <a href="api-reference.html#api-arda-rhi-fardarhitexturesubresourcerange-ba12b3d4"><code>FArdaRHITextureSubresourceRange</code></a> selects a rectangle in the mip-by-array grid. <code>ArdaRHIAllSubresources</code> means “resolve through the descriptor,” not an infinite count.</p>
+          <figure>
+            <img src="Assets/resource-view-subresource.svg" alt="A texture grid divided by array slice and mip level, with SRV, UAV, render-target, and depth-stencil roles selecting ranges, plus a buffer view selecting a byte range.">
+            <figcaption>Views select compatible texture subresources or buffer byte ranges without creating new storage; SRV/UAV are explicit Arda view objects, while RTV/DSV roles are expressed by framebuffer attachments.</figcaption>
+          </figure>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhitextureslice-e188569b"><code>FArdaRHITextureSlice</code></a> selects a copy region inside one mip and array slice. Do not confuse a spatial slice used by copy operations with a subresource range used by views and state tracking.</p>
+        </section>
+
+        <section id="views">
+          <h2>Views: controlled interpretations of storage</h2>
+          <p>A view combines a resource with <a href="api-reference.html#api-arda-rhi-fardarhiviewdesc-0a3012d6"><code>FArdaRHIViewDesc</code></a>: compatible format override, view dimension, and texture or buffer range. Resource/view separation allows one allocation to be interpreted differently without duplicating memory.</p>
+          <dl>
+            <dt><a class="term" data-term="srv" href="../glossary.html#term-srv">SRV</a> — shader resource view</dt>
+            <dd>Read-oriented shader access. Arda can create an explicit <a href="api-reference.html#api-arda-rhi-iardarhishaderresourceview-82123cb3"><code>IArdaRHIShaderResourceView</code></a> with <a href="api-reference.html#api-arda-rhi-iardarhidevice-createshaderresourceview-95d099be"><code>CreateShaderResourceView</code></a>, or carry view values inside binding items.</dd>
+            <dt><a class="term" data-term="uav" href="../glossary.html#term-uav">UAV</a> — unordered access view</dt>
+            <dd>Shader read/write or write access through <a href="api-reference.html#api-arda-rhi-iardarhiunorderedaccessview-3deb7c6f"><code>IArdaRHIUnorderedAccessView</code></a>. “Unordered” does not mean race-free; barriers and shader-level coordination still establish ordering.</dd>
+            <dt>RTV — render-target view</dt>
+            <dd>Color attachment interpretation. Arda expresses it through <a href="api-reference.html#api-arda-rhi-fardarhiframebuffertarget-a58e5532"><code>FArdaRHIFramebufferTarget</code></a> and attachment data rather than a standalone public RTV interface.</dd>
+            <dt>DSV — depth/stencil view</dt>
+            <dd>Depth/stencil attachment interpretation, including read-only attachment intent. It is likewise represented through framebuffer composition.</dd>
+          </dl>
+          <h3>Why separation matters</h3>
+          <ul>
+            <li>An array texture can expose all slices to a shader while one slice is attached for rendering.</li>
+            <li>A mip chain can expose all mips for sampling and one mip for UAV generation.</li>
+            <li>Typeless-compatible storage can receive a legal typed interpretation at view creation.</li>
+            <li>Hazard tracking can transition only the subresources that a pass uses.</li>
+            <li>Descriptor caches can reuse immutable view values independently of allocation lifetime.</li>
+          </ul>
+          <aside class="callout warning">
+            <h3>A view cannot grant missing capabilities</h3>
+            <p>Creating an SRV or UAV does not retroactively add <code>ShaderResource</code> or <code>UnorderedAccess</code> usage to a resource. View format, dimension, range, and access must all be compatible with the resource descriptor.</p>
+          </aside>
+          <h3>Descriptors are values</h3>
+          <p>Arda creation descriptions are plain comparable/hashable values. <a href="api-reference.html#api-arda-rhi-validate-ab1c9f0d"><code>Validate</code></a> overloads reject malformed values before native creation; <a href="api-reference.html#api-arda-rhi-hashvalue-9dc69f59"><code>HashValue</code></a> and equality support deterministic caches. Debug names are diagnostic metadata and intentionally do not alter semantic identity.</p>
+        </section>
+
+        <section id="memory">
+          <h2>Memory placement, CPU access, and staging</h2>
+          <p>Fast GPU storage and convenient CPU access are often opposing goals. A production renderer separates durable device-local resources from upload and readback paths rather than mapping every allocation.</p>
+          <h3>Initial state is an executable promise</h3>
+          <p><a href="api-reference.html#api-arda-rhi-eardarhiresourcestate-73bda157"><code>EArdaRHIResourceState</code></a> declares the known initial use: copy destination, shader resource, render target, depth write, present, and other roles. Usage flags say what a resource <em>may</em> do; state says how it is synchronized <em>now</em>. <code>mbKeepInitialState</code> asks tracking to return to or preserve that state across command-list boundaries. A false declaration can produce a valid object and invalid GPU execution.</p>
+          <h3>CPU-visible paths</h3>
+          <ul>
+            <li><a href="api-reference.html#api-arda-rhi-eardarhicpuaccess-4db8d9b3"><code>EArdaRHICpuAccess</code></a> on a buffer declares no access, read, or write. CPU-visible memory may be slower for GPU access and may require flush/invalidate behavior in the native backend.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhistagingtexture-11e7ba27"><code>IArdaRHIStagingTexture</code></a> provides a portable texture transfer object when <code>mbStagingTextures</code> is supported.</li>
+            <li><a href="api-reference.html#api-arda-rhi-iardarhidevice-mapstagingtexture-84658209"><code>MapStagingTexture</code></a> returns data and row pitch. Iterate rows using the returned pitch; never infer tight packing from width and format.</li>
+            <li>Upload, copy, signal, and only then recycle CPU memory. For readback, copy, wait for completion, map, consume, and unmap.</li>
+          </ul>
+          <h3>Explicit heaps and virtual resources</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhiheapdesc-bde7b6b9"><code>FArdaRHIHeapDesc</code></a> selects <a href="api-reference.html#api-arda-rhi-eardarhiheaptype-e67b6fca"><code>EArdaRHIHeapType</code></a>: device-local, upload, or readback. Virtual resources defer physical placement. Query <a href="api-reference.html#api-arda-rhi-fardarhimemoryrequirements-3825a11e"><code>FArdaRHIMemoryRequirements</code></a>, honor size and alignment, then call the matching <code>Bind*Memory</code> operation.</p>
+          <p><strong>Tradeoff:</strong> committed resources simplify lifetime and reduce aliasing mistakes. Explicit heaps improve pooling, aliasing, and budget control but require alignment, non-overlap, residency, and GPU-completion discipline. Gate them with <code>mbHeaps</code> and <code>mbVirtualResources</code>.</p>
+        </section>
+
+        <section id="ownership">
+          <h2>Intrusive ownership, GPU lifetime, and device affinity</h2>
+          <p>Every RHI object derives from <a href="api-reference.html#api-arda-rhi-iardarhiresource-88cc5c73"><code>IArdaRHIResource</code></a>, which exposes <code>AddRef()</code>, <code>Release()</code>, resource type, and debug name. <a href="api-reference.html#api-arda-rhi-tardarhiref-b3e2cfff"><code>TArdaRHIRef&lt;T&gt;</code></a> implements <a class="term" data-term="intrusive-reference-counting" href="../glossary.html#term-intrusive-reference-counting">intrusive reference counting</a>: copy retains, move transfers, and reset releases.</p>
+          <ul>
+            <li>CPU ownership prevents wrapper destruction; it does not by itself prove the GPU has finished.</li>
+            <li>Descriptors containing references retain those objects. Views expose and retain their underlying resource through implementation ownership.</li>
+            <li>Mutable descriptor-table writes deliberately do not retain written resources. The caller must preserve them through every in-flight table use.</li>
+            <li>All participating objects must come from the same device. Cross-device references return <code>WrongDevice</code> rather than being silently reinterpreted.</li>
+          </ul>
+          <h3>Borrowed native imports</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhinativetextureimportdesc-3e3eb803"><code>FArdaRHINativeTextureImportDesc</code></a> and <a href="api-reference.html#api-arda-rhi-fardarhinativebufferimportdesc-a01c0619"><code>FArdaRHINativeBufferImportDesc</code></a> pair a native identity with native API type, a complete RHI descriptor, ownership mode, and known initial state. <a href="api-reference.html#api-arda-rhi-eardarhinativeownership-bf0e2349"><code>Borrowed</code></a> leaves external ownership with the caller while the wrapper retains whatever native reference its backend requires.</p>
+          <aside class="callout warning">
+            <h3>Import does not repair a contract</h3>
+            <p>The supplied format, dimensions, usage, and initial state must describe the native object truthfully. Transferred ownership is not portable and may return <code>Unsupported</code>. Prefer borrowed imports and coordinate destruction with the external owner.</p>
+          </aside>
+        </section>
+
+        <section id="bindings">
+          <h2>Binding layouts, sets, and framebuffer composition</h2>
+          <h3>Declaration before population</h3>
+          <p><a class="term" data-term="binding-layout" href="../glossary.html#term-binding-layout">Binding layouts</a> declare the shader-visible ABI. <a href="api-reference.html#api-arda-rhi-fardarhibindinglayoutdesc-22781e84"><code>FArdaRHIBindingLayoutDesc</code></a> records stage visibility, register space or descriptor set, and items with slot, array size, and <a href="api-reference.html#api-arda-rhi-eardarhibindingtype-9a6f3913"><code>EArdaRHIBindingType</code></a>. It answers “what shape of resources may be bound?”</p>
+          <p><a class="term" data-term="binding-set" href="../glossary.html#term-binding-set">Binding sets</a> answer “which resources are bound now?” <a href="api-reference.html#api-arda-rhi-fardarhibindingsetdesc-4bad2558"><code>FArdaRHIBindingSetDesc</code></a> pairs one layout with <a href="api-reference.html#api-arda-rhi-fardarhibindingitem-3a28270e"><code>FArdaRHIBindingItem</code></a> values. Slot, array element, type, resource, and view must agree with the layout and shader ABI.</p>
+          <h3>Framebuffer composition</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhiframebufferdesc-eedce2f9"><code>FArdaRHIFramebufferDesc</code></a> collects color targets and an optional depth target. Each target pairs a retained texture with <a href="api-reference.html#api-arda-rhi-fardarhiframebufferattachment-2841e639"><code>FArdaRHIFramebufferAttachment</code></a>: subresources, optional format, and read-only intent.</p>
+          <ul>
+            <li>Attachment extents and sample counts must form one renderable surface.</li>
+            <li>Color/depth formats and sample count must match the graphics pipeline description.</li>
+            <li>A framebuffer describes attachments; command state still supplies pipeline, bindings, vertex/index inputs, viewports, and scissors.</li>
+            <li>Read-only depth intent allows depth testing without depth writes when pipeline and state agree.</li>
+          </ul>
+        </section>
+
+        <section id="capabilities">
+          <h2>Capability-gated advanced resource families</h2>
+          <p>Initialization guarantees a usable graphics device, not every modern feature. Query <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> and treat unsupported status as an ordinary branch.</p>
+          <dl>
+            <dt>Queries and fences</dt>
+            <dd><a href="api-reference.html#api-arda-rhi-iardarhieventquery-fd02dadc"><code>IArdaRHIEventQuery</code></a> reports queue completion, <a href="api-reference.html#api-arda-rhi-iardarhitimerquery-59a69408"><code>IArdaRHITimerQuery</code></a> measures GPU intervals, and <a href="api-reference.html#api-arda-rhi-iardarhigpufence-0a1559ef"><code>IArdaRHIGpuFence</code></a> is a one-signal-at-a-time queue fence facade. Use for pacing, retirement, and profiling when <code>mbQueries</code> is true.</dd>
+            <dt>Bindless descriptor tables</dt>
+            <dd><a href="api-reference.html#api-arda-rhi-fardarhibindlesslayoutdesc-fb23c4e8"><code>FArdaRHIBindlessLayoutDesc</code></a> enables shader indexing into large tables when <code>mbBindless</code> is true. It reduces rebinding but increases lifetime, bounds, update, and residency complexity.</dd>
+            <dt>Meshlet pipelines</dt>
+            <dd><a href="api-reference.html#api-arda-rhi-fardarhimeshletpipelinedesc-822a65d8"><code>FArdaRHIMeshletPipelineDesc</code></a> replaces traditional vertex assembly with amplification/mesh stages. Use for GPU-driven geometry only when <code>mbMeshShaders</code> is true; keep a conventional graphics path.</dd>
+            <dt>Ray-tracing acceleration structures</dt>
+            <dd><a href="api-reference.html#api-arda-rhi-fardarhiaccelstructdesc-b231d489"><code>FArdaRHIAccelStructDesc</code></a> represents BLAS geometry or TLAS instances. Build cost, update policy, compaction, scratch/storage pressure, and synchronization differ from ordinary buffers. Require both ray-tracing and acceleration-structure capability.</dd>
+            <dt>Sampler feedback</dt>
+            <dd><a href="api-reference.html#api-arda-rhi-fardarhisamplerfeedbacktexturedesc-dfead79c"><code>FArdaRHISamplerFeedbackTextureDesc</code></a> records which mip regions sampling needed. It can drive texture streaming when <code>mbSamplerFeedback</code> is true, but feedback decode and delayed decisions add latency.</dd>
+            <dt>Tiled resources</dt>
+            <dd><code>mbTiled</code>, <a href="api-reference.html#api-arda-rhi-fardarhitexturetiling-f848f078"><code>FArdaRHITextureTiling</code></a>, and <a href="api-reference.html#api-arda-rhi-fardarhitexturetilemapping-766e0334"><code>FArdaRHITextureTileMapping</code></a> decouple virtual texture coordinates from physical heap tiles. Use for sparse mega-textures when <code>mbTiledTextures</code> is true and a residency manager exists.</dd>
+            <dt>Opacity micromaps</dt>
+            <dd><a href="api-reference.html#api-arda-rhi-fardarhiopacitymicromapdesc-f7ce8bf2"><code>FArdaRHIOpacityMicromapDesc</code></a> pre-encodes microtriangle opacity for ray tracing. It can reduce any-hit work but adds build memory and content tooling; require <code>mbRayTracingOpacityMicromap</code>.</dd>
+          </dl>
+          <pre><code>const auto&amp; caps = device-&gt;GetCapabilities();
+
+if (caps.mbBindless)
+    ConfigureBindlessMaterials(*device);
+else
+    ConfigureBoundedMaterialSets(*device);
+
+if (caps.mbRayTracing &amp;&amp; caps.mbRayTracingAccelStruct)
+    CreateRayTracingScene(*device);
+
+if (caps.mbTiledTextures &amp;&amp; caps.mbHeaps)
+    EnableSparseTextureStreaming(*device);</code></pre>
+        </section>
+
+        <section id="worked-example">
+          <h2>Worked example: offscreen color with mip-specific views</h2>
+          <pre><code>using namespace arda;
+
+rhi::FArdaRHITextureDesc textureDesc;
+textureDesc.mWidth = 1920;
+textureDesc.mHeight = 1080;
+textureDesc.mMipLevels = 5;
+textureDesc.mFormat = rhi::EArdaRHIFormat::RGBA16Float;
+textureDesc.mDimension = rhi::EArdaRHITextureDimension::Texture2D;
+textureDesc.mUsage = rhi::EArdaRHITextureUsage::RenderTarget |
+                     rhi::EArdaRHITextureUsage::ShaderResource |
+                     rhi::EArdaRHITextureUsage::UnorderedAccess;
+textureDesc.mInitialState = rhi::EArdaRHIResourceState::RenderTarget;
+textureDesc.mDebugName = "SceneColor";
+
+auto textureResult = device-&gt;CreateTexture(textureDesc);
+if (!textureResult)
+    return textureResult.mStatus;
+rhi::FArdaRHITextureRef texture = eastl::move(textureResult.mValue);
+
+rhi::FArdaRHIViewDesc srvDesc;
+srvDesc.mFormat = textureDesc.mFormat;
+srvDesc.mDimension = textureDesc.mDimension;
+srvDesc.mTextureRange = {0, textureDesc.mMipLevels, 0, 1};
+auto srv = device-&gt;CreateShaderResourceView(texture, srvDesc);
+
+rhi::FArdaRHIViewDesc mipOneUavDesc = srvDesc;
+mipOneUavDesc.mTextureRange = {1, 1, 0, 1};
+auto mipOneUav = device-&gt;CreateUnorderedAccessView(texture, mipOneUavDesc);
+
+rhi::FArdaRHIFramebufferDesc framebufferDesc;
+framebufferDesc.mColorAttachments.push_back(
+    {texture, {{0, 1, 0, 1}, textureDesc.mFormat, false}});
+framebufferDesc.mDebugName = "SceneColorMip0";
+auto framebuffer = device-&gt;CreateFramebuffer(framebufferDesc);
+
+if (!srv || !mipOneUav || !framebuffer)
+    return rhi::FArdaRHIStatus::Error(
+        rhi::EArdaRHIResult::BackendFailure,
+        "Failed to create SceneColor interpretations.");</code></pre>
+          <p>The texture owns one allocation and permits three roles. The SRV spans the chain, the UAV isolates mip one, and the framebuffer attaches mip zero. Commands must still transition the relevant ranges before rendering, mip generation, and sampling.</p>
+        </section>
+
+        <section id="invariants">
+          <h2>Resource invariants</h2>
+          <ol>
+            <li>A descriptor is validated before native creation or cache lookup.</li>
+            <li>Resource usage is a creation-time upper bound; a view cannot widen it.</li>
+            <li>Current resource state is synchronization metadata, not a synonym for usage.</li>
+            <li>Every view range resolves inside its resource, with compatible dimension and format.</li>
+            <li>Framebuffer attachment formats and sample counts agree with each other and the pipeline.</li>
+            <li>Every retained RHI object and command that combines it belongs to one device domain.</li>
+            <li>CPU reference lifetime covers GPU use; descriptor-table writes require explicit caller retention.</li>
+            <li>Optional resource families are created only after their exact capability is established.</li>
+          </ol>
+        </section>
+
+        <section id="failures">
+          <h2>Failure analysis</h2>
+          <dl>
+            <dt><code>InvalidArgument</code> during creation</dt>
+            <dd>Check zero extents/size, dimension-specific fields, mip count, MSAA restrictions, unknown or incompatible formats, usage combinations, buffer stride, and view bounds. Run the matching <code>Validate</code> contract before native work.</dd>
+            <dt><code>Unsupported</code></dt>
+            <dd>Inspect the exact capability rather than backend name. Choose a bounded binding path, committed resource, conventional graphics pipeline, non-sparse texture, or raster fallback.</dd>
+            <dt><code>WrongDevice</code></dt>
+            <dd>Trace creation provenance. Recreate or explicitly import every object on the command/device domain that consumes it.</dd>
+            <dt>Correct creation, corrupted rendering</dt>
+            <dd>Compare shader ABI, view format/range, row pitch, initial state, barriers, attachment compatibility, and sRGB/linear interpretation. Native validation layers often identify the first broken contract.</dd>
+            <dt>Intermittent device removal or use-after-free</dt>
+            <dd>Audit submission retirement, last-reference release, mutable descriptor-table writes, heap aliasing, tile remaps, and external native ownership. CPU scope ending is not GPU completion.</dd>
+            <dt>Memory grows despite releasing local references</dt>
+            <dd>Inspect descriptor caches, binding descriptors that retain resources, command lists still in flight, imported-native identity caches, and deferred garbage collection. Use <code>TrimDescriptorCaches()</code> and <code>RunGarbageCollection()</code> only at deliberate boundaries.</dd>
+          </dl>
+        </section>
+
+        <section id="production">
+          <h2>Performance and production guidance</h2>
+          <ul>
+            <li>Allocate durable GPU data device-local; stage bulk uploads and batch copies.</li>
+            <li>Pool by complete semantic descriptor, not only size. Format, usage, sample count, and flags constrain safe reuse.</li>
+            <li>Prefer subresource-specific views and transitions when they expose real overlap; avoid needless fragmentation of state tracking.</li>
+            <li>Budget MSAA, mip chains, arrays, acceleration structures, and sparse page tables explicitly. Logical dimensions understate auxiliary memory.</li>
+            <li>Cache samplers, layouts, and pipelines by stable descriptor identity; keep debug labels outside cache identity.</li>
+            <li>Use bindless only with generation/index validation and deferred descriptor/resource retirement.</li>
+            <li>Record memory requirements and allocation names in diagnostics. Track committed, heap-resident, transient, and externally imported bytes separately.</li>
+            <li>Exercise capability-off test configurations. A fallback that is never run is not a production fallback.</li>
+          </ul>
+        </section>
+
+        <section id="summary">
+          <h2>Summary</h2>
+          <p>Arda separates storage from interpretation: buffers and textures own abstract GPU memory; descriptors state immutable intent; views select compatible formats and ranges; binding sets connect views to shaders; framebuffers connect texture subresources to raster output. Initial states, barriers, ownership, and device affinity complete the correctness contract. Explicit heaps and advanced resource families add control only when capabilities and production systems can support their additional complexity.</p>
+        </section>
+
+        <section id="checkpoints">
+          <h2>Checkpoints</h2>
+          <ol>
+            <li>Why can one texture safely have an all-mip SRV and a one-mip UAV, and what synchronization is still required?</li>
+            <li>What is the difference between texture usage, resource state, and view type?</li>
+            <li>Why is a mapped row pitch authoritative even for an apparently simple RGBA texture?</li>
+            <li>Which references keep a normal binding set alive, and why is a mutable descriptor table different?</li>
+            <li>What fallback would you select when heaps, bindless, mesh shaders, or ray tracing are unavailable?</li>
+          </ol>
+        </section>
+
+        <section id="further-reading">
+          <span id="reading"></span>
+          <h2>Further reading</h2>
+          <ul>
+            <li><a href="commands.html">Commands</a> — states, barriers, hazards, queues, and submission.</li>
+            <li><a href="pipelines.html">Pipeline states</a> — attachment compatibility and immutable pipeline identity.</li>
+            <li><a href="shaders.html">Shaders</a> — authored parameter metadata and binding-layout construction.</li>
+            <li><a class="term" data-term="arda-render-graph" href="../glossary.html#term-arda-render-graph">ArdaRenderGraph</a> — logical resources, lifetime analysis, and transient allocation.</li>
+            <li><a href="api-reference.html#api-arda-rhi-fardarhitexturedesc-719fb8a3">API: <code>FArdaRHITextureDesc</code></a>,
+              <a href="api-reference.html#api-arda-rhi-fardarhibufferdesc-191bf415"><code>FArdaRHIBufferDesc</code></a>,
+              <a href="api-reference.html#api-arda-rhi-fardarhiviewdesc-0a3012d6"><code>FArdaRHIViewDesc</code></a>, and
+              <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a>.</li>
+            <li><a href="../glossary.html#term-resource">Glossary: resource</a>,
+              <a href="../glossary.html#term-format">format</a>,
+              <a href="../glossary.html#term-binding-set">binding set</a>, and
+              <a href="../glossary.html#term-native-import">native import</a>.</li>
+          </ul>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="pipelines.html">← Previous: Pipeline states</a>
+          <a rel="next" href="commands.html">Next: Commands →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer">
+    <p>ArdaBackend documentation · <a href="api-reference.html">Central API reference</a></p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="730" viewBox="0 0 900 730" role="img" aria-labelledby="view-title view-desc">
+  <title id="view-title">Texture subresources and resource view ranges</title>
+  <desc id="view-desc">A texture grid maps array slices against mip levels, with highlighted SRV, UAV, RTV, and DSV ranges. Arda view descriptors select texture subresources or byte ranges from buffers, while framebuffer attachments carry RTV or DSV-style subresource selections.</desc>
+  <defs>
+    <marker id="flow-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.cell{fill:#253247;stroke:#52647d}.srv{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.uav{fill:#214b45;stroke:#34d399;stroke-width:2}.rtv{fill:#493720;stroke:#fbbf24;stroke-width:2}.dsv{fill:#3a294d;stroke:#c084fc;stroke-width:2}.buffer{fill:#20364a;stroke:#38bdf8;stroke-width:1.6}
+      .title{font:700 25px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 14px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.note{font:12px system-ui,sans-serif;fill:#c5d2e3}.tiny{font:11px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle}.axis{font:700 11px system-ui,sans-serif;fill:#7dd3fc}.flow{fill:none;stroke:#7dd3fc;stroke-width:2.2;marker-end:url(#flow-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="900" height="730"/>
+  <text class="title" x="32" y="42">Resource views select ranges; they do not create new storage</text>
+  <text class="sub" x="32" y="68">Current Arda names are shown; SRV/UAV/RTV/DSV are general GPU view roles.</text>
+
+  <rect class="panel" x="24" y="92" width="540" height="406" rx="12"/>
+  <text class="label" x="294" y="122">FArdaRHITextureDesc: mArraySize = 4, mMipLevels = 5</text>
+  <text class="axis" x="72" y="160">ARRAY SLICE</text>
+  <text class="axis" x="198" y="146">MIP 0</text><text class="axis" x="270" y="146">MIP 1</text><text class="axis" x="342" y="146">MIP 2</text><text class="axis" x="414" y="146">MIP 3</text><text class="axis" x="486" y="146">MIP 4</text>
+  <text class="axis" x="108" y="191">0</text><text class="axis" x="108" y="253">1</text><text class="axis" x="108" y="315">2</text><text class="axis" x="108" y="377">3</text>
+  <g>
+    <rect class="srv" x="156" y="164" width="64" height="48"/><rect class="srv" x="228" y="164" width="64" height="48"/><rect class="cell" x="300" y="164" width="64" height="48"/><rect class="cell" x="372" y="164" width="64" height="48"/><rect class="cell" x="444" y="164" width="64" height="48"/>
+    <rect class="srv" x="156" y="226" width="64" height="48"/><rect class="srv" x="228" y="226" width="64" height="48"/><rect class="uav" x="300" y="226" width="64" height="48"/><rect class="cell" x="372" y="226" width="64" height="48"/><rect class="cell" x="444" y="226" width="64" height="48"/>
+    <rect class="rtv" x="156" y="288" width="64" height="48"/><rect class="cell" x="228" y="288" width="64" height="48"/><rect class="cell" x="300" y="288" width="64" height="48"/><rect class="cell" x="372" y="288" width="64" height="48"/><rect class="cell" x="444" y="288" width="64" height="48"/>
+    <rect class="dsv" x="156" y="350" width="64" height="48"/><rect class="cell" x="228" y="350" width="64" height="48"/><rect class="cell" x="300" y="350" width="64" height="48"/><rect class="cell" x="372" y="350" width="64" height="48"/><rect class="cell" x="444" y="350" width="64" height="48"/>
+  </g>
+  <text class="small" x="294" y="432">Each cell is one (array slice, mip level) subresource.</text>
+  <text class="tiny" x="294" y="456">FArdaRHITextureSubresourceRange = base mip + count + base slice + count</text>
+  <text class="tiny" x="294" y="478">Resolve(desc) expands ArdaRHIAllSubresources to concrete bounds.</text>
+
+  <rect class="panel" x="588" y="92" width="288" height="406" rx="12"/>
+  <text class="label" x="732" y="122">View and attachment roles</text>
+  <rect class="srv" x="612" y="148" width="240" height="62" rx="8"/><text class="label" x="732" y="173">SRV &#8212; shader read</text><text class="tiny" x="732" y="195">mip 0..1, slices 0..1</text>
+  <rect class="uav" x="612" y="226" width="240" height="62" rx="8"/><text class="label" x="732" y="251">UAV &#8212; shader read/write</text><text class="tiny" x="732" y="273">mip 2, slice 1</text>
+  <rect class="rtv" x="612" y="304" width="240" height="62" rx="8"/><text class="label" x="732" y="329">RTV &#8212; color attachment</text><text class="tiny" x="732" y="351">framebuffer target, mip 0 slice 2</text>
+  <rect class="dsv" x="612" y="382" width="240" height="62" rx="8"/><text class="label" x="732" y="407">DSV &#8212; depth/stencil</text><text class="tiny" x="732" y="429">depth attachment, mip 0 slice 3</text>
+  <text class="tiny" x="732" y="473">Arda creates SRV/UAV objects explicitly;</text>
+  <text class="tiny" x="732" y="489">RTV/DSV roles are framebuffer attachments.</text>
+
+  <rect class="buffer" x="24" y="526" width="852" height="116" rx="10"/>
+  <text class="label" x="450" y="554">Buffer view &#8212; FArdaRHIViewDesc::mBufferRange</text>
+  <rect class="cell" x="54" y="578" width="792" height="28" rx="4"/>
+  <rect class="uav" x="238" y="578" width="300" height="28" rx="4"/>
+  <text class="small" x="388" y="598">mByteOffset + mByteSize</text>
+  <text class="tiny" x="450" y="628">The same descriptor also carries mFormat; structured, typed, and raw binding types define interpretation.</text>
+
+  <rect class="panel" x="24" y="664" width="852" height="42" rx="7"/>
+  <rect class="srv" x="48" y="677" width="28" height="16"/><text class="note" x="84" y="691">SRV</text>
+  <rect class="uav" x="142" y="677" width="28" height="16"/><text class="note" x="178" y="691">UAV</text>
+  <rect class="rtv" x="240" y="677" width="28" height="16"/><text class="note" x="276" y="691">RTV</text>
+  <rect class="dsv" x="338" y="677" width="28" height="16"/><text class="note" x="374" y="691">DSV</text>
+  <path class="flow" d="M500 685 H550"/><text class="note" x="561" y="691">view describes selected storage range</text>
+</svg>

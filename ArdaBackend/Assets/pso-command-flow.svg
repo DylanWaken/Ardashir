@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="760" viewBox="0 0 900 760" role="img" aria-labelledby="pso-flow-title pso-flow-desc">
+  <title id="pso-flow-title">Pipeline state cache resolution and command submission</title>
+  <desc id="pso-flow-desc">A global shader instance becomes a compute or graphics pipeline initializer, graphics state is completed from the framebuffer, FArdaPipelineStateCache resolves hits and misses with LRU retention, and commands are opened, set, drawn or dispatched, closed, and executed.</desc>
+  <defs>
+    <marker id="call-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
+    <marker id="data-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#34d399"/></marker>
+    <marker id="guard-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#fbbf24"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.api{fill:#1f3656;stroke:#60a5fa;stroke-width:1.5}.data{fill:#214b45;stroke:#34d399;stroke-width:1.5}.guard{fill:#493720;stroke:#fbbf24;stroke-width:1.5}.native{fill:#312c3f;stroke:#a78bfa;stroke-width:1.5}
+      .title{font:700 25px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:600 14px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.note{font:12px system-ui,sans-serif;fill:#c5d2e3}.lane{font:700 11px system-ui,sans-serif;fill:#7dd3fc;letter-spacing:1px}.call{fill:none;stroke:#7dd3fc;stroke-width:2.2;marker-end:url(#call-arrow)}.output{fill:none;stroke:#34d399;stroke-width:2.2;marker-end:url(#data-arrow)}.guardline{fill:none;stroke:#fbbf24;stroke-width:2.2;stroke-dasharray:7 5;marker-end:url(#guard-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="900" height="760"/>
+  <text class="title" x="32" y="42">PSO resolution and command flow</text>
+  <text class="sub" x="32" y="68">Immutable semantic descriptors feed a lazy cache; only explicit execution submits work.</text>
+
+  <rect class="panel" x="24" y="92" width="852" height="492" rx="12"/>
+  <text class="lane" x="48" y="118">DESCRIPTOR</text>
+  <text class="lane" x="336" y="118">CACHE</text>
+  <text class="lane" x="630" y="118">COMMAND LIST</text>
+
+  <rect class="data" x="48" y="138" width="238" height="78" rx="8"/>
+  <text class="label" x="167" y="165">FArdaGlobalShaderInstance</text>
+  <text class="small" x="167" y="188">shader ref + binding layouts</text>
+  <text class="small" x="167" y="204">from FArdaGlobalShaderMap</text>
+
+  <rect class="api" x="48" y="250" width="238" height="104" rx="8"/>
+  <text class="label" x="167" y="277">Pipeline initializer</text>
+  <text class="small" x="167" y="300">Compute::FromGlobalShader</text>
+  <text class="small" x="167" y="320">or Graphics::FromGlobalShaders</text>
+  <text class="small" x="167" y="340">shader refs + layouts + fixed state</text>
+  <path class="call" d="M167 216 V246"/>
+
+  <rect class="guard" x="336" y="138" width="238" height="78" rx="8"/>
+  <text class="label" x="455" y="164">Graphics only: complete desc</text>
+  <text class="small" x="455" y="186">color/depth formats + sample count</text>
+  <text class="small" x="455" y="203">from State.mFramebuffer</text>
+  <path class="call" d="M286 302 C314 302 306 177 332 177"/>
+
+  <rect class="api" x="336" y="250" width="238" height="104" rx="8"/>
+  <text class="label" x="455" y="277">FArdaPipelineStateCache</text>
+  <text class="small" x="455" y="300">GetOrCreateCompute(initializer)</text>
+  <text class="small" x="455" y="320">GetOrCreateGraphics(initializer, fb)</text>
+  <text class="small" x="455" y="340">semantic descriptor hash + equality</text>
+  <path class="call" d="M286 322 H332"/>
+  <path class="guardline" d="M455 216 V246"/>
+
+  <rect class="data" x="336" y="388" width="108" height="92" rx="8"/>
+  <text class="label" x="390" y="414">HIT</text>
+  <text class="small" x="390" y="437">return retained</text>
+  <text class="small" x="390" y="456">pipeline ref</text>
+  <text class="small" x="390" y="472">touch LRU</text>
+  <path class="output" d="M420 354 V384"/>
+
+  <rect class="native" x="466" y="388" width="108" height="92" rx="8"/>
+  <text class="label" x="520" y="414">MISS</text>
+  <text class="small" x="520" y="437">CreateCompute</text>
+  <text class="small" x="520" y="455">or Graphics</text>
+  <text class="small" x="520" y="472">insert + evict LRU</text>
+  <path class="call" d="M490 354 V384"/>
+
+  <rect class="data" x="630" y="138" width="222" height="78" rx="8"/>
+  <text class="label" x="741" y="165">Resolved immutable PSO</text>
+  <text class="small" x="741" y="188">FArdaRHIComputePipelineRef or</text>
+  <text class="small" x="741" y="205">FArdaRHIGraphicsPipelineRef</text>
+  <path class="output" d="M574 434 C604 434 600 177 626 177"/>
+
+  <rect class="api" x="630" y="250" width="222" height="230" rx="8"/>
+  <text class="label" x="741" y="278">IArdaRHICommandList</text>
+  <text class="small" x="741" y="306">Open()</text>
+  <text class="small" x="741" y="331">&#8594; SetComputeState / SetGraphicsState</text>
+  <text class="small" x="741" y="356">&#8594; binding sets + barriers</text>
+  <text class="small" x="741" y="381">&#8594; Dispatch or Draw / DrawIndexed</text>
+  <text class="small" x="741" y="406">&#8594; Close()</text>
+  <text class="small" x="741" y="431">&#8594; device.ExecuteCommandList(s)</text>
+  <text class="small" x="741" y="460">returns queue instance identifier</text>
+  <path class="call" d="M741 216 V246"/>
+
+  <rect class="guard" x="48" y="506" width="804" height="56" rx="8"/>
+  <text class="label" x="450" y="530">Concurrency and retention</text>
+  <text class="small" x="450" y="550">same-key callers wait for one in-flight creation; configured bounds and Trim/Clear evict least-recently-used retained entries</text>
+
+  <rect class="guard" x="24" y="606" width="852" height="82" rx="10"/>
+  <text class="label" x="450" y="630">Nearby invariants</text>
+  <text class="note" x="48" y="653">" Graphics keys use the completed framebuffer formats; different completed formats are different PSOs.</text>
+  <text class="note" x="48" y="674">" Debug names do not define descriptor identity; resources and command lists must belong to the cache device.</text>
+  <text class="note" x="48" y="691">" Recording creates no GPU order: Close must precede explicit ExecuteCommandList(s).</text>
+
+  <rect class="panel" x="24" y="712" width="852" height="34" rx="7"/>
+  <path class="call" d="M48 729 H94"/><text class="note" x="103" y="733">call</text>
+  <path class="output" d="M174 729 H220"/><text class="note" x="229" y="733">resolved / retained data</text>
+  <path class="guardline" d="M402 729 H448"/><text class="note" x="457" y="733">completion / ordering guard</text>
+</svg>
