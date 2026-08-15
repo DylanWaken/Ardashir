@@ -104,8 +104,8 @@
           <ul>
             <li>Selects and initializes one process-wide native backend and publishes an opaque <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>.</li>
             <li>Exposes backend-neutral resource descriptions, object interfaces, capability queries, status values, and intrusive references.</li>
-            <li>Loads authored shader artifacts and constructs binding layouts from C++ parameter metadata.</li>
-            <li>Creates and caches immutable pipeline state.</li>
+            <li>Enumerates registered shader permutations, optionally compiles them through external DXC, persists keyed artifacts, and constructs binding layouts from C++ parameter metadata.</li>
+            <li>Creates immutable pipeline state, reuses live objects in a bounded cache, and persists backend-native D3D12/Vulkan cache data across runs.</li>
             <li>Records explicit graphics, compute, and copy work and submits it to available queues.</li>
             <li>Bridges platform windows to a backend-owned presentation path without leaking window-system types into the RHI.</li>
             <li>Routes native validation and backend diagnostics into project-level reporting.</li>
@@ -115,7 +115,7 @@
           <ul>
             <li>It does not decide which objects are visible, which lighting model to use, or how to schedule game systems. Those are renderer and engine responsibilities.</li>
             <li>It does not infer a complete frame graph from commands. ArdaRenderGraph provides logical pass scheduling and transient-resource planning above this layer.</li>
-            <li>It does not compile shader source at runtime. The <a href="shaders.html">shader system</a> resolves registered types to precompiled <code>.dxil</code> or <code>.spv</code> artifacts.</li>
+            <li>It does not embed a shader compiler library or require per-shader CMake commands. The <a href="shaders.html">shader system</a> can launch a configured external DXC process at startup or first use, or remain bytecode-only.</li>
             <li>It does not erase hardware differences. Callers must query capabilities and queue availability instead of assuming every backend exposes every feature.</li>
             <li>It does not make arbitrary concurrent access safe. Thread-safety is a contract of each subsystem, not a side effect of abstraction.</li>
           </ul>
@@ -154,7 +154,7 @@
           <h2>Worked example: one frame through the system</h2>
           <p>Consider a windowed renderer that draws an opaque mesh and presents it.</p>
           <ol>
-            <li><strong>Startup.</strong> The application configures validation and the selected API, supplies an <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a>, and initializes a device plus swap chain.</li>
+            <li><strong>Startup.</strong> The application configures validation, shader mode, writable shader/pipeline cache paths, and the selected API; it then supplies an <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a> and initializes a device plus swap chain.</li>
             <li><strong>Acquire.</strong> The swap chain provides a backend-neutral framebuffer. The renderer does not receive an <code>ID3D12Resource*</code> or <code>VkImage</code>.</li>
             <li><strong>Describe.</strong> The renderer chooses registered vertex and pixel shaders, fixed-function state, vertex format, and framebuffer formats. These values form a portable pipeline description.</li>
             <li><strong>Resolve.</strong> The pipeline cache validates and normalizes the description, then returns an intrusive pipeline reference. A cache hit avoids native pipeline creation.</li>
@@ -188,11 +188,11 @@
             </article>
             <article>
               <h3>5. <a href="shaders.html">Shaders</a></h3>
-              <p>Register virtual source paths and shader types, understand authored parameter metadata, and load the device-bound global shader map.</p>
+              <p>Register virtual source paths and permutations, choose startup or first-use compilation, understand keyed artifacts and authored metadata, and initialize the device-bound global shader map.</p>
             </article>
             <article>
               <h3>6. <a href="pipelines.html">Pipeline states</a></h3>
-              <p>Derive immutable PSOs, complete framebuffer-dependent formats, control cache retention, and diagnose creation failures.</p>
+              <p>Derive immutable PSOs, complete framebuffer-dependent formats, distinguish live LRU from native disk persistence, and diagnose creation failures.</p>
             </article>
             <article>
               <h3>7. <a href="commands.html">Commands</a></h3>

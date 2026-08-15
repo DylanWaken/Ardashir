@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 620" role="img" aria-labelledby="title desc">
+  <title id="title">In-memory and persistent pipeline cache layers</title>
+  <desc id="desc">A complete graphics or compute descriptor first uses an in-memory bounded LRU of live pipeline objects. On a miss, a stable semantic key is passed to the backend. D3D12 uses a pipeline library and Vulkan uses VkPipelineCache. Driver-specific data is loaded from a backend-named disk blob at device creation and atomically flushed and disabled during ShutdownBackend. Invalid blobs are ignored and an empty cache is used.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 10 5 0 10z" fill="#425466"/></marker>
+    <style>
+      .box{fill:#f5f8fb;stroke:#425466;stroke-width:2}.memory{fill:#eef3ff;stroke:#365fa0;stroke-width:2}
+      .disk{fill:#e9f7ef;stroke:#287a4b;stroke-width:2}.native{fill:#fff8df;stroke:#8a6516;stroke-width:2}
+      .warn{fill:#fff0f0;stroke:#a33;stroke-width:2}.line{fill:none;stroke:#425466;stroke-width:2;marker-end:url(#arrow)}
+      .dash{stroke-dasharray:7 5}text{font:16px system-ui,sans-serif;fill:#17212b}.small{font-size:13px}.label{font-size:14px;font-weight:700}
+    </style>
+  </defs>
+  <rect class="box" x="40" y="45" width="235" height="82" rx="10"/>
+  <text x="157" y="77" text-anchor="middle">Complete semantic descriptor</text>
+  <text x="157" y="102" text-anchor="middle" class="small">shaders + layouts + fixed state</text>
+  <path class="line" d="M275 86H355"/>
+
+  <rect class="memory" x="355" y="35" width="330" height="105" rx="10"/>
+  <text x="520" y="67" text-anchor="middle">FArdaPipelineStateCache</text>
+  <text x="520" y="92" text-anchor="middle">bounded live-object LRU</text>
+  <text x="520" y="118" text-anchor="middle" class="small">descriptor equality; same-key waiters; process memory</text>
+  <path class="line" d="M685 86H805"/>
+  <text x="742" y="72" text-anchor="middle" class="label">hit</text>
+  <rect class="memory" x="805" y="45" width="270" height="82" rx="10"/>
+  <text x="940" y="77" text-anchor="middle">Reuse live PSO reference</text>
+  <text x="940" y="102" text-anchor="middle" class="small">LRU eviction only drops cache ownership</text>
+
+  <path class="line" d="M520 140V210"/>
+  <text x="540" y="180" class="label">miss</text>
+  <rect class="box" x="365" y="210" width="310" height="86" rx="10"/>
+  <text x="520" y="241" text-anchor="middle">Stable semantic persistent key</text>
+  <text x="520" y="266" text-anchor="middle" class="small">shader bytecode hash + layouts + compatibility state</text>
+  <path class="line" d="M520 296V350"/>
+
+  <rect class="native" x="130" y="350" width="360" height="105" rx="10"/>
+  <text x="310" y="382" text-anchor="middle">D3D12 pipeline library</text>
+  <text x="310" y="407" text-anchor="middle" class="small">named entry from semantic key</text>
+  <text x="310" y="430" text-anchor="middle" class="small">driver / adapter specific native data</text>
+  <rect class="native" x="630" y="350" width="360" height="105" rx="10"/>
+  <text x="810" y="382" text-anchor="middle">Vulkan VkPipelineCache</text>
+  <text x="810" y="407" text-anchor="middle" class="small">cache supplied during pipeline creation</text>
+  <text x="810" y="430" text-anchor="middle" class="small">driver validates compatibility internally</text>
+  <path class="line" d="M470 330L360 350"/>
+  <path class="line" d="M570 330L760 350"/>
+
+  <rect class="disk" x="130" y="500" width="360" height="80" rx="10"/>
+  <text x="310" y="530" text-anchor="middle">d3d12.pso-cache</text>
+  <text x="310" y="555" text-anchor="middle" class="small">header + backend-tagged native payload</text>
+  <rect class="disk" x="630" y="500" width="360" height="80" rx="10"/>
+  <text x="810" y="530" text-anchor="middle">vulkan.pso-cache</text>
+  <text x="810" y="555" text-anchor="middle" class="small">header + backend-tagged native payload</text>
+  <path class="line" d="M310 500V455"/>
+  <path class="line" d="M810 500V455"/>
+
+  <rect class="warn" x="20" y="505" width="95" height="68" rx="8"/>
+  <text x="67" y="530" text-anchor="middle" class="small">invalid blob</text>
+  <text x="67" y="552" text-anchor="middle" class="small">warn + ignore</text>
+  <path class="line dash" d="M115 539H130"/>
+
+  <text x="560" y="606" text-anchor="middle" class="label">ShutdownBackend: wait if dirty; atomic replace; disable path and callback</text>
+</svg>

@@ -65,7 +65,7 @@
               <option value="Project">Project</option>
               </select>
             </div>
-            <p class="filter-status" data-glossary-count role="status" aria-live="polite">95 of 95 terms shown</p>
+            <p class="filter-status" data-glossary-count role="status" aria-live="polite">102 of 102 terms shown</p>
           </div>
           <p class="callout" data-glossary-empty hidden>No terms match the current filters.</p>
           <div class="glossary-list">
@@ -387,10 +387,10 @@
           <p><strong>In Ardashir:</strong> Native backend integrations may use semaphores for queue-to-queue or presentation synchronization.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-synchronization">Synchronization</a></li><li><a href="#term-fence">Fence</a></li><li><a href="#term-vulkan">Vulkan</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-shader" data-glossary-entry data-category="Graphics" data-search="Shader Graphics A program executed by a programmable GPU stage. ArdaBackend loads precompiled DXIL or SPIR-V artifacts and creates shader objects; compilation is offline and current binding metadata is authored in C++ rather than recovered through binary reflection.">
+        <article class="glossary-entry" id="term-shader" data-glossary-entry data-category="Graphics" data-search="Shader Graphics A program executed by a programmable GPU stage. ArdaBackend can compile registered permutations through external DXC or load deployed DXIL/SPIR-V, then creates device shader objects; binding metadata is authored in C++.">
           <div class="glossary-entry__meta"><h3>Shader</h3><span class="category">Graphics</span></div>
           <p>A program executed by a programmable GPU stage.</p>
-          <p><strong>In Ardashir:</strong> ArdaBackend loads precompiled DXIL or SPIR-V artifacts and creates shader objects; compilation is offline and current binding metadata is authored in C++ rather than recovered through binary reflection.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend can compile registered permutations through external DXC or load deployed DXIL/SPIR-V, then creates device shader objects; binding metadata is authored in C++.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-shader-stage">Shader stage</a></li><li><a href="#term-bytecode">Bytecode</a></li><li><a href="#term-global-shader">Global shader</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-shader-stage" data-glossary-entry data-category="Graphics" data-search="Shader stage Graphics A programmable phase of a graphics or compute pipeline, such as vertex, pixel, or compute. ArdaBackend maps project shader-stage declarations to NVRHI and native API stages.">
@@ -638,6 +638,48 @@
           <p>The stable sequence in which graph objects or passes are added to a builder.</p>
           <p><strong>In Ardashir:</strong> ArdaRenderGraph permits only forward edges, so registration order is already topological; after culling, execution preserves the same relative order for deterministic behavior.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-topological-order">Topological order</a></li><li><a href="#term-dag">DAG</a></li><li><a href="#term-pass">Pass</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-shader-permutation" data-glossary-entry data-category="Graphics" data-search="Shader permutation Graphics One compiled variant selected from a Cartesian product of shader options. ArdaBackend encodes registered dimensions into a permutation identifier, filters variants per backend, and contributes deterministic defines to the artifact key.">
+          <div class="glossary-entry__meta"><h3>Shader permutation</h3><span class="category">Graphics</span></div>
+          <p>One compiled variant selected from a Cartesian product of shader options.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend encodes registered dimensions into a permutation identifier, filters variants per backend, and contributes deterministic defines to the artifact key.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-shader">Shader</a></li><li><a href="#term-shader-artifact-cache">Shader artifact cache</a></li><li><a href="#term-hash">Hash</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-first-use-compilation" data-glossary-entry data-category="Computer science" data-search="First-use compilation Computer science Deferred compilation performed when a result is requested for the first time rather than during startup. ArdaBackend OnDemand mode ensures bytecode and creates the RHI shader and layouts on the first lookup of a registered slot.">
+          <div class="glossary-entry__meta"><h3>First-use compilation</h3><span class="category">Computer science</span></div>
+          <p>Deferred compilation performed when a result is requested for the first time rather than during startup.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend <code>OnDemand</code> mode ensures bytecode and creates the RHI shader and layouts on the first lookup of a registered slot.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-shader-permutation">Shader permutation</a></li><li><a href="#term-shader-artifact-cache">Shader artifact cache</a></li><li><a href="#term-cache">Cache</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-shader-artifact-cache" data-glossary-entry data-category="Project" data-search="Shader artifact cache Project Persistent compiled shader bytecode paired with input identity metadata so reusable results can be validated. ArdaBackend stores DXIL or SPIR-V beside a .arda-key sidecar in the configured user cache and atomically republishes stale or missing artifacts when policy allows.">
+          <div class="glossary-entry__meta"><h3>Shader artifact cache</h3><span class="category">Project</span></div>
+          <p>Persistent compiled shader bytecode paired with input identity metadata so reusable results can be validated.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend stores DXIL or SPIR-V beside a <code>.arda-key</code> sidecar in the configured user cache and atomically republishes stale or missing artifacts when policy allows.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-bytecode">Bytecode</a></li><li><a href="#term-shader-permutation">Shader permutation</a></li><li><a href="#term-hash">Hash</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-persistent-pipeline-cache" data-glossary-entry data-category="Graphics" data-search="Persistent pipeline cache Graphics Driver-native pipeline optimization data saved to disk and reused by later process executions. ArdaBackend stores backend-tagged D3D12 pipeline-library or Vulkan VkPipelineCache payloads separately from its in-memory PSO LRU.">
+          <div class="glossary-entry__meta"><h3>Persistent pipeline cache</h3><span class="category">Graphics</span></div>
+          <p>Driver-native pipeline optimization data saved to disk and reused by later process executions.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend stores backend-tagged D3D12 pipeline-library or Vulkan <code>VkPipelineCache</code> payloads separately from its in-memory PSO LRU.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-pso">PSO</a></li><li><a href="#term-d3d12-pipeline-library">D3D12 pipeline library</a></li><li><a href="#term-vk-pipeline-cache">VkPipelineCache</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-stable-semantic-key" data-glossary-entry data-category="Computer science" data-search="Stable semantic key Computer science A deterministic identifier derived from meaning-bearing content rather than process-local addresses. ArdaBackend hashes shader bytecode, layouts, formats, and fixed state to address native persistent pipeline entries across executions.">
+          <div class="glossary-entry__meta"><h3>Stable semantic key</h3><span class="category">Computer science</span></div>
+          <p>A deterministic identifier derived from meaning-bearing content rather than process-local addresses.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend hashes shader bytecode, layouts, formats, and fixed state to address native persistent pipeline entries across executions.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-hash">Hash</a></li><li><a href="#term-persistent-pipeline-cache">Persistent pipeline cache</a></li><li><a href="#term-immutable">Immutable</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-d3d12-pipeline-library" data-glossary-entry data-category="Graphics" data-search="D3D12 pipeline library Graphics A Direct3D 12 object that serializes and retrieves driver-compiled pipeline state by name. ArdaBackend/NVRHI uses stable semantic keys as ID3D12PipelineLibrary names and persists the library payload as d3d12.pso-cache.">
+          <div class="glossary-entry__meta"><h3>D3D12 pipeline library</h3><span class="category">Graphics</span></div>
+          <p>A Direct3D 12 object that serializes and retrieves driver-compiled pipeline state by name.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend/NVRHI uses stable semantic keys as <code>ID3D12PipelineLibrary</code> names and persists the library payload as <code>d3d12.pso-cache</code>.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-d3d12">D3D12</a></li><li><a href="#term-persistent-pipeline-cache">Persistent pipeline cache</a></li><li><a href="#term-stable-semantic-key">Stable semantic key</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-vk-pipeline-cache" data-glossary-entry data-category="Graphics" data-search="VkPipelineCache Graphics A Vulkan object carrying implementation-specific data that may accelerate pipeline creation. ArdaBackend/NVRHI initializes it from vulkan.pso-cache, lets the driver validate compatibility, and persists updated bytes at shutdown.">
+          <div class="glossary-entry__meta"><h3>VkPipelineCache</h3><span class="category">Graphics</span></div>
+          <p>A Vulkan object carrying implementation-specific data that may accelerate pipeline creation.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend/NVRHI initializes it from <code>vulkan.pso-cache</code>, lets the driver validate compatibility, and persists updated bytes at shutdown.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-vulkan">Vulkan</a></li><li><a href="#term-persistent-pipeline-cache">Persistent pipeline cache</a></li><li><a href="#term-stable-semantic-key">Stable semantic key</a></li></ul></div>
         </article>
           </div>
         </section>
