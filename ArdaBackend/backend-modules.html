@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Implement, link, select, and integrate universal ArdaBackend modules, including NVRHI Vulkan, NVRHI D3D12, and engine-owned RHI devices.">
+  <title>Backend modules | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a aria-current="page" href="backend-modules.html">Backend modules</a>
+        <a href="external-interop.html">External interop</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a>
+        <a href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a> / Backend modules</nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Universal implementation boundary</p>
+          <h1>Backend modules</h1>
+          <p>ArdaBackend is the stable declaration layer used by the rest of Ardashir. A linked <a class="term" data-term="backend-module" href="../glossary.html#term-backend-module">backend module</a> supplies the operative device, RHI implementation, presentation path, external-object adoption, and shader compiler integration. The sample modules are <code>nvrhi-vulkan</code> and <code>nvrhi-d3d12</code>; a native Vulkan/D3D12 implementation or an <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine RHI</a> adapter follows the same contract.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#prerequisites">Prerequisites</a>
+          <a href="#mental-model">Mental model</a>
+          <a href="#public-private-boundary">Public and provider APIs</a>
+          <a href="#descriptor">Module descriptor</a>
+          <a href="#device-contract">Device contract</a>
+          <a href="#selection-flow">Registration and selection</a>
+          <a href="#build-linking">Build and linking</a>
+          <a href="#external-devices">External devices</a>
+          <a href="#external-resources">External resources</a>
+          <a href="#shader-service">Shader compiler service</a>
+          <a href="#ownership-threading">Ownership and threading</a>
+          <a href="#platform-notes">Platform and engine notes</a>
+          <a href="#worked-example">Worked module skeleton</a>
+          <a href="#failures">Failure analysis</a>
+          <a href="#summary">Summary</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>separate renderer-facing Arda RHI contracts from the provider-facing implementation contract;</li>
+            <li>describe a module with a stable identity, compatibility class, device-source support, shader format, and priority;</li>
+            <li>implement the module and runtime-device interfaces without exposing native types through Arda's public headers;</li>
+            <li>wire a backend library into CMake so static-link elimination cannot discard registration;</li>
+            <li>route host-owned devices and resources to exactly one compatible module; and</li>
+            <li>preserve module, host-device, queue, resource, and shader-service lifetimes across initialization and shutdown.</li>
+          </ul>
+        </section>
+
+        <section id="prerequisites">
+          <h2>Prerequisites</h2>
+          <p>Read <a href="architecture.html">Architecture</a> for the opaque RHI and process-lifetime model, then <a href="external-interop.html">External interop</a> if the host owns the native device. A module implementer should understand intrusive references, queue synchronization, native resource states, and CMake static-library linking.</p>
+          <aside class="callout"><h3>Scope</h3><p>This chapter documents the universal contract and the checked-in NVRHI modules. It does not claim that Unreal, Unity, or Godot adapters already exist. Those are future modules whose object schemas and engine-version support must be documented beside their implementation.</p></aside>
+        </section>
+
+        <section id="mental-model">
+          <h2>Mental model: declaration core plus linked implementation</h2>
+          <p>Think of ArdaBackend as two concentric contracts. The outer contract is used by Ardashir systems: configure one backend, obtain an <code>IArdaRHIDevice</code>, create resources, record commands, compile registered shaders, and optionally present. The inner <a class="term" data-term="provider-contract" href="../glossary.html#term-provider-contract">provider contract</a> is used only by linked backend libraries: advertise a module, manufacture its runtime device, and bridge module-specific services.</p>
+          <figure>
+            <img src="Assets/backend-provider-module-flow.svg" alt="Application selection enters the ArdaBackend registry, chooses one of several linked modules, creates its runtime backend device, and exposes RHI, presentation, and shader services; an external host can provide devices and resources to the selected module.">
+            <figcaption>Module identity is chosen at runtime from the implementations made available at link time. External objects cross only through copied, backend-routed descriptors.</figcaption>
+          </figure>
+          <p>The distinction between identity and compatibility matters. <code>nvrhi-vulkan</code> and a future <code>unreal-vulkan-rhi</code> could both use the Vulkan <a class="term" data-term="compatibility-class" href="../glossary.html#term-compatibility-class">compatibility class</a>, but they are not interchangeable implementations and need not accept the same external payload.</p>
+        </section>
+
+        <section id="public-private-boundary">
+          <h2>Two API audiences</h2>
+          <h3>Ardashir/application audience</h3>
+          <p>Application and renderer code uses <code>ArdaBackend.h</code>, <code>ArdaDevice.h</code>, the RHI headers, shader APIs, and optional external-provider APIs. It may select a module by stable name with <a href="api-reference.html#api-arda-backend-configurebackend-42d0f49a"><code>ConfigureBackend(const char*)</code></a>, or leave <code>mBackendName</code> empty and select the highest-priority module compatible with <code>mBackend</code>.</p>
+          <h3>Backend implementer audience</h3>
+          <p>A backend library includes <code>ArdaBackendProvider.h</code> and implements <a href="api-reference.html#api-arda-backend-iardabackendmodule-83673c0b"><code>IArdaBackendModule</code></a> plus <a href="api-reference.html#api-arda-backend-iardabackenddevice-ce421f3b"><code>IArdaBackendDevice</code></a>. Native SDK or engine headers belong in that library. Do not add their types to <code>Source/ArdaBackend/Public</code>; carry them as <code>FArdaNativeObject</code>, stable named objects, or module-owned private state.</p>
+          <p>This keeps the public binary and include boundary independent of NVRHI, Vulkan, D3D12, Unreal, Unity, and Godot. It also makes an implementation replaceable by changing build options and linked registration functions rather than rewriting Ardashir call sites.</p>
+        </section>
+
+        <section id="descriptor">
+          <h2>The module descriptor is a compatibility declaration</h2>
+          <p><a href="api-reference.html#api-arda-backend-fardabackendmoduledescriptor-76f21395"><code>FArdaBackendModuleDescriptor</code></a> is copied when the module is registered. Every field participates in selection or validation:</p>
+          <dl>
+            <dt><code>mInterfaceVersion</code></dt><dd>Must equal <code>ArdaBackendProviderInterfaceVersion</code>. It guards the C++ virtual contract, not native-driver compatibility.</dd>
+            <dt><code>mName</code></dt><dd>Stable machine key used by configuration and external providers. Treat it as persistent configuration data.</dd>
+            <dt><code>mDisplayName</code></dt><dd>Human-facing diagnostic label; it need not be stable.</dd>
+            <dt><code>mBackendType</code></dt><dd>D3D12, Vulkan, or Custom compatibility class used for legacy/API-based selection and shader permutations.</dd>
+            <dt><code>mShaderBinaryFormat</code>, <code>mShaderArtifactExtension</code>, and <code>mShaderCompilerIdentity</code></dt><dd>State what the module consumes. DXIL and SPIR-V can use core's DXC-compatible fallback. An in-process or BackendDefined compiler supplies a stable identity and an operative module hook.</dd>
+            <dt>Device-source flags</dt><dd><code>mbSupportsOwnedDevice</code> and <code>mbSupportsExternalDevice</code> must truthfully match what <code>CreateDevice</code> can construct.</dd>
+            <dt><code>mPriority</code></dt><dd>Breaks ties for compatibility-class selection. Stable-name selection ignores priority.</dd>
+          </dl>
+          <p>The checked-in sample publishes separate descriptors for <code>nvrhi-vulkan</code> and <code>nvrhi-d3d12</code>. They may share implementation code, but they are independently registered and independently linkable modules.</p>
+        </section>
+
+        <section id="device-contract">
+          <h2>The runtime device contract</h2>
+          <p><code>IArdaBackendModule::CreateDevice</code> returns a unique, initially unconfigured implementation. Core then calls <code>Initialize</code> once with the selected configuration, optional presentation surface, and optional external provider. A successful device must return a valid backend-neutral <code>FArdaRHIDeviceRef</code>, accurate queue capabilities, and an actionable error string after failures.</p>
+          <p><code>CreateSwapChain</code> is required by the interface but may return empty when presentation is unsupported or invalid for the chosen device source. <code>WaitForIdle</code> must cover work submitted through the module before teardown. It cannot make host-owned queues safe if the host submits concurrently; cross-owner coordination remains an integration contract.</p>
+          <p>The core owns the backend-device unique pointer. The returned RHI reference can outlive the global context, so module code and its backing library must remain loaded until all copied RHI references are gone. Unloading an engine plugin while one of its virtual objects or deleters is reachable is undefined behavior.</p>
+        </section>
+
+        <section id="selection-flow">
+          <h2>Registration and selection flow</h2>
+          <ol>
+            <li>Build-generated wiring calls each linked module's registration entry point.</li>
+            <li><a href="api-reference.html#api-arda-backend-registerbackendmodule-4cba8a9b"><code>RegisterBackendModule</code></a> validates and copies the descriptor while borrowing the module object.</li>
+            <li>The application chooses an exact <code>mBackendName</code>, or leaves it empty and supplies an <code>EArdaBackendType</code> compatibility class.</li>
+            <li>Initialization validates device-source support and external-provider compatibility before asking the module to allocate a device.</li>
+            <li>After success, <code>FArdaDeviceContext::mBackendName</code> records the actual implementation and <code>GetActiveBackendModule</code> exposes a non-owning diagnostic view.</li>
+          </ol>
+          <p><a href="api-reference.html#api-arda-backend-enumeratebackendmodules-d128b5cd"><code>EnumerateBackendModules</code></a> returns copied descriptors in stable-name order, suitable for configuration UIs and startup logs. Do not cache raw module pointers across registration changes.</p>
+          <pre><code>for (const auto&amp; module : arda::backend::EnumerateBackendModules())
+{
+    Log("%s: owned=%d external=%d",
+        module.mName.c_str(),
+        module.mbSupportsOwnedDevice,
+        module.mbSupportsExternalDevice);
+}
+
+arda::backend::FArdaBackendConfiguration config;
+config.mBackendName = "nvrhi-vulkan"; // Exact implementation identity.
+if (!arda::backend::ConfigureBackend(config) ||
+    !arda::backend::InitializeBackend())
+{
+    Fail(arda::backend::GetBackendError());
+}</code></pre>
+        </section>
+
+        <section id="build-linking">
+          <h2>Build and linking decide which modules exist</h2>
+          <p>ArdaBackend is a static library, so merely linking another static archive may not retain an unreferenced registration object. The build therefore generates explicit calls from a list of registration function names. This is <a class="term" data-term="link-time-registration" href="../glossary.html#term-link-time-registration">link-time registration</a>, not reliance on unspecified global-constructor order.</p>
+          <p>The sample switches are:</p>
+          <ul>
+            <li><code>ARDASHIR_BACKEND_NVRHI_VULKAN</code> links <code>Ardashir::ArdaBackendNvrhiVulkan</code> and registers <code>RegisterArdaNvrhiVulkanBackend</code>;</li>
+            <li><code>ARDASHIR_BACKEND_NVRHI_D3D12</code> does the same for <code>Ardashir::ArdaBackendNvrhiD3D12</code> on Windows; and</li>
+            <li><code>Ardashir::ArdaBackendNvrhiCommon</code> contains shared NVRHI adaptation and is linked by the two sample modules, not selected as a module itself.</li>
+          </ul>
+          <p>A custom module supplies a CMake target and an unqualified registration function in namespace <code>arda::backend</code>. In a parent project, create the target before adding Ardashir so <code>Source/ArdaBackend</code> can resolve it:</p>
+          <pre><code># Parent CMakeLists.txt
+add_library(MyEngineArdaBackend STATIC
+    MyEngineArdaBackend.cpp
+    MyEngineArdaDevice.cpp)
+target_include_directories(MyEngineArdaBackend PUBLIC include)
+
+set(ARDASHIR_BACKEND_NVRHI_VULKAN OFF CACHE BOOL "" FORCE)
+set(ARDASHIR_BACKEND_NVRHI_D3D12 OFF CACHE BOOL "" FORCE)
+set(ARDASHIR_BACKEND_MODULE_TARGETS MyEngineArdaBackend CACHE STRING "" FORCE)
+set(ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS
+    RegisterMyEngineArdaBackend CACHE STRING "" FORCE)
+add_subdirectory(path/to/Ardashir)</code></pre>
+          <p>The equivalent cache-oriented configure command is:</p>
+          <pre><code>cmake -S . -B build-custom \
+  -DARDASHIR_BACKEND_NVRHI_VULKAN=OFF \
+  -DARDASHIR_BACKEND_NVRHI_D3D12=OFF \
+  -DARDASHIR_BACKEND_MODULE_TARGETS=MyEngineArdaBackend \
+  -DARDASHIR_BACKEND_REGISTRATION_FUNCTIONS=RegisterMyEngineArdaBackend</code></pre>
+          <p>For multiple values, pass CMake semicolon-separated lists in the same order. The target must already exist before <code>Source/ArdaBackend</code> is configured. The function name is validated as a C++ identifier and must be link-visible to ArdaBackend. If a shared-library/plugin integration needs runtime unload, wrap this static registration scheme with explicit plugin load/unload coordination and refuse unload while active or referenced.</p>
+        </section>
+
+        <section id="external-devices">
+          <h2>Universal external-device registration</h2>
+          <p>The host registers one <code>IArdaExternalDeviceProvider</code> before initialization and selects <code>ExternalProvider</code>. The preferred generic path fills <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a>. Explicit fields cover common roles: instance/factory, adapter/physical device, logical device, and typed queues. <code>mAdditionalObjects</code> carries named engine objects; <code>mBackendData</code> carries immutable versioned bytes understood only by the named module.</p>
+          <p>Use <code>GetBackendName</code> and descriptor <code>mBackendName</code> to prevent a payload from reaching the wrong adapter. For example, an Unreal module might require <code>unreal-rhi</code> and document names such as <code>DynamicRHI</code> and <code>RHIDevice</code>. The names are module ABI: version them, validate required/unknown entries, and never guess object types from <code>mNativeApi</code>.</p>
+          <p><a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-getexternaldevicedesc-c12c4b9f"><code>GetExternalDeviceDesc</code></a> is the only public device-description path. <code>mAdditionalObjects</code> carries named handles, <a href="api-reference.html#api-arda-backend-external-device-desc-properties"><code>mProperties</code></a> carries copied string values with repeated names, and <code>mBackendData</code> carries a versioned binary payload. NVRHI translation types remain private to the sample module.</p>
+        </section>
+
+        <section id="external-resources">
+          <h2>External resources use the same routing rule</h2>
+          <p>An <code>IArdaExternalResourceProvider</code> resolves stable application IDs into texture or buffer import descriptors. Its optional <code>GetBackendName</code> binds those descriptors to one implementation. Backend-defined native types set <code>EArdaRHINativeResourceType::BackendDefined</code>, a stable <code>mNativeTypeName</code>, and copied <code>mBackendData</code>.</p>
+          <p>The selected RHI device remains the validation authority. A module must reject unknown type names, malformed payload versions, incompatible devices, false resource descriptions, and unsupported ownership modes. Imported references do not transfer host ownership unless the module's documented native mechanism explicitly does so; the shared lifetime token is the portable way to pin host/plugin state.</p>
+        </section>
+
+        <section id="shader-service">
+          <h2>Shader compiler invocation is a module service</h2>
+          <p>Core still owns registered shader identity, permutation filtering, cache keys, and artifact publication. <a href="api-reference.html#api-arda-backend-resolveshadertarget"><code>ResolveShaderTarget</code></a> copies the exact module identity, binary format, suffix, and compiler identity into an immutable <code>FArdaShaderTarget</code>. Before compilation core builds <a href="api-reference.html#api-arda-backend-fardabackendshadercompileinvocation-ea095f1f"><code>FArdaBackendShaderCompileInvocation</code></a> and offers it to that exact module, independent of whichever device is active.</p>
+          <ol>
+            <li><code>ConfigureShaderCompileInvocation</code> validates or rewrites the executable, profile, and arguments.</li>
+            <li><a href="api-reference.html#api-arda-backend-iardabackendmodule-invokeshadercompiler-4838d52d"><code>InvokeShaderCompiler</code></a> may execute through an engine shader service and return Success or Failure.</li>
+            <li>NotHandled asks core to use its DXC-compatible process launcher. This is suitable for DXIL/SPIR-V modules after configuration, but a BackendDefined format must provide an operative path.</li>
+          </ol>
+          <p>The module must write only the requested temporary output and return diagnostics as text. Core verifies the final artifact location and performs transactional publication. Do not let engine compiler callbacks mutate backend registration or device lifecycle state.</p>
+        </section>
+
+        <section id="ownership-threading">
+          <h2>Ownership, synchronization, and performance</h2>
+          <ul>
+            <li><strong>Module:</strong> owned by its library/host; borrowed by the registry; must outlive registration, active device, and every concrete RHI object whose code lives in that library.</li>
+            <li><strong>Backend device:</strong> uniquely owned by core; owns module-private wrapper state; borrows host objects for external-device mode.</li>
+            <li><strong>Descriptors:</strong> copied value metadata. Opaque handles remain non-owning unless a documented native retention mechanism or lifetime token says otherwise.</li>
+            <li><strong>Queues:</strong> the module may submit directly. The host must grant a coordinated interval; registration mutexes do not synchronize GPU queues.</li>
+            <li><strong>Registry:</strong> registration functions are thread-safe, but callbacks must not reenter registry/lifecycle operations. Serialize configuration, initialization, shutdown, plugin unloading, and device use.</li>
+          </ul>
+          <p>The abstraction adds virtual dispatch at device-service boundaries and descriptor translation during object creation. GPU submission, shader compilation, and pipeline creation dominate those costs. Prefer honest, coarse backend operations; do not leak a native command per virtual call simply to mimic an engine API. Cache translated immutable layouts and states only with device identity and module-specific compatibility in the key.</p>
+        </section>
+
+        <section id="platform-notes">
+          <h2>Platform and engine integration notes</h2>
+          <h3>NVRHI Vulkan</h3>
+          <p>Available when its CMake option is enabled. It consumes SPIR-V, can create a Vulkan device, and privately translates the universal external-device descriptor into NVRHI's Vulkan device description. The host must preserve Vulkan instance/device/queue, enabled-feature, extension, allocation-callback, loader, and host-synchronization contracts.</p>
+          <h3>NVRHI D3D12</h3>
+          <p>Available on Windows when enabled. It consumes DXIL, can create a D3D12 device, and privately translates the universal external-device descriptor into NVRHI's D3D12 device description. NVRHI can retain COM references needed by wrappers, but the host still owns device policy and coordinated queue access.</p>
+          <h3>Unreal, Unity, Godot, and other hosts</h3>
+          <p>Prefer adapting the engine's supported RHI/device access surface over reaching through private internals. The module should identify an exact engine/version support range, acquire typed interfaces, convert engine resource/queue/state concepts to Arda contracts, and define where execution occurs relative to the engine render/RHI thread. The current repository provides the extension points, not these engine adapters.</p>
+        </section>
+
+        <section id="worked-example">
+          <h2>Worked example: minimal custom module</h2>
+          <p>This skeleton shows responsibility placement. Native details intentionally remain in the module library.</p>
+          <pre><code>namespace arda::backend
+{
+class FMyDevice final : public IArdaBackendDevice
+{
+public:
+    EArdaInitializeResult Initialize(
+        const FArdaBackendConfiguration&amp; config,
+        IArdaWindowSurface* surface,
+        const IArdaExternalDeviceProvider* provider) override;
+    eastl::unique_ptr&lt;IArdaSwapChain&gt; CreateSwapChain(
+        uint32_t width, uint32_t height) override;
+    void WaitForIdle() noexcept override;
+    rhi::FArdaRHIDeviceRef GetDevice() const noexcept override;
+    FArdaQueueCapabilities GetQueueCapabilities() const noexcept override;
+    const eastl::string&amp; GetError() const noexcept override;
+private:
+    // Concrete implementation satisfies the complete IArdaRHIDevice contract.
+    rhi::FArdaRHIDeviceRef mDevice;
+};
+
+class FMyModule final : public IArdaBackendModule
+{
+public:
+    const FArdaBackendModuleDescriptor&amp; GetDescriptor() const noexcept override;
+    eastl::unique_ptr&lt;IArdaBackendDevice&gt; CreateDevice(
+        EArdaDeviceSource source) override;
+    rhi::FArdaRHIStatus ConfigureShaderCompileInvocation(
+        FArdaBackendShaderCompileInvocation&amp; invocation) const override;
+};
+
+bool RegisterMyEngineArdaBackend()
+{
+    static FMyModule module; // Library lifetime must cover all uses.
+    return RegisterBackendModule(module);
+}
+} // namespace arda::backend</code></pre>
+          <p>Construction alone performs no GPU work. <code>Initialize</code> validates the exact external schema or creates native state, then constructs a concrete object implementing the full <code>IArdaRHIDevice</code> surface returned by <code>GetDevice</code>. That RHI object validates backend-defined resource type names and payloads in its import methods. Partial failure must release module-owned objects, leave host-owned objects untouched, and retain an error message. Shutdown waits for Arda submissions, releases core-owned objects in dependency order, and only then permits module unregistration or library unload.</p>
+        </section>
+
+        <section id="failures">
+          <h2>Failure analysis</h2>
+          <dl>
+            <dt>“Configured backend module is not registered”</dt><dd>Confirm the library target is in <code>ARDASHIR_BACKEND_MODULE_TARGETS</code>, its entry point is in <code>ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS</code>, and the configured stable name exactly matches the descriptor.</dd>
+            <dt>Registration rejects the module</dt><dd>Check interface version, non-empty unique name, shader format/extension, device-source flags, and collision with another live module object.</dd>
+            <dt>Compatibility selection chooses the wrong implementation</dt><dd>Set <code>mBackendName</code> for deterministic selection. Otherwise inspect every descriptor's backend type and priority.</dd>
+            <dt>External initialization reports a module mismatch</dt><dd>Align configuration, provider <code>GetBackendName</code>, descriptor <code>mBackendName</code>, and compatibility class. Do not erase the exact module name to bypass schema validation.</dd>
+            <dt>External resource import fails</dt><dd>Check provider module routing, native type name, payload version, device identity, full resource description, initial state, and lifetime token.</dd>
+            <dt>Shader compilation says the backend did not handle its format</dt><dd>A BackendDefined module returned NotHandled or produced no requested artifact. Implement the invocation hook or select DXIL/SPIR-V with a usable fallback compiler.</dd>
+            <dt>Crash during shutdown or plugin unload</dt><dd>Search for copied RHI/device/resource references, swap chains, cached pipelines, callbacks, and in-flight host work. Registry removal is not a substitute for quiescence.</dd>
+          </dl>
+        </section>
+
+        <section id="summary">
+          <h2>Summary and checkpoints</h2>
+          <ul>
+            <li>ArdaBackend core defines stable renderer-facing semantics; linkable modules make them operative.</li>
+            <li>A module name identifies an implementation; backend type is only a compatibility class.</li>
+            <li>The module/device split separates persistent registration identity from one runtime device instance.</li>
+            <li>Build-generated registration makes the linked module set explicit and safe for static archives.</li>
+            <li>Generic external-device/resource descriptors are routed and interpreted by the selected module.</li>
+            <li>Module lifetime must cover every concrete object and callback implemented by its library.</li>
+          </ul>
+          <h3>Checkpoint questions</h3>
+          <ol>
+            <li>Why can two modules share <code>EArdaBackendType::Vulkan</code> but require different external payloads?</li>
+            <li>Which descriptor field rejects a provider compiled against an incompatible virtual interface?</li>
+            <li>Why are a linked library and a registration function both required for a static backend module?</li>
+            <li>Who owns a module, backend device, generic descriptor bytes, and external native device?</li>
+            <li>When should a shader module return NotHandled rather than Success or Failure?</li>
+            <li>What must be drained before an engine plugin containing a backend module can unload?</li>
+          </ol>
+          <h3>Further reading</h3>
+          <ul>
+            <li><a href="api-reference.html#api-component-backend-modules">Canonical backend-module API entries</a></li>
+            <li><a href="external-interop.html">External device, resource, queue, and lifetime contracts</a></li>
+            <li><a href="shaders.html">Registered shader compilation and artifact caching</a></li>
+            <li><a href="diagnostics.html">Lifecycle and native-backend diagnostics</a></li>
+          </ul>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation"><a rel="prev" href="architecture.html">Previous: Architecture</a><a rel="next" href="external-interop.html">Next: External interop</a></nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend documentation · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

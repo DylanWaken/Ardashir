@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A conceptual guide and reading roadmap for the ArdaBackend cross-platform production graphics backend.">
+  <meta name="description" content="A conceptual guide to ArdaBackend's universal graphics interface, linkable backend modules, resources, commands, shaders, and presentation.">
   <title>ArdaBackend | Ardashir</title>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
@@ -31,6 +31,7 @@
         <a href="quick-guide.html">Quick user's guide</a>
         <a href="getting-started.html">Getting started</a>
         <a href="architecture.html">Architecture</a>
+        <a href="backend-modules.html">Backend modules</a>
         <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
@@ -51,7 +52,7 @@
         <header class="page-header">
           <p class="eyebrow">Cross-platform production graphics</p>
           <h1>ArdaBackend</h1>
-          <p>ArdaBackend is the boundary between renderer intent and a native graphics API. It turns portable descriptions of GPU work into validated <a class="term" data-term="resource" href="../glossary.html#term-resource">resources</a>, pipelines, <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command lists</a>, queue submissions, and presentation on <a class="term" data-term="d3d12" href="../glossary.html#term-d3d12">D3D12</a> or <a class="term" data-term="vulkan" href="../glossary.html#term-vulkan">Vulkan</a>.</p>
+          <p>ArdaBackend is the stable boundary between renderer intent and a linked graphics implementation. It turns portable descriptions of GPU work into validated <a class="term" data-term="resource" href="../glossary.html#term-resource">resources</a>, pipelines, <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command lists</a>, queue submissions, shader services, and presentation. The implementation may be NVRHI over <a class="term" data-term="d3d12" href="../glossary.html#term-d3d12">D3D12</a>/<a class="term" data-term="vulkan" href="../glossary.html#term-vulkan">Vulkan</a>, a native RHI, or a host <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine RHI</a>.</p>
         </header>
 
         <nav class="toc" aria-label="On this page">
@@ -84,7 +85,7 @@
         <section id="prerequisites">
           <h2>Prerequisites</h2>
           <p>This guide assumes working knowledge of C++ object <a class="term" data-term="lifetime" href="../glossary.html#term-lifetime">lifetime</a> and basic raster rendering. Review the glossary entries for <a class="term" data-term="device" href="../glossary.html#term-device">device</a>, <a class="term" data-term="queue" href="../glossary.html#term-queue">queue</a>, <a class="term" data-term="descriptor" href="../glossary.html#term-descriptor">descriptor</a>, <a class="term" data-term="shader" href="../glossary.html#term-shader">shader</a>, <a class="term" data-term="pso" href="../glossary.html#term-pso">pipeline state object</a>, and <a class="term" data-term="swap-chain" href="../glossary.html#term-swap-chain">swap chain</a> if those terms are unfamiliar.</p>
-          <p>For a first integration, read this chapter and then <a href="getting-started.html">Getting started</a>. For an engine-level integration, follow with <a href="architecture.html">Architecture</a> before writing resource or threading code.</p>
+          <p>For a first integration, read this chapter and then <a href="getting-started.html">Getting started</a>. For an engine-level or alternate-RHI integration, follow with <a href="architecture.html">Architecture</a> and <a href="backend-modules.html">Backend modules</a> before writing resource or threading code.</p>
         </section>
 
         <section id="backend-fundamentals">
@@ -102,14 +103,15 @@
 
           <h3>What ArdaBackend does</h3>
           <ul>
-            <li>Selects and initializes one process-wide native backend and publishes an opaque <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>.</li>
+            <li>Discovers linked <a class="term" data-term="backend-module" href="../glossary.html#term-backend-module">backend modules</a>, selects one by stable name or compatibility class, and publishes an opaque <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>.</li>
             <li>Exposes backend-neutral resource descriptions, object interfaces, capability queries, status values, and intrusive references.</li>
-            <li>Enumerates registered shader permutations, optionally compiles them through external DXC, persists keyed artifacts, and constructs binding layouts from C++ parameter metadata.</li>
+            <li>Enumerates registered shader permutations, delegates compiler configuration or execution to the selected module with a DXC-compatible fallback, persists keyed artifacts, and constructs binding layouts from C++ parameter metadata.</li>
             <li>Creates immutable pipeline state, reuses live objects in a bounded cache, and persists backend-native D3D12/Vulkan cache data across runs.</li>
             <li>Records explicit graphics, compute, and copy work and submits it to available queues.</li>
             <li>Bridges platform windows to a backend-owned presentation path without leaking window-system types into the RHI.</li>
             <li>Routes native validation and backend diagnostics into project-level reporting.</li>
           </ul>
+          <p>The public layer is deliberately not tied to NVRHI. The checked-in <code>nvrhi-vulkan</code> and <code>nvrhi-d3d12</code> libraries are sample implementations of the same provider contract available to native APIs and host-engine RHIs. See <a href="backend-modules.html">Backend modules</a> for the implementation boundary and build wiring.</p>
 
           <h3>What ArdaBackend does not do</h3>
           <ul>
@@ -179,31 +181,35 @@
               <p>Study opaque interfaces, ownership, backend pinning, process state, device affinity, statuses, concurrency domains, and native interop.</p>
             </article>
             <article>
-              <h3>3. <a href="external-interop.html">External interop</a></h3>
-              <p>Adopt a host-owned D3D12 or Vulkan device, coordinate supplied queues, import named resources, and preserve native lifetime.</p>
+              <h3>3. <a href="backend-modules.html">Backend modules</a></h3>
+              <p>Implement and link a provider, declare module capabilities, select exact implementations, and integrate shader services.</p>
             </article>
             <article>
-              <h3>4. <a href="rhi.html">RHI resources</a></h3>
+              <h3>4. <a href="external-interop.html">External interop</a></h3>
+              <p>Adopt a host-owned native or engine-RHI device, coordinate supplied queues, import named resources, and preserve native lifetime.</p>
+            </article>
+            <article>
+              <h3>5. <a href="rhi.html">RHI resources</a></h3>
               <p>Learn descriptors, validation, resource creation, capabilities, views, native imports, and retained references.</p>
             </article>
             <article>
-              <h3>5. <a href="shaders.html">Shaders</a></h3>
+              <h3>6. <a href="shaders.html">Shaders</a></h3>
               <p>Register virtual source paths and permutations, choose startup or first-use compilation, understand keyed artifacts and authored metadata, and initialize the device-bound global shader map.</p>
             </article>
             <article>
-              <h3>6. <a href="pipelines.html">Pipeline states</a></h3>
+              <h3>7. <a href="pipelines.html">Pipeline states</a></h3>
               <p>Derive immutable PSOs, complete framebuffer-dependent formats, distinguish live LRU from native disk persistence, and diagnose creation failures.</p>
             </article>
             <article>
-              <h3>7. <a href="commands.html">Commands</a></h3>
+              <h3>8. <a href="commands.html">Commands</a></h3>
               <p>Record state transitions, draws, dispatches, and copies; submit queues; establish cross-queue ordering; and manage completion.</p>
             </article>
             <article>
-              <h3>8. <a href="presentation.html">Presentation</a></h3>
+              <h3>9. <a href="presentation.html">Presentation</a></h3>
               <p>Bridge native windows, acquire framebuffers, resize safely, submit presentation work, and recover from surface failures.</p>
             </article>
             <article>
-              <h3>9. <a href="diagnostics.html">Diagnostics</a></h3>
+              <h3>10. <a href="diagnostics.html">Diagnostics</a></h3>
               <p>Combine validation messages, status values, logs, cache diagnostics, assertions, and reproducible failure reports.</p>
             </article>
           </div>

@@ -44,10 +44,10 @@
   <path class="line" d="M570 330L760 350"/>
 
   <rect class="disk" x="130" y="500" width="360" height="80" rx="10"/>
-  <text x="310" y="530" text-anchor="middle">d3d12.pso-cache</text>
+  <text x="310" y="530" text-anchor="middle">nvrhi-d3d12.pso-cache</text>
   <text x="310" y="555" text-anchor="middle" class="small">header + backend-tagged native payload</text>
   <rect class="disk" x="630" y="500" width="360" height="80" rx="10"/>
-  <text x="810" y="530" text-anchor="middle">vulkan.pso-cache</text>
+  <text x="810" y="530" text-anchor="middle">nvrhi-vulkan.pso-cache</text>
   <text x="810" y="555" text-anchor="middle" class="small">header + backend-tagged native payload</text>
   <path class="line" d="M310 500V455"/>
   <path class="line" d="M810 500V455"/>

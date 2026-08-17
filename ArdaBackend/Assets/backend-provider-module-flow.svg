@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="backend-provider-title backend-provider-desc">
+  <title id="backend-provider-title">ArdaBackend provider selection and runtime flow</title>
+  <desc id="backend-provider-desc">The application configures a stable backend name. Link-generated registration populates the core registry with NVRHI Vulkan, NVRHI D3D12, or custom engine modules. The selected module creates a backend device, which exposes Arda RHI, optional presentation, and shader compiler services. External hosts supply generic device and resource descriptors directly to the selected module.</desc>
+  <defs>
+    <marker id="backend-provider-arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#6ea8fe"/>
+    </marker>
+    <style>
+      .box{fill:#172033;stroke:#6ea8fe;stroke-width:2}.module{fill:#1c2b24;stroke:#56d364;stroke-width:2}.host{fill:#30251a;stroke:#d29922;stroke-width:2}.label{fill:#f0f6fc;font:600 21px system-ui,sans-serif}.small{fill:#c9d1d9;font:16px system-ui,sans-serif}.arrow{fill:none;stroke:#6ea8fe;stroke-width:3;marker-end:url(#backend-provider-arrow)}.dash{fill:none;stroke:#d29922;stroke-width:3;stroke-dasharray:10 8;marker-end:url(#backend-provider-arrow)}
+    </style>
+  </defs>
+  <rect x="40" y="55" width="250" height="105" rx="12" class="box"/>
+  <text x="165" y="92" text-anchor="middle" class="label">Application</text>
+  <text x="165" y="123" text-anchor="middle" class="small">mBackendName</text>
+  <text x="165" y="146" text-anchor="middle" class="small">or compatibility class</text>
+
+  <rect x="375" y="45" width="310" height="125" rx="12" class="box"/>
+  <text x="530" y="82" text-anchor="middle" class="label">ArdaBackend core</text>
+  <text x="530" y="113" text-anchor="middle" class="small">registry + lifecycle policy</text>
+  <text x="530" y="138" text-anchor="middle" class="small">owns active backend device</text>
+  <path d="M290 108 H370" class="arrow"/>
+
+  <rect x="65" y="245" width="265" height="100" rx="12" class="module"/>
+  <text x="197" y="284" text-anchor="middle" class="label">nvrhi-vulkan</text>
+  <text x="197" y="315" text-anchor="middle" class="small">Vulkan + SPIR-V</text>
+  <rect x="365" y="245" width="265" height="100" rx="12" class="module"/>
+  <text x="497" y="284" text-anchor="middle" class="label">nvrhi-d3d12</text>
+  <text x="497" y="315" text-anchor="middle" class="small">D3D12 + DXIL</text>
+  <rect x="665" y="245" width="265" height="100" rx="12" class="module"/>
+  <text x="797" y="284" text-anchor="middle" class="label">custom module</text>
+  <text x="797" y="315" text-anchor="middle" class="small">native or engine RHI</text>
+  <path d="M485 170 L235 240" class="arrow"/>
+  <path d="M530 170 L500 240" class="arrow"/>
+  <path d="M575 170 L760 240" class="arrow"/>
+  <text x="890" y="205" text-anchor="middle" class="small">link-generated registration</text>
+
+  <rect x="355" y="430" width="350" height="115" rx="12" class="box"/>
+  <text x="530" y="470" text-anchor="middle" class="label">IArdaBackendDevice</text>
+  <text x="530" y="500" text-anchor="middle" class="small">owned or externally adopted device</text>
+  <text x="530" y="525" text-anchor="middle" class="small">queue capabilities + errors</text>
+  <path d="M197 345 L450 425" class="arrow"/>
+  <path d="M497 345 L515 425" class="arrow"/>
+  <path d="M797 345 L610 425" class="arrow"/>
+
+  <rect x="35" y="610" width="265" height="78" rx="12" class="box"/>
+  <text x="167" y="644" text-anchor="middle" class="label">Arda RHI facade</text>
+  <text x="167" y="670" text-anchor="middle" class="small">resources + commands</text>
+  <rect x="365" y="610" width="265" height="78" rx="12" class="box"/>
+  <text x="497" y="644" text-anchor="middle" class="label">Presentation</text>
+  <text x="497" y="670" text-anchor="middle" class="small">optional swap chain</text>
+  <rect x="695" y="610" width="300" height="78" rx="12" class="box"/>
+  <text x="845" y="644" text-anchor="middle" class="label">Shader service</text>
+  <text x="845" y="670" text-anchor="middle" class="small">rewrite, invoke, or fallback</text>
+  <path d="M470 545 L215 605" class="arrow"/>
+  <path d="M530 545 L500 605" class="arrow"/>
+  <path d="M590 545 L805 605" class="arrow"/>
+
+  <rect x="965" y="300" width="200" height="175" rx="12" class="host"/>
+  <text x="1065" y="338" text-anchor="middle" class="label">External host</text>
+  <text x="1065" y="370" text-anchor="middle" class="small">Unreal / Unity</text>
+  <text x="1065" y="396" text-anchor="middle" class="small">Godot / native API</text>
+  <text x="1065" y="434" text-anchor="middle" class="small">device, queues,</text>
+  <text x="1065" y="458" text-anchor="middle" class="small">resources + token</text>
+  <path d="M965 386 H935 L710 470" class="dash"/>
+</svg>
