@@ -24,11 +24,11 @@ namespace arda::backend
         None,
         /** Static shader registration could not be committed. */
         RegistrationFailed,
-        /** No usable external DXC executable was configured. */
+        /** Neither the module nor the fallback process launcher can compile the job. */
         CompilerUnavailable,
         /** A registered source stem could not be resolved. */
         SourceResolutionFailed,
-        /** The registered shader stage cannot map to one DXC profile. */
+        /** The registered shader stage cannot map to the fallback compiler profile model. */
         UnsupportedStage,
         /** A permutation identifier or compilation input was invalid. */
         InvalidPermutation,
@@ -36,7 +36,7 @@ namespace arda::backend
         DirectoryCreationFailed,
         /** The external compiler process could not be started. */
         ProcessLaunchFailed,
-        /** DXC returned failure or did not produce bytecode. */
+        /** The selected compiler service failed or did not produce bytecode. */
         CompilationFailed,
         /** Compilation was disabled and the requested artifact was absent. */
         ArtifactMissing,
@@ -54,9 +54,18 @@ namespace arda::backend
      * compile missing and stale artifacts; shipping-style applications should
      * disable both switches and deploy prebuilt bytecode.
      */
+    /** Additional compiler arguments for one exact registered backend module. */
+    struct FArdaShaderCompilerModuleArguments
+    {
+        /** Stable backend module name. */
+        eastl::string mBackendName;
+        /** Deterministic arguments appended before the module configure hook. */
+        eastl::vector<eastl::string> mArguments;
+    };
+
     struct FArdaShaderCompilerConfiguration
     {
-        /** External DXC executable; empty uses the build default, then ARDASHIR_DXC_EXECUTABLE. */
+        /** Optional fallback compiler executable; empty uses the build default, then ARDASHIR_DXC_EXECUTABLE. */
         std::filesystem::path mCompilerExecutable;
         /** Optional root prepended to non-virtual source stems. */
         std::filesystem::path mSourceRoot;
@@ -74,22 +83,10 @@ namespace arda::backend
 #else
             true;
 #endif
-        /** Vulkan SPIR-V target environment passed to DXC. */
-        eastl::string mVulkanTargetEnvironment = "vulkan1.3";
-        /** Vulkan sampled-resource binding shift for register space zero. */
-        uint32_t mVulkanTextureBindingShift = 0;
-        /** Vulkan sampler binding shift for register space zero. */
-        uint32_t mVulkanSamplerBindingShift = 128;
-        /** Vulkan constant-buffer binding shift for register space zero. */
-        uint32_t mVulkanConstantBufferBindingShift = 256;
-        /** Vulkan unordered-access binding shift for register space zero. */
-        uint32_t mVulkanUnorderedAccessBindingShift = 384;
         /** Deterministic arguments appended for every backend. */
         eastl::vector<eastl::string> mCommonArguments;
-        /** Deterministic arguments appended only for DXIL jobs. */
-        eastl::vector<eastl::string> mDxilArguments;
-        /** Deterministic arguments appended only for SPIR-V jobs. */
-        eastl::vector<eastl::string> mSpirvArguments;
+        /** Per-module arguments selected by stable backend name. */
+        eastl::vector<FArdaShaderCompilerModuleArguments> mModuleArguments;
     };
 
     /** Describes one deterministic unit of external shader compilation. */
@@ -97,8 +94,10 @@ namespace arda::backend
     {
         /** Owned immutable shader-type snapshot driving the job. */
         FArdaShaderType mType;
-        /** Target graphics backend. */
+        /** Compatibility class retained for existing permutation policies. */
         EArdaBackendType mBackend = DefaultBackend;
+        /** Immutable module target selected for this job. */
+        FArdaShaderTarget mTarget;
         /** Encoded permutation identifier. */
         uint32_t mPermutationId = 0;
         /** Resolved physical shader source file. */
@@ -109,11 +108,11 @@ namespace arda::backend
         std::filesystem::path mOutputPath;
         /** Compiler executable selected or replaced by the backend module. */
         std::filesystem::path mCompilerExecutable;
-        /** DXC target profile derived from the registered stage. */
+        /** Compiler profile initially derived from the registered stage and mutable by the module. */
         eastl::string mProfile;
         /** Sorted deterministic preprocessor environment. */
         FArdaShaderCompileEnvironment mEnvironment;
-        /** Complete deterministic DXC arguments, excluding temporary output selection. */
+        /** Complete deterministic fallback arguments, excluding temporary output selection. */
         eastl::vector<eastl::string> mArguments;
         /** Stable FNV-1a key over compiler, registry, source, and job inputs. */
         uint64_t mInputKey = 0;
@@ -128,6 +127,8 @@ namespace arda::backend
         eastl::string mShaderType;
         /** Target backend. */
         EArdaBackendType mBackend = DefaultBackend;
+        /** Stable backend module associated with the diagnostic. */
+        eastl::string mBackendName;
         /** Encoded permutation identifier. */
         uint32_t mPermutationId = 0;
         /** Source path associated with the diagnostic. */
@@ -180,12 +181,17 @@ namespace arda::backend
      * The cache deliberately hashes every frozen shader-source file, so unrelated
      * include/source edits may conservatively invalidate all jobs.
      * @param OutputDirectory Directory receiving backend artifacts.
-     * @param Backends Explicit target backends, typically D3D12 and Vulkan for cook.
+     * @param Backends Compatibility classes resolved to their default registered modules.
      * @return Jobs, skipped count, or registration/source/input diagnostics.
      */
     [[nodiscard]] FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(
         const std::filesystem::path& OutputDirectory,
         const std::vector<EArdaBackendType>& Backends);
+
+    /** Builds jobs for exact registered module names without consulting the active device. */
+    [[nodiscard]] FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(
+        const std::filesystem::path& OutputDirectory,
+        const eastl::vector<eastl::string>& BackendNames);
 
     /**
      * Explicitly cooks all requested registered jobs, bypassing cache compatibility.
@@ -201,29 +207,44 @@ namespace arda::backend
         const std::filesystem::path& OutputDirectory,
         const std::vector<EArdaBackendType>& Backends);
 
+    /** Cooks artifacts for exact registered module names. */
+    [[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
+        const std::filesystem::path& OutputDirectory,
+        const eastl::vector<eastl::string>& BackendNames);
+
     /**
-     * Explicitly cooks registered jobs for one active backend.
+     * Explicitly cooks registered jobs for one compatibility class.
      * @param OutputDirectory Directory receiving cooked artifacts and manifest.
-     * @param Backend Active graphics backend.
+     * @param Backend Compatibility class resolved to its default registered module.
      * @return Aggregate compilation counts, jobs, and diagnostics.
      */
     [[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
         const std::filesystem::path& OutputDirectory,
         EArdaBackendType Backend);
 
+    /** Cooks artifacts for one exact registered module. */
+    [[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
+        const std::filesystem::path& OutputDirectory,
+        const char* BackendName);
+
     /**
-     * Ensures every registered permutation selected for one active backend.
+     * Ensures every registered permutation selected for one compatibility class.
      *
      * Each selected permutation uses EnsureRegisteredShaderArtifact, preserving
      * persistent .arda-key cache hits across application executions. This is
      * not a force-cook operation and does not write a cook manifest.
      * @param OutputDirectory Persistent runtime shader cache directory.
-     * @param Backend Active graphics backend.
+     * @param Backend Compatibility class resolved to its default registered module.
      * @return Aggregate jobs, cache hits, compilations, skips, and diagnostics.
      */
     [[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(
         const std::filesystem::path& OutputDirectory,
         EArdaBackendType Backend);
+
+    /** Ensures all artifacts for one exact registered module. */
+    [[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(
+        const std::filesystem::path& OutputDirectory,
+        const char* BackendName);
 
     /**
      * Ensures one artifact for development global-map loading.
@@ -240,6 +261,13 @@ namespace arda::backend
     [[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifact(
         const FArdaShaderType& Type,
         EArdaBackendType Backend,
+        uint32_t PermutationId,
+        const std::filesystem::path& OutputDirectory);
+
+    /** Ensures one artifact for an exact registered module. */
+    [[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifact(
+        const FArdaShaderType& Type,
+        const char* BackendName,
         uint32_t PermutationId,
         const std::filesystem::path& OutputDirectory);
 }

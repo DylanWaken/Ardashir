@@ -1,6 +1,5 @@
-/*
- * Generated-style public source inventory for ArdaBackend.
- * Derived from every unique header under Source/ArdaBackend/Public; edit the headers and regenerate rather than hand-editing symbol records.
+/* Machine-checkable public source inventory for ArdaBackend.
+ * Derived from Source/ArdaBackend/Public; keep declarations, overloads, and source provenance synchronized with the public headers.
  */
 window.ArdaBackendApi = {
   "module": {
@@ -9,10 +8,11 @@ window.ArdaBackendApi = {
     "namespace": "arda::backend / arda::rhi",
     "summary": "Public backend initialization, diagnostics, shader authoring, pipeline caching, presentation, and backend-neutral RHI API."
   },
-  "generatedFrom": "Source/ArdaBackend/Public (all 22 unique public headers)",
+  "generatedFrom": "Source/ArdaBackend/Public (all 23 unique public headers)",
   "headerProvenance": [
     "Source/ArdaBackend/Public/ArdaAssert.h",
     "Source/ArdaBackend/Public/ArdaBackend.h",
+    "Source/ArdaBackend/Public/ArdaBackendProvider.h",
     "Source/ArdaBackend/Public/ArdaDevice.h",
     "Source/ArdaBackend/Public/ArdaExternalInterop.h",
     "Source/ArdaBackend/Public/ArdaLog.h",
@@ -40,6 +40,12 @@ window.ArdaBackendApi = {
       "name": "Core and initialization",
       "page": "api-reference.html",
       "summary": "Backend selection, initialization, native handles, device context, and process-wide lifecycle."
+    },
+    {
+      "id": "backend-modules",
+      "name": "Backend module provider contract",
+      "page": "api-reference.html",
+      "summary": "Link-time module registration, device factories, module selection, shader compiler hooks, and provider compatibility."
     },
     {
       "id": "external-interop",
@@ -30141,218 +30147,4244 @@ window.ArdaBackendApi = {
       "related": [
         "arda::backend"
       ]
-    }
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-3c0727a6",
+      "name": "EArdaShaderCompileError",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError",
+      "kind": "enum",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaShaderCompileError : uint8_t",
+      "summary": "Declares arda::backend::EArdaShaderCompileError in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-none-0cafc2dc",
+      "name": "None",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::None",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "None",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::None in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-registrationfailed-550e5f0c",
+      "name": "RegistrationFailed",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::RegistrationFailed",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "RegistrationFailed",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::RegistrationFailed in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-compilerunavailable-e5a7d9b6",
+      "name": "CompilerUnavailable",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::CompilerUnavailable",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "CompilerUnavailable",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::CompilerUnavailable in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-sourceresolutionfailed-d49fbbec",
+      "name": "SourceResolutionFailed",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::SourceResolutionFailed",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "SourceResolutionFailed",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::SourceResolutionFailed in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-unsupportedstage-bbc66304",
+      "name": "UnsupportedStage",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::UnsupportedStage",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "UnsupportedStage",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::UnsupportedStage in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-invalidpermutation-ecd0bbf4",
+      "name": "InvalidPermutation",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::InvalidPermutation",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "InvalidPermutation",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::InvalidPermutation in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-directorycreationfailed-07a51686",
+      "name": "DirectoryCreationFailed",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::DirectoryCreationFailed",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "DirectoryCreationFailed",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::DirectoryCreationFailed in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-processlaunchfailed-00e7cd2e",
+      "name": "ProcessLaunchFailed",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::ProcessLaunchFailed",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "ProcessLaunchFailed",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::ProcessLaunchFailed in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-compilationfailed-2876d5b4",
+      "name": "CompilationFailed",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::CompilationFailed",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "CompilationFailed",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::CompilationFailed in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-artifactmissing-0b21b154",
+      "name": "ArtifactMissing",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::ArtifactMissing",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "ArtifactMissing",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::ArtifactMissing in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-artifactoutdated-e3166b4c",
+      "name": "ArtifactOutdated",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::ArtifactOutdated",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "ArtifactOutdated",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::ArtifactOutdated in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-cachewritefailed-56a744bc",
+      "name": "CacheWriteFailed",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::CacheWriteFailed",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "CacheWriteFailed",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::CacheWriteFailed in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompileerror-manifestwritefailed-9c93ef86",
+      "name": "ManifestWriteFailed",
+      "qualifiedName": "arda::backend::EArdaShaderCompileError::ManifestWriteFailed",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "ManifestWriteFailed",
+      "summary": "Declares arda::backend::EArdaShaderCompileError::ManifestWriteFailed in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-33edea9f",
+      "name": "FArdaShaderCompilerConfiguration",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "struct FArdaShaderCompilerConfiguration",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-mcompilerexecutable-1ea75102",
+      "name": "mCompilerExecutable",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mCompilerExecutable",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "std::filesystem::path mCompilerExecutable",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mCompilerExecutable in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-msourceroot-371d28f6",
+      "name": "mSourceRoot",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mSourceRoot",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "std::filesystem::path mSourceRoot",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mSourceRoot in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-mbcompilemissingartifacts-f2e32fa3",
+      "name": "mbCompileMissingArtifacts",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mbCompileMissingArtifacts",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "bool mbCompileMissingArtifacts",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mbCompileMissingArtifacts in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-mbcompileoutdatedartifacts-60575e49",
+      "name": "mbCompileOutdatedArtifacts",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mbCompileOutdatedArtifacts",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "bool mbCompileOutdatedArtifacts",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mbCompileOutdatedArtifacts in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-mvulkantargetenvironment-3f80f71d",
+      "name": "mVulkanTargetEnvironment",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mVulkanTargetEnvironment",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::string mVulkanTargetEnvironment = \"vulkan1.3\"",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mVulkanTargetEnvironment in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-mvulkantexturebindingshift-cc3cc7bc",
+      "name": "mVulkanTextureBindingShift",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mVulkanTextureBindingShift",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint32_t mVulkanTextureBindingShift = 0",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mVulkanTextureBindingShift in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-mvulkansamplerbindingshift-2e338059",
+      "name": "mVulkanSamplerBindingShift",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mVulkanSamplerBindingShift",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint32_t mVulkanSamplerBindingShift = 128",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mVulkanSamplerBindingShift in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-mvulkanconstantbufferbindingshift-01e1aaf7",
+      "name": "mVulkanConstantBufferBindingShift",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mVulkanConstantBufferBindingShift",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint32_t mVulkanConstantBufferBindingShift = 256",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mVulkanConstantBufferBindingShift in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-mvulkanunorderedaccessbindingshift-1691da7d",
+      "name": "mVulkanUnorderedAccessBindingShift",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mVulkanUnorderedAccessBindingShift",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint32_t mVulkanUnorderedAccessBindingShift = 384",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mVulkanUnorderedAccessBindingShift in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-mcommonarguments-66fac111",
+      "name": "mCommonArguments",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mCommonArguments",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<eastl::string> mCommonArguments",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mCommonArguments in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-mdxilarguments-2cfea591",
+      "name": "mDxilArguments",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mDxilArguments",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<eastl::string> mDxilArguments",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mDxilArguments in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilerconfiguration-mspirvarguments-4d96a837",
+      "name": "mSpirvArguments",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mSpirvArguments",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<eastl::string> mSpirvArguments",
+      "summary": "Declares arda::backend::FArdaShaderCompilerConfiguration::mSpirvArguments in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilejob-958c0c17",
+      "name": "FArdaShaderCompileJob",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "struct FArdaShaderCompileJob",
+      "summary": "Declares arda::backend::FArdaShaderCompileJob in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilejob-mtype-cd814927",
+      "name": "mType",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob::mType",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "FArdaShaderType mType",
+      "summary": "Declares arda::backend::FArdaShaderCompileJob::mType in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilejob-mbackend-70e6deb3",
+      "name": "mBackend",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob::mBackend",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "EArdaBackendType mBackend = DefaultBackend",
+      "summary": "Declares arda::backend::FArdaShaderCompileJob::mBackend in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilejob-mpermutationid-9e1ed459",
+      "name": "mPermutationId",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob::mPermutationId",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint32_t mPermutationId = 0",
+      "summary": "Declares arda::backend::FArdaShaderCompileJob::mPermutationId in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilejob-msourcepath-92e8c4d1",
+      "name": "mSourcePath",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob::mSourcePath",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "std::filesystem::path mSourcePath",
+      "summary": "Declares arda::backend::FArdaShaderCompileJob::mSourcePath in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilejob-msourceidentity-f461337e",
+      "name": "mSourceIdentity",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob::mSourceIdentity",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::string mSourceIdentity",
+      "summary": "Declares arda::backend::FArdaShaderCompileJob::mSourceIdentity in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilejob-moutputpath-1df90975",
+      "name": "mOutputPath",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob::mOutputPath",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "std::filesystem::path mOutputPath",
+      "summary": "Declares arda::backend::FArdaShaderCompileJob::mOutputPath in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilejob-mprofile-e0cf292e",
+      "name": "mProfile",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob::mProfile",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::string mProfile",
+      "summary": "Declares arda::backend::FArdaShaderCompileJob::mProfile in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilejob-menvironment-cfbbf45b",
+      "name": "mEnvironment",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob::mEnvironment",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "FArdaShaderCompileEnvironment mEnvironment",
+      "summary": "Declares arda::backend::FArdaShaderCompileJob::mEnvironment in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilejob-marguments-617cdfbc",
+      "name": "mArguments",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob::mArguments",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<eastl::string> mArguments",
+      "summary": "Declares arda::backend::FArdaShaderCompileJob::mArguments in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilejob-minputkey-e8d78c8a",
+      "name": "mInputKey",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob::mInputKey",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint64_t mInputKey = 0",
+      "summary": "Declares arda::backend::FArdaShaderCompileJob::mInputKey in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilediagnostic-12ce0e11",
+      "name": "FArdaShaderCompileDiagnostic",
+      "qualifiedName": "arda::backend::FArdaShaderCompileDiagnostic",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "struct FArdaShaderCompileDiagnostic",
+      "summary": "Declares arda::backend::FArdaShaderCompileDiagnostic in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilediagnostic-mcode-41e7fc57",
+      "name": "mCode",
+      "qualifiedName": "arda::backend::FArdaShaderCompileDiagnostic::mCode",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "EArdaShaderCompileError mCode = EArdaShaderCompileError::None",
+      "summary": "Declares arda::backend::FArdaShaderCompileDiagnostic::mCode in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilediagnostic-mshadertype-72492654",
+      "name": "mShaderType",
+      "qualifiedName": "arda::backend::FArdaShaderCompileDiagnostic::mShaderType",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::string mShaderType",
+      "summary": "Declares arda::backend::FArdaShaderCompileDiagnostic::mShaderType in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilediagnostic-mbackend-72afe529",
+      "name": "mBackend",
+      "qualifiedName": "arda::backend::FArdaShaderCompileDiagnostic::mBackend",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "EArdaBackendType mBackend = DefaultBackend",
+      "summary": "Declares arda::backend::FArdaShaderCompileDiagnostic::mBackend in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilediagnostic-mpermutationid-1fa7db5b",
+      "name": "mPermutationId",
+      "qualifiedName": "arda::backend::FArdaShaderCompileDiagnostic::mPermutationId",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint32_t mPermutationId = 0",
+      "summary": "Declares arda::backend::FArdaShaderCompileDiagnostic::mPermutationId in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilediagnostic-msourcepath-3dd9e057",
+      "name": "mSourcePath",
+      "qualifiedName": "arda::backend::FArdaShaderCompileDiagnostic::mSourcePath",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "std::filesystem::path mSourcePath",
+      "summary": "Declares arda::backend::FArdaShaderCompileDiagnostic::mSourcePath in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilediagnostic-moutputpath-b7cfcc93",
+      "name": "mOutputPath",
+      "qualifiedName": "arda::backend::FArdaShaderCompileDiagnostic::mOutputPath",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "std::filesystem::path mOutputPath",
+      "summary": "Declares arda::backend::FArdaShaderCompileDiagnostic::mOutputPath in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompilediagnostic-mmessage-2267b0c4",
+      "name": "mMessage",
+      "qualifiedName": "arda::backend::FArdaShaderCompileDiagnostic::mMessage",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::string mMessage",
+      "summary": "Declares arda::backend::FArdaShaderCompileDiagnostic::mMessage in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileresult-75c5238d",
+      "name": "FArdaShaderCompileResult",
+      "qualifiedName": "arda::backend::FArdaShaderCompileResult",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "struct FArdaShaderCompileResult",
+      "summary": "Declares arda::backend::FArdaShaderCompileResult in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileresult-mjobscompiled-e8d15e59",
+      "name": "mJobsCompiled",
+      "qualifiedName": "arda::backend::FArdaShaderCompileResult::mJobsCompiled",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint32_t mJobsCompiled = 0",
+      "summary": "Declares arda::backend::FArdaShaderCompileResult::mJobsCompiled in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileresult-mcachehits-efc2f9b5",
+      "name": "mCacheHits",
+      "qualifiedName": "arda::backend::FArdaShaderCompileResult::mCacheHits",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint32_t mCacheHits = 0",
+      "summary": "Declares arda::backend::FArdaShaderCompileResult::mCacheHits in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileresult-mjobsskipped-f3e94389",
+      "name": "mJobsSkipped",
+      "qualifiedName": "arda::backend::FArdaShaderCompileResult::mJobsSkipped",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint32_t mJobsSkipped = 0",
+      "summary": "Declares arda::backend::FArdaShaderCompileResult::mJobsSkipped in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileresult-mjobs-2b49875d",
+      "name": "mJobs",
+      "qualifiedName": "arda::backend::FArdaShaderCompileResult::mJobs",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaShaderCompileJob> mJobs",
+      "summary": "Declares arda::backend::FArdaShaderCompileResult::mJobs in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileresult-mdiagnostics-fc85567b",
+      "name": "mDiagnostics",
+      "qualifiedName": "arda::backend::FArdaShaderCompileResult::mDiagnostics",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaShaderCompileDiagnostic> mDiagnostics",
+      "summary": "Declares arda::backend::FArdaShaderCompileResult::mDiagnostics in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileresult-operator-bool-ada35597",
+      "name": "operator bool",
+      "qualifiedName": "arda::backend::FArdaShaderCompileResult::operator bool",
+      "kind": "operator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] explicit operator bool() const noexcept",
+      "summary": "Declares arda::backend::FArdaShaderCompileResult::operator bool in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-configureshadercompiler-3001d317",
+      "name": "ConfigureShaderCompiler",
+      "qualifiedName": "arda::backend::ConfigureShaderCompiler",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "void ConfigureShaderCompiler(const FArdaShaderCompilerConfiguration& Configuration)",
+      "summary": "Declares arda::backend::ConfigureShaderCompiler in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-getshadercompilerconfiguration-154afa71",
+      "name": "GetShaderCompilerConfiguration",
+      "qualifiedName": "arda::backend::GetShaderCompilerConfiguration",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompilerConfiguration GetShaderCompilerConfiguration()",
+      "summary": "Declares arda::backend::GetShaderCompilerConfiguration in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-resetshadercompilerconfiguration-1e557d6e",
+      "name": "ResetShaderCompilerConfiguration",
+      "qualifiedName": "arda::backend::ResetShaderCompilerConfiguration",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "void ResetShaderCompilerConfiguration()",
+      "summary": "Declares arda::backend::ResetShaderCompilerConfiguration in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-buildregisteredshadercompilejobs-030b3bdd",
+      "name": "BuildRegisteredShaderCompileJobs",
+      "qualifiedName": "arda::backend::BuildRegisteredShaderCompileJobs",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(const std::filesystem::path& OutputDirectory, const std::vector<EArdaBackendType>& Backends)",
+      "summary": "Declares arda::backend::BuildRegisteredShaderCompileJobs in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-compileregisteredshaderartifacts-7f13f6eb",
+      "name": "CompileRegisteredShaderArtifacts",
+      "qualifiedName": "arda::backend::CompileRegisteredShaderArtifacts",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, const std::vector<EArdaBackendType>& Backends)",
+      "summary": "Declares arda::backend::CompileRegisteredShaderArtifacts in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-compileregisteredshaderartifacts-1fab8cff",
+      "name": "CompileRegisteredShaderArtifacts",
+      "qualifiedName": "arda::backend::CompileRegisteredShaderArtifacts",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, EArdaBackendType Backend)",
+      "summary": "Declares arda::backend::CompileRegisteredShaderArtifacts in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-ensureregisteredshaderartifacts-7f139f35",
+      "name": "EnsureRegisteredShaderArtifacts",
+      "qualifiedName": "arda::backend::EnsureRegisteredShaderArtifacts",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, EArdaBackendType Backend)",
+      "summary": "Declares arda::backend::EnsureRegisteredShaderArtifacts in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-ensureregisteredshaderartifact-3fcd616e",
+      "name": "EnsureRegisteredShaderArtifact",
+      "qualifiedName": "arda::backend::EnsureRegisteredShaderArtifact",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifact(const FArdaShaderType& Type, EArdaBackendType Backend, uint32_t PermutationId, const std::filesystem::path& OutputDirectory)",
+      "summary": "Declares arda::backend::EnsureRegisteredShaderArtifact in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashaderdefine-3d4bcc6b",
+      "name": "FArdaShaderDefine",
+      "qualifiedName": "arda::backend::FArdaShaderDefine",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "struct FArdaShaderDefine",
+      "summary": "Declares arda::backend::FArdaShaderDefine in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashaderdefine-mname-dbb0d8bb",
+      "name": "mName",
+      "qualifiedName": "arda::backend::FArdaShaderDefine::mName",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::string mName",
+      "summary": "Declares arda::backend::FArdaShaderDefine::mName in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashaderdefine-mvalue-fe9ad327",
+      "name": "mValue",
+      "qualifiedName": "arda::backend::FArdaShaderDefine::mValue",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::string mValue",
+      "summary": "Declares arda::backend::FArdaShaderDefine::mValue in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileenvironment-0104cb75",
+      "name": "FArdaShaderCompileEnvironment",
+      "qualifiedName": "arda::backend::FArdaShaderCompileEnvironment",
+      "kind": "class",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "class FArdaShaderCompileEnvironment final",
+      "summary": "Declares arda::backend::FArdaShaderCompileEnvironment in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileenvironment-setdefine-553d75fa",
+      "name": "SetDefine",
+      "qualifiedName": "arda::backend::FArdaShaderCompileEnvironment::SetDefine",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "bool SetDefine(const eastl::string& Name, const eastl::string& Value)",
+      "summary": "Declares arda::backend::FArdaShaderCompileEnvironment::SetDefine in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileenvironment-setdefine-52b267e4",
+      "name": "SetDefine",
+      "qualifiedName": "arda::backend::FArdaShaderCompileEnvironment::SetDefine",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename Integer, std::enable_if_t<std::is_integral_v<Integer> && !std::is_same_v<std::remove_cv_t<Integer>, bool>, int> = 0> bool SetDefine(const eastl::string& Name, Integer Value)",
+      "summary": "Declares arda::backend::FArdaShaderCompileEnvironment::SetDefine in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileenvironment-setdefine-cb8d9b89",
+      "name": "SetDefine",
+      "qualifiedName": "arda::backend::FArdaShaderCompileEnvironment::SetDefine",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "bool SetDefine(const eastl::string& Name, bool Value)",
+      "summary": "Declares arda::backend::FArdaShaderCompileEnvironment::SetDefine in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadercompileenvironment-getdefines-94b0b807",
+      "name": "GetDefines",
+      "qualifiedName": "arda::backend::FArdaShaderCompileEnvironment::GetDefines",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] const eastl::vector<FArdaShaderDefine>& GetDefines() const noexcept",
+      "summary": "Declares arda::backend::FArdaShaderCompileEnvironment::GetDefines in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashaderpermutationparameters-2354715d",
+      "name": "FArdaShaderPermutationParameters",
+      "qualifiedName": "arda::backend::FArdaShaderPermutationParameters",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "struct FArdaShaderPermutationParameters",
+      "summary": "Declares arda::backend::FArdaShaderPermutationParameters in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashaderpermutationparameters-mtype-0499b3e2",
+      "name": "mType",
+      "qualifiedName": "arda::backend::FArdaShaderPermutationParameters::mType",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "const FArdaShaderType* mType = nullptr",
+      "summary": "Declares arda::backend::FArdaShaderPermutationParameters::mType in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashaderpermutationparameters-mbackend-06b60fa7",
+      "name": "mBackend",
+      "qualifiedName": "arda::backend::FArdaShaderPermutationParameters::mBackend",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "EArdaBackendType mBackend = DefaultBackend",
+      "summary": "Declares arda::backend::FArdaShaderPermutationParameters::mBackend in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashaderpermutationparameters-mpermutationid-53655e6d",
+      "name": "mPermutationId",
+      "qualifiedName": "arda::backend::FArdaShaderPermutationParameters::mPermutationId",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint32_t mPermutationId = 0",
+      "summary": "Declares arda::backend::FArdaShaderPermutationParameters::mPermutationId in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-tardashaderpermutationdomain-df68520b",
+      "name": "TArdaShaderPermutationDomain",
+      "qualifiedName": "arda::backend::TArdaShaderPermutationDomain",
+      "kind": "class",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename... Dimensions> class TArdaShaderPermutationDomain final",
+      "summary": "Declares arda::backend::TArdaShaderPermutationDomain in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-tardashaderpermutationdomain-permutationcount-b668be50",
+      "name": "PermutationCount",
+      "qualifiedName": "arda::backend::TArdaShaderPermutationDomain::PermutationCount",
+      "kind": "constant",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "static constexpr uint32_t PermutationCount = static_cast<uint32_t>(CalculateCount())",
+      "summary": "Declares arda::backend::TArdaShaderPermutationDomain::PermutationCount in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-tardashaderpermutationdomain-tardashaderpermutationdomain-e9e853d3",
+      "name": "TArdaShaderPermutationDomain",
+      "qualifiedName": "arda::backend::TArdaShaderPermutationDomain::TArdaShaderPermutationDomain",
+      "kind": "constructor",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "constexpr TArdaShaderPermutationDomain() noexcept = default",
+      "summary": "Declares arda::backend::TArdaShaderPermutationDomain::TArdaShaderPermutationDomain in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-tardashaderpermutationdomain-tardashaderpermutationdomain-0b3e4698",
+      "name": "TArdaShaderPermutationDomain",
+      "qualifiedName": "arda::backend::TArdaShaderPermutationDomain::TArdaShaderPermutationDomain",
+      "kind": "constructor",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "explicit constexpr TArdaShaderPermutationDomain(uint32_t PermutationId) noexcept",
+      "summary": "Declares arda::backend::TArdaShaderPermutationDomain::TArdaShaderPermutationDomain in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-tardashaderpermutationdomain-isvalidpermutationid-468b1690",
+      "name": "IsValidPermutationId",
+      "qualifiedName": "arda::backend::TArdaShaderPermutationDomain::IsValidPermutationId",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] static constexpr bool IsValidPermutationId(uint32_t PermutationId) noexcept",
+      "summary": "Declares arda::backend::TArdaShaderPermutationDomain::IsValidPermutationId in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-tardashaderpermutationdomain-isvalid-2d77e7dc",
+      "name": "IsValid",
+      "qualifiedName": "arda::backend::TArdaShaderPermutationDomain::IsValid",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] constexpr bool IsValid() const noexcept",
+      "summary": "Declares arda::backend::TArdaShaderPermutationDomain::IsValid in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-tardashaderpermutationdomain-toid-37c68a6e",
+      "name": "ToId",
+      "qualifiedName": "arda::backend::TArdaShaderPermutationDomain::ToId",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] constexpr uint32_t ToId() const noexcept",
+      "summary": "Declares arda::backend::TArdaShaderPermutationDomain::ToId in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-tardashaderpermutationdomain-get-ff6bb16f",
+      "name": "Get",
+      "qualifiedName": "arda::backend::TArdaShaderPermutationDomain::Get",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename Dimension> [[nodiscard]] constexpr typename Dimension::ValueType Get() const noexcept",
+      "summary": "Declares arda::backend::TArdaShaderPermutationDomain::Get in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-tardashaderpermutationdomain-set-111a4abe",
+      "name": "Set",
+      "qualifiedName": "arda::backend::TArdaShaderPermutationDomain::Set",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename Dimension> constexpr bool Set(typename Dimension::ValueType Value) noexcept",
+      "summary": "Declares arda::backend::TArdaShaderPermutationDomain::Set in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-tardashaderpermutationdomain-modifycompilationenvironment-c1be0f55",
+      "name": "ModifyCompilationEnvironment",
+      "qualifiedName": "arda::backend::TArdaShaderPermutationDomain::ModifyCompilationEnvironment",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "bool ModifyCompilationEnvironment(FArdaShaderCompileEnvironment& Environment) const",
+      "summary": "Declares arda::backend::TArdaShaderPermutationDomain::ModifyCompilationEnvironment in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-shader-permutation-bool-d51a437b",
+      "name": "ARDA_SHADER_PERMUTATION_BOOL",
+      "qualifiedName": "ARDA_SHADER_PERMUTATION_BOOL",
+      "kind": "macro",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "#define ARDA_SHADER_PERMUTATION_BOOL(Name, DefineName)",
+      "summary": "Declares ARDA_SHADER_PERMUTATION_BOOL in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-shader-permutation-int-5ef983ba",
+      "name": "ARDA_SHADER_PERMUTATION_INT",
+      "qualifiedName": "ARDA_SHADER_PERMUTATION_INT",
+      "kind": "macro",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "#define ARDA_SHADER_PERMUTATION_INT(Name, DefineName, Count)",
+      "summary": "Declares ARDA_SHADER_PERMUTATION_INT in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompilationmode-828f76f3",
+      "name": "EArdaShaderCompilationMode",
+      "qualifiedName": "arda::backend::EArdaShaderCompilationMode",
+      "kind": "enum",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaShaderCompilationMode",
+      "summary": "Declares arda::backend::EArdaShaderCompilationMode in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompilationmode-loadonly-d87fccb7",
+      "name": "LoadOnly",
+      "qualifiedName": "arda::backend::EArdaShaderCompilationMode::LoadOnly",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "LoadOnly",
+      "summary": "Declares arda::backend::EArdaShaderCompilationMode::LoadOnly in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompilationmode-startup-360fb861",
+      "name": "Startup",
+      "qualifiedName": "arda::backend::EArdaShaderCompilationMode::Startup",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "Startup",
+      "summary": "Declares arda::backend::EArdaShaderCompilationMode::Startup in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashadercompilationmode-ondemand-08e4508f",
+      "name": "OnDemand",
+      "qualifiedName": "arda::backend::EArdaShaderCompilationMode::OnDemand",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "OnDemand",
+      "summary": "Declares arda::backend::EArdaShaderCompilationMode::OnDemand in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendconfiguration-mshadercompilationmode-31cfe4da",
+      "name": "mShaderCompilationMode",
+      "qualifiedName": "arda::backend::FArdaBackendConfiguration::mShaderCompilationMode",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "EArdaShaderCompilationMode mShaderCompilationMode = EArdaShaderCompilationMode::OnDemand",
+      "summary": "Declares arda::backend::FArdaBackendConfiguration::mShaderCompilationMode in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendconfiguration-mshadercachedirectory-9ee5136b",
+      "name": "mShaderCacheDirectory",
+      "qualifiedName": "arda::backend::FArdaBackendConfiguration::mShaderCacheDirectory",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "std::filesystem::path mShaderCacheDirectory = std::filesystem::path(\".arda-cache\") / \"shaders\"",
+      "summary": "Declares arda::backend::FArdaBackendConfiguration::mShaderCacheDirectory in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendconfiguration-mpipelinecachedirectory-fe33a480",
+      "name": "mPipelineCacheDirectory",
+      "qualifiedName": "arda::backend::FArdaBackendConfiguration::mPipelineCacheDirectory",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "std::filesystem::path mPipelineCacheDirectory = std::filesystem::path(\".arda-cache\") / \"pipelines\"",
+      "summary": "Declares arda::backend::FArdaBackendConfiguration::mPipelineCacheDirectory in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhidevice-flushanddisablepipelinecachepersistence-d3f05f24",
+      "name": "FlushAndDisablePipelineCachePersistence",
+      "qualifiedName": "arda::rhi::IArdaRHIDevice::FlushAndDisablePipelineCachePersistence",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "virtual void FlushAndDisablePipelineCachePersistence() noexcept = 0",
+      "summary": "Declares arda::rhi::IArdaRHIDevice::FlushAndDisablePipelineCachePersistence in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHIDevice.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhishader-getpersistentcachehash-467cd741",
+      "name": "GetPersistentCacheHash",
+      "qualifiedName": "arda::rhi::IArdaRHIShader::GetPersistentCacheHash",
+      "kind": "method",
+      "component": "rhi-resources",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] virtual uint64_t GetPersistentCacheHash() const noexcept",
+      "summary": "Declares arda::rhi::IArdaRHIShader::GetPersistentCacheHash in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHIResources.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhigraphicspipelinedesc-mpersistentcachekey-acbc00a9",
+      "name": "mPersistentCacheKey",
+      "qualifiedName": "arda::rhi::FArdaRHIGraphicsPipelineDesc::mPersistentCacheKey",
+      "kind": "member variable",
+      "component": "rhi-resources",
+      "page": "api-reference.html",
+      "signature": "uint64_t mPersistentCacheKey = 0",
+      "summary": "Declares arda::rhi::FArdaRHIGraphicsPipelineDesc::mPersistentCacheKey in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHIResources.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhicomputepipelinedesc-mpersistentcachekey-51a84fcf",
+      "name": "mPersistentCacheKey",
+      "qualifiedName": "arda::rhi::FArdaRHIComputePipelineDesc::mPersistentCacheKey",
+      "kind": "member variable",
+      "component": "rhi-resources",
+      "page": "api-reference.html",
+      "signature": "uint64_t mPersistentCacheKey = 0",
+      "summary": "Declares arda::rhi::FArdaRHIComputePipelineDesc::mPersistentCacheKey in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHIResources.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardaglobalshadermaperror-artifactcompilefailed-63f14b76",
+      "name": "ArtifactCompileFailed",
+      "qualifiedName": "arda::backend::EArdaGlobalShaderMapError::ArtifactCompileFailed",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "ArtifactCompileFailed",
+      "summary": "Declares arda::backend::EArdaGlobalShaderMapError::ArtifactCompileFailed in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaglobalshaderinstance-isloaded-be2a1428",
+      "name": "IsLoaded",
+      "qualifiedName": "arda::backend::FArdaGlobalShaderInstance::IsLoaded",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool IsLoaded() const noexcept",
+      "summary": "Declares arda::backend::FArdaGlobalShaderInstance::IsLoaded in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaglobalshaderinstance-getpermutationid-7c55eb16",
+      "name": "GetPermutationId",
+      "qualifiedName": "arda::backend::FArdaGlobalShaderInstance::GetPermutationId",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] uint32_t GetPermutationId() const noexcept",
+      "summary": "Declares arda::backend::FArdaGlobalShaderInstance::GetPermutationId in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaglobalshaderinstance-mpermutationid-b73f73a1",
+      "name": "mPermutationId",
+      "qualifiedName": "arda::backend::FArdaGlobalShaderInstance::mPermutationId",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "uint32_t mPermutationId = 0",
+      "summary": "Declares arda::backend::FArdaGlobalShaderInstance::mPermutationId in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaglobalshadermap-initialize-17dd8883",
+      "name": "Initialize",
+      "qualifiedName": "arda::backend::FArdaGlobalShaderMap::Initialize",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool Initialize(const FArdaDeviceContext& DeviceContext)",
+      "summary": "Initializes the global shader map using the configured persistent backend shader cache.",
+      "details": "Commits shader registrations and uses FArdaBackendConfiguration::mShaderCacheDirectory. Behavior follows the configured EArdaShaderCompilationMode: OnDemand preallocates pointer-stable slots but leaves them unloaded until lookup or enumeration; Startup and LoadOnly eagerly materialize every selected slot by loading backend-specific bytecode and creating its RHI shader and parameter binding layouts. Repeating the same device context, backend, and configured directory is idempotent and pointer-stable; changing any of them after success requires Reset first.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h",
+      "params": [
+        "const FArdaDeviceContext& DeviceContext"
+      ],
+      "returns": "True when registration and policy-specific initialization succeed.",
+      "ownership": "The map retains the RHI device, created shader references, binding layouts, directory, and stable instance-slot storage until Reset or destruction. Returned instance pointers and references are non-owning views into that storage.",
+      "errors": "Returns false and records diagnostics for registration failure, invalid device, missing, empty, or unreadable bytecode, shader or layout creation failure, or a required Reset.",
+      "threading": "No concurrent mutation contract is declared; serialize Initialize and Reset with Find, Enumerate, diagnostics access, and device shutdown.",
+      "related": [
+        "arda::backend::FArdaGlobalShaderMap"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashaderregistrationerror-artifactstemcollision-ac0f55b0",
+      "name": "ArtifactStemCollision",
+      "qualifiedName": "arda::backend::EArdaShaderRegistrationError::ArtifactStemCollision",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "ArtifactStemCollision",
+      "summary": "Declares arda::backend::EArdaShaderRegistrationError::ArtifactStemCollision in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashaderregistrationerror-registrymutation-5564f622",
+      "name": "RegistryMutation",
+      "qualifiedName": "arda::backend::EArdaShaderRegistrationError::RegistryMutation",
+      "kind": "enumerator",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "RegistryMutation",
+      "summary": "Declares arda::backend::EArdaShaderRegistrationError::RegistryMutation in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertype-fshouldcompilepermutationfunction-b973f927",
+      "name": "FShouldCompilePermutationFunction",
+      "qualifiedName": "arda::backend::FArdaShaderType::FShouldCompilePermutationFunction",
+      "kind": "alias",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "using FShouldCompilePermutationFunction = bool (*)(const FArdaShaderPermutationParameters&)",
+      "summary": "Declares arda::backend::FArdaShaderType::FShouldCompilePermutationFunction in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertype-fmodifycompilationenvironmentfunction-2dce6a52",
+      "name": "FModifyCompilationEnvironmentFunction",
+      "qualifiedName": "arda::backend::FArdaShaderType::FModifyCompilationEnvironmentFunction",
+      "kind": "alias",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "using FModifyCompilationEnvironmentFunction = void (*)(const FArdaShaderPermutationParameters&, FArdaShaderCompileEnvironment&)",
+      "summary": "Declares arda::backend::FArdaShaderType::FModifyCompilationEnvironmentFunction in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertype-getpermutationcount-edbc5f48",
+      "name": "GetPermutationCount",
+      "qualifiedName": "arda::backend::FArdaShaderType::GetPermutationCount",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] uint32_t GetPermutationCount() const noexcept",
+      "summary": "Declares arda::backend::FArdaShaderType::GetPermutationCount in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertype-shouldcompilepermutation-f5c97b72",
+      "name": "ShouldCompilePermutation",
+      "qualifiedName": "arda::backend::FArdaShaderType::ShouldCompilePermutation",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool ShouldCompilePermutation(EArdaBackendType Backend, uint32_t PermutationId) const",
+      "summary": "Declares arda::backend::FArdaShaderType::ShouldCompilePermutation in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertype-buildcompilationenvironment-64a775ab",
+      "name": "BuildCompilationEnvironment",
+      "qualifiedName": "arda::backend::FArdaShaderType::BuildCompilationEnvironment",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileEnvironment BuildCompilationEnvironment(EArdaBackendType Backend, uint32_t PermutationId) const",
+      "summary": "Declares arda::backend::FArdaShaderType::BuildCompilationEnvironment in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertype-getpermutationartifactstem-a17d8e93",
+      "name": "GetPermutationArtifactStem",
+      "qualifiedName": "arda::backend::FArdaShaderType::GetPermutationArtifactStem",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] eastl::string GetPermutationArtifactStem(uint32_t PermutationId) const",
+      "summary": "Declares arda::backend::FArdaShaderType::GetPermutationArtifactStem in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertyperegistration-enumeratesnapshots-cfb029ed",
+      "name": "EnumerateSnapshots",
+      "qualifiedName": "arda::backend::FArdaShaderTypeRegistration::EnumerateSnapshots",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] static eastl::vector<FArdaShaderType> EnumerateSnapshots()",
+      "summary": "Declares arda::backend::FArdaShaderTypeRegistration::EnumerateSnapshots in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-tshaderpermutationdomain-6a0fd2c4",
+      "name": "TShaderPermutationDomain",
+      "qualifiedName": "arda::backend::detail::TShaderPermutationDomain",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename ShaderClass, typename = void> struct TShaderPermutationDomain",
+      "summary": "Declares arda::backend::detail::TShaderPermutationDomain in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-tshaderpermutationdomain-b0ada677",
+      "name": "TShaderPermutationDomain",
+      "qualifiedName": "arda::backend::detail::TShaderPermutationDomain",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename ShaderClass> struct TShaderPermutationDomain<ShaderClass, std::void_t<typename ShaderClass::FPermutationDomain>>",
+      "summary": "Declares arda::backend::detail::TShaderPermutationDomain in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-tshaderpermutationdomain-permutationcount-62c220d1",
+      "name": "PermutationCount",
+      "qualifiedName": "arda::backend::detail::TShaderPermutationDomain::PermutationCount",
+      "kind": "constant",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "static constexpr uint32_t PermutationCount = 1",
+      "summary": "Declares arda::backend::detail::TShaderPermutationDomain::PermutationCount in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-tshaderpermutationdomain-shaderclass-std-void-t-typename-shaderclass-fpermutationdomain-permutationcount-a61ec336",
+      "name": "PermutationCount",
+      "qualifiedName": "arda::backend::detail::TShaderPermutationDomain<ShaderClass, std::void_t<typename ShaderClass::FPermutationDomain>>::PermutationCount",
+      "kind": "constant",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "static constexpr uint32_t PermutationCount = Domain::PermutationCount",
+      "summary": "Declares arda::backend::detail::TShaderPermutationDomain<ShaderClass, std::void_t<typename ShaderClass::FPermutationDomain>>::PermutationCount in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-tshaderpermutationdomain-adddefines-5ac8cbb8",
+      "name": "AddDefines",
+      "qualifiedName": "arda::backend::detail::TShaderPermutationDomain::AddDefines",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "static void AddDefines(uint32_t, FArdaShaderCompileEnvironment&)",
+      "summary": "Declares arda::backend::detail::TShaderPermutationDomain::AddDefines in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-tshaderpermutationdomain-shaderclass-std-void-t-typename-shaderclass-fpermutationdomain-adddefines-0b42f661",
+      "name": "AddDefines",
+      "qualifiedName": "arda::backend::detail::TShaderPermutationDomain<ShaderClass, std::void_t<typename ShaderClass::FPermutationDomain>>::AddDefines",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "static void AddDefines(uint32_t PermutationId, FArdaShaderCompileEnvironment& Environment)",
+      "summary": "Declares arda::backend::detail::TShaderPermutationDomain<ShaderClass, std::void_t<typename ShaderClass::FPermutationDomain>>::AddDefines in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-thasshouldcompilepermutation-12e1b83b",
+      "name": "THasShouldCompilePermutation",
+      "qualifiedName": "arda::backend::detail::THasShouldCompilePermutation",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename ShaderClass, typename = void> struct THasShouldCompilePermutation : std::false_type",
+      "summary": "Declares arda::backend::detail::THasShouldCompilePermutation in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-thasnamedshouldcompilepermutation-d56281f9",
+      "name": "THasNamedShouldCompilePermutation",
+      "qualifiedName": "arda::backend::detail::THasNamedShouldCompilePermutation",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename ShaderClass, typename = void> struct THasNamedShouldCompilePermutation : std::false_type",
+      "summary": "Declares arda::backend::detail::THasNamedShouldCompilePermutation in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-thasmodifycompilationenvironment-815b70df",
+      "name": "THasModifyCompilationEnvironment",
+      "qualifiedName": "arda::backend::detail::THasModifyCompilationEnvironment",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename ShaderClass, typename = void> struct THasModifyCompilationEnvironment : std::false_type",
+      "summary": "Declares arda::backend::detail::THasModifyCompilationEnvironment in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-thasmodifycompilationenvironment-f50e5439",
+      "name": "THasModifyCompilationEnvironment",
+      "qualifiedName": "arda::backend::detail::THasModifyCompilationEnvironment",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename ShaderClass> struct THasModifyCompilationEnvironment<ShaderClass, std::void_t<decltype(&ShaderClass::ModifyCompilationEnvironment)>>",
+      "summary": "Declares arda::backend::detail::THasModifyCompilationEnvironment in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-thasnamedmodifycompilationenvironment-0af0d0cd",
+      "name": "THasNamedModifyCompilationEnvironment",
+      "qualifiedName": "arda::backend::detail::THasNamedModifyCompilationEnvironment",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename ShaderClass, typename = void> struct THasNamedModifyCompilationEnvironment : std::false_type",
+      "summary": "Declares arda::backend::detail::THasNamedModifyCompilationEnvironment in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-shouldcompileshaderpermutation-9b6ad5da",
+      "name": "ShouldCompileShaderPermutation",
+      "qualifiedName": "arda::backend::detail::ShouldCompileShaderPermutation",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename ShaderClass> [[nodiscard]] bool ShouldCompileShaderPermutation(const FArdaShaderPermutationParameters& Parameters)",
+      "summary": "Declares arda::backend::detail::ShouldCompileShaderPermutation in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-detail-buildshadercompilationenvironment-8bdd63ed",
+      "name": "BuildShaderCompilationEnvironment",
+      "qualifiedName": "arda::backend::detail::BuildShaderCompilationEnvironment",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "template <typename ShaderClass> void BuildShaderCompilationEnvironment(const FArdaShaderPermutationParameters& Parameters, FArdaShaderCompileEnvironment& Environment)",
+      "summary": "Declares arda::backend::detail::BuildShaderCompilationEnvironment in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-ardabackendproviderinterfaceversion-acd31b06",
+      "name": "ArdaBackendProviderInterfaceVersion",
+      "qualifiedName": "arda::backend::ArdaBackendProviderInterfaceVersion",
+      "kind": "constant",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 1",
+      "summary": "Identifies the C++ provider ABI contract expected by this ArdaBackend build.",
+      "details": "A linked module publishes the same value in its descriptor. Registration rejects descriptors compiled for a different interface revision so incompatible virtual contracts never become selectable.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "A mismatched FArdaBackendModuleDescriptor::mInterfaceVersion causes RegisterBackendModule to reject the module.",
+      "threading": "Compile-time constant; safe to read from any thread.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashaderbinaryformat-8fc9c4ba",
+      "name": "EArdaShaderBinaryFormat",
+      "qualifiedName": "arda::backend::EArdaShaderBinaryFormat",
+      "kind": "enum",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaShaderBinaryFormat : uint8_t",
+      "summary": "Declares arda::backend::EArdaShaderBinaryFormat in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashaderbinaryformat-dxil-26e3d5ab",
+      "name": "Dxil",
+      "qualifiedName": "arda::backend::EArdaShaderBinaryFormat::Dxil",
+      "kind": "enumerator",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "Dxil",
+      "summary": "Declares arda::backend::EArdaShaderBinaryFormat::Dxil in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashaderbinaryformat-spirv-f7b09523",
+      "name": "Spirv",
+      "qualifiedName": "arda::backend::EArdaShaderBinaryFormat::Spirv",
+      "kind": "enumerator",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "Spirv",
+      "summary": "Declares arda::backend::EArdaShaderBinaryFormat::Spirv in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardashaderbinaryformat-backenddefined-2aac57f3",
+      "name": "BackendDefined",
+      "qualifiedName": "arda::backend::EArdaShaderBinaryFormat::BackendDefined",
+      "kind": "enumerator",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "BackendDefined",
+      "summary": "Declares arda::backend::EArdaShaderBinaryFormat::BackendDefined in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardabackendshadercompileresult-5b09e422",
+      "name": "EArdaBackendShaderCompileResult",
+      "qualifiedName": "arda::backend::EArdaBackendShaderCompileResult",
+      "kind": "enum",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaBackendShaderCompileResult : uint8_t",
+      "summary": "Declares arda::backend::EArdaBackendShaderCompileResult in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardabackendshadercompileresult-nothandled-14ebfaa3",
+      "name": "NotHandled",
+      "qualifiedName": "arda::backend::EArdaBackendShaderCompileResult::NotHandled",
+      "kind": "enumerator",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "NotHandled",
+      "summary": "Declares arda::backend::EArdaBackendShaderCompileResult::NotHandled in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardabackendshadercompileresult-success-9b494091",
+      "name": "Success",
+      "qualifiedName": "arda::backend::EArdaBackendShaderCompileResult::Success",
+      "kind": "enumerator",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "Success",
+      "summary": "Declares arda::backend::EArdaBackendShaderCompileResult::Success in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardabackendshadercompileresult-failure-0d7cd7ff",
+      "name": "Failure",
+      "qualifiedName": "arda::backend::EArdaBackendShaderCompileResult::Failure",
+      "kind": "enumerator",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "Failure",
+      "summary": "Declares arda::backend::EArdaBackendShaderCompileResult::Failure in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendmoduledescriptor-76f21395",
+      "name": "FArdaBackendModuleDescriptor",
+      "qualifiedName": "arda::backend::FArdaBackendModuleDescriptor",
+      "kind": "struct",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "struct FArdaBackendModuleDescriptor",
+      "summary": "Describes one backend implementation registered in the process.",
+      "details": "The descriptor is copied into the registry. Its stable name is the configuration and external-interop routing key; backend type remains a compatibility class rather than the module identity.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "All strings and scalar values are copied by registration; the descriptor returned by the module must remain valid for the module lifetime.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendmoduledescriptor-minterfaceversion-64419727",
+      "name": "mInterfaceVersion",
+      "qualifiedName": "arda::backend::FArdaBackendModuleDescriptor::mInterfaceVersion",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "uint32_t mInterfaceVersion = ArdaBackendProviderInterfaceVersion",
+      "summary": "Declares arda::backend::FArdaBackendModuleDescriptor::mInterfaceVersion in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendmoduledescriptor-mname-b1319a30",
+      "name": "mName",
+      "qualifiedName": "arda::backend::FArdaBackendModuleDescriptor::mName",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "eastl::string mName",
+      "summary": "Declares arda::backend::FArdaBackendModuleDescriptor::mName in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendmoduledescriptor-mdisplayname-04843750",
+      "name": "mDisplayName",
+      "qualifiedName": "arda::backend::FArdaBackendModuleDescriptor::mDisplayName",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "eastl::string mDisplayName",
+      "summary": "Declares arda::backend::FArdaBackendModuleDescriptor::mDisplayName in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendmoduledescriptor-mbackendtype-2cdf7559",
+      "name": "mBackendType",
+      "qualifiedName": "arda::backend::FArdaBackendModuleDescriptor::mBackendType",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "EArdaBackendType mBackendType = DefaultBackend",
+      "summary": "Declares arda::backend::FArdaBackendModuleDescriptor::mBackendType in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendmoduledescriptor-mshaderbinaryformat-66e500e4",
+      "name": "mShaderBinaryFormat",
+      "qualifiedName": "arda::backend::FArdaBackendModuleDescriptor::mShaderBinaryFormat",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "EArdaShaderBinaryFormat mShaderBinaryFormat = EArdaShaderBinaryFormat::BackendDefined",
+      "summary": "Declares arda::backend::FArdaBackendModuleDescriptor::mShaderBinaryFormat in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendmoduledescriptor-mshaderartifactextension-8f5f59a6",
+      "name": "mShaderArtifactExtension",
+      "qualifiedName": "arda::backend::FArdaBackendModuleDescriptor::mShaderArtifactExtension",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "eastl::string mShaderArtifactExtension",
+      "summary": "Declares arda::backend::FArdaBackendModuleDescriptor::mShaderArtifactExtension in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendmoduledescriptor-mbsupportsowneddevice-6df12066",
+      "name": "mbSupportsOwnedDevice",
+      "qualifiedName": "arda::backend::FArdaBackendModuleDescriptor::mbSupportsOwnedDevice",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "bool mbSupportsOwnedDevice = false",
+      "summary": "Declares arda::backend::FArdaBackendModuleDescriptor::mbSupportsOwnedDevice in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendmoduledescriptor-mbsupportsexternaldevice-e097a41e",
+      "name": "mbSupportsExternalDevice",
+      "qualifiedName": "arda::backend::FArdaBackendModuleDescriptor::mbSupportsExternalDevice",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "bool mbSupportsExternalDevice = false",
+      "summary": "Declares arda::backend::FArdaBackendModuleDescriptor::mbSupportsExternalDevice in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendmoduledescriptor-mpriority-d9486d6e",
+      "name": "mPriority",
+      "qualifiedName": "arda::backend::FArdaBackendModuleDescriptor::mPriority",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "int32_t mPriority = 0",
+      "summary": "Declares arda::backend::FArdaBackendModuleDescriptor::mPriority in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendshadercompileinvocation-ea095f1f",
+      "name": "FArdaBackendShaderCompileInvocation",
+      "qualifiedName": "arda::backend::FArdaBackendShaderCompileInvocation",
+      "kind": "struct",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "struct FArdaBackendShaderCompileInvocation",
+      "summary": "Carries a complete backend-owned shader compiler command.",
+      "details": "Core builds deterministic source, output, entry-point, stage, profile, executable, and argument values. The selected module may rewrite the command or execute it through an engine shader service.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "All fields are value-owned by the invocation; a module may mutate them only during ConfigureShaderCompileInvocation.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendshadercompileinvocation-msourcepath-f608cc8a",
+      "name": "mSourcePath",
+      "qualifiedName": "arda::backend::FArdaBackendShaderCompileInvocation::mSourcePath",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "std::filesystem::path mSourcePath",
+      "summary": "Declares arda::backend::FArdaBackendShaderCompileInvocation::mSourcePath in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendshadercompileinvocation-moutputpath-4d797bf6",
+      "name": "mOutputPath",
+      "qualifiedName": "arda::backend::FArdaBackendShaderCompileInvocation::mOutputPath",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "std::filesystem::path mOutputPath",
+      "summary": "Declares arda::backend::FArdaBackendShaderCompileInvocation::mOutputPath in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendshadercompileinvocation-mcompilerexecutable-746659ca",
+      "name": "mCompilerExecutable",
+      "qualifiedName": "arda::backend::FArdaBackendShaderCompileInvocation::mCompilerExecutable",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "std::filesystem::path mCompilerExecutable",
+      "summary": "Declares arda::backend::FArdaBackendShaderCompileInvocation::mCompilerExecutable in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendshadercompileinvocation-mentrypoint-da3ce27d",
+      "name": "mEntryPoint",
+      "qualifiedName": "arda::backend::FArdaBackendShaderCompileInvocation::mEntryPoint",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "eastl::string mEntryPoint",
+      "summary": "Declares arda::backend::FArdaBackendShaderCompileInvocation::mEntryPoint in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendshadercompileinvocation-mstage-54279400",
+      "name": "mStage",
+      "qualifiedName": "arda::backend::FArdaBackendShaderCompileInvocation::mStage",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "rhi::EArdaRHIShaderStage mStage = rhi::EArdaRHIShaderStage::None",
+      "summary": "Declares arda::backend::FArdaBackendShaderCompileInvocation::mStage in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendshadercompileinvocation-mprofile-9aec2601",
+      "name": "mProfile",
+      "qualifiedName": "arda::backend::FArdaBackendShaderCompileInvocation::mProfile",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "eastl::string mProfile",
+      "summary": "Declares arda::backend::FArdaBackendShaderCompileInvocation::mProfile in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendshadercompileinvocation-marguments-45703a79",
+      "name": "mArguments",
+      "qualifiedName": "arda::backend::FArdaBackendShaderCompileInvocation::mArguments",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<eastl::string> mArguments",
+      "summary": "Declares arda::backend::FArdaBackendShaderCompileInvocation::mArguments in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackenddevice-ce421f3b",
+      "name": "IArdaBackendDevice",
+      "qualifiedName": "arda::backend::IArdaBackendDevice",
+      "kind": "class",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "class IArdaBackendDevice",
+      "summary": "Defines the runtime device object supplied by a backend module.",
+      "details": "The core owns this object from module factory creation through shutdown. It delegates initialization, presentation, idle waiting, RHI access, queue discovery, and module-local error reporting.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "CreateDevice transfers a unique pointer to core; the backend device owns its native or engine-RHI wrapper state but not host-owned external objects.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackenddevice-iardabackenddevice-4ff0f353",
+      "name": "~IArdaBackendDevice",
+      "qualifiedName": "arda::backend::IArdaBackendDevice::~IArdaBackendDevice",
+      "kind": "destructor",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual ~IArdaBackendDevice() = default",
+      "summary": "Declares arda::backend::IArdaBackendDevice::~IArdaBackendDevice in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackenddevice-initialize-885abf36",
+      "name": "Initialize",
+      "qualifiedName": "arda::backend::IArdaBackendDevice::Initialize",
+      "kind": "method",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual EArdaInitializeResult Initialize(const FArdaBackendConfiguration& Configuration, IArdaWindowSurface* WindowSurface, const IArdaExternalDeviceProvider* ExternalProvider) = 0",
+      "summary": "Declares arda::backend::IArdaBackendDevice::Initialize in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [
+        "const FArdaBackendConfiguration& Configuration",
+        "IArdaWindowSurface* WindowSurface",
+        "const IArdaExternalDeviceProvider* ExternalProvider"
+      ],
+      "returns": "Success, Unavailable, or Failure.",
+      "ownership": "Configuration is borrowed for the call; window surface and external provider remain host-owned.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Called by the serialized process-wide initialization path.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackenddevice-createswapchain-efff074f",
+      "name": "CreateSwapChain",
+      "qualifiedName": "arda::backend::IArdaBackendDevice::CreateSwapChain",
+      "kind": "method",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual eastl::unique_ptr<IArdaSwapChain> CreateSwapChain(uint32_t Width, uint32_t Height) = 0",
+      "summary": "Declares arda::backend::IArdaBackendDevice::CreateSwapChain in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [
+        "uint32_t Width",
+        "uint32_t Height"
+      ],
+      "returns": "A caller-owned swap chain, or an empty pointer on failure.",
+      "ownership": "Transfers unique ownership of the swap chain to core/application presentation state.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackenddevice-waitforidle-dcb3b7a0",
+      "name": "WaitForIdle",
+      "qualifiedName": "arda::backend::IArdaBackendDevice::WaitForIdle",
+      "kind": "method",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual void WaitForIdle() noexcept = 0",
+      "summary": "Declares arda::backend::IArdaBackendDevice::WaitForIdle in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackenddevice-getdevice-6c0a1c44",
+      "name": "GetDevice",
+      "qualifiedName": "arda::backend::IArdaBackendDevice::GetDevice",
+      "kind": "method",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual rhi::FArdaRHIDeviceRef GetDevice() const noexcept = 0",
+      "summary": "Declares arda::backend::IArdaBackendDevice::GetDevice in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "An intrusive reference to the backend-neutral device facade.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackenddevice-getqueuecapabilities-032c3fc6",
+      "name": "GetQueueCapabilities",
+      "qualifiedName": "arda::backend::IArdaBackendDevice::GetQueueCapabilities",
+      "kind": "method",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaQueueCapabilities GetQueueCapabilities() const noexcept = 0",
+      "summary": "Declares arda::backend::IArdaBackendDevice::GetQueueCapabilities in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "See the canonical signature and source contract.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackenddevice-geterror-ed7f6c9e",
+      "name": "GetError",
+      "qualifiedName": "arda::backend::IArdaBackendDevice::GetError",
+      "kind": "method",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual const eastl::string& GetError() const noexcept = 0",
+      "summary": "Declares arda::backend::IArdaBackendDevice::GetError in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "A borrowed reference valid while the backend device remains alive.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackendmodule-83673c0b",
+      "name": "IArdaBackendModule",
+      "qualifiedName": "arda::backend::IArdaBackendModule",
+      "kind": "class",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "class IArdaBackendModule",
+      "summary": "Contract implemented by every statically or dynamically linkable backend module.",
+      "details": "A module publishes identity and capabilities, creates backend devices, and participates in shader compilation. Registration is explicit and module lifetime must outlive every registry and active-device use.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "The process registry borrows the module; the library or host retains ownership.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackendmodule-iardabackendmodule-355fd5bd",
+      "name": "~IArdaBackendModule",
+      "qualifiedName": "arda::backend::IArdaBackendModule::~IArdaBackendModule",
+      "kind": "destructor",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual ~IArdaBackendModule() = default",
+      "summary": "Declares arda::backend::IArdaBackendModule::~IArdaBackendModule in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackendmodule-getdescriptor-bb85fcb3",
+      "name": "GetDescriptor",
+      "qualifiedName": "arda::backend::IArdaBackendModule::GetDescriptor",
+      "kind": "method",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual const FArdaBackendModuleDescriptor& GetDescriptor() const noexcept = 0",
+      "summary": "Declares arda::backend::IArdaBackendModule::GetDescriptor in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "A stable borrowed descriptor for the module lifetime.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackendmodule-createdevice-2e7ce7b5",
+      "name": "CreateDevice",
+      "qualifiedName": "arda::backend::IArdaBackendModule::CreateDevice",
+      "kind": "method",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual eastl::unique_ptr<IArdaBackendDevice> CreateDevice(EArdaDeviceSource Source) = 0",
+      "summary": "Declares arda::backend::IArdaBackendModule::CreateDevice in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [
+        "EArdaDeviceSource Source"
+      ],
+      "returns": "A transferred backend-device implementation, or empty when the source is unsupported.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackendmodule-configureshadercompileinvocation-09c421ed",
+      "name": "ConfigureShaderCompileInvocation",
+      "qualifiedName": "arda::backend::IArdaBackendModule::ConfigureShaderCompileInvocation",
+      "kind": "method",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual rhi::FArdaRHIStatus ConfigureShaderCompileInvocation(FArdaBackendShaderCompileInvocation& Invocation) const = 0",
+      "summary": "Declares arda::backend::IArdaBackendModule::ConfigureShaderCompileInvocation in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [
+        "FArdaBackendShaderCompileInvocation& Invocation"
+      ],
+      "returns": "Backend-neutral status indicating whether the command can proceed.",
+      "ownership": "Mutates a core-owned invocation during the call; must not retain references into it.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardabackendmodule-invokeshadercompiler-4838d52d",
+      "name": "InvokeShaderCompiler",
+      "qualifiedName": "arda::backend::IArdaBackendModule::InvokeShaderCompiler",
+      "kind": "method",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "virtual EArdaBackendShaderCompileResult InvokeShaderCompiler(const FArdaBackendShaderCompileInvocation& Invocation, eastl::string& OutDiagnostics) const",
+      "summary": "Declares arda::backend::IArdaBackendModule::InvokeShaderCompiler in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [
+        "const FArdaBackendShaderCompileInvocation& Invocation",
+        "eastl::string& OutDiagnostics"
+      ],
+      "returns": "NotHandled to request core fallback, Success after publishing output, or Failure with diagnostics.",
+      "ownership": "Invocation is borrowed for the call; diagnostics are copied into caller-owned storage.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-registerbackendmodule-4cba8a9b",
+      "name": "RegisterBackendModule",
+      "qualifiedName": "arda::backend::RegisterBackendModule",
+      "kind": "function",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "bool RegisterBackendModule(IArdaBackendModule& Module)",
+      "summary": "Declares arda::backend::RegisterBackendModule in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [
+        "IArdaBackendModule& Module"
+      ],
+      "returns": "True when registered or already registered by identity.",
+      "ownership": "Registry stores a non-owning module pointer and copied descriptor.",
+      "errors": "Rejects empty names, interface-version mismatches, invalid capability metadata, and name collisions.",
+      "threading": "Thread-safe registry mutation; must not reenter from provider callbacks or mutate while the module is active.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-unregisterbackendmodule-d8db4f5f",
+      "name": "UnregisterBackendModule",
+      "qualifiedName": "arda::backend::UnregisterBackendModule",
+      "kind": "function",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "bool UnregisterBackendModule(IArdaBackendModule& Module)",
+      "summary": "Declares arda::backend::UnregisterBackendModule in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [
+        "IArdaBackendModule& Module"
+      ],
+      "returns": "True when absent or removed; false when another object owns the name or the module is active.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-findbackendmodule-0923a14b",
+      "name": "FindBackendModule",
+      "qualifiedName": "arda::backend::FindBackendModule",
+      "kind": "function",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "IArdaBackendModule* FindBackendModule(const char* Name) noexcept",
+      "summary": "Declares arda::backend::FindBackendModule in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [
+        "const char* Name"
+      ],
+      "returns": "A non-owning pointer to the named registered module, or null.",
+      "ownership": "Pointer remains valid only while the module stays registered and its library remains loaded.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-finddefaultbackendmodule-4efff03e",
+      "name": "FindDefaultBackendModule",
+      "qualifiedName": "arda::backend::FindDefaultBackendModule",
+      "kind": "function",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "IArdaBackendModule* FindDefaultBackendModule(EArdaBackendType BackendType) noexcept",
+      "summary": "Declares arda::backend::FindDefaultBackendModule in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [
+        "EArdaBackendType BackendType"
+      ],
+      "returns": "Highest-priority compatible module, or null.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-enumeratebackendmodules-d128b5cd",
+      "name": "EnumerateBackendModules",
+      "qualifiedName": "arda::backend::EnumerateBackendModules",
+      "kind": "function",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaBackendModuleDescriptor> EnumerateBackendModules()",
+      "summary": "Declares arda::backend::EnumerateBackendModules in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Copied descriptors in stable-name order.",
+      "ownership": "The returned vector and strings are caller-owned snapshots.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-getactivebackendmodule-8a76939c",
+      "name": "GetActiveBackendModule",
+      "qualifiedName": "arda::backend::GetActiveBackendModule",
+      "kind": "function",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "const IArdaBackendModule* GetActiveBackendModule() noexcept",
+      "summary": "Declares arda::backend::GetActiveBackendModule in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "The active non-owning module pointer after successful initialization, or null.",
+      "ownership": "Valid until shutdown and only while the backing module library remains loaded.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-eardabackendtype-custom-1b72285c",
+      "name": "Custom",
+      "qualifiedName": "arda::backend::EArdaBackendType::Custom",
+      "kind": "enumerator",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "Custom",
+      "summary": "Declares arda::backend::EArdaBackendType::Custom in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardabackendconfiguration-mbackendname-42640a67",
+      "name": "mBackendName",
+      "qualifiedName": "arda::backend::FArdaBackendConfiguration::mBackendName",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mBackendName",
+      "summary": "Declares arda::backend::FArdaBackendConfiguration::mBackendName in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardadevicecontext-mbackendname-4a556518",
+      "name": "mBackendName",
+      "qualifiedName": "arda::backend::FArdaDeviceContext::mBackendName",
+      "kind": "member variable",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "eastl::string mBackendName",
+      "summary": "Declares arda::backend::FArdaDeviceContext::mBackendName in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-configurebackend-42d0f49a",
+      "name": "ConfigureBackend",
+      "qualifiedName": "arda::backend::ConfigureBackend",
+      "kind": "function",
+      "component": "core",
+      "page": "api-reference.html",
+      "signature": "bool ConfigureBackend(const char* BackendName)",
+      "summary": "Declares arda::backend::ConfigureBackend in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaDevice.h",
+      "params": [
+        "const char* BackendName"
+      ],
+      "returns": "True when the named registered module exists and configuration is accepted.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Returns false for null, empty, unknown, or invalid-at-this-lifecycle-stage module selection.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalnativeobject-2eee05b3",
+      "name": "FArdaExternalNativeObject",
+      "qualifiedName": "arda::backend::FArdaExternalNativeObject",
+      "kind": "struct",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "struct FArdaExternalNativeObject",
+      "summary": "Declares arda::backend::FArdaExternalNativeObject in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalnativeobject-mname-834a135c",
+      "name": "mName",
+      "qualifiedName": "arda::backend::FArdaExternalNativeObject::mName",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::string mName",
+      "summary": "Declares arda::backend::FArdaExternalNativeObject::mName in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalnativeobject-mobject-48a1c2a4",
+      "name": "mObject",
+      "qualifiedName": "arda::backend::FArdaExternalNativeObject::mObject",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mObject",
+      "summary": "Declares arda::backend::FArdaExternalNativeObject::mObject in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalqueuedesc-cb842d15",
+      "name": "FArdaExternalQueueDesc",
+      "qualifiedName": "arda::backend::FArdaExternalQueueDesc",
+      "kind": "struct",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "struct FArdaExternalQueueDesc",
+      "summary": "Declares arda::backend::FArdaExternalQueueDesc in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalqueuedesc-mtype-b2d3b2da",
+      "name": "mType",
+      "qualifiedName": "arda::backend::FArdaExternalQueueDesc::mType",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "rhi::EArdaRHIQueueType mType = rhi::EArdaRHIQueueType::Graphics",
+      "summary": "Declares arda::backend::FArdaExternalQueueDesc::mType in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalqueuedesc-mqueue-dcba57ea",
+      "name": "mQueue",
+      "qualifiedName": "arda::backend::FArdaExternalQueueDesc::mQueue",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mQueue",
+      "summary": "Declares arda::backend::FArdaExternalQueueDesc::mQueue in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalqueuedesc-mfamilyindex-66de92d5",
+      "name": "mFamilyIndex",
+      "qualifiedName": "arda::backend::FArdaExternalQueueDesc::mFamilyIndex",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "uint32_t mFamilyIndex = 0",
+      "summary": "Declares arda::backend::FArdaExternalQueueDesc::mFamilyIndex in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternalqueuedesc-mqueueindex-51370fe5",
+      "name": "mQueueIndex",
+      "qualifiedName": "arda::backend::FArdaExternalQueueDesc::mQueueIndex",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "uint32_t mQueueIndex = 0",
+      "summary": "Declares arda::backend::FArdaExternalQueueDesc::mQueueIndex in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternaldevicedesc-201a99ef",
+      "name": "FArdaExternalDeviceDesc",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceDesc",
+      "kind": "struct",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "struct FArdaExternalDeviceDesc",
+      "summary": "Carries a backend-extensible description of a host-owned device.",
+      "details": "Standard native roles use explicit fields. Engine integrations add stable named objects and immutable backend data whose schema belongs to the selected module.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "The provider copies strings, vectors, handles, and bytes into the output; native objects remain host-owned and require an optional lifetime token when necessary.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternaldevicedesc-mbackendname-7a153549",
+      "name": "mBackendName",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceDesc::mBackendName",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::string mBackendName",
+      "summary": "Declares arda::backend::FArdaExternalDeviceDesc::mBackendName in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternaldevicedesc-mnativeapi-ddfb6a71",
+      "name": "mNativeApi",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceDesc::mNativeApi",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::string mNativeApi",
+      "summary": "Declares arda::backend::FArdaExternalDeviceDesc::mNativeApi in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternaldevicedesc-minstance-44e4f5fd",
+      "name": "mInstance",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceDesc::mInstance",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mInstance",
+      "summary": "Declares arda::backend::FArdaExternalDeviceDesc::mInstance in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternaldevicedesc-madapter-d7d69d1d",
+      "name": "mAdapter",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceDesc::mAdapter",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mAdapter",
+      "summary": "Declares arda::backend::FArdaExternalDeviceDesc::mAdapter in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternaldevicedesc-mdevice-0ce01331",
+      "name": "mDevice",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceDesc::mDevice",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "FArdaNativeObject mDevice",
+      "summary": "Declares arda::backend::FArdaExternalDeviceDesc::mDevice in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternaldevicedesc-mqueues-c08a254a",
+      "name": "mQueues",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceDesc::mQueues",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaExternalQueueDesc> mQueues",
+      "summary": "Declares arda::backend::FArdaExternalDeviceDesc::mQueues in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternaldevicedesc-madditionalobjects-34775476",
+      "name": "mAdditionalObjects",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceDesc::mAdditionalObjects",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaExternalNativeObject> mAdditionalObjects",
+      "summary": "Declares arda::backend::FArdaExternalDeviceDesc::mAdditionalObjects in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardaexternaldevicedesc-mbackenddata-c9c2e9cc",
+      "name": "mBackendData",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceDesc::mBackendData",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<uint8_t> mBackendData",
+      "summary": "Declares arda::backend::FArdaExternalDeviceDesc::mBackendData in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternaldeviceprovider-getbackendname-8a8368bb",
+      "name": "GetBackendName",
+      "qualifiedName": "arda::backend::IArdaExternalDeviceProvider::GetBackendName",
+      "kind": "method",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "virtual const char* GetBackendName() const noexcept",
+      "summary": "Declares arda::backend::IArdaExternalDeviceProvider::GetBackendName in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Required module name, or null to accept any compatible module.",
+      "ownership": "Returned storage remains provider-owned and valid through the call.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternaldeviceprovider-getexternaldevicedesc-c12c4b9f",
+      "name": "GetExternalDeviceDesc",
+      "qualifiedName": "arda::backend::IArdaExternalDeviceProvider::GetExternalDeviceDesc",
+      "kind": "method",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "virtual bool GetExternalDeviceDesc(FArdaExternalDeviceDesc& OutDesc) const",
+      "summary": "Declares arda::backend::IArdaExternalDeviceProvider::GetExternalDeviceDesc in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [
+        "FArdaExternalDeviceDesc& OutDesc"
+      ],
+      "returns": "True when a self-contained universal descriptor was supplied.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-backend-iardaexternalresourceprovider-getbackendname-dd35a035",
+      "name": "GetBackendName",
+      "qualifiedName": "arda::backend::IArdaExternalResourceProvider::GetBackendName",
+      "kind": "method",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "virtual const char* GetBackendName() const noexcept",
+      "summary": "Declares arda::backend::IArdaExternalResourceProvider::GetBackendName in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Required module name, or null to accept any compatible module.",
+      "ownership": "Returned storage remains provider-owned and valid through the call.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhinativetextureimportdesc-mnativetypename-bfe6d737",
+      "name": "mNativeTypeName",
+      "qualifiedName": "arda::rhi::FArdaRHINativeTextureImportDesc::mNativeTypeName",
+      "kind": "member variable",
+      "component": "rhi-resources",
+      "page": "api-reference.html",
+      "signature": "eastl::string mNativeTypeName",
+      "summary": "Declares arda::rhi::FArdaRHINativeTextureImportDesc::mNativeTypeName in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHITypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhinativetextureimportdesc-mbackenddata-1574538a",
+      "name": "mBackendData",
+      "qualifiedName": "arda::rhi::FArdaRHINativeTextureImportDesc::mBackendData",
+      "kind": "member variable",
+      "component": "rhi-resources",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<uint8_t> mBackendData",
+      "summary": "Declares arda::rhi::FArdaRHINativeTextureImportDesc::mBackendData in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHITypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhinativebufferimportdesc-mnativetypename-986928b8",
+      "name": "mNativeTypeName",
+      "qualifiedName": "arda::rhi::FArdaRHINativeBufferImportDesc::mNativeTypeName",
+      "kind": "member variable",
+      "component": "rhi-resources",
+      "page": "api-reference.html",
+      "signature": "eastl::string mNativeTypeName",
+      "summary": "Declares arda::rhi::FArdaRHINativeBufferImportDesc::mNativeTypeName in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHITypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhinativebufferimportdesc-mbackenddata-b6714b5b",
+      "name": "mBackendData",
+      "qualifiedName": "arda::rhi::FArdaRHINativeBufferImportDesc::mBackendData",
+      "kind": "member variable",
+      "component": "rhi-resources",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<uint8_t> mBackendData",
+      "summary": "Declares arda::rhi::FArdaRHINativeBufferImportDesc::mBackendData in the current public backend API.",
+      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
+      "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHITypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
+      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
+      "related": [
+        "arda::backend",
+        "arda::rhi"
+      ]
+    },
+    {"id":"api-arda-backend-fardashadertarget","name":"FArdaShaderTarget","qualifiedName":"arda::backend::FArdaShaderTarget","kind":"struct","component":"backend-modules","page":"api-reference.html","signature":"struct FArdaShaderTarget","summary":"Immutable shader-facing identity copied from one registered backend module.","details":"Immutable shader-facing identity copied from one registered backend module.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-fardashadertarget-mbackendname","name":"mBackendName","qualifiedName":"arda::backend::FArdaShaderTarget::mBackendName","kind":"member variable","component":"backend-modules","page":"api-reference.html","signature":"eastl::string mBackendName","summary":"Stable module registry name.","details":"Stable module registry name.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-fardashadertarget-mbackend","name":"mBackend","qualifiedName":"arda::backend::FArdaShaderTarget::mBackend","kind":"member variable","component":"backend-modules","page":"api-reference.html","signature":"EArdaBackendType mBackend = DefaultBackend","summary":"Compatibility class exposed to permutation policy.","details":"Compatibility class exposed to permutation policy.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-fardashadertarget-mbinaryformat","name":"mBinaryFormat","qualifiedName":"arda::backend::FArdaShaderTarget::mBinaryFormat","kind":"member variable","component":"backend-modules","page":"api-reference.html","signature":"EArdaShaderBinaryFormat mBinaryFormat = EArdaShaderBinaryFormat::BackendDefined","summary":"Module-declared shader artifact format.","details":"Module-declared shader artifact format.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-fardashadertarget-martifactextension","name":"mArtifactExtension","qualifiedName":"arda::backend::FArdaShaderTarget::mArtifactExtension","kind":"member variable","component":"backend-modules","page":"api-reference.html","signature":"eastl::string mArtifactExtension","summary":"Module-declared artifact suffix.","details":"Module-declared artifact suffix.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-fardashadertarget-mcompileridentity","name":"mCompilerIdentity","qualifiedName":"arda::backend::FArdaShaderTarget::mCompilerIdentity","kind":"member variable","component":"backend-modules","page":"api-reference.html","signature":"eastl::string mCompilerIdentity","summary":"Stable cache identity for a compiler that does not use an executable file.","details":"Stable cache identity for a compiler that does not use an executable file.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-fardashadertarget-operator-bool","name":"operator bool","qualifiedName":"arda::backend::FArdaShaderTarget::operator bool","kind":"conversion operator","component":"backend-modules","page":"api-reference.html","signature":"[[nodiscard]] explicit operator bool() const noexcept","summary":"Reports whether the resolved target has a module name and artifact extension.","details":"Reports whether the resolved target has a module name and artifact extension.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-resolveshadertarget","name":"ResolveShaderTarget","qualifiedName":"arda::backend::ResolveShaderTarget","kind":"function","component":"backend-modules","page":"api-reference.html","signature":"[[nodiscard]] bool ResolveShaderTarget(const char* BackendName, FArdaShaderTarget\u0026 OutTarget) noexcept","summary":"Resolves an exact registered module into an immutable shader target.","details":"Resolves an exact registered module into an immutable shader target.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-resolvedefaultshadertarget","name":"ResolveDefaultShaderTarget","qualifiedName":"arda::backend::ResolveDefaultShaderTarget","kind":"function","component":"backend-modules","page":"api-reference.html","signature":"[[nodiscard]] bool ResolveDefaultShaderTarget(EArdaBackendType BackendType, FArdaShaderTarget\u0026 OutTarget) noexcept","summary":"Resolves the highest-priority module for a compatibility class.","details":"Resolves the highest-priority module for a compatibility class.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-module-descriptor-compiler-identity","name":"mShaderCompilerIdentity","qualifiedName":"arda::backend::FArdaBackendModuleDescriptor::mShaderCompilerIdentity","kind":"member variable","component":"backend-modules","page":"api-reference.html","signature":"eastl::string mShaderCompilerIdentity","summary":"Stable cache identity for an engine-owned or in-process shader compiler.","details":"Stable cache identity for an engine-owned or in-process shader compiler.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-external-device-property","name":"FArdaExternalDeviceProperty","qualifiedName":"arda::backend::FArdaExternalDeviceProperty","kind":"struct","component":"external-interop","page":"api-reference.html","signature":"struct FArdaExternalDeviceProperty","summary":"Copied module-defined property for a host-owned device.","details":"Copied module-defined property for a host-owned device.","source":"Source/ArdaBackend/Public/ArdaExternalInterop.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-external-device-property-name","name":"mName","qualifiedName":"arda::backend::FArdaExternalDeviceProperty::mName","kind":"member variable","component":"external-interop","page":"api-reference.html","signature":"eastl::string mName","summary":"Stable property name documented by the consuming module.","details":"Stable property name documented by the consuming module.","source":"Source/ArdaBackend/Public/ArdaExternalInterop.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-external-device-property-value","name":"mValue","qualifiedName":"arda::backend::FArdaExternalDeviceProperty::mValue","kind":"member variable","component":"external-interop","page":"api-reference.html","signature":"eastl::string mValue","summary":"Copied property value.","details":"Copied property value.","source":"Source/ArdaBackend/Public/ArdaExternalInterop.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-external-device-desc-properties","name":"mProperties","qualifiedName":"arda::backend::FArdaExternalDeviceDesc::mProperties","kind":"member variable","component":"external-interop","page":"api-reference.html","signature":"eastl::vector\u003cFArdaExternalDeviceProperty\u003e mProperties","summary":"Backend-specific named values; repeated names are permitted.","details":"Backend-specific named values; repeated names are permitted.","source":"Source/ArdaBackend/Public/ArdaExternalInterop.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-shader-module-arguments","name":"FArdaShaderCompilerModuleArguments","qualifiedName":"arda::backend::FArdaShaderCompilerModuleArguments","kind":"struct","component":"shaders","page":"api-reference.html","signature":"struct FArdaShaderCompilerModuleArguments","summary":"Additional deterministic compiler arguments for one exact module.","details":"Additional deterministic compiler arguments for one exact module.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-shader-module-arguments-name","name":"mBackendName","qualifiedName":"arda::backend::FArdaShaderCompilerModuleArguments::mBackendName","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"eastl::string mBackendName","summary":"Stable module name receiving the arguments.","details":"Stable module name receiving the arguments.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-shader-module-arguments-values","name":"mArguments","qualifiedName":"arda::backend::FArdaShaderCompilerModuleArguments::mArguments","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"eastl::vector\u003ceastl::string\u003e mArguments","summary":"Arguments appended before the module configure hook.","details":"Arguments appended before the module configure hook.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-shader-config-module-arguments","name":"mModuleArguments","qualifiedName":"arda::backend::FArdaShaderCompilerConfiguration::mModuleArguments","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"eastl::vector\u003cFArdaShaderCompilerModuleArguments\u003e mModuleArguments","summary":"Per-module compiler arguments keyed by stable backend name.","details":"Per-module compiler arguments keyed by stable backend name.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-shader-job-target","name":"mTarget","qualifiedName":"arda::backend::FArdaShaderCompileJob::mTarget","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"FArdaShaderTarget mTarget","summary":"Exact immutable module target selected for the job.","details":"Exact immutable module target selected for the job.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-shader-diagnostic-backend-name","name":"mBackendName","qualifiedName":"arda::backend::FArdaShaderCompileDiagnostic::mBackendName","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"eastl::string mBackendName","summary":"Stable module name associated with a diagnostic.","details":"Stable module name associated with a diagnostic.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-shader-permutation-backend-name","name":"mBackendName","qualifiedName":"arda::backend::FArdaShaderPermutationParameters::mBackendName","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"eastl::string mBackendName","summary":"Stable module name available to compile policy.","details":"Stable module name available to compile policy.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-shader-permutation-binary-format","name":"mBinaryFormat","qualifiedName":"arda::backend::FArdaShaderPermutationParameters::mBinaryFormat","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"EArdaShaderBinaryFormat mBinaryFormat = EArdaShaderBinaryFormat::BackendDefined","summary":"Module-declared binary format available to compile policy.","details":"Module-declared binary format available to compile policy.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-build-shader-jobs-by-name","name":"BuildRegisteredShaderCompileJobs","qualifiedName":"arda::backend::BuildRegisteredShaderCompileJobs","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(const std::filesystem::path\u0026 OutputDirectory, const eastl::vector\u003ceastl::string\u003e\u0026 BackendNames)","summary":"Builds jobs for exact registered module names.","details":"Builds jobs for exact registered module names.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-compile-shaders-by-names","name":"CompileRegisteredShaderArtifacts","qualifiedName":"arda::backend::CompileRegisteredShaderArtifacts","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path\u0026 OutputDirectory, const eastl::vector\u003ceastl::string\u003e\u0026 BackendNames)","summary":"Cooks artifacts for exact registered module names.","details":"Cooks artifacts for exact registered module names.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-compile-shaders-by-name","name":"CompileRegisteredShaderArtifacts","qualifiedName":"arda::backend::CompileRegisteredShaderArtifacts","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path\u0026 OutputDirectory, const char* BackendName)","summary":"Cooks artifacts for one exact registered module.","details":"Cooks artifacts for one exact registered module.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-ensure-shaders-by-name","name":"EnsureRegisteredShaderArtifacts","qualifiedName":"arda::backend::EnsureRegisteredShaderArtifacts","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(const std::filesystem::path\u0026 OutputDirectory, const char* BackendName)","summary":"Ensures all selected artifacts for one exact module.","details":"Ensures all selected artifacts for one exact module.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-ensure-shader-by-name","name":"EnsureRegisteredShaderArtifact","qualifiedName":"arda::backend::EnsureRegisteredShaderArtifact","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifact(const FArdaShaderType\u0026 Type, const char* BackendName, uint32_t PermutationId, const std::filesystem::path\u0026 OutputDirectory)","summary":"Ensures one artifact for an exact registered module.","details":"Ensures one artifact for an exact registered module.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-shader-extension-by-name","name":"GetShaderArtifactExtension","qualifiedName":"arda::backend::GetShaderArtifactExtension","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] const char* GetShaderArtifactExtension(const char* BackendName) noexcept","summary":"Returns the artifact extension declared by an exact module.","details":"Returns the artifact extension declared by an exact module.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-shader-type-should-compile-target","name":"ShouldCompilePermutation","qualifiedName":"arda::backend::FArdaShaderType::ShouldCompilePermutation","kind":"method","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] bool ShouldCompilePermutation(const FArdaShaderTarget\u0026 Target, uint32_t PermutationId) const","summary":"Evaluates compile policy with exact module identity and binary format.","details":"Evaluates compile policy with exact module identity and binary format.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
+    {"id":"api-arda-backend-shader-type-build-environment-target","name":"BuildCompilationEnvironment","qualifiedName":"arda::backend::FArdaShaderType::BuildCompilationEnvironment","kind":"method","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileEnvironment BuildCompilationEnvironment(const FArdaShaderTarget\u0026 Target, uint32_t PermutationId) const","summary":"Builds deterministic definitions for an exact module target.","details":"Builds deterministic definitions for an exact module target.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]}
   ]
 };
 
-/*
- * Current-source augmentation for runtime shader compilation, permutations,
- * lazy global-shader loading, and persistent native pipeline caches.
- * Existing records and anchors above remain unchanged.
- */
-(function refreshCurrentBackendInventory(api) {
-  "use strict";
-
-  const compiler = "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h";
-  const compilerTypes = "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h";
-  const shaderType = "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h";
-  const shaderMap = "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h";
-  const device = "Source/ArdaBackend/Public/ArdaDevice.h";
-  const rhiDevice = "Source/ArdaBackend/Public/RHIWrappers/ArdaRHIDevice.h";
-  const rhiResources = "Source/ArdaBackend/Public/RHIWrappers/ArdaRHIResources.h";
-
-  function hash32(text) {
-    let value = 0x811c9dc5;
-    for (let index = 0; index < text.length; ++index) {
-      value ^= text.charCodeAt(index);
-      value = Math.imul(value, 0x01000193) >>> 0;
-    }
-    return value.toString(16).padStart(8, "0");
-  }
-
-  function slug(text) {
-    return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  }
-
-  function add(spec) {
-    const [name, qualifiedName, kind, signature, source, overrides = {}] = spec;
-    const semantic = `${qualifiedName}|${kind}|${signature}`;
-    const record = {
-      id: `api-${slug(qualifiedName)}-${hash32(semantic)}`,
-      name,
-      qualifiedName,
-      kind,
-      component: source.includes("RHIWrappers")
-        ? (source.endsWith("ArdaRHIDevice.h") ? "rhi-device" : "rhi-resources")
-        : (source.endsWith("ArdaDevice.h") ? "core" : "shaders"),
-      page: "api-reference.html",
-      signature,
-      summary: `Declares ${qualifiedName} in the current public backend API.`,
-      details: "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
-      source,
-      params: [],
-      returns: kind === "function" || kind === "method" || kind === "operator" || kind === "constructor"
-        ? "See the canonical signature and source contract."
-        : "Not applicable.",
-      ownership: "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
-      errors: "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
-      threading: "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
-      related: ["arda::backend", "arda::rhi"]
-    };
-    api.symbols.push(Object.assign(record, overrides));
-  }
-
-  const specs = [
-    // ArdaShaderCompiler.h: error model.
-    ["EArdaShaderCompileError", "arda::backend::EArdaShaderCompileError", "enum", "enum class EArdaShaderCompileError : uint8_t", compiler],
-    ["None", "arda::backend::EArdaShaderCompileError::None", "enumerator", "None", compiler],
-    ["RegistrationFailed", "arda::backend::EArdaShaderCompileError::RegistrationFailed", "enumerator", "RegistrationFailed", compiler],
-    ["CompilerUnavailable", "arda::backend::EArdaShaderCompileError::CompilerUnavailable", "enumerator", "CompilerUnavailable", compiler],
-    ["SourceResolutionFailed", "arda::backend::EArdaShaderCompileError::SourceResolutionFailed", "enumerator", "SourceResolutionFailed", compiler],
-    ["UnsupportedStage", "arda::backend::EArdaShaderCompileError::UnsupportedStage", "enumerator", "UnsupportedStage", compiler],
-    ["InvalidPermutation", "arda::backend::EArdaShaderCompileError::InvalidPermutation", "enumerator", "InvalidPermutation", compiler],
-    ["DirectoryCreationFailed", "arda::backend::EArdaShaderCompileError::DirectoryCreationFailed", "enumerator", "DirectoryCreationFailed", compiler],
-    ["ProcessLaunchFailed", "arda::backend::EArdaShaderCompileError::ProcessLaunchFailed", "enumerator", "ProcessLaunchFailed", compiler],
-    ["CompilationFailed", "arda::backend::EArdaShaderCompileError::CompilationFailed", "enumerator", "CompilationFailed", compiler],
-    ["ArtifactMissing", "arda::backend::EArdaShaderCompileError::ArtifactMissing", "enumerator", "ArtifactMissing", compiler],
-    ["ArtifactOutdated", "arda::backend::EArdaShaderCompileError::ArtifactOutdated", "enumerator", "ArtifactOutdated", compiler],
-    ["CacheWriteFailed", "arda::backend::EArdaShaderCompileError::CacheWriteFailed", "enumerator", "CacheWriteFailed", compiler],
-    ["ManifestWriteFailed", "arda::backend::EArdaShaderCompileError::ManifestWriteFailed", "enumerator", "ManifestWriteFailed", compiler],
-
-    // Compiler configuration.
-    ["FArdaShaderCompilerConfiguration", "arda::backend::FArdaShaderCompilerConfiguration", "struct", "struct FArdaShaderCompilerConfiguration", compiler],
-    ["mCompilerExecutable", "arda::backend::FArdaShaderCompilerConfiguration::mCompilerExecutable", "member variable", "std::filesystem::path mCompilerExecutable", compiler],
-    ["mSourceRoot", "arda::backend::FArdaShaderCompilerConfiguration::mSourceRoot", "member variable", "std::filesystem::path mSourceRoot", compiler],
-    ["mbCompileMissingArtifacts", "arda::backend::FArdaShaderCompilerConfiguration::mbCompileMissingArtifacts", "member variable", "bool mbCompileMissingArtifacts", compiler],
-    ["mbCompileOutdatedArtifacts", "arda::backend::FArdaShaderCompilerConfiguration::mbCompileOutdatedArtifacts", "member variable", "bool mbCompileOutdatedArtifacts", compiler],
-    ["mVulkanTargetEnvironment", "arda::backend::FArdaShaderCompilerConfiguration::mVulkanTargetEnvironment", "member variable", "eastl::string mVulkanTargetEnvironment = \"vulkan1.3\"", compiler],
-    ["mVulkanTextureBindingShift", "arda::backend::FArdaShaderCompilerConfiguration::mVulkanTextureBindingShift", "member variable", "uint32_t mVulkanTextureBindingShift = 0", compiler],
-    ["mVulkanSamplerBindingShift", "arda::backend::FArdaShaderCompilerConfiguration::mVulkanSamplerBindingShift", "member variable", "uint32_t mVulkanSamplerBindingShift = 128", compiler],
-    ["mVulkanConstantBufferBindingShift", "arda::backend::FArdaShaderCompilerConfiguration::mVulkanConstantBufferBindingShift", "member variable", "uint32_t mVulkanConstantBufferBindingShift = 256", compiler],
-    ["mVulkanUnorderedAccessBindingShift", "arda::backend::FArdaShaderCompilerConfiguration::mVulkanUnorderedAccessBindingShift", "member variable", "uint32_t mVulkanUnorderedAccessBindingShift = 384", compiler],
-    ["mCommonArguments", "arda::backend::FArdaShaderCompilerConfiguration::mCommonArguments", "member variable", "eastl::vector<eastl::string> mCommonArguments", compiler],
-    ["mDxilArguments", "arda::backend::FArdaShaderCompilerConfiguration::mDxilArguments", "member variable", "eastl::vector<eastl::string> mDxilArguments", compiler],
-    ["mSpirvArguments", "arda::backend::FArdaShaderCompilerConfiguration::mSpirvArguments", "member variable", "eastl::vector<eastl::string> mSpirvArguments", compiler],
-
-    // Compile jobs.
-    ["FArdaShaderCompileJob", "arda::backend::FArdaShaderCompileJob", "struct", "struct FArdaShaderCompileJob", compiler],
-    ["mType", "arda::backend::FArdaShaderCompileJob::mType", "member variable", "FArdaShaderType mType", compiler],
-    ["mBackend", "arda::backend::FArdaShaderCompileJob::mBackend", "member variable", "EArdaBackendType mBackend = DefaultBackend", compiler],
-    ["mPermutationId", "arda::backend::FArdaShaderCompileJob::mPermutationId", "member variable", "uint32_t mPermutationId = 0", compiler],
-    ["mSourcePath", "arda::backend::FArdaShaderCompileJob::mSourcePath", "member variable", "std::filesystem::path mSourcePath", compiler],
-    ["mSourceIdentity", "arda::backend::FArdaShaderCompileJob::mSourceIdentity", "member variable", "eastl::string mSourceIdentity", compiler],
-    ["mOutputPath", "arda::backend::FArdaShaderCompileJob::mOutputPath", "member variable", "std::filesystem::path mOutputPath", compiler],
-    ["mProfile", "arda::backend::FArdaShaderCompileJob::mProfile", "member variable", "eastl::string mProfile", compiler],
-    ["mEnvironment", "arda::backend::FArdaShaderCompileJob::mEnvironment", "member variable", "FArdaShaderCompileEnvironment mEnvironment", compiler],
-    ["mArguments", "arda::backend::FArdaShaderCompileJob::mArguments", "member variable", "eastl::vector<eastl::string> mArguments", compiler],
-    ["mInputKey", "arda::backend::FArdaShaderCompileJob::mInputKey", "member variable", "uint64_t mInputKey = 0", compiler],
-
-    // Diagnostics and aggregate results.
-    ["FArdaShaderCompileDiagnostic", "arda::backend::FArdaShaderCompileDiagnostic", "struct", "struct FArdaShaderCompileDiagnostic", compiler],
-    ["mCode", "arda::backend::FArdaShaderCompileDiagnostic::mCode", "member variable", "EArdaShaderCompileError mCode = EArdaShaderCompileError::None", compiler],
-    ["mShaderType", "arda::backend::FArdaShaderCompileDiagnostic::mShaderType", "member variable", "eastl::string mShaderType", compiler],
-    ["mBackend", "arda::backend::FArdaShaderCompileDiagnostic::mBackend", "member variable", "EArdaBackendType mBackend = DefaultBackend", compiler],
-    ["mPermutationId", "arda::backend::FArdaShaderCompileDiagnostic::mPermutationId", "member variable", "uint32_t mPermutationId = 0", compiler],
-    ["mSourcePath", "arda::backend::FArdaShaderCompileDiagnostic::mSourcePath", "member variable", "std::filesystem::path mSourcePath", compiler],
-    ["mOutputPath", "arda::backend::FArdaShaderCompileDiagnostic::mOutputPath", "member variable", "std::filesystem::path mOutputPath", compiler],
-    ["mMessage", "arda::backend::FArdaShaderCompileDiagnostic::mMessage", "member variable", "eastl::string mMessage", compiler],
-    ["FArdaShaderCompileResult", "arda::backend::FArdaShaderCompileResult", "struct", "struct FArdaShaderCompileResult", compiler],
-    ["mJobsCompiled", "arda::backend::FArdaShaderCompileResult::mJobsCompiled", "member variable", "uint32_t mJobsCompiled = 0", compiler],
-    ["mCacheHits", "arda::backend::FArdaShaderCompileResult::mCacheHits", "member variable", "uint32_t mCacheHits = 0", compiler],
-    ["mJobsSkipped", "arda::backend::FArdaShaderCompileResult::mJobsSkipped", "member variable", "uint32_t mJobsSkipped = 0", compiler],
-    ["mJobs", "arda::backend::FArdaShaderCompileResult::mJobs", "member variable", "eastl::vector<FArdaShaderCompileJob> mJobs", compiler],
-    ["mDiagnostics", "arda::backend::FArdaShaderCompileResult::mDiagnostics", "member variable", "eastl::vector<FArdaShaderCompileDiagnostic> mDiagnostics", compiler],
-    ["operator bool", "arda::backend::FArdaShaderCompileResult::operator bool", "operator", "[[nodiscard]] explicit operator bool() const noexcept", compiler],
-
-    // Compiler entry points.
-    ["ConfigureShaderCompiler", "arda::backend::ConfigureShaderCompiler", "function", "void ConfigureShaderCompiler(const FArdaShaderCompilerConfiguration& Configuration)", compiler],
-    ["GetShaderCompilerConfiguration", "arda::backend::GetShaderCompilerConfiguration", "function", "[[nodiscard]] FArdaShaderCompilerConfiguration GetShaderCompilerConfiguration()", compiler],
-    ["ResetShaderCompilerConfiguration", "arda::backend::ResetShaderCompilerConfiguration", "function", "void ResetShaderCompilerConfiguration()", compiler],
-    ["BuildRegisteredShaderCompileJobs", "arda::backend::BuildRegisteredShaderCompileJobs", "function", "[[nodiscard]] FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(const std::filesystem::path& OutputDirectory, const std::vector<EArdaBackendType>& Backends)", compiler],
-    ["CompileRegisteredShaderArtifacts", "arda::backend::CompileRegisteredShaderArtifacts", "function", "[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, const std::vector<EArdaBackendType>& Backends)", compiler],
-    ["CompileRegisteredShaderArtifacts", "arda::backend::CompileRegisteredShaderArtifacts", "function", "[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, EArdaBackendType Backend)", compiler],
-    ["EnsureRegisteredShaderArtifacts", "arda::backend::EnsureRegisteredShaderArtifacts", "function", "[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, EArdaBackendType Backend)", compiler],
-    ["EnsureRegisteredShaderArtifact", "arda::backend::EnsureRegisteredShaderArtifact", "function", "[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifact(const FArdaShaderType& Type, EArdaBackendType Backend, uint32_t PermutationId, const std::filesystem::path& OutputDirectory)", compiler],
-
-    // ArdaShaderCompilerTypes.h.
-    ["FArdaShaderDefine", "arda::backend::FArdaShaderDefine", "struct", "struct FArdaShaderDefine", compilerTypes],
-    ["mName", "arda::backend::FArdaShaderDefine::mName", "member variable", "eastl::string mName", compilerTypes],
-    ["mValue", "arda::backend::FArdaShaderDefine::mValue", "member variable", "eastl::string mValue", compilerTypes],
-    ["FArdaShaderCompileEnvironment", "arda::backend::FArdaShaderCompileEnvironment", "class", "class FArdaShaderCompileEnvironment final", compilerTypes],
-    ["SetDefine", "arda::backend::FArdaShaderCompileEnvironment::SetDefine", "method", "bool SetDefine(const eastl::string& Name, const eastl::string& Value)", compilerTypes],
-    ["SetDefine", "arda::backend::FArdaShaderCompileEnvironment::SetDefine", "method", "template <typename Integer, std::enable_if_t<std::is_integral_v<Integer> && !std::is_same_v<std::remove_cv_t<Integer>, bool>, int> = 0> bool SetDefine(const eastl::string& Name, Integer Value)", compilerTypes],
-    ["SetDefine", "arda::backend::FArdaShaderCompileEnvironment::SetDefine", "method", "bool SetDefine(const eastl::string& Name, bool Value)", compilerTypes],
-    ["GetDefines", "arda::backend::FArdaShaderCompileEnvironment::GetDefines", "method", "[[nodiscard]] const eastl::vector<FArdaShaderDefine>& GetDefines() const noexcept", compilerTypes],
-    ["FArdaShaderPermutationParameters", "arda::backend::FArdaShaderPermutationParameters", "struct", "struct FArdaShaderPermutationParameters", compilerTypes],
-    ["mType", "arda::backend::FArdaShaderPermutationParameters::mType", "member variable", "const FArdaShaderType* mType = nullptr", compilerTypes],
-    ["mBackend", "arda::backend::FArdaShaderPermutationParameters::mBackend", "member variable", "EArdaBackendType mBackend = DefaultBackend", compilerTypes],
-    ["mPermutationId", "arda::backend::FArdaShaderPermutationParameters::mPermutationId", "member variable", "uint32_t mPermutationId = 0", compilerTypes],
-    ["TArdaShaderPermutationDomain", "arda::backend::TArdaShaderPermutationDomain", "class", "template <typename... Dimensions> class TArdaShaderPermutationDomain final", compilerTypes],
-    ["PermutationCount", "arda::backend::TArdaShaderPermutationDomain::PermutationCount", "constant", "static constexpr uint32_t PermutationCount = static_cast<uint32_t>(CalculateCount())", compilerTypes],
-    ["TArdaShaderPermutationDomain", "arda::backend::TArdaShaderPermutationDomain::TArdaShaderPermutationDomain", "constructor", "constexpr TArdaShaderPermutationDomain() noexcept = default", compilerTypes],
-    ["TArdaShaderPermutationDomain", "arda::backend::TArdaShaderPermutationDomain::TArdaShaderPermutationDomain", "constructor", "explicit constexpr TArdaShaderPermutationDomain(uint32_t PermutationId) noexcept", compilerTypes],
-    ["IsValidPermutationId", "arda::backend::TArdaShaderPermutationDomain::IsValidPermutationId", "method", "[[nodiscard]] static constexpr bool IsValidPermutationId(uint32_t PermutationId) noexcept", compilerTypes],
-    ["IsValid", "arda::backend::TArdaShaderPermutationDomain::IsValid", "method", "[[nodiscard]] constexpr bool IsValid() const noexcept", compilerTypes],
-    ["ToId", "arda::backend::TArdaShaderPermutationDomain::ToId", "method", "[[nodiscard]] constexpr uint32_t ToId() const noexcept", compilerTypes],
-    ["Get", "arda::backend::TArdaShaderPermutationDomain::Get", "method", "template <typename Dimension> [[nodiscard]] constexpr typename Dimension::ValueType Get() const noexcept", compilerTypes],
-    ["Set", "arda::backend::TArdaShaderPermutationDomain::Set", "method", "template <typename Dimension> constexpr bool Set(typename Dimension::ValueType Value) noexcept", compilerTypes],
-    ["ModifyCompilationEnvironment", "arda::backend::TArdaShaderPermutationDomain::ModifyCompilationEnvironment", "method", "bool ModifyCompilationEnvironment(FArdaShaderCompileEnvironment& Environment) const", compilerTypes],
-    ["ARDA_SHADER_PERMUTATION_BOOL", "ARDA_SHADER_PERMUTATION_BOOL", "macro", "#define ARDA_SHADER_PERMUTATION_BOOL(Name, DefineName)", compilerTypes],
-    ["ARDA_SHADER_PERMUTATION_INT", "ARDA_SHADER_PERMUTATION_INT", "macro", "#define ARDA_SHADER_PERMUTATION_INT(Name, DefineName, Count)", compilerTypes],
-
-    // Backend configuration and persistent native pipeline caches.
-    ["EArdaShaderCompilationMode", "arda::backend::EArdaShaderCompilationMode", "enum", "enum class EArdaShaderCompilationMode", device],
-    ["LoadOnly", "arda::backend::EArdaShaderCompilationMode::LoadOnly", "enumerator", "LoadOnly", device],
-    ["Startup", "arda::backend::EArdaShaderCompilationMode::Startup", "enumerator", "Startup", device],
-    ["OnDemand", "arda::backend::EArdaShaderCompilationMode::OnDemand", "enumerator", "OnDemand", device],
-    ["mShaderCompilationMode", "arda::backend::FArdaBackendConfiguration::mShaderCompilationMode", "member variable", "EArdaShaderCompilationMode mShaderCompilationMode = EArdaShaderCompilationMode::OnDemand", device],
-    ["mShaderCacheDirectory", "arda::backend::FArdaBackendConfiguration::mShaderCacheDirectory", "member variable", "std::filesystem::path mShaderCacheDirectory = std::filesystem::path(\".arda-cache\") / \"shaders\"", device],
-    ["mPipelineCacheDirectory", "arda::backend::FArdaBackendConfiguration::mPipelineCacheDirectory", "member variable", "std::filesystem::path mPipelineCacheDirectory = std::filesystem::path(\".arda-cache\") / \"pipelines\"", device],
-    ["FlushAndDisablePipelineCachePersistence", "arda::rhi::IArdaRHIDevice::FlushAndDisablePipelineCachePersistence", "method", "virtual void FlushAndDisablePipelineCachePersistence() noexcept = 0", rhiDevice],
-    ["GetPersistentCacheHash", "arda::rhi::IArdaRHIShader::GetPersistentCacheHash", "method", "[[nodiscard]] virtual uint64_t GetPersistentCacheHash() const noexcept", rhiResources],
-    ["mPersistentCacheKey", "arda::rhi::FArdaRHIGraphicsPipelineDesc::mPersistentCacheKey", "member variable", "uint64_t mPersistentCacheKey = 0", rhiResources],
-    ["mPersistentCacheKey", "arda::rhi::FArdaRHIComputePipelineDesc::mPersistentCacheKey", "member variable", "uint64_t mPersistentCacheKey = 0", rhiResources],
-
-    // Lazy and permutation-aware global shader maps.
-    ["ArtifactCompileFailed", "arda::backend::EArdaGlobalShaderMapError::ArtifactCompileFailed", "enumerator", "ArtifactCompileFailed", shaderMap],
-    ["IsLoaded", "arda::backend::FArdaGlobalShaderInstance::IsLoaded", "method", "[[nodiscard]] bool IsLoaded() const noexcept", shaderMap],
-    ["GetPermutationId", "arda::backend::FArdaGlobalShaderInstance::GetPermutationId", "method", "[[nodiscard]] uint32_t GetPermutationId() const noexcept", shaderMap],
-    ["mPermutationId", "arda::backend::FArdaGlobalShaderInstance::mPermutationId", "member variable", "uint32_t mPermutationId = 0", shaderMap],
-    ["Initialize", "arda::backend::FArdaGlobalShaderMap::Initialize", "method", "[[nodiscard]] bool Initialize(const FArdaDeviceContext& DeviceContext)", shaderMap, {
-      summary: "Initializes the global shader map using the configured persistent backend shader cache.",
-      details: "Commits shader registrations and uses FArdaBackendConfiguration::mShaderCacheDirectory. Behavior follows the configured EArdaShaderCompilationMode: OnDemand preallocates pointer-stable slots but leaves them unloaded until lookup or enumeration; Startup and LoadOnly eagerly materialize every selected slot by loading backend-specific bytecode and creating its RHI shader and parameter binding layouts. Repeating the same device context, backend, and configured directory is idempotent and pointer-stable; changing any of them after success requires Reset first.",
-      params: ["const FArdaDeviceContext& DeviceContext"],
-      returns: "True when registration and policy-specific initialization succeed.",
-      ownership: "The map retains the RHI device, created shader references, binding layouts, directory, and stable instance-slot storage until Reset or destruction. Returned instance pointers and references are non-owning views into that storage.",
-      errors: "Returns false and records diagnostics for registration failure, invalid device, missing, empty, or unreadable bytecode, shader or layout creation failure, or a required Reset.",
-      threading: "No concurrent mutation contract is declared; serialize Initialize and Reset with Find, Enumerate, diagnostics access, and device shutdown.",
-      related: ["arda::backend::FArdaGlobalShaderMap"]
-    }],
-
-    // Shader type permutation registration and compile hooks.
-    ["ArtifactStemCollision", "arda::backend::EArdaShaderRegistrationError::ArtifactStemCollision", "enumerator", "ArtifactStemCollision", shaderType],
-    ["RegistryMutation", "arda::backend::EArdaShaderRegistrationError::RegistryMutation", "enumerator", "RegistryMutation", shaderType],
-    ["FShouldCompilePermutationFunction", "arda::backend::FArdaShaderType::FShouldCompilePermutationFunction", "alias", "using FShouldCompilePermutationFunction = bool (*)(const FArdaShaderPermutationParameters&)", shaderType],
-    ["FModifyCompilationEnvironmentFunction", "arda::backend::FArdaShaderType::FModifyCompilationEnvironmentFunction", "alias", "using FModifyCompilationEnvironmentFunction = void (*)(const FArdaShaderPermutationParameters&, FArdaShaderCompileEnvironment&)", shaderType],
-    ["GetPermutationCount", "arda::backend::FArdaShaderType::GetPermutationCount", "method", "[[nodiscard]] uint32_t GetPermutationCount() const noexcept", shaderType],
-    ["ShouldCompilePermutation", "arda::backend::FArdaShaderType::ShouldCompilePermutation", "method", "[[nodiscard]] bool ShouldCompilePermutation(EArdaBackendType Backend, uint32_t PermutationId) const", shaderType],
-    ["BuildCompilationEnvironment", "arda::backend::FArdaShaderType::BuildCompilationEnvironment", "method", "[[nodiscard]] FArdaShaderCompileEnvironment BuildCompilationEnvironment(EArdaBackendType Backend, uint32_t PermutationId) const", shaderType],
-    ["GetPermutationArtifactStem", "arda::backend::FArdaShaderType::GetPermutationArtifactStem", "method", "[[nodiscard]] eastl::string GetPermutationArtifactStem(uint32_t PermutationId) const", shaderType],
-    ["EnumerateSnapshots", "arda::backend::FArdaShaderTypeRegistration::EnumerateSnapshots", "method", "[[nodiscard]] static eastl::vector<FArdaShaderType> EnumerateSnapshots()", shaderType],
-    ["TShaderPermutationDomain", "arda::backend::detail::TShaderPermutationDomain", "struct", "template <typename ShaderClass, typename = void> struct TShaderPermutationDomain", shaderType],
-    ["TShaderPermutationDomain", "arda::backend::detail::TShaderPermutationDomain", "struct", "template <typename ShaderClass> struct TShaderPermutationDomain<ShaderClass, std::void_t<typename ShaderClass::FPermutationDomain>>", shaderType],
-    ["PermutationCount", "arda::backend::detail::TShaderPermutationDomain::PermutationCount", "constant", "static constexpr uint32_t PermutationCount = 1", shaderType],
-    ["PermutationCount", "arda::backend::detail::TShaderPermutationDomain<ShaderClass, std::void_t<typename ShaderClass::FPermutationDomain>>::PermutationCount", "constant", "static constexpr uint32_t PermutationCount = Domain::PermutationCount", shaderType],
-    ["AddDefines", "arda::backend::detail::TShaderPermutationDomain::AddDefines", "method", "static void AddDefines(uint32_t, FArdaShaderCompileEnvironment&)", shaderType],
-    ["AddDefines", "arda::backend::detail::TShaderPermutationDomain<ShaderClass, std::void_t<typename ShaderClass::FPermutationDomain>>::AddDefines", "method", "static void AddDefines(uint32_t PermutationId, FArdaShaderCompileEnvironment& Environment)", shaderType],
-    ["THasShouldCompilePermutation", "arda::backend::detail::THasShouldCompilePermutation", "struct", "template <typename ShaderClass, typename = void> struct THasShouldCompilePermutation : std::false_type", shaderType],
-    ["THasNamedShouldCompilePermutation", "arda::backend::detail::THasNamedShouldCompilePermutation", "struct", "template <typename ShaderClass, typename = void> struct THasNamedShouldCompilePermutation : std::false_type", shaderType],
-    ["THasModifyCompilationEnvironment", "arda::backend::detail::THasModifyCompilationEnvironment", "struct", "template <typename ShaderClass, typename = void> struct THasModifyCompilationEnvironment : std::false_type", shaderType],
-    ["THasModifyCompilationEnvironment", "arda::backend::detail::THasModifyCompilationEnvironment", "struct", "template <typename ShaderClass> struct THasModifyCompilationEnvironment<ShaderClass, std::void_t<decltype(&ShaderClass::ModifyCompilationEnvironment)>>", shaderType],
-    ["THasNamedModifyCompilationEnvironment", "arda::backend::detail::THasNamedModifyCompilationEnvironment", "struct", "template <typename ShaderClass, typename = void> struct THasNamedModifyCompilationEnvironment : std::false_type", shaderType],
-    ["ShouldCompileShaderPermutation", "arda::backend::detail::ShouldCompileShaderPermutation", "function", "template <typename ShaderClass> [[nodiscard]] bool ShouldCompileShaderPermutation(const FArdaShaderPermutationParameters& Parameters)", shaderType],
-    ["BuildShaderCompilationEnvironment", "arda::backend::detail::BuildShaderCompilationEnvironment", "function", "template <typename ShaderClass> void BuildShaderCompilationEnvironment(const FArdaShaderPermutationParameters& Parameters, FArdaShaderCompileEnvironment& Environment)", shaderType]
-  ];
-
-  specs.forEach(add);
-})(window.ArdaBackendApi);
+/* Exact-module shader targeting and generic external-device properties added by
+ * the universal backend-provider boundary. Kept as structured additions so the
+ * authored inventory remains reviewable while preserving stable deep links. */
+(() => {
+  const removedQualifiedNames = new Set([
+    "arda::backend::FArdaExternalD3D12DeviceDesc",
+    "arda::backend::FArdaExternalVulkanQueueDesc",
+    "arda::backend::FArdaExternalVulkanDeviceDesc",
+    "arda::backend::IArdaExternalDeviceProvider::GetD3D12DeviceDesc",
+    "arda::backend::IArdaExternalDeviceProvider::GetVulkanDeviceDesc",
+    "arda::backend::FArdaShaderCompilerConfiguration::mVulkanTargetEnvironment",
+    "arda::backend::FArdaShaderCompilerConfiguration::mDxilArguments",
+    "arda::backend::FArdaShaderCompilerConfiguration::mSpirvArguments"
+  ]);
+  window.ArdaBackendApi.symbols = window.ArdaBackendApi.symbols.filter((symbol) => {
+    if (removedQualifiedNames.has(symbol.qualifiedName)) return false;
+    if (symbol.qualifiedName.startsWith("arda::backend::FArdaExternalD3D12DeviceDesc::")) return false;
+    if (symbol.qualifiedName.startsWith("arda::backend::FArdaExternalVulkanQueueDesc::")) return false;
+    if (symbol.qualifiedName.startsWith("arda::backend::FArdaExternalVulkanDeviceDesc::")) return false;
+    return true;
+  });
+})();

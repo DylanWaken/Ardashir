@@ -22,6 +22,15 @@ namespace arda::backend
         FArdaNativeObject mObject;
     };
 
+    /** One copied, module-defined external-device property. */
+    struct FArdaExternalDeviceProperty
+    {
+        /** Stable property name documented by the consuming backend module. */
+        eastl::string mName;
+        /** String value copied by Arda before the provider call returns. */
+        eastl::string mValue;
+    };
+
     /** Describes one queue supplied with a generic external device. */
     struct FArdaExternalQueueDesc
     {
@@ -59,101 +68,10 @@ namespace arda::backend
         eastl::vector<FArdaExternalQueueDesc> mQueues;
         /** Backend-specific named native objects. */
         eastl::vector<FArdaExternalNativeObject> mAdditionalObjects;
+        /** Backend-specific named values; repeated names are permitted. */
+        eastl::vector<FArdaExternalDeviceProperty> mProperties;
         /** Opaque immutable bytes interpreted only by the named backend module. */
         eastl::vector<uint8_t> mBackendData;
-    };
-
-    /**
-     * Describes an externally owned Direct3D 12 device and its NVRHI configuration.
-     * All native objects are opaque and non-owning. They must remain valid through backend
-     * shutdown, either by host ownership or by the provider's shared lifetime token.
-     */
-    struct FArdaExternalD3D12DeviceDesc
-    {
-        /** Required opaque ID3D12Device pointer. */
-        FArdaNativeObject mDevice;
-        /** Required opaque graphics ID3D12CommandQueue pointer. */
-        FArdaNativeObject mGraphicsQueue;
-        /** Optional opaque compute ID3D12CommandQueue pointer. */
-        FArdaNativeObject mComputeQueue;
-        /** Optional opaque copy ID3D12CommandQueue pointer. */
-        FArdaNativeObject mCopyQueue;
-        /** Optional opaque IDXGIFactory pointer used by presentation implementations. */
-        FArdaNativeObject mDxgiFactory;
-        /** NVRHI render-target-view descriptor heap capacity. */
-        uint32_t mRenderTargetViewHeapSize = 1024;
-        /** NVRHI depth-stencil-view descriptor heap capacity. */
-        uint32_t mDepthStencilViewHeapSize = 1024;
-        /** NVRHI shader-resource-view descriptor heap capacity. */
-        uint32_t mShaderResourceViewHeapSize = 16384;
-        /** NVRHI sampler descriptor heap capacity. */
-        uint32_t mSamplerHeapSize = 1024;
-        /** NVRHI timer-query capacity. */
-        uint32_t mMaxTimerQueries = 256;
-        /** Enables directly indexed descriptor heaps when supported by the device. */
-        bool mbEnableHeapDirectlyIndexed = false;
-        /** Enables NVRHI Aftermath integration when configured by the host. */
-        bool mbAftermathEnabled = false;
-        /** Enables NVRHI buffer-lifetime diagnostics. */
-        bool mbLogBufferLifetime = false;
-        /** Enables NVAPI ray-tracing validation when available. */
-        bool mbEnableRayTracingValidation = false;
-        /** Enables D3D12 enhanced barriers when supported. */
-        bool mbEnableEnhancedBarriers = true;
-    };
-
-    /**
-     * Identifies an externally owned Vulkan queue.
-     * The host must externally synchronize queue submissions and destruction with Arda use.
-     */
-    struct FArdaExternalVulkanQueueDesc
-    {
-        /** Opaque VkQueue value, or null for an optional queue. */
-        FArdaNativeObject mQueue;
-        /** Vulkan queue-family index containing the queue. */
-        uint32_t mFamilyIndex = 0;
-        /** Queue index within the family, retained for host diagnostics and validation. */
-        uint32_t mQueueIndex = 0;
-    };
-
-    /**
-     * Describes an externally owned Vulkan device for NVRHI.
-     * Raw Vulkan objects are never destroyed by Arda. The host must keep the instance,
-     * physical device, logical device, queues, allocation callbacks, and enabled-extension
-     * contracts valid until backend shutdown, and must obey Vulkan host-synchronization rules.
-     * The physical device and logical device must use Vulkan 1.3 or newer, and the logical
-     * device must have dynamicRendering, synchronization2, and timelineSemaphore enabled.
-     */
-    struct FArdaExternalVulkanDeviceDesc
-    {
-        /** Required opaque VkInstance value. */
-        FArdaNativeObject mInstance;
-        /** Required opaque VkPhysicalDevice value. */
-        FArdaNativeObject mPhysicalDevice;
-        /** Required opaque VkDevice value. */
-        FArdaNativeObject mDevice;
-        /** Required graphics queue descriptor. */
-        FArdaExternalVulkanQueueDesc mGraphicsQueue;
-        /** Optional compute queue descriptor. */
-        FArdaExternalVulkanQueueDesc mComputeQueue;
-        /** Optional copy/transfer queue descriptor. */
-        FArdaExternalVulkanQueueDesc mCopyQueue;
-        /** Copied names of instance extensions enabled by the host. */
-        eastl::vector<eastl::string> mInstanceExtensions;
-        /** Copied names of device extensions enabled by the host. */
-        eastl::vector<eastl::string> mDeviceExtensions;
-        /** Optional opaque pointer to persistent VkAllocationCallbacks storage. */
-        FArdaNativeObject mAllocationCallbacks;
-        /** Whether bufferDeviceAddress was enabled when the host created the device. */
-        bool mbBufferDeviceAddressSupported = false;
-        /** Enables NVRHI Aftermath integration when configured by the host. */
-        bool mbAftermathEnabled = false;
-        /** Enables NVRHI buffer-lifetime diagnostics. */
-        bool mbLogBufferLifetime = false;
-        /** NVRHI timer-query capacity. */
-        uint32_t mMaxTimerQueries = 256;
-        /** Vulkan loader library name, or empty to use NVRHI's platform default. */
-        eastl::string mVulkanLibraryName;
     };
 
     /**
@@ -182,20 +100,6 @@ namespace arda::backend
          */
         [[nodiscard]] virtual bool GetExternalDeviceDesc(
             FArdaExternalDeviceDesc& OutDesc) const { return false; }
-        /**
-         * Copies the Direct3D 12 descriptor when supported.
-         * @param OutDesc Receives a self-contained descriptor.
-         * @return True when a valid Direct3D 12 descriptor was supplied.
-         */
-        [[nodiscard]] virtual bool GetD3D12DeviceDesc(
-            FArdaExternalD3D12DeviceDesc& OutDesc) const { return false; }
-        /**
-         * Copies the Vulkan descriptor when supported.
-         * @param OutDesc Receives a descriptor whose extension names are copied values.
-         * @return True when a valid Vulkan descriptor was supplied.
-         */
-        [[nodiscard]] virtual bool GetVulkanDeviceDesc(
-            FArdaExternalVulkanDeviceDesc& OutDesc) const { return false; }
         /**
          * Returns an optional token retaining the native device lifetime.
          * @return A shared token copied and retained through backend shutdown, or empty.

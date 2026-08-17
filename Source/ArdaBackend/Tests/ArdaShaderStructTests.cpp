@@ -689,6 +689,7 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
     ASSERT_TRUE(FirstJobs);
     ASSERT_EQ(FirstJobs.mJobs.size(), 6u);
     EXPECT_EQ(FirstJobs.mJobsSkipped, 6u);
+    EXPECT_FALSE(FirstJobs.mJobs[0].mTarget.mBackendName.empty());
     EXPECT_EQ(FirstJobs.mJobs[0].mProfile, "cs_6_0");
     EXPECT_EQ(
         FirstJobs.mJobs[0].mOutputPath.filename(),
@@ -705,12 +706,29 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
             return Job.mBackend == EArdaBackendType::Vulkan;
         });
     ASSERT_NE(VulkanJob, FirstJobs.mJobs.end());
+    EXPECT_EQ(VulkanJob->mTarget.mBackendName, "nvrhi-vulkan");
+    EXPECT_EQ(
+        VulkanJob->mTarget.mBinaryFormat,
+        EArdaShaderBinaryFormat::Spirv);
     EXPECT_NE(
         std::find(
             VulkanJob->mArguments.begin(),
             VulkanJob->mArguments.end(),
             eastl::string("-spirv")),
         VulkanJob->mArguments.end());
+
+    const FArdaShaderCompileResult NamedJobs =
+        BuildRegisteredShaderCompileJobs(
+            Output, eastl::vector<eastl::string>{ "nvrhi-vulkan" });
+    ASSERT_TRUE(NamedJobs);
+    ASSERT_EQ(NamedJobs.mJobs.size(), 3u);
+    EXPECT_TRUE(std::all_of(
+        NamedJobs.mJobs.begin(), NamedJobs.mJobs.end(),
+        [](const FArdaShaderCompileJob& Job)
+        {
+            return Job.mTarget.mBackendName == "nvrhi-vulkan" &&
+                Job.mOutputPath.extension() == ".spv";
+        }));
     EXPECT_NE(
         std::find(
             VulkanJob->mArguments.begin(),

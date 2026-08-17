@@ -1,4 +1,4 @@
-/** @file ArdaBackendPch.h
+/** @file ArdaNvrhiPch.h
  *  Collects platform, graphics API, NVRHI, and utility headers used by the backend.
  */
 #pragma once
@@ -14,20 +14,23 @@
     #endif
 
     #include <Windows.h>
-    #include <d3d12.h>
-    #include <dxgi1_6.h>
-    #include <wrl/client.h>
+    #if defined(ARDA_NVRHI_WITH_D3D12)
+        #include <d3d12.h>
+        #include <dxgi1_6.h>
+        #include <wrl/client.h>
+    #endif
 #endif
-
-/** Selects Vulkan-Hpp's runtime-configurable dispatch loader. */
-#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
-/** Configures Vulkan-Hpp to report failures without C++ exceptions. */
-#define VULKAN_HPP_NO_EXCEPTIONS 1
-#include <vulkan/vulkan.hpp>
 
 #include <nvrhi/nvrhi.h>
 #include <nvrhi/validation.h>
-#include <nvrhi/vulkan.h>
+#if defined(ARDA_NVRHI_WITH_VULKAN)
+    /** Selects Vulkan-Hpp's runtime-configurable dispatch loader. */
+    #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+    /** Configures Vulkan-Hpp to report failures without C++ exceptions. */
+    #define VULKAN_HPP_NO_EXCEPTIONS 1
+    #include <vulkan/vulkan.hpp>
+    #include <nvrhi/vulkan.h>
+#endif
 #if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
     #include <nvrhi/d3d12.h>
 #endif

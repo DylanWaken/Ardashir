@@ -1,4 +1,4 @@
-#include "RHIWrappers/ArdaNvrhiConversions.h"
+#include "RHI/ArdaNvrhiConversions.h"
 
 namespace arda::rhi::private_impl
 {

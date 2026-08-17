@@ -245,7 +245,7 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
     EXPECT_NE(FirstGraphicsKey, 0u);
     ShutdownBackend();
 
-    const auto CacheFile = Directory / "d3d12.pso-cache";
+    const auto CacheFile = Directory / "nvrhi-d3d12.pso-cache";
     ASSERT_TRUE(std::filesystem::is_regular_file(CacheFile));
     EXPECT_GT(std::filesystem::file_size(CacheFile), 24u);
 
@@ -363,7 +363,7 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
         << FirstCreateStatus.mMessage.c_str();
     ShutdownBackend();
 
-    const auto CacheFile = Directory / "vulkan.pso-cache";
+    const auto CacheFile = Directory / "nvrhi-vulkan.pso-cache";
     ASSERT_TRUE(std::filesystem::is_regular_file(CacheFile));
     EXPECT_GT(std::filesystem::file_size(CacheFile), 24u);
 

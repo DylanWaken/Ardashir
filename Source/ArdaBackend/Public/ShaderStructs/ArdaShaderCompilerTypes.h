@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#include "ArdaDevice.h"
+#include "ArdaBackendProvider.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/string.h>
@@ -105,6 +105,11 @@ namespace arda::backend
         EArdaBackendType mBackend = DefaultBackend;
         /** Encoded permutation identifier. */
         uint32_t mPermutationId = 0;
+        /** Stable backend module targeted by this permutation. */
+        eastl::string mBackendName;
+        /** Shader binary format requested by the module. */
+        EArdaShaderBinaryFormat mBinaryFormat =
+            EArdaShaderBinaryFormat::BackendDefined;
     };
 
     /**

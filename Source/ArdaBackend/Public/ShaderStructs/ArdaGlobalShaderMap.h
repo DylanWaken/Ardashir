@@ -67,6 +67,9 @@ namespace arda::backend
      */
     [[nodiscard]] const char* GetShaderArtifactExtension(EArdaBackendType Backend) noexcept;
 
+    /** Returns the artifact extension declared by an exact backend module. */
+    [[nodiscard]] const char* GetShaderArtifactExtension(const char* BackendName) noexcept;
+
     /**
      * Loads one non-empty shader artifact without interpreting its contents.
      * @param Path Artifact file to load.
@@ -177,8 +180,8 @@ namespace arda::backend
         [[nodiscard]] bool EnsureSlotLoadedLocked(size_t Index) const;
         /** Device permanently associated with initialized shader instances. */
         rhi::FArdaRHIDeviceRef mDevice;
-        /** Backend used to choose artifact formats. */
-        EArdaBackendType mBackend = DefaultBackend;
+        /** Exact backend-module shader target used by this map. */
+        FArdaShaderTarget mTarget;
         /** Compilation timing policy captured at initialization. */
         EArdaShaderCompilationMode mMode = EArdaShaderCompilationMode::OnDemand;
         /** Directory containing the loaded compiled artifacts. */

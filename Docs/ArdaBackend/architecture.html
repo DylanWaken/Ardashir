@@ -31,6 +31,7 @@
         <a href="quick-guide.html">Quick user's guide</a>
         <a href="getting-started.html">Getting started</a>
         <a aria-current="page" href="architecture.html">Architecture</a>
+        <a href="backend-modules.html">Backend modules</a>
         <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
@@ -127,10 +128,12 @@
             <dd>Owns process configuration and context, shader registration and global maps, pipeline-state cache, and presentation interfaces.</dd>
             <dt>Public RHI layer — <code>arda::rhi</code></dt>
             <dd>Defines descriptors, capabilities, result types, resource interfaces, command lists, and the device creation/submission surface.</dd>
-            <dt>Private wrapper layer</dt>
-            <dd>Converts Arda descriptors and calls to implementation-library/native representations, wraps returned objects, and carries device identity.</dd>
+            <dt>Backend provider contract</dt>
+            <dd><code>IArdaBackendModule</code> advertises a linked implementation and creates an <code>IArdaBackendDevice</code>; the runtime device publishes the RHI facade, queues, errors, optional presentation, and shader services.</dd>
+            <dt>Linked implementation layer</dt>
+            <dd>Converts Arda descriptors and calls to NVRHI, a native API, or a host <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine RHI</a>, wraps returned objects, and carries device identity.</dd>
             <dt>Native backend layer</dt>
-            <dd>Owns D3D12 or Vulkan instance/factory, adapter or physical device, queues, surface/swap chain, and private integration state.</dd>
+            <dd>Owns or adopts the underlying API/engine device, queues, presentation state, and integration objects according to the selected module's contract.</dd>
           </dl>
 
           <figure>
@@ -139,6 +142,7 @@
           </figure>
 
           <h3>Boundary rule</h3>
+          <p>The core is backend-neutral; NVRHI is one linked implementation rather than the definition of ArdaBackend. See <a href="backend-modules.html">Backend modules</a> for module registration, selection, and lifetime.</p>
           <p>A public header may describe a native handle only through a neutral carrier such as <a href="api-reference.html#api-arda-backend-fardanativeobject-04279ab9"><code>FArdaNativeObject</code></a> or an integer import field. It must not require callers to include private NVRHI, DXGI, D3D12, or Vulkan types.</p>
         </section>
 
@@ -518,7 +522,7 @@ else
 
         <nav class="page-nav" aria-label="Page navigation">
           <a rel="prev" href="getting-started.html">← Previous: Getting started</a>
-          <a rel="next" href="external-interop.html">Next: External interop →</a>
+          <a rel="next" href="backend-modules.html">Next: Backend modules →</a>
         </nav>
       </article>
     </main>

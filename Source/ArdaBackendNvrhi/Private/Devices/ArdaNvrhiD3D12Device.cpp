@@ -1,7 +1,7 @@
-#include "ArdaBackendPch.h"
+#include "ArdaNvrhiPch.h"
 
-#include "ArdaBackendDevice.h"
-#include "RHIWrappers/ArdaNvrhiDevice.h"
+#include "ArdaNvrhiBackendDevice.h"
+#include "RHI/ArdaNvrhiDevice.h"
 
 #include <array>
 
@@ -387,7 +387,7 @@ namespace arda::backend
                     return EArdaInitializeResult::Failure;
                 }
                 mArdaDevice = rhi::private_impl::CreateArdaNvrhiDevice(
-                    mDevice, mLifetime, EArdaBackendType::D3D12,
+                    mDevice, mLifetime, Configuration.mBackendName,
                     Configuration.mPipelineCacheDirectory,
                     Configuration.mMessageCallback);
                 if (!mArdaDevice)

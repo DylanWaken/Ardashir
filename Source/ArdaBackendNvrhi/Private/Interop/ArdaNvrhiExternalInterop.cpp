@@ -1,21 +1,65 @@
-#include "ArdaBackendPch.h"
+#include "ArdaNvrhiPch.h"
 
-#include "ArdaBackendDevice.h"
-#include "RHIWrappers/ArdaNvrhiDevice.h"
+#include "ArdaNvrhiBackendDevice.h"
+#include "ArdaNvrhiExternalDeviceTypes.h"
+#include "RHI/ArdaNvrhiDevice.h"
+
+#include <charconv>
 
 namespace arda::backend
 {
     namespace
     {
+        bool ParseUnsigned(
+            const FArdaExternalDeviceProperty& Property,
+            uint32_t& OutValue,
+            eastl::string& OutError)
+        {
+            uint32_t Value = 0;
+            const char* Begin = Property.mValue.data();
+            const char* End = Begin + Property.mValue.size();
+            const auto Result = std::from_chars(Begin, End, Value);
+            if (Result.ec != std::errc{} || Result.ptr != End)
+            {
+                OutError = eastl::string("External-device property '") +
+                    Property.mName + "' must be an unsigned integer.";
+                return false;
+            }
+            OutValue = Value;
+            return true;
+        }
+
+        bool ParseBoolean(
+            const FArdaExternalDeviceProperty& Property,
+            bool& OutValue,
+            eastl::string& OutError)
+        {
+            if (Property.mValue == "1" || Property.mValue == "true")
+            {
+                OutValue = true;
+                return true;
+            }
+            if (Property.mValue == "0" || Property.mValue == "false")
+            {
+                OutValue = false;
+                return true;
+            }
+            OutError = eastl::string("External-device property '") +
+                Property.mName + "' must be true, false, 1, or 0.";
+            return false;
+        }
+
         struct FExternalDeviceLifetime
         {
             FArdaNvrhiMessageCallback mMessageCallback;
             eastl::shared_ptr<void> mProviderToken;
 #if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
-            FArdaExternalD3D12DeviceDesc mD3D12Desc;
+            FArdaNvrhiExternalD3D12DeviceDesc mD3D12Desc;
 #endif
+#if defined(ARDA_NVRHI_WITH_VULKAN)
             eastl::shared_ptr<vk::detail::DynamicLoader> mVulkanLoader;
-            FArdaExternalVulkanDeviceDesc mVulkanDesc;
+            FArdaNvrhiExternalVulkanDeviceDesc mVulkanDesc;
+#endif
         };
 
 #if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
@@ -117,10 +161,11 @@ namespace arda::backend
         }
 #endif
 
+#if defined(ARDA_NVRHI_WITH_VULKAN)
         bool ValidateVulkanQueue(
             vk::Device Device,
             const eastl::vector<vk::QueueFamilyProperties>& QueueFamilies,
-            const FArdaExternalVulkanQueueDesc& Queue,
+            const FArdaNvrhiExternalVulkanQueueDesc& Queue,
             vk::QueueFlags RequiredFlags,
             eastl::string& Error,
             const char* QueueName)
@@ -156,6 +201,7 @@ namespace arda::backend
             }
             return true;
         }
+#endif
 
         class FArdaExternalBackendDevice final : public IArdaBackendDevice
         {
@@ -193,6 +239,7 @@ namespace arda::backend
                     return EArdaInitializeResult::Unavailable;
 #endif
                 case EArdaBackendType::Vulkan:
+#if defined(ARDA_NVRHI_WITH_VULKAN)
                 {
                     const EArdaInitializeResult Result =
                         InitializeVulkan(*ExternalProvider);
@@ -200,6 +247,10 @@ namespace arda::backend
                         return Result;
                     break;
                 }
+#else
+                    mError = "The NVRHI Vulkan module is not linked.";
+                    return EArdaInitializeResult::Unavailable;
+#endif
                 }
 
                 mDevice = Configuration.mbEnableValidation
@@ -212,7 +263,7 @@ namespace arda::backend
                 }
 
                 mArdaDevice = rhi::private_impl::CreateArdaNvrhiDevice(
-                    mDevice, mLifetime, Configuration.mBackend,
+                    mDevice, mLifetime, Configuration.mBackendName,
                     Configuration.mPipelineCacheDirectory,
                     Configuration.mMessageCallback);
                 if (!mArdaDevice)
@@ -260,41 +311,61 @@ namespace arda::backend
             bool InitializeD3D12(const IArdaExternalDeviceProvider& Provider)
             {
                 auto& External = mLifetime->mD3D12Desc;
-                if (!Provider.GetD3D12DeviceDesc(External))
+                FArdaExternalDeviceDesc Generic;
+                if (!Provider.GetExternalDeviceDesc(Generic) ||
+                    Generic.mNativeApi != "d3d12" ||
+                    (!Generic.mBackendName.empty() &&
+                     Generic.mBackendName != "nvrhi-d3d12"))
                 {
-                    FArdaExternalDeviceDesc Generic;
-                    if (!Provider.GetExternalDeviceDesc(Generic) ||
-                        Generic.mNativeApi != "d3d12" ||
-                        (!Generic.mBackendName.empty() &&
-                         Generic.mBackendName != "nvrhi-d3d12"))
+                    mError = "The external provider did not supply a D3D12 descriptor.";
+                    return false;
+                }
+                External.mDevice = Generic.mDevice;
+                for (const FArdaExternalQueueDesc& Queue : Generic.mQueues)
+                {
+                    switch (Queue.mType)
                     {
-                        mError = "The external provider did not supply a D3D12 descriptor.";
-                        return false;
+                    case rhi::EArdaRHIQueueType::Graphics:
+                        External.mGraphicsQueue = Queue.mQueue;
+                        break;
+                    case rhi::EArdaRHIQueueType::Compute:
+                        External.mComputeQueue = Queue.mQueue;
+                        break;
+                    case rhi::EArdaRHIQueueType::Copy:
+                        External.mCopyQueue = Queue.mQueue;
+                        break;
                     }
-                    External.mDevice = Generic.mDevice;
-                    for (const FArdaExternalQueueDesc& Queue : Generic.mQueues)
+                }
+                for (const FArdaExternalNativeObject& Object :
+                     Generic.mAdditionalObjects)
+                {
+                    if (Object.mName == "dxgi-factory")
                     {
-                        switch (Queue.mType)
-                        {
-                        case rhi::EArdaRHIQueueType::Graphics:
-                            External.mGraphicsQueue = Queue.mQueue;
-                            break;
-                        case rhi::EArdaRHIQueueType::Compute:
-                            External.mComputeQueue = Queue.mQueue;
-                            break;
-                        case rhi::EArdaRHIQueueType::Copy:
-                            External.mCopyQueue = Queue.mQueue;
-                            break;
-                        }
+                        External.mDxgiFactory = Object.mObject;
                     }
-                    for (const FArdaExternalNativeObject& Object :
-                         Generic.mAdditionalObjects)
-                    {
-                        if (Object.mName == "dxgi-factory")
-                        {
-                            External.mDxgiFactory = Object.mObject;
-                        }
-                    }
+                }
+                for (const FArdaExternalDeviceProperty& Property : Generic.mProperties)
+                {
+                    if (Property.mName == "rtv-heap-size" &&
+                        !ParseUnsigned(Property, External.mRenderTargetViewHeapSize, mError)) return false;
+                    if (Property.mName == "dsv-heap-size" &&
+                        !ParseUnsigned(Property, External.mDepthStencilViewHeapSize, mError)) return false;
+                    if (Property.mName == "srv-heap-size" &&
+                        !ParseUnsigned(Property, External.mShaderResourceViewHeapSize, mError)) return false;
+                    if (Property.mName == "sampler-heap-size" &&
+                        !ParseUnsigned(Property, External.mSamplerHeapSize, mError)) return false;
+                    if (Property.mName == "max-timer-queries" &&
+                        !ParseUnsigned(Property, External.mMaxTimerQueries, mError)) return false;
+                    if (Property.mName == "heap-directly-indexed" &&
+                        !ParseBoolean(Property, External.mbEnableHeapDirectlyIndexed, mError)) return false;
+                    if (Property.mName == "aftermath" &&
+                        !ParseBoolean(Property, External.mbAftermathEnabled, mError)) return false;
+                    if (Property.mName == "log-buffer-lifetime" &&
+                        !ParseBoolean(Property, External.mbLogBufferLifetime, mError)) return false;
+                    if (Property.mName == "ray-tracing-validation" &&
+                        !ParseBoolean(Property, External.mbEnableRayTracingValidation, mError)) return false;
+                    if (Property.mName == "enhanced-barriers" &&
+                        !ParseBoolean(Property, External.mbEnableEnhancedBarriers, mError)) return false;
                 }
                 if (!External.mDevice || !External.mGraphicsQueue)
                 {
@@ -418,6 +489,7 @@ namespace arda::backend
             }
 #endif
 
+#if defined(ARDA_NVRHI_WITH_VULKAN)
             EArdaInitializeResult InitializeVulkan(
                 const IArdaExternalDeviceProvider& Provider)
             {
@@ -437,52 +509,68 @@ namespace arda::backend
                 const IArdaExternalDeviceProvider& Provider)
             {
                 auto& External = mLifetime->mVulkanDesc;
-                if (!Provider.GetVulkanDeviceDesc(External))
+                FArdaExternalDeviceDesc Generic;
+                if (!Provider.GetExternalDeviceDesc(Generic) ||
+                    Generic.mNativeApi != "vulkan" ||
+                    (!Generic.mBackendName.empty() &&
+                     Generic.mBackendName != "nvrhi-vulkan"))
                 {
-                    FArdaExternalDeviceDesc Generic;
-                    if (!Provider.GetExternalDeviceDesc(Generic) ||
-                        Generic.mNativeApi != "vulkan" ||
-                        (!Generic.mBackendName.empty() &&
-                         Generic.mBackendName != "nvrhi-vulkan"))
+                    mError = "The external provider did not supply a Vulkan descriptor.";
+                    return EArdaInitializeResult::Failure;
+                }
+                External.mInstance = Generic.mInstance;
+                External.mPhysicalDevice = Generic.mAdapter;
+                External.mDevice = Generic.mDevice;
+                for (const FArdaExternalQueueDesc& Queue : Generic.mQueues)
+                {
+                    FArdaNvrhiExternalVulkanQueueDesc* Destination = nullptr;
+                    switch (Queue.mType)
                     {
-                        mError = "The external provider did not supply a Vulkan descriptor.";
+                    case rhi::EArdaRHIQueueType::Graphics:
+                        Destination = &External.mGraphicsQueue;
+                        break;
+                    case rhi::EArdaRHIQueueType::Compute:
+                        Destination = &External.mComputeQueue;
+                        break;
+                    case rhi::EArdaRHIQueueType::Copy:
+                        Destination = &External.mCopyQueue;
+                        break;
+                    }
+                    if (!Destination)
+                    {
+                        mError = "The generic Vulkan descriptor contains an invalid queue role.";
                         return EArdaInitializeResult::Failure;
                     }
-                    External.mInstance = Generic.mInstance;
-                    External.mPhysicalDevice = Generic.mAdapter;
-                    External.mDevice = Generic.mDevice;
-                    for (const FArdaExternalQueueDesc& Queue : Generic.mQueues)
-                    {
-                        FArdaExternalVulkanQueueDesc* Destination = nullptr;
-                        switch (Queue.mType)
-                        {
-                        case rhi::EArdaRHIQueueType::Graphics:
-                            Destination = &External.mGraphicsQueue;
-                            break;
-                        case rhi::EArdaRHIQueueType::Compute:
-                            Destination = &External.mComputeQueue;
-                            break;
-                        case rhi::EArdaRHIQueueType::Copy:
-                            Destination = &External.mCopyQueue;
-                            break;
-                        }
-                        if (!Destination)
-                        {
-                            mError = "The generic Vulkan descriptor contains an invalid queue role.";
-                            return EArdaInitializeResult::Failure;
-                        }
-                        Destination->mQueue = Queue.mQueue;
-                        Destination->mFamilyIndex = Queue.mFamilyIndex;
-                        Destination->mQueueIndex = Queue.mQueueIndex;
-                    }
-                    for (const FArdaExternalNativeObject& Object :
-                         Generic.mAdditionalObjects)
-                    {
-                        if (Object.mName == "allocation-callbacks")
-                        {
-                            External.mAllocationCallbacks = Object.mObject;
-                        }
-                    }
+                    Destination->mQueue = Queue.mQueue;
+                    Destination->mFamilyIndex = Queue.mFamilyIndex;
+                    Destination->mQueueIndex = Queue.mQueueIndex;
+                }
+                for (const FArdaExternalNativeObject& Object :
+                     Generic.mAdditionalObjects)
+                {
+                    if (Object.mName == "allocation-callbacks")
+                        External.mAllocationCallbacks = Object.mObject;
+                }
+                for (const FArdaExternalDeviceProperty& Property : Generic.mProperties)
+                {
+                    if (Property.mName == "instance-extension")
+                        External.mInstanceExtensions.push_back(Property.mValue);
+                    else if (Property.mName == "device-extension")
+                        External.mDeviceExtensions.push_back(Property.mValue);
+                    else if (Property.mName == "vulkan-library")
+                        External.mVulkanLibraryName = Property.mValue;
+                    else if (Property.mName == "buffer-device-address" &&
+                        !ParseBoolean(Property, External.mbBufferDeviceAddressSupported, mError))
+                        return EArdaInitializeResult::Failure;
+                    else if (Property.mName == "aftermath" &&
+                        !ParseBoolean(Property, External.mbAftermathEnabled, mError))
+                        return EArdaInitializeResult::Failure;
+                    else if (Property.mName == "log-buffer-lifetime" &&
+                        !ParseBoolean(Property, External.mbLogBufferLifetime, mError))
+                        return EArdaInitializeResult::Failure;
+                    else if (Property.mName == "max-timer-queries" &&
+                        !ParseUnsigned(Property, External.mMaxTimerQueries, mError))
+                        return EArdaInitializeResult::Failure;
                 }
                 if (!External.mInstance || !External.mPhysicalDevice ||
                     !External.mDevice || !External.mGraphicsQueue.mQueue)
@@ -662,6 +750,7 @@ namespace arda::backend
                 }
                 return EArdaInitializeResult::Success;
             }
+#endif
 
             eastl::shared_ptr<FExternalDeviceLifetime> mLifetime;
             nvrhi::DeviceHandle mNativeDevice;

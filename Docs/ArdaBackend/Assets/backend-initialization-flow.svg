@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="760" viewBox="0 0 900 760" role="img" aria-labelledby="backend-init-title backend-init-desc">
   <title id="backend-init-title">ArdaBackend initialization and rollback flow</title>
-  <desc id="backend-init-desc">Flow from the public ConfigureBackend and initialization calls through explicitly labeled private implementation helpers for shader directory use, source scanning and freeze, shader registration commit, platform backend creation, NVRHI wrapping, context publication, and failure rollback.</desc>
+  <desc id="backend-init-desc">Flow from public configuration through linked-module selection, shader directory freeze, shader registration commit, backend-device creation and initialization, context publication, and failure rollback.</desc>
   <defs>
     <marker id="call-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
     <marker id="data-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#34d399"/></marker>
@@ -20,7 +20,7 @@
   <rect class="api" x="52" y="122" width="220" height="70" rx="8"/>
   <text class="publicTag" x="162" y="138">PUBLIC API</text>
   <text class="label" x="162" y="157">ConfigureBackend(configuration)</text>
-  <text class="small" x="162" y="178">store backend, callback, validation</text>
+  <text class="small" x="162" y="178">store module name/class, callback, validation</text>
 
   <rect class="api" x="340" y="122" width="220" height="70" rx="8"/>
   <text class="publicTag" x="450" y="138">PUBLIC API</text>
@@ -51,16 +51,16 @@
 
   <rect class="native" x="52" y="232" width="220" height="76" rx="8"/>
   <text class="tag" x="162" y="248">PRIVATE IMPLEMENTATION DETAIL</text>
-  <text class="label" x="162" y="269">CreateConfiguredDevice</text>
-  <text class="small" x="162" y="286">CreateD3D12BackendDevice or</text>
-  <text class="small" x="162" y="301">CreateVulkanBackendDevice</text>
+  <text class="label" x="162" y="269">Select registered module</text>
+  <text class="small" x="162" y="286">exact stable name or highest-priority</text>
+  <text class="small" x="162" y="301">compatible descriptor</text>
   <path class="call" d="M340 270 H276"/>
 
   <rect class="native" x="52" y="350" width="220" height="82" rx="8"/>
   <text class="tag" x="162" y="366">PRIVATE IMPLEMENTATION DETAIL</text>
   <text class="label" x="162" y="385">IArdaBackendDevice::Initialize</text>
-  <text class="small" x="162" y="403">create native device + NVRHI device</text>
-  <text class="small" x="162" y="420">CreateArdaNvrhiDevice(handle)</text>
+  <text class="small" x="162" y="403">module CreateDevice(source) + Initialize</text>
+  <text class="small" x="162" y="420">NVRHI, native, or engine-RHI implementation</text>
   <path class="call" d="M162 308 V346"/>
 
   <rect class="native" x="340" y="350" width="220" height="82" rx="8"/>
@@ -73,8 +73,8 @@
   <rect class="data" x="628" y="350" width="220" height="82" rx="8"/>
   <text class="tag" x="738" y="366">PRIVATE IMPLEMENTATION DETAIL</text>
   <text class="label" x="738" y="385">PublishInitializedDevice</text>
-  <text class="small" x="738" y="403">FArdaDeviceContext: device,</text>
-  <text class="small" x="738" y="420">backend, queue capabilities</text>
+  <text class="small" x="738" y="403">FArdaDeviceContext: device, module name,</text>
+  <text class="small" x="738" y="420">compatibility class, queue capabilities</text>
   <path class="output" d="M560 391 H624"/>
 
   <rect class="data" x="628" y="476" width="220" height="62" rx="8"/>

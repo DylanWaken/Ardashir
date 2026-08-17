@@ -136,11 +136,12 @@ namespace arda::rhi
     /** Identifies the backend representation of an imported native resource. */
     enum class EArdaRHINativeResourceType : uint8_t
     {
+        /** Native object and payload interpreted by the selected backend module. */
+        BackendDefined,
+        /** Standard Direct3D 12 resource object. */
         D3D12Resource,
         VulkanImage,
-        VulkanBuffer,
-        /** Native handle and payload interpreted by the active backend module. */
-        BackendDefined
+        VulkanBuffer
     };
     /** Controls whether an imported native resource remains caller-owned. */
     enum class EArdaRHINativeOwnership : uint8_t
@@ -451,7 +452,7 @@ namespace arda::rhi
         /** Stores the native object. */
         uintptr_t mNativeObject = 0;
         /** Stores the native type. */
-        EArdaRHINativeResourceType mNativeType = EArdaRHINativeResourceType::D3D12Resource;
+        EArdaRHINativeResourceType mNativeType = EArdaRHINativeResourceType::BackendDefined;
         /** Stable native type name required when mNativeType is BackendDefined. */
         eastl::string mNativeTypeName;
         /** Immutable backend-specific metadata copied into the import request. */
@@ -489,7 +490,7 @@ namespace arda::rhi
         /** Stores the native object. */
         uintptr_t mNativeObject = 0;
         /** Stores the native type. */
-        EArdaRHINativeResourceType mNativeType = EArdaRHINativeResourceType::D3D12Resource;
+        EArdaRHINativeResourceType mNativeType = EArdaRHINativeResourceType::BackendDefined;
         /** Stable native type name required when mNativeType is BackendDefined. */
         eastl::string mNativeTypeName;
         /** Immutable backend-specific metadata copied into the import request. */

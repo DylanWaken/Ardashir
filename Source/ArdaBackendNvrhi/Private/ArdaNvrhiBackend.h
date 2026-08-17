@@ -3,6 +3,7 @@
  */
 #pragma once
 
+
 namespace arda::backend
 {
     /** Registers the independently linkable NVRHI Vulkan backend module. */

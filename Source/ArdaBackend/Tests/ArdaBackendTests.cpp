@@ -71,7 +71,7 @@ namespace
             arda::backend::DefaultBackend;
         eastl::shared_ptr<void> mToken;
 #if defined(_WIN32)
-        arda::backend::FArdaExternalD3D12DeviceDesc mD3D12;
+        arda::backend::FArdaExternalDeviceDesc mExternal;
         bool mbSupplyD3D12 = false;
 #endif
 
@@ -80,10 +80,10 @@ namespace
             return mBackend;
         }
 #if defined(_WIN32)
-        bool GetD3D12DeviceDesc(
-            arda::backend::FArdaExternalD3D12DeviceDesc& OutDesc) const override
+        bool GetExternalDeviceDesc(
+            arda::backend::FArdaExternalDeviceDesc& OutDesc) const override
         {
-            OutDesc = mD3D12;
+            OutDesc = mExternal;
             return mbSupplyD3D12;
         }
 #endif
@@ -477,12 +477,13 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
     FTestDeviceProvider DeviceProvider;
     DeviceProvider.mBackend = EArdaBackendType::D3D12;
     DeviceProvider.mbSupplyD3D12 = true;
-    DeviceProvider.mD3D12.mDevice = FArdaNativeObject(NativeDevice.Get());
-    DeviceProvider.mD3D12.mGraphicsQueue =
-        FArdaNativeObject(GraphicsQueue.Get());
-    DeviceProvider.mD3D12.mComputeQueue =
-        FArdaNativeObject(ComputeQueue.Get());
-    DeviceProvider.mD3D12.mCopyQueue = FArdaNativeObject(CopyQueue.Get());
+    DeviceProvider.mExternal.mNativeApi = "d3d12";
+    DeviceProvider.mExternal.mDevice = FArdaNativeObject(NativeDevice.Get());
+    DeviceProvider.mExternal.mQueues = {
+        { rhi::EArdaRHIQueueType::Graphics, FArdaNativeObject(GraphicsQueue.Get()) },
+        { rhi::EArdaRHIQueueType::Compute, FArdaNativeObject(ComputeQueue.Get()) },
+        { rhi::EArdaRHIQueueType::Copy, FArdaNativeObject(CopyQueue.Get()) }
+    };
 
     FTestResourceProvider ResourceProvider;
     ResourceProvider.mBackend = EArdaBackendType::D3D12;
@@ -638,7 +639,8 @@ TEST(ArdaBackend, InvalidExternalD3D12DescriptorsReportErrors)
     FExternalTestCleanup Cleanup;
     Provider.mBackend = EArdaBackendType::D3D12;
     Provider.mbSupplyD3D12 = true;
-    Provider.mD3D12.mDevice = FArdaNativeObject(NativeDevice.Get());
+    Provider.mExternal.mNativeApi = "d3d12";
+    Provider.mExternal.mDevice = FArdaNativeObject(NativeDevice.Get());
     ASSERT_TRUE(Cleanup.Register(Provider));
 
     FArdaBackendConfiguration Configuration;
@@ -652,7 +654,9 @@ TEST(ArdaBackend, InvalidExternalD3D12DescriptorsReportErrors)
         eastl::string::npos);
 
     ASSERT_TRUE(UnregisterExternalDeviceProvider(Provider));
-    Provider.mD3D12.mGraphicsQueue = FArdaNativeObject(CopyQueue.Get());
+    Provider.mExternal.mQueues = {
+        { arda::rhi::EArdaRHIQueueType::Graphics, FArdaNativeObject(CopyQueue.Get()) }
+    };
     ASSERT_TRUE(RegisterExternalDeviceProvider(Provider));
     const bool bInitialized = InitializeBackend();
     EXPECT_FALSE(bInitialized);

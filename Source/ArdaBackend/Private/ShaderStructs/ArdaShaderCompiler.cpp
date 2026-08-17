@@ -33,7 +33,7 @@ namespace arda::backend
     {
         constexpr uint64_t FnvOffset = 14695981039346656037ull;
         constexpr uint64_t FnvPrime = 1099511628211ull;
-        constexpr const char* CacheSchema = "ArdaShaderCompileKey-v2";
+        constexpr const char* CacheSchema = "ArdaShaderCompileKey-v3";
 
         std::mutex GConfigurationMutex;
         FArdaShaderCompilerConfiguration GConfiguration;
@@ -574,7 +574,7 @@ namespace arda::backend
 
         bool PopulateJob(
             const FArdaShaderType& Type,
-            EArdaBackendType Backend,
+            const FArdaShaderTarget& Target,
             uint32_t PermutationId,
             const std::filesystem::path& OutputDirectory,
             const FArdaShaderCompilerConfiguration& Configuration,
@@ -582,13 +582,15 @@ namespace arda::backend
             FArdaShaderCompileJob& Job,
             FArdaShaderCompileDiagnostic& Diagnostic)
         {
+            const EArdaBackendType Backend = Target.mBackend;
             Job.mType = Type;
             Job.mBackend = Backend;
+            Job.mTarget = Target;
             Job.mCompilerExecutable = Compiler;
             Job.mPermutationId = PermutationId;
             const eastl::string Stem = Type.GetPermutationArtifactStem(PermutationId);
             Job.mOutputPath = OutputDirectory /
-                (ToStd(Stem) + GetShaderArtifactExtension(Backend));
+                (ToStd(Stem) + ToStd(Target.mArtifactExtension));
             if (!IsContainedArtifactPath(OutputDirectory, Job.mOutputPath))
             {
                 Diagnostic = MakeDiagnostic(
@@ -610,7 +612,7 @@ namespace arda::backend
                 Diagnostic = MakeDiagnostic(
                     EArdaShaderCompileError::UnsupportedStage, &Type, Backend,
                     PermutationId, {}, Job.mOutputPath,
-                    "Combined, empty, or unknown shader stages cannot map to one DXC profile.");
+                    "Combined, empty, or unknown shader stages cannot map to one fallback compiler profile.");
                 return false;
             }
             if (!ResolveSource(Type, Configuration, Job.mSourcePath))
@@ -629,7 +631,7 @@ namespace arda::backend
                         ? Registered
                         : Registered.filename()).lexically_normal().generic_string());
             }
-            Job.mEnvironment = Type.BuildCompilationEnvironment(Backend, PermutationId);
+            Job.mEnvironment = Type.BuildCompilationEnvironment(Target, PermutationId);
 
             Job.mArguments.push_back("-nologo");
             Job.mArguments.push_back("-T");
@@ -639,42 +641,8 @@ namespace arda::backend
                 Job.mArguments.push_back("-E");
                 Job.mArguments.push_back(Type.GetEntryPoint());
             }
-            IArdaBackendModule* BackendModule = nullptr;
-            const FArdaBackendConfiguration& BackendConfiguration =
-                GetBackendConfiguration();
-            if (!BackendConfiguration.mBackendName.empty() &&
-                BackendConfiguration.mBackend == Backend)
-            {
-                BackendModule = FindBackendModule(
-                    BackendConfiguration.mBackendName.c_str());
-            }
-            if (!BackendModule)
-            {
-                BackendModule = FindDefaultBackendModule(Backend);
-            }
-            const bool bSpirv = BackendModule
-                ? BackendModule->GetDescriptor().mShaderBinaryFormat ==
-                    EArdaShaderBinaryFormat::Spirv
-                : Backend == EArdaBackendType::Vulkan;
-            if (bSpirv)
-            {
-                Job.mArguments.push_back("-spirv");
-                Job.mArguments.push_back(
-                    eastl::string("-fspv-target-env=") +
-                    Configuration.mVulkanTargetEnvironment);
-                if (IsRayStage(Type.GetStage()))
-                    Job.mArguments.push_back("-fspv-extension=SPV_KHR_ray_tracing");
-                const auto AddShift = [&Job](const char* Flag, uint32_t Value)
-                {
-                    Job.mArguments.push_back(Flag);
-                    Job.mArguments.push_back(ToEastl(std::to_string(Value)));
-                    Job.mArguments.push_back("0");
-                };
-                AddShift("-fvk-t-shift", Configuration.mVulkanTextureBindingShift);
-                AddShift("-fvk-s-shift", Configuration.mVulkanSamplerBindingShift);
-                AddShift("-fvk-b-shift", Configuration.mVulkanConstantBufferBindingShift);
-                AddShift("-fvk-u-shift", Configuration.mVulkanUnorderedAccessBindingShift);
-            }
+            IArdaBackendModule* BackendModule =
+                FindBackendModule(Target.mBackendName.c_str());
             for (const FArdaShaderDefine& Define : Job.mEnvironment.GetDefines())
             {
                 const std::string Name = ToStd(Define.mName);
@@ -696,9 +664,12 @@ namespace arda::backend
                     Job.mArguments.push_back(Argument);
             };
             AppendArguments(Configuration.mCommonArguments);
-            AppendArguments(bSpirv
-                ? Configuration.mSpirvArguments
-                : Configuration.mDxilArguments);
+            for (const FArdaShaderCompilerModuleArguments& ModuleArguments :
+                 Configuration.mModuleArguments)
+            {
+                if (ModuleArguments.mBackendName == Target.mBackendName)
+                    AppendArguments(ModuleArguments.mArguments);
+            }
             if (BackendModule)
             {
                 FArdaBackendShaderCompileInvocation Invocation;
@@ -747,19 +718,34 @@ namespace arda::backend
             uint64_t Hash = FnvOffset;
             HashString(Hash, CacheSchema);
             HashString(Hash, Type.GetName());
+            HashString(Hash, ToStd(Target.mBackendName));
             HashUint32(Hash, static_cast<uint32_t>(Backend));
+            HashUint32(Hash, static_cast<uint32_t>(Target.mBinaryFormat));
             HashUint32(Hash, PermutationId);
             HashString(Hash, ToStd(Job.mProfile));
             for (const auto& Argument : Job.mArguments)
                 HashString(Hash, ToStd(Argument));
             HashString(Hash, ToStd(Job.mSourceIdentity));
-            if (!HashFile(Hash, Job.mCompilerExecutable))
+            if (!Job.mCompilerExecutable.empty() &&
+                !HashFile(Hash, Job.mCompilerExecutable))
             {
                 Diagnostic = MakeDiagnostic(
                     EArdaShaderCompileError::CompilerUnavailable, &Type, Backend,
                     PermutationId, Job.mSourcePath, Job.mOutputPath,
                     "Unable to hash the configured compiler executable.");
                 return false;
+            }
+            if (Job.mCompilerExecutable.empty())
+            {
+                if (Target.mCompilerIdentity.empty())
+                {
+                    Diagnostic = MakeDiagnostic(
+                        EArdaShaderCompileError::CompilerUnavailable, &Type, Backend,
+                        PermutationId, Job.mSourcePath, Job.mOutputPath,
+                        "The backend module has neither a compiler executable nor a stable in-process compiler identity.");
+                    return false;
+                }
+                HashString(Hash, ToStd(Target.mCompilerIdentity));
             }
             for (const auto& File : EnumerateShaderSourceFiles())
             {
@@ -902,19 +888,8 @@ namespace arda::backend
             int ExitCode = 1;
             bool bLaunched = false;
             eastl::string ModuleDiagnostics;
-            IArdaBackendModule* BackendModule = nullptr;
-            const FArdaBackendConfiguration& BackendConfiguration =
-                GetBackendConfiguration();
-            if (!BackendConfiguration.mBackendName.empty() &&
-                BackendConfiguration.mBackend == Job.mBackend)
-            {
-                BackendModule = FindBackendModule(
-                    BackendConfiguration.mBackendName.c_str());
-            }
-            if (!BackendModule)
-            {
-                BackendModule = FindDefaultBackendModule(Job.mBackend);
-            }
+            IArdaBackendModule* BackendModule =
+                FindBackendModule(Job.mTarget.mBackendName.c_str());
             EArdaBackendShaderCompileResult ModuleResult =
                 EArdaBackendShaderCompileResult::NotHandled;
             if (BackendModule)
@@ -956,7 +931,7 @@ namespace arda::backend
                 Diagnostic = MakeDiagnostic(
                     EArdaShaderCompileError::ProcessLaunchFailed, &Job.mType,
                     Job.mBackend, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
-                    "Unable to launch the configured external DXC process.");
+                    "Neither the backend module nor the configured fallback compiler launched the job.");
                 return false;
             }
             if (ExitCode != 0 ||
@@ -968,7 +943,7 @@ namespace arda::backend
                 Diagnostic = MakeDiagnostic(
                     EArdaShaderCompileError::CompilationFailed, &Job.mType,
                     Job.mBackend, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
-                    "DXC failed with exit code " + std::to_string(ExitCode) +
+                    "Shader compilation failed with exit code " + std::to_string(ExitCode) +
                         (CompilerOutput.empty() ? "." : ":\n" + CompilerOutput));
                 return false;
             }
@@ -1080,11 +1055,6 @@ namespace arda::backend
             return Result.str();
         }
 
-        std::string BackendName(EArdaBackendType Backend)
-        {
-            return Backend == EArdaBackendType::Vulkan ? "Vulkan" : "D3D12";
-        }
-
         std::string BuildManifest(
             const eastl::vector<FArdaShaderCompileJob>& Jobs)
         {
@@ -1095,7 +1065,7 @@ namespace arda::backend
                 const auto& Job = Jobs[Index];
                 Stream << "    {\n"
                     << "      \"type\": \"" << JsonEscape(Job.mType.GetName()) << "\",\n"
-                    << "      \"backend\": \"" << BackendName(Job.mBackend) << "\",\n"
+                    << "      \"backend\": \"" << JsonEscape(ToStd(Job.mTarget.mBackendName)) << "\",\n"
                     << "      \"permutation\": " << Job.mPermutationId << ",\n"
                     << "      \"source\": \"" << JsonEscape(ToStd(Job.mSourceIdentity)) << "\",\n"
                     << "      \"output\": \"" << JsonEscape(Job.mOutputPath.filename().generic_string()) << "\",\n"
@@ -1140,7 +1110,7 @@ namespace arda::backend
 
     static FArdaShaderCompileResult BuildRegisteredShaderCompileJobsWithSnapshot(
         const std::filesystem::path& OutputDirectory,
-        const std::vector<EArdaBackendType>& Backends,
+        const eastl::vector<FArdaShaderTarget>& Targets,
         const FArdaShaderCompilerConfiguration& Configuration,
         const std::filesystem::path& Compiler)
     {
@@ -1154,36 +1124,31 @@ namespace arda::backend
                 0, {}, {}, ToStd(Registration.mMessage)));
             return Result;
         }
-        if (Compiler.empty())
-        {
-            Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::CompilerUnavailable, nullptr, DefaultBackend,
-                0, {}, {},
-                "Configure an existing DXC path, define ARDA_DEFAULT_DXC_EXECUTABLE at build time, or set ARDASHIR_DXC_EXECUTABLE."));
-            return Result;
-        }
-        std::vector<EArdaBackendType> UniqueBackends = Backends;
+        eastl::vector<FArdaShaderTarget> UniqueTargets = Targets;
         std::sort(
-            UniqueBackends.begin(),
-            UniqueBackends.end(),
-            [](EArdaBackendType Left, EArdaBackendType Right)
+            UniqueTargets.begin(), UniqueTargets.end(),
+            [](const FArdaShaderTarget& Left, const FArdaShaderTarget& Right)
             {
-                return static_cast<uint8_t>(Left) <
-                    static_cast<uint8_t>(Right);
+                return Left.mBackendName < Right.mBackendName;
             });
-        UniqueBackends.erase(
-            std::unique(UniqueBackends.begin(), UniqueBackends.end()),
-            UniqueBackends.end());
+        UniqueTargets.erase(
+            std::unique(
+                UniqueTargets.begin(), UniqueTargets.end(),
+                [](const FArdaShaderTarget& Left, const FArdaShaderTarget& Right)
+                {
+                    return Left.mBackendName == Right.mBackendName;
+                }),
+            UniqueTargets.end());
         for (const FArdaShaderType& Type :
              FArdaShaderTypeRegistration::EnumerateSnapshots())
         {
-            for (const EArdaBackendType Backend : UniqueBackends)
+            for (const FArdaShaderTarget& Target : UniqueTargets)
             {
                 for (uint32_t PermutationId = 0;
                      PermutationId < Type.GetPermutationCount();
                      ++PermutationId)
                 {
-                    if (!Type.ShouldCompilePermutation(Backend, PermutationId))
+                    if (!Type.ShouldCompilePermutation(Target, PermutationId))
                     {
                         ++Result.mJobsSkipped;
                         continue;
@@ -1191,9 +1156,10 @@ namespace arda::backend
                     FArdaShaderCompileJob Job;
                     FArdaShaderCompileDiagnostic Diagnostic;
                     if (!PopulateJob(
-                            Type, Backend, PermutationId, OutputDirectory,
+                            Type, Target, PermutationId, OutputDirectory,
                             Configuration, Compiler, Job, Diagnostic))
                     {
+                        Diagnostic.mBackendName = Target.mBackendName;
                         Result.mDiagnostics.push_back(eastl::move(Diagnostic));
                         continue;
                     }
@@ -1208,35 +1174,94 @@ namespace arda::backend
                 const int TypeOrder =
                     std::string(Left.mType.GetName()).compare(Right.mType.GetName());
                 if (TypeOrder != 0) return TypeOrder < 0;
-                if (Left.mBackend != Right.mBackend)
-                    return static_cast<uint8_t>(Left.mBackend) <
-                        static_cast<uint8_t>(Right.mBackend);
+                if (Left.mTarget.mBackendName != Right.mTarget.mBackendName)
+                    return Left.mTarget.mBackendName < Right.mTarget.mBackendName;
                 return Left.mPermutationId < Right.mPermutationId;
             });
         return Result;
+    }
+
+    static bool ResolveShaderTargets(
+        const std::vector<EArdaBackendType>& Backends,
+        eastl::vector<FArdaShaderTarget>& OutTargets,
+        FArdaShaderCompileResult& OutResult)
+    {
+        for (const EArdaBackendType Backend : Backends)
+        {
+            FArdaShaderTarget Target;
+            if (!ResolveDefaultShaderTarget(Backend, Target))
+            {
+                OutResult.mDiagnostics.push_back(MakeDiagnostic(
+                    EArdaShaderCompileError::CompilerUnavailable, nullptr, Backend,
+                    0, {}, {}, "No registered backend module can compile the requested shader target."));
+                return false;
+            }
+            OutTargets.push_back(eastl::move(Target));
+        }
+        return true;
+    }
+
+    static bool ResolveShaderTargets(
+        const eastl::vector<eastl::string>& BackendNames,
+        eastl::vector<FArdaShaderTarget>& OutTargets,
+        FArdaShaderCompileResult& OutResult)
+    {
+        for (const eastl::string& BackendName : BackendNames)
+        {
+            FArdaShaderTarget Target;
+            if (!ResolveShaderTarget(BackendName.c_str(), Target))
+            {
+                auto Diagnostic = MakeDiagnostic(
+                    EArdaShaderCompileError::CompilerUnavailable, nullptr, DefaultBackend,
+                    0, {}, {}, "The requested shader backend module is not registered.");
+                Diagnostic.mBackendName = BackendName;
+                OutResult.mDiagnostics.push_back(eastl::move(Diagnostic));
+                return false;
+            }
+            OutTargets.push_back(eastl::move(Target));
+        }
+        return true;
     }
 
     FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(
         const std::filesystem::path& OutputDirectory,
         const std::vector<EArdaBackendType>& Backends)
     {
+        FArdaShaderCompileResult Result;
+        eastl::vector<FArdaShaderTarget> Targets;
+        if (!ResolveShaderTargets(Backends, Targets, Result))
+            return Result;
         const FArdaShaderCompilerConfiguration Configuration =
             GetShaderCompilerConfiguration();
         const std::filesystem::path Compiler = ResolveCompiler(Configuration);
         return BuildRegisteredShaderCompileJobsWithSnapshot(
-            OutputDirectory, Backends, Configuration, Compiler);
+            OutputDirectory, Targets, Configuration, Compiler);
     }
 
-    FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
+    FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(
         const std::filesystem::path& OutputDirectory,
-        const std::vector<EArdaBackendType>& Backends)
+        const eastl::vector<eastl::string>& BackendNames)
+    {
+        FArdaShaderCompileResult Result;
+        eastl::vector<FArdaShaderTarget> Targets;
+        if (!ResolveShaderTargets(BackendNames, Targets, Result))
+            return Result;
+        const FArdaShaderCompilerConfiguration Configuration =
+            GetShaderCompilerConfiguration();
+        return BuildRegisteredShaderCompileJobsWithSnapshot(
+            OutputDirectory, Targets, Configuration, ResolveCompiler(Configuration));
+    }
+
+    static FArdaShaderCompileResult CompileRegisteredShaderArtifactsWithTargets(
+        const std::filesystem::path& OutputDirectory,
+        const eastl::vector<FArdaShaderTarget>& Targets)
     {
         const FArdaShaderCompilerConfiguration Configuration =
             GetShaderCompilerConfiguration();
         const std::filesystem::path Compiler = ResolveCompiler(Configuration);
         FArdaShaderCompileResult Result =
             BuildRegisteredShaderCompileJobsWithSnapshot(
-                OutputDirectory, Backends, Configuration, Compiler);
+                OutputDirectory, Targets, Configuration, Compiler);
         if (!Result)
             return Result;
         const std::filesystem::path StagingDirectory =
@@ -1306,6 +1331,28 @@ namespace arda::backend
 
     FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
         const std::filesystem::path& OutputDirectory,
+        const std::vector<EArdaBackendType>& Backends)
+    {
+        FArdaShaderCompileResult Result;
+        eastl::vector<FArdaShaderTarget> Targets;
+        if (!ResolveShaderTargets(Backends, Targets, Result))
+            return Result;
+        return CompileRegisteredShaderArtifactsWithTargets(OutputDirectory, Targets);
+    }
+
+    FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
+        const std::filesystem::path& OutputDirectory,
+        const eastl::vector<eastl::string>& BackendNames)
+    {
+        FArdaShaderCompileResult Result;
+        eastl::vector<FArdaShaderTarget> Targets;
+        if (!ResolveShaderTargets(BackendNames, Targets, Result))
+            return Result;
+        return CompileRegisteredShaderArtifactsWithTargets(OutputDirectory, Targets);
+    }
+
+    FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
+        const std::filesystem::path& OutputDirectory,
         EArdaBackendType Backend)
     {
         return CompileRegisteredShaderArtifacts(
@@ -1313,18 +1360,28 @@ namespace arda::backend
             std::vector<EArdaBackendType>{ Backend });
     }
 
+    FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
+        const std::filesystem::path& OutputDirectory,
+        const char* BackendName)
+    {
+        return CompileRegisteredShaderArtifacts(
+            OutputDirectory,
+            eastl::vector<eastl::string>{ BackendName ? BackendName : "" });
+    }
+
     static FArdaShaderCompileResult EnsureRegisteredShaderArtifactWithSnapshot(
         const FArdaShaderType& Type,
-        EArdaBackendType Backend,
+        const FArdaShaderTarget& Target,
         uint32_t PermutationId,
         const std::filesystem::path& OutputDirectory,
         const FArdaShaderCompilerConfiguration& Configuration,
         const std::filesystem::path& Compiler);
 
-    FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(
+    static FArdaShaderCompileResult EnsureRegisteredShaderArtifactsForTarget(
         const std::filesystem::path& OutputDirectory,
-        EArdaBackendType Backend)
+        const FArdaShaderTarget& Target)
     {
+        const EArdaBackendType Backend = Target.mBackend;
         FArdaShaderCompileResult Result;
         const FArdaShaderRegistrationStatus Registration =
             FArdaShaderTypeRegistration::CommitAll();
@@ -1346,14 +1403,14 @@ namespace arda::backend
                  PermutationId < Type.GetPermutationCount();
                  ++PermutationId)
             {
-                if (!Type.ShouldCompilePermutation(Backend, PermutationId))
+                if (!Type.ShouldCompilePermutation(Target, PermutationId))
                 {
                     ++Result.mJobsSkipped;
                     continue;
                 }
                 FArdaShaderCompileResult JobResult =
                     EnsureRegisteredShaderArtifactWithSnapshot(
-                        Type, Backend, PermutationId, OutputDirectory,
+                        Type, Target, PermutationId, OutputDirectory,
                         Configuration, Compiler);
                 Result.mJobsCompiled += JobResult.mJobsCompiled;
                 Result.mCacheHits += JobResult.mCacheHits;
@@ -1367,14 +1424,49 @@ namespace arda::backend
         return Result;
     }
 
+    FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(
+        const std::filesystem::path& OutputDirectory,
+        EArdaBackendType Backend)
+    {
+        FArdaShaderTarget Target;
+        if (!ResolveDefaultShaderTarget(Backend, Target))
+        {
+            FArdaShaderCompileResult Result;
+            Result.mDiagnostics.push_back(MakeDiagnostic(
+                EArdaShaderCompileError::CompilerUnavailable, nullptr, Backend,
+                0, {}, {}, "No registered backend module can compile the requested shader target."));
+            return Result;
+        }
+        return EnsureRegisteredShaderArtifactsForTarget(OutputDirectory, Target);
+    }
+
+    FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(
+        const std::filesystem::path& OutputDirectory,
+        const char* BackendName)
+    {
+        FArdaShaderTarget Target;
+        if (!ResolveShaderTarget(BackendName, Target))
+        {
+            FArdaShaderCompileResult Result;
+            auto Diagnostic = MakeDiagnostic(
+                EArdaShaderCompileError::CompilerUnavailable, nullptr, DefaultBackend,
+                0, {}, {}, "The requested shader backend module is not registered.");
+            Diagnostic.mBackendName = BackendName ? BackendName : "";
+            Result.mDiagnostics.push_back(eastl::move(Diagnostic));
+            return Result;
+        }
+        return EnsureRegisteredShaderArtifactsForTarget(OutputDirectory, Target);
+    }
+
     static FArdaShaderCompileResult EnsureRegisteredShaderArtifactWithSnapshot(
         const FArdaShaderType& Type,
-        EArdaBackendType Backend,
+        const FArdaShaderTarget& Target,
         uint32_t PermutationId,
         const std::filesystem::path& OutputDirectory,
         const FArdaShaderCompilerConfiguration& Configuration,
         const std::filesystem::path& Compiler)
     {
+        const EArdaBackendType Backend = Target.mBackend;
         FArdaShaderCompileResult Result;
         const FArdaShaderRegistrationStatus Registration =
             FArdaShaderTypeRegistration::CommitAll();
@@ -1386,7 +1478,7 @@ namespace arda::backend
             return Result;
         }
         if (PermutationId >= Type.GetPermutationCount() ||
-            !Type.ShouldCompilePermutation(Backend, PermutationId))
+            !Type.ShouldCompilePermutation(Target, PermutationId))
         {
             Result.mDiagnostics.push_back(MakeDiagnostic(
                 EArdaShaderCompileError::InvalidPermutation, &Type, Backend,
@@ -1396,7 +1488,7 @@ namespace arda::backend
         }
         const eastl::string Stem = Type.GetPermutationArtifactStem(PermutationId);
         const std::filesystem::path Output = OutputDirectory /
-            (ToStd(Stem) + GetShaderArtifactExtension(Backend));
+            (ToStd(Stem) + ToStd(Target.mArtifactExtension));
         if (!IsContainedArtifactPath(OutputDirectory, Output))
         {
             Result.mDiagnostics.push_back(MakeDiagnostic(
@@ -1424,20 +1516,6 @@ namespace arda::backend
             ++Result.mCacheHits;
             return Result;
         }
-        if (Compiler.empty())
-        {
-            Result.mDiagnostics.push_back(MakeDiagnostic(
-                (Exists || Configuration.mbCompileMissingArtifacts)
-                    ? EArdaShaderCompileError::CompilerUnavailable
-                    : EArdaShaderCompileError::ArtifactMissing,
-                &Type, Backend, PermutationId, {}, Output,
-                Exists
-                    ? "Shader artifact has a cache sidecar that must be validated, but no external compiler is available."
-                    : Configuration.mbCompileMissingArtifacts
-                    ? "Shader artifact is missing and no external DXC executable is available. Configure DXC or deploy prebuilt bytecode."
-                    : "Shader artifact is missing and development auto compilation is disabled."));
-            return Result;
-        }
         if (!Exists && !Configuration.mbCompileMissingArtifacts)
         {
             Result.mDiagnostics.push_back(MakeDiagnostic(
@@ -1450,7 +1528,7 @@ namespace arda::backend
         FArdaShaderCompileJob Job;
         FArdaShaderCompileDiagnostic Diagnostic;
         if (!PopulateJob(
-                Type, Backend, PermutationId, OutputDirectory, Configuration,
+                Type, Target, PermutationId, OutputDirectory, Configuration,
                 Compiler, Job, Diagnostic))
         {
             Result.mDiagnostics.push_back(eastl::move(Diagnostic));
@@ -1490,11 +1568,47 @@ namespace arda::backend
         uint32_t PermutationId,
         const std::filesystem::path& OutputDirectory)
     {
+        FArdaShaderTarget Target;
+        if (!ResolveDefaultShaderTarget(Backend, Target))
+        {
+            FArdaShaderCompileResult Result;
+            Result.mDiagnostics.push_back(MakeDiagnostic(
+                EArdaShaderCompileError::CompilerUnavailable, &Type, Backend,
+                PermutationId, {}, {}, "No registered backend module can compile the requested shader target."));
+            return Result;
+        }
         const FArdaShaderCompilerConfiguration Configuration =
             GetShaderCompilerConfiguration();
         const std::filesystem::path Compiler = ResolveCompiler(Configuration);
         return EnsureRegisteredShaderArtifactWithSnapshot(
-            Type, Backend, PermutationId, OutputDirectory,
+            Type, Target, PermutationId, OutputDirectory,
             Configuration, Compiler);
+    }
+
+    FArdaShaderCompileResult EnsureRegisteredShaderArtifact(
+        const FArdaShaderType& Type,
+        const char* BackendName,
+        uint32_t PermutationId,
+        const std::filesystem::path& OutputDirectory)
+    {
+        FArdaShaderTarget Target;
+        if (!ResolveShaderTarget(BackendName, Target))
+        {
+            FArdaShaderCompileResult Result;
+            auto Diagnostic = MakeDiagnostic(
+                EArdaShaderCompileError::CompilerUnavailable, &Type, DefaultBackend,
+                PermutationId, {}, {}, "The requested shader backend module is not registered.");
+            Diagnostic.mBackendName = BackendName ? BackendName : "";
+            Result.mDiagnostics.push_back(eastl::move(Diagnostic));
+            return Result;
+        }
+        const FArdaShaderCompilerConfiguration Configuration =
+            GetShaderCompilerConfiguration();
+        FArdaShaderCompileResult Result = EnsureRegisteredShaderArtifactWithSnapshot(
+            Type, Target, PermutationId, OutputDirectory,
+            Configuration, ResolveCompiler(Configuration));
+        for (FArdaShaderCompileDiagnostic& Diagnostic : Result.mDiagnostics)
+            Diagnostic.mBackendName = Target.mBackendName;
+        return Result;
     }
 }

@@ -47,7 +47,7 @@ namespace arda::backend
     {
         /** Provider contract version used to compile the module. */
         uint32_t mInterfaceVersion = ArdaBackendProviderInterfaceVersion;
-        /** Stable registry key, such as "nvrhi-vulkan" or "unreal-rhi". */
+        /** Stable registry key, such as "native-vulkan" or "unreal-rhi". */
         eastl::string mName;
         /** Human-readable module name used by diagnostics and tools. */
         eastl::string mDisplayName;
@@ -58,6 +58,8 @@ namespace arda::backend
             EArdaShaderBinaryFormat::BackendDefined;
         /** Artifact suffix, including the leading period. */
         eastl::string mShaderArtifactExtension;
+        /** Stable cache identity for an in-process or engine-owned shader compiler. */
+        eastl::string mShaderCompilerIdentity;
         /** Whether the module can create and own a native device. */
         bool mbSupportsOwnedDevice = false;
         /** Whether the module can adopt a device supplied by an external provider. */
@@ -66,12 +68,33 @@ namespace arda::backend
         int32_t mPriority = 0;
     };
 
+    /** Immutable shader-facing identity resolved from a registered backend module. */
+    struct FArdaShaderTarget
+    {
+        /** Stable module registry name. */
+        eastl::string mBackendName;
+        /** Compatibility class exposed to shader permutation policy. */
+        EArdaBackendType mBackend = DefaultBackend;
+        /** Bytecode family consumed by the module. */
+        EArdaShaderBinaryFormat mBinaryFormat =
+            EArdaShaderBinaryFormat::BackendDefined;
+        /** Artifact suffix, including its leading period. */
+        eastl::string mArtifactExtension;
+        /** Stable cache identity when no compiler executable is used. */
+        eastl::string mCompilerIdentity;
+
+        [[nodiscard]] explicit operator bool() const noexcept
+        {
+            return !mBackendName.empty() && !mArtifactExtension.empty();
+        }
+    };
+
     /**
      * Represents a backend-owned shader compiler invocation.
      *
-     * The core fills the source, output, entry point, profile, and deterministic
-     * arguments before offering the invocation to the selected module. A custom
-     * module may mutate the executable and arguments before launch.
+     * The core fills a DXC-compatible fallback invocation before offering it to
+     * the selected module. A module may rewrite that command or execute the job
+     * itself through InvokeShaderCompiler.
      */
     struct FArdaBackendShaderCompileInvocation
     {
@@ -152,9 +175,10 @@ namespace arda::backend
             EArdaDeviceSource Source) = 0;
 
         /**
-         * Allows a module to replace a compiler command before it is launched.
-         * BackendDefined shader formats must implement this method. DXIL and
-         * SPIR-V modules may return success without changing the invocation.
+         * Allows a module to validate or replace the fallback compiler command.
+         * BackendDefined shader formats must make the invocation usable by this
+         * method and/or handle it through InvokeShaderCompiler. DXIL and SPIR-V
+         * modules may retain the core's DXC-compatible command.
          * @param Invocation Mutable, self-contained compiler invocation.
          * @return Status describing whether the invocation can proceed.
          */
@@ -208,6 +232,16 @@ namespace arda::backend
      */
     [[nodiscard]] IArdaBackendModule* FindDefaultBackendModule(
         EArdaBackendType BackendType) noexcept;
+
+    /** Resolves a registered module into an immutable shader target. */
+    [[nodiscard]] bool ResolveShaderTarget(
+        const char* BackendName,
+        FArdaShaderTarget& OutTarget) noexcept;
+
+    /** Resolves the highest-priority module for a compatibility class. */
+    [[nodiscard]] bool ResolveDefaultShaderTarget(
+        EArdaBackendType BackendType,
+        FArdaShaderTarget& OutTarget) noexcept;
 
     /** @return Copies of all registered descriptors in stable name order. */
     [[nodiscard]] eastl::vector<FArdaBackendModuleDescriptor> EnumerateBackendModules();

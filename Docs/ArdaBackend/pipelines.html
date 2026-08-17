@@ -20,7 +20,7 @@
     <aside class="sidebar" aria-label="ArdaBackend pages">
       <h2>ArdaBackend</h2>
       <nav><a href="index.html">Overview</a>
-        <a href="quick-guide.html">Quick user's guide</a><a href="getting-started.html">Getting started</a><a href="architecture.html">Architecture</a><a href="external-interop.html">External interop</a><a href="shaders.html">Shaders</a><a aria-current="page" href="pipelines.html">Pipeline states</a><a href="rhi.html">RHI types &amp; resources</a><a href="commands.html">Commands</a><a href="presentation.html">Presentation</a><a href="diagnostics.html">Diagnostics</a><a href="api-reference.html">API reference</a></nav>
+        <a href="quick-guide.html">Quick user's guide</a><a href="getting-started.html">Getting started</a><a href="architecture.html">Architecture</a><a href="backend-modules.html">Backend modules</a><a href="external-interop.html">External interop</a><a href="shaders.html">Shaders</a><a aria-current="page" href="pipelines.html">Pipeline states</a><a href="rhi.html">RHI types &amp; resources</a><a href="commands.html">Commands</a><a href="presentation.html">Presentation</a><a href="diagnostics.html">Diagnostics</a><a href="api-reference.html">API reference</a></nav>
     </aside>
     <main id="main-content">
       <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../index.html">Docs</a> / <a href="index.html">ArdaBackend</a> / Pipeline states</nav>
@@ -486,7 +486,8 @@ for (const auto&amp; job : startupComputeJobs)
         <section id="persistent-cache">
           <h2>Persistent backend-native pipeline cache</h2>
           <p>A <a class="term" data-term="persistent-pipeline-cache" href="../glossary.html#term-persistent-pipeline-cache">persistent pipeline cache</a> stores driver-native optimization data across process executions; it does not retain live Arda pipeline objects.</p>
-          <p><code>FArdaBackendConfiguration::mPipelineCacheDirectory</code> defaults to <code>.arda-cache/pipelines</code>, is resolved to an absolute path, and may be empty to disable disk I/O. Device creation reads <code>d3d12.pso-cache</code> or <code>vulkan.pso-cache</code>. The wrapper header records a magic value, schema, backend tag, and payload size with a 256 MiB safety limit.</p>
+          <p>The behavior in this section is implemented by the checked-in NVRHI D3D12 and Vulkan sample modules. <code>FArdaBackendConfiguration::mPipelineCacheDirectory</code> defaults to <code>.arda-cache/pipelines</code>, is resolved to an absolute path, and may be empty to disable disk I/O. Those modules read <code>nvrhi-d3d12.pso-cache</code> or <code>nvrhi-vulkan.pso-cache</code>; schema 2 records a magic value, a hash of the exact module name, and payload size with a 256 MiB safety limit.</p>
+          <p>A custom backend still implements the public pipeline creation and <code>FlushAndDisablePipelineCachePersistence</code> contracts, but its native cache representation, compatibility fingerprint, filenames, validation, and fallback policy belong to that module. Invalid persistence data must remain an optimization miss rather than preventing creation from a valid semantic pipeline descriptor.</p>
           <figure>
             <img src="Assets/persistent-pso-cache.svg" alt="Complete descriptors using an in-memory bounded LRU, then stable semantic keys and backend-native D3D12 pipeline-library or Vulkan pipeline-cache data persisted to backend-named disk blobs.">
             <figcaption>The object LRU and native disk cache solve different problems: one avoids duplicate live PSOs; the other reduces driver compilation after restart.</figcaption>

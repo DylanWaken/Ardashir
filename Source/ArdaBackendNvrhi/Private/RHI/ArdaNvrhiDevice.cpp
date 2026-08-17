@@ -1,27 +1,32 @@
-#include "RHIWrappers/ArdaNvrhiDevice.h"
-#include "RHIWrappers/ArdaNvrhiConversions.h"
+#include "RHI/ArdaNvrhiDevice.h"
+#include "RHI/ArdaNvrhiConversions.h"
 #include "ArdaDevice.h"
 
 #include <atomic>
+#include <cctype>
 #include <cstring>
 #include <fstream>
 #include <mutex>
 #include <vector>
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
 #include <process.h>
 #include <nvrhi/d3d12.h>
+#elif defined(_WIN32)
+#include <process.h>
 #else
 #include <unistd.h>
 #endif
+#if defined(ARDA_NVRHI_WITH_VULKAN)
 #include <nvrhi/vulkan.h>
+#endif
 
 namespace arda::rhi::private_impl
 {
     namespace
     {
         constexpr uint64_t PipelineCacheMagic = 0x45484341434F5350ull; // "PSOCACHE"
-        constexpr uint32_t PipelineCacheSchema = 1;
+        constexpr uint32_t PipelineCacheSchema = 2;
         constexpr uint64_t MaxPipelineCachePayload = 256ull * 1024ull * 1024ull;
         std::atomic_uint64_t PipelineCacheTempCounter{ 0 };
 
@@ -29,10 +34,11 @@ namespace arda::rhi::private_impl
         {
             uint64_t mMagic = PipelineCacheMagic;
             uint32_t mSchema = PipelineCacheSchema;
-            uint32_t mBackend = 0;
+            uint32_t mReserved = 0;
+            uint64_t mBackendHash = 0;
             uint64_t mPayloadSize = 0;
         };
-        static_assert(sizeof(FPipelineCacheBlobHeader) == 24);
+        static_assert(sizeof(FPipelineCacheBlobHeader) == 32);
 
         uint64_t ProcessId() noexcept
         {
@@ -51,11 +57,32 @@ namespace arda::rhi::private_impl
                 Callback->Message(backend::EArdaDiagnosticSeverity::Warning, Message);
         }
 
-        const char* PipelineCacheFilename(backend::EArdaBackendType Backend) noexcept
+        uint64_t StableNameHash(const eastl::string& Name) noexcept
         {
-            return Backend == backend::EArdaBackendType::D3D12
-                ? "d3d12.pso-cache"
-                : "vulkan.pso-cache";
+            uint64_t Hash = 14695981039346656037ull;
+            for (const unsigned char Character : Name)
+            {
+                Hash ^= Character;
+                Hash *= 1099511628211ull;
+            }
+            return Hash;
+        }
+
+        std::filesystem::path PipelineCacheFilename(const eastl::string& BackendName)
+        {
+            std::string Filename;
+            Filename.reserve(BackendName.size() + 10);
+            for (const unsigned char Character : BackendName)
+            {
+                Filename.push_back(
+                    std::isalnum(Character) || Character == '-' || Character == '_'
+                        ? static_cast<char>(Character)
+                        : '_');
+            }
+            if (Filename.empty())
+                Filename = "unnamed-backend";
+            Filename += ".pso-cache";
+            return Filename;
         }
 
         uint64_t PersistentShaderHash(const FArdaRHIShaderDesc& Desc) noexcept
@@ -88,7 +115,7 @@ namespace arda::rhi::private_impl
 
         bool ReadPipelineCacheBlob(
             const std::filesystem::path& Path,
-            backend::EArdaBackendType Backend,
+            const eastl::string& BackendName,
             std::vector<uint8_t>& Payload)
         {
             Payload.clear();
@@ -104,7 +131,7 @@ namespace arda::rhi::private_impl
             Input.read(reinterpret_cast<char*>(&Header), sizeof(Header));
             if (!Input || Header.mMagic != PipelineCacheMagic ||
                 Header.mSchema != PipelineCacheSchema ||
-                Header.mBackend != static_cast<uint32_t>(Backend) ||
+                Header.mBackendHash != StableNameHash(BackendName) ||
                 Header.mPayloadSize > MaxPipelineCachePayload ||
                 FileSize != sizeof(Header) + Header.mPayloadSize)
                 return false;
@@ -123,7 +150,7 @@ namespace arda::rhi::private_impl
 
         bool WritePipelineCacheBlob(
             const std::filesystem::path& Path,
-            backend::EArdaBackendType Backend,
+            const eastl::string& BackendName,
             const std::vector<uint8_t>& Payload)
         {
             std::error_code Error;
@@ -139,7 +166,7 @@ namespace arda::rhi::private_impl
                 std::ofstream Output(
                     Temporary, std::ios::binary | std::ios::trunc);
                 FPipelineCacheBlobHeader Header;
-                Header.mBackend = static_cast<uint32_t>(Backend);
+                Header.mBackendHash = StableNameHash(BackendName);
                 Header.mPayloadSize = Payload.size();
                 Output.write(reinterpret_cast<const char*>(&Header), sizeof(Header));
                 if (!Payload.empty())
@@ -870,13 +897,13 @@ namespace arda::rhi::private_impl
             explicit FDevice(
                 nvrhi::DeviceHandle Device,
                 eastl::shared_ptr<void> BackendLifetime,
-                backend::EArdaBackendType Backend,
+                eastl::string BackendName,
                 std::filesystem::path PipelineCacheDirectory,
                 backend::IArdaDiagnosticCallback* DiagnosticCallback)
                 : FResource(EArdaRHIResourceType::Device, "ArdaNvrhiDevice", nullptr)
                 , mBackendLifetime(std::move(BackendLifetime))
                 , mDevice(std::move(Device))
-                , mBackend(Backend)
+                , mBackendName(eastl::move(BackendName))
                 , mPipelineCacheDirectory(std::move(PipelineCacheDirectory))
                 , mDiagnosticCallback(DiagnosticCallback)
                 , mbPipelineCachePersistenceEnabled(!mPipelineCacheDirectory.empty())
@@ -886,10 +913,10 @@ namespace arda::rhi::private_impl
                 {
                     std::vector<uint8_t> Payload;
                     const auto Path = mPipelineCacheDirectory /
-                        PipelineCacheFilename(mBackend);
+                        PipelineCacheFilename(mBackendName);
                     std::error_code Error;
                     const bool Exists = std::filesystem::exists(Path, Error);
-                    if (Exists && ReadPipelineCacheBlob(Path, mBackend, Payload))
+                    if (Exists && ReadPipelineCacheBlob(Path, mBackendName, Payload))
                     {
                         if (!mDevice->loadPipelineCacheData(
                                 Payload.data(), Payload.size()))
@@ -1019,7 +1046,7 @@ namespace arda::rhi::private_impl
                 nvrhi::ObjectType Type = 0;
                 nvrhi::Object Object(static_cast<uint64_t>(0));
                 const auto Api = mDevice->getGraphicsAPI();
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
                 if (Api == nvrhi::GraphicsAPI::D3D12 &&
                     D.mNativeType == EArdaRHINativeResourceType::D3D12Resource)
                 {
@@ -1028,13 +1055,16 @@ namespace arda::rhi::private_impl
                 }
                 else
 #endif
+#if defined(ARDA_NVRHI_WITH_VULKAN)
                 if (Api == nvrhi::GraphicsAPI::VULKAN &&
                     D.mNativeType == EArdaRHINativeResourceType::VulkanImage)
                 {
                     Type = nvrhi::ObjectTypes::VK_Image;
                     Object = nvrhi::Object(static_cast<uint64_t>(D.mNativeObject));
                 }
-                else return Unsupported<FArdaRHITextureRef>("Native texture type does not match the active backend.");
+                else
+#endif
+                    return Unsupported<FArdaRHITextureRef>("Native texture type does not match the active backend.");
 
                 FArdaRHITextureDesc Desc = D.mTexture;
                 Desc.mInitialState = D.mInitialState;
@@ -1064,7 +1094,7 @@ namespace arda::rhi::private_impl
                 nvrhi::ObjectType Type = 0;
                 nvrhi::Object Object(static_cast<uint64_t>(0));
                 const auto Api = mDevice->getGraphicsAPI();
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
                 if (Api == nvrhi::GraphicsAPI::D3D12 &&
                     D.mNativeType == EArdaRHINativeResourceType::D3D12Resource)
                 {
@@ -1073,13 +1103,16 @@ namespace arda::rhi::private_impl
                 }
                 else
 #endif
+#if defined(ARDA_NVRHI_WITH_VULKAN)
                 if (Api == nvrhi::GraphicsAPI::VULKAN &&
                     D.mNativeType == EArdaRHINativeResourceType::VulkanBuffer)
                 {
                     Type = nvrhi::ObjectTypes::VK_Buffer;
                     Object = nvrhi::Object(static_cast<uint64_t>(D.mNativeObject));
                 }
-                else return Unsupported<FArdaRHIBufferRef>("Native buffer type does not match the active backend.");
+                else
+#endif
+                    return Unsupported<FArdaRHIBufferRef>("Native buffer type does not match the active backend.");
 
                 FArdaRHIBufferDesc Desc = D.mBuffer;
                 Desc.mInitialState = D.mInitialState;
@@ -1638,8 +1671,8 @@ namespace arda::rhi::private_impl
                                 else
                                 {
                                     const auto Path = mPipelineCacheDirectory /
-                                        PipelineCacheFilename(mBackend);
-                                    if (WritePipelineCacheBlob(Path, mBackend, Payload))
+                                        PipelineCacheFilename(mBackendName);
+                                    if (WritePipelineCacheBlob(Path, mBackendName, Payload))
                                         mbPipelineCacheDirty = false;
                                     else
                                         Warn(mDiagnosticCallback,
@@ -1696,7 +1729,7 @@ namespace arda::rhi::private_impl
             }
             eastl::shared_ptr<void> mBackendLifetime;
             nvrhi::DeviceHandle mDevice;
-            backend::EArdaBackendType mBackend;
+            eastl::string mBackendName;
             std::filesystem::path mPipelineCacheDirectory;
             backend::IArdaDiagnosticCallback* mDiagnosticCallback = nullptr;
             std::mutex mPipelineCacheMutex;
@@ -1720,13 +1753,13 @@ namespace arda::rhi::private_impl
     FArdaRHIDeviceRef CreateArdaNvrhiDevice(
         nvrhi::DeviceHandle Device,
         eastl::shared_ptr<void> BackendLifetime,
-        backend::EArdaBackendType Backend,
+        eastl::string BackendName,
         std::filesystem::path PipelineCacheDirectory,
         backend::IArdaDiagnosticCallback* DiagnosticCallback)
     {
         return Device
             ? FArdaRHIDeviceRef(new FDevice(
-                std::move(Device), std::move(BackendLifetime), Backend,
+                std::move(Device), std::move(BackendLifetime), eastl::move(BackendName),
                 std::move(PipelineCacheDirectory), DiagnosticCallback))
             : FArdaRHIDeviceRef{};
     }

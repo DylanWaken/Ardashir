@@ -1,4 +1,4 @@
-/** @file ArdaBackendDevice.h
+/** @file ArdaNvrhiBackendDevice.h
  *  Declares private backend-device abstractions and NVRHI diagnostic forwarding.
  */
 #pragma once
@@ -59,8 +59,4 @@ namespace arda::backend
      */
     [[nodiscard]] eastl::unique_ptr<IArdaBackendDevice> CreateExternalBackendDevice();
 
-    /** Replaces the process-wide backend error while holding no backend-state lock.
-     *  @param Error Null-terminated diagnostic text.
-     */
-    void SetBackendError(const char* Error);
 }

@@ -4,16 +4,6 @@ file(GLOB_RECURSE ARDA_BACKEND_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.cpp"
 )
 
-if(NOT WIN32)
-    list(FILTER ARDA_BACKEND_SOURCES EXCLUDE REGEX "ArdaD3D12BackendDevice\\.cpp$")
-endif()
-list(FILTER ARDA_BACKEND_SOURCES EXCLUDE REGEX
-    "Arda(D3D12|Vulkan)BackendDevice\\.cpp$")
-list(FILTER ARDA_BACKEND_SOURCES EXCLUDE REGEX
-    "ArdaExternalInterop\\.cpp$")
-list(FILTER ARDA_BACKEND_SOURCES EXCLUDE REGEX
-    "RHIWrappers/ArdaNvrhi(Conversions|Device)\\.cpp$")
-
 add_library(ArdaBackend STATIC ${ARDA_BACKEND_SOURCES})
 add_library(Ardashir::ArdaBackend ALIAS ArdaBackend)
 
@@ -40,24 +30,13 @@ target_link_libraries(ArdaBackend PRIVATE ${CMAKE_DL_LIBS})
 set(ARDA_LINKED_BACKEND_TARGETS ${ARDASHIR_BACKEND_MODULE_TARGETS})
 set(ARDA_LINKED_BACKEND_FUNCTIONS
     ${ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS})
-if(ARDASHIR_BACKEND_NVRHI_VULKAN)
-    list(APPEND ARDA_LINKED_BACKEND_TARGETS
-        Ardashir::ArdaBackendNvrhiVulkan)
-    list(APPEND ARDA_LINKED_BACKEND_FUNCTIONS
-        RegisterArdaNvrhiVulkanBackend)
-endif()
-if(WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12)
-    list(APPEND ARDA_LINKED_BACKEND_TARGETS
-        Ardashir::ArdaBackendNvrhiD3D12)
-    list(APPEND ARDA_LINKED_BACKEND_FUNCTIONS
-        RegisterArdaNvrhiD3D12Backend)
-endif()
 foreach(ARDA_LINKED_BACKEND_TARGET IN LISTS ARDA_LINKED_BACKEND_TARGETS)
     if(NOT TARGET ${ARDA_LINKED_BACKEND_TARGET})
         message(FATAL_ERROR
             "Arda backend target does not exist: ${ARDA_LINKED_BACKEND_TARGET}")
     endif()
-    target_link_libraries(ArdaBackend PRIVATE ${ARDA_LINKED_BACKEND_TARGET})
+    target_link_libraries(ArdaBackend INTERFACE
+        "$<LINK_ONLY:${ARDA_LINKED_BACKEND_TARGET}>")
 endforeach()
 
 set(ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT "")
@@ -80,8 +59,8 @@ target_link_libraries(ArdaBackend
 
 set_target_properties(ArdaBackend PROPERTIES FOLDER "Ardashir")
 
-# Compile every public header in isolation without the backend PCH or NVRHI
-# include paths. This guards the opaque public/private dependency boundary.
+# Compile every public header in isolation without a provider implementation's
+# private or public include paths. This guards the module boundary.
 file(GLOB_RECURSE ARDA_BACKEND_PUBLIC_HEADERS CONFIGURE_DEPENDS
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/Public"
     "${CMAKE_CURRENT_SOURCE_DIR}/Public/*.h")

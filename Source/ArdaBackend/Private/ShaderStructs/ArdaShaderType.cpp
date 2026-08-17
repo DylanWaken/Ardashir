@@ -135,25 +135,53 @@ namespace arda::backend
         EArdaBackendType Backend,
         uint32_t PermutationId) const
     {
+        FArdaShaderTarget Target;
+        Target.mBackend = Backend;
+        return ShouldCompilePermutation(Target, PermutationId);
+    }
+
+    bool FArdaShaderType::ShouldCompilePermutation(
+        const FArdaShaderTarget& Target,
+        uint32_t PermutationId) const
+    {
         if (PermutationId >= mPermutationCount ||
             mShouldCompilePermutationFunction == nullptr)
         {
             return false;
         }
-        return mShouldCompilePermutationFunction({ this, Backend, PermutationId });
+        FArdaShaderPermutationParameters Parameters;
+        Parameters.mType = this;
+        Parameters.mBackend = Target.mBackend;
+        Parameters.mBackendName = Target.mBackendName;
+        Parameters.mBinaryFormat = Target.mBinaryFormat;
+        Parameters.mPermutationId = PermutationId;
+        return mShouldCompilePermutationFunction(Parameters);
     }
 
     FArdaShaderCompileEnvironment FArdaShaderType::BuildCompilationEnvironment(
         EArdaBackendType Backend,
         uint32_t PermutationId) const
     {
+        FArdaShaderTarget Target;
+        Target.mBackend = Backend;
+        return BuildCompilationEnvironment(Target, PermutationId);
+    }
+
+    FArdaShaderCompileEnvironment FArdaShaderType::BuildCompilationEnvironment(
+        const FArdaShaderTarget& Target,
+        uint32_t PermutationId) const
+    {
         FArdaShaderCompileEnvironment Environment;
         if (PermutationId < mPermutationCount &&
             mModifyCompilationEnvironmentFunction != nullptr)
         {
-            mModifyCompilationEnvironmentFunction(
-                { this, Backend, PermutationId },
-                Environment);
+            FArdaShaderPermutationParameters Parameters;
+            Parameters.mType = this;
+            Parameters.mBackend = Target.mBackend;
+            Parameters.mBackendName = Target.mBackendName;
+            Parameters.mBinaryFormat = Target.mBinaryFormat;
+            Parameters.mPermutationId = PermutationId;
+            mModifyCompilationEnvironmentFunction(Parameters, Environment);
         }
         return Environment;
     }

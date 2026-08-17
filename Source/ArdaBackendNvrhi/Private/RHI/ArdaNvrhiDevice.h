@@ -20,7 +20,7 @@ namespace arda::rhi::private_impl
     /** Creates the opaque Arda facade for an existing NVRHI device.
      *  @param Device NVRHI device wrapped by the facade.
      *  @param BackendLifetime Optional shared owner that keeps backend state alive.
-     *  @param Backend Graphics backend selecting the fixed cache filename.
+     *  @param BackendName Stable module name selecting cache identity and filename.
      *  @param PipelineCacheDirectory Configured cache directory; empty disables persistence.
      *  @param DiagnosticCallback Optional destination for non-fatal persistence warnings.
      *  @return Reference to the created Arda RHI device facade.
@@ -28,7 +28,7 @@ namespace arda::rhi::private_impl
     [[nodiscard]] FArdaRHIDeviceRef CreateArdaNvrhiDevice(
         nvrhi::DeviceHandle Device,
         eastl::shared_ptr<void> BackendLifetime,
-        backend::EArdaBackendType Backend,
+        eastl::string BackendName,
         std::filesystem::path PipelineCacheDirectory,
         backend::IArdaDiagnosticCallback* DiagnosticCallback);
 

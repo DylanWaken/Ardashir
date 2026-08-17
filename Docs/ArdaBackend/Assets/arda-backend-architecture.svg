@@ -55,7 +55,7 @@
     <text x="48" y="188" class="lane">APPLICATION</text>
     <text x="430" y="188" class="lane">PUBLIC BACKEND</text>
     <text x="860" y="188" class="lane">OPAQUE RHI</text>
-    <text x="1285" y="188" class="lane">PRIVATE IMPLEMENTATION</text>
+    <text x="1285" y="188" class="lane">LINKED BACKEND MODULE</text>
 
     <rect class="public" x="48" y="212" width="320" height="150"/>
     <text x="208" y="242" class="label">Renderer or engine</text>
@@ -78,20 +78,20 @@
     <text x="1046" y="270" class="small">IArdaRHIDevice; IArdaRHICommandList</text>
     <text x="1046" y="293" class="small">Arda descriptors, enums, states, and results</text>
     <text x="1046" y="316" class="small">IArdaRHIResource + TArdaRHIRef&lt;T&gt;</text>
-    <text x="1046" y="343" class="tiny">public source boundary rejects direct NVRHI use</text>
+    <text x="1046" y="343" class="tiny">public source boundary rejects direct implementation-library use</text>
     <path class="flow" d="M1232 287 H1281"/>
 
     <rect class="native" x="1285" y="212" width="459" height="150"/>
-    <text x="1515" y="242" class="label">NVRHI-backed implementation</text>
-    <text x="1515" y="270" class="small">rhi::private_impl::FDevice and FCommandList</text>
-    <text x="1515" y="293" class="small">CreateArdaNvrhiDevice(nvrhi::DeviceHandle)</text>
-    <text x="1515" y="316" class="small">descriptor conversion and native handle import</text>
-    <text x="1515" y="343" class="tiny">NVRHI types remain private to ArdaBackend</text>
+    <text x="1515" y="242" class="label">Selected backend module</text>
+    <text x="1515" y="270" class="small">IArdaBackendModule + IArdaBackendDevice</text>
+    <text x="1515" y="293" class="small">NVRHI, native API, or engine-RHI adapter</text>
+    <text x="1515" y="316" class="small">descriptor conversion and external-object import</text>
+    <text x="1515" y="343" class="tiny">implementation types remain private to the linked module</text>
 
     <rect class="data" x="48" y="400" width="754" height="188"/>
     <text x="425" y="430" class="label">Published device context</text>
     <text x="425" y="458" class="small">FArdaDeviceContext</text>
-    <text x="425" y="481" class="small">mDevice: FArdaRHIDeviceRef | mBackend | mQueueCapabilities</text>
+    <text x="425" y="481" class="small">mDevice | mBackendName | mBackend | mQueueCapabilities</text>
     <line x1="78" y1="505" x2="772" y2="505" class="divider"/>
     <text x="425" y="531" class="small">returned refs retain resources through intrusive atomic AddRef / Release</text>
     <text x="425" y="554" class="small">device ownership checks reject cross-device resource use</text>
@@ -100,7 +100,7 @@
 
     <rect class="validation" x="860" y="400" width="884" height="188"/>
     <text x="1302" y="430" class="label">Lifetime contract</text>
-    <text x="1302" y="458" class="small">Backend owns IArdaBackendDevice; FDevice pins the D3D12 or Vulkan lifetime</text>
+    <text x="1302" y="458" class="small">Core owns IArdaBackendDevice; concrete RHI refs pin module and native/engine lifetime</text>
     <text x="1302" y="481" class="small">Caller owns unique_ptr&lt;IArdaSwapChain&gt;, FArdaGlobalShaderMap, and FArdaPipelineStateCache</text>
     <text x="1302" y="504" class="small">RHI refs may be copied or moved; cache entries retain their pipelines and layouts</text>
     <line x1="890" y1="525" x2="1714" y2="525" class="divider"/>
@@ -110,7 +110,7 @@
     <rect class="validation" x="48" y="626" width="1696" height="190"/>
     <text x="896" y="656" class="label">Initialization call chain and invariants</text>
     <text x="896" y="684" class="small">ConfigureBackend &#8594; begin shader-directory registry use &#8594; scan and freeze sources &#8594; FArdaShaderTypeRegistration::CommitAll()</text>
-    <text x="896" y="707" class="small">&#8594; CreateD3D12BackendDevice or CreateVulkanBackendDevice &#8594; Initialize &#8594; CreateArdaNvrhiDevice &#8594; publish FArdaDeviceContext</text>
+    <text x="896" y="707" class="small">&#8594; select registered module &#8594; CreateDevice(source) &#8594; Initialize &#8594; GetDevice &#8594; publish FArdaDeviceContext</text>
     <text x="896" y="742" class="small">Configure before initialize | initialize once | shader mappings are immutable while a backend is live | validation defaults on</text>
     <text x="896" y="765" class="small">Headless initialization creates a device only; presentation initialization also consumes IArdaWindowSurface and creates a swap chain</text>
     <text x="896" y="793" class="tiny">Failure unwinds device state and releases the shader-directory registry for correction and retry</text>
@@ -173,7 +173,7 @@
 
     <rect class="cache" x="930" y="1184" width="814" height="212"/>
     <text x="1337" y="1214" class="label">FArdaGlobalShaderMap::Initialize(DeviceContext, artifactDirectory)</text>
-    <text x="1337" y="1242" class="small">for every committed FArdaShaderType: choose .dxil for D3D12 or .spv for Vulkan</text>
+    <text x="1337" y="1242" class="small">for every committed type: use the active module's artifact format and extension</text>
     <text x="1337" y="1265" class="small">load bytecode &#8594; IArdaRHIDevice::CreateShader &#8594; create all metadata-derived binding layouts</text>
     <text x="1337" y="1288" class="small">store pointer-stable FArdaGlobalShaderInstance { type, shader, binding layouts }</text>
     <text x="1337" y="1311" class="small">Find(MyShader::GetStaticType()) or Find("MyShader")</text>
@@ -198,8 +198,8 @@
     <text x="1337" y="1553" class="small">initializers copy shader refs and binding layouts into complete Arda RHI pipeline descriptors</text>
     <line x1="960" y1="1574" x2="1714" y2="1574" class="divider"/>
     <text x="1337" y="1600" class="label">Artifact contract</text>
-    <text x="1337" y="1626" class="small">source registration identifies the shader; offline compilation produces the backend artifact</text>
-    <text x="1337" y="1654" class="tiny">runtime loads artifacts; it does not compile shader source</text>
+    <text x="1337" y="1626" class="small">source registration identifies the shader; cache policy produces or loads the module artifact</text>
+    <text x="1337" y="1654" class="tiny">the module may rewrite or execute compilation; core provides a DXC-compatible fallback</text>
     <path class="flow" d="M1337 1682 V1760"/>
   </g>
 
@@ -303,10 +303,10 @@
   <!-- PLATFORM AND PRESENTATION -->
   <g id="backend-platform-stage">
     <rect class="stage" x="20" y="2620" width="1760" height="680"/>
-    <text x="48" y="2660" class="stageTitle">4 | PLATFORM AND PRESENTATION - shared public model over D3D12 and Vulkan</text>
+    <text x="48" y="2660" class="stageTitle">4 | SAMPLE NVRHI PLATFORM MODULES - shared public presentation over D3D12 and Vulkan</text>
     <text x="48" y="2688" class="lane">WINDOW AND SWAP CHAIN</text>
-    <text x="520" y="2688" class="lane">BACKEND DEVICE</text>
-    <text x="1000" y="2688" class="lane">NVRHI</text>
+    <text x="520" y="2688" class="lane">SAMPLE MODULE DEVICE</text>
+    <text x="1000" y="2688" class="lane">NVRHI ADAPTER</text>
     <text x="1430" y="2688" class="lane">NATIVE API</text>
 
     <rect class="public" x="48" y="2712" width="420" height="184"/>
@@ -320,12 +320,12 @@
     <path class="flow" d="M468 2804 H516"/>
 
     <rect class="device" x="520" y="2712" width="420" height="184"/>
-    <text x="730" y="2742" class="label">IArdaBackendDevice</text>
+    <text x="730" y="2742" class="label">Sample IArdaBackendDevice</text>
     <text x="730" y="2770" class="small">FArdaD3D12BackendDevice</text>
     <text x="730" y="2793" class="small">or FArdaVulkanBackendDevice</text>
-    <text x="730" y="2816" class="small">Initialize; CreateSwapChain; GetArdaDevice</text>
-    <text x="730" y="2839" class="small">owns native queues and NVRHI device</text>
-    <text x="730" y="2885" class="tiny">platform implementation is selected by EArdaBackendType</text>
+    <text x="730" y="2816" class="small">Initialize; CreateSwapChain; GetDevice</text>
+    <text x="730" y="2839" class="small">owns or adopts native queues and NVRHI device</text>
+    <text x="730" y="2885" class="tiny">registered as nvrhi-d3d12 or nvrhi-vulkan; exact name wins</text>
     <path class="flow" d="M940 2804 H986"/>
 
     <rect class="native" x="990" y="2712" width="390" height="184"/>
@@ -361,7 +361,7 @@
     <text x="1337" y="3019" class="small">ARDA_LOG provides categorized structured output | ARDA_CHECK / VERIFY / ENSURE enforce contracts</text>
     <text x="1337" y="3042" class="small">shader directory, shader registration, global map, RHI, and PSO APIs return domain-specific status</text>
     <line x1="960" y1="3063" x2="1714" y2="3063" class="divider"/>
-    <text x="1337" y="3089" class="small">NVRHI severity is translated into EArdaDiagnosticSeverity before reaching applications</text>
+    <text x="1337" y="3089" class="small">sample modules translate NVRHI severity into EArdaDiagnosticSeverity before callbacks</text>
     <text x="1337" y="3114" class="tiny">validation and diagnostics cross the abstraction boundary; native resource types do not</text>
 
     <rect class="data" x="48" y="3182" width="1696" height="82"/>

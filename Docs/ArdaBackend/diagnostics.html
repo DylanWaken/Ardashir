@@ -30,6 +30,7 @@
         <a href="quick-guide.html">Quick user's guide</a>
         <a href="getting-started.html">Getting started</a>
         <a href="architecture.html">Architecture</a>
+        <a href="backend-modules.html">Backend modules</a>
         <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
@@ -309,12 +310,14 @@ if (!status)
           <p>Diagnostics that are never tested tend to deadlock, omit fields, or fail during shutdown. Inject failures at boundaries where behavior is deterministic and does not depend on physically damaging a GPU session.</p>
           <ul>
             <li>select an unavailable backend/runtime in a controlled environment;</li>
+            <li>select an unlinked module name, register a duplicate name, or supply a mismatched provider interface version;</li>
+            <li>route a generic external descriptor to the wrong module or use an unknown named native object/payload version;</li>
             <li>provide duplicate or invalid virtual shader directories;</li>
             <li>remove, empty, truncate, or deny access to a shader artifact or its <code>.arda-key</code>; configure an invalid DXC path or disable an allowed rebuild;</li>
             <li>initialize a shader map with the wrong device or without the required reset;</li>
             <li>submit descriptors with invalid formats, dimensions, samples, or cross-device resources;</li>
             <li>force PSO creation failure and set a small diagnostic retention limit;</li>
-            <li>truncate or cross-copy <code>d3d12.pso-cache</code> and <code>vulkan.pso-cache</code>, then verify warning plus empty-cache fallback;</li>
+            <li>truncate or cross-copy <code>nvrhi-d3d12.pso-cache</code> and <code>nvrhi-vulkan.pso-cache</code>, then verify warning plus empty-cache fallback;</li>
             <li>make log callbacks recurse once to verify the sink does not deadlock;</li>
             <li>exercise callback installation, reset, and owner destruction order;</li>
             <li>resize/minimize presentation repeatedly while validation is enabled;</li>

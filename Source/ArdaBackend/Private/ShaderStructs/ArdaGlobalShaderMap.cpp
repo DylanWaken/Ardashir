@@ -59,22 +59,18 @@ namespace arda::backend
 
     const char* GetShaderArtifactExtension(EArdaBackendType Backend) noexcept
     {
-        const FArdaBackendConfiguration& Configuration = GetBackendConfiguration();
-        IArdaBackendModule* Module = nullptr;
-        if (!Configuration.mBackendName.empty() &&
-            Configuration.mBackend == Backend)
-        {
-            Module = FindBackendModule(Configuration.mBackendName.c_str());
-        }
-        if (!Module)
-        {
-            Module = FindDefaultBackendModule(Backend);
-        }
-        if (Module)
-        {
-            return Module->GetDescriptor().mShaderArtifactExtension.c_str();
-        }
-        return Backend == EArdaBackendType::Vulkan ? ".spv" : ".dxil";
+        IArdaBackendModule* Module = FindDefaultBackendModule(Backend);
+        return Module
+            ? Module->GetDescriptor().mShaderArtifactExtension.c_str()
+            : "";
+    }
+
+    const char* GetShaderArtifactExtension(const char* BackendName) noexcept
+    {
+        IArdaBackendModule* Module = FindBackendModule(BackendName);
+        return Module
+            ? Module->GetDescriptor().mShaderArtifactExtension.c_str()
+            : "";
     }
 
     FArdaShaderBytecodeResult LoadShaderBytecode(
@@ -144,7 +140,7 @@ namespace arda::backend
         }
         if (mbInitialized &&
             mDevice == DeviceContext.mDevice &&
-            mBackend == DeviceContext.mBackend &&
+            mTarget.mBackendName == DeviceContext.mBackendName &&
             mDirectory == ResolvedDirectory)
         {
             return true;
@@ -179,6 +175,17 @@ namespace arda::backend
                 Registration.mMessage));
             return false;
         }
+        FArdaShaderTarget Target;
+        const bool bResolvedTarget = DeviceContext.mBackendName.empty()
+            ? ResolveDefaultShaderTarget(DeviceContext.mBackend, Target)
+            : ResolveShaderTarget(DeviceContext.mBackendName.c_str(), Target);
+        if (!bResolvedTarget)
+        {
+            mDiagnostics.push_back(MakeDiagnostic(
+                EArdaGlobalShaderMapError::RegistrationFailed,
+                nullptr, {}, "The device backend module has no registered shader target."));
+            return false;
+        }
 
         eastl::vector<FArdaGlobalShaderInstance> Slots;
         for (const FArdaShaderType& Type :
@@ -188,9 +195,7 @@ namespace arda::backend
                  PermutationId < Type.GetPermutationCount();
                  ++PermutationId)
             {
-                if (!Type.ShouldCompilePermutation(
-                        DeviceContext.mBackend,
-                        PermutationId))
+                if (!Type.ShouldCompilePermutation(Target, PermutationId))
                 {
                     continue;
                 }
@@ -198,7 +203,8 @@ namespace arda::backend
                     Type.GetPermutationArtifactStem(PermutationId);
                 const std::filesystem::path Path = ResolvedDirectory /
                     (std::string(ArtifactStem.data(), ArtifactStem.size()) +
-                     GetShaderArtifactExtension(DeviceContext.mBackend));
+                     std::string(Target.mArtifactExtension.data(),
+                         Target.mArtifactExtension.size()));
                 if (!IsContainedArtifactPath(ResolvedDirectory, Path))
                 {
                     mDiagnostics.push_back(MakeDiagnostic(
@@ -215,7 +221,7 @@ namespace arda::backend
         }
 
         mDevice = DeviceContext.mDevice;
-        mBackend = DeviceContext.mBackend;
+        mTarget = eastl::move(Target);
         mMode = GetBackendConfiguration().mShaderCompilationMode;
         mDirectory = ResolvedDirectory;
         mShaders = eastl::move(Slots);
@@ -267,13 +273,15 @@ namespace arda::backend
             Type.GetPermutationArtifactStem(Shader.mPermutationId);
         const std::filesystem::path Path = mDirectory /
             (std::string(ArtifactStem.data(), ArtifactStem.size()) +
-             GetShaderArtifactExtension(mBackend));
+             std::string(mTarget.mArtifactExtension.data(),
+                 mTarget.mArtifactExtension.size()));
 
         if (mMode != EArdaShaderCompilationMode::LoadOnly)
         {
             const FArdaShaderCompileResult CompileResult =
                 EnsureRegisteredShaderArtifact(
-                    Type, mBackend, Shader.mPermutationId, mDirectory);
+                    Type, mTarget.mBackendName.c_str(),
+                    Shader.mPermutationId, mDirectory);
             if (!CompileResult)
             {
                 const FArdaShaderCompileDiagnostic& CompilerDiagnostic =
@@ -423,7 +431,7 @@ namespace arda::backend
         mLoadStates.clear();
         mDiagnostics.clear();
         mDevice = nullptr;
-        mBackend = DefaultBackend;
+        mTarget = {};
         mMode = EArdaShaderCompilationMode::OnDemand;
         mDirectory.clear();
         mbInitialized = false;

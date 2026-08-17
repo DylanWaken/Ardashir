@@ -134,6 +134,39 @@ namespace arda::backend
         return BestModule;
     }
 
+    namespace
+    {
+        bool CopyShaderTarget(
+            const IArdaBackendModule* Module,
+            FArdaShaderTarget& OutTarget) noexcept
+        {
+            OutTarget = {};
+            if (!Module)
+                return false;
+            const FArdaBackendModuleDescriptor& Descriptor = Module->GetDescriptor();
+            OutTarget.mBackendName = Descriptor.mName;
+            OutTarget.mBackend = Descriptor.mBackendType;
+            OutTarget.mBinaryFormat = Descriptor.mShaderBinaryFormat;
+            OutTarget.mArtifactExtension = Descriptor.mShaderArtifactExtension;
+            OutTarget.mCompilerIdentity = Descriptor.mShaderCompilerIdentity;
+            return static_cast<bool>(OutTarget);
+        }
+    }
+
+    bool ResolveShaderTarget(
+        const char* BackendName,
+        FArdaShaderTarget& OutTarget) noexcept
+    {
+        return CopyShaderTarget(FindBackendModule(BackendName), OutTarget);
+    }
+
+    bool ResolveDefaultShaderTarget(
+        EArdaBackendType BackendType,
+        FArdaShaderTarget& OutTarget) noexcept
+    {
+        return CopyShaderTarget(FindDefaultBackendModule(BackendType), OutTarget);
+    }
+
     eastl::vector<FArdaBackendModuleDescriptor> EnumerateBackendModules()
     {
         private_api::RegisterLinkedBackendModules();

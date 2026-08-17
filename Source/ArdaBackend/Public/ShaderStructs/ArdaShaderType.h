@@ -103,6 +103,10 @@ namespace arda::backend
         [[nodiscard]] bool ShouldCompilePermutation(
             EArdaBackendType Backend,
             uint32_t PermutationId) const;
+        /** Evaluates compile policy for an exact backend-module target. */
+        [[nodiscard]] bool ShouldCompilePermutation(
+            const FArdaShaderTarget& Target,
+            uint32_t PermutationId) const;
         /**
          * Builds deterministic definitions without invoking an external compiler.
          * This is the compiler-integration hook point for a future process layer.
@@ -112,6 +116,10 @@ namespace arda::backend
          */
         [[nodiscard]] FArdaShaderCompileEnvironment BuildCompilationEnvironment(
             EArdaBackendType Backend,
+            uint32_t PermutationId) const;
+        /** Builds definitions for an exact backend-module target. */
+        [[nodiscard]] FArdaShaderCompileEnvironment BuildCompilationEnvironment(
+            const FArdaShaderTarget& Target,
             uint32_t PermutationId) const;
         /**
          * Produces the artifact stem for one permutation.
