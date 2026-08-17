@@ -7,36 +7,18 @@ namespace arda::backend
 {
     namespace
     {
-        struct FResourceProviderEntry
-        {
-            eastl::string mName;
-            IArdaExternalResourceProvider* mProvider = nullptr;
-        };
-
-        struct FResourceProviderRegistry
-        {
-            std::mutex mMutex;
-            eastl::vector<FResourceProviderEntry> mEntries;
-        };
-
-        FResourceProviderRegistry& GetResourceProviderRegistry()
-        {
-            static FResourceProviderRegistry Registry;
-            return Registry;
-        }
-
         struct FExternalDeviceLifetime
         {
             FArdaNvrhiMessageCallback mMessageCallback;
             eastl::shared_ptr<void> mProviderToken;
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
             FArdaExternalD3D12DeviceDesc mD3D12Desc;
 #endif
             eastl::shared_ptr<vk::detail::DynamicLoader> mVulkanLoader;
             FArdaExternalVulkanDeviceDesc mVulkanDesc;
         };
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
         eastl::string DescribeHResult(HRESULT Result)
         {
             char Buffer[16] = {};
@@ -179,14 +161,6 @@ namespace arda::backend
         {
         public:
             EArdaInitializeResult Initialize(
-                const FArdaBackendConfiguration&,
-                IArdaWindowSurface*) override
-            {
-                mError = "An external device provider is required.";
-                return EArdaInitializeResult::Failure;
-            }
-
-            EArdaInitializeResult Initialize(
                 const FArdaBackendConfiguration& Configuration,
                 IArdaWindowSurface* WindowSurface,
                 const IArdaExternalDeviceProvider* ExternalProvider) override
@@ -210,7 +184,7 @@ namespace arda::backend
                 switch (Configuration.mBackend)
                 {
                 case EArdaBackendType::D3D12:
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
                     if (!InitializeD3D12(*ExternalProvider))
                         return EArdaInitializeResult::Failure;
                     break;
@@ -282,14 +256,45 @@ namespace arda::backend
             const eastl::string& GetError() const noexcept override { return mError; }
 
         private:
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
             bool InitializeD3D12(const IArdaExternalDeviceProvider& Provider)
             {
                 auto& External = mLifetime->mD3D12Desc;
                 if (!Provider.GetD3D12DeviceDesc(External))
                 {
-                    mError = "The external provider did not supply a D3D12 descriptor.";
-                    return false;
+                    FArdaExternalDeviceDesc Generic;
+                    if (!Provider.GetExternalDeviceDesc(Generic) ||
+                        Generic.mNativeApi != "d3d12" ||
+                        (!Generic.mBackendName.empty() &&
+                         Generic.mBackendName != "nvrhi-d3d12"))
+                    {
+                        mError = "The external provider did not supply a D3D12 descriptor.";
+                        return false;
+                    }
+                    External.mDevice = Generic.mDevice;
+                    for (const FArdaExternalQueueDesc& Queue : Generic.mQueues)
+                    {
+                        switch (Queue.mType)
+                        {
+                        case rhi::EArdaRHIQueueType::Graphics:
+                            External.mGraphicsQueue = Queue.mQueue;
+                            break;
+                        case rhi::EArdaRHIQueueType::Compute:
+                            External.mComputeQueue = Queue.mQueue;
+                            break;
+                        case rhi::EArdaRHIQueueType::Copy:
+                            External.mCopyQueue = Queue.mQueue;
+                            break;
+                        }
+                    }
+                    for (const FArdaExternalNativeObject& Object :
+                         Generic.mAdditionalObjects)
+                    {
+                        if (Object.mName == "dxgi-factory")
+                        {
+                            External.mDxgiFactory = Object.mObject;
+                        }
+                    }
                 }
                 if (!External.mDevice || !External.mGraphicsQueue)
                 {
@@ -434,8 +439,50 @@ namespace arda::backend
                 auto& External = mLifetime->mVulkanDesc;
                 if (!Provider.GetVulkanDeviceDesc(External))
                 {
-                    mError = "The external provider did not supply a Vulkan descriptor.";
-                    return EArdaInitializeResult::Failure;
+                    FArdaExternalDeviceDesc Generic;
+                    if (!Provider.GetExternalDeviceDesc(Generic) ||
+                        Generic.mNativeApi != "vulkan" ||
+                        (!Generic.mBackendName.empty() &&
+                         Generic.mBackendName != "nvrhi-vulkan"))
+                    {
+                        mError = "The external provider did not supply a Vulkan descriptor.";
+                        return EArdaInitializeResult::Failure;
+                    }
+                    External.mInstance = Generic.mInstance;
+                    External.mPhysicalDevice = Generic.mAdapter;
+                    External.mDevice = Generic.mDevice;
+                    for (const FArdaExternalQueueDesc& Queue : Generic.mQueues)
+                    {
+                        FArdaExternalVulkanQueueDesc* Destination = nullptr;
+                        switch (Queue.mType)
+                        {
+                        case rhi::EArdaRHIQueueType::Graphics:
+                            Destination = &External.mGraphicsQueue;
+                            break;
+                        case rhi::EArdaRHIQueueType::Compute:
+                            Destination = &External.mComputeQueue;
+                            break;
+                        case rhi::EArdaRHIQueueType::Copy:
+                            Destination = &External.mCopyQueue;
+                            break;
+                        }
+                        if (!Destination)
+                        {
+                            mError = "The generic Vulkan descriptor contains an invalid queue role.";
+                            return EArdaInitializeResult::Failure;
+                        }
+                        Destination->mQueue = Queue.mQueue;
+                        Destination->mFamilyIndex = Queue.mFamilyIndex;
+                        Destination->mQueueIndex = Queue.mQueueIndex;
+                    }
+                    for (const FArdaExternalNativeObject& Object :
+                         Generic.mAdditionalObjects)
+                    {
+                        if (Object.mName == "allocation-callbacks")
+                        {
+                            External.mAllocationCallbacks = Object.mObject;
+                        }
+                    }
                 }
                 if (!External.mInstance || !External.mPhysicalDevice ||
                     !External.mDevice || !External.mGraphicsQueue.mQueue)
@@ -624,63 +671,6 @@ namespace arda::backend
             eastl::string mError;
         };
 
-        template <typename Ref, typename Desc, typename Resolver, typename Importer>
-        rhi::TArdaRHIResult<Ref> ImportExternalResource(
-            const char* ProviderName,
-            uint64_t Id,
-            Resolver Resolve,
-            Importer Import)
-        {
-            if (!ProviderName || !ProviderName[0])
-            {
-                return { {}, rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidArgument,
-                    "External resource provider name must be non-empty.") };
-            }
-
-            auto& Registry = GetResourceProviderRegistry();
-            std::lock_guard<std::mutex> Lock(Registry.mMutex);
-            IArdaExternalResourceProvider* Provider = nullptr;
-            for (const auto& Entry : Registry.mEntries)
-            {
-                if (Entry.mName == ProviderName)
-                {
-                    Provider = Entry.mProvider;
-                    break;
-                }
-            }
-            if (!Provider)
-            {
-                return { {}, rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidArgument,
-                    "External resource provider is not registered.") };
-            }
-            if (!IsBackendInitialized())
-            {
-                return { {}, rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidState,
-                    "External resources require an initialized backend.") };
-            }
-            if (Provider->GetBackendType() != GetDeviceContext().mBackend)
-            {
-                return { {}, rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::WrongDevice,
-                    "External resource provider backend does not match the active device.") };
-            }
-
-            Desc Description;
-            rhi::FArdaRHIStatus Status = (Provider->*Resolve)(Id, Description);
-            if (!Status)
-                return { {}, std::move(Status) };
-            rhi::FArdaRHIDeviceRef Device = GetDevice();
-            if (!Device)
-            {
-                return { {}, rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidState,
-                    "The active backend has no RHI device.") };
-            }
-            return (Device.Get()->*Import)(Description);
-        }
     }
 
     eastl::unique_ptr<IArdaBackendDevice> CreateExternalBackendDevice()
@@ -688,97 +678,4 @@ namespace arda::backend
         return eastl::make_unique<FArdaExternalBackendDevice>();
     }
 
-    bool RegisterExternalResourceProvider(IArdaExternalResourceProvider& Provider)
-    {
-        const char* Name = Provider.GetName();
-        if (!Name || !Name[0])
-        {
-            SetBackendError("External resource provider name must be non-empty.");
-            return false;
-        }
-        auto& Registry = GetResourceProviderRegistry();
-        std::lock_guard<std::mutex> Lock(Registry.mMutex);
-        for (const auto& Entry : Registry.mEntries)
-        {
-            if (Entry.mName == Name)
-            {
-                if (Entry.mProvider == &Provider)
-                {
-                    SetBackendError("");
-                    return true;
-                }
-                SetBackendError(
-                    "An external resource provider with that name is already registered.");
-                return false;
-            }
-        }
-        Registry.mEntries.push_back({ Name, &Provider });
-        SetBackendError("");
-        return true;
-    }
-
-    bool UnregisterExternalResourceProvider(IArdaExternalResourceProvider& Provider)
-    {
-        const char* Name = Provider.GetName();
-        if (!Name || !Name[0])
-        {
-            SetBackendError("External resource provider name must be non-empty.");
-            return false;
-        }
-        auto& Registry = GetResourceProviderRegistry();
-        std::lock_guard<std::mutex> Lock(Registry.mMutex);
-        for (auto It = Registry.mEntries.begin(); It != Registry.mEntries.end(); ++It)
-        {
-            if (It->mName != Name)
-                continue;
-            if (It->mProvider != &Provider)
-            {
-                SetBackendError(
-                    "The named external resource provider is a different object.");
-                return false;
-            }
-            Registry.mEntries.erase(It);
-            SetBackendError("");
-            return true;
-        }
-        SetBackendError("");
-        return true;
-    }
-
-    const IArdaExternalResourceProvider* GetExternalResourceProvider(
-        const char* Name) noexcept
-    {
-        if (!Name || !Name[0])
-            return nullptr;
-        auto& Registry = GetResourceProviderRegistry();
-        std::lock_guard<std::mutex> Lock(Registry.mMutex);
-        for (const auto& Entry : Registry.mEntries)
-            if (Entry.mName == Name)
-                return Entry.mProvider;
-        return nullptr;
-    }
-
-    rhi::TArdaRHIResult<rhi::FArdaRHITextureRef> ImportExternalTexture(
-        const char* ProviderName, uint64_t Id)
-    {
-        return ImportExternalResource<
-            rhi::FArdaRHITextureRef,
-            rhi::FArdaRHINativeTextureImportDesc>(
-            ProviderName,
-            Id,
-            &IArdaExternalResourceProvider::ResolveNativeTexture,
-            &rhi::IArdaRHIDevice::ImportNativeTexture);
-    }
-
-    rhi::TArdaRHIResult<rhi::FArdaRHIBufferRef> ImportExternalBuffer(
-        const char* ProviderName, uint64_t Id)
-    {
-        return ImportExternalResource<
-            rhi::FArdaRHIBufferRef,
-            rhi::FArdaRHINativeBufferImportDesc>(
-            ProviderName,
-            Id,
-            &IArdaExternalResourceProvider::ResolveNativeBuffer,
-            &rhi::IArdaRHIDevice::ImportNativeBuffer);
-    }
 }

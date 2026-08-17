@@ -108,16 +108,21 @@ target_link_libraries(ArdashirImGuiGlfw PUBLIC Ardashir::ImGui glfw)
 target_compile_features(ArdashirImGuiGlfw PUBLIC cxx_std_17)
 set_target_properties(ArdashirImGuiGlfw PROPERTIES FOLDER "ThirdParty/ImGui")
 
-# NVRHI is a project-wide graphics dependency. Keep its backends available to
-# every Ardashir module rather than configuring them from an individual test.
-set(NVRHI_INSTALL OFF CACHE BOOL "Disable NVRHI install rules" FORCE)
-set(NVRHI_WITH_VULKAN ON CACHE BOOL "Build the NVRHI Vulkan backend" FORCE)
-if(WIN32)
-    set(NVRHI_WITH_DX12 ON CACHE BOOL "Build the NVRHI D3D12 backend" FORCE)
+# NVRHI is a sample backend dependency, not an ArdaBackend ABI dependency.
+if(ARDASHIR_BACKEND_NVRHI_VULKAN OR
+   (WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12))
+    set(NVRHI_INSTALL OFF CACHE BOOL "Disable NVRHI install rules" FORCE)
+    # The shared NVRHI external-device adapter uses Vulkan as its portable base.
+    set(NVRHI_WITH_VULKAN ON
+        CACHE BOOL "Build the NVRHI Vulkan backend" FORCE)
+    if(WIN32)
+        set(NVRHI_WITH_DX12 ${ARDASHIR_BACKEND_NVRHI_D3D12}
+            CACHE BOOL "Build the NVRHI D3D12 backend" FORCE)
+    endif()
+    add_subdirectory(
+        "${PROJECT_SOURCE_DIR}/ThirdParty/NVRHI"
+        "${PROJECT_BINARY_DIR}/ThirdParty/NVRHI")
 endif()
-add_subdirectory(
-    "${PROJECT_SOURCE_DIR}/ThirdParty/NVRHI"
-    "${PROJECT_BINARY_DIR}/ThirdParty/NVRHI")
 
 if(ARDASHIR_BUILD_TESTS)
     set(INSTALL_GTEST OFF CACHE BOOL "Disable GoogleTest install rules" FORCE)

@@ -107,6 +107,8 @@ namespace arda::backend
         eastl::string mSourceIdentity;
         /** Final bytecode artifact path. */
         std::filesystem::path mOutputPath;
+        /** Compiler executable selected or replaced by the backend module. */
+        std::filesystem::path mCompilerExecutable;
         /** DXC target profile derived from the registered stage. */
         eastl::string mProfile;
         /** Sorted deterministic preprocessor environment. */

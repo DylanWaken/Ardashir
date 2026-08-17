@@ -138,7 +138,9 @@ namespace arda::rhi
     {
         D3D12Resource,
         VulkanImage,
-        VulkanBuffer
+        VulkanBuffer,
+        /** Native handle and payload interpreted by the active backend module. */
+        BackendDefined
     };
     /** Controls whether an imported native resource remains caller-owned. */
     enum class EArdaRHINativeOwnership : uint8_t
@@ -450,6 +452,10 @@ namespace arda::rhi
         uintptr_t mNativeObject = 0;
         /** Stores the native type. */
         EArdaRHINativeResourceType mNativeType = EArdaRHINativeResourceType::D3D12Resource;
+        /** Stable native type name required when mNativeType is BackendDefined. */
+        eastl::string mNativeTypeName;
+        /** Immutable backend-specific metadata copied into the import request. */
+        eastl::vector<uint8_t> mBackendData;
         /** Stores the ownership. */
         EArdaRHINativeOwnership mOwnership = EArdaRHINativeOwnership::Borrowed;
         /** Stores the texture. */
@@ -469,6 +475,7 @@ namespace arda::rhi
         bool operator==(const FArdaRHINativeTextureImportDesc& O) const noexcept
         {
             return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType &&
+                mNativeTypeName == O.mNativeTypeName && mBackendData == O.mBackendData &&
                 mOwnership == O.mOwnership && mTexture == O.mTexture &&
                 mInitialState == O.mInitialState &&
                 !mLifetimeToken.owner_before(O.mLifetimeToken) &&
@@ -483,6 +490,10 @@ namespace arda::rhi
         uintptr_t mNativeObject = 0;
         /** Stores the native type. */
         EArdaRHINativeResourceType mNativeType = EArdaRHINativeResourceType::D3D12Resource;
+        /** Stable native type name required when mNativeType is BackendDefined. */
+        eastl::string mNativeTypeName;
+        /** Immutable backend-specific metadata copied into the import request. */
+        eastl::vector<uint8_t> mBackendData;
         /** Stores the ownership. */
         EArdaRHINativeOwnership mOwnership = EArdaRHINativeOwnership::Borrowed;
         /** Stores the buffer. */
@@ -502,6 +513,7 @@ namespace arda::rhi
         bool operator==(const FArdaRHINativeBufferImportDesc& O) const noexcept
         {
             return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType &&
+                mNativeTypeName == O.mNativeTypeName && mBackendData == O.mBackendData &&
                 mOwnership == O.mOwnership && mBuffer == O.mBuffer &&
                 mInitialState == O.mInitialState &&
                 !mLifetimeToken.owner_before(O.mLifetimeToken) &&

@@ -269,7 +269,8 @@ namespace arda::backend
 
             EArdaInitializeResult Initialize(
                 const FArdaBackendConfiguration& Configuration,
-                IArdaWindowSurface* WindowSurface) override
+                IArdaWindowSurface* WindowSurface,
+                const IArdaExternalDeviceProvider*) override
             {
                 if (WindowSurface)
                 {

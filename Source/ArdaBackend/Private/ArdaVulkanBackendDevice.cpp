@@ -645,7 +645,8 @@ namespace arda::backend
 
             EArdaInitializeResult Initialize(
                 const FArdaBackendConfiguration& Configuration,
-                IArdaWindowSurface* WindowSurface) override
+                IArdaWindowSurface* WindowSurface,
+                const IArdaExternalDeviceProvider*) override
             {
                 const auto GetInstanceProcAddress =
                     mLoader->getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");

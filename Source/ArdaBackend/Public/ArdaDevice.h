@@ -65,7 +65,9 @@ namespace arda::backend
         /** Uses the Direct3D 12 backend. */
         D3D12,
         /** Uses the Vulkan backend. */
-        Vulkan
+        Vulkan,
+        /** Uses a module-defined API without a legacy graphics-API classification. */
+        Custom
     };
 
     /**
@@ -115,6 +117,11 @@ namespace arda::backend
     /** Configures backend selection, shader policy, validation, and diagnostics. */
     struct FArdaBackendConfiguration
     {
+        /**
+         * Stable backend module name. Empty selects the highest-priority module
+         * compatible with mBackend, preserving legacy API-based configuration.
+         */
+        eastl::string mBackendName;
         /** The graphics API to initialize. */
         EArdaBackendType mBackend = DefaultBackend;
         /** The source from which the native graphics device is obtained. */
@@ -169,6 +176,8 @@ namespace arda::backend
     {
         /** The initialized opaque RHI device reference. */
         rhi::FArdaRHIDeviceRef mDevice;
+        /** Stable name of the linked module that created the device. */
+        eastl::string mBackendName;
         /** The graphics API that owns the device. */
         EArdaBackendType mBackend = DefaultBackend;
         /** The source from which the initialized native device was obtained. */
@@ -193,6 +202,12 @@ namespace arda::backend
      * @return True when the backend selection was accepted.
      */
     [[nodiscard]] bool ConfigureBackend(EArdaBackendType backend);
+    /**
+     * Selects a registered backend module by stable name.
+     * @param BackendName Name returned by EnumerateBackendModules.
+     * @return True when the named module exists and configuration was accepted.
+     */
+    [[nodiscard]] bool ConfigureBackend(const char* BackendName);
     /** @return The current process-wide backend configuration. */
     [[nodiscard]] const FArdaBackendConfiguration& GetBackendConfiguration() noexcept;
 

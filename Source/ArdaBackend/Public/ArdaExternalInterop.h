@@ -13,6 +13,56 @@
 
 namespace arda::backend
 {
+    /** Names a backend-specific native object carried by an external device. */
+    struct FArdaExternalNativeObject
+    {
+        /** Stable semantic name defined by the consuming backend module. */
+        eastl::string mName;
+        /** Opaque pointer or integer native handle. */
+        FArdaNativeObject mObject;
+    };
+
+    /** Describes one queue supplied with a generic external device. */
+    struct FArdaExternalQueueDesc
+    {
+        /** Arda queue role represented by this native queue. */
+        rhi::EArdaRHIQueueType mType = rhi::EArdaRHIQueueType::Graphics;
+        /** Opaque native queue handle or engine-RHI queue object. */
+        FArdaNativeObject mQueue;
+        /** Native queue-family identifier when the API uses families. */
+        uint32_t mFamilyIndex = 0;
+        /** Queue index within its family. */
+        uint32_t mQueueIndex = 0;
+    };
+
+    /**
+     * Backend-extensible description of a host-owned device.
+     *
+     * Standard roles use the explicit instance, adapter, device, and queue
+     * fields. Engine integrations place objects such as FRHIDevice,
+     * IDynamicRHI, Unity interfaces, or Godot RenderingDevice pointers in
+     * mAdditionalObjects under names documented by their backend module.
+     */
+    struct FArdaExternalDeviceDesc
+    {
+        /** Stable backend module name expected to consume this descriptor. */
+        eastl::string mBackendName;
+        /** Native API or host-RHI name, such as d3d12, vulkan, or unreal-rhi. */
+        eastl::string mNativeApi;
+        /** Optional native instance or factory object. */
+        FArdaNativeObject mInstance;
+        /** Optional physical adapter or physical-device object. */
+        FArdaNativeObject mAdapter;
+        /** Required native logical device or host-RHI device object. */
+        FArdaNativeObject mDevice;
+        /** Queues exposed by the host. */
+        eastl::vector<FArdaExternalQueueDesc> mQueues;
+        /** Backend-specific named native objects. */
+        eastl::vector<FArdaExternalNativeObject> mAdditionalObjects;
+        /** Opaque immutable bytes interpreted only by the named backend module. */
+        eastl::vector<uint8_t> mBackendData;
+    };
+
     /**
      * Describes an externally owned Direct3D 12 device and its NVRHI configuration.
      * All native objects are opaque and non-owning. They must remain valid through backend
@@ -120,6 +170,19 @@ namespace arda::backend
         /** @return The graphics backend represented by this provider. */
         [[nodiscard]] virtual EArdaBackendType GetBackendType() const noexcept = 0;
         /**
+         * @return Required module name for module-specific devices, or null when
+         * any compatible module may consume the descriptor.
+         */
+        [[nodiscard]] virtual const char* GetBackendName() const noexcept { return nullptr; }
+        /**
+         * Copies a universal external-device descriptor when supported.
+         * Backend modules should prefer this path for engine and custom RHI hosts.
+         * @param OutDesc Receives a self-contained descriptor.
+         * @return True when a descriptor was supplied.
+         */
+        [[nodiscard]] virtual bool GetExternalDeviceDesc(
+            FArdaExternalDeviceDesc& OutDesc) const { return false; }
+        /**
          * Copies the Direct3D 12 descriptor when supported.
          * @param OutDesc Receives a self-contained descriptor.
          * @return True when a valid Direct3D 12 descriptor was supplied.
@@ -176,6 +239,11 @@ namespace arda::backend
         [[nodiscard]] virtual const char* GetName() const noexcept = 0;
         /** @return Graphics backend required by the provider's native handles. */
         [[nodiscard]] virtual EArdaBackendType GetBackendType() const noexcept = 0;
+        /**
+         * @return Required module name for module-specific resources, or null
+         * when any compatible module may consume the descriptors.
+         */
+        [[nodiscard]] virtual const char* GetBackendName() const noexcept { return nullptr; }
         /**
          * Resolves a stable texture identifier.
          * @param Id Provider-defined stable identifier.

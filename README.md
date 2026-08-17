@@ -4,16 +4,18 @@
 
 Ardashir is a modular C++ research and development runtime for real-time
 rendering, ray-traced global illumination, GPU physics, and deep-learning
-systems. Its GPU-facing modules are built on NVIDIA's Rendering Hardware
-Interface (NVRHI), allowing the project to share graphics abstractions and
-resources across rendering, simulation, and inference workloads.
+systems. Its GPU-facing modules use ArdaBackend's provider-neutral RHI. NVRHI
+Vulkan and NVRHI D3D12 are shipped as separate sample provider libraries; a
+native API or engine RHI provider can replace them without changing renderer
+code.
 
 **Documentation:** [Canonical GitHub Pages URL](https://dylanwaken.github.io/Ardashir/) · [Documentation source](Docs/index.html)
 
 ## Modules
 
 - **[ArdaBackend](Source/ArdaBackend)** — The graphics backend and RHI layer for
-  devices, resources, shaders, pipelines, commands, and presentation.
+  devices, resources, shaders, pipelines, commands, and presentation. See the
+  [provider module contract](Docs/ArdaBackend/BackendModules.md).
 
 - **[ArdaRenderGraph](Source/ArdaRenderGraph)** — A foundational render
   dependency graph implementation on top of NVRHI. It schedules rendering work
@@ -44,7 +46,7 @@ and tested API components; it is not a checked-in end-to-end RT sample.
 
 ## Dependencies
 
-- [NVRHI](https://github.com/NVIDIA-RTX/NVRHI) for graphics API abstraction
+- [NVRHI](https://github.com/NVIDIA-RTX/NVRHI) for the sample Vulkan/D3D12 providers
 - [GoogleTest](https://github.com/google/googletest) for module tests
 - [GLFW](https://github.com/glfw/glfw) for cross-platform windows and surfaces
 - CMake 3.16 or newer
@@ -87,7 +89,10 @@ ctest --test-dir build-linux --output-on-failure
 ```
 
 Set `ARDASHIR_BUILD_TESTS=OFF` to omit GoogleTest and the module test targets.
-Set `ARDASHIR_BUILD_NVRHI_TEST=OFF` to omit the graphics integration test.
+Set `ARDASHIR_BUILD_RHI_TEST=OFF` to omit the graphics integration test.
+Set `ARDASHIR_BACKEND_NVRHI_VULKAN=OFF` or
+`ARDASHIR_BACKEND_NVRHI_D3D12=OFF` to omit either sample provider. Turning both
+off leaves ArdaBackend ready for a host-supplied provider library.
 Set `ARDASHIR_ENABLE_TRACE=OFF` to compile trace instrumentation to no-ops.
 
 ## Trace captures

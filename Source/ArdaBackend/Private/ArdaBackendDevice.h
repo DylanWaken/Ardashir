@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ArdaBackend.h"
+#include "ArdaBackendProvider.h"
 
 #include <EASTL/unique_ptr.h>
 #include <EASTL/shared_ptr.h>
@@ -41,68 +42,6 @@ namespace arda::backend
     private:
         /** Non-owning destination for translated diagnostic messages. */
         IArdaDiagnosticCallback* mTarget = nullptr;
-    };
-
-    /** Defines the private interface implemented by graphics backend devices. */
-    class IArdaBackendDevice
-    {
-    public:
-        /** Destroys the backend device interface. */
-        virtual ~IArdaBackendDevice() = default;
-
-        /** Initializes the backend device.
-         *  @param Configuration Backend configuration used to create the device.
-         *  @param WindowSurface Optional window surface used by the backend.
-         *  @return Result describing whether initialization succeeded.
-         */
-        [[nodiscard]] virtual EArdaInitializeResult Initialize(
-            const FArdaBackendConfiguration& Configuration,
-            IArdaWindowSurface* WindowSurface) = 0;
-
-        /** Initializes the backend with an optional external native-device provider.
-         *  This compatibility overload delegates owned initialization to the legacy
-         *  two-argument implementation.
-         *  @param Configuration Backend configuration used to initialize the device.
-         *  @param WindowSurface Optional presentation surface.
-         *  @param ExternalProvider Non-owning provider used only during this call, or null.
-         *  @return Result describing whether initialization succeeded.
-         */
-        [[nodiscard]] virtual EArdaInitializeResult Initialize(
-            const FArdaBackendConfiguration& Configuration,
-            IArdaWindowSurface* WindowSurface,
-            const IArdaExternalDeviceProvider* ExternalProvider)
-        {
-            return ExternalProvider
-                ? EArdaInitializeResult::Failure
-                : Initialize(Configuration, WindowSurface);
-        }
-
-        /** Creates a swap chain for the initialized backend.
-         *  @param Width Initial swap-chain width in pixels.
-         *  @param Height Initial swap-chain height in pixels.
-         *  @return The created swap chain, or an empty pointer on failure.
-         */
-        [[nodiscard]] virtual eastl::unique_ptr<IArdaSwapChain> CreateSwapChain(
-            uint32_t Width,
-            uint32_t Height) = 0;
-
-        /** Blocks until all queued device work has completed. */
-        virtual void WaitForIdle() noexcept = 0;
-
-        /** Gets the RHI facade for the native backend device.
-         *  @return Reference to the backend's RHI device.
-         */
-        [[nodiscard]] virtual rhi::FArdaRHIDeviceRef GetDevice() const noexcept = 0;
-
-        /** Gets the queues supported by the backend device.
-         *  @return Queue capability flags for the device.
-         */
-        [[nodiscard]] virtual FArdaQueueCapabilities GetQueueCapabilities() const noexcept = 0;
-
-        /** Gets the most recent backend error description.
-         *  @return Backend-owned error text.
-         */
-        [[nodiscard]] virtual const eastl::string& GetError() const noexcept = 0;
     };
 
     /** Creates the private Direct3D 12 backend implementation.

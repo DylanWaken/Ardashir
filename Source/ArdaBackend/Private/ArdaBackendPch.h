@@ -28,7 +28,7 @@
 #include <nvrhi/nvrhi.h>
 #include <nvrhi/validation.h>
 #include <nvrhi/vulkan.h>
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
     #include <nvrhi/d3d12.h>
 #endif
 

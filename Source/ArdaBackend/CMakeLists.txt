@@ -7,6 +7,12 @@ file(GLOB_RECURSE ARDA_BACKEND_SOURCES CONFIGURE_DEPENDS
 if(NOT WIN32)
     list(FILTER ARDA_BACKEND_SOURCES EXCLUDE REGEX "ArdaD3D12BackendDevice\\.cpp$")
 endif()
+list(FILTER ARDA_BACKEND_SOURCES EXCLUDE REGEX
+    "Arda(D3D12|Vulkan)BackendDevice\\.cpp$")
+list(FILTER ARDA_BACKEND_SOURCES EXCLUDE REGEX
+    "ArdaExternalInterop\\.cpp$")
+list(FILTER ARDA_BACKEND_SOURCES EXCLUDE REGEX
+    "RHIWrappers/ArdaNvrhi(Conversions|Device)\\.cpp$")
 
 add_library(ArdaBackend STATIC ${ARDA_BACKEND_SOURCES})
 add_library(Ardashir::ArdaBackend ALIAS ArdaBackend)
@@ -28,36 +34,49 @@ target_include_directories(ArdaBackend
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Public"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private"
 )
-target_precompile_headers(ArdaBackend PRIVATE Private/ArdaBackendPch.h)
+target_precompile_headers(ArdaBackend PRIVATE Private/ArdaBackendCorePch.h)
 
-string(CONCAT ARDA_RHI_COMMON_TARGET "nv" "rhi")
-string(CONCAT ARDA_RHI_VULKAN_TARGET "nv" "rhi_vk")
-string(CONCAT ARDA_RHI_D3D12_TARGET "nv" "rhi_d3d12")
-
-target_link_libraries(ArdaBackend PRIVATE
-    ${CMAKE_DL_LIBS}
-    ${ARDA_RHI_VULKAN_TARGET}
-)
-if(WIN32)
-    target_link_libraries(ArdaBackend PRIVATE
-        ${ARDA_RHI_D3D12_TARGET}
-        d3d12
-        dxgi
-        dxguid
-    )
+target_link_libraries(ArdaBackend PRIVATE ${CMAKE_DL_LIBS})
+set(ARDA_LINKED_BACKEND_TARGETS ${ARDASHIR_BACKEND_MODULE_TARGETS})
+set(ARDA_LINKED_BACKEND_FUNCTIONS
+    ${ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS})
+if(ARDASHIR_BACKEND_NVRHI_VULKAN)
+    list(APPEND ARDA_LINKED_BACKEND_TARGETS
+        Ardashir::ArdaBackendNvrhiVulkan)
+    list(APPEND ARDA_LINKED_BACKEND_FUNCTIONS
+        RegisterArdaNvrhiVulkanBackend)
 endif()
+if(WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12)
+    list(APPEND ARDA_LINKED_BACKEND_TARGETS
+        Ardashir::ArdaBackendNvrhiD3D12)
+    list(APPEND ARDA_LINKED_BACKEND_FUNCTIONS
+        RegisterArdaNvrhiD3D12Backend)
+endif()
+foreach(ARDA_LINKED_BACKEND_TARGET IN LISTS ARDA_LINKED_BACKEND_TARGETS)
+    if(NOT TARGET ${ARDA_LINKED_BACKEND_TARGET})
+        message(FATAL_ERROR
+            "Arda backend target does not exist: ${ARDA_LINKED_BACKEND_TARGET}")
+    endif()
+    target_link_libraries(ArdaBackend PRIVATE ${ARDA_LINKED_BACKEND_TARGET})
+endforeach()
 
-# Keep the common RHI archive after its static backend archives for GNU ld.
+set(ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT "")
+foreach(ARDA_LINKED_BACKEND_FUNCTION IN LISTS ARDA_LINKED_BACKEND_FUNCTIONS)
+    if(NOT ARDA_LINKED_BACKEND_FUNCTION MATCHES "^[A-Za-z_][A-Za-z0-9_]*$")
+        message(FATAL_ERROR
+            "Invalid arda::backend registration function: ${ARDA_LINKED_BACKEND_FUNCTION}")
+    endif()
+    string(APPEND ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT
+        "ARDA_LINKED_BACKEND(${ARDA_LINKED_BACKEND_FUNCTION})\n")
+endforeach()
+file(GENERATE
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ArdaLinkedBackendRegistrations.inl"
+    CONTENT "${ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT}")
+target_include_directories(ArdaBackend PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+
 target_link_libraries(ArdaBackend
     PUBLIC Ardashir::EASTL
-    PRIVATE ${ARDA_RHI_COMMON_TARGET}
 )
-
-if(TARGET Vulkan::Headers)
-    target_link_libraries(ArdaBackend PRIVATE Vulkan::Headers)
-elseif(TARGET Vulkan-Headers)
-    target_link_libraries(ArdaBackend PRIVATE Vulkan-Headers)
-endif()
 
 set_target_properties(ArdaBackend PROPERTIES FOLDER "Ardashir")
 

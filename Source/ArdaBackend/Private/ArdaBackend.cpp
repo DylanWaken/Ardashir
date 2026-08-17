@@ -1,7 +1,8 @@
-#include "ArdaBackendPch.h"
+#include "ArdaBackendCorePch.h"
 
 #include "ArdaBackend.h"
-#include "ArdaBackendDevice.h"
+#include "ArdaBackendRegistry.h"
+#include "ArdaLinkedBackends.h"
 #include "ShaderStructs/ArdaShaderCompiler.h"
 #include "ShaderStructs/ArdaShaderDirectoriesPrivate.h"
 
@@ -9,6 +10,8 @@
 
 namespace arda::backend
 {
+    void SetBackendError(const char* Error);
+
     ARDA_DEFINE_LOG_CATEGORY_NAMED(LogArdaBackend, "ArdaBackend", Log);
 
     namespace
@@ -61,6 +64,7 @@ namespace arda::backend
             FArdaDeviceContext mContext;
             FArdaDefaultMessageCallback mDefaultMessageCallback;
             eastl::unique_ptr<IArdaBackendDevice> mBackendDevice;
+            IArdaBackendModule* mBackendModule = nullptr;
             IArdaExternalDeviceProvider* mExternalDeviceProvider = nullptr;
             eastl::string mError;
             std::atomic_bool mbInitialized{ false };
@@ -76,6 +80,39 @@ namespace arda::backend
             FArdaBackendState& State,
             FArdaBackendConfiguration& Configuration)
         {
+            private_api::RegisterLinkedBackendModules();
+            IArdaBackendModule* Module = Configuration.mBackendName.empty()
+                ? FindDefaultBackendModule(Configuration.mBackend)
+                : FindBackendModule(Configuration.mBackendName.c_str());
+            if (!Module)
+            {
+                State.mError = Configuration.mBackendName.empty()
+                    ? "No linked backend module supports the configured graphics API."
+                    : "The configured backend module is not registered in this build.";
+                return false;
+            }
+            const FArdaBackendModuleDescriptor& ModuleDescriptor =
+                Module->GetDescriptor();
+            if (!Configuration.mBackendName.empty() &&
+                ModuleDescriptor.mBackendType != Configuration.mBackend)
+            {
+                State.mError =
+                    "The configured module name and graphics API compatibility class disagree.";
+                return false;
+            }
+            Configuration.mBackendName = ModuleDescriptor.mName;
+            Configuration.mBackend = ModuleDescriptor.mBackendType;
+            const bool bExternal = Configuration.mDeviceSource ==
+                EArdaDeviceSource::ExternalProvider;
+            if ((bExternal && !ModuleDescriptor.mbSupportsExternalDevice) ||
+                (!bExternal && !ModuleDescriptor.mbSupportsOwnedDevice))
+            {
+                State.mError = bExternal
+                    ? "The configured backend module cannot adopt external devices."
+                    : "The configured backend module cannot create an owned device.";
+                return false;
+            }
+            State.mBackendModule = Module;
             if (Configuration.mShaderCacheDirectory.empty())
             {
                 State.mError = "The shader cache directory must not be empty.";
@@ -127,6 +164,15 @@ namespace arda::backend
                         "The registered external device provider backend does not match the configured backend.";
                     return false;
                 }
+                const char* ProviderBackendName =
+                    State.mExternalDeviceProvider->GetBackendName();
+                if (ProviderBackendName && ProviderBackendName[0] &&
+                    Configuration.mBackendName != ProviderBackendName)
+                {
+                    State.mError =
+                        "The external device provider requires a different backend module.";
+                    return false;
+                }
             }
             return true;
         }
@@ -150,33 +196,27 @@ namespace arda::backend
                         "The external device provider backend does not match the configuration.";
                     return false;
                 }
-                State.mBackendDevice = CreateExternalBackendDevice();
-                if (!State.mBackendDevice)
+                const char* ProviderBackendName =
+                    State.mExternalDeviceProvider->GetBackendName();
+                if (ProviderBackendName && ProviderBackendName[0] &&
+                    Configuration.mBackendName != ProviderBackendName)
                 {
-                    State.mError = "Failed to create the external backend wrapper.";
+                    State.mError =
+                        "The external device provider requires a different backend module.";
                     return false;
                 }
-                return true;
             }
-
-            switch (Configuration.mBackend)
+            if (!State.mBackendModule)
             {
-            case EArdaBackendType::D3D12:
-#if defined(_WIN32)
-                State.mBackendDevice = CreateD3D12BackendDevice();
-#else
-                State.mError = "D3D12 is only supported on Windows.";
+                State.mError = "No backend module was selected.";
                 return false;
-#endif
-                break;
-            case EArdaBackendType::Vulkan:
-                State.mBackendDevice = CreateVulkanBackendDevice();
-                break;
             }
+            State.mBackendDevice = State.mBackendModule->CreateDevice(
+                Configuration.mDeviceSource);
 
             if (!State.mBackendDevice)
             {
-                State.mError = "Failed to create the requested backend.";
+                State.mError = "The selected backend module failed to allocate a device implementation.";
                 return false;
             }
 
@@ -188,12 +228,14 @@ namespace arda::backend
             const FArdaBackendConfiguration& Configuration)
         {
             State.mContext.mDevice = State.mBackendDevice->GetDevice();
+            State.mContext.mBackendName = Configuration.mBackendName;
             State.mContext.mBackend = Configuration.mBackend;
             State.mContext.mDeviceSource = Configuration.mDeviceSource;
             State.mContext.mQueueCapabilities =
                 State.mBackendDevice->GetQueueCapabilities();
             currentBackend = Configuration.mBackend;
             State.mbInitialized.store(true, std::memory_order_release);
+            private_api::SetActiveBackendModule(State.mBackendModule);
             State.mError.clear();
         }
 
@@ -283,13 +325,19 @@ namespace arda::backend
             return false;
         }
 
-#if !defined(_WIN32)
-        if (configuration.mBackend == EArdaBackendType::D3D12)
+        private_api::RegisterLinkedBackendModules();
+        FArdaBackendConfiguration selectedConfiguration = configuration;
+        if (!configuration.mBackendName.empty())
         {
-            state.mError = "D3D12 is only supported on Windows.";
-            return false;
+            IArdaBackendModule* Module = FindBackendModule(
+                configuration.mBackendName.c_str());
+            if (!Module)
+            {
+                state.mError = "The requested backend module is not registered.";
+                return false;
+            }
+            selectedConfiguration.mBackend = Module->GetDescriptor().mBackendType;
         }
-#endif
 
         if (configuration.mShaderCacheDirectory.empty())
         {
@@ -297,7 +345,7 @@ namespace arda::backend
             return false;
         }
         std::error_code PathError;
-        FArdaBackendConfiguration resolvedConfiguration = configuration;
+        FArdaBackendConfiguration resolvedConfiguration = selectedConfiguration;
         resolvedConfiguration.mShaderCacheDirectory =
             std::filesystem::absolute(
                 configuration.mShaderCacheDirectory,
@@ -347,9 +395,10 @@ namespace arda::backend
         }
 
         state.mConfiguration = resolvedConfiguration;
-        state.mContext.mBackend = configuration.mBackend;
+        state.mContext.mBackend = resolvedConfiguration.mBackend;
+        state.mContext.mBackendName = resolvedConfiguration.mBackendName;
         state.mContext.mDeviceSource = configuration.mDeviceSource;
-        currentBackend = configuration.mBackend;
+        currentBackend = resolvedConfiguration.mBackend;
         state.mError.clear();
         return true;
     }
@@ -358,7 +407,20 @@ namespace arda::backend
     {
         auto configuration = GetBackendConfiguration();
         configuration.mBackend = backend;
+        configuration.mBackendName.clear();
         return ConfigureBackend(configuration);
+    }
+
+    bool ConfigureBackend(const char* BackendName)
+    {
+        if (!BackendName || !BackendName[0])
+        {
+            SetBackendError("Backend module name must be non-empty.");
+            return false;
+        }
+        auto Configuration = GetBackendConfiguration();
+        Configuration.mBackendName = BackendName;
+        return ConfigureBackend(Configuration);
     }
 
     const FArdaBackendConfiguration& GetBackendConfiguration() noexcept
@@ -513,10 +575,13 @@ namespace arda::backend
                 state.mBackendDevice->WaitForIdle();
         }
         state.mContext.mDevice = nullptr;
+        state.mContext.mBackendName.clear();
         state.mContext.mQueueCapabilities = {};
         state.mContext.mDeviceSource = state.mConfiguration.mDeviceSource;
         state.mBackendDevice.reset();
+        state.mBackendModule = nullptr;
         state.mbInitialized.store(false, std::memory_order_release);
+        private_api::SetActiveBackendModule(nullptr);
         private_api::ReleaseShaderDirectoryRegistryAfterShutdown();
     }
 
@@ -611,6 +676,8 @@ namespace arda::backend
             return "D3D12";
         case EArdaBackendType::Vulkan:
             return "Vulkan";
+        case EArdaBackendType::Custom:
+            return "Custom";
         }
         return "Unknown";
     }

@@ -6,6 +6,7 @@
 #include "ArdaAssert.h"
 #include "ArdaLog.h"
 #include "ArdaDevice.h"
+#include "ArdaBackendProvider.h"
 #include "ArdaExternalInterop.h"
 #include "ArdaSwapChain.h"
 #include "PipelineStateCache/ArdaPipelineStateCache.h"

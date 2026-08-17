@@ -1,5 +1,6 @@
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 
+#include "ArdaBackendProvider.h"
 #include "ShaderStructs/ArdaShaderCompiler.h"
 #include "ShaderStructs/ArdaShaderDirectories.h"
 
@@ -58,6 +59,21 @@ namespace arda::backend
 
     const char* GetShaderArtifactExtension(EArdaBackendType Backend) noexcept
     {
+        const FArdaBackendConfiguration& Configuration = GetBackendConfiguration();
+        IArdaBackendModule* Module = nullptr;
+        if (!Configuration.mBackendName.empty() &&
+            Configuration.mBackend == Backend)
+        {
+            Module = FindBackendModule(Configuration.mBackendName.c_str());
+        }
+        if (!Module)
+        {
+            Module = FindDefaultBackendModule(Backend);
+        }
+        if (Module)
+        {
+            return Module->GetDescriptor().mShaderArtifactExtension.c_str();
+        }
         return Backend == EArdaBackendType::Vulkan ? ".spv" : ".dxil";
     }
 

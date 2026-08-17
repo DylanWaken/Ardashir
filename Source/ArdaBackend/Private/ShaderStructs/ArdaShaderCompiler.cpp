@@ -1,5 +1,7 @@
 #include "ShaderStructs/ArdaShaderCompiler.h"
 
+#include "ArdaBackendProvider.h"
+
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 #include "ShaderStructs/ArdaShaderDirectories.h"
 
@@ -582,6 +584,7 @@ namespace arda::backend
         {
             Job.mType = Type;
             Job.mBackend = Backend;
+            Job.mCompilerExecutable = Compiler;
             Job.mPermutationId = PermutationId;
             const eastl::string Stem = Type.GetPermutationArtifactStem(PermutationId);
             Job.mOutputPath = OutputDirectory /
@@ -636,7 +639,24 @@ namespace arda::backend
                 Job.mArguments.push_back("-E");
                 Job.mArguments.push_back(Type.GetEntryPoint());
             }
-            if (Backend == EArdaBackendType::Vulkan)
+            IArdaBackendModule* BackendModule = nullptr;
+            const FArdaBackendConfiguration& BackendConfiguration =
+                GetBackendConfiguration();
+            if (!BackendConfiguration.mBackendName.empty() &&
+                BackendConfiguration.mBackend == Backend)
+            {
+                BackendModule = FindBackendModule(
+                    BackendConfiguration.mBackendName.c_str());
+            }
+            if (!BackendModule)
+            {
+                BackendModule = FindDefaultBackendModule(Backend);
+            }
+            const bool bSpirv = BackendModule
+                ? BackendModule->GetDescriptor().mShaderBinaryFormat ==
+                    EArdaShaderBinaryFormat::Spirv
+                : Backend == EArdaBackendType::Vulkan;
+            if (bSpirv)
             {
                 Job.mArguments.push_back("-spirv");
                 Job.mArguments.push_back(
@@ -676,9 +696,43 @@ namespace arda::backend
                     Job.mArguments.push_back(Argument);
             };
             AppendArguments(Configuration.mCommonArguments);
-            AppendArguments(Backend == EArdaBackendType::Vulkan
+            AppendArguments(bSpirv
                 ? Configuration.mSpirvArguments
                 : Configuration.mDxilArguments);
+            if (BackendModule)
+            {
+                FArdaBackendShaderCompileInvocation Invocation;
+                Invocation.mSourcePath = Job.mSourcePath;
+                Invocation.mOutputPath = Job.mOutputPath;
+                Invocation.mCompilerExecutable = Job.mCompilerExecutable;
+                Invocation.mEntryPoint = Type.GetEntryPoint();
+                Invocation.mStage = Type.GetStage();
+                Invocation.mProfile = Job.mProfile;
+                Invocation.mArguments = Job.mArguments;
+                const rhi::FArdaRHIStatus Status =
+                    BackendModule->ConfigureShaderCompileInvocation(Invocation);
+                if (!Status)
+                {
+                    Diagnostic = MakeDiagnostic(
+                        EArdaShaderCompileError::UnsupportedStage, &Type, Backend,
+                        PermutationId, Job.mSourcePath, Job.mOutputPath,
+                        ToStd(Status.mMessage));
+                    return false;
+                }
+                Job.mSourcePath = eastl::move(Invocation.mSourcePath);
+                Job.mOutputPath = eastl::move(Invocation.mOutputPath);
+                Job.mCompilerExecutable = eastl::move(Invocation.mCompilerExecutable);
+                Job.mProfile = eastl::move(Invocation.mProfile);
+                Job.mArguments = eastl::move(Invocation.mArguments);
+                if (!IsContainedArtifactPath(OutputDirectory, Job.mOutputPath))
+                {
+                    Diagnostic = MakeDiagnostic(
+                        EArdaShaderCompileError::InvalidPermutation, &Type, Backend,
+                        PermutationId, Job.mSourcePath, Job.mOutputPath,
+                        "The backend module selected an artifact outside the output directory.");
+                    return false;
+                }
+            }
             for (const auto& Argument : Job.mArguments)
             {
                 if (ContainsControl(ToStd(Argument)))
@@ -699,7 +753,7 @@ namespace arda::backend
             for (const auto& Argument : Job.mArguments)
                 HashString(Hash, ToStd(Argument));
             HashString(Hash, ToStd(Job.mSourceIdentity));
-            if (!HashFile(Hash, Compiler))
+            if (!HashFile(Hash, Job.mCompilerExecutable))
             {
                 Diagnostic = MakeDiagnostic(
                     EArdaShaderCompileError::CompilerUnavailable, &Type, Backend,
@@ -846,11 +900,56 @@ namespace arda::backend
             DirectArguments.push_back("-Fo");
             DirectArguments.push_back(ToEastl(TemporaryOutput.string()));
             int ExitCode = 1;
-            const bool Launched = LaunchCompilerDirect(
-                Compiler, DirectArguments, Log, ExitCode);
-            std::string CompilerOutput = ReadText(Log);
+            bool bLaunched = false;
+            eastl::string ModuleDiagnostics;
+            IArdaBackendModule* BackendModule = nullptr;
+            const FArdaBackendConfiguration& BackendConfiguration =
+                GetBackendConfiguration();
+            if (!BackendConfiguration.mBackendName.empty() &&
+                BackendConfiguration.mBackend == Job.mBackend)
+            {
+                BackendModule = FindBackendModule(
+                    BackendConfiguration.mBackendName.c_str());
+            }
+            if (!BackendModule)
+            {
+                BackendModule = FindDefaultBackendModule(Job.mBackend);
+            }
+            EArdaBackendShaderCompileResult ModuleResult =
+                EArdaBackendShaderCompileResult::NotHandled;
+            if (BackendModule)
+            {
+                FArdaBackendShaderCompileInvocation Invocation;
+                Invocation.mSourcePath = Job.mSourcePath;
+                Invocation.mOutputPath = TemporaryOutput;
+                Invocation.mCompilerExecutable = Job.mCompilerExecutable.empty()
+                    ? Compiler
+                    : Job.mCompilerExecutable;
+                Invocation.mEntryPoint = Job.mType.GetEntryPoint();
+                Invocation.mStage = Job.mType.GetStage();
+                Invocation.mProfile = Job.mProfile;
+                Invocation.mArguments = DirectArguments;
+                ModuleResult = BackendModule->InvokeShaderCompiler(
+                    Invocation, ModuleDiagnostics);
+            }
+            if (ModuleResult == EArdaBackendShaderCompileResult::NotHandled)
+            {
+                bLaunched = LaunchCompilerDirect(
+                    Job.mCompilerExecutable.empty() ? Compiler : Job.mCompilerExecutable,
+                    DirectArguments, Log, ExitCode);
+            }
+            else
+            {
+                bLaunched = true;
+                ExitCode = ModuleResult == EArdaBackendShaderCompileResult::Success
+                    ? 0
+                    : 1;
+            }
+            std::string CompilerOutput = ModuleDiagnostics.empty()
+                ? ReadText(Log)
+                : ToStd(ModuleDiagnostics);
             std::filesystem::remove(Log, Error);
-            if (!Launched)
+            if (!bLaunched)
             {
                 std::filesystem::remove(TemporaryOutput, Error);
                 std::filesystem::remove(TemporarySidecar, Error);

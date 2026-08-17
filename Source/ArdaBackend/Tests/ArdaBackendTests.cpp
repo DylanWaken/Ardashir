@@ -131,6 +131,91 @@ namespace
             return mBufferStatus;
         }
     };
+
+    class FTestBackendModule final : public arda::backend::IArdaBackendModule
+    {
+    public:
+        explicit FTestBackendModule(const char* Name)
+        {
+            mDescriptor.mName = Name;
+            mDescriptor.mDisplayName = "Test backend";
+            mDescriptor.mBackendType = arda::backend::EArdaBackendType::Custom;
+            mDescriptor.mShaderBinaryFormat =
+                arda::backend::EArdaShaderBinaryFormat::BackendDefined;
+            mDescriptor.mShaderArtifactExtension = ".testbin";
+            mDescriptor.mbSupportsOwnedDevice = true;
+        }
+
+        const arda::backend::FArdaBackendModuleDescriptor&
+        GetDescriptor() const noexcept override
+        {
+            return mDescriptor;
+        }
+
+        eastl::unique_ptr<arda::backend::IArdaBackendDevice> CreateDevice(
+            arda::backend::EArdaDeviceSource) override
+        {
+            return {};
+        }
+
+        arda::rhi::FArdaRHIStatus ConfigureShaderCompileInvocation(
+            arda::backend::FArdaBackendShaderCompileInvocation&) const override
+        {
+            return arda::rhi::FArdaRHIStatus::Success();
+        }
+
+    private:
+        arda::backend::FArdaBackendModuleDescriptor mDescriptor;
+    };
+}
+
+TEST(ArdaBackend, LinkableBackendRegistrySelectsStableNamedModules)
+{
+    using namespace arda::backend;
+    ShutdownBackend();
+    const FArdaBackendConfiguration Original = GetBackendConfiguration();
+    FTestBackendModule Module("test-custom-rhi");
+    FTestBackendModule Collision("test-custom-rhi");
+
+    ASSERT_TRUE(RegisterBackendModule(Module));
+    EXPECT_TRUE(RegisterBackendModule(Module));
+    EXPECT_FALSE(RegisterBackendModule(Collision));
+    EXPECT_EQ(FindBackendModule("test-custom-rhi"), &Module);
+    EXPECT_EQ(FindDefaultBackendModule(EArdaBackendType::Custom), &Module);
+
+    const auto Modules = EnumerateBackendModules();
+    const auto Position = eastl::find_if(
+        Modules.begin(), Modules.end(), [](const auto& Descriptor)
+        {
+            return Descriptor.mName == "test-custom-rhi";
+        });
+    ASSERT_NE(Position, Modules.end());
+    EXPECT_EQ(Position->mShaderBinaryFormat,
+        EArdaShaderBinaryFormat::BackendDefined);
+
+    ASSERT_TRUE(ConfigureBackend("test-custom-rhi"));
+    EXPECT_EQ(GetBackendConfiguration().mBackendName, "test-custom-rhi");
+    EXPECT_EQ(GetBackendConfiguration().mBackend, EArdaBackendType::Custom);
+
+    ASSERT_TRUE(ConfigureBackend(Original));
+    EXPECT_TRUE(UnregisterBackendModule(Module));
+    EXPECT_EQ(FindBackendModule("test-custom-rhi"), nullptr);
+}
+
+TEST(ArdaBackend, NvrhiApisAreRegisteredAsSeparateBackendModules)
+{
+    using namespace arda::backend;
+    IArdaBackendModule* Vulkan = FindBackendModule("nvrhi-vulkan");
+    ASSERT_NE(Vulkan, nullptr);
+    EXPECT_EQ(Vulkan->GetDescriptor().mBackendType, EArdaBackendType::Vulkan);
+    EXPECT_EQ(Vulkan->GetDescriptor().mShaderArtifactExtension, ".spv");
+#if defined(_WIN32)
+    IArdaBackendModule* D3D12 = FindBackendModule("nvrhi-d3d12");
+    ASSERT_NE(D3D12, nullptr);
+    EXPECT_NE(D3D12, Vulkan);
+    EXPECT_EQ(D3D12->GetDescriptor().mBackendType, EArdaBackendType::D3D12);
+    EXPECT_EQ(D3D12->GetDescriptor().mShaderArtifactExtension, ".dxil");
+#endif
 }
 
 TEST(ArdaBackend, ExternalDeviceProviderRegistrationIsDeterministic)
