@@ -19,6 +19,9 @@ target_compile_features(ARDGExample PRIVATE cxx_std_17)
 target_compile_definitions(ARDGExample PRIVATE
     GLFW_INCLUDE_NONE
 )
+if(ARDASHIR_BACKEND_NVRHI_VULKAN)
+    target_compile_definitions(ARDGExample PRIVATE ARDA_TEST_WITH_VULKAN)
+endif()
 target_include_directories(ARDGExample PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Private"
 )
@@ -42,21 +45,24 @@ endif()
 set_target_properties(ARDGExample PROPERTIES FOLDER "Ardashir/Tests/ARDG")
 
 if(ARDASHIR_BUILD_TESTS)
-    set(ARDG_EXAMPLE_GPU_TESTS ARDGExample.Vulkan)
-    if(WIN32)
+    set(ARDG_EXAMPLE_GPU_TESTS)
+    if(WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12)
         add_test(
             NAME ARDGExample.D3D12
             COMMAND ARDGExample --backend d3d12 --frames 1 --hidden
         )
         list(APPEND ARDG_EXAMPLE_GPU_TESTS ARDGExample.D3D12)
     endif()
-    add_test(
-        NAME ARDGExample.Vulkan
-        COMMAND ARDGExample --backend vulkan --frames 1 --hidden
-    )
-    set_tests_properties(${ARDG_EXAMPLE_GPU_TESTS} PROPERTIES
-        LABELS "gpu"
-        SKIP_RETURN_CODE 77
-        TIMEOUT 30
-    )
+    if(ARDASHIR_BACKEND_NVRHI_VULKAN)
+        add_test(
+            NAME ARDGExample.Vulkan
+            COMMAND ARDGExample --backend vulkan --frames 1 --hidden)
+        list(APPEND ARDG_EXAMPLE_GPU_TESTS ARDGExample.Vulkan)
+    endif()
+    if(ARDG_EXAMPLE_GPU_TESTS)
+        set_tests_properties(${ARDG_EXAMPLE_GPU_TESTS} PROPERTIES
+            LABELS "gpu"
+            SKIP_RETURN_CODE 77
+            TIMEOUT 30)
+    endif()
 endif()

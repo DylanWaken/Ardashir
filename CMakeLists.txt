@@ -30,7 +30,7 @@ include(Dependencies)
 
 add_custom_target(ArdaRHISourceBoundary ALL
     COMMAND "${CMAKE_COMMAND}"
-        -DARDASHIR_SOURCE_DIR="${PROJECT_SOURCE_DIR}/Source"
+        "-DARDASHIR_SOURCE_DIR=${PROJECT_SOURCE_DIR}/Source"
         -P "${PROJECT_SOURCE_DIR}/Cmake/VerifyRhiBoundary.cmake"
     COMMENT "Checking opaque RHI source boundary"
     VERBATIM
@@ -44,7 +44,7 @@ if(ARDASHIR_BUILD_TESTS)
     add_test(
         NAME ArdaRHISourceBoundary
         COMMAND "${CMAKE_COMMAND}"
-            -DARDASHIR_SOURCE_DIR="${PROJECT_SOURCE_DIR}/Source"
+            "-DARDASHIR_SOURCE_DIR=${PROJECT_SOURCE_DIR}/Source"
             -P "${PROJECT_SOURCE_DIR}/Cmake/VerifyRhiBoundary.cmake"
     )
 endif()

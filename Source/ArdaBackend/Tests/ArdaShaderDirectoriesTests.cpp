@@ -1,4 +1,5 @@
 #include "ArdaDevice.h"
+#include "ArdaBackendProvider.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 #include "ShaderStructs/ArdaShaderDirectoriesPrivate.h"
 
@@ -64,6 +65,9 @@ namespace
             ShutdownBackend();
             (void)UnfreezeShaderSourceDirectories();
             ASSERT_TRUE(ClearShaderSourceDirectories());
+            const auto Modules = EnumerateBackendModules();
+            if (!Modules.empty())
+                ASSERT_TRUE(ConfigureBackend(Modules.front().mName.c_str()));
         }
 
         void TearDown() override

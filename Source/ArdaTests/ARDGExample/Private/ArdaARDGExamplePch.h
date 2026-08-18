@@ -11,7 +11,9 @@
     #include <Windows.h>
 #endif
 
-#include <vulkan/vulkan.h>
+#if defined(ARDA_TEST_WITH_VULKAN)
+    #include <vulkan/vulkan.h>
+#endif
 #include <GLFW/glfw3.h>
 
 #include "RHIWrappers/ArdaRHI.h"

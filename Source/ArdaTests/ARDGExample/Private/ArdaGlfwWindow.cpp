@@ -195,6 +195,7 @@ namespace arda::tests::ardg_example
 
     eastl::vector<const char*> FArdaGlfwWindow::GetVulkanInstanceExtensions() const
     {
+#if defined(ARDA_TEST_WITH_VULKAN)
         uint32_t extensionCount = 0;
         const char** extensions =
             glfwGetRequiredInstanceExtensions(&extensionCount);
@@ -204,12 +205,16 @@ namespace arda::tests::ardg_example
         }
 
         return { extensions, extensions + extensionCount };
+#else
+        return {};
+#endif
     }
 
     backend::FArdaNativeObject FArdaGlfwWindow::CreateVulkanSurface(
         backend::FArdaNativeObject vulkanInstance,
         eastl::string& outError)
     {
+#if defined(ARDA_TEST_WITH_VULKAN)
         outError.clear();
         if (!mWindow)
         {
@@ -251,6 +256,11 @@ namespace arda::tests::ardg_example
         return backend::FArdaNativeObject(surface);
 #else
         return backend::FArdaNativeObject(static_cast<uintptr_t>(surface));
+#endif
+#else
+        static_cast<void>(vulkanInstance);
+        outError = "The Vulkan backend module is not linked.";
+        return backend::FArdaNativeObject(nullptr);
 #endif
     }
 

@@ -17,6 +17,17 @@ namespace
     using namespace arda::render_graph;
     namespace rhi = arda::rhi;
 
+    bool ConfigureLinkedBackend(
+        arda::backend::FArdaBackendConfiguration& Configuration)
+    {
+        const auto Modules = arda::backend::EnumerateBackendModules();
+        if (Modules.empty())
+            return false;
+        Configuration.mBackendName = Modules.front().mName;
+        Configuration.mBackend = Modules.front().mBackendType;
+        return arda::backend::ConfigureBackend(Configuration);
+    }
+
     struct FARDGTestHandleTag final
     {
     };
@@ -1420,7 +1431,7 @@ TEST(ArdaRenderGraph, PassContextCreatesBindingsFromParameterDescriptors)
 
     FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = true;
-    if (!ConfigureBackend(Configuration) || !InitializeBackend())
+    if (!ConfigureLinkedBackend(Configuration) || !InitializeBackend())
     {
         GTEST_SKIP() << GetBackendError().c_str();
     }
@@ -1517,7 +1528,7 @@ TEST(ArdaRenderGraph, RegisteredShaderBridgeUsesExplicitSlotsAndAllLayouts)
     FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = false;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
-    if (!ConfigureBackend(Configuration) || !InitializeBackend())
+    if (!ConfigureLinkedBackend(Configuration) || !InitializeBackend())
         GTEST_SKIP() << GetBackendError().c_str();
 
     {
@@ -1613,7 +1624,7 @@ TEST(ArdaRenderGraph, ExecutesAndExtractsOnAvailableBackend)
 
     FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = true;
-    if (!ConfigureBackend(Configuration) || !InitializeBackend())
+    if (!ConfigureLinkedBackend(Configuration) || !InitializeBackend())
     {
         GTEST_SKIP() << GetBackendError().c_str();
     }
@@ -1716,7 +1727,7 @@ TEST(ArdaRenderGraph, ImmediateModeExecutesSeriallyWithFirstWriteClobbering)
 
     FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = true;
-    if (!ConfigureBackend(Configuration) || !InitializeBackend())
+    if (!ConfigureLinkedBackend(Configuration) || !InitializeBackend())
     {
         GTEST_SKIP() << GetBackendError().c_str();
     }
@@ -1780,7 +1791,7 @@ TEST(ArdaRenderGraph, PassContextRejectsUndeclaredPhysicalAccess)
 
     FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = true;
-    if (!ConfigureBackend(Configuration) || !InitializeBackend())
+    if (!ConfigureLinkedBackend(Configuration) || !InitializeBackend())
     {
         GTEST_SKIP() << GetBackendError().c_str();
     }
@@ -1848,7 +1859,7 @@ TEST(ArdaRenderGraph, RecordsIndependentPassesAndSubmitsCrossQueueWaits)
 
     FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = true;
-    if (!ConfigureBackend(Configuration) || !InitializeBackend())
+    if (!ConfigureLinkedBackend(Configuration) || !InitializeBackend())
     {
         GTEST_SKIP() << GetBackendError().c_str();
     }

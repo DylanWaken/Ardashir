@@ -1,4 +1,5 @@
 #include "ArdaDevice.h"
+#include "ArdaBackendProvider.h"
 #include "RHIWrappers/ArdaRHICapabilities.h"
 #include "RHIWrappers/ArdaRHIRef.h"
 #include "RHIWrappers/ArdaRHIResource.h"
@@ -10,6 +11,17 @@
 
 namespace
 {
+    bool ConfigureLinkedBackend(
+        arda::backend::FArdaBackendConfiguration& Configuration)
+    {
+        const auto Modules = arda::backend::EnumerateBackendModules();
+        if (Modules.empty())
+            return false;
+        Configuration.mBackendName = Modules.front().mName;
+        Configuration.mBackend = Modules.front().mBackendType;
+        return arda::backend::ConfigureBackend(Configuration);
+    }
+
     struct FBackendShutdownGuard
     {
         ~FBackendShutdownGuard() { arda::backend::ShutdownBackend(); }
@@ -133,7 +145,7 @@ TEST(ArdaRHI, SamplerCacheReusesEvictsAndTrims)
     backend::ShutdownBackend();
     backend::FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = false;
-    ASSERT_TRUE(backend::ConfigureBackend(Configuration));
+    ASSERT_TRUE(ConfigureLinkedBackend(Configuration));
     if (!backend::InitializeBackend())
         GTEST_SKIP() << backend::GetBackendError().c_str();
 
@@ -202,7 +214,7 @@ TEST(ArdaRHI, NativeImportRejectsNonPortableTransferredOwnership)
     backend::ShutdownBackend();
     backend::FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = false;
-    ASSERT_TRUE(backend::ConfigureBackend(Configuration));
+    ASSERT_TRUE(ConfigureLinkedBackend(Configuration));
     if (!backend::InitializeBackend())
         GTEST_SKIP() << backend::GetBackendError().c_str();
 
@@ -222,9 +234,8 @@ TEST(ArdaRHI, NativeBufferImportValidationIsDeterministic)
     backend::ShutdownBackend();
     FBackendShutdownGuard Shutdown;
     backend::FArdaBackendConfiguration Configuration;
-    Configuration.mBackend = backend::DefaultBackend;
     Configuration.mbEnableValidation = false;
-    ASSERT_TRUE(backend::ConfigureBackend(Configuration));
+    ASSERT_TRUE(ConfigureLinkedBackend(Configuration));
     if (!backend::InitializeBackend())
         GTEST_SKIP() << backend::GetBackendError().c_str();
 

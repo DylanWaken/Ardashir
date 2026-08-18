@@ -5,7 +5,7 @@
 #include <fstream>
 #include <vector>
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(ARDA_TEST_NVRHI_D3D12)
 #include <d3d12.h>
 #include <wrl/client.h>
 #endif
@@ -16,6 +16,20 @@
 
 namespace
 {
+    arda::backend::IArdaBackendModule* FindLinkedTestBackendModule()
+    {
+        using namespace arda::backend;
+        if (IArdaBackendModule* Module =
+                FindDefaultBackendModule(DefaultBackend))
+        {
+            return Module;
+        }
+        const auto Modules = EnumerateBackendModules();
+        return Modules.empty()
+            ? nullptr
+            : FindBackendModule(Modules.front().mName.c_str());
+    }
+
     class FExternalTestCleanup
     {
     public:
@@ -206,15 +220,22 @@ TEST(ArdaBackend, NvrhiApisAreRegisteredAsSeparateBackendModules)
 {
     using namespace arda::backend;
     IArdaBackendModule* Vulkan = FindBackendModule("nvrhi-vulkan");
+#if defined(ARDA_TEST_NVRHI_VULKAN)
     ASSERT_NE(Vulkan, nullptr);
     EXPECT_EQ(Vulkan->GetDescriptor().mBackendType, EArdaBackendType::Vulkan);
     EXPECT_EQ(Vulkan->GetDescriptor().mShaderArtifactExtension, ".spv");
-#if defined(_WIN32)
+#else
+    EXPECT_EQ(Vulkan, nullptr);
+#endif
     IArdaBackendModule* D3D12 = FindBackendModule("nvrhi-d3d12");
+#if defined(ARDA_TEST_NVRHI_D3D12)
     ASSERT_NE(D3D12, nullptr);
-    EXPECT_NE(D3D12, Vulkan);
+    if (Vulkan)
+        EXPECT_NE(D3D12, Vulkan);
     EXPECT_EQ(D3D12->GetDescriptor().mBackendType, EArdaBackendType::D3D12);
     EXPECT_EQ(D3D12->GetDescriptor().mShaderArtifactExtension, ".dxil");
+#else
+    EXPECT_EQ(D3D12, nullptr);
 #endif
 }
 
@@ -245,8 +266,12 @@ TEST(ArdaBackend, ExternalDeviceSourceReportsMissingAndMismatchedProviders)
     ShutdownBackend();
     FTestDeviceProvider Provider;
     FExternalTestCleanup Cleanup;
+    IArdaBackendModule* Module = FindLinkedTestBackendModule();
+    ASSERT_NE(Module, nullptr);
+    const EArdaBackendType TestBackend = Module->GetDescriptor().mBackendType;
     FArdaBackendConfiguration Configuration;
-    Configuration.mBackend = DefaultBackend;
+    Configuration.mBackendName = Module->GetDescriptor().mName;
+    Configuration.mBackend = TestBackend;
     Configuration.mDeviceSource = EArdaDeviceSource::ExternalProvider;
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -256,7 +281,7 @@ TEST(ArdaBackend, ExternalDeviceSourceReportsMissingAndMismatchedProviders)
     EXPECT_FALSE(InitializeBackend());
     EXPECT_NE(GetBackendError().find("registered provider"), eastl::string::npos);
 
-    Provider.mBackend = DefaultBackend == EArdaBackendType::D3D12
+    Provider.mBackend = TestBackend == EArdaBackendType::D3D12
         ? EArdaBackendType::Vulkan
         : EArdaBackendType::D3D12;
     ASSERT_TRUE(Cleanup.Register(Provider));
@@ -308,21 +333,25 @@ TEST(ArdaBackend, NamedExternalResourceImportFailsCleanly)
         Uninitialized.mStatus.mCode,
         rhi::EArdaRHIResult::InvalidState);
 
+    IArdaBackendModule* Module = FindLinkedTestBackendModule();
+    ASSERT_NE(Module, nullptr);
+    const EArdaBackendType TestBackend = Module->GetDescriptor().mBackendType;
     FArdaBackendConfiguration Configuration;
-    Configuration.mBackend = DefaultBackend;
+    Configuration.mBackendName = Module->GetDescriptor().mName;
+    Configuration.mBackend = TestBackend;
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureBackend(Configuration));
     if (!InitializeBackend())
         GTEST_SKIP() << GetBackendError().c_str();
 
-    Provider.mBackend = DefaultBackend == EArdaBackendType::D3D12
+    Provider.mBackend = TestBackend == EArdaBackendType::D3D12
         ? EArdaBackendType::Vulkan
         : EArdaBackendType::D3D12;
     auto WrongBackend = ImportExternalBuffer(Provider.mName, 13);
     EXPECT_FALSE(WrongBackend);
     EXPECT_EQ(WrongBackend.mStatus.mCode, rhi::EArdaRHIResult::WrongDevice);
 
-    Provider.mBackend = DefaultBackend;
+    Provider.mBackend = TestBackend;
     Provider.mBufferStatus = rhi::FArdaRHIStatus::Error(
         rhi::EArdaRHIResult::BackendFailure,
         "provider-specific buffer failure");
@@ -444,7 +473,7 @@ TEST(ArdaBackend, EmptyOpaqueDeviceReferencesAreSafe)
     EXPECT_FALSE(Second);
 }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(ARDA_TEST_NVRHI_D3D12)
 TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
 {
     using namespace arda;
@@ -1025,7 +1054,7 @@ namespace
     }
 }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(ARDA_TEST_NVRHI_D3D12)
 TEST(ArdaBackend, InitializesD3D12Device)
 {
     VerifyDeviceInitialization(arda::backend::EArdaBackendType::D3D12, true);

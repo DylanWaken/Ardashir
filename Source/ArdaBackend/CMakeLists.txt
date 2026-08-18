@@ -164,6 +164,14 @@ if(ARDASHIR_BUILD_TESTS)
     target_compile_definitions(ArdaBackendTests PRIVATE
         ARDA_ENABLE_CHECKS
         ARDA_BACKEND_TEST_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}")
+    if(ARDASHIR_BACKEND_NVRHI_VULKAN)
+        target_compile_definitions(ArdaBackendTests PRIVATE
+            ARDA_TEST_NVRHI_VULKAN)
+    endif()
+    if(WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12)
+        target_compile_definitions(ArdaBackendTests PRIVATE
+            ARDA_TEST_NVRHI_D3D12)
+    endif()
     target_include_directories(ArdaBackendTests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/Private")
     target_link_libraries(ArdaBackendTests PRIVATE Ardashir::ArdaBackend GTest::gtest_main)

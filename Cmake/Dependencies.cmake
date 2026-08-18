@@ -112,8 +112,8 @@ set_target_properties(ArdashirImGuiGlfw PROPERTIES FOLDER "ThirdParty/ImGui")
 if(ARDASHIR_BACKEND_NVRHI_VULKAN OR
    (WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12))
     set(NVRHI_INSTALL OFF CACHE BOOL "Disable NVRHI install rules" FORCE)
-    # The shared NVRHI external-device adapter uses Vulkan as its portable base.
-    set(NVRHI_WITH_VULKAN ON
+    # Build only the native NVRHI implementations selected as Arda modules.
+    set(NVRHI_WITH_VULKAN ${ARDASHIR_BACKEND_NVRHI_VULKAN}
         CACHE BOOL "Build the NVRHI Vulkan backend" FORCE)
     if(WIN32)
         set(NVRHI_WITH_DX12 ${ARDASHIR_BACKEND_NVRHI_D3D12}

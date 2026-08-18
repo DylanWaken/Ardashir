@@ -1,4 +1,5 @@
 #include "ArdaDevice.h"
+#include "ArdaBackendProvider.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 #include "ShaderStructs/ArdaShaderCompiler.h"
 
@@ -20,6 +21,17 @@
 
 namespace
 {
+    bool ResolveLinkedTestShaderTarget(
+        arda::backend::FArdaShaderTarget& OutTarget)
+    {
+        using namespace arda::backend;
+        if (ResolveDefaultShaderTarget(DefaultBackend, OutTarget))
+            return true;
+        const auto Modules = EnumerateBackendModules();
+        return !Modules.empty() &&
+            ResolveShaderTarget(Modules.front().mName.c_str(), OutTarget);
+    }
+
     std::vector<std::string> ParseFakeCompilerResponse(const std::string& Text)
     {
         std::vector<std::string> Arguments;
@@ -619,8 +631,12 @@ TEST(ArdaShaderStructs, ValidatesRegistersVisibilityAndPushConstants)
 TEST(ArdaShaderStructs, SelectsExtensionsAndReportsMissingBytecode)
 {
     using namespace arda::backend;
-    EXPECT_STREQ(GetShaderArtifactExtension(EArdaBackendType::D3D12), ".dxil");
-    EXPECT_STREQ(GetShaderArtifactExtension(EArdaBackendType::Vulkan), ".spv");
+    EXPECT_STREQ(
+        GetShaderArtifactExtension(EArdaBackendType::D3D12),
+        FindBackendModule("nvrhi-d3d12") ? ".dxil" : "");
+    EXPECT_STREQ(
+        GetShaderArtifactExtension(EArdaBackendType::Vulkan),
+        FindBackendModule("nvrhi-vulkan") ? ".spv" : "");
     const auto Missing = LoadShaderBytecode(
         std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR) / "does-not-exist.spv");
     EXPECT_FALSE(Missing);
@@ -680,61 +696,75 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
         &detail::ShouldCompileShaderPermutation<FPermutationShaderPolicy>,
         &detail::BuildShaderCompilationEnvironment<FPermutationShaderPolicy>);
 
-    const std::vector<EArdaBackendType> Backends{
-        EArdaBackendType::D3D12,
-        EArdaBackendType::Vulkan
-    };
+    const bool bHasD3D12 = FindBackendModule("nvrhi-d3d12") != nullptr;
+    const bool bHasVulkan = FindBackendModule("nvrhi-vulkan") != nullptr;
+    ASSERT_TRUE(bHasD3D12 || bHasVulkan);
+    std::vector<EArdaBackendType> Backends;
+    if (bHasD3D12)
+        Backends.push_back(EArdaBackendType::D3D12);
+    if (bHasVulkan)
+        Backends.push_back(EArdaBackendType::Vulkan);
+    const EArdaBackendType PrimaryBackend = Backends.front();
+    const char* PrimaryExtension = PrimaryBackend == EArdaBackendType::D3D12
+        ? ".dxil"
+        : ".spv";
+    const std::string PrimaryArtifactFilename =
+        std::string("CompilerPolicyArtifact_P0") + PrimaryExtension;
+    const size_t ExpectedJobCount = Backends.size() * 3u;
     const FArdaShaderCompileResult FirstJobs =
         BuildRegisteredShaderCompileJobs(Output, Backends);
     ASSERT_TRUE(FirstJobs);
-    ASSERT_EQ(FirstJobs.mJobs.size(), 6u);
-    EXPECT_EQ(FirstJobs.mJobsSkipped, 6u);
+    ASSERT_EQ(FirstJobs.mJobs.size(), ExpectedJobCount);
+    EXPECT_EQ(FirstJobs.mJobsSkipped, ExpectedJobCount);
     EXPECT_FALSE(FirstJobs.mJobs[0].mTarget.mBackendName.empty());
     EXPECT_EQ(FirstJobs.mJobs[0].mProfile, "cs_6_0");
     EXPECT_EQ(
         FirstJobs.mJobs[0].mOutputPath.filename(),
-        "CompilerPolicyArtifact_P0.dxil");
+        std::filesystem::path(PrimaryArtifactFilename));
     ASSERT_EQ(FirstJobs.mJobs[0].mEnvironment.GetDefines().size(), 4u);
     EXPECT_EQ(
         FirstJobs.mJobs[0].mEnvironment.GetDefines()[0].mName,
         "BACKEND_IS_VULKAN");
-    const auto VulkanJob = std::find_if(
-        FirstJobs.mJobs.begin(),
-        FirstJobs.mJobs.end(),
-        [](const FArdaShaderCompileJob& Job)
-        {
-            return Job.mBackend == EArdaBackendType::Vulkan;
-        });
-    ASSERT_NE(VulkanJob, FirstJobs.mJobs.end());
-    EXPECT_EQ(VulkanJob->mTarget.mBackendName, "nvrhi-vulkan");
-    EXPECT_EQ(
-        VulkanJob->mTarget.mBinaryFormat,
-        EArdaShaderBinaryFormat::Spirv);
-    EXPECT_NE(
-        std::find(
-            VulkanJob->mArguments.begin(),
-            VulkanJob->mArguments.end(),
-            eastl::string("-spirv")),
-        VulkanJob->mArguments.end());
+    if (bHasVulkan)
+    {
+        const auto VulkanJob = std::find_if(
+            FirstJobs.mJobs.begin(),
+            FirstJobs.mJobs.end(),
+            [](const FArdaShaderCompileJob& Job)
+            {
+                return Job.mBackend == EArdaBackendType::Vulkan;
+            });
+        ASSERT_NE(VulkanJob, FirstJobs.mJobs.end());
+        EXPECT_EQ(VulkanJob->mTarget.mBackendName, "nvrhi-vulkan");
+        EXPECT_EQ(
+            VulkanJob->mTarget.mBinaryFormat,
+            EArdaShaderBinaryFormat::Spirv);
+        EXPECT_NE(
+            std::find(
+                VulkanJob->mArguments.begin(),
+                VulkanJob->mArguments.end(),
+                eastl::string("-spirv")),
+            VulkanJob->mArguments.end());
 
-    const FArdaShaderCompileResult NamedJobs =
-        BuildRegisteredShaderCompileJobs(
-            Output, eastl::vector<eastl::string>{ "nvrhi-vulkan" });
-    ASSERT_TRUE(NamedJobs);
-    ASSERT_EQ(NamedJobs.mJobs.size(), 3u);
-    EXPECT_TRUE(std::all_of(
-        NamedJobs.mJobs.begin(), NamedJobs.mJobs.end(),
-        [](const FArdaShaderCompileJob& Job)
-        {
-            return Job.mTarget.mBackendName == "nvrhi-vulkan" &&
-                Job.mOutputPath.extension() == ".spv";
-        }));
-    EXPECT_NE(
-        std::find(
-            VulkanJob->mArguments.begin(),
-            VulkanJob->mArguments.end(),
-            eastl::string("-fspv-target-env=vulkan1.3")),
-        VulkanJob->mArguments.end());
+        const FArdaShaderCompileResult NamedJobs =
+            BuildRegisteredShaderCompileJobs(
+                Output, eastl::vector<eastl::string>{ "nvrhi-vulkan" });
+        ASSERT_TRUE(NamedJobs);
+        ASSERT_EQ(NamedJobs.mJobs.size(), 3u);
+        EXPECT_TRUE(std::all_of(
+            NamedJobs.mJobs.begin(), NamedJobs.mJobs.end(),
+            [](const FArdaShaderCompileJob& Job)
+            {
+                return Job.mTarget.mBackendName == "nvrhi-vulkan" &&
+                    Job.mOutputPath.extension() == ".spv";
+            }));
+        EXPECT_NE(
+            std::find(
+                VulkanJob->mArguments.begin(),
+                VulkanJob->mArguments.end(),
+                eastl::string("-fspv-target-env=vulkan1.3")),
+            VulkanJob->mArguments.end());
+    }
 
     const FArdaShaderCompileResult SecondJobs =
         BuildRegisteredShaderCompileJobs(Output, Backends);
@@ -814,14 +844,18 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
     FArdaShaderCompileResult Cook =
         CompileRegisteredShaderArtifacts(Output, Backends);
     ASSERT_TRUE(Cook) << Cook.mDiagnostics.front().mMessage.c_str();
-    EXPECT_EQ(Cook.mJobsCompiled, 6u);
+    EXPECT_EQ(Cook.mJobsCompiled, ExpectedJobCount);
     const std::filesystem::path Artifact =
-        Output / "CompilerPolicyArtifact_P0.dxil";
+        Output / PrimaryArtifactFilename;
     const std::filesystem::path Manifest =
         Output / "ArdaShaderManifest.json";
     ASSERT_TRUE(std::filesystem::is_regular_file(Artifact));
-    ASSERT_TRUE(std::filesystem::is_regular_file(
-        Output / "CompilerPolicyArtifact_P0.spv"));
+    if (bHasD3D12)
+        ASSERT_TRUE(std::filesystem::is_regular_file(
+            Output / "CompilerPolicyArtifact_P0.dxil"));
+    if (bHasVulkan)
+        ASSERT_TRUE(std::filesystem::is_regular_file(
+            Output / "CompilerPolicyArtifact_P0.spv"));
     EXPECT_NE(ReadTestFile(Artifact).find("\"-T\" \"cs_6_0\""), std::string::npos);
     ASSERT_TRUE(std::filesystem::is_regular_file(
         Artifact.string() + ".arda-key"));
@@ -829,12 +863,12 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
     ASSERT_FALSE(FirstManifest.empty());
 
     FArdaShaderCompileResult Cached = EnsureRegisteredShaderArtifact(
-        Registration.GetType(), EArdaBackendType::D3D12, 0, Output);
+        Registration.GetType(), PrimaryBackend, 0, Output);
     ASSERT_TRUE(Cached);
     EXPECT_EQ(Cached.mCacheHits, 1u);
     EXPECT_EQ(Cached.mJobsCompiled, 0u);
     const FArdaShaderCompileResult BulkCached =
-        EnsureRegisteredShaderArtifacts(Output, EArdaBackendType::D3D12);
+        EnsureRegisteredShaderArtifacts(Output, PrimaryBackend);
     ASSERT_TRUE(BulkCached);
     EXPECT_EQ(BulkCached.mJobsCompiled, 0u);
     EXPECT_EQ(BulkCached.mCacheHits, 3u);
@@ -843,7 +877,7 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
     ASSERT_TRUE(std::filesystem::remove(
         Artifact.string() + ".arda-key", Error));
     FArdaShaderCompileResult Legacy = EnsureRegisteredShaderArtifact(
-        Registration.GetType(), EArdaBackendType::D3D12, 0, Output);
+        Registration.GetType(), PrimaryBackend, 0, Output);
     ASSERT_TRUE(Legacy);
     EXPECT_EQ(Legacy.mCacheHits, 1u);
     Cook = CompileRegisteredShaderArtifacts(Output, Backends);
@@ -852,7 +886,7 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
         std::ofstream Empty(Artifact, std::ios::binary | std::ios::trunc);
     }
     FArdaShaderCompileResult EmptyRebuilt = EnsureRegisteredShaderArtifact(
-        Registration.GetType(), EArdaBackendType::D3D12, 0, Output);
+        Registration.GetType(), PrimaryBackend, 0, Output);
     ASSERT_TRUE(EmptyRebuilt);
     EXPECT_EQ(EmptyRebuilt.mJobsCompiled, 1u);
     EXPECT_GT(std::filesystem::file_size(Artifact), 0u);
@@ -868,7 +902,7 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
     StaleConfiguration.mbCompileOutdatedArtifacts = false;
     ConfigureShaderCompiler(StaleConfiguration);
     FArdaShaderCompileResult StaleRejected = EnsureRegisteredShaderArtifact(
-        Registration.GetType(), EArdaBackendType::D3D12, 0, Output);
+        Registration.GetType(), PrimaryBackend, 0, Output);
     ASSERT_FALSE(StaleRejected);
     ASSERT_FALSE(StaleRejected.mDiagnostics.empty());
     EXPECT_EQ(
@@ -878,19 +912,19 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
     StaleConfiguration.mbCompileMissingArtifacts = false;
     ConfigureShaderCompiler(StaleConfiguration);
     FArdaShaderCompileResult BytecodeOnly = EnsureRegisteredShaderArtifact(
-        Registration.GetType(), EArdaBackendType::D3D12, 0, Output);
+        Registration.GetType(), PrimaryBackend, 0, Output);
     ASSERT_TRUE(BytecodeOnly);
     EXPECT_EQ(BytecodeOnly.mCacheHits, 1u);
     ConfigureShaderCompiler(FakeCompilerConfiguration);
     FArdaShaderCompileResult Rebuilt = EnsureRegisteredShaderArtifact(
-        Registration.GetType(), EArdaBackendType::D3D12, 0, Output);
+        Registration.GetType(), PrimaryBackend, 0, Output);
     ASSERT_TRUE(Rebuilt) << Rebuilt.mDiagnostics.front().mMessage.c_str();
     EXPECT_EQ(Rebuilt.mJobsCompiled, 1u);
 
-    Cook = CompileRegisteredShaderArtifacts(Output, EArdaBackendType::D3D12);
+    Cook = CompileRegisteredShaderArtifacts(Output, PrimaryBackend);
     ASSERT_TRUE(Cook);
     const std::string SecondManifest = ReadTestFile(Manifest);
-    Cook = CompileRegisteredShaderArtifacts(Output, EArdaBackendType::D3D12);
+    Cook = CompileRegisteredShaderArtifacts(Output, PrimaryBackend);
     ASSERT_TRUE(Cook);
     EXPECT_EQ(ReadTestFile(Manifest), SecondManifest);
 
@@ -905,7 +939,7 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
     Configuration.mCompilerExecutable = Source;
     ConfigureShaderCompiler(Configuration);
     const FArdaShaderCompileResult Failed = EnsureRegisteredShaderArtifact(
-        Registration.GetType(), EArdaBackendType::D3D12, 0, Output);
+        Registration.GetType(), PrimaryBackend, 0, Output);
     EXPECT_FALSE(Failed);
     ASSERT_FALSE(Failed.mDiagnostics.empty());
     EXPECT_TRUE(
@@ -999,6 +1033,8 @@ TEST(ArdaShaderStructs, RegistrationDestructionPreservesUnrelatedTypes)
 TEST(ArdaShaderStructs, CompileJobsOwnDescriptorsAfterRegistrationDestruction)
 {
     using namespace arda::backend;
+    FArdaShaderTarget Target;
+    ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
     FShaderCompilerConfigurationGuard ConfigurationGuard;
     FArdaShaderCompilerConfiguration Configuration =
         GetShaderCompilerConfiguration();
@@ -1024,7 +1060,7 @@ TEST(ArdaShaderStructs, CompileJobsOwnDescriptorsAfterRegistrationDestruction)
             Stage::Compute, nullptr);
         const FArdaShaderCompileResult Jobs = BuildRegisteredShaderCompileJobs(
             Directory / "Cooked",
-            std::vector<EArdaBackendType>{ EArdaBackendType::D3D12 });
+            eastl::vector<eastl::string>{ Target.mBackendName });
         ASSERT_TRUE(Jobs);
         ASSERT_EQ(Jobs.mJobs.size(), 1u);
         Job = Jobs.mJobs.front();
@@ -1042,6 +1078,8 @@ TEST(ArdaShaderStructs, CompileJobsOwnDescriptorsAfterRegistrationDestruction)
 TEST(ArdaShaderStructs, StartupModePersistsAndReusesRegisteredShaderCache)
 {
     using namespace arda::backend;
+    FArdaShaderTarget Target;
+    ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
 
     ShutdownBackend();
     FShaderCompilerConfigurationGuard CompilerGuard;
@@ -1067,7 +1105,8 @@ TEST(ArdaShaderStructs, StartupModePersistsAndReusesRegisteredShaderCache)
         "Main", Stage::Compute, nullptr);
 
     FArdaBackendConfiguration Configuration;
-    Configuration.mBackend = DefaultBackend;
+    Configuration.mBackendName = Target.mBackendName;
+    Configuration.mBackend = Target.mBackend;
     Configuration.mbEnableValidation = false;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::Startup;
     Configuration.mShaderCacheDirectory = Cache;
@@ -1075,7 +1114,7 @@ TEST(ArdaShaderStructs, StartupModePersistsAndReusesRegisteredShaderCache)
     const bool FirstInitialized = InitializeBackend();
     const std::filesystem::path Artifact = Cache /
         (std::string("StartupCacheArtifact") +
-         GetShaderArtifactExtension(DefaultBackend));
+         Target.mArtifactExtension.c_str());
     ASSERT_TRUE(std::filesystem::is_regular_file(Artifact))
         << GetBackendError().c_str();
     ASSERT_TRUE(std::filesystem::is_regular_file(
@@ -1084,7 +1123,7 @@ TEST(ArdaShaderStructs, StartupModePersistsAndReusesRegisteredShaderCache)
     if (FirstInitialized)
         ShutdownBackend();
     const FArdaShaderCompileResult Cached =
-        EnsureRegisteredShaderArtifacts(Cache, DefaultBackend);
+        EnsureRegisteredShaderArtifacts(Cache, Target.mBackendName.c_str());
     ASSERT_TRUE(Cached);
     EXPECT_EQ(Cached.mJobsCompiled, 0u);
     EXPECT_EQ(Cached.mCacheHits, 1u);
@@ -1103,6 +1142,8 @@ TEST(ArdaShaderStructs, StartupModePersistsAndReusesRegisteredShaderCache)
 TEST(ArdaShaderStructs, StartupModePropagatesCompilerFailureBeforeDevice)
 {
     using namespace arda::backend;
+    FArdaShaderTarget Target;
+    ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
 
     ShutdownBackend();
     FShaderCompilerConfigurationGuard CompilerGuard;
@@ -1126,6 +1167,8 @@ TEST(ArdaShaderStructs, StartupModePropagatesCompilerFailureBeforeDevice)
         "StartupFailureShader", SourceName.c_str(), "StartupFailureArtifact",
         "Main", Stage::Compute, nullptr);
     FArdaBackendConfiguration Configuration;
+    Configuration.mBackendName = Target.mBackendName;
+    Configuration.mBackend = Target.mBackend;
     Configuration.mbEnableValidation = false;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::Startup;
     Configuration.mShaderCacheDirectory = Directory / "Cache";
@@ -1142,10 +1185,13 @@ TEST(ArdaShaderStructs, GlobalMapIndexesOnlyCompiledPermutations)
 {
     using namespace arda;
     using namespace backend;
+    FArdaShaderTarget Target;
+    ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
 
     ShutdownBackend();
     FArdaBackendConfiguration Configuration;
-    Configuration.mBackend = DefaultBackend;
+    Configuration.mBackendName = Target.mBackendName;
+    Configuration.mBackend = Target.mBackend;
     Configuration.mbEnableValidation = false;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
     ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -1173,7 +1219,7 @@ TEST(ArdaShaderStructs, GlobalMapIndexesOnlyCompiledPermutations)
     std::error_code Error;
     std::filesystem::remove_all(TestDirectory, Error);
     ASSERT_TRUE(std::filesystem::create_directories(TestDirectory, Error));
-    const char* Extension = GetShaderArtifactExtension(DefaultBackend);
+    const char* Extension = Target.mArtifactExtension.c_str();
     const std::filesystem::path Source =
         SourceDirectory / (std::string("ArdaShaderStructTest") + Extension);
     for (const uint32_t Id : { 0u, 2u, 4u })
@@ -1205,6 +1251,8 @@ TEST(ArdaShaderStructs, GlobalMapIndexesOnlyCompiledPermutations)
 TEST(ArdaShaderStructs, OnDemandMapDefersMissingArtifactAndHonorsOverride)
 {
     using namespace arda::backend;
+    FArdaShaderTarget Target;
+    ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
 
     ShutdownBackend();
     FShaderCompilerConfigurationGuard CompilerGuard;
@@ -1224,7 +1272,8 @@ TEST(ArdaShaderStructs, OnDemandMapDefersMissingArtifactAndHonorsOverride)
     ConfigureShaderCompiler(CompilerConfiguration);
 
     FArdaBackendConfiguration Configuration;
-    Configuration.mBackend = DefaultBackend;
+    Configuration.mBackendName = Target.mBackendName;
+    Configuration.mBackend = Target.mBackend;
     Configuration.mbEnableValidation = false;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::OnDemand;
     Configuration.mShaderCacheDirectory = ConfiguredCache;
@@ -1236,7 +1285,7 @@ TEST(ArdaShaderStructs, OnDemandMapDefersMissingArtifactAndHonorsOverride)
         "OnDemandOverrideShader", "UnusedLocalSource.hlsl",
         "OnDemandOverrideArtifact", "ShaderStructTestCS",
         Stage::Compute, nullptr);
-    const std::string Extension = GetShaderArtifactExtension(DefaultBackend);
+    const std::string Extension = Target.mArtifactExtension.c_str();
     ASSERT_TRUE(std::filesystem::copy_file(
         std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR) /
             (std::string("ArdaShaderStructTest") + Extension),
@@ -1294,10 +1343,13 @@ TEST(ArdaShaderStructs, LoadsGlobalMapIdempotentlyAndBuildsDirectBindings)
     using namespace arda;
     using namespace backend;
     using namespace rhi;
+    FArdaShaderTarget Target;
+    ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
 
     ShutdownBackend();
     FArdaBackendConfiguration Configuration;
-    Configuration.mBackend = DefaultBackend;
+    Configuration.mBackendName = Target.mBackendName;
+    Configuration.mBackend = Target.mBackend;
     Configuration.mbEnableValidation = false;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
     ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -1320,7 +1372,7 @@ TEST(ArdaShaderStructs, LoadsGlobalMapIdempotentlyAndBuildsDirectBindings)
         std::error_code ArtifactError;
         std::filesystem::remove_all(Directory, ArtifactError);
         ASSERT_TRUE(std::filesystem::create_directories(Directory, ArtifactError));
-        const std::string Extension = GetShaderArtifactExtension(DefaultBackend);
+        const std::string Extension = Target.mArtifactExtension.c_str();
         const std::filesystem::path CopiedSource =
             std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR) /
             (std::string("ArdaShaderStructTest") + Extension);
