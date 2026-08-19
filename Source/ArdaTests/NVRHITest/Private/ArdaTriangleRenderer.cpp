@@ -1,6 +1,7 @@
 #include "ArdaRHITestPch.h"
 
 #include "ArdaTriangleRenderer.h"
+#include "ShaderStructs/ArdaShaderCompiler.h"
 
 namespace arda::tests::rhi_test
 {
@@ -47,11 +48,41 @@ namespace arda::tests::rhi_test
             return false;
         }
 
+        const std::filesystem::path shaderCache =
+            shaderDirectory / ".arda-cache" / "shaders";
+        const std::string shaderSource =
+            (std::filesystem::path(ARDA_RHI_TEST_SHADER_SOURCE_DIR) /
+             "ArdaTriangle.hlsl").string();
+        backend::FArdaShaderTypeRegistration vertexRegistration(
+            "RHITestTriangleVertex", shaderSource.c_str(), "TriangleVS",
+            "VSMain", rhi::EArdaRHIShaderStage::Vertex, nullptr);
+        backend::FArdaShaderTypeRegistration pixelRegistration(
+            "RHITestTrianglePixel", shaderSource.c_str(), "TrianglePS",
+            "PSMain", rhi::EArdaRHIShaderStage::Pixel, nullptr);
+        const backend::FArdaShaderCompilerConfiguration previousCompiler =
+            backend::GetShaderCompilerConfiguration();
+        backend::FArdaShaderCompilerConfiguration runtimeCompiler =
+            previousCompiler;
+        runtimeCompiler.mbCompileMissingArtifacts = true;
+        runtimeCompiler.mbCompileOutdatedArtifacts = true;
+        backend::ConfigureShaderCompiler(runtimeCompiler);
+        const backend::FArdaShaderCompileResult compileResult =
+            backend::EnsureRegisteredShaderArtifacts(
+                shaderCache, deviceContext.mBackendName.c_str());
+        backend::ConfigureShaderCompiler(previousCompiler);
+        if (!compileResult)
+        {
+            mError = compileResult.mDiagnostics.empty()
+                ? "Ardashir failed to compile the triangle shaders."
+                : compileResult.mDiagnostics.front().mMessage;
+            return false;
+        }
+
         const bool vulkan = deviceContext.mBackend == backend::EArdaBackendType::Vulkan;
         eastl::vector<uint8_t> vertexBinary;
         eastl::vector<uint8_t> pixelBinary;
-        if (!LoadBinary(shaderDirectory / (vulkan ? "TriangleVS.spv" : "TriangleVS.dxil"), vertexBinary, mError) ||
-            !LoadBinary(shaderDirectory / (vulkan ? "TrianglePS.spv" : "TrianglePS.dxil"), pixelBinary, mError))
+        if (!LoadBinary(shaderCache / (vulkan ? "TriangleVS.spv" : "TriangleVS.dxil"), vertexBinary, mError) ||
+            !LoadBinary(shaderCache / (vulkan ? "TrianglePS.spv" : "TrianglePS.dxil"), pixelBinary, mError))
         {
             return false;
         }

@@ -1,6 +1,7 @@
 #include "ArdaNvrhiPch.h"
 
 #include "ArdaNvrhiBackendDevice.h"
+#include "Native/ArdaNvrhiPipelineCache.h"
 #include "RHI/ArdaNvrhiDevice.h"
 
 #include <EASTL/algorithm.h>
@@ -630,6 +631,7 @@ namespace arda::backend
                 mArdaDevice = nullptr;
                 mDevice = nullptr;
                 mNativeDevice = nullptr;
+                mPipelineCache.reset();
 
                 if (mLifetime)
                 {
@@ -814,6 +816,13 @@ namespace arda::backend
                 Description.deviceExtensions = DeviceExtensions.data();
                 Description.numDeviceExtensions =
                     static_cast<uint32_t>(DeviceExtensions.size());
+                mPipelineCache =
+                    rhi::private_impl::CreateArdaNvrhiVulkanPipelineCache(
+                        static_cast<VkDevice>(mVulkanDevice),
+                        nullptr,
+                        Configuration.mBackendName,
+                        Configuration.mPipelineCacheDirectory,
+                        Configuration.mMessageCallback);
                 mNativeDevice = nvrhi::vulkan::createDevice(Description);
                 if (!mNativeDevice)
                 {
@@ -830,9 +839,7 @@ namespace arda::backend
                     return EArdaInitializeResult::Failure;
                 }
                 mArdaDevice = rhi::private_impl::CreateArdaNvrhiDevice(
-                    mDevice, mLifetime, Configuration.mBackendName,
-                    Configuration.mPipelineCacheDirectory,
-                    Configuration.mMessageCallback);
+                    mDevice, mLifetime, mPipelineCache);
                 if (!mArdaDevice)
                 {
                     mError = "Failed to create the opaque Arda Vulkan device.";
@@ -994,6 +1001,8 @@ namespace arda::backend
                 eastl::make_shared<vk::detail::DynamicLoader>();
             eastl::vector<const char*> mInstanceExtensions;
             eastl::shared_ptr<FArdaVulkanLifetime> mLifetime;
+            eastl::shared_ptr<rhi::private_impl::IArdaNvrhiPipelineCache>
+                mPipelineCache;
             vk::Instance mInstance;
             vk::SurfaceKHR mSurface;
             vk::PhysicalDevice mPhysicalDevice;

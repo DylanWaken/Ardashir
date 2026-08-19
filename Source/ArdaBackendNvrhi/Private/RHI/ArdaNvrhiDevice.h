@@ -6,31 +6,21 @@
 #include "RHIWrappers/ArdaRHI.h"
 
 #include <EASTL/shared_ptr.h>
-#include <filesystem>
 #include <nvrhi/nvrhi.h>
-
-namespace arda::backend
-{
-    enum class EArdaBackendType;
-    class IArdaDiagnosticCallback;
-}
 
 namespace arda::rhi::private_impl
 {
+    class IArdaNvrhiPipelineCache;
+
     /** Creates the opaque Arda facade for an existing NVRHI device.
      *  @param Device NVRHI device wrapped by the facade.
      *  @param BackendLifetime Optional shared owner that keeps backend state alive.
-     *  @param BackendName Stable module name selecting cache identity and filename.
-     *  @param PipelineCacheDirectory Configured cache directory; empty disables persistence.
-     *  @param DiagnosticCallback Optional destination for non-fatal persistence warnings.
      *  @return Reference to the created Arda RHI device facade.
      */
     [[nodiscard]] FArdaRHIDeviceRef CreateArdaNvrhiDevice(
         nvrhi::DeviceHandle Device,
         eastl::shared_ptr<void> BackendLifetime,
-        eastl::string BackendName,
-        std::filesystem::path PipelineCacheDirectory,
-        backend::IArdaDiagnosticCallback* DiagnosticCallback);
+        eastl::shared_ptr<IArdaNvrhiPipelineCache> PipelineCache);
 
     /** Creates an Arda framebuffer facade for an existing NVRHI framebuffer.
      *  @param Device Arda RHI device associated with the framebuffer.

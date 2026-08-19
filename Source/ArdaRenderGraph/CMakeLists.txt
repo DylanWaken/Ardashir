@@ -26,11 +26,11 @@ if(ARDASHIR_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.cpp"
     )
     add_executable(ArdaGraphTests ${ARDA_RENDER_GRAPH_TEST_SOURCES})
-    add_dependencies(ArdaGraphTests ArdaBackendTestShaders)
     target_include_directories(ArdaGraphTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
     target_compile_definitions(ArdaGraphTests PRIVATE
         ARDA_ENABLE_CHECKS
-        ARDA_BACKEND_TEST_SHADER_DIR="${CMAKE_BINARY_DIR}/Source/ArdaBackend")
+        ARDA_BACKEND_TEST_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/TestShaderCache"
+        ARDA_BACKEND_TEST_SHADER_SOURCE_DIR="${CMAKE_SOURCE_DIR}/Source/ArdaBackend/Tests")
     target_link_libraries(ArdaGraphTests PRIVATE
         Ardashir::ArdaRenderGraph
         Ardashir::ArdaBackend

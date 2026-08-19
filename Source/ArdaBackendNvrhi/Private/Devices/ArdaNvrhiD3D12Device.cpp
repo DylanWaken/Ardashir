@@ -1,6 +1,7 @@
 #include "ArdaNvrhiPch.h"
 
 #include "ArdaNvrhiBackendDevice.h"
+#include "Native/ArdaNvrhiPipelineCache.h"
 #include "RHI/ArdaNvrhiDevice.h"
 
 #include <array>
@@ -264,6 +265,7 @@ namespace arda::backend
                 mArdaDevice = nullptr;
                 mDevice = nullptr;
                 mNativeDevice = nullptr;
+                mPipelineCache.reset();
                 mLifetime.reset();
             }
 
@@ -361,10 +363,18 @@ namespace arda::backend
                 mLifetime->mCopyQueue = mCopyQueue;
                 mLifetime->mMessageCallback.SetTarget(
                     Configuration.mMessageCallback);
+                mPipelineCache =
+                    rhi::private_impl::CreateArdaNvrhiD3D12PipelineCache(
+                        mLifetime->mDevice.Get(),
+                        Configuration.mBackendName,
+                        Configuration.mPipelineCacheDirectory,
+                        Configuration.mMessageCallback);
 
                 nvrhi::d3d12::DeviceDesc Description;
                 Description.errorCB = &mLifetime->mMessageCallback;
-                Description.pDevice = mLifetime->mDevice.Get();
+                Description.pDevice = mPipelineCache
+                    ? mPipelineCache->GetD3D12DeviceForNvrhi()
+                    : mLifetime->mDevice.Get();
                 Description.pGraphicsCommandQueue =
                     mLifetime->mGraphicsQueue.Get();
                 Description.pComputeCommandQueue =
@@ -387,9 +397,7 @@ namespace arda::backend
                     return EArdaInitializeResult::Failure;
                 }
                 mArdaDevice = rhi::private_impl::CreateArdaNvrhiDevice(
-                    mDevice, mLifetime, Configuration.mBackendName,
-                    Configuration.mPipelineCacheDirectory,
-                    Configuration.mMessageCallback);
+                    mDevice, mLifetime, mPipelineCache);
                 if (!mArdaDevice)
                 {
                     mError = "Failed to create the opaque Arda D3D12 device.";
@@ -459,6 +467,8 @@ namespace arda::backend
             HWND mWindow = nullptr;
             eastl::string mError;
             eastl::shared_ptr<FArdaD3D12Lifetime> mLifetime;
+            eastl::shared_ptr<rhi::private_impl::IArdaNvrhiPipelineCache>
+                mPipelineCache;
             Microsoft::WRL::ComPtr<IDXGIFactory6> mFactory;
             Microsoft::WRL::ComPtr<ID3D12Device> mD3DDevice;
             Microsoft::WRL::ComPtr<ID3D12CommandQueue> mGraphicsQueue;

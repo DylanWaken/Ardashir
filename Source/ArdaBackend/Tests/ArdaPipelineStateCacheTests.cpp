@@ -233,6 +233,12 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
         std::filesystem::remove_all(Directory, Error);
         GTEST_SKIP() << GetBackendError().c_str();
     }
+    if (!GetDevice()->GetCapabilities().mbPipelineCachePersistence)
+    {
+        ShutdownBackend();
+        std::filesystem::remove_all(Directory, Error);
+        GTEST_SKIP() << "The selected backend does not expose native pipeline-cache persistence.";
+    }
     FArdaRHIDeviceRef RetainedFirstDevice = GetDevice();
     uint64_t FirstComputeKey = 0;
     uint64_t FirstGraphicsKey = 0;
@@ -353,6 +359,12 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
     {
         std::filesystem::remove_all(Directory, Error);
         GTEST_SKIP() << GetBackendError().c_str();
+    }
+    if (!GetDevice()->GetCapabilities().mbPipelineCachePersistence)
+    {
+        ShutdownBackend();
+        std::filesystem::remove_all(Directory, Error);
+        GTEST_SKIP() << "The selected backend does not expose native pipeline-cache persistence.";
     }
 
     uint64_t FirstComputeKey = 0;

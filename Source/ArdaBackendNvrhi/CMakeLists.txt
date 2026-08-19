@@ -8,6 +8,11 @@ set(ARDA_BACKEND_PUBLIC_DIR
 
 add_library(ArdaBackendNvrhiCommon STATIC
     Private/Interop/ArdaNvrhiExternalInterop.cpp
+    Private/Native/ArdaNvrhiD3D12PipelineCache.cpp
+    Private/Native/ArdaNvrhiPipelineCache.h
+    Private/Native/ArdaNvrhiPipelineCacheCommon.cpp
+    Private/Native/ArdaNvrhiPipelineCacheCommon.h
+    Private/Native/ArdaNvrhiVulkanPipelineCache.cpp
     Private/RHI/ArdaNvrhiConversions.cpp
     Private/RHI/ArdaNvrhiConversions.h
     Private/RHI/ArdaNvrhiDevice.cpp
@@ -63,7 +68,7 @@ if(ARDASHIR_BACKEND_NVRHI_VULKAN)
         PRIVATE
             "${ARDA_BACKEND_PUBLIC_DIR}"
             "${CMAKE_CURRENT_SOURCE_DIR}/Private"
-            "${PROJECT_SOURCE_DIR}/ThirdParty/NVRHI/include")
+            "${ARDASHIR_NVRHI_SOURCE_DIR}/include")
     target_precompile_headers(ArdaBackendNvrhiVulkan PRIVATE
         Private/ArdaNvrhiPch.h)
     target_link_libraries(ArdaBackendNvrhiVulkan
@@ -90,7 +95,7 @@ if(WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12)
         PRIVATE
             "${ARDA_BACKEND_PUBLIC_DIR}"
             "${CMAKE_CURRENT_SOURCE_DIR}/Private"
-            "${PROJECT_SOURCE_DIR}/ThirdParty/NVRHI/include")
+            "${ARDASHIR_NVRHI_SOURCE_DIR}/include")
     target_precompile_headers(ArdaBackendNvrhiD3D12 PRIVATE
         Private/ArdaNvrhiPch.h)
     target_link_libraries(ArdaBackendNvrhiD3D12

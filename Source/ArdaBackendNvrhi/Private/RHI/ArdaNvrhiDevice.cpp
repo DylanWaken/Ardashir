@@ -1,21 +1,15 @@
 #include "RHI/ArdaNvrhiDevice.h"
 #include "RHI/ArdaNvrhiConversions.h"
+#include "Native/ArdaNvrhiPipelineCache.h"
 #include "ArdaDevice.h"
 
 #include <atomic>
-#include <cctype>
 #include <cstring>
-#include <fstream>
 #include <mutex>
 #include <vector>
 
 #if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
-#include <process.h>
 #include <nvrhi/d3d12.h>
-#elif defined(_WIN32)
-#include <process.h>
-#else
-#include <unistd.h>
 #endif
 #if defined(ARDA_NVRHI_WITH_VULKAN)
 #include <nvrhi/vulkan.h>
@@ -25,66 +19,6 @@ namespace arda::rhi::private_impl
 {
     namespace
     {
-        constexpr uint64_t PipelineCacheMagic = 0x45484341434F5350ull; // "PSOCACHE"
-        constexpr uint32_t PipelineCacheSchema = 2;
-        constexpr uint64_t MaxPipelineCachePayload = 256ull * 1024ull * 1024ull;
-        std::atomic_uint64_t PipelineCacheTempCounter{ 0 };
-
-        struct FPipelineCacheBlobHeader
-        {
-            uint64_t mMagic = PipelineCacheMagic;
-            uint32_t mSchema = PipelineCacheSchema;
-            uint32_t mReserved = 0;
-            uint64_t mBackendHash = 0;
-            uint64_t mPayloadSize = 0;
-        };
-        static_assert(sizeof(FPipelineCacheBlobHeader) == 32);
-
-        uint64_t ProcessId() noexcept
-        {
-#if defined(_WIN32)
-            return static_cast<uint64_t>(_getpid());
-#else
-            return static_cast<uint64_t>(getpid());
-#endif
-        }
-
-        void Warn(
-            backend::IArdaDiagnosticCallback* Callback,
-            const char* Message) noexcept
-        {
-            if (Callback)
-                Callback->Message(backend::EArdaDiagnosticSeverity::Warning, Message);
-        }
-
-        uint64_t StableNameHash(const eastl::string& Name) noexcept
-        {
-            uint64_t Hash = 14695981039346656037ull;
-            for (const unsigned char Character : Name)
-            {
-                Hash ^= Character;
-                Hash *= 1099511628211ull;
-            }
-            return Hash;
-        }
-
-        std::filesystem::path PipelineCacheFilename(const eastl::string& BackendName)
-        {
-            std::string Filename;
-            Filename.reserve(BackendName.size() + 10);
-            for (const unsigned char Character : BackendName)
-            {
-                Filename.push_back(
-                    std::isalnum(Character) || Character == '-' || Character == '_'
-                        ? static_cast<char>(Character)
-                        : '_');
-            }
-            if (Filename.empty())
-                Filename = "unnamed-backend";
-            Filename += ".pso-cache";
-            return Filename;
-        }
-
         uint64_t PersistentShaderHash(const FArdaRHIShaderDesc& Desc) noexcept
         {
             uint64_t Hash = 14695981039346656037ull;
@@ -111,93 +45,6 @@ namespace arda::rhi::private_impl
             if (Desc.mBytecode && Desc.mBytecodeSize)
                 Append(Desc.mBytecode, Desc.mBytecodeSize);
             return Hash == 0 ? 1 : Hash;
-        }
-
-        bool ReadPipelineCacheBlob(
-            const std::filesystem::path& Path,
-            const eastl::string& BackendName,
-            std::vector<uint8_t>& Payload)
-        {
-            Payload.clear();
-            std::error_code Error;
-            const uintmax_t FileSize = std::filesystem::file_size(Path, Error);
-            if (Error)
-                return false;
-            if (FileSize < sizeof(FPipelineCacheBlobHeader) ||
-                FileSize > sizeof(FPipelineCacheBlobHeader) + MaxPipelineCachePayload)
-                return false;
-            std::ifstream Input(Path, std::ios::binary);
-            FPipelineCacheBlobHeader Header;
-            Input.read(reinterpret_cast<char*>(&Header), sizeof(Header));
-            if (!Input || Header.mMagic != PipelineCacheMagic ||
-                Header.mSchema != PipelineCacheSchema ||
-                Header.mBackendHash != StableNameHash(BackendName) ||
-                Header.mPayloadSize > MaxPipelineCachePayload ||
-                FileSize != sizeof(Header) + Header.mPayloadSize)
-                return false;
-            Payload.resize(static_cast<size_t>(Header.mPayloadSize));
-            if (!Payload.empty())
-            {
-                Input.read(reinterpret_cast<char*>(Payload.data()), Payload.size());
-                if (Input.gcount() != static_cast<std::streamsize>(Payload.size()))
-                {
-                    Payload.clear();
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        bool WritePipelineCacheBlob(
-            const std::filesystem::path& Path,
-            const eastl::string& BackendName,
-            const std::vector<uint8_t>& Payload)
-        {
-            std::error_code Error;
-            std::filesystem::create_directories(Path.parent_path(), Error);
-            if (Error)
-                return false;
-            const uint64_t Serial =
-                PipelineCacheTempCounter.fetch_add(1, std::memory_order_relaxed);
-            std::filesystem::path Temporary = Path;
-            Temporary += ".tmp-" + std::to_string(ProcessId()) + "-" +
-                std::to_string(Serial);
-            {
-                std::ofstream Output(
-                    Temporary, std::ios::binary | std::ios::trunc);
-                FPipelineCacheBlobHeader Header;
-                Header.mBackendHash = StableNameHash(BackendName);
-                Header.mPayloadSize = Payload.size();
-                Output.write(reinterpret_cast<const char*>(&Header), sizeof(Header));
-                if (!Payload.empty())
-                    Output.write(
-                        reinterpret_cast<const char*>(Payload.data()),
-                        Payload.size());
-                Output.flush();
-                if (!Output)
-                {
-                    Output.close();
-                    std::filesystem::remove(Temporary, Error);
-                    return false;
-                }
-            }
-#if defined(_WIN32)
-            if (!MoveFileExW(
-                    Temporary.c_str(), Path.c_str(),
-                    MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-            {
-                std::filesystem::remove(Temporary, Error);
-                return false;
-            }
-#else
-            std::filesystem::rename(Temporary, Path, Error);
-            if (Error)
-            {
-                std::filesystem::remove(Temporary, Error);
-                return false;
-            }
-#endif
-            return true;
         }
 
         class FResource : public virtual IArdaRHIResource
@@ -897,40 +744,15 @@ namespace arda::rhi::private_impl
             explicit FDevice(
                 nvrhi::DeviceHandle Device,
                 eastl::shared_ptr<void> BackendLifetime,
-                eastl::string BackendName,
-                std::filesystem::path PipelineCacheDirectory,
-                backend::IArdaDiagnosticCallback* DiagnosticCallback)
+                eastl::shared_ptr<IArdaNvrhiPipelineCache> PipelineCache)
                 : FResource(EArdaRHIResourceType::Device, "ArdaNvrhiDevice", nullptr)
                 , mBackendLifetime(std::move(BackendLifetime))
+                , mPipelineCache(eastl::move(PipelineCache))
                 , mDevice(std::move(Device))
-                , mBackendName(eastl::move(BackendName))
-                , mPipelineCacheDirectory(std::move(PipelineCacheDirectory))
-                , mDiagnosticCallback(DiagnosticCallback)
-                , mbPipelineCachePersistenceEnabled(!mPipelineCacheDirectory.empty())
             {
                 SetOwner(this);
-                if (!mPipelineCacheDirectory.empty())
-                {
-                    std::vector<uint8_t> Payload;
-                    const auto Path = mPipelineCacheDirectory /
-                        PipelineCacheFilename(mBackendName);
-                    std::error_code Error;
-                    const bool Exists = std::filesystem::exists(Path, Error);
-                    if (Exists && ReadPipelineCacheBlob(Path, mBackendName, Payload))
-                    {
-                        if (!mDevice->loadPipelineCacheData(
-                                Payload.data(), Payload.size()))
-                            Warn(mDiagnosticCallback,
-                                "Persistent pipeline cache is unsupported or was rejected.");
-                    }
-                    else
-                    {
-                        if (Exists)
-                            Warn(mDiagnosticCallback,
-                                "Ignoring a corrupt, truncated, or wrong-backend pipeline cache blob.");
-                        (void)mDevice->loadPipelineCacheData(nullptr, 0);
-                    }
-                }
+                mCapabilities.mbPipelineCachePersistence =
+                    mPipelineCache && mPipelineCache->IsSupported();
                 mCapabilities.mbComputeQueue = mDevice->queryFeatureSupport(nvrhi::Feature::ComputeQueue);
                 mCapabilities.mbCopyQueue = mDevice->queryFeatureSupport(nvrhi::Feature::CopyQueue);
                 mCapabilities.mbConservativeRasterization = mDevice->queryFeatureSupport(nvrhi::Feature::ConservativeRasterization);
@@ -950,7 +772,7 @@ namespace arda::rhi::private_impl
 
             ~FDevice() override
             {
-                FlushPipelineCachePersistence(false);
+                FlushAndDisablePipelineCachePersistence();
             }
 
             const FArdaRHICapabilities& GetCapabilities() const noexcept override { return mCapabilities; }
@@ -1285,7 +1107,7 @@ namespace arda::rhi::private_impl
             {
                 if (auto S = Validate(D); !S) return { {}, S };
                 auto* VS = Cast<FShader>(D.mVertexShader.Get()); if (!VS || !Owns(VS)) return Invalid<FArdaRHIGraphicsPipelineRef>("Graphics pipeline requires an owned vertex shader.");
-                nvrhi::GraphicsPipelineDesc N; N.primType = ToNvrhiPrimitive(D.mTopology); N.patchControlPoints = D.mPatchControlPoints; N.pipelineCacheKey = D.mPersistentCacheKey; N.VS = VS->mHandle;
+                nvrhi::GraphicsPipelineDesc N; N.primType = ToNvrhiPrimitive(D.mTopology); N.patchControlPoints = D.mPatchControlPoints; N.VS = VS->mHandle;
                 if (auto* V = Cast<FInputLayout>(D.mInputLayout.Get())) N.inputLayout = V->mHandle; else if (D.mInputLayout) return Wrong<FArdaRHIGraphicsPipelineRef>();
                 if (!SetShader(N.PS, D.mPixelShader) || !SetShader(N.HS, D.mHullShader) || !SetShader(N.DS, D.mDomainShader) || !SetShader(N.GS, D.mGeometryShader)) return Wrong<FArdaRHIGraphicsPipelineRef>();
                 for (const auto& B : D.mBindingLayouts) { auto* V = Cast<FBindingLayout>(B.Get()); if (!V || !Owns(V)) return Wrong<FArdaRHIGraphicsPipelineRef>(); N.addBindingLayout(V->mHandle); }
@@ -1305,18 +1127,22 @@ namespace arda::rhi::private_impl
                     Target.destBlendAlpha = ToNvrhiBlend(Source.mDestinationAlpha);
                 }
                 nvrhi::FramebufferInfo F; for (auto Format : D.mColorFormats) F.colorFormats.push_back(ToNvrhi(Format)); F.depthFormat = ToNvrhi(D.mDepthFormat); F.sampleCount = D.mSampleCount;
+                FArdaNvrhiPipelineKeyScope CacheKey(
+                    mPipelineCache.get(), D.mPersistentCacheKey);
                 auto H = mDevice->createGraphicsPipeline(N, F); if (!H) return Fail<FArdaRHIGraphicsPipelineRef>("NVRHI failed to create graphics pipeline.");
-                MarkPipelineCacheDirty();
+                if (mPipelineCache) mPipelineCache->MarkDirty();
                 return Ok(FArdaRHIGraphicsPipelineRef(new FGraphicsPipeline(D, H, this)));
             }
             TArdaRHIResult<FArdaRHIComputePipelineRef> CreateComputePipeline(const FArdaRHIComputePipelineDesc& D) override
             {
                 if (auto S = Validate(D); !S) return { {}, S };
                 auto* CS = Cast<FShader>(D.mComputeShader.Get()); if (!CS || !Owns(CS) || CS->mStage != EArdaRHIShaderStage::Compute) return Invalid<FArdaRHIComputePipelineRef>("Compute pipeline requires an owned compute shader.");
-                nvrhi::ComputePipelineDesc N; N.pipelineCacheKey = D.mPersistentCacheKey; N.CS = CS->mHandle;
+                nvrhi::ComputePipelineDesc N; N.CS = CS->mHandle;
                 for (const auto& B : D.mBindingLayouts) { auto* V = Cast<FBindingLayout>(B.Get()); if (!V || !Owns(V)) return Wrong<FArdaRHIComputePipelineRef>(); N.addBindingLayout(V->mHandle); }
+                FArdaNvrhiPipelineKeyScope CacheKey(
+                    mPipelineCache.get(), D.mPersistentCacheKey);
                 auto H = mDevice->createComputePipeline(N); if (!H) return Fail<FArdaRHIComputePipelineRef>("NVRHI failed to create compute pipeline.");
-                MarkPipelineCacheDirty();
+                if (mPipelineCache) mPipelineCache->MarkDirty();
                 return Ok(FArdaRHIComputePipelineRef(new FComputePipeline(D, H, this)));
             }
             TArdaRHIResult<FArdaRHIMeshletPipelineRef> CreateMeshletPipeline(const FArdaRHIMeshletPipelineDesc& D) override
@@ -1349,7 +1175,7 @@ namespace arda::rhi::private_impl
                 auto H = mDevice->createMeshletPipeline(N, F); if (!H) return Fail<FArdaRHIMeshletPipelineRef>("NVRHI failed to create meshlet pipeline.");
                 FArdaRHIMeshletPipelineRef Result(new FMeshletPipeline(D, H, this));
                 mMeshletPipelines.Insert(D, Result);
-                MarkPipelineCacheDirty();
+                if (mPipelineCache) mPipelineCache->MarkDirty();
                 return Ok(Result);
             }
             TArdaRHIResult<FArdaRHIRasterStateRef> CreateRasterState(
@@ -1430,7 +1256,7 @@ namespace arda::rhi::private_impl
                 FArdaRHIRayTracingPipelineRef Result(
                     new FRayTracingPipeline(D, H, this));
                 mRayTracingPipelines.Insert(D, Result);
-                MarkPipelineCacheDirty();
+                if (mPipelineCache) mPipelineCache->MarkDirty();
                 return Ok(Result);
             }
             TArdaRHIResult<FArdaRHIShaderTableRef> CreateShaderTable(const FArdaRHIRayTracingPipelineRef& P, const FArdaRHIShaderTableDesc& D) override
@@ -1633,68 +1459,15 @@ namespace arda::rhi::private_impl
             FArdaRHIStatus WaitForIdle() override { return mDevice->waitForIdle() ? FArdaRHIStatus{} : FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "NVRHI waitForIdle failed."); }
             void FlushAndDisablePipelineCachePersistence() noexcept override
             {
-                FlushPipelineCachePersistence(true);
+                if (!mPipelineCache)
+                    return;
+                if (mDevice)
+                    (void)mDevice->waitForIdle();
+                mPipelineCache->FlushAndDisable();
             }
             void RunGarbageCollection() override { mDevice->runGarbageCollection(); }
 
         private:
-            void MarkPipelineCacheDirty() noexcept
-            {
-                std::lock_guard<std::mutex> Lock(mPipelineCacheMutex);
-                if (mbPipelineCachePersistenceEnabled)
-                    mbPipelineCacheDirty = true;
-            }
-            void FlushPipelineCachePersistence(bool Disable) noexcept
-            {
-                std::lock_guard<std::mutex> Lock(mPipelineCacheMutex);
-                if (!mbPipelineCachePersistenceEnabled || !mDevice)
-                    return;
-                try
-                {
-                    if (mbPipelineCacheDirty)
-                    {
-                        if (!mDevice->waitForIdle())
-                        {
-                            Warn(mDiagnosticCallback,
-                                "Pipeline cache save skipped because waiting for the device failed.");
-                        }
-                        else
-                        {
-                            std::vector<uint8_t> Payload;
-                            if (mDevice->getPipelineCacheData(Payload))
-                            {
-                                if (Payload.size() > MaxPipelineCachePayload)
-                                {
-                                    Warn(mDiagnosticCallback,
-                                        "Pipeline cache payload exceeded the configured safety limit.");
-                                }
-                                else
-                                {
-                                    const auto Path = mPipelineCacheDirectory /
-                                        PipelineCacheFilename(mBackendName);
-                                    if (WritePipelineCacheBlob(Path, mBackendName, Payload))
-                                        mbPipelineCacheDirty = false;
-                                    else
-                                        Warn(mDiagnosticCallback,
-                                            "Failed to atomically save the persistent pipeline cache.");
-                                }
-                            }
-                        }
-                    }
-                }
-                catch (...)
-                {
-                    Warn(mDiagnosticCallback,
-                        "Unexpected failure while saving the persistent pipeline cache.");
-                }
-                if (Disable)
-                {
-                    mbPipelineCachePersistenceEnabled = false;
-                    mbPipelineCacheDirty = false;
-                    mPipelineCacheDirectory.clear();
-                    mDiagnosticCallback = nullptr;
-                }
-            }
             template <typename T> static TArdaRHIResult<T> Ok(T V) { return { std::move(V), {} }; }
             template <typename T> static TArdaRHIResult<T> Fail(const char* M) { return { {}, FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, M) }; }
             template <typename T> static TArdaRHIResult<T> Invalid(const char* M) { return { {}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, M) }; }
@@ -1728,13 +1501,10 @@ namespace arda::rhi::private_impl
                 return Index >= 0 ? Ok(Index) : Fail<int>("NVRHI failed to add shader-table entry.");
             }
             eastl::shared_ptr<void> mBackendLifetime;
+            // Declared before mDevice so the NVRHI device (and any D3D12 proxy
+            // reference it owns) is destroyed before the sidecar controller.
+            eastl::shared_ptr<IArdaNvrhiPipelineCache> mPipelineCache;
             nvrhi::DeviceHandle mDevice;
-            eastl::string mBackendName;
-            std::filesystem::path mPipelineCacheDirectory;
-            backend::IArdaDiagnosticCallback* mDiagnosticCallback = nullptr;
-            std::mutex mPipelineCacheMutex;
-            bool mbPipelineCachePersistenceEnabled = false;
-            bool mbPipelineCacheDirty = false;
             FArdaRHICapabilities mCapabilities;
             mutable std::mutex mCacheMutex;
             TDescriptorCache<FArdaRHISamplerDesc, FArdaRHISamplerRef> mSamplers;
@@ -1753,14 +1523,12 @@ namespace arda::rhi::private_impl
     FArdaRHIDeviceRef CreateArdaNvrhiDevice(
         nvrhi::DeviceHandle Device,
         eastl::shared_ptr<void> BackendLifetime,
-        eastl::string BackendName,
-        std::filesystem::path PipelineCacheDirectory,
-        backend::IArdaDiagnosticCallback* DiagnosticCallback)
+        eastl::shared_ptr<IArdaNvrhiPipelineCache> PipelineCache)
     {
         return Device
             ? FArdaRHIDeviceRef(new FDevice(
-                std::move(Device), std::move(BackendLifetime), eastl::move(BackendName),
-                std::move(PipelineCacheDirectory), DiagnosticCallback))
+                std::move(Device), std::move(BackendLifetime),
+                eastl::move(PipelineCache)))
             : FArdaRHIDeviceRef{};
     }
 

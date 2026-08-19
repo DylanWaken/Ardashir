@@ -1532,13 +1532,33 @@ TEST(ArdaRenderGraph, RegisteredShaderBridgeUsesExplicitSlotsAndAllLayouts)
         GTEST_SKIP() << GetBackendError().c_str();
 
     {
+        const std::string ShaderSource =
+            (std::filesystem::path(ARDA_BACKEND_TEST_SHADER_SOURCE_DIR) /
+             "ArdaShaderStructTest.hlsl").string();
         FArdaShaderTypeRegistration Registration(
             "ARDGRegisteredShader",
-            "ArdaShaderStructTest",
+            ShaderSource.c_str(),
             "ArdaShaderStructTest",
             "ShaderStructTestCS",
             rhi::EArdaRHIShaderStage::Compute,
             &GetRegisteredShaderMetadata);
+        const FArdaShaderCompilerConfiguration PreviousCompiler =
+            GetShaderCompilerConfiguration();
+        FArdaShaderCompilerConfiguration RuntimeCompiler = PreviousCompiler;
+        RuntimeCompiler.mbCompileMissingArtifacts = true;
+        RuntimeCompiler.mbCompileOutdatedArtifacts = true;
+        ConfigureShaderCompiler(RuntimeCompiler);
+        const FArdaShaderCompileResult CompileResult =
+            EnsureRegisteredShaderArtifact(
+                Registration.GetType(),
+                GetDeviceContext().mBackendName.c_str(),
+                0,
+                std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR));
+        ConfigureShaderCompiler(PreviousCompiler);
+        ASSERT_TRUE(CompileResult)
+            << (CompileResult.mDiagnostics.empty()
+                ? "Ardashir shader compilation failed."
+                : CompileResult.mDiagnostics.front().mMessage.c_str());
         FArdaGlobalShaderMap ShaderMap;
         ASSERT_TRUE(ShaderMap.Initialize(
             GetDeviceContext(),

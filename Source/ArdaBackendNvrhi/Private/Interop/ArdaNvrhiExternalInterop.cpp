@@ -2,6 +2,7 @@
 
 #include "ArdaNvrhiBackendDevice.h"
 #include "ArdaNvrhiExternalDeviceTypes.h"
+#include "Native/ArdaNvrhiPipelineCache.h"
 #include "RHI/ArdaNvrhiDevice.h"
 
 #include <charconv>
@@ -231,7 +232,7 @@ namespace arda::backend
                 {
                 case EArdaBackendType::D3D12:
 #if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
-                    if (!InitializeD3D12(*ExternalProvider))
+                    if (!InitializeD3D12(Configuration, *ExternalProvider))
                         return EArdaInitializeResult::Failure;
                     break;
 #else
@@ -242,7 +243,7 @@ namespace arda::backend
 #if defined(ARDA_NVRHI_WITH_VULKAN)
                 {
                     const EArdaInitializeResult Result =
-                        InitializeVulkan(*ExternalProvider);
+                        InitializeVulkan(Configuration, *ExternalProvider);
                     if (Result != EArdaInitializeResult::Success)
                         return Result;
                     break;
@@ -263,9 +264,7 @@ namespace arda::backend
                 }
 
                 mArdaDevice = rhi::private_impl::CreateArdaNvrhiDevice(
-                    mDevice, mLifetime, Configuration.mBackendName,
-                    Configuration.mPipelineCacheDirectory,
-                    Configuration.mMessageCallback);
+                    mDevice, mLifetime, mPipelineCache);
                 if (!mArdaDevice)
                 {
                     mError = "Failed to create the Arda facade for the external device.";
@@ -308,7 +307,9 @@ namespace arda::backend
 
         private:
 #if defined(_WIN32) && defined(ARDA_NVRHI_WITH_D3D12)
-            bool InitializeD3D12(const IArdaExternalDeviceProvider& Provider)
+            bool InitializeD3D12(
+                const FArdaBackendConfiguration& Configuration,
+                const IArdaExternalDeviceProvider& Provider)
             {
                 auto& External = mLifetime->mD3D12Desc;
                 FArdaExternalDeviceDesc Generic;
@@ -456,7 +457,15 @@ namespace arda::backend
 
                 nvrhi::d3d12::DeviceDesc Description;
                 Description.errorCB = &mLifetime->mMessageCallback;
-                Description.pDevice = Device;
+                mPipelineCache =
+                    rhi::private_impl::CreateArdaNvrhiD3D12PipelineCache(
+                        Device,
+                        Configuration.mBackendName,
+                        Configuration.mPipelineCacheDirectory,
+                        Configuration.mMessageCallback);
+                Description.pDevice = mPipelineCache
+                    ? mPipelineCache->GetD3D12DeviceForNvrhi()
+                    : Device;
                 Description.pGraphicsCommandQueue =
                     External.mGraphicsQueue.As<ID3D12CommandQueue*>();
                 Description.pComputeCommandQueue =
@@ -491,11 +500,12 @@ namespace arda::backend
 
 #if defined(ARDA_NVRHI_WITH_VULKAN)
             EArdaInitializeResult InitializeVulkan(
+                const FArdaBackendConfiguration& Configuration,
                 const IArdaExternalDeviceProvider& Provider)
             {
                 try
                 {
-                    return InitializeVulkanUnchecked(Provider);
+                    return InitializeVulkanUnchecked(Configuration, Provider);
                 }
                 catch (...)
                 {
@@ -506,6 +516,7 @@ namespace arda::backend
             }
 
             EArdaInitializeResult InitializeVulkanUnchecked(
+                const FArdaBackendConfiguration& Configuration,
                 const IArdaExternalDeviceProvider& Provider)
             {
                 auto& External = mLifetime->mVulkanDesc;
@@ -742,6 +753,13 @@ namespace arda::backend
                 Description.logBufferLifetime = External.mbLogBufferLifetime;
                 Description.vulkanLibraryName =
                     External.mVulkanLibraryName.c_str();
+                mPipelineCache =
+                    rhi::private_impl::CreateArdaNvrhiVulkanPipelineCache(
+                        static_cast<VkDevice>(Device),
+                        External.mAllocationCallbacks.As<VkAllocationCallbacks*>(),
+                        Configuration.mBackendName,
+                        Configuration.mPipelineCacheDirectory,
+                        Configuration.mMessageCallback);
                 mNativeDevice = nvrhi::vulkan::createDevice(Description);
                 if (!mNativeDevice)
                 {
@@ -753,6 +771,8 @@ namespace arda::backend
 #endif
 
             eastl::shared_ptr<FExternalDeviceLifetime> mLifetime;
+            eastl::shared_ptr<rhi::private_impl::IArdaNvrhiPipelineCache>
+                mPipelineCache;
             nvrhi::DeviceHandle mNativeDevice;
             nvrhi::DeviceHandle mDevice;
             rhi::FArdaRHIDeviceRef mArdaDevice;

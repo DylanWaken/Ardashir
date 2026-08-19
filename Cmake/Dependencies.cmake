@@ -111,6 +111,13 @@ set_target_properties(ArdashirImGuiGlfw PROPERTIES FOLDER "ThirdParty/ImGui")
 # NVRHI is a sample backend dependency, not an ArdaBackend ABI dependency.
 if(ARDASHIR_BACKEND_NVRHI_VULKAN OR
    (WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12))
+    set(ARDASHIR_NVRHI_SOURCE_DIR
+        "${PROJECT_SOURCE_DIR}/ThirdParty/NVRHI"
+        CACHE PATH "Path to an unmodified NVRHI source checkout")
+    if(NOT EXISTS "${ARDASHIR_NVRHI_SOURCE_DIR}/CMakeLists.txt")
+        message(FATAL_ERROR
+            "NVRHI is missing. Run: git submodule update --init ThirdParty/NVRHI")
+    endif()
     set(NVRHI_INSTALL OFF CACHE BOOL "Disable NVRHI install rules" FORCE)
     # Build only the native NVRHI implementations selected as Arda modules.
     set(NVRHI_WITH_VULKAN ${ARDASHIR_BACKEND_NVRHI_VULKAN}
@@ -120,7 +127,7 @@ if(ARDASHIR_BACKEND_NVRHI_VULKAN OR
             CACHE BOOL "Build the NVRHI D3D12 backend" FORCE)
     endif()
     add_subdirectory(
-        "${PROJECT_SOURCE_DIR}/ThirdParty/NVRHI"
+        "${ARDASHIR_NVRHI_SOURCE_DIR}"
         "${PROJECT_BINARY_DIR}/ThirdParty/NVRHI")
 endif()
 

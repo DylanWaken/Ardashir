@@ -87,83 +87,16 @@ set_target_properties(ArdaBackendPublicHeaders PROPERTIES
     FOLDER "Ardashir/Tests")
 
 if(ARDASHIR_BUILD_TESTS)
-    set(ARDA_BACKEND_RT_SHADER_SOURCE
-        "${CMAKE_CURRENT_SOURCE_DIR}/Tests/ArdaRayTracingTest.hlsl")
-    set(ARDA_BACKEND_RT_SHADER_OUTPUTS
-        "${CMAKE_CURRENT_BINARY_DIR}/ArdaRayTracingTest.dxil"
-        "${CMAKE_CURRENT_BINARY_DIR}/ArdaRayTracingTest.spv")
-    set(ARDA_BACKEND_STRUCT_SHADER_SOURCE
-        "${CMAKE_CURRENT_SOURCE_DIR}/Tests/ArdaShaderStructTest.hlsl")
-    set(ARDA_BACKEND_STRUCT_SHADER_OUTPUTS
-        "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.dxil"
-        "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.spv"
-        "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestVS.dxil"
-        "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestVS.spv"
-        "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestPS.dxil"
-        "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestPS.spv")
-    add_custom_command(
-        OUTPUT ${ARDA_BACKEND_RT_SHADER_OUTPUTS}
-        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -T lib_6_3
-            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaRayTracingTest.dxil"
-            "${ARDA_BACKEND_RT_SHADER_SOURCE}"
-        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -spirv
-            -fspv-target-env=vulkan1.2
-            -fspv-extension=SPV_KHR_ray_tracing
-            -T lib_6_3
-            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaRayTracingTest.spv"
-            "${ARDA_BACKEND_RT_SHADER_SOURCE}"
-        DEPENDS "${ARDA_BACKEND_RT_SHADER_SOURCE}"
-        COMMENT "Compiling ArdaBackend ray-tracing test shaders"
-        VERBATIM)
-    add_custom_command(
-        OUTPUT ${ARDA_BACKEND_STRUCT_SHADER_OUTPUTS}
-        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -T cs_6_0
-            -E ShaderStructTestCS
-            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.dxil"
-            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
-        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -spirv
-            -fspv-target-env=vulkan1.2
-            -T cs_6_0
-            -E ShaderStructTestCS
-            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaShaderStructTest.spv"
-            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
-        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -T vs_6_0
-            -E PipelineStateTestVS
-            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestVS.dxil"
-            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
-        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -spirv
-            -fspv-target-env=vulkan1.2 -T vs_6_0
-            -E PipelineStateTestVS
-            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestVS.spv"
-            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
-        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -T ps_6_0
-            -E PipelineStateTestPS
-            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestPS.dxil"
-            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
-        COMMAND "${ARDASHIR_DXC_EXECUTABLE}" -nologo -spirv
-            -fspv-target-env=vulkan1.2 -T ps_6_0
-            -E PipelineStateTestPS
-            -Fo "${CMAKE_CURRENT_BINARY_DIR}/ArdaPipelineStateTestPS.spv"
-            "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
-        DEPENDS "${ARDA_BACKEND_STRUCT_SHADER_SOURCE}"
-        COMMENT "Compiling shader-struct test shaders"
-        VERBATIM)
-    add_custom_target(ArdaBackendTestShaders
-        DEPENDS ${ARDA_BACKEND_RT_SHADER_OUTPUTS}
-                ${ARDA_BACKEND_STRUCT_SHADER_OUTPUTS})
-    set_target_properties(ArdaBackendTestShaders PROPERTIES
-        FOLDER "Ardashir/Tests")
-
     file(GLOB_RECURSE ARDA_BACKEND_TEST_SOURCES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.cpp"
     )
     list(FILTER ARDA_BACKEND_TEST_SOURCES EXCLUDE REGEX "ArdaRHITests\\.cpp$")
     add_executable(ArdaBackendTests ${ARDA_BACKEND_TEST_SOURCES})
-    add_dependencies(ArdaBackendTests ArdaBackendTestShaders)
     target_compile_definitions(ArdaBackendTests PRIVATE
         ARDA_ENABLE_CHECKS
-        ARDA_BACKEND_TEST_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}")
+        ARDA_BACKEND_TEST_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/TestShaderCache"
+        ARDA_BACKEND_TEST_SHADER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/Tests")
     if(ARDASHIR_BACKEND_NVRHI_VULKAN)
         target_compile_definitions(ArdaBackendTests PRIVATE
             ARDA_TEST_NVRHI_VULKAN)
@@ -174,13 +107,7 @@ if(ARDASHIR_BUILD_TESTS)
     endif()
     target_include_directories(ArdaBackendTests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/Private")
-    target_link_libraries(ArdaBackendTests PRIVATE Ardashir::ArdaBackend GTest::gtest_main)
-    add_custom_command(TARGET ArdaBackendTests POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-            ${ARDA_BACKEND_RT_SHADER_OUTPUTS}
-            ${ARDA_BACKEND_STRUCT_SHADER_OUTPUTS}
-            "$<TARGET_FILE_DIR:ArdaBackendTests>"
-        VERBATIM)
+    target_link_libraries(ArdaBackendTests PRIVATE Ardashir::ArdaBackend GTest::gtest)
     set_target_properties(ArdaBackendTests PROPERTIES FOLDER "Ardashir/Tests")
     gtest_discover_tests(ArdaBackendTests)
 

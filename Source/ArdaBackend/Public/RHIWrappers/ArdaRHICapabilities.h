@@ -49,6 +49,8 @@ namespace arda::rhi
         bool mbWorkGraphs = false;
         /** Stores the shader bundles. */
         bool mbShaderBundles = false;
+        /** True when the backend can persist native pipeline-cache data. */
+        bool mbPipelineCachePersistence = false;
 
         /**
          * Tests whether the queue supported.
