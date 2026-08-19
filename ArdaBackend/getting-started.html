@@ -195,7 +195,7 @@ for (const auto&amp; module : arda::backend::EnumerateBackendModules())
             <li><strong>Ensure startup shaders when selected.</strong> Every active-backend registered permutation is checked against its persistent sidecar and compiled if policy allows. Failure occurs before a native device is created.</li>
             <li><strong>Select and create the linked backend.</strong> Core resolves the exact stable module name or highest-priority compatible descriptor, validates the requested device source, and asks the module to allocate its runtime device.</li>
             <li><strong>Initialize implementation state.</strong> The module creates or adopts its native/engine device and queues, checks required capabilities, and constructs the opaque RHI device.</li>
-            <li><strong>Load native pipeline-cache data when implemented.</strong> The NVRHI samples read a backend-named blob from the configured pipeline directory; custom modules define their own persistence representation and safe empty-cache fallback.</li>
+            <li><strong>Load native pipeline-cache data when implemented.</strong> Ardashir-owned D3D12 and Vulkan sidecars in the NVRHI sample modules read a backend-named blob from the configured pipeline directory without modifying NVRHI. Custom modules define their own persistence representation and safe empty-cache fallback, then report support through <code>FArdaRHICapabilities::mbPipelineCachePersistence</code>.</li>
             <li><strong>Create presentation state, if requested.</strong> The window surface and swap chain must succeed before publication.</li>
             <li><strong>Publish.</strong> Device, selected module name, compatibility class, source, and queue capabilities become the stable <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>; initialized state is released atomically afterward.</li>
           </ol>
@@ -297,7 +297,7 @@ arda::rhi::FArdaRHIDeviceRef device = arda::backend::GetDevice();
           </figure>
 
           <h3>Why references can outlive shutdown</h3>
-          <p>The process context owns one intrusive device reference. <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a> first flushes a dirty backend-native pipeline cache and disables persistence, then clears the context reference and queue capabilities, resets private backend state, and releases shader-directory use. Other copied <a class="term" data-term="intrusive-reference-counting" href="../glossary.html#term-intrusive-reference-counting">intrusive references</a> remain owners and retain the backend or external lifetime token. Clearing a global slot is therefore not the same operation as forcibly invalidating every object.</p>
+          <p>The process context owns one intrusive device reference. <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a> invokes the device's flush-and-disable entry point first; a module with native persistence writes dirty cache data, while an unsupported implementation performs no disk operation. Shutdown then clears the context reference and queue capabilities, resets private backend state, and releases shader-directory use. Other copied <a class="term" data-term="intrusive-reference-counting" href="../glossary.html#term-intrusive-reference-counting">intrusive references</a> remain owners and retain the backend or external lifetime token. Clearing a global slot is therefore not the same operation as forcibly invalidating every object.</p>
           <p>Flush-and-disable is essential for retained references: after shutdown they may still create resources and pipelines, but they cannot write another cache blob through a path or diagnostic callback owned by the retired process configuration.</p>
 
           <h3>Production teardown sequence</h3>
@@ -361,7 +361,7 @@ arda::rhi::FArdaRHIDeviceRef device = arda::backend::GetDevice();
             <li>Configuration is process-wide and includes shader timing plus persistent shader and pipeline cache paths.</li>
             <li>Headless and presentation startup share prerequisite gates but have different outputs and result types.</li>
             <li>The live device context is published only after all required work succeeds.</li>
-            <li>Shutdown atomically flushes and disables native pipeline persistence before clearing process ownership; copied intrusive references can still retain objects and backend lifetime.</li>
+            <li>Shutdown invokes the optional native pipeline persistence flush-and-disable contract before clearing process ownership; copied intrusive references can still retain objects and backend lifetime.</li>
           </ul>
 
           <h3>Review and checkpoint questions</h3>

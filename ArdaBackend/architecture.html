@@ -345,7 +345,7 @@ else
             <li><strong>Stop producers.</strong> Prevent frame, upload, and compilation tasks from creating more work.</li>
             <li><strong>Complete GPU use.</strong> Wait until submitted work no longer needs the buffer or swap-chain images. CPU <a class="term" data-term="lifetime" href="../glossary.html#term-lifetime">lifetime</a> alone does not establish GPU completion.</li>
             <li><strong>Release presentation and renderer state.</strong> Destroy the swap chain, clear device-bound caches/maps, and release renderer-owned resources.</li>
-            <li><strong>Flush and clear process availability.</strong> Call <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a>. It waits if persistence is dirty, atomically saves backend-native pipeline data, disables its path/callback, clears context ownership and queue capabilities, and marks the singleton uninitialized.</li>
+            <li><strong>Flush and clear process availability.</strong> Call <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a>. It invokes the device's optional persistence flush-and-disable entry point; a supporting backend waits and atomically saves dirty native data, while an unsupported backend performs no disk operation. It then clears context ownership and queue capabilities and marks the singleton uninitialized.</li>
             <li><strong>Release ordinary copied owners.</strong> Reset caller-held device and resource references once shutdown has disabled persistence.</li>
           </ol>
           <p>The conformance branch keeps one copied <code>FArdaRHIDeviceRef</code>, shuts down the singleton, probes the retained device, and then releases the copy. The retained object also retains its concrete backend or external lifetime token. Pipeline persistence is already disabled, so later pipeline creation or device destruction cannot write through stale cache configuration or call a released diagnostic callback.</p>
@@ -479,7 +479,7 @@ else
             <li>Optional features and queues are capability-gated.</li>
             <li>Native imports document representation, device, state, synchronization, and ownership.</li>
             <li>Failure reports preserve both structured status and asynchronous validation context.</li>
-            <li>Shutdown flushes and disables backend-native pipeline persistence before process ownership and callback configuration disappear.</li>
+            <li>Shutdown invokes the optional backend-native pipeline persistence flush-and-disable entry point before process ownership and callback configuration disappear.</li>
           </ol>
         </section>
 

@@ -5093,6 +5093,27 @@ window.ArdaBackendApi = {
       ]
     },
     {
+      "id": "api-arda-rhi-fardarhicapabilities-mbpipelinecachepersistence-7dc65353",
+      "name": "mbPipelineCachePersistence",
+      "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbPipelineCachePersistence",
+      "kind": "member variable",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "bool mbPipelineCachePersistence = false;",
+      "summary": "Reports whether the backend can persist native pipeline-cache data.",
+      "details": "True means the concrete backend implements native cache loading and flushing when a non-empty pipeline-cache directory is configured. False does not disable the process-local FArdaPipelineStateCache object cache.",
+      "source": "Source/ArdaBackend/Public/RHIWrappers/ArdaRHICapabilities.h",
+      "params": [],
+      "returns": "",
+      "ownership": "",
+      "errors": "A false value requires callers to treat disk persistence as unavailable, not as a device initialization failure.",
+      "threading": "Read from the immutable capability snapshot returned by the device.",
+      "related": [
+        "arda::rhi::FArdaRHICapabilities",
+        "arda::rhi::IArdaRHIDevice::FlushAndDisablePipelineCachePersistence"
+      ]
+    },
+    {
       "id": "api-arda-rhi-fardarhicapabilities-mbqueries-0b7409bf",
       "name": "mbQueries",
       "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbQueries",

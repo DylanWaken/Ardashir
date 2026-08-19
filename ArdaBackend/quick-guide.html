@@ -433,7 +433,7 @@ fixedState.mDebugName = "Raster pipeline";
 auto graphicsInit =
     arda::backend::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
         *vertexGlobalShader, pixelGlobalShader, inputLayout, fixedState);</code></pre>
-          <p>The initializer path is designed for global shaders. Direct-bytecode users may instead create <a href="api-reference.html#api-arda-rhi-fardarhicomputepipelinedesc-698735b5"><code>FArdaRHIComputePipelineDesc</code></a> or <a href="api-reference.html#api-arda-rhi-fardarhigraphicspipelinedesc-e352046e"><code>FArdaRHIGraphicsPipelineDesc</code></a> and call device creation directly. The sample modules load <code>nvrhi-d3d12.pso-cache</code> or <code>nvrhi-vulkan.pso-cache</code> from <code>mPipelineCacheDirectory</code>; set that path empty to disable disk I/O.</p>
+          <p>The initializer path is designed for global shaders. Direct-bytecode users may instead create <a href="api-reference.html#api-arda-rhi-fardarhicomputepipelinedesc-698735b5"><code>FArdaRHIComputePipelineDesc</code></a> or <a href="api-reference.html#api-arda-rhi-fardarhigraphicspipelinedesc-e352046e"><code>FArdaRHIGraphicsPipelineDesc</code></a> and call device creation directly. The sample modules' Ardashir-owned native sidecars load <code>nvrhi-d3d12.pso-cache</code> or <code>nvrhi-vulkan.pso-cache</code> from <code>mPipelineCacheDirectory</code>; stock NVRHI is not patched. Set that path empty to disable disk I/O, and check <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-mbpipelinecachepersistence-7dc65353"><code>mbPipelineCachePersistence</code></a> before relying on this optional service in another module.</p>
         </section>
 
         <section id="frame">
@@ -656,7 +656,7 @@ bool Check(const arda::rhi::FArdaRHIStatus&amp; status, eastl::string&amp; error
             <li>Release shader tables, RT pipelines, TLAS, BLAS, graphics/compute pipelines, binding sets/layouts, views, textures, and buffers.</li>
             <li>Clear the PSO cache and global shader map.</li>
             <li>Destroy the caller-owned swap chain before the GLFW window.</li>
-            <li>Call <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend</code></a> while the process context still owns the device. It waits idle as needed, atomically writes a dirty native pipeline blob, then disables further persistence before clearing context ownership.</li>
+            <li>Call <a href="api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend</code></a> while the process context still owns the device. When the selected module reports native pipeline-cache persistence, shutdown waits idle as needed, atomically writes a dirty native blob, then disables further persistence before clearing context ownership.</li>
             <li>Release retained device references. They may remain usable after process shutdown, but cannot write through the cleared cache path or callback.</li>
             <li>Destroy the diagnostic callback only after shutdown.</li>
           </ol>
