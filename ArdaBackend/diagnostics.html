@@ -317,7 +317,7 @@ if (!status)
             <li>initialize a shader map with the wrong device or without the required reset;</li>
             <li>submit descriptors with invalid formats, dimensions, samples, or cross-device resources;</li>
             <li>force PSO creation failure and set a small diagnostic retention limit;</li>
-            <li>truncate or cross-copy <code>nvrhi-d3d12.pso-cache</code> and <code>nvrhi-vulkan.pso-cache</code>, then verify warning plus empty-cache fallback;</li>
+            <li>for a module that advertises pipeline-cache persistence, truncate or cross-copy its native cache payload, then verify warning plus empty-cache fallback;</li>
             <li>make log callbacks recurse once to verify the sink does not deadlock;</li>
             <li>exercise callback installation, reset, and owner destruction order;</li>
             <li>resize/minimize presentation repeatedly while validation is enabled;</li>

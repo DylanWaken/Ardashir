@@ -47,7 +47,7 @@
 
   <rect x="46" y="342" width="478" height="170" class="box wrapper"/>
   <text x="285" y="378" class="label">D3D12 resource</text>
-  <text x="76" y="410" class="left">" NVRHI wrapper retains required COM reference</text>
+  <text x="76" y="410" class="left">" native wrapper retains required COM reference</text>
   <text x="76" y="436" class="left">" host ownership and coordination still remain external</text>
   <text x="76" y="462" class="left">" final native destruction follows GPU completion and all refs</text>
   <text x="76" y="488" class="left">" token can pin plugin/device lifetime beyond one resource</text>

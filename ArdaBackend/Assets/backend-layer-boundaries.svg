@@ -60,7 +60,7 @@
 
   <rect x="90" y="586" width="820" height="88" class="layer native"/>
   <text x="120" y="614" class="tag">NATIVE / IMPLEMENTATION LIBRARY</text>
-  <text x="120" y="640" class="label">NVRHI, DXGI + D3D12, or Vulkan</text>
+  <text x="120" y="640" class="label">DXGI + D3D12, Vulkan, or engine RHI</text>
   <text x="120" y="663" class="body">Adapter selection, native device and queues, memory, surfaces, swap chains, handles, driver calls, and validation.</text>
 
   <path d="M945 128 H985 V642 H930" class="call"/>

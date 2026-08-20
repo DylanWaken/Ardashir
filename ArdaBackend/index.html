@@ -52,7 +52,7 @@
         <header class="page-header">
           <p class="eyebrow">Cross-platform production graphics</p>
           <h1>ArdaBackend</h1>
-          <p>ArdaBackend is the stable boundary between renderer intent and a linked graphics implementation. It turns portable descriptions of GPU work into validated <a class="term" data-term="resource" href="../glossary.html#term-resource">resources</a>, pipelines, <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command lists</a>, queue submissions, shader services, and presentation. The implementation may be NVRHI over <a class="term" data-term="d3d12" href="../glossary.html#term-d3d12">D3D12</a>/<a class="term" data-term="vulkan" href="../glossary.html#term-vulkan">Vulkan</a>, a native RHI, or a host <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine RHI</a>.</p>
+          <p>ArdaBackend is the stable boundary between renderer intent and a linked graphics implementation. It turns portable descriptions of GPU work into validated <a class="term" data-term="resource" href="../glossary.html#term-resource">resources</a>, pipelines, <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command lists</a>, queue submissions, shader services, and presentation. The implementation may be the checked-in native <a class="term" data-term="d3d12" href="../glossary.html#term-d3d12">D3D12</a>/<a class="term" data-term="vulkan" href="../glossary.html#term-vulkan">Vulkan</a> modules or a host <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine RHI</a>.</p>
         </header>
 
         <nav class="toc" aria-label="On this page">
@@ -111,7 +111,7 @@
             <li>Bridges platform windows to a backend-owned presentation path without leaking window-system types into the RHI.</li>
             <li>Routes native validation and backend diagnostics into project-level reporting.</li>
           </ul>
-          <p>The public layer is deliberately not tied to NVRHI. The checked-in <code>nvrhi-vulkan</code> and <code>nvrhi-d3d12</code> libraries are sample implementations of the same provider contract available to native APIs and host-engine RHIs. See <a href="backend-modules.html">Backend modules</a> for the implementation boundary and build wiring.</p>
+          <p>The public layer is deliberately not tied to a native API. The checked-in <code>native-vulkan</code> and <code>native-d3d12</code> libraries implement the same provider contract available to host-engine RHIs. See <a href="backend-modules.html">Backend modules</a> for the implementation boundary and build wiring.</p>
 
           <h3>What ArdaBackend does not do</h3>
           <ul>

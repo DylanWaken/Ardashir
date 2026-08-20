@@ -57,7 +57,7 @@
 
         <aside class="callout">
           <h2>Evidence badges used on this page</h2>
-          <p><span class="status">DEMONSTRATED</span> means the sequence appears in <code>NVRHITest</code> or <code>ARDGExample</code> and is exercised by their GPU test targets. <span class="status">TESTED API PATH</span> means focused backend tests exercise the API components, but not necessarily as a complete application. <span class="status">SYNTHESIZED / NOT YET COVERED BY AN END-TO-END SAMPLE</span> means the sequence is assembled from public contracts and implemented API paths; integration remains the application's responsibility.</p>
+          <p><span class="status">DEMONSTRATED</span> means the sequence appears in <code>RHITest</code> or <code>ARDGExample</code> and is exercised by their GPU test targets. <span class="status">TESTED API PATH</span> means focused backend tests exercise the API components, but not necessarily as a complete application. <span class="status">SYNTHESIZED / NOT YET COVERED BY AN END-TO-END SAMPLE</span> means the sequence is assembled from public contracts and implemented API paths; integration remains the application's responsibility.</p>
         </aside>
 
         <nav class="toc" aria-label="On this page">
@@ -122,8 +122,8 @@ target_link_libraries(MyGpuApp PRIVATE
 )
 
 # The root build enables the two sample modules with:
-# ARDASHIR_BACKEND_NVRHI_VULKAN=ON
-# ARDASHIR_BACKEND_NVRHI_D3D12=ON  # Windows only
+# ARDASHIR_BACKEND_VULKAN=ON
+# ARDASHIR_BACKEND_D3D12=ON  # Windows only
 # Custom modules use ARDASHIR_BACKEND_MODULE_TARGETS and
 # ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS.
 
@@ -188,7 +188,7 @@ if (!device || !context.mQueueCapabilities.mbGraphics)
 
         <section id="external-interop">
           <h2>3. External device and named-resource setup</h2>
-          <p>Use this branch when an engine already owns the native device, queues, resources, and presentation. It is headless/host-presented: select the exact adapter module where possible, configure <a href="api-reference.html#api-arda-backend-eardadevicesource-3877d02f"><code>EArdaDeviceSource</code></a> for an external provider, and call <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend</code></a>, not presentation initialization. Every module, including the NVRHI samples, receives the universal external-device descriptor and performs any native translation privately. Read <a href="external-interop.html">External devices and resources</a> before integrating a production engine.</p>
+          <p>Use this branch when an engine already owns the native device, queues, resources, and presentation. It is headless/host-presented: select the exact adapter module where possible, configure <a href="api-reference.html#api-arda-backend-eardadevicesource-3877d02f"><code>EArdaDeviceSource</code></a> for an external provider, and call <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend</code></a>, not presentation initialization. A module receives the universal external-device descriptor and performs any native translation privately. The checked-in D3D12 module supports this path; the checked-in Vulkan module is currently owned-device only. Read <a href="external-interop.html">External devices and resources</a> before integrating a production engine.</p>
 
           <h3>D3D12 provider recipe</h3>
           <p><span class="status">TESTED API PATH</span> Focused backend tests exercise provider registration and external D3D12 initialization. Implement <a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-f1c0d75e"><code>IArdaExternalDeviceProvider</code></a> and return a copied <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> whose <code>mNativeApi</code> is <code>d3d12</code>, with a device and graphics queue. The optional token should pin the host/plugin lifetime.</p>
@@ -206,7 +206,7 @@ if (!arda::backend::ConfigureBackend(config) ||
 
 arda::rhi::FArdaRHIDeviceRef device =
     arda::backend::GetDeviceContext().mDevice;</code></pre>
-          <p>NVRHI retains required COM references but never assumes host ownership. Establish an exclusive/coordinated host queue interval around every Arda submission, then release all copied Arda references before native/plugin teardown.</p>
+          <p>The native D3D12 wrapper retains required COM references but never assumes host ownership. Establish an exclusive/coordinated host queue interval around every Arda submission, then release all copied Arda references before native/plugin teardown.</p>
 
           <h3>Vulkan provider recipe</h3>
           <p><span class="status">SYNTHESIZED / CONTRACT PATH</span> Fill the same <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> with the Vulkan instance, physical and logical devices, exact graphics queue family/index, optional queues, and repeated <code>instance-extension</code>/<code>device-extension</code> properties. Vulkan 1.3 dynamic rendering, synchronization2, and timeline semaphore must be enabled. Physical-device support is validated, while enabled-feature properties remain host assertions.</p>
@@ -355,7 +355,7 @@ if (!shader)
           <p>Normal execution accepts <code>--shader-mode startup|ondemand|load-only</code>, <code>--shader-cache &lt;directory&gt;</code>, and <code>--shader-source &lt;directory&gt;</code>. In ARDGExample, <code>--shader-source</code> selects the physical directory mapped to the example's virtual shader root; it is not <code>FArdaShaderCompilerConfiguration::mSourceRoot</code>. Cook is optional; <code>Startup</code> and <code>OnDemand</code> preserve valid sidecar hits instead of force-recompiling.</p>
 
           <h3>Path B: direct bytecode</h3>
-          <p><span class="status">DEMONSTRATED</span> <code>NVRHITest</code> loads files into byte vectors, fills <a href="api-reference.html#api-arda-rhi-fardarhishaderdesc-647dc39c"><code>FArdaRHIShaderDesc</code></a>, and calls <a href="api-reference.html#api-arda-rhi-iardarhidevice-createshader-d1c4d59c"><code>CreateShader</code></a>. The byte vector only needs to remain valid during creation.</p>
+          <p><span class="status">DEMONSTRATED</span> <code>RHITest</code> loads files into byte vectors, fills <a href="api-reference.html#api-arda-rhi-fardarhishaderdesc-647dc39c"><code>FArdaRHIShaderDesc</code></a>, and calls <a href="api-reference.html#api-arda-rhi-iardarhidevice-createshader-d1c4d59c"><code>CreateShader</code></a>. The byte vector only needs to remain valid during creation.</p>
           <pre><code>arda::rhi::FArdaRHIShaderDesc desc;
 desc.mStage = arda::rhi::EArdaRHIShaderStage::Compute;
 desc.mBytecode = bytes.data();
@@ -433,7 +433,7 @@ fixedState.mDebugName = "Raster pipeline";
 auto graphicsInit =
     arda::backend::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
         *vertexGlobalShader, pixelGlobalShader, inputLayout, fixedState);</code></pre>
-          <p>The initializer path is designed for global shaders. Direct-bytecode users may instead create <a href="api-reference.html#api-arda-rhi-fardarhicomputepipelinedesc-698735b5"><code>FArdaRHIComputePipelineDesc</code></a> or <a href="api-reference.html#api-arda-rhi-fardarhigraphicspipelinedesc-e352046e"><code>FArdaRHIGraphicsPipelineDesc</code></a> and call device creation directly. The sample modules' Ardashir-owned native sidecars load <code>nvrhi-d3d12.pso-cache</code> or <code>nvrhi-vulkan.pso-cache</code> from <code>mPipelineCacheDirectory</code>; stock NVRHI is not patched. Set that path empty to disable disk I/O, and check <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-mbpipelinecachepersistence-7dc65353"><code>mbPipelineCachePersistence</code></a> before relying on this optional service in another module.</p>
+          <p>The initializer path is designed for global shaders. Direct-bytecode users may instead create <a href="api-reference.html#api-arda-rhi-fardarhicomputepipelinedesc-698735b5"><code>FArdaRHIComputePipelineDesc</code></a> or <a href="api-reference.html#api-arda-rhi-fardarhigraphicspipelinedesc-e352046e"><code>FArdaRHIGraphicsPipelineDesc</code></a> and call device creation directly. Check <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-mbpipelinecachepersistence-7dc65353"><code>mbPipelineCachePersistence</code></a> before relying on optional native pipeline-cache serialization; both checked-in native modules report it when a persistence directory is configured.</p>
         </section>
 
         <section id="frame">

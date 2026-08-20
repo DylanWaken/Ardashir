@@ -107,7 +107,7 @@
           </ul>
 
           <h3>Why an opaque RHI</h3>
-          <p>ArdaBackend returns interfaces such as <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhiresource-88cc5c73"><code>IArdaRHIResource</code></a>, not private wrapper classes or NVRHI handles. “Opaque” means callers can use the declared behavior without knowing the representation.</p>
+          <p>ArdaBackend returns interfaces such as <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and <a href="api-reference.html#api-arda-rhi-iardarhiresource-88cc5c73"><code>IArdaRHIResource</code></a>, not private wrapper classes or native API handles. “Opaque” means callers can use the declared behavior without knowing the representation.</p>
           <p>This gives the project a source boundary: renderer translation units need neither D3D12/Vulkan headers nor the private implementation library's types. Backend changes stay local as long as the public semantics remain stable.</p>
 
           <h3>Cost of opacity</h3>
@@ -131,7 +131,7 @@
             <dt>Backend provider contract</dt>
             <dd><code>IArdaBackendModule</code> advertises a linked implementation and creates an <code>IArdaBackendDevice</code>; the runtime device publishes the RHI facade, queues, errors, optional presentation, and shader services.</dd>
             <dt>Linked implementation layer</dt>
-            <dd>Converts Arda descriptors and calls to NVRHI, a native API, or a host <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine RHI</a>, wraps returned objects, and carries device identity.</dd>
+            <dd>Converts Arda descriptors and calls to a native API or a host <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine RHI</a>, wraps returned objects, and carries device identity.</dd>
             <dt>Native backend layer</dt>
             <dd>Owns or adopts the underlying API/engine device, queues, presentation state, and integration objects according to the selected module's contract.</dd>
           </dl>
@@ -142,8 +142,8 @@
           </figure>
 
           <h3>Boundary rule</h3>
-          <p>The core is backend-neutral; NVRHI is one linked implementation rather than the definition of ArdaBackend. See <a href="backend-modules.html">Backend modules</a> for module registration, selection, and lifetime.</p>
-          <p>A public header may describe a native handle only through a neutral carrier such as <a href="api-reference.html#api-arda-backend-fardanativeobject-04279ab9"><code>FArdaNativeObject</code></a> or an integer import field. It must not require callers to include private NVRHI, DXGI, D3D12, or Vulkan types.</p>
+          <p>The core is backend-neutral; the checked-in native implementations are linked modules rather than the definition of ArdaBackend. See <a href="backend-modules.html">Backend modules</a> for module registration, selection, and lifetime.</p>
+          <p>A public header may describe a native handle only through a neutral carrier such as <a href="api-reference.html#api-arda-backend-fardanativeobject-04279ab9"><code>FArdaNativeObject</code></a> or an integer import field. It must not require callers to include private DXGI, D3D12, or Vulkan types.</p>
         </section>
 
         <section id="ownership">
@@ -437,7 +437,7 @@ else
           <h3>Templates or compile-time backend selection</h3>
           <p>Static polymorphism can remove virtual dispatch and expose backend-specific optimization. It multiplies renderer instantiations, increases compile dependencies, and makes runtime backend selection difficult. Opaque interfaces favor stable runtime composition.</p>
 
-          <h3>Direct NVRHI exposure</h3>
+          <h3>Direct native API exposure</h3>
           <p>This removes one wrapper layer and reduces conversion work. It also makes private implementation types part of every consumer's contract. The project-owned RHI preserves the ability to change implementation and add project-specific status, identity, and validation.</p>
 
           <h3>External shared ownership</h3>

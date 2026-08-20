@@ -30,7 +30,7 @@
   <path d="M932 400H810" class="flow dash"/><text x="826" y="426" class="s">handles + instance IDs</text>
   <rect x="48" y="510" width="1104" height="112" rx="14" class="note"/>
   <text x="72" y="546" class="h2">Current implementation boundary</text>
-  <text x="72" y="578" class="t">ARDG records through Arda RHI wrappers; it does not expose NVRHI or native backend objects as graph semantics.</text>
+  <text x="72" y="578" class="t">ARDG records through Arda RHI wrappers; it does not expose native backend objects as graph semantics.</text>
   <text x="72" y="604" class="t">Execute submits work but does not wait for GPU idle or completion.</text>
   <text x="48" y="654" class="s">Legend: blue = application | green = ARDG | purple = opaque RHI | amber = implementation note</text>
 </svg>

@@ -44,7 +44,7 @@
 
   <rect width="1800" height="3660" rx="24" fill="url(#bg)"/>
   <text x="900" y="45" class="title">ArdaRenderGraph: complete source ordered call chain</text>
-  <text x="900" y="75" class="subtitle">Public API to logical graph to compiler products to physical resources to NVRHI queue submission</text>
+  <text x="900" y="75" class="subtitle">Public API to logical graph to compiler products to physical resources to native queue submission</text>
   <text x="900" y="100" class="subtitle">Cyan: function call | Green: stored output | Amber dashed: validation, guard, or queue wait</text>
 
   <!-- BUILD STAGE -->
@@ -332,7 +332,7 @@
     <text x="48" y="2290" class="stageTitle">3 | EXECUTE - materialize, record, synchronize queues, submit, and publish outputs</text>
     <text x="48" y="2316" class="lane">ORCHESTRATOR</text>
     <text x="448" y="2316" class="lane">EXECUTOR HELPERS AND CPU RECORDING</text>
-    <text x="1380" y="2316" class="lane">NVRHI OR RESULT STATE</text>
+    <text x="1380" y="2316" class="lane">RHI OR RESULT STATE</text>
 
     <rect class="public" x="48" y="2338" width="350" height="112"/>
     <text x="223" y="2366" class="label">FARDGBuilder::Execute</text>
@@ -370,7 +370,7 @@
     <text x="886" y="2617" class="tiny">execution-local pools do not persist across graphs</text>
     <path class="dataFlow" d="M1324 2549 H1376"/>
     <rect class="device" x="1380" y="2474" width="364" height="150"/>
-    <text x="1562" y="2502" class="label">Physical NVRHI resources</text>
+    <text x="1562" y="2502" class="label">Physical RHI resources</text>
     <text x="1562" y="2528" class="small">IDevice.createTexture / createBuffer</text>
     <text x="1562" y="2551" class="small">logical record binds physical handle</text>
     <text x="1562" y="2574" class="small">pool reuse and fallback counters</text>
@@ -446,7 +446,7 @@
     <text x="886" y="3198" class="tiny">mPassAccessMutex protects active access gates during parallel recording</text>
     <path class="dataFlow" d="M1324 3111 H1376"/>
     <rect class="device" x="1380" y="2996" width="364" height="230"/>
-    <text x="1562" y="3024" class="label">nvrhi::ICommandList calls</text>
+    <text x="1562" y="3024" class="label">IArdaRHICommandList calls</text>
     <text x="1562" y="3050" class="small">beginTrackingTextureState / BufferState</text>
     <text x="1562" y="3073" class="small">setTextureState / setBufferState</text>
     <text x="1562" y="3096" class="small">commitBarriers; clear calls; markers</text>
@@ -508,7 +508,7 @@
     <rect class="algorithm" x="395" y="3578" width="170" height="34"/><text x="480" y="3600" class="small">algorithm/helper</text>
     <rect class="validation" x="585" y="3578" width="170" height="34"/><text x="670" y="3600" class="small">guard/validation</text>
     <rect class="data" x="775" y="3578" width="150" height="34"/><text x="850" y="3600" class="small">stored state</text>
-    <rect class="device" x="945" y="3578" width="150" height="34"/><text x="1020" y="3600" class="small">NVRHI/device</text>
+    <rect class="device" x="945" y="3578" width="150" height="34"/><text x="1020" y="3600" class="small">RHI/device</text>
     <path class="flow" d="M1130 3595 H1225"/><text x="1178" y="3623" class="tiny">call</text>
     <path class="dataFlow" d="M1260 3595 H1355"/><text x="1308" y="3623" class="tiny">output</text>
     <path class="wait" d="M1390 3595 H1485"/><text x="1438" y="3623" class="tiny">wait/check</text>
