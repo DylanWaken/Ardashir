@@ -15,10 +15,10 @@ option(ARDASHIR_BUILD_TESTS "Build the Ardashir module tests" ON)
 option(ARDASHIR_BUILD_RHI_TEST "Build the dual-backend opaque RHI triangle application" ON)
 option(ARDASHIR_BUILD_ARDG_EXAMPLE "Build the dual-backend render-graph terrain application" ON)
 option(ARDASHIR_ENABLE_TRACE "Enable Ardashir CPU trace instrumentation" ON)
-option(ARDASHIR_BACKEND_NVRHI_VULKAN
-    "Link the sample NVRHI Vulkan ArdaBackend module" ON)
-option(ARDASHIR_BACKEND_NVRHI_D3D12
-    "Link the sample NVRHI D3D12 ArdaBackend module on Windows" ON)
+option(ARDASHIR_BACKEND_VULKAN
+    "Link the native Vulkan 1.4 ArdaBackend module" ON)
+option(ARDASHIR_BACKEND_D3D12
+    "Link the native Direct3D 12 ArdaBackend module on Windows" ON)
 set(ARDASHIR_BACKEND_MODULE_TARGETS "" CACHE STRING
     "Additional semicolon-separated CMake backend library targets")
 set(ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS "" CACHE STRING
@@ -50,7 +50,7 @@ if(ARDASHIR_BUILD_TESTS)
 endif()
 
 add_subdirectory(Source/ArdaTrace)
-add_subdirectory(Source/ArdaBackendNvrhi)
+add_subdirectory(Source/ArdaBackendImpls)
 add_subdirectory(Source/ArdaBackend)
 add_subdirectory(Source/ArdaRenderGraph)
 add_subdirectory(Source/ArdaScene)

@@ -633,10 +633,10 @@ TEST(ArdaShaderStructs, SelectsExtensionsAndReportsMissingBytecode)
     using namespace arda::backend;
     EXPECT_STREQ(
         GetShaderArtifactExtension(EArdaBackendType::D3D12),
-        FindBackendModule("nvrhi-d3d12") ? ".dxil" : "");
+        FindBackendModule("native-d3d12") ? ".dxil" : "");
     EXPECT_STREQ(
         GetShaderArtifactExtension(EArdaBackendType::Vulkan),
-        FindBackendModule("nvrhi-vulkan") ? ".spv" : "");
+        FindBackendModule("native-vulkan") ? ".spv" : "");
     const auto Missing = LoadShaderBytecode(
         std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR) / "does-not-exist.spv");
     EXPECT_FALSE(Missing);
@@ -696,8 +696,8 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
         &detail::ShouldCompileShaderPermutation<FPermutationShaderPolicy>,
         &detail::BuildShaderCompilationEnvironment<FPermutationShaderPolicy>);
 
-    const bool bHasD3D12 = FindBackendModule("nvrhi-d3d12") != nullptr;
-    const bool bHasVulkan = FindBackendModule("nvrhi-vulkan") != nullptr;
+    const bool bHasD3D12 = FindBackendModule("native-d3d12") != nullptr;
+    const bool bHasVulkan = FindBackendModule("native-vulkan") != nullptr;
     ASSERT_TRUE(bHasD3D12 || bHasVulkan);
     std::vector<EArdaBackendType> Backends;
     if (bHasD3D12)
@@ -735,7 +735,7 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
                 return Job.mBackend == EArdaBackendType::Vulkan;
             });
         ASSERT_NE(VulkanJob, FirstJobs.mJobs.end());
-        EXPECT_EQ(VulkanJob->mTarget.mBackendName, "nvrhi-vulkan");
+        EXPECT_EQ(VulkanJob->mTarget.mBackendName, "native-vulkan");
         EXPECT_EQ(
             VulkanJob->mTarget.mBinaryFormat,
             EArdaShaderBinaryFormat::Spirv);
@@ -748,14 +748,14 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
 
         const FArdaShaderCompileResult NamedJobs =
             BuildRegisteredShaderCompileJobs(
-                Output, eastl::vector<eastl::string>{ "nvrhi-vulkan" });
+                Output, eastl::vector<eastl::string>{ "native-vulkan" });
         ASSERT_TRUE(NamedJobs);
         ASSERT_EQ(NamedJobs.mJobs.size(), 3u);
         EXPECT_TRUE(std::all_of(
             NamedJobs.mJobs.begin(), NamedJobs.mJobs.end(),
             [](const FArdaShaderCompileJob& Job)
             {
-                return Job.mTarget.mBackendName == "nvrhi-vulkan" &&
+                return Job.mTarget.mBackendName == "native-vulkan" &&
                     Job.mOutputPath.extension() == ".spv";
             }));
         EXPECT_NE(

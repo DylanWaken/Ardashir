@@ -5,7 +5,7 @@
 #include <fstream>
 #include <vector>
 
-#if defined(_WIN32) && defined(ARDA_TEST_NVRHI_D3D12)
+#if defined(_WIN32) && defined(ARDA_TEST_NATIVE_D3D12)
 #include <d3d12.h>
 #include <wrl/client.h>
 #endif
@@ -216,19 +216,19 @@ TEST(ArdaBackend, LinkableBackendRegistrySelectsStableNamedModules)
     EXPECT_EQ(FindBackendModule("test-custom-rhi"), nullptr);
 }
 
-TEST(ArdaBackend, NvrhiApisAreRegisteredAsSeparateBackendModules)
+TEST(ArdaBackend, NativeApisAreRegisteredAsSeparateBackendModules)
 {
     using namespace arda::backend;
-    IArdaBackendModule* Vulkan = FindBackendModule("nvrhi-vulkan");
-#if defined(ARDA_TEST_NVRHI_VULKAN)
+    IArdaBackendModule* Vulkan = FindBackendModule("native-vulkan");
+#if defined(ARDA_TEST_NATIVE_VULKAN)
     ASSERT_NE(Vulkan, nullptr);
     EXPECT_EQ(Vulkan->GetDescriptor().mBackendType, EArdaBackendType::Vulkan);
     EXPECT_EQ(Vulkan->GetDescriptor().mShaderArtifactExtension, ".spv");
 #else
     EXPECT_EQ(Vulkan, nullptr);
 #endif
-    IArdaBackendModule* D3D12 = FindBackendModule("nvrhi-d3d12");
-#if defined(ARDA_TEST_NVRHI_D3D12)
+    IArdaBackendModule* D3D12 = FindBackendModule("native-d3d12");
+#if defined(ARDA_TEST_NATIVE_D3D12)
     ASSERT_NE(D3D12, nullptr);
     if (Vulkan)
         EXPECT_NE(D3D12, Vulkan);
@@ -473,7 +473,7 @@ TEST(ArdaBackend, EmptyOpaqueDeviceReferencesAreSafe)
     EXPECT_FALSE(Second);
 }
 
-#if defined(_WIN32) && defined(ARDA_TEST_NVRHI_D3D12)
+#if defined(_WIN32) && defined(ARDA_TEST_NATIVE_D3D12)
 TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
 {
     using namespace arda;
@@ -595,8 +595,8 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
         GetDeviceContext().mDeviceSource,
         EArdaDeviceSource::ExternalProvider);
     EXPECT_TRUE(GetQueueCapabilities().mbGraphics);
-    EXPECT_EQ(GetQueueCapabilities().mbCompute, ComputeQueue != nullptr);
-    EXPECT_EQ(GetQueueCapabilities().mbCopy, CopyQueue != nullptr);
+    EXPECT_TRUE(GetQueueCapabilities().mbCompute);
+    EXPECT_FALSE(GetQueueCapabilities().mbCopy);
 
     FArdaRHIDeviceRef Device = GetDevice();
     FArdaRHIDeviceRef SurvivingDevice = Device;
@@ -1054,10 +1054,10 @@ namespace
     }
 }
 
-#if defined(_WIN32) && defined(ARDA_TEST_NVRHI_D3D12)
+#if defined(_WIN32) && defined(ARDA_TEST_NATIVE_D3D12)
 TEST(ArdaBackend, InitializesD3D12Device)
 {
-    VerifyDeviceInitialization(arda::backend::EArdaBackendType::D3D12, true);
+    VerifyDeviceInitialization(arda::backend::EArdaBackendType::D3D12, false);
 }
 #endif
 

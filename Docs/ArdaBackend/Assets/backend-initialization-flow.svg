@@ -60,7 +60,7 @@
   <text class="tag" x="162" y="366">PRIVATE IMPLEMENTATION DETAIL</text>
   <text class="label" x="162" y="385">IArdaBackendDevice::Initialize</text>
   <text class="small" x="162" y="403">module CreateDevice(source) + Initialize</text>
-  <text class="small" x="162" y="420">NVRHI, native, or engine-RHI implementation</text>
+  <text class="small" x="162" y="420">native or engine-RHI implementation</text>
   <path class="call" d="M162 308 V346"/>
 
   <rect class="native" x="340" y="350" width="220" height="82" rx="8"/>

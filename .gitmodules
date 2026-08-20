@@ -1,6 +1,3 @@
-[submodule "ThirdParty/NVRHI"]
-	path = ThirdParty/NVRHI
-	url = https://github.com/NVIDIA-RTX/NVRHI.git
 [submodule "ThirdParty/GoogleTest"]
 	path = ThirdParty/GoogleTest
 	url = https://github.com/google/googletest.git

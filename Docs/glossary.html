@@ -82,10 +82,10 @@
           <p><strong>In Ardashir:</strong> ArdaBackend creates and builds bottom- and top-level structures used by ray-tracing commands.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-ray-tracing">Ray tracing</a></li><li><a href="#term-resource">Resource</a></li><li><a href="#term-barrier">Barrier</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-api" data-glossary-entry data-category="Computer science" data-search="API Computer science Application programming interface: the named operations and data contracts exposed to callers. ArdaBackend's public headers form its source-level API over NVRHI and native graphics integrations.">
+        <article class="glossary-entry" id="term-api" data-glossary-entry data-category="Computer science" data-search="API Computer science Application programming interface: the named operations and data contracts exposed to callers. ArdaBackend's public headers form its source-level API over native graphics integrations.">
           <div class="glossary-entry__meta"><h3>API</h3><span class="category">Computer science</span></div>
           <p>Application programming interface: the named operations and data contracts exposed to callers.</p>
-          <p><strong>In Ardashir:</strong> ArdaBackend's public headers form its source-level API over NVRHI and native graphics integrations.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend's public headers form its source-level API over native graphics integrations.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-abi">ABI</a></li><li><a href="#term-backend">Backend</a></li><li><a href="#term-validation-layer">Validation layer</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-arda-render-graph" data-glossary-entry data-category="Project" data-search="ArdaRenderGraph Project Ardashir's system for declaring render passes, resources, and their dependencies before execution. ArdaRenderGraph schedules higher-level work that is ultimately materialized through ArdaBackend commands and resources.">
@@ -100,10 +100,10 @@
           <p><strong>In Ardashir:</strong> ArdaBackend owns the graphics abstraction boundary, resource creation, shader integration, and pipeline setup.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-rhi">RHI</a></li><li><a href="#term-backend-module">Backend module</a></li><li><a href="#term-native-import">Native import</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-backend-module" data-glossary-entry data-category="Project" data-search="Backend module Project A linkable implementation that satisfies ArdaBackend's provider contract for device creation, RHI access, presentation, and shader compilation. Ardashir can link NVRHI Vulkan, NVRHI D3D12, or a future native or engine-RHI module without changing renderer-facing code.">
+        <article class="glossary-entry" id="term-backend-module" data-glossary-entry data-category="Project" data-search="Backend module Project A linkable implementation that satisfies ArdaBackend's provider contract for device creation, RHI access, presentation, and shader compilation. Ardashir links native Vulkan and D3D12 modules today and can add a future engine-RHI module without changing renderer-facing code.">
           <div class="glossary-entry__meta"><h3>Backend module</h3><span class="category">Project</span></div>
           <p>A linkable implementation that satisfies ArdaBackend's provider contract for device creation, RHI access, presentation, and shader compilation.</p>
-          <p><strong>In Ardashir:</strong> Ardashir can link NVRHI Vulkan, NVRHI D3D12, or a future native or engine-RHI module without changing renderer-facing code.</p>
+          <p><strong>In Ardashir:</strong> Ardashir links native Vulkan and D3D12 modules today and can add a future engine-RHI module without changing renderer-facing code.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-backend">Backend</a></li><li><a href="#term-provider-contract">Provider contract</a></li><li><a href="#term-link-time-registration">Link-time registration</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-compatibility-class" data-glossary-entry data-category="Software architecture" data-search="Compatibility class Software architecture A coarse capability or data-format family used to find compatible implementations without identifying one concrete implementation. EArdaBackendType classifies D3D12, Vulkan, or Custom behavior; a module descriptor name identifies the actual implementation.">
@@ -130,10 +130,10 @@
           <p><strong>In Ardashir:</strong> <code>IArdaBackendModule</code> and <code>IArdaBackendDevice</code> define the contract between backend-neutral ArdaBackend core and a linked graphics implementation.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-backend-module">Backend module</a></li><li><a href="#term-abi">ABI</a></li><li><a href="#term-rhi">RHI</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-barrier" data-glossary-entry data-category="Graphics" data-search="Barrier Graphics An ordering and visibility operation that makes resource usage transitions safe. ArdaBackend emits or tracks NVRHI barriers when resources change state or access pattern.">
+        <article class="glossary-entry" id="term-barrier" data-glossary-entry data-category="Graphics" data-search="Barrier Graphics An ordering and visibility operation that makes resource usage transitions safe. ArdaBackend emits native barriers when resources change state or access pattern.">
           <div class="glossary-entry__meta"><h3>Barrier</h3><span class="category">Graphics</span></div>
           <p>An ordering and visibility operation that makes resource usage transitions safe.</p>
-          <p><strong>In Ardashir:</strong> ArdaBackend emits or tracks NVRHI barriers when resources change state or access pattern.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend emits native barriers when resources change state or access pattern.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-resource-state">Resource state</a></li><li><a href="#term-synchronization">Synchronization</a></li><li><a href="#term-command-list">Command list</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-binding-layout" data-glossary-entry data-category="Graphics" data-search="Binding layout Graphics A declaration of the resource slots and access types expected by shaders. ArdaBackend creates portable binding layouts that the active module translates to its RHI or native representation.">
@@ -142,10 +142,10 @@
           <p><strong>In Ardashir:</strong> ArdaBackend creates portable binding layouts that the active module translates to its RHI or native representation.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-descriptor">Descriptor</a></li><li><a href="#term-binding-set">Binding set</a></li><li><a href="#term-parameter-metadata-reflection">Parameter metadata / reflection</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-binding-set" data-glossary-entry data-category="Graphics" data-search="Binding set Graphics Concrete resources bound to the slots declared by a binding layout. ArdaBackend assembles NVRHI binding sets for command recording and pipeline execution.">
+        <article class="glossary-entry" id="term-binding-set" data-glossary-entry data-category="Graphics" data-search="Binding set Graphics Concrete resources bound to the slots declared by a binding layout. ArdaBackend assembles portable binding sets that the active native module translates for command recording and pipeline execution.">
           <div class="glossary-entry__meta"><h3>Binding set</h3><span class="category">Graphics</span></div>
           <p>Concrete resources bound to the slots declared by a binding layout.</p>
-          <p><strong>In Ardashir:</strong> ArdaBackend assembles NVRHI binding sets for command recording and pipeline execution.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend assembles portable binding sets that the active native module translates for command recording and pipeline execution.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-binding-layout">Binding layout</a></li><li><a href="#term-srv">SRV</a></li><li><a href="#term-uav">UAV</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-bindless" data-glossary-entry data-category="Graphics" data-search="Bindless Graphics A resource-binding model where shaders index large descriptor collections dynamically. ArdaBackend can represent bindless layouts when the active module and device capabilities permit them.">
@@ -178,11 +178,11 @@
           <p><strong>In Ardashir:</strong> ArdaBackend maps parameter data to constant-buffer bindings where push constants are unsuitable.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-push-constants">Push constants</a></li><li><a href="#term-binding-set">Binding set</a></li><li><a href="#term-shader">Shader</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-d3d12" data-glossary-entry data-category="Graphics" data-search="D3D12 Graphics Direct3D 12, Microsoft's explicit low-level graphics and compute API. One ArdaBackend native path creates or imports NVRHI objects backed by D3D12.">
+        <article class="glossary-entry" id="term-d3d12" data-glossary-entry data-category="Graphics" data-search="D3D12 Graphics Direct3D 12, Microsoft's explicit low-level graphics and compute API. One ArdaBackend native path creates or imports Direct3D resources behind Arda RHI objects.">
           <div class="glossary-entry__meta"><h3>D3D12</h3><span class="category">Graphics</span></div>
           <p>Direct3D 12, Microsoft's explicit low-level graphics and compute API.</p>
-          <p><strong>In Ardashir:</strong> One ArdaBackend native path creates or imports NVRHI objects backed by D3D12.</p>
-          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-nvrhi">NVRHI</a></li><li><a href="#term-dxil">DXIL</a></li><li><a href="#term-native-import">Native import</a></li></ul></div>
+          <p><strong>In Ardashir:</strong> One ArdaBackend native path creates or imports Direct3D resources behind Arda RHI objects.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-rhi">RHI</a></li><li><a href="#term-dxil">DXIL</a></li><li><a href="#term-native-import">Native import</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-descriptor" data-glossary-entry data-category="Graphics" data-search="Descriptor Graphics A small record that tells a GPU how a shader or pipeline may access a resource. ArdaBackend expresses descriptors through backend-neutral binding layouts and binding sets implemented by the active module.">
           <div class="glossary-entry__meta"><h3>Descriptor</h3><span class="category">Graphics</span></div>
@@ -190,10 +190,10 @@
           <p><strong>In Ardashir:</strong> ArdaBackend expresses descriptors through backend-neutral binding layouts and binding sets implemented by the active module.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-binding-layout">Binding layout</a></li><li><a href="#term-binding-set">Binding set</a></li><li><a href="#term-bindless">Bindless</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-device" data-glossary-entry data-category="Graphics" data-search="Device Graphics The logical interface to a GPU used to create resources, pipelines, and command contexts. ArdaBackend device objects are the root for most NVRHI allocations and capability queries.">
+        <article class="glossary-entry" id="term-device" data-glossary-entry data-category="Graphics" data-search="Device Graphics The logical interface to a GPU used to create resources, pipelines, and command contexts. ArdaBackend device objects are the root for native resource allocations and capability queries.">
           <div class="glossary-entry__meta"><h3>Device</h3><span class="category">Graphics</span></div>
           <p>The logical interface to a GPU used to create resources, pipelines, and command contexts.</p>
-          <p><strong>In Ardashir:</strong> ArdaBackend device objects are the root for most NVRHI allocations and capability queries.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend device objects are the root for native resource allocations and capability queries.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-queue">Queue</a></li><li><a href="#term-command-list">Command list</a></li><li><a href="#term-device-affinity">Device affinity</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-device-affinity" data-glossary-entry data-category="Graphics" data-search="Device affinity Graphics The association of work or data with one GPU in a multi-device system. ArdaBackend preserves device identity so resources and commands are used with the device that created them.">
@@ -262,10 +262,10 @@
           <p><strong>In Ardashir:</strong> ArdaBackend binds an index format and buffer before indexed draw commands.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-vertex-buffer">Vertex buffer</a></li><li><a href="#term-format">Format</a></li><li><a href="#term-command-list">Command list</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-intrusive-reference-counting" data-glossary-entry data-category="Computer science" data-search="Intrusive reference counting Computer science Shared ownership where the reference count is stored inside the managed object. NVRHI objects exposed through ArdaBackend may use intrusive references; callers must retain handles for the required lifetime.">
+        <article class="glossary-entry" id="term-intrusive-reference-counting" data-glossary-entry data-category="Computer science" data-search="Intrusive reference counting Computer science Shared ownership where the reference count is stored inside the managed object. Arda RHI objects use intrusive references; callers must retain handles for the required lifetime.">
           <div class="glossary-entry__meta"><h3>Intrusive reference counting</h3><span class="category">Computer science</span></div>
           <p>Shared ownership where the reference count is stored inside the managed object.</p>
-          <p><strong>In Ardashir:</strong> NVRHI objects exposed through ArdaBackend may use intrusive references; callers must retain handles for the required lifetime.</p>
+          <p><strong>In Ardashir:</strong> Arda RHI objects use intrusive references; callers must retain handles for the required lifetime.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-ownership">Ownership</a></li><li><a href="#term-lifetime">Lifetime</a></li><li><a href="#term-raii">RAII</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-lifetime" data-glossary-entry data-category="Computer science" data-search="Lifetime Computer science The interval during which an object exists and may be safely accessed. GPU work can extend effective resource lifetime beyond the CPU call that submits it.">
@@ -292,10 +292,10 @@
           <p><strong>In Ardashir:</strong> ArdaBackend preserves matrix memory layout across C++ parameter metadata and shader ABI boundaries.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-vector">Vector</a></li><li><a href="#term-transform">Transform</a></li><li><a href="#term-parameter-metadata-reflection">Parameter metadata / reflection</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-mesh-shader" data-glossary-entry data-category="Graphics" data-search="Mesh shader Graphics A programmable geometry stage that emits mesh primitives without the traditional vertex-input pipeline. ArdaBackend exposes mesh-pipeline creation where the active NVRHI backend supports it.">
+        <article class="glossary-entry" id="term-mesh-shader" data-glossary-entry data-category="Graphics" data-search="Mesh shader Graphics A programmable geometry stage that emits mesh primitives without the traditional vertex-input pipeline. ArdaBackend exposes mesh-pipeline creation where the active backend supports it.">
           <div class="glossary-entry__meta"><h3>Mesh shader</h3><span class="category">Graphics</span></div>
           <p>A programmable geometry stage that emits mesh primitives without the traditional vertex-input pipeline.</p>
-          <p><strong>In Ardashir:</strong> ArdaBackend exposes mesh-pipeline creation where the active NVRHI backend supports it.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend exposes mesh-pipeline creation where the active backend supports it.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-shader-stage">Shader stage</a></li><li><a href="#term-pipeline">Pipeline</a></li><li><a href="#term-vertex-buffer">Vertex buffer</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-mip-level" data-glossary-entry data-category="Graphics" data-search="Mip level Graphics One resolution level in a texture's prefiltered image pyramid. ArdaBackend resource views select mip ranges for sampling, rendering, copies, and barriers.">
@@ -310,16 +310,10 @@
           <p><strong>In Ardashir:</strong> ArdaBackend imports selected D3D12 or Vulkan textures and buffers from truthful descriptors, retains optional lifetime tokens, and leaves host ownership and synchronization explicit.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-d3d12">D3D12</a></li><li><a href="#term-vulkan">Vulkan</a></li><li><a href="#term-lifetime-token">Lifetime token</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-nvrhi" data-glossary-entry data-category="Project" data-search="NVRHI Project NVIDIA Rendering Hardware Interface, a portable C++ graphics abstraction. The nvrhi-vulkan and nvrhi-d3d12 sample modules adapt NVRHI objects and commands to ArdaBackend's universal contracts.">
-          <div class="glossary-entry__meta"><h3>NVRHI</h3><span class="category">Project</span></div>
-          <p>NVIDIA Rendering Hardware Interface, a portable C++ graphics abstraction.</p>
-          <p><strong>In Ardashir:</strong> The <code>nvrhi-vulkan</code> and <code>nvrhi-d3d12</code> sample modules adapt NVRHI objects and commands to ArdaBackend's universal contracts.</p>
-          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-rhi">RHI</a></li><li><a href="#term-d3d12">D3D12</a></li><li><a href="#term-vulkan">Vulkan</a></li></ul></div>
-        </article>
-        <article class="glossary-entry" id="term-ownership" data-glossary-entry data-category="Computer science" data-search="Ownership Computer science The responsibility for retaining, releasing, or destroying an object. ArdaBackend APIs distinguish borrowed native handles, retained NVRHI references, and newly created objects.">
+        <article class="glossary-entry" id="term-ownership" data-glossary-entry data-category="Computer science" data-search="Ownership Computer science The responsibility for retaining, releasing, or destroying an object. ArdaBackend APIs distinguish borrowed native handles, retained wrapper references, and newly created objects.">
           <div class="glossary-entry__meta"><h3>Ownership</h3><span class="category">Computer science</span></div>
           <p>The responsibility for retaining, releasing, or destroying an object.</p>
-          <p><strong>In Ardashir:</strong> ArdaBackend APIs distinguish borrowed native handles, retained NVRHI references, and newly created objects.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend APIs distinguish borrowed native handles, retained wrapper references, and newly created objects.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-lifetime">Lifetime</a></li><li><a href="#term-raii">RAII</a></li><li><a href="#term-intrusive-reference-counting">Intrusive reference counting</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-parameter-metadata-reflection" data-glossary-entry data-category="Project" data-search="Parameter metadata / reflection Project Structured information describing fields, types, offsets, and bindings without executing the program. ArdaBackend currently uses authored C++ parameter metadata to validate and construct bindings; binary shader reflection is not the runtime source of this layout and can only serve as an external validation technique.">
@@ -364,10 +358,10 @@
           <p><strong>In Ardashir:</strong> ArdaBackend wrappers use destructors and reference objects to release resources predictably.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-ownership">Ownership</a></li><li><a href="#term-lifetime">Lifetime</a></li><li><a href="#term-intrusive-reference-counting">Intrusive reference counting</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-ray-tracing" data-glossary-entry data-category="Graphics" data-search="Ray tracing Graphics Rendering or computation based on tracing rays through geometric acceleration structures. ArdaBackend exposes NVRHI ray-tracing pipelines, shader tables, and acceleration-structure operations when supported.">
+        <article class="glossary-entry" id="term-ray-tracing" data-glossary-entry data-category="Graphics" data-search="Ray tracing Graphics Rendering or computation based on tracing rays through geometric acceleration structures. ArdaBackend exposes ray-tracing pipelines, shader tables, and acceleration-structure operations when supported by the active module.">
           <div class="glossary-entry__meta"><h3>Ray tracing</h3><span class="category">Graphics</span></div>
           <p>Rendering or computation based on tracing rays through geometric acceleration structures.</p>
-          <p><strong>In Ardashir:</strong> ArdaBackend exposes NVRHI ray-tracing pipelines, shader tables, and acceleration-structure operations when supported.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend exposes ray-tracing pipelines, shader tables, and acceleration-structure operations when supported by the active module.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-acceleration-structure">Acceleration structure</a></li><li><a href="#term-pipeline">Pipeline</a></li><li><a href="#term-shader-stage">Shader stage</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-render-target" data-glossary-entry data-category="Graphics" data-search="Render target Graphics A texture view that receives output from a rendering operation. ArdaBackend describes render-target formats when creating framebuffers and graphics pipelines.">
@@ -398,7 +392,7 @@
           <div class="glossary-entry__meta"><h3>RHI</h3><span class="category">Graphics</span></div>
           <p>A rendering hardware interface: an abstraction over graphics APIs and GPU devices.</p>
           <p><strong>In Ardashir:</strong> Ardashir uses an RHI boundary so rendering code can target multiple native graphics APIs.</p>
-          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-nvrhi">NVRHI</a></li><li><a href="#term-backend">Backend</a></li><li><a href="#term-device">Device</a></li></ul></div>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-backend-module">Backend module</a></li><li><a href="#term-backend">Backend</a></li><li><a href="#term-device">Device</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-sample-count-msaa" data-glossary-entry data-category="Graphics" data-search="Sample count / MSAA Graphics The number of coverage samples stored per pixel; multisample anti-aliasing uses more than one. ArdaBackend keeps pipeline and framebuffer sample counts compatible.">
           <div class="glossary-entry__meta"><h3>Sample count / MSAA</h3><span class="category">Graphics</span></div>
@@ -514,11 +508,11 @@
           <p><strong>In Ardashir:</strong> ArdaBackend maps virtual shader roots to source directories so includes and shader identities remain portable.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-shader">Shader</a></li><li><a href="#term-global-shader">Global shader</a></li><li><a href="#term-cache">Cache</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-vulkan" data-glossary-entry data-category="Graphics" data-search="Vulkan Graphics A cross-platform explicit graphics and compute API from the Khronos Group. One ArdaBackend native path creates or imports NVRHI objects backed by Vulkan.">
+        <article class="glossary-entry" id="term-vulkan" data-glossary-entry data-category="Graphics" data-search="Vulkan Graphics A cross-platform explicit graphics and compute API from the Khronos Group. One ArdaBackend native path creates Vulkan resources behind Arda RHI objects.">
           <div class="glossary-entry__meta"><h3>Vulkan</h3><span class="category">Graphics</span></div>
           <p>A cross-platform explicit graphics and compute API from the Khronos Group.</p>
-          <p><strong>In Ardashir:</strong> One ArdaBackend native path creates or imports NVRHI objects backed by Vulkan.</p>
-          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-nvrhi">NVRHI</a></li><li><a href="#term-spir-v">SPIR-V</a></li><li><a href="#term-native-import">Native import</a></li></ul></div>
+          <p><strong>In Ardashir:</strong> One ArdaBackend native path creates Vulkan resources behind Arda RHI objects.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-rhi">RHI</a></li><li><a href="#term-spir-v">SPIR-V</a></li><li><a href="#term-backend-module">Backend module</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-render-graph" data-glossary-entry data-category="Graphics" data-search="Render graph Graphics A directed graph that models rendering work as passes and resource dependencies so an engine can analyze execution before recording commands. ArdaRenderGraph builds this model during registration, compiles hazards, culling, queues, transitions, and lifetimes, then records and submits the surviving passes.">
           <div class="glossary-entry__meta"><h3>Render graph</h3><span class="category">Graphics</span></div>
@@ -700,16 +694,16 @@
           <p><strong>In Ardashir:</strong> ArdaBackend hashes shader bytecode, layouts, formats, and fixed state to address native persistent pipeline entries across executions.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-hash">Hash</a></li><li><a href="#term-persistent-pipeline-cache">Persistent pipeline cache</a></li><li><a href="#term-immutable">Immutable</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-d3d12-pipeline-library" data-glossary-entry data-category="Graphics" data-search="D3D12 pipeline library Graphics A Direct3D 12 object that serializes and retrieves driver-compiled pipeline state by name. The NVRHI D3D12 module persists its library payload as nvrhi-d3d12.pso-cache.">
+        <article class="glossary-entry" id="term-d3d12-pipeline-library" data-glossary-entry data-category="Graphics" data-search="D3D12 pipeline library Graphics A Direct3D 12 object that serializes and retrieves driver-compiled pipeline state by name. A backend may use a pipeline library to implement persistent pipeline caching.">
           <div class="glossary-entry__meta"><h3>D3D12 pipeline library</h3><span class="category">Graphics</span></div>
           <p>A Direct3D 12 object that serializes and retrieves driver-compiled pipeline state by name.</p>
-          <p><strong>In Ardashir:</strong> The NVRHI D3D12 module uses stable semantic keys as <code>ID3D12PipelineLibrary</code> names and persists the library payload as <code>nvrhi-d3d12.pso-cache</code>.</p>
+          <p><strong>In Ardashir:</strong> The native D3D12 module uses stable semantic keys as <code>ID3D12PipelineLibrary</code> names.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-d3d12">D3D12</a></li><li><a href="#term-persistent-pipeline-cache">Persistent pipeline cache</a></li><li><a href="#term-stable-semantic-key">Stable semantic key</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-vk-pipeline-cache" data-glossary-entry data-category="Graphics" data-search="VkPipelineCache Graphics A Vulkan object carrying implementation-specific data that may accelerate pipeline creation. The NVRHI Vulkan module initializes it from nvrhi-vulkan.pso-cache and persists updated bytes at shutdown.">
+        <article class="glossary-entry" id="term-vk-pipeline-cache" data-glossary-entry data-category="Graphics" data-search="VkPipelineCache Graphics A Vulkan object carrying implementation-specific data that may accelerate pipeline creation. A backend may initialize it from persistent bytes and save updated data at shutdown.">
           <div class="glossary-entry__meta"><h3>VkPipelineCache</h3><span class="category">Graphics</span></div>
           <p>A Vulkan object carrying implementation-specific data that may accelerate pipeline creation.</p>
-          <p><strong>In Ardashir:</strong> The NVRHI Vulkan module initializes it from <code>nvrhi-vulkan.pso-cache</code>, lets the driver validate compatibility, and persists updated bytes at shutdown.</p>
+          <p><strong>In Ardashir:</strong> The native Vulkan module initializes it from validated persistent bytes and saves updated data at shutdown.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-vulkan">Vulkan</a></li><li><a href="#term-persistent-pipeline-cache">Persistent pipeline cache</a></li><li><a href="#term-stable-semantic-key">Stable semantic key</a></li></ul></div>
         </article>
           </div>

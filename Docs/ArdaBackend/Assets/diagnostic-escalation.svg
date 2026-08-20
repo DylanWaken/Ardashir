@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="700" viewBox="0 0 900 700" role="img" aria-labelledby="diag-title diag-desc">
   <title id="diag-title">ArdaBackend diagnostic escalation and recovery</title>
-  <desc id="diag-desc">Errors originate in validation, native APIs, NVRHI, or backend policy. Domain status values and NVRHI callbacks feed logs, diagnostic callbacks, assertions, and caller decisions ending in recovery for expected failures or fatal handling for broken invariants.</desc>
+  <desc id="diag-desc">Errors originate in validation, native APIs, module adapters, or backend policy. Domain status values and module callbacks feed logs, diagnostic callbacks, assertions, and caller decisions ending in recovery for expected failures or fatal handling for broken invariants.</desc>
   <defs>
     <marker id="flow-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#7dd3fc"/></marker>
     <marker id="data-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0 0 L9 3.5 L0 7 Z" fill="#34d399"/></marker>
@@ -19,7 +19,7 @@
   <text class="label" x="450" y="120">Error origins</text>
   <rect class="source" x="48" y="142" width="180" height="66" rx="8"/><text class="label" x="138" y="167">Arda validation</text><text class="small" x="138" y="190">argument / state / device</text>
   <rect class="source" x="256" y="142" width="180" height="66" rx="8"/><text class="label" x="346" y="167">Native API</text><text class="small" x="346" y="190">D3D12, DXGI, Vulkan</text>
-  <rect class="source" x="464" y="142" width="180" height="66" rx="8"/><text class="label" x="554" y="167">NVRHI</text><text class="small" x="554" y="190">severity + message text</text>
+  <rect class="source" x="464" y="142" width="180" height="66" rx="8"/><text class="label" x="554" y="167">Module adapter</text><text class="small" x="554" y="190">severity + message text</text>
   <rect class="source" x="672" y="142" width="180" height="66" rx="8"/><text class="label" x="762" y="167">Backend domains</text><text class="small" x="762" y="190">init / shader / PSO</text>
 
   <rect class="status" x="48" y="270" width="364" height="150" rx="10"/>
@@ -32,7 +32,7 @@
 
   <rect class="diag" x="488" y="270" width="364" height="150" rx="10"/>
   <text class="label" x="670" y="300">Callback, log, and assertion path</text>
-  <text class="small" x="670" y="328">FArdaNvrhiMessageCallback translates severity</text>
+  <text class="small" x="670" y="328">module callback translates severity</text>
   <text class="small" x="670" y="352">&#8594; EArdaDiagnosticSeverity</text>
   <text class="small" x="670" y="376">&#8594; IArdaDiagnosticCallback::Message()</text>
   <text class="small" x="670" y="400">ARDA_LOG; ARDA_CHECK / VERIFY / ENSURE</text>

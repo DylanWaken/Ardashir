@@ -62,7 +62,7 @@
     <text x="208" y="270" class="small">register shader directories</text>
     <text x="208" y="293" class="small">configure and initialize backend</text>
     <text x="208" y="316" class="small">own shader map, PSO cache, swap chain</text>
-    <text x="208" y="343" class="tiny">includes ArdaBackend.h; never NVRHI headers</text>
+    <text x="208" y="343" class="tiny">includes ArdaBackend.h; never native API headers</text>
     <path class="flow" d="M368 287 H426"/>
 
     <rect class="public" x="430" y="212" width="372" height="150"/>
@@ -84,7 +84,7 @@
     <rect class="native" x="1285" y="212" width="459" height="150"/>
     <text x="1515" y="242" class="label">Selected backend module</text>
     <text x="1515" y="270" class="small">IArdaBackendModule + IArdaBackendDevice</text>
-    <text x="1515" y="293" class="small">NVRHI, native API, or engine-RHI adapter</text>
+    <text x="1515" y="293" class="small">native API or engine-RHI adapter</text>
     <text x="1515" y="316" class="small">descriptor conversion and external-object import</text>
     <text x="1515" y="343" class="tiny">implementation types remain private to the linked module</text>
 
@@ -303,10 +303,10 @@
   <!-- PLATFORM AND PRESENTATION -->
   <g id="backend-platform-stage">
     <rect class="stage" x="20" y="2620" width="1760" height="680"/>
-    <text x="48" y="2660" class="stageTitle">4 | SAMPLE NVRHI PLATFORM MODULES - shared public presentation over D3D12 and Vulkan</text>
+    <text x="48" y="2660" class="stageTitle">4 | NATIVE PLATFORM MODULES - shared public presentation over D3D12 and Vulkan</text>
     <text x="48" y="2688" class="lane">WINDOW AND SWAP CHAIN</text>
     <text x="520" y="2688" class="lane">SAMPLE MODULE DEVICE</text>
-    <text x="1000" y="2688" class="lane">NVRHI ADAPTER</text>
+    <text x="1000" y="2688" class="lane">NATIVE RHI ADAPTER</text>
     <text x="1430" y="2688" class="lane">NATIVE API</text>
 
     <rect class="public" x="48" y="2712" width="420" height="184"/>
@@ -324,16 +324,16 @@
     <text x="730" y="2770" class="small">FArdaD3D12BackendDevice</text>
     <text x="730" y="2793" class="small">or FArdaVulkanBackendDevice</text>
     <text x="730" y="2816" class="small">Initialize; CreateSwapChain; GetDevice</text>
-    <text x="730" y="2839" class="small">owns or adopts native queues and NVRHI device</text>
-    <text x="730" y="2885" class="tiny">registered as nvrhi-d3d12 or nvrhi-vulkan; exact name wins</text>
+    <text x="730" y="2839" class="small">owns or adopts native device and queues</text>
+    <text x="730" y="2885" class="tiny">registered as native-d3d12 or native-vulkan; exact name wins</text>
     <path class="flow" d="M940 2804 H986"/>
 
     <rect class="native" x="990" y="2712" width="390" height="184"/>
-    <text x="1185" y="2742" class="label">NVRHI device layer</text>
-    <text x="1185" y="2770" class="small">nvrhi::d3d12::createDevice</text>
-    <text x="1185" y="2793" class="small">or nvrhi::vulkan::createDevice</text>
-    <text x="1185" y="2816" class="small">optional nvrhi validation layer</text>
-    <text x="1185" y="2839" class="small">FArdaNvrhiMessageCallback</text>
+    <text x="1185" y="2742" class="label">Native device layer</text>
+    <text x="1185" y="2770" class="small">D3D12CreateDevice</text>
+    <text x="1185" y="2793" class="small">or vkCreateDevice</text>
+    <text x="1185" y="2816" class="small">optional native validation</text>
+    <text x="1185" y="2839" class="small">module-owned diagnostics</text>
     <text x="1185" y="2885" class="tiny">mapped into Arda RHI by FDevice wrappers</text>
     <path class="flow" d="M1380 2804 H1426"/>
 
@@ -361,7 +361,7 @@
     <text x="1337" y="3019" class="small">ARDA_LOG provides categorized structured output | ARDA_CHECK / VERIFY / ENSURE enforce contracts</text>
     <text x="1337" y="3042" class="small">shader directory, shader registration, global map, RHI, and PSO APIs return domain-specific status</text>
     <line x1="960" y1="3063" x2="1714" y2="3063" class="divider"/>
-    <text x="1337" y="3089" class="small">sample modules translate NVRHI severity into EArdaDiagnosticSeverity before callbacks</text>
+    <text x="1337" y="3089" class="small">modules translate native severity into EArdaDiagnosticSeverity before callbacks</text>
     <text x="1337" y="3114" class="tiny">validation and diagnostics cross the abstraction boundary; native resource types do not</text>
 
     <rect class="data" x="48" y="3182" width="1696" height="82"/>

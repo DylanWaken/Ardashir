@@ -1,43 +1,36 @@
-#include "ArdaNvrhiPch.h"
+#include "Common/ArdaNativePipelineCache.h"
 
-#include "Native/ArdaNvrhiPipelineCacheCommon.h"
+#include "ArdaBackendProvider.h"
 
 #include <atomic>
 #include <cctype>
 #include <fstream>
+#include <string>
 
 #if defined(_WIN32)
 #include <process.h>
+#include <windows.h>
 #else
 #include <unistd.h>
 #endif
 
-namespace arda::rhi::private_impl::pipeline_cache
+namespace arda::rhi::native::pipeline_cache
 {
     namespace
     {
         constexpr uint64_t Magic = 0x45484341434F5350ull; // "PSOCACHE"
-        constexpr uint32_t Schema = 2;
+        constexpr uint32_t Schema = 3;
         std::atomic_uint64_t TempCounter{ 0 };
 
         struct FBlobHeader
         {
             uint64_t mMagic = Magic;
             uint32_t mSchema = Schema;
-            uint32_t mReserved = 0;
+            uint32_t mBackend = 0;
             uint64_t mBackendHash = 0;
             uint64_t mPayloadSize = 0;
         };
         static_assert(sizeof(FBlobHeader) == 32);
-
-        uint64_t ProcessId() noexcept
-        {
-#if defined(_WIN32)
-            return static_cast<uint64_t>(_getpid());
-#else
-            return static_cast<uint64_t>(getpid());
-#endif
-        }
 
         uint64_t StableNameHash(const eastl::string& Name) noexcept
         {
@@ -49,14 +42,24 @@ namespace arda::rhi::private_impl::pipeline_cache
             }
             return Hash;
         }
+
+        uint64_t ProcessId() noexcept
+        {
+#if defined(_WIN32)
+            return static_cast<uint64_t>(_getpid());
+#else
+            return static_cast<uint64_t>(getpid());
+#endif
+        }
     }
 
-    void Warn(
+    void Message(
         backend::IArdaDiagnosticCallback* Callback,
-        const char* Message) noexcept
+        backend::EArdaDiagnosticSeverity Severity,
+        const char* Text) noexcept
     {
         if (Callback)
-            Callback->Message(backend::EArdaDiagnosticSeverity::Warning, Message);
+            Callback->Message(Severity, Text);
     }
 
     std::filesystem::path MakePath(
@@ -81,6 +84,7 @@ namespace arda::rhi::private_impl::pipeline_cache
     bool ReadBlob(
         const std::filesystem::path& Path,
         const eastl::string& BackendName,
+        backend::EArdaBackendType Backend,
         std::vector<uint8_t>& Payload)
     {
         Payload.clear();
@@ -94,6 +98,7 @@ namespace arda::rhi::private_impl::pipeline_cache
         FBlobHeader Header;
         Input.read(reinterpret_cast<char*>(&Header), sizeof(Header));
         if (!Input || Header.mMagic != Magic || Header.mSchema != Schema ||
+            Header.mBackend != static_cast<uint32_t>(Backend) ||
             Header.mBackendHash != StableNameHash(BackendName) ||
             Header.mPayloadSize > MaxPayloadSize ||
             FileSize != sizeof(Header) + Header.mPayloadSize)
@@ -102,7 +107,8 @@ namespace arda::rhi::private_impl::pipeline_cache
         Payload.resize(static_cast<size_t>(Header.mPayloadSize));
         if (!Payload.empty())
         {
-            Input.read(reinterpret_cast<char*>(Payload.data()), Payload.size());
+            Input.read(reinterpret_cast<char*>(Payload.data()),
+                static_cast<std::streamsize>(Payload.size()));
             if (Input.gcount() != static_cast<std::streamsize>(Payload.size()))
             {
                 Payload.clear();
@@ -115,9 +121,10 @@ namespace arda::rhi::private_impl::pipeline_cache
     bool WriteBlob(
         const std::filesystem::path& Path,
         const eastl::string& BackendName,
+        backend::EArdaBackendType Backend,
         const std::vector<uint8_t>& Payload)
     {
-        if (Payload.size() > MaxPayloadSize)
+        if (Payload.size() > MaxPayloadSize || Path.empty())
             return false;
 
         std::error_code Error;
@@ -131,12 +138,13 @@ namespace arda::rhi::private_impl::pipeline_cache
         {
             std::ofstream Output(Temporary, std::ios::binary | std::ios::trunc);
             FBlobHeader Header;
+            Header.mBackend = static_cast<uint32_t>(Backend);
             Header.mBackendHash = StableNameHash(BackendName);
             Header.mPayloadSize = Payload.size();
             Output.write(reinterpret_cast<const char*>(&Header), sizeof(Header));
             if (!Payload.empty())
-                Output.write(
-                    reinterpret_cast<const char*>(Payload.data()), Payload.size());
+                Output.write(reinterpret_cast<const char*>(Payload.data()),
+                    static_cast<std::streamsize>(Payload.size()));
             Output.flush();
             if (!Output)
             {
@@ -145,9 +153,9 @@ namespace arda::rhi::private_impl::pipeline_cache
                 return false;
             }
         }
+
 #if defined(_WIN32)
-        if (!MoveFileExW(
-                Temporary.c_str(), Path.c_str(),
+        if (!MoveFileExW(Temporary.c_str(), Path.c_str(),
                 MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
         {
             std::filesystem::remove(Temporary, Error);

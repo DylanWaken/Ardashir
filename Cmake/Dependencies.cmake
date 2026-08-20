@@ -108,27 +108,49 @@ target_link_libraries(ArdashirImGuiGlfw PUBLIC Ardashir::ImGui glfw)
 target_compile_features(ArdashirImGuiGlfw PUBLIC cxx_std_17)
 set_target_properties(ArdashirImGuiGlfw PROPERTIES FOLDER "ThirdParty/ImGui")
 
-# NVRHI is a sample backend dependency, not an ArdaBackend ABI dependency.
-if(ARDASHIR_BACKEND_NVRHI_VULKAN OR
-   (WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12))
-    set(ARDASHIR_NVRHI_SOURCE_DIR
-        "${PROJECT_SOURCE_DIR}/ThirdParty/NVRHI"
-        CACHE PATH "Path to an unmodified NVRHI source checkout")
-    if(NOT EXISTS "${ARDASHIR_NVRHI_SOURCE_DIR}/CMakeLists.txt")
-        message(FATAL_ERROR
-            "NVRHI is missing. Run: git submodule update --init ThirdParty/NVRHI")
-    endif()
-    set(NVRHI_INSTALL OFF CACHE BOOL "Disable NVRHI install rules" FORCE)
-    # Build only the native NVRHI implementations selected as Arda modules.
-    set(NVRHI_WITH_VULKAN ${ARDASHIR_BACKEND_NVRHI_VULKAN}
-        CACHE BOOL "Build the NVRHI Vulkan backend" FORCE)
-    if(WIN32)
-        set(NVRHI_WITH_DX12 ${ARDASHIR_BACKEND_NVRHI_D3D12}
-            CACHE BOOL "Build the NVRHI D3D12 backend" FORCE)
-    endif()
-    add_subdirectory(
-        "${ARDASHIR_NVRHI_SOURCE_DIR}"
-        "${PROJECT_BINARY_DIR}/ThirdParty/NVRHI")
+# Compile the native Vulkan module against a reproducible current header set.
+# The module uses Vulkan-Hpp's runtime dispatcher, so no loader SDK or import
+# library is required on the build machine.
+if(ARDASHIR_BACKEND_VULKAN)
+    FetchContent_Declare(
+        ardashir_vulkan_headers
+        GIT_REPOSITORY "https://github.com/KhronosGroup/Vulkan-Headers.git"
+        GIT_TAG "v1.4.357"
+        GIT_SHALLOW TRUE)
+    FetchContent_MakeAvailable(ardashir_vulkan_headers)
+endif()
+
+# The retail Agility package supplies both the current Direct3D headers and the
+# application-local D3D12 runtime selected by D3D12SDKVersion/D3D12SDKPath.
+if(WIN32 AND ARDASHIR_BACKEND_D3D12)
+    FetchContent_Declare(
+        ardashir_d3d12_agility
+        URL "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.619.5"
+        URL_HASH "SHA256=0e9bcf32aac9a79343ede9b21e4864950ee54577e3d8e19bfcdf002bb4e9bfd6")
+    FetchContent_MakeAvailable(ardashir_d3d12_agility)
+    set(ARDASHIR_D3D12_AGILITY_INCLUDE_DIR
+        "${ardashir_d3d12_agility_SOURCE_DIR}/build/native/include"
+        CACHE INTERNAL "Direct3D 12 Agility SDK include directory")
+    set(ARDASHIR_D3D12_AGILITY_RUNTIME_DIR
+        "${ardashir_d3d12_agility_SOURCE_DIR}/build/native/bin/x64"
+        CACHE INTERNAL "Direct3D 12 Agility SDK x64 runtime directory")
+
+    function(ardashir_deploy_d3d12_agility Target)
+        if(NOT TARGET "${Target}")
+            message(FATAL_ERROR "Cannot deploy Agility SDK for missing target: ${Target}")
+        endif()
+        add_custom_command(TARGET "${Target}" POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E make_directory
+                "$<TARGET_FILE_DIR:${Target}>/D3D12"
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                "${ARDASHIR_D3D12_AGILITY_RUNTIME_DIR}/D3D12Core.dll"
+                "$<TARGET_FILE_DIR:${Target}>/D3D12/D3D12Core.dll"
+            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                "${ARDASHIR_D3D12_AGILITY_RUNTIME_DIR}/d3d12SDKLayers.dll"
+                "$<TARGET_FILE_DIR:${Target}>/D3D12/d3d12SDKLayers.dll"
+            COMMENT "Deploying Direct3D 12 Agility SDK 1.619.5 for ${Target}"
+            VERBATIM)
+    endfunction()
 endif()
 
 if(ARDASHIR_BUILD_TESTS)

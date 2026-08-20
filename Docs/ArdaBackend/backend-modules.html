@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Implement, link, select, and integrate universal ArdaBackend modules, including NVRHI Vulkan, NVRHI D3D12, and engine-owned RHI devices.">
+  <meta name="description" content="Implement, link, select, and integrate universal ArdaBackend modules, including native Vulkan, native D3D12, and engine-owned RHI devices.">
   <title>Backend modules | Ardashir</title>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
@@ -48,7 +48,7 @@
         <header class="page-header">
           <p class="eyebrow">Universal implementation boundary</p>
           <h1>Backend modules</h1>
-          <p>ArdaBackend is the stable declaration layer used by the rest of Ardashir. A linked <a class="term" data-term="backend-module" href="../glossary.html#term-backend-module">backend module</a> supplies the operative device, RHI implementation, presentation path, external-object adoption, and shader compiler integration. The sample modules are <code>nvrhi-vulkan</code> and <code>nvrhi-d3d12</code>; a native Vulkan/D3D12 implementation or an <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine RHI</a> adapter follows the same contract.</p>
+          <p>ArdaBackend is the stable declaration layer used by the rest of Ardashir. A linked <a class="term" data-term="backend-module" href="../glossary.html#term-backend-module">backend module</a> supplies the operative device, RHI implementation, presentation path, external-object adoption, and shader compiler integration. The checked-in modules are <code>native-vulkan</code> and <code>native-d3d12</code>; an <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine RHI</a> adapter follows the same contract.</p>
         </header>
 
         <nav class="toc" aria-label="On this page">
@@ -87,7 +87,7 @@
         <section id="prerequisites">
           <h2>Prerequisites</h2>
           <p>Read <a href="architecture.html">Architecture</a> for the opaque RHI and process-lifetime model, then <a href="external-interop.html">External interop</a> if the host owns the native device. A module implementer should understand intrusive references, queue synchronization, native resource states, and CMake static-library linking.</p>
-          <aside class="callout"><h3>Scope</h3><p>This chapter documents the universal contract and the checked-in NVRHI modules. It does not claim that Unreal, Unity, or Godot adapters already exist. Those are future modules whose object schemas and engine-version support must be documented beside their implementation.</p></aside>
+          <aside class="callout"><h3>Scope</h3><p>This chapter documents the universal contract and the checked-in native modules. It does not claim that Unreal, Unity, or Godot adapters already exist. Those are future modules whose object schemas and engine-version support must be documented beside their implementation.</p></aside>
         </section>
 
         <section id="mental-model">
@@ -97,7 +97,7 @@
             <img src="Assets/backend-provider-module-flow.svg" alt="Application selection enters the ArdaBackend registry, chooses one of several linked modules, creates its runtime backend device, and exposes RHI, presentation, and shader services; an external host can provide devices and resources to the selected module.">
             <figcaption>Module identity is chosen at runtime from the implementations made available at link time. External objects cross only through copied, backend-routed descriptors.</figcaption>
           </figure>
-          <p>The distinction between identity and compatibility matters. <code>nvrhi-vulkan</code> and a future <code>unreal-vulkan-rhi</code> could both use the Vulkan <a class="term" data-term="compatibility-class" href="../glossary.html#term-compatibility-class">compatibility class</a>, but they are not interchangeable implementations and need not accept the same external payload.</p>
+          <p>The distinction between identity and compatibility matters. <code>native-vulkan</code> and a future <code>unreal-vulkan-rhi</code> could both use the Vulkan <a class="term" data-term="compatibility-class" href="../glossary.html#term-compatibility-class">compatibility class</a>, but they are not interchangeable implementations and need not accept the same external payload.</p>
         </section>
 
         <section id="public-private-boundary">
@@ -106,7 +106,7 @@
           <p>Application and renderer code uses <code>ArdaBackend.h</code>, <code>ArdaDevice.h</code>, the RHI headers, shader APIs, and optional external-provider APIs. It may select a module by stable name with <a href="api-reference.html#api-arda-backend-configurebackend-42d0f49a"><code>ConfigureBackend(const char*)</code></a>, or leave <code>mBackendName</code> empty and select the highest-priority module compatible with <code>mBackend</code>.</p>
           <h3>Backend implementer audience</h3>
           <p>A backend library includes <code>ArdaBackendProvider.h</code> and implements <a href="api-reference.html#api-arda-backend-iardabackendmodule-83673c0b"><code>IArdaBackendModule</code></a> plus <a href="api-reference.html#api-arda-backend-iardabackenddevice-ce421f3b"><code>IArdaBackendDevice</code></a>. Native SDK or engine headers belong in that library. Do not add their types to <code>Source/ArdaBackend/Public</code>; carry them as <code>FArdaNativeObject</code>, stable named objects, or module-owned private state.</p>
-          <p>This keeps the public binary and include boundary independent of NVRHI, Vulkan, D3D12, Unreal, Unity, and Godot. It also makes an implementation replaceable by changing build options and linked registration functions rather than rewriting Ardashir call sites.</p>
+          <p>This keeps the public binary and include boundary independent of Vulkan, D3D12, Unreal, Unity, and Godot. It also makes an implementation replaceable by changing build options and linked registration functions rather than rewriting Ardashir call sites.</p>
         </section>
 
         <section id="descriptor">
@@ -121,7 +121,7 @@
             <dt>Device-source flags</dt><dd><code>mbSupportsOwnedDevice</code> and <code>mbSupportsExternalDevice</code> must truthfully match what <code>CreateDevice</code> can construct.</dd>
             <dt><code>mPriority</code></dt><dd>Breaks ties for compatibility-class selection. Stable-name selection ignores priority.</dd>
           </dl>
-          <p>The checked-in sample publishes separate descriptors for <code>nvrhi-vulkan</code> and <code>nvrhi-d3d12</code>. They may share implementation code, but they are independently registered and independently linkable modules.</p>
+          <p>The checked-in implementation publishes separate descriptors for <code>native-vulkan</code> and <code>native-d3d12</code>. They share the provider-neutral facade in <code>ArdaBackendImpls/Common</code>, but they are independently registered and independently linkable modules.</p>
         </section>
 
         <section id="device-contract">
@@ -150,7 +150,7 @@
 }
 
 arda::backend::FArdaBackendConfiguration config;
-config.mBackendName = "nvrhi-vulkan"; // Exact implementation identity.
+config.mBackendName = "native-vulkan"; // Exact implementation identity.
 if (!arda::backend::ConfigureBackend(config) ||
     !arda::backend::InitializeBackend())
 {
@@ -163,9 +163,9 @@ if (!arda::backend::ConfigureBackend(config) ||
           <p>ArdaBackend is a static library, so merely linking another static archive may not retain an unreferenced registration object. The build therefore generates explicit calls from a list of registration function names. This is <a class="term" data-term="link-time-registration" href="../glossary.html#term-link-time-registration">link-time registration</a>, not reliance on unspecified global-constructor order.</p>
           <p>The sample switches are:</p>
           <ul>
-            <li><code>ARDASHIR_BACKEND_NVRHI_VULKAN</code> links <code>Ardashir::ArdaBackendNvrhiVulkan</code> and registers <code>RegisterArdaNvrhiVulkanBackend</code>;</li>
-            <li><code>ARDASHIR_BACKEND_NVRHI_D3D12</code> does the same for <code>Ardashir::ArdaBackendNvrhiD3D12</code> on Windows; and</li>
-            <li><code>Ardashir::ArdaBackendNvrhiCommon</code> contains shared NVRHI adaptation and is linked by the two sample modules, not selected as a module itself.</li>
+            <li><code>ARDASHIR_BACKEND_VULKAN</code> links <code>Ardashir::ArdaBackendVulkan</code> and registers <code>RegisterArdaVulkanBackend</code>;</li>
+            <li><code>ARDASHIR_BACKEND_D3D12</code> does the same for <code>Ardashir::ArdaBackendD3D12</code> on Windows; and</li>
+            <li><code>Ardashir::ArdaBackendNativeCommon</code> contains the shared RHI facade used by the two native modules and is not selected as a module itself.</li>
           </ul>
           <p>A custom module supplies a CMake target and an unqualified registration function in namespace <code>arda::backend</code>. In a parent project, create the target before adding Ardashir so <code>Source/ArdaBackend</code> can resolve it:</p>
           <pre><code># Parent CMakeLists.txt
@@ -174,16 +174,16 @@ add_library(MyEngineArdaBackend STATIC
     MyEngineArdaDevice.cpp)
 target_include_directories(MyEngineArdaBackend PUBLIC include)
 
-set(ARDASHIR_BACKEND_NVRHI_VULKAN OFF CACHE BOOL "" FORCE)
-set(ARDASHIR_BACKEND_NVRHI_D3D12 OFF CACHE BOOL "" FORCE)
+set(ARDASHIR_BACKEND_VULKAN OFF CACHE BOOL "" FORCE)
+set(ARDASHIR_BACKEND_D3D12 OFF CACHE BOOL "" FORCE)
 set(ARDASHIR_BACKEND_MODULE_TARGETS MyEngineArdaBackend CACHE STRING "" FORCE)
 set(ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS
     RegisterMyEngineArdaBackend CACHE STRING "" FORCE)
 add_subdirectory(path/to/Ardashir)</code></pre>
           <p>The equivalent cache-oriented configure command is:</p>
           <pre><code>cmake -S . -B build-custom \
-  -DARDASHIR_BACKEND_NVRHI_VULKAN=OFF \
-  -DARDASHIR_BACKEND_NVRHI_D3D12=OFF \
+  -DARDASHIR_BACKEND_VULKAN=OFF \
+  -DARDASHIR_BACKEND_D3D12=OFF \
   -DARDASHIR_BACKEND_MODULE_TARGETS=MyEngineArdaBackend \
   -DARDASHIR_BACKEND_REGISTRATION_FUNCTIONS=RegisterMyEngineArdaBackend</code></pre>
           <p>For multiple values, pass CMake semicolon-separated lists in the same order. The target must already exist before <code>Source/ArdaBackend</code> is configured. The function name is validated as a C++ identifier and must be link-visible to ArdaBackend. If a shared-library/plugin integration needs runtime unload, wrap this static registration scheme with explicit plugin load/unload coordination and refuse unload while active or referenced.</p>
@@ -193,7 +193,7 @@ add_subdirectory(path/to/Ardashir)</code></pre>
           <h2>Universal external-device registration</h2>
           <p>The host registers one <code>IArdaExternalDeviceProvider</code> before initialization and selects <code>ExternalProvider</code>. The preferred generic path fills <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a>. Explicit fields cover common roles: instance/factory, adapter/physical device, logical device, and typed queues. <code>mAdditionalObjects</code> carries named engine objects; <code>mBackendData</code> carries immutable versioned bytes understood only by the named module.</p>
           <p>Use <code>GetBackendName</code> and descriptor <code>mBackendName</code> to prevent a payload from reaching the wrong adapter. For example, an Unreal module might require <code>unreal-rhi</code> and document names such as <code>DynamicRHI</code> and <code>RHIDevice</code>. The names are module ABI: version them, validate required/unknown entries, and never guess object types from <code>mNativeApi</code>.</p>
-          <p><a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-getexternaldevicedesc-c12c4b9f"><code>GetExternalDeviceDesc</code></a> is the only public device-description path. <code>mAdditionalObjects</code> carries named handles, <a href="api-reference.html#api-arda-backend-external-device-desc-properties"><code>mProperties</code></a> carries copied string values with repeated names, and <code>mBackendData</code> carries a versioned binary payload. NVRHI translation types remain private to the sample module.</p>
+          <p><a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-getexternaldevicedesc-c12c4b9f"><code>GetExternalDeviceDesc</code></a> is the only public device-description path. <code>mAdditionalObjects</code> carries named handles, <a href="api-reference.html#api-arda-backend-external-device-desc-properties"><code>mProperties</code></a> carries copied string values with repeated names, and <code>mBackendData</code> carries a versioned binary payload. Native translation types remain private to the selected module.</p>
         </section>
 
         <section id="external-resources">
@@ -227,10 +227,10 @@ add_subdirectory(path/to/Ardashir)</code></pre>
 
         <section id="platform-notes">
           <h2>Platform and engine integration notes</h2>
-          <h3>NVRHI Vulkan</h3>
-          <p>Available when its CMake option is enabled. It consumes SPIR-V, can create a Vulkan device, and privately translates the universal external-device descriptor into NVRHI's Vulkan device description. Persistent <code>VkPipelineCache</code> support is implemented by module-owned Vulkan dispatch code in <code>ArdaBackendNvrhi</code>, not by changes to NVRHI. The host must preserve Vulkan instance/device/queue, enabled-feature, extension, allocation-callback, loader, and host-synchronization contracts.</p>
-          <h3>NVRHI D3D12</h3>
-          <p>Available on Windows when enabled. It consumes DXIL, can create a D3D12 device, and privately translates the universal external-device descriptor into NVRHI's D3D12 device description. Persistent <code>ID3D12PipelineLibrary</code> support is implemented by an Ardashir-owned forwarding device proxy in <code>ArdaBackendNvrhi</code>; NVRHI itself remains unmodified. NVRHI can retain COM references needed by wrappers, but the host still owns device policy and coordinated queue access.</p>
+          <h3>Native Vulkan</h3>
+          <p>Available when its CMake option is enabled. It consumes SPIR-V, dynamically loads the platform Vulkan loader, targets Vulkan 1.4 headers, and requires Vulkan 1.3 dynamic rendering and synchronization2 support at runtime. The current module creates and owns its Vulkan device and persists validated <code>VkPipelineCache</code> data; external Vulkan device adoption is not yet advertised.</p>
+          <h3>Native D3D12</h3>
+          <p>Available on Windows when enabled. It consumes DXIL and selects the retail Direct3D 12 Agility SDK 1.619.5 runtime through the application-local <code>D3D12</code> directory. It creates graphics and compute queues, can adopt an external <code>ID3D12Device</code> with direct graphics and optional compute queues, and persists stable-keyed <code>ID3D12PipelineLibrary</code> data.</p>
           <h3>Unreal, Unity, Godot, and other hosts</h3>
           <p>Prefer adapting the engine's supported RHI/device access surface over reaching through private internals. The module should identify an exact engine/version support range, acquire typed interfaces, convert engine resource/queue/state concepts to Arda contracts, and define where execution occurs relative to the engine render/RHI thread. The current repository provides the extension points, not these engine adapters.</p>
         </section>

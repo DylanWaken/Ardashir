@@ -52,7 +52,7 @@
         <header class="page-header">
           <p class="eyebrow">Adopt host-owned devices without surrendering ownership</p>
           <h1>External devices and resources</h1>
-          <p>External interop lets an engine keep authority over its native device, queues, presentation, and resource catalog while the selected backend module creates Arda's RHI facade over selected objects. NVRHI D3D12/Vulkan are the checked-in samples; generic descriptors also support native and <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine-RHI</a> modules. The boundary remains deliberately narrow: ownership is explicit, queue access is coordinated, and native descriptions must be truthful.</p>
+          <p>External interop lets an engine keep authority over its native device, queues, presentation, and resource catalog while the selected backend module creates Arda's RHI facade over selected objects. The checked-in native D3D12 module demonstrates device adoption; generic descriptors also support custom native and <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine-RHI</a> modules. The boundary remains deliberately narrow: ownership is explicit, queue access is coordinated, and native descriptions must be truthful.</p>
         </header>
 
         <nav class="toc" aria-label="On this page">
@@ -81,7 +81,7 @@
           <p>After this chapter, you should be able to:</p>
           <ul>
             <li>separate native ownership from RHI wrapper ownership and GPU-use lifetime;</li>
-            <li>route one universal host-owned device descriptor to an exact module, including the checked-in NVRHI D3D12/Vulkan samples;</li>
+            <li>route one universal host-owned device descriptor to an exact module, including the checked-in native D3D12 module;</li>
             <li>register providers without introducing callback reentrancy or registry-lifetime races;</li>
             <li>resolve stable resource IDs into truthful texture and buffer import descriptions;</li>
             <li>coordinate exclusive queue intervals with an engine submission thread;</li>
@@ -95,7 +95,7 @@
           <p>Read <a href="architecture.html">Architecture</a>, <a href="getting-started.html">Getting started</a>, <a href="rhi.html">RHI resources</a>, and <a href="commands.html">Commands</a>. Review <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a>, <a class="term" data-term="lifetime-token" href="../glossary.html#term-lifetime-token">lifetime token</a>, <a class="term" data-term="native-import" href="../glossary.html#term-native-import">native import</a>, and <a class="term" data-term="queue-coordination" href="../glossary.html#term-queue-coordination">queue coordination</a>.</p>
           <aside class="callout warning">
             <h3>Supported boundary</h3>
-            <p>The universal contract adopts a device and imports textures or buffers. The checked-in NVRHI modules do not provide a portable way to import arbitrary existing native heaps or existing acceleration structures. A custom module may extend its backend-defined payload, but must document and validate that schema; portable Ardashir code can rely only on the common texture/buffer boundary.</p>
+            <p>The universal contract adopts a device and imports textures or buffers. The checked-in native modules do not provide a portable way to import arbitrary existing native heaps or existing acceleration structures. A custom module may extend its backend-defined payload, but must document and validate that schema; portable Ardashir code can rely only on the common texture/buffer boundary.</p>
           </aside>
         </section>
 
@@ -109,7 +109,7 @@
           </ol>
           <p>A wrapper is not a second native device. It is a second programming interface over the host device. The selected module may allocate descriptor storage, internal heaps, fences, semaphores, command allocators, or engine-RHI objects, and it may submit directly to supplied queues. The host still owns the external device and decides when Arda receives a coordinated queue interval.</p>
           <figure>
-            <img src="Assets/external-device-adoption.svg" alt="Host engine registers a provider whose copied descriptor feeds an external Arda wrapper and NVRHI over a host-owned D3D12 or Vulkan device; ownership remains with the host.">
+            <img src="Assets/external-device-adoption.svg" alt="Host engine registers a provider whose copied descriptor feeds an external Arda wrapper over a host-owned native device; ownership remains with the host.">
             <figcaption>The provider supplies identity and configuration; Arda owns its wrapper-side objects, while the host retains native device and queue ownership.</figcaption>
           </figure>
         </section>
@@ -117,14 +117,14 @@
         <section id="project-mapping">
           <h2>Exact project mapping</h2>
           <p><a href="api-reference.html#api-arda-backend-eardadevicesource-3877d02f"><code>EArdaDeviceSource</code></a> selects between module-created native state and a registered external provider. Set <a href="api-reference.html#api-arda-backend-fardabackendconfiguration-mdevicesource-ef35d91b"><code>FArdaBackendConfiguration::mDeviceSource</code></a> to the external-provider enumerator and choose the matching module name or compatibility class before calling the headless <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend</code></a>.</p>
-          <p>The process-wide <a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-f1c0d75e"><code>IArdaExternalDeviceProvider</code></a> supplies one copied universal <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> and an optional shared token. <code>GetBackendName</code> can require one exact module; named objects, repeated named properties, and backend bytes are interpreted only by that module. No NVRHI declaration appears in the public ArdaBackend API. After initialization, <code>FArdaDeviceContext::mBackendName</code> and <a href="api-reference.html#api-arda-backend-fardadevicecontext-mdevicesource-ef35d91b"><code>mDeviceSource</code></a> report which implementation and source produced the live wrapper.</p>
+          <p>The process-wide <a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-f1c0d75e"><code>IArdaExternalDeviceProvider</code></a> supplies one copied universal <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> and an optional shared token. <code>GetBackendName</code> can require one exact module; named objects, repeated named properties, and backend bytes are interpreted only by that module. No native API declaration appears in the public ArdaBackend API. After initialization, <code>FArdaDeviceContext::mBackendName</code> and <a href="api-reference.html#api-arda-backend-fardadevicecontext-mdevicesource-ef35d91b"><code>mDeviceSource</code></a> report which implementation and source produced the live wrapper.</p>
           <p>Named <a href="api-reference.html#api-arda-backend-iardaexternalresourceprovider-4c32a8df"><code>IArdaExternalResourceProvider</code></a> objects form a separate registry. They turn a provider name and stable 64-bit ID into complete native import descriptions consumed by <a href="api-reference.html#api-arda-backend-importexternaltexture-6d277d20"><code>ImportExternalTexture</code></a> or <a href="api-reference.html#api-arda-backend-importexternalbuffer-13f26bef"><code>ImportExternalBuffer</code></a>.</p>
         </section>
 
         <section id="d3d12">
           <h2>D3D12 device adoption</h2>
           <p><span class="status">TESTED API PATH</span> Focused backend tests exercise the D3D12 external-provider path. The host supplies one required <code>ID3D12Device*</code> and required graphics <code>ID3D12CommandQueue*</code>. Compute and copy queues are optional; absent queues are reported as unavailable capabilities. The optional factory does not enable presentation on the current external wrapper.</p>
-          <p>NVRHI retains COM references needed by its wrapper, but this never transfers host ownership to Arda. The host must still preserve device/plugin invariants and must not release or invalidate native state while any Arda wrapper or GPU submission can use it.</p>
+          <p>The native D3D12 module retains COM references needed by its wrapper, but this never transfers host ownership to Arda. The host must still preserve device/plugin invariants and must not release or invalidate native state while any Arda wrapper or GPU submission can use it.</p>
           <pre><code>class D3D12Provider final : public arda::backend::IArdaExternalDeviceProvider
 {
 public:
@@ -158,15 +158,15 @@ private:
     arda::backend::FArdaExternalDeviceDesc mDesc;
     eastl::shared_ptr&lt;void&gt; mLifetime;
 };</code></pre>
-          <p>The NVRHI D3D12 module accepts optional <a href="api-reference.html#api-arda-backend-external-device-property"><code>FArdaExternalDeviceProperty</code></a> values named <code>rtv-heap-size</code>, <code>dsv-heap-size</code>, <code>srv-heap-size</code>, <code>sampler-heap-size</code>, <code>max-timer-queries</code>, <code>heap-directly-indexed</code>, <code>aftermath</code>, <code>log-buffer-lifetime</code>, <code>ray-tracing-validation</code>, and <code>enhanced-barriers</code>. Omitted properties use module-private defaults. Other modules define their own property vocabulary; applications must not assume these names are portable.</p>
+          <p>The native D3D12 module requires an <code>ID3D12Device</code> and a direct graphics <code>ID3D12CommandQueue</code>. Other modules may define an additional property vocabulary; applications must not assume module-specific names are portable.</p>
         </section>
 
         <section id="vulkan">
-          <h2>Vulkan device adoption</h2>
-          <p><span class="status">SYNTHESIZED / CONTRACT PATH</span> Supply the live instance, physical device, logical device, required graphics queue, and optional compute/copy queues through the same universal descriptor. Queue family and queue index live in <code>FArdaExternalQueueDesc</code>. Repeated <code>instance-extension</code> and <code>device-extension</code> properties copy the host's enabled extension names into the NVRHI adapter.</p>
+          <h2>Vulkan device adoption for custom modules</h2>
+          <p><span class="status">NOT IMPLEMENTED BY NATIVE-VULKAN</span> The provider contract can describe a live instance, physical device, logical device, queues, families, and enabled extensions, but the checked-in <code>native-vulkan</code> module currently creates and owns its device and rejects external-device mode. The following schema is guidance for a custom Vulkan or engine module, not a supported path in the checked-in provider.</p>
           <p>The physical/logical device contract is Vulkan 1.3 or newer with dynamic rendering, synchronization2, and timeline semaphore features enabled. Initialization can query physical-device support, but Vulkan cannot retrospectively report which feature bits the host enabled when it created <code>VkDevice</code>. The properties are therefore host assertions: report enabled state, not adapter support alone.</p>
           <pre><code>arda::backend::FArdaExternalDeviceDesc d;
-d.mBackendName = "nvrhi-vulkan";
+d.mBackendName = "custom-vulkan";
 d.mNativeApi = "vulkan";
 d.mInstance = arda::backend::FArdaNativeObject(vkInstance);
 d.mAdapter = arda::backend::FArdaNativeObject(vkPhysicalDevice);
@@ -233,7 +233,7 @@ d.mProperties.push_back({ "buffer-device-address", "true" });</code></pre>
           <h2>Unreal adapter recipe</h2>
           <p><span class="status">SYNTHESIZED / CONTRACT PATH</span> Core ArdaBackend has no Unreal dependency and the repository contains no end-to-end Unreal sample. An engine plugin should isolate Unreal headers and native extraction in an adapter module:</p>
           <ol>
-            <li>Implement a dedicated <code>unreal-rhi</code> backend module, or intentionally use an NVRHI-native module when the engine exposes a supported native-device contract. Do not cast an untyped global RHI pointer by assumption.</li>
+            <li>Implement a dedicated <code>unreal-rhi</code> backend module, or intentionally use a native module when the engine exposes a supported native-device contract. Do not cast an untyped global RHI pointer by assumption.</li>
             <li>Return a generic <code>FArdaExternalDeviceDesc</code> with the exact module name, native API identifier, stable named host objects, versioned backend data where needed, queue roles, properties, and a lifetime token that pins the plugin/RHI integration state. The selected module privately converts that data to its native or engine API.</li>
             <li>Use an engine-supported queue marshalling/coordination facility conceptually similar to <code>RHIRunOnQueue</code> to flush prior work, exclude the independent RHI submission thread, run the complete Arda interval, and resume the engine.</li>
             <li>Expose Unreal resources through one named resource provider whose stable IDs are generation-aware and whose descriptors mirror actual native allocation and current state.</li>
@@ -302,7 +302,7 @@ arda::backend::UnregisterExternalDeviceProvider(deviceProvider);</code></pre>
             <dt>Crash during engine or plugin shutdown</dt>
             <dd>Search for copied device refs, imported resources, descriptors/caches retaining them, callbacks still running, or Vulkan handles destroyed before wrapper release. Backend shutdown alone does not invalidate copied refs.</dd>
             <dt>Attempted heap or acceleration-structure import fails</dt>
-            <dd>The integration exposes texture and buffer import only. Existing native heaps and acceleration structures are outside the supported NVRHI import boundary.</dd>
+            <dd>The integration exposes texture and buffer import only. Existing native heaps and acceleration structures are outside the supported portable import boundary.</dd>
           </dl>
         </section>
 

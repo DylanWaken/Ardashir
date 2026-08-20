@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
 import argparse
-import platform
 import subprocess
 from pathlib import Path
 
 
 def parse_arguments() -> argparse.Namespace:
     source_directory = Path(__file__).resolve().parent.parent
-    default_build = (
-        source_directory / ("build" if platform.system() == "Windows" else "build-linux")
-    )
+    # Keep the test runner isolated from developer/IDE build trees. CMake build
+    # directories are tied to one generator, and reusing a Visual Studio tree
+    # from Ninja (or vice versa) leaves FetchContent sub-builds inconsistent.
+    default_build = source_directory / "build-tests"
 
     parser = argparse.ArgumentParser(
         description="Configure, build, and run all Ardashir tests."
@@ -20,6 +20,7 @@ def parse_arguments() -> argparse.Namespace:
         nargs="?",
         type=Path,
         default=default_build,
+        help="isolated CMake build directory (default: %(default)s)",
     )
     parser.add_argument("configuration", nargs="?", default="Debug")
     return parser.parse_args()

@@ -1,11 +1,12 @@
-/** @file ArdaNvrhiPipelineCacheCommon.h
- *  Shared private persistence helpers for native NVRHI sidecars.
+/** @file ArdaNativePipelineCache.h
+ * Shared, provider-owned persistence helpers for native pipeline caches.
  */
 #pragma once
 
 #include "ArdaDevice.h"
 
 #include <EASTL/string.h>
+
 #include <filesystem>
 #include <vector>
 
@@ -14,13 +15,14 @@ namespace arda::backend
     class IArdaDiagnosticCallback;
 }
 
-namespace arda::rhi::private_impl::pipeline_cache
+namespace arda::rhi::native::pipeline_cache
 {
-    constexpr uint64_t MaxPayloadSize = 256ull * 1024ull * 1024ull;
+    inline constexpr uint64_t MaxPayloadSize = 256ull * 1024ull * 1024ull;
 
-    void Warn(
+    void Message(
         backend::IArdaDiagnosticCallback* Callback,
-        const char* Message) noexcept;
+        backend::EArdaDiagnosticSeverity Severity,
+        const char* Text) noexcept;
 
     [[nodiscard]] std::filesystem::path MakePath(
         const std::filesystem::path& Directory,
@@ -29,10 +31,12 @@ namespace arda::rhi::private_impl::pipeline_cache
     [[nodiscard]] bool ReadBlob(
         const std::filesystem::path& Path,
         const eastl::string& BackendName,
+        backend::EArdaBackendType Backend,
         std::vector<uint8_t>& Payload);
 
     [[nodiscard]] bool WriteBlob(
         const std::filesystem::path& Path,
         const eastl::string& BackendName,
+        backend::EArdaBackendType Backend,
         const std::vector<uint8_t>& Payload);
 }

@@ -8,7 +8,7 @@ project stem in type names and as the prefix for filenames.
 
 - Use U.S. English for names, comments, logs, and documentation.
 - Use descriptive names and avoid abbreviations unless they are established
-  domain terms, such as `GPU`, `D3D12`, or `NVRHI`.
+  domain terms, such as `GPU`, `D3D12`, or `RHI`.
 - Use `PascalCase` without underscores for types, functions, variables,
   constants, and enum values, except for required variable prefixes.
 - Use lowercase names for namespaces, for example `arda::backend`.
@@ -29,7 +29,7 @@ prefix with the `Arda` project stem:
 class FArdaBackendDevice;
 struct FArdaBackendConfiguration;
 enum class EArdaBackendType;
-using FArdaDeviceHandle = nvrhi::DeviceHandle;
+using FArdaDeviceHandle = arda::rhi::FArdaRHIDeviceRef;
 
 template <typename ElementType>
 class TArdaArray;

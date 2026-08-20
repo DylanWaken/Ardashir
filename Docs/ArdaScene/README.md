@@ -30,7 +30,7 @@ It will not be:
 
 - a gameplay ECS;
 - a world simulation;
-- an owner of NVRHI or ArdaRenderGraph objects;
+- an owner of backend or ArdaRenderGraph objects;
 - a container of Unreal types;
 - a hard-coded GPU memory layout;
 - a list of rendering callbacks.
@@ -74,7 +74,7 @@ used by the initial tests.
 No public `ArdaScene` header may include:
 
 - Unreal Engine headers;
-- NVRHI headers;
+- native graphics API headers;
 - ArdaBackend headers;
 - ArdaRenderGraph headers;
 - D3D12 or Vulkan headers.
@@ -153,10 +153,8 @@ Source/ArdaScene/Private/
   ArdaSceneValidation.cpp
 ```
 
-The current public `nvrhi` dependency in
-`Source/ArdaScene/CMakeLists.txt` should be removed when this plan is
-implemented. `ArdaScene` should depend only on EASTL and project-owned,
-platform-neutral utility or math code.
+`ArdaScene` should depend only on EASTL and project-owned, backend-neutral
+interfaces. It must not link a concrete native backend module directly.
 
 Future modules such as `ArdaSceneGPU`, `ArdaInterop`, `ArdaGI`, and
 `Integrations/Unreal/ArdaUnreal` are consumers or producers of this API. They
@@ -328,7 +326,7 @@ struct FArdaExternalDataDesc
 - optional stride;
 - debug name.
 
-It does not contain NVRHI handles, `FRHI*`, native pointers, resource states,
+It does not contain backend-specific handles, `FRHI*`, native pointers, resource states,
 queues, or fences. Those belong to a future realization layer.
 
 ### Procedural source
@@ -359,7 +357,7 @@ Define `EArdaDataFormat` for representation-relevant values:
 - matrix component formats;
 - common texture formats required by materials and environments.
 
-The enum must not mirror all NVRHI formats. It should describe scene data
+The enum must not mirror all native API formats. It should describe scene data
 semantics. Future consumers map it to their own APIs.
 
 ### Data views
@@ -504,7 +502,7 @@ The record does not contain:
 - build flags;
 - scratch requirements;
 - shader binding table offsets;
-- NVRHI geometry descriptors.
+- native API geometry descriptors.
 
 Those are derived by a future renderer from geometry semantics.
 
@@ -1093,7 +1091,7 @@ Publish a second snapshot changing only the transform and verify:
 - geometry and material revisions do not change;
 - only transform change flags are emitted;
 - snapshot one remains readable;
-- no NVRHI, backend, RDG, or Unreal dependency is required.
+- no native backend, RDG, or Unreal dependency is required.
 
 ### Mock hosted-producer test
 
@@ -1120,7 +1118,7 @@ Define:
 - engine-neutral formats;
 - diagnostics and extension IDs.
 
-Exit criterion: foundational types compile without NVRHI or Unreal.
+Exit criterion: foundational types compile without a native graphics API or Unreal.
 
 ### Phase 2: data and layout records
 
@@ -1189,7 +1187,7 @@ and host-integration modules.
 Separate future plans will cover:
 
 - GPU scene realization;
-- NVRHI and ArdaRenderGraph resource import;
+- ArdaBackend and ArdaRenderGraph resource import;
 - acceleration structures;
 - bindless resource management;
 - shared-device and synchronization contracts;
@@ -1207,7 +1205,7 @@ representation milestone.
 
 The representation plan is complete when:
 
-1. `ArdaScene` builds and tests without NVRHI, ArdaBackend, ArdaRenderGraph, or
+1. `ArdaScene` builds and tests without a native backend module, ArdaRenderGraph, or
    Unreal.
 2. A standalone application can represent a complete scene using immutable CPU
    data and canonical layouts.

@@ -97,23 +97,31 @@ if(ARDASHIR_BUILD_TESTS)
         ARDA_ENABLE_CHECKS
         ARDA_BACKEND_TEST_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/TestShaderCache"
         ARDA_BACKEND_TEST_SHADER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/Tests")
-    if(ARDASHIR_BACKEND_NVRHI_VULKAN)
+    if(ARDASHIR_BACKEND_VULKAN)
         target_compile_definitions(ArdaBackendTests PRIVATE
-            ARDA_TEST_NVRHI_VULKAN)
+            ARDA_TEST_NATIVE_VULKAN)
     endif()
-    if(WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12)
+    if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         target_compile_definitions(ArdaBackendTests PRIVATE
-            ARDA_TEST_NVRHI_D3D12)
+            ARDA_TEST_NATIVE_D3D12)
     endif()
     target_include_directories(ArdaBackendTests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/Private")
     target_link_libraries(ArdaBackendTests PRIVATE Ardashir::ArdaBackend GTest::gtest)
+    if(WIN32 AND ARDASHIR_BACKEND_D3D12)
+        target_include_directories(ArdaBackendTests PRIVATE
+            "${ARDASHIR_D3D12_AGILITY_INCLUDE_DIR}")
+        ardashir_deploy_d3d12_agility(ArdaBackendTests)
+    endif()
     set_target_properties(ArdaBackendTests PROPERTIES FOLDER "Ardashir/Tests")
     gtest_discover_tests(ArdaBackendTests)
 
     add_executable(ArdaRHITests Tests/ArdaRHITests.cpp)
     target_compile_definitions(ArdaRHITests PRIVATE ARDA_ENABLE_CHECKS)
     target_link_libraries(ArdaRHITests PRIVATE Ardashir::ArdaBackend GTest::gtest_main)
+    if(WIN32 AND ARDASHIR_BACKEND_D3D12)
+        ardashir_deploy_d3d12_agility(ArdaRHITests)
+    endif()
     set_target_properties(ArdaRHITests PROPERTIES FOLDER "Ardashir/Tests")
     gtest_discover_tests(ArdaRHITests)
 endif()

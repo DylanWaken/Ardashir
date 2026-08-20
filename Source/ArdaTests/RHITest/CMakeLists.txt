@@ -9,7 +9,7 @@ target_compile_features(RHITest PRIVATE cxx_std_17)
 target_compile_definitions(RHITest PRIVATE
     GLFW_INCLUDE_NONE
     ARDA_RHI_TEST_SHADER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/Shaders")
-if(ARDASHIR_BACKEND_NVRHI_VULKAN)
+if(ARDASHIR_BACKEND_VULKAN)
     target_compile_definitions(RHITest PRIVATE ARDA_TEST_WITH_VULKAN)
 endif()
 target_include_directories(RHITest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
@@ -34,14 +34,14 @@ set_target_properties(RHITest PROPERTIES FOLDER "Ardashir/Tests/RHI")
 
 if(ARDASHIR_BUILD_TESTS)
     set(RHI_GPU_TESTS)
-    if(WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12)
+    if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         add_test(
             NAME RHITest.D3D12
             COMMAND RHITest --backend d3d12 --frames 1 --hidden
         )
         list(APPEND RHI_GPU_TESTS RHITest.D3D12)
     endif()
-    if(ARDASHIR_BACKEND_NVRHI_VULKAN)
+    if(ARDASHIR_BACKEND_VULKAN)
         add_test(
             NAME RHITest.Vulkan
             COMMAND RHITest --backend vulkan --frames 1 --hidden)
@@ -53,4 +53,8 @@ if(ARDASHIR_BUILD_TESTS)
             SKIP_RETURN_CODE 77
             TIMEOUT 30)
     endif()
+endif()
+
+if(WIN32 AND ARDASHIR_BACKEND_D3D12)
+    ardashir_deploy_d3d12_agility(RHITest)
 endif()

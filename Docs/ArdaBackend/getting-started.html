@@ -135,7 +135,7 @@
 
           <pre><code>// Exact implementation selection, independent of priority.
 arda::backend::FArdaBackendConfiguration config;
-config.mBackendName = "nvrhi-vulkan";
+config.mBackendName = "native-vulkan";
 
 // Or inspect the link-time module set before presenting a choice.
 for (const auto&amp; module : arda::backend::EnumerateBackendModules())
@@ -195,7 +195,7 @@ for (const auto&amp; module : arda::backend::EnumerateBackendModules())
             <li><strong>Ensure startup shaders when selected.</strong> Every active-backend registered permutation is checked against its persistent sidecar and compiled if policy allows. Failure occurs before a native device is created.</li>
             <li><strong>Select and create the linked backend.</strong> Core resolves the exact stable module name or highest-priority compatible descriptor, validates the requested device source, and asks the module to allocate its runtime device.</li>
             <li><strong>Initialize implementation state.</strong> The module creates or adopts its native/engine device and queues, checks required capabilities, and constructs the opaque RHI device.</li>
-            <li><strong>Load native pipeline-cache data when implemented.</strong> Ardashir-owned D3D12 and Vulkan sidecars in the NVRHI sample modules read a backend-named blob from the configured pipeline directory without modifying NVRHI. Custom modules define their own persistence representation and safe empty-cache fallback, then report support through <code>FArdaRHICapabilities::mbPipelineCachePersistence</code>.</li>
+            <li><strong>Load native pipeline-cache data.</strong> The checked-in modules validate their backend-tagged wrapper, initialize a D3D12 pipeline library or Vulkan pipeline cache, safely fall back to an empty cache, and report support through <code>FArdaRHICapabilities::mbPipelineCachePersistence</code>.</li>
             <li><strong>Create presentation state, if requested.</strong> The window surface and swap chain must succeed before publication.</li>
             <li><strong>Publish.</strong> Device, selected module name, compatibility class, source, and queue capabilities become the stable <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>; initialized state is released atomically afterward.</li>
           </ol>

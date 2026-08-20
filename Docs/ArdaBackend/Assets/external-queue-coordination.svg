@@ -33,7 +33,7 @@
 
   <text x="156" y="328" class="lane">Native queue</text>
   <line x1="180" y1="322" x2="1040" y2="322" class="axis"/>
-  <rect x="558" y="298" width="218" height="48" rx="9" class="arda"/><text x="667" y="319" class="body">Arda/NVRHI work + internal signals</text><text x="667" y="336" class="body">completion / retirement established</text>
+  <rect x="558" y="298" width="218" height="48" rx="9" class="arda"/><text x="667" y="319" class="body">Arda/native work + internal signals</text><text x="667" y="336" class="body">completion / retirement established</text>
   <text x="542" y="372" class="body">grant queue + incoming state</text>
   <text x="792" y="372" class="body">publish completion + outgoing state</text>
 

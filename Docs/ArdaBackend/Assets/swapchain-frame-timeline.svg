@@ -57,7 +57,7 @@
   <rect class="native" x="42" y="250" width="386" height="160" rx="8"/>
   <text class="label" x="235" y="277">Vulkan synchronization</text>
   <text class="small" x="235" y="302">AcquireFrame: vkAcquireNextImageKHR signals imageAvailable[frame]</text>
-  <text class="small" x="235" y="326">NVRHI graphics queue waits for imageAvailable before rendering</text>
+  <text class="small" x="235" y="326">Native graphics queue waits for image acquisition before rendering</text>
   <text class="small" x="235" y="350">PrepareSubmit: queue signals renderFinished[frame] after submitted work</text>
   <text class="small" x="235" y="374">Present waits for renderFinished, then advances frameIndex</text>
   <text class="small" x="235" y="397">out-of-date acquire/present recreates the swap chain</text>

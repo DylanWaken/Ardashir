@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="backend-provider-title backend-provider-desc">
   <title id="backend-provider-title">ArdaBackend provider selection and runtime flow</title>
-  <desc id="backend-provider-desc">The application configures a stable backend name. Link-generated registration populates the core registry with NVRHI Vulkan, NVRHI D3D12, or custom engine modules. The selected module creates a backend device, which exposes Arda RHI, optional presentation, and shader compiler services. External hosts supply generic device and resource descriptors directly to the selected module.</desc>
+  <desc id="backend-provider-desc">The application configures a stable backend name. Link-generated registration populates the core registry with native Vulkan, native D3D12, or custom engine modules. The selected module creates a backend device, which exposes Arda RHI, optional presentation, and shader compiler services. External hosts supply generic device and resource descriptors directly to a module that supports adoption.</desc>
   <defs>
     <marker id="backend-provider-arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L0,6 L9,3 z" fill="#6ea8fe"/>
@@ -21,10 +21,10 @@
   <path d="M290 108 H370" class="arrow"/>
 
   <rect x="65" y="245" width="265" height="100" rx="12" class="module"/>
-  <text x="197" y="284" text-anchor="middle" class="label">nvrhi-vulkan</text>
+  <text x="197" y="284" text-anchor="middle" class="label">native-vulkan</text>
   <text x="197" y="315" text-anchor="middle" class="small">Vulkan + SPIR-V</text>
   <rect x="365" y="245" width="265" height="100" rx="12" class="module"/>
-  <text x="497" y="284" text-anchor="middle" class="label">nvrhi-d3d12</text>
+  <text x="497" y="284" text-anchor="middle" class="label">native-d3d12</text>
   <text x="497" y="315" text-anchor="middle" class="small">D3D12 + DXIL</text>
   <rect x="665" y="245" width="265" height="100" rx="12" class="module"/>
   <text x="797" y="284" text-anchor="middle" class="label">custom module</text>

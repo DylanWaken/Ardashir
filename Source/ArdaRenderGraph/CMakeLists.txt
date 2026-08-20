@@ -36,6 +36,9 @@ if(ARDASHIR_BUILD_TESTS)
         Ardashir::ArdaBackend
         GTest::gtest_main
     )
+    if(WIN32 AND ARDASHIR_BACKEND_D3D12)
+        ardashir_deploy_d3d12_agility(ArdaGraphTests)
+    endif()
     set_target_properties(ArdaGraphTests PROPERTIES FOLDER "Ardashir/Tests")
     gtest_discover_tests(ArdaGraphTests)
 endif()

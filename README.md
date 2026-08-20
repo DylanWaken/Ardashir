@@ -4,10 +4,10 @@
 
 Ardashir is a modular C++ research and development runtime for real-time
 rendering, ray-traced global illumination, GPU physics, and deep-learning
-systems. Its GPU-facing modules use ArdaBackend's provider-neutral RHI. NVRHI
-Vulkan and NVRHI D3D12 are shipped as separate sample provider libraries; a
-native API or engine RHI provider can replace them without changing renderer
-code.
+systems. Its GPU-facing modules use ArdaBackend's provider-neutral RHI. Native
+Vulkan 1.4 and Direct3D 12 Agility SDK providers are shipped as separate,
+linkable backend libraries; an engine RHI provider can replace them without
+changing renderer code.
 
 **Documentation:** [Canonical GitHub Pages URL](https://dylanwaken.github.io/Ardashir/) · [Documentation source](Docs/index.html)
 
@@ -18,7 +18,7 @@ code.
   [provider module contract](Docs/ArdaBackend/BackendModules.md).
 
 - **[ArdaRenderGraph](Source/ArdaRenderGraph)** — A foundational render
-  dependency graph implementation on top of NVRHI. It schedules rendering work
+  dependency graph implementation on top of ArdaBackend. It schedules rendering work
   and manages resource dependencies, transitions, queues, and lifetimes.
 
 - **[ArdaScene](Docs/ArdaScene/README.md)** — Planned engine-neutral scene
@@ -46,16 +46,17 @@ and tested API components; it is not a checked-in end-to-end RT sample.
 
 ## Dependencies
 
-- [NVRHI](https://github.com/NVIDIA-RTX/NVRHI) for the sample Vulkan/D3D12 providers
 - [GoogleTest](https://github.com/google/googletest) for module tests
 - [GLFW](https://github.com/glfw/glfw) for cross-platform windows and surfaces
+- [Vulkan-Headers](https://github.com/KhronosGroup/Vulkan-Headers) 1.4.357
+- Direct3D 12 Agility SDK 1.619.5 on Windows
 - CMake 3.16 or newer
 - A C++17 compiler
 
-The root build downloads pinned GLFW and DirectX Shader Compiler releases.
-DXC compiles the triangle shaders to DXIL and SPIR-V. NVRHI fetches the
-required DirectX and Vulkan headers, so a separately installed Vulkan SDK is
-not required.
+The root build downloads pinned GLFW, DirectX Shader Compiler, Vulkan-Headers,
+and Direct3D 12 Agility releases. DXC compiles shaders to DXIL and SPIR-V. The
+Vulkan backend dynamically loads the platform Vulkan loader, so a separately
+installed Vulkan SDK is not required.
 
 ## Building
 
@@ -90,8 +91,8 @@ ctest --test-dir build-linux --output-on-failure
 
 Set `ARDASHIR_BUILD_TESTS=OFF` to omit GoogleTest and the module test targets.
 Set `ARDASHIR_BUILD_RHI_TEST=OFF` to omit the graphics integration test.
-Set `ARDASHIR_BACKEND_NVRHI_VULKAN=OFF` or
-`ARDASHIR_BACKEND_NVRHI_D3D12=OFF` to omit either sample provider. Turning both
+Set `ARDASHIR_BACKEND_VULKAN=OFF` or
+`ARDASHIR_BACKEND_D3D12=OFF` to omit either native provider. Turning both
 off leaves ArdaBackend ready for a host-supplied provider library.
 Set `ARDASHIR_ENABLE_TRACE=OFF` to compile trace instrumentation to no-ops.
 
@@ -119,21 +120,21 @@ python Scripts\RunTraceViewer.py frame.ardatrace
 The viewer binds to loopback by default. Open the displayed URL to inspect
 thread timelines, nested scopes, counters, markers, and aggregate statistics.
 
-## NVRHI triangle
+## Native RHI triangle
 
-`NVRHITest` is a minimal indexed, vertex-colored triangle application. It
+`RHITest` is a minimal indexed, vertex-colored triangle application. It
 supports D3D12 and Vulkan on Windows and Vulkan on Linux. D3D12 is the Windows
 default:
 
 ```powershell
-.\build\Source\ArdaTests\NVRHITest\Debug\NVRHITest.exe
-.\build\Source\ArdaTests\NVRHITest\Debug\NVRHITest.exe --backend vulkan
+.\build\Source\ArdaTests\RHITest\Debug\RHITest.exe
+.\build\Source\ArdaTests\RHITest\Debug\RHITest.exe --backend vulkan
 ```
 
 Linux uses Vulkan by default:
 
 ```sh
-./build-linux/Source/ArdaTests/NVRHITest/NVRHITest
+./build-linux/Source/ArdaTests/RHITest/RHITest
 ```
 
 Use `--frames N` to close after a fixed number of frames and `--hidden` for a
@@ -145,7 +146,7 @@ ctest --test-dir build -C Debug -L gpu --output-on-failure
 ```
 
 A missing graphics backend returns CTest's skip code; rendering, presentation,
-shader, or NVRHI validation failures fail the test.
+shader, native API validation, or presentation failures fail the test.
 
 ## Documentation deployment
 

@@ -15,7 +15,7 @@ target_compile_features(ARDGExample PRIVATE cxx_std_17)
 target_compile_definitions(ARDGExample PRIVATE
     GLFW_INCLUDE_NONE
 )
-if(ARDASHIR_BACKEND_NVRHI_VULKAN)
+if(ARDASHIR_BACKEND_VULKAN)
     target_compile_definitions(ARDGExample PRIVATE ARDA_TEST_WITH_VULKAN)
 endif()
 target_include_directories(ARDGExample PRIVATE
@@ -42,14 +42,14 @@ set_target_properties(ARDGExample PROPERTIES FOLDER "Ardashir/Tests/ARDG")
 
 if(ARDASHIR_BUILD_TESTS)
     set(ARDG_EXAMPLE_GPU_TESTS)
-    if(WIN32 AND ARDASHIR_BACKEND_NVRHI_D3D12)
+    if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         add_test(
             NAME ARDGExample.D3D12
             COMMAND ARDGExample --backend d3d12 --frames 1 --hidden
         )
         list(APPEND ARDG_EXAMPLE_GPU_TESTS ARDGExample.D3D12)
     endif()
-    if(ARDASHIR_BACKEND_NVRHI_VULKAN)
+    if(ARDASHIR_BACKEND_VULKAN)
         add_test(
             NAME ARDGExample.Vulkan
             COMMAND ARDGExample --backend vulkan --frames 1 --hidden)
@@ -61,4 +61,8 @@ if(ARDASHIR_BUILD_TESTS)
             SKIP_RETURN_CODE 77
             TIMEOUT 30)
     endif()
+endif()
+
+if(WIN32 AND ARDASHIR_BACKEND_D3D12)
+    ardashir_deploy_d3d12_agility(ARDGExample)
 endif()
