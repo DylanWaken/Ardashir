@@ -60,6 +60,7 @@ namespace arda::tests::ardg_example
         float mCameraYaw = 0.78539816f;
         float mCameraPitch = -0.67453292f;
         float mElapsedSeconds = 0.0f;
+        bool mbTerrainReadbackValidated = false;
 
         eastl::string mError;
     };

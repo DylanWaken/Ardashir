@@ -45,14 +45,14 @@ if(ARDASHIR_BUILD_TESTS)
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         add_test(
             NAME ARDGExample.D3D12
-            COMMAND ARDGExample --backend d3d12 --frames 1 --hidden
+            COMMAND ARDGExample --backend d3d12 --frames 3 --hidden
         )
         list(APPEND ARDG_EXAMPLE_GPU_TESTS ARDGExample.D3D12)
     endif()
     if(ARDASHIR_BACKEND_VULKAN)
         add_test(
             NAME ARDGExample.Vulkan
-            COMMAND ARDGExample --backend vulkan --frames 1 --hidden)
+            COMMAND ARDGExample --backend vulkan --frames 3 --hidden)
         list(APPEND ARDG_EXAMPLE_GPU_TESTS ARDGExample.Vulkan)
     endif()
     if(ARDG_EXAMPLE_GPU_TESTS)

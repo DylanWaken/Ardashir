@@ -27,6 +27,10 @@ namespace
                 "ArdaBackendTestCompute", StructSource.c_str(),
                 "ArdaShaderStructTest", "ShaderStructTestCS",
                 Stage::Compute, nullptr);
+            FArdaShaderTypeRegistration VulkanLayoutCompute(
+                "ArdaBackendTestVulkanLayoutCompute", StructSource.c_str(),
+                "ArdaVulkanLayoutTest", "VulkanLayoutTestCS",
+                Stage::Compute, nullptr);
             FArdaShaderTypeRegistration Vertex(
                 "ArdaBackendTestVertex", StructSource.c_str(),
                 "ArdaPipelineStateTestVS", "PipelineStateTestVS",

@@ -2,7 +2,12 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <fstream>
+#include <mutex>
+#include <thread>
 #include <vector>
 
 #if defined(_WIN32) && defined(ARDA_TEST_NATIVE_D3D12)
@@ -75,6 +80,28 @@ namespace
     private:
         std::vector<arda::backend::IArdaExternalDeviceProvider*> mDeviceProviders;
         std::vector<arda::backend::IArdaExternalResourceProvider*> mResourceProviders;
+    };
+
+    class FCollectingDiagnosticCallback final
+        : public arda::backend::IArdaDiagnosticCallback
+    {
+    public:
+        void Message(
+            arda::backend::EArdaDiagnosticSeverity Severity,
+            const char*) override
+        {
+            if (Severity == arda::backend::EArdaDiagnosticSeverity::Error ||
+                Severity == arda::backend::EArdaDiagnosticSeverity::Fatal)
+                mErrors.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        [[nodiscard]] uint32_t GetErrorCount() const noexcept
+        {
+            return mErrors.load(std::memory_order_relaxed);
+        }
+
+    private:
+        std::atomic<uint32_t> mErrors{ 0 };
     };
 
     class FTestDeviceProvider final
@@ -1367,6 +1394,122 @@ TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
     EXPECT_GT(TestedBackends, 0u);
 }
 
+TEST(ArdaBackend, NativeHostDeviceCopiesSupportBlockingAndAsyncReadback)
+{
+    using namespace arda;
+    using namespace backend;
+    using namespace rhi;
+
+    FExternalTestCleanup Cleanup;
+    size_t TestedBackends = 0;
+    for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
+    {
+        if (Module.mBackendType != EArdaBackendType::D3D12 &&
+            Module.mBackendType != EArdaBackendType::Vulkan)
+            continue;
+        ShutdownBackend();
+        FArdaBackendConfiguration Configuration;
+        Configuration.mBackendName = Module.mName;
+        Configuration.mBackend = Module.mBackendType;
+        Configuration.mbEnableValidation = false;
+        Configuration.mShaderCompilationMode =
+            EArdaShaderCompilationMode::LoadOnly;
+        ASSERT_TRUE(ConfigureBackend(Configuration));
+        ASSERT_TRUE(InitializeBackend())
+            << Module.mName.c_str() << ": " << GetBackendError().c_str();
+        ++TestedBackends;
+
+        FArdaRHIDeviceRef Device = GetDevice();
+        ASSERT_TRUE(Device);
+        const auto Baseline = Device->GetResourceLifetimeStats();
+        FArdaRHIBufferDesc BufferDesc;
+        BufferDesc.mDebugName = "Host/device copy test";
+        BufferDesc.mByteSize = 64;
+        BufferDesc.mInitialState = EArdaRHIResourceState::Common;
+        auto Buffer = Device->CreateBuffer(BufferDesc);
+        ASSERT_TRUE(Buffer);
+
+        eastl::vector<uint8_t> Expected(BufferDesc.mByteSize);
+        for (size_t Index = 0; Index < Expected.size(); ++Index)
+            Expected[Index] = static_cast<uint8_t>(Index * 13u + 7u);
+        eastl::vector<uint8_t> BlockingReadback;
+        auto BlockingCommands = Device->CreateCommandList(
+            EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(BlockingCommands);
+        ASSERT_TRUE(BlockingCommands.mValue->Open());
+        ASSERT_TRUE(BlockingCommands.mValue->CopyBufferHostToDevice(
+            *Buffer.mValue, Expected.data(), Expected.size()));
+        ASSERT_TRUE(BlockingCommands.mValue->CopyBufferDeviceToHost(
+            *Buffer.mValue, BlockingReadback));
+        ASSERT_TRUE(BlockingCommands.mValue->Close());
+        ASSERT_TRUE(Device->ExecuteCommandList(BlockingCommands.mValue));
+        EXPECT_EQ(BlockingReadback, Expected) << Module.mName.c_str();
+
+        for (size_t Index = 0; Index < Expected.size(); ++Index)
+            Expected[Index] = static_cast<uint8_t>(Index * 29u + 3u);
+        std::mutex CallbackMutex;
+        std::condition_variable CallbackCondition;
+        uint32_t CallbackCount = 0;
+        FArdaRHIStatus UploadStatus;
+        FArdaRHIBufferReadbackResult AsyncReadback;
+        std::thread::id UploadThread;
+        std::thread::id ReadbackThread;
+        const std::thread::id CallingThread = std::this_thread::get_id();
+
+        auto AsyncCommands = Device->CreateCommandList(
+            EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(AsyncCommands);
+        ASSERT_TRUE(AsyncCommands.mValue->Open());
+        ASSERT_TRUE(AsyncCommands.mValue->CopyBufferHostToDeviceAsync(
+            *Buffer.mValue, Expected.data(), Expected.size(),
+            [&](FArdaRHIStatus Status)
+            {
+                std::lock_guard<std::mutex> Lock(CallbackMutex);
+                UploadStatus = eastl::move(Status);
+                UploadThread = std::this_thread::get_id();
+                ++CallbackCount;
+                CallbackCondition.notify_all();
+            }));
+        ASSERT_TRUE(AsyncCommands.mValue->CopyBufferDeviceToHostAsync(
+            *Buffer.mValue,
+            [&](FArdaRHIBufferReadbackResult Result)
+            {
+                std::lock_guard<std::mutex> Lock(CallbackMutex);
+                AsyncReadback = eastl::move(Result);
+                ReadbackThread = std::this_thread::get_id();
+                ++CallbackCount;
+                CallbackCondition.notify_all();
+            }));
+        ASSERT_TRUE(AsyncCommands.mValue->Close());
+        ASSERT_TRUE(Device->ExecuteCommandList(AsyncCommands.mValue));
+        {
+            std::unique_lock<std::mutex> Lock(CallbackMutex);
+            ASSERT_TRUE(CallbackCondition.wait_for(
+                Lock, std::chrono::seconds(10),
+                [&] { return CallbackCount == 2; }))
+                << Module.mName.c_str();
+        }
+        EXPECT_TRUE(UploadStatus) << UploadStatus.mMessage.c_str();
+        EXPECT_TRUE(AsyncReadback) << AsyncReadback.mStatus.mMessage.c_str();
+        EXPECT_EQ(AsyncReadback.mValue, Expected) << Module.mName.c_str();
+        EXPECT_NE(UploadThread, CallingThread);
+        EXPECT_NE(ReadbackThread, CallingThread);
+
+        BlockingCommands.mValue = nullptr;
+        AsyncCommands.mValue = nullptr;
+        Buffer.mValue = nullptr;
+        ASSERT_TRUE(Device->WaitForIdle());
+        Device->RunGarbageCollection();
+        const auto After = Device->GetResourceLifetimeStats();
+        EXPECT_EQ(After.GetLiveResourceCount(EArdaRHIResourceType::Buffer),
+            Baseline.GetLiveResourceCount(EArdaRHIResourceType::Buffer));
+        EXPECT_EQ(After.mPendingSubmissions, Baseline.mPendingSubmissions);
+        Device = nullptr;
+        ShutdownBackend();
+    }
+    EXPECT_GT(TestedBackends, 0u);
+}
+
 #if defined(ARDA_TEST_NATIVE_VULKAN)
 TEST(ArdaBackend, VulkanMergesStageLayoutsThatShareARegisterSpace)
 {
@@ -1375,6 +1518,7 @@ TEST(ArdaBackend, VulkanMergesStageLayoutsThatShareARegisterSpace)
     using namespace rhi;
 
     ShutdownBackend();
+    FCollectingDiagnosticCallback Diagnostics;
     FExternalTestCleanup Cleanup;
     IArdaBackendModule* Module = FindBackendModule("native-vulkan");
     ASSERT_NE(Module, nullptr);
@@ -1382,6 +1526,7 @@ TEST(ArdaBackend, VulkanMergesStageLayoutsThatShareARegisterSpace)
     Configuration.mBackendName = Module->GetDescriptor().mName;
     Configuration.mBackend = EArdaBackendType::Vulkan;
     Configuration.mbEnableValidation = true;
+    Configuration.mMessageCallback = &Diagnostics;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
     ASSERT_TRUE(ConfigureBackend(Configuration));
     ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
@@ -1476,8 +1621,23 @@ TEST(ArdaBackend, VulkanMergesStageLayoutsThatShareARegisterSpace)
         auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
         ASSERT_TRUE(Commands);
         ASSERT_TRUE(Commands.mValue->Open());
+        Commands.mValue->SetAutomaticBarriers(false);
+        ASSERT_TRUE(Commands.mValue->BeginTrackingTextureState(
+            *Source.mValue,
+            {},
+            EArdaRHIResourceState::ShaderResource));
         ASSERT_TRUE(Commands.mValue->SetTextureState(
             *Source.mValue, {}, EArdaRHIResourceState::ShaderResource));
+        ASSERT_TRUE(Commands.mValue->BeginTrackingTextureState(
+            *Target.mValue,
+            {},
+            EArdaRHIResourceState::RenderTarget));
+        ASSERT_TRUE(Commands.mValue->SetTextureState(
+            *Target.mValue, {}, EArdaRHIResourceState::RenderTarget));
+        ASSERT_TRUE(Commands.mValue->ClearTexture(
+            *Target.mValue,
+            {},
+            { 0.0f, 0.0f, 0.0f, 1.0f }));
         FArdaRHIGraphicsState State;
         State.mPipeline = Pipeline.mValue;
         State.mFramebuffer = Framebuffer.mValue;
@@ -1499,6 +1659,102 @@ TEST(ArdaBackend, VulkanMergesStageLayoutsThatShareARegisterSpace)
     const auto After = Device->GetResourceLifetimeStats();
     EXPECT_EQ(After.mDescriptorSets, Baseline.mDescriptorSets);
     EXPECT_EQ(After.mPendingSubmissions, Baseline.mPendingSubmissions);
+    EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+}
+
+TEST(ArdaBackend, VulkanPreservesPerMipLayoutsAcrossClearAndCompute)
+{
+    using namespace arda;
+    using namespace backend;
+    using namespace rhi;
+
+    ShutdownBackend();
+    FCollectingDiagnosticCallback Diagnostics;
+    FExternalTestCleanup Cleanup;
+    IArdaBackendModule* Module = FindBackendModule("native-vulkan");
+    ASSERT_NE(Module, nullptr);
+    FArdaBackendConfiguration Configuration;
+    Configuration.mBackendName = Module->GetDescriptor().mName;
+    Configuration.mBackend = EArdaBackendType::Vulkan;
+    Configuration.mbEnableValidation = true;
+    Configuration.mMessageCallback = &Diagnostics;
+    Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    FArdaRHIDeviceRef Device = GetDevice();
+    ASSERT_TRUE(Device);
+
+    auto Shader = CreateArtifactShader(
+        *Device,
+        EArdaBackendType::Vulkan,
+        "ArdaVulkanLayoutTest",
+        "VulkanLayoutTestCS",
+        EArdaRHIShaderStage::Compute);
+    ASSERT_TRUE(Shader);
+
+    FArdaRHIBindingLayoutDesc LayoutDesc;
+    LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+    LayoutDesc.mItems.push_back(
+        { 0, 1, EArdaRHIBindingType::TextureUAV });
+    auto Layout = Device->CreateBindingLayout(LayoutDesc);
+    ASSERT_TRUE(Layout);
+
+    FArdaRHITextureDesc TextureDesc;
+    TextureDesc.mDebugName = "Vulkan per-mip layout test";
+    TextureDesc.mWidth = 4;
+    TextureDesc.mHeight = 4;
+    TextureDesc.mMipLevels = 2;
+    TextureDesc.mFormat = EArdaRHIFormat::RGBA32Float;
+    TextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource |
+        EArdaRHITextureUsage::UnorderedAccess;
+    TextureDesc.mInitialState = EArdaRHIResourceState::Common;
+    auto Texture = Device->CreateTexture(TextureDesc);
+    ASSERT_TRUE(Texture);
+
+    FArdaRHIBindingSetDesc SetDesc;
+    SetDesc.mLayout = Layout.mValue;
+    FArdaRHIBindingItem Output;
+    Output.mSlot = 0;
+    Output.mType = EArdaRHIBindingType::TextureUAV;
+    Output.mResource = TArdaRHIRef<IArdaRHIResource>(Texture.mValue.Get());
+    Output.mView.mTextureRange = { 0, 1, 0, 1 };
+    SetDesc.mItems.push_back(eastl::move(Output));
+    auto BindingSet = Device->CreateBindingSet(SetDesc);
+    ASSERT_TRUE(BindingSet);
+
+    FArdaRHIComputePipelineDesc PipelineDesc;
+    PipelineDesc.mComputeShader = Shader.mValue;
+    PipelineDesc.mBindingLayouts.push_back(Layout.mValue);
+    auto Pipeline = Device->CreateComputePipeline(PipelineDesc);
+    ASSERT_TRUE(Pipeline);
+
+    auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+    ASSERT_TRUE(Commands);
+    ASSERT_TRUE(Commands.mValue->Open());
+    Commands.mValue->SetAutomaticBarriers(false);
+    const FArdaRHITextureSubresourceRange Mip0{ 0, 1, 0, 1 };
+    const FArdaRHITextureSubresourceRange Mip1{ 1, 1, 0, 1 };
+    ASSERT_TRUE(Commands.mValue->BeginTrackingTextureState(
+        *Texture.mValue, Mip0, EArdaRHIResourceState::Common));
+    ASSERT_TRUE(Commands.mValue->SetTextureState(
+        *Texture.mValue, Mip0, EArdaRHIResourceState::UnorderedAccess));
+    ASSERT_TRUE(Commands.mValue->ClearTexture(
+        *Texture.mValue, Mip0, { 0.0f, 0.0f, 0.0f, 0.0f }));
+    FArdaRHIComputeState State;
+    State.mPipeline = Pipeline.mValue;
+    State.mBindings.push_back(BindingSet.mValue);
+    ASSERT_TRUE(Commands.mValue->SetComputeState(State));
+    Commands.mValue->Dispatch(1, 1, 1);
+    ASSERT_TRUE(Commands.mValue->SetTextureState(
+        *Texture.mValue, Mip0, EArdaRHIResourceState::ShaderResource));
+    ASSERT_TRUE(Commands.mValue->BeginTrackingTextureState(
+        *Texture.mValue, Mip1, EArdaRHIResourceState::Common));
+    ASSERT_TRUE(Commands.mValue->SetTextureState(
+        *Texture.mValue, Mip1, EArdaRHIResourceState::ShaderResource));
+    ASSERT_TRUE(Commands.mValue->Close());
+    ASSERT_TRUE(Device->ExecuteCommandList(Commands.mValue));
+    ASSERT_TRUE(Device->WaitForIdle());
+    EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }
 #endif
 

@@ -177,6 +177,13 @@ namespace arda::rhi::native
             const FArdaRHITextureDesc& Desc) = 0;
         [[nodiscard]] virtual FArdaNativeObjectResult CreateBuffer(
             const FArdaRHIBufferDesc& Desc) = 0;
+        /** Maps a host-visible native buffer range. */
+        [[nodiscard]] virtual TArdaRHIResult<void*> MapBuffer(
+            const FArdaNativeObjectRef& Buffer,
+            uint64_t Offset,
+            size_t Size) = 0;
+        /** Unmaps a native buffer previously returned by MapBuffer. */
+        virtual void UnmapBuffer(const FArdaNativeObjectRef& Buffer) noexcept = 0;
         [[nodiscard]] virtual FArdaNativeObjectResult ImportTexture(
             const FArdaRHINativeTextureImportDesc& Desc) = 0;
         [[nodiscard]] virtual FArdaNativeObjectResult ImportBuffer(
@@ -202,6 +209,12 @@ namespace arda::rhi::native
         [[nodiscard]] virtual TArdaRHIResult<uint64_t> ExecuteCommandList(
             IArdaNativeCommandList& CommandList,
             EArdaRHIQueueType Queue) = 0;
+        /** Waits only for the requested submission when the API supports it. */
+        virtual FArdaRHIStatus WaitForSubmission(uint64_t Submission)
+        {
+            (void)Submission;
+            return WaitForIdle();
+        }
         virtual FArdaRHIStatus WaitForIdle() = 0;
         virtual void RunGarbageCollection() = 0;
         [[nodiscard]] virtual FArdaNativeLifetimeStats

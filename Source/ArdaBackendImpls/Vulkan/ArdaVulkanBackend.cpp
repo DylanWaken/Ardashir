@@ -39,6 +39,41 @@ namespace arda::backend
             return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Text.c_str());
         }
 
+        VKAPI_ATTR vk::Bool32 VKAPI_CALL VulkanDebugCallback(
+            vk::DebugUtilsMessageSeverityFlagBitsEXT MessageSeverity,
+            vk::DebugUtilsMessageTypeFlagsEXT,
+            const vk::DebugUtilsMessengerCallbackDataEXT* CallbackData,
+            void* UserData) noexcept
+        {
+            auto* CallbackSlot =
+                static_cast<std::atomic<IArdaDiagnosticCallback*>*>(UserData);
+            IArdaDiagnosticCallback* Callback = CallbackSlot
+                ? CallbackSlot->load(std::memory_order_acquire)
+                : nullptr;
+            if (!Callback)
+                return VK_FALSE;
+            EArdaDiagnosticSeverity Severity = EArdaDiagnosticSeverity::Info;
+            if (MessageSeverity ==
+                vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
+                Severity = EArdaDiagnosticSeverity::Error;
+            else if (MessageSeverity ==
+                vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
+                Severity = EArdaDiagnosticSeverity::Warning;
+            try
+            {
+                Callback->Message(
+                    Severity,
+                    CallbackData && CallbackData->pMessage
+                        ? CallbackData->pMessage
+                        : "Vulkan validation emitted an empty diagnostic.");
+            }
+            catch (...)
+            {
+                // Diagnostics must never unwind through a Vulkan callback.
+            }
+            return VK_FALSE;
+        }
+
         template <typename T>
         TArdaRHIResult<T> Fail(FArdaRHIStatus Status)
         {
@@ -280,6 +315,8 @@ namespace arda::backend
                     if (mDescriptorPool) mDevice.destroyDescriptorPool(mDescriptorPool);
                     mDevice.destroy();
                 }
+                if (mDebugMessenger && mInstance)
+                    mInstance.destroyDebugUtilsMessengerEXT(mDebugMessenger);
                 if (mSurface && mInstance) mInstance.destroySurfaceKHR(mSurface);
                 if (mInstance) mInstance.destroy();
             }
@@ -300,10 +337,12 @@ namespace arda::backend
             vk::Device mDevice;
             vk::Queue mQueue;
             vk::SurfaceKHR mSurface;
+            vk::DebugUtilsMessengerEXT mDebugMessenger;
             vk::DescriptorPool mDescriptorPool;
             uint32_t mQueueFamily = 0;
             std::mutex mQueueMutex;
             std::mutex mDescriptorMutex;
+            std::atomic<IArdaDiagnosticCallback*> mDiagnosticCallback{ nullptr };
             std::atomic<size_t> mAllocatedDescriptorSets{ 0 };
             std::atomic<uint64_t> mSubmission{ 0 };
         };
@@ -329,7 +368,8 @@ namespace arda::backend
             vk::Image mImage;
             vk::DeviceMemory mMemory;
             vk::ImageView mView;
-            vk::ImageLayout mLayout = vk::ImageLayout::eUndefined;
+            eastl::vector<vk::ImageLayout> mLayouts;
+            std::mutex mLayoutMutex;
             bool mbOwned = true;
         };
 
@@ -510,12 +550,22 @@ namespace arda::backend
             }
             void EndRendering();
             void GlobalBarrier();
+            eastl::vector<vk::ImageLayout>& GetTrackedTextureLayouts(
+                FVulkanTexture&,
+                const FArdaRHITextureDesc&);
+            FArdaRHIStatus TransitionTextureLayout(
+                const FArdaNativeObjectRef&,
+                const FArdaRHITextureDesc&,
+                const FArdaRHITextureSubresourceRange&,
+                vk::ImageLayout);
             FArdaRHIStatus BindSets(const FVulkanPipeline&, const eastl::vector<FArdaNativeObjectRef>&, vk::PipelineBindPoint);
             FArdaVulkanApiDevice& mDevice;
             eastl::shared_ptr<FVulkanCommandRecording> mRecording;
             vk::CommandBuffer mCommandBuffer;
             FVulkanPipeline* mBoundGraphics = nullptr;
             FVulkanPipeline* mBoundCompute = nullptr;
+            std::unordered_map<const void*, eastl::vector<vk::ImageLayout>>
+                mTextureLayouts;
             bool mbOpen = false;
             bool mbRendering = false;
             bool mbAutomaticBarriers = true;
@@ -542,6 +592,9 @@ namespace arda::backend
             EArdaRHINativeResourceType GetBufferImportType() const noexcept override { return EArdaRHINativeResourceType::VulkanBuffer; }
             FArdaNativeObjectResult CreateTexture(const FArdaRHITextureDesc&) override;
             FArdaNativeObjectResult CreateBuffer(const FArdaRHIBufferDesc&) override;
+            TArdaRHIResult<void*> MapBuffer(
+                const FArdaNativeObjectRef&, uint64_t, size_t) override;
+            void UnmapBuffer(const FArdaNativeObjectRef&) noexcept override;
             FArdaNativeObjectResult ImportTexture(const FArdaRHINativeTextureImportDesc&) override;
             FArdaNativeObjectResult ImportBuffer(const FArdaRHINativeBufferImportDesc&) override;
             FArdaNativeObjectResult CreateSampler(const FArdaRHISamplerDesc&) override;
@@ -553,6 +606,7 @@ namespace arda::backend
             FArdaNativeObjectResult CreateComputePipeline(const FArdaNativeComputePipelineCreateInfo&) override;
             TArdaRHIResult<eastl::unique_ptr<IArdaNativeCommandList>> CreateCommandList(EArdaRHIQueueType, bool) override;
             TArdaRHIResult<uint64_t> ExecuteCommandList(IArdaNativeCommandList&, EArdaRHIQueueType) override;
+            FArdaRHIStatus WaitForSubmission(uint64_t) override;
             FArdaRHIStatus WaitForIdle() override;
             void RunGarbageCollection() override;
             FArdaNativeLifetimeStats GetLifetimeStats() const noexcept override;
@@ -570,6 +624,7 @@ namespace arda::backend
         private:
             struct FPendingSubmission
             {
+                uint64_t mValue = 0;
                 vk::Fence mFence;
                 eastl::shared_ptr<FVulkanCommandRecording> mRecording;
             };
@@ -670,6 +725,9 @@ namespace arda::backend
                 auto Texture = eastl::make_shared<FVulkanTexture>();
                 Texture->mContext = mContext;
                 Texture->mDesc = Desc;
+                Texture->mLayouts.assign(
+                    static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize,
+                    vk::ImageLayout::eUndefined);
                 vk::ImageCreateInfo Info;
                 Info.imageType = Desc.mDimension == EArdaRHITextureDimension::Texture3D
                     ? vk::ImageType::e3D
@@ -771,6 +829,43 @@ namespace arda::backend
             }
         }
 
+        TArdaRHIResult<void*> FArdaVulkanApiDevice::MapBuffer(
+            const FArdaNativeObjectRef& Object,
+            uint64_t Offset,
+            size_t Size)
+        {
+            auto* Buffer = dynamic_cast<FVulkanBuffer*>(Object.get());
+            if (!Buffer || !Buffer->mMemory)
+                return Fail<void*>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::WrongDevice,
+                    "Vulkan buffer mapping has the wrong resource type."));
+            if (Buffer->mDesc.mCpuAccess == EArdaRHICpuAccess::None ||
+                Offset > Buffer->mDesc.mByteSize ||
+                Size > Buffer->mDesc.mByteSize - Offset)
+                return Fail<void*>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::InvalidArgument,
+                    "Vulkan buffer mapping range is invalid or not host visible."));
+            try
+            {
+                return { mContext->mDevice.mapMemory(
+                    Buffer->mMemory, Offset, Size), {} };
+            }
+            catch (const vk::SystemError& Error)
+            {
+                return Fail<void*>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::BackendFailure, Error.what()));
+            }
+        }
+
+        void FArdaVulkanApiDevice::UnmapBuffer(
+            const FArdaNativeObjectRef& Object) noexcept
+        {
+            auto* Buffer = dynamic_cast<FVulkanBuffer*>(Object.get());
+            if (!Buffer || !Buffer->mMemory) return;
+            try { mContext->mDevice.unmapMemory(Buffer->mMemory); }
+            catch (const vk::SystemError&) {}
+        }
+
         FArdaNativeObjectResult FArdaVulkanApiDevice::ImportTexture(
             const FArdaRHINativeTextureImportDesc& Desc)
         {
@@ -784,8 +879,13 @@ namespace arda::backend
                 Texture->mDesc = Desc.mTexture;
                 Texture->mImage = vk::Image(reinterpret_cast<VkImage>(Desc.mNativeObject));
                 Texture->mbOwned = Desc.mOwnership == EArdaRHINativeOwnership::Transferred;
-                Texture->mLayout = ToImageLayout(
-                    Desc.mInitialState, ImageAspect(Desc.mTexture.mFormat) != vk::ImageAspectFlagBits::eColor);
+                Texture->mLayouts.assign(
+                    static_cast<size_t>(Desc.mTexture.mMipLevels) *
+                        Desc.mTexture.mArraySize,
+                    ToImageLayout(
+                        Desc.mInitialState,
+                        ImageAspect(Desc.mTexture.mFormat) !=
+                            vk::ImageAspectFlagBits::eColor));
                 vk::ImageViewCreateInfo ViewInfo;
                 ViewInfo.image = Texture->mImage;
                 ViewInfo.viewType = ToViewType(Desc.mTexture.mDimension);
@@ -1585,6 +1685,7 @@ namespace arda::backend
                 mbOpen = false;
                 mBoundGraphics = nullptr;
                 mBoundCompute = nullptr;
+                mTextureLayouts.clear();
                 mbAutomaticBarriers = true;
                 return Open();
             }
@@ -1679,38 +1780,118 @@ namespace arda::backend
             return {};
         }
 
-        FArdaRHIStatus FArdaVulkanCommandList::SetTextureState(
+        eastl::vector<vk::ImageLayout>&
+        FArdaVulkanCommandList::GetTrackedTextureLayouts(
+            FVulkanTexture& Texture,
+            const FArdaRHITextureDesc& Desc)
+        {
+            auto Existing = mTextureLayouts.find(Texture.GetIdentity());
+            if (Existing != mTextureLayouts.end())
+                return Existing->second;
+            eastl::vector<vk::ImageLayout> Layouts;
+            {
+                std::lock_guard<std::mutex> Lock(Texture.mLayoutMutex);
+                Layouts = Texture.mLayouts;
+            }
+            const size_t SubresourceCount =
+                static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize;
+            if (Layouts.size() != SubresourceCount)
+                Layouts.assign(SubresourceCount, vk::ImageLayout::eUndefined);
+            return mTextureLayouts.emplace(
+                Texture.GetIdentity(), eastl::move(Layouts)).first->second;
+        }
+
+        FArdaRHIStatus FArdaVulkanCommandList::TransitionTextureLayout(
             const FArdaNativeObjectRef& Object, const FArdaRHITextureDesc& Desc,
-            const FArdaRHITextureSubresourceRange& InputRange, EArdaRHIResourceState State)
+            const FArdaRHITextureSubresourceRange& InputRange,
+            vk::ImageLayout NewLayout)
         {
             auto* Texture = dynamic_cast<FVulkanTexture*>(Object.get());
             if (!Texture) return FArdaRHIStatus::Error(
                 EArdaRHIResult::WrongDevice, "Vulkan texture transition has the wrong resource type.");
             Retain(Object);
-            const auto NewLayout = ToImageLayout(State,
-                ImageAspect(Desc.mFormat) != vk::ImageAspectFlagBits::eColor);
-            if (Texture->mLayout == NewLayout) return {};
             EndRendering();
             const auto Range = InputRange.Resolve(Desc);
-            vk::ImageMemoryBarrier2 Barrier;
-            Barrier.srcStageMask = vk::PipelineStageFlagBits2::eAllCommands;
-            Barrier.srcAccessMask = vk::AccessFlagBits2::eMemoryRead | vk::AccessFlagBits2::eMemoryWrite;
-            Barrier.dstStageMask = vk::PipelineStageFlagBits2::eAllCommands;
-            Barrier.dstAccessMask = vk::AccessFlagBits2::eMemoryRead | vk::AccessFlagBits2::eMemoryWrite;
-            Barrier.oldLayout = Texture->mLayout;
-            Barrier.newLayout = NewLayout;
-            Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            Barrier.image = Texture->mImage;
-            Barrier.subresourceRange = vk::ImageSubresourceRange(
-                ImageAspect(Desc.mFormat), Range.mBaseMipLevel, Range.mMipLevelCount,
-                Range.mBaseArraySlice, Range.mArraySliceCount);
-            vk::DependencyInfo Dependency;
-            Dependency.imageMemoryBarrierCount = 1;
-            Dependency.pImageMemoryBarriers = &Barrier;
-            mCommandBuffer.pipelineBarrier2(Dependency);
-            Texture->mLayout = NewLayout;
+            auto& Layouts = GetTrackedTextureLayouts(*Texture, Desc);
+            eastl::vector<vk::ImageMemoryBarrier2> Barriers;
+            Barriers.reserve(
+                static_cast<size_t>(Range.mMipLevelCount) *
+                Range.mArraySliceCount);
+            for (uint32_t ArraySlice = Range.mBaseArraySlice;
+                 ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
+                 ++ArraySlice)
+            {
+                for (uint32_t MipLevel = Range.mBaseMipLevel;
+                     MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
+                     ++MipLevel)
+                {
+                    const size_t Index =
+                        static_cast<size_t>(ArraySlice) * Desc.mMipLevels +
+                        MipLevel;
+                    const vk::ImageLayout OldLayout = Layouts[Index];
+                    if (OldLayout == NewLayout)
+                        continue;
+                    vk::ImageMemoryBarrier2 Barrier;
+                    Barrier.srcStageMask = vk::PipelineStageFlagBits2::eAllCommands;
+                    Barrier.srcAccessMask = vk::AccessFlagBits2::eMemoryRead |
+                        vk::AccessFlagBits2::eMemoryWrite;
+                    Barrier.dstStageMask = vk::PipelineStageFlagBits2::eAllCommands;
+                    Barrier.dstAccessMask = vk::AccessFlagBits2::eMemoryRead |
+                        vk::AccessFlagBits2::eMemoryWrite;
+                    Barrier.oldLayout = OldLayout;
+                    Barrier.newLayout = NewLayout;
+                    Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                    Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                    Barrier.image = Texture->mImage;
+                    Barrier.subresourceRange = vk::ImageSubresourceRange(
+                        ImageAspect(Desc.mFormat), MipLevel, 1, ArraySlice, 1);
+                    Barriers.push_back(Barrier);
+                    Layouts[Index] = NewLayout;
+                }
+            }
+            if (!Barriers.empty())
+            {
+                vk::DependencyInfo Dependency;
+                Dependency.imageMemoryBarrierCount =
+                    static_cast<uint32_t>(Barriers.size());
+                Dependency.pImageMemoryBarriers = Barriers.data();
+                mCommandBuffer.pipelineBarrier2(Dependency);
+            }
+            {
+                std::lock_guard<std::mutex> Lock(Texture->mLayoutMutex);
+                if (Texture->mLayouts.size() == Layouts.size())
+                {
+                    for (uint32_t ArraySlice = Range.mBaseArraySlice;
+                         ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
+                         ++ArraySlice)
+                    {
+                        for (uint32_t MipLevel = Range.mBaseMipLevel;
+                             MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
+                             ++MipLevel)
+                        {
+                            Texture->mLayouts[
+                                static_cast<size_t>(ArraySlice) *
+                                    Desc.mMipLevels + MipLevel] = NewLayout;
+                        }
+                    }
+                }
+            }
             return {};
+        }
+
+        FArdaRHIStatus FArdaVulkanCommandList::SetTextureState(
+            const FArdaNativeObjectRef& Object, const FArdaRHITextureDesc& Desc,
+            const FArdaRHITextureSubresourceRange& InputRange,
+            EArdaRHIResourceState State)
+        {
+            return TransitionTextureLayout(
+                Object,
+                Desc,
+                InputRange,
+                ToImageLayout(
+                    State,
+                    ImageAspect(Desc.mFormat) !=
+                        vk::ImageAspectFlagBits::eColor));
         }
 
         FArdaRHIStatus FArdaVulkanCommandList::SetBufferState(
@@ -1741,13 +1922,36 @@ namespace arda::backend
 
         FArdaRHIStatus FArdaVulkanCommandList::BeginTrackingTextureState(
             const FArdaNativeObjectRef& Object, const FArdaRHITextureDesc& Desc,
-            const FArdaRHITextureSubresourceRange&, EArdaRHIResourceState State)
+            const FArdaRHITextureSubresourceRange& InputRange,
+            EArdaRHIResourceState State)
         {
             auto* Texture = dynamic_cast<FVulkanTexture*>(Object.get());
             if (!Texture) return FArdaRHIStatus::Error(
                 EArdaRHIResult::WrongDevice, "Vulkan texture tracking has the wrong resource type.");
-            Texture->mLayout = ToImageLayout(State,
+            const auto Range = InputRange.Resolve(Desc);
+            auto& Layouts = GetTrackedTextureLayouts(*Texture, Desc);
+            const vk::ImageLayout Layout = ToImageLayout(
+                State,
                 ImageAspect(Desc.mFormat) != vk::ImageAspectFlagBits::eColor);
+            for (uint32_t ArraySlice = Range.mBaseArraySlice;
+                 ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
+                 ++ArraySlice)
+            {
+                for (uint32_t MipLevel = Range.mBaseMipLevel;
+                     MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
+                     ++MipLevel)
+                {
+                    const size_t Index =
+                        static_cast<size_t>(ArraySlice) * Desc.mMipLevels +
+                        MipLevel;
+                    // Optimal-tiled Vulkan images are physically created in
+                    // UNDEFINED even when the cross-API descriptor names a
+                    // logical initial state. Keep that native fact until the
+                    // first real layout transition is recorded.
+                    if (Layouts[Index] != vk::ImageLayout::eUndefined)
+                        Layouts[Index] = Layout;
+                }
+            }
             return {};
         }
 
@@ -1786,9 +1990,28 @@ namespace arda::backend
             auto* Texture = dynamic_cast<FVulkanTexture*>(Object.get());
             if (!Texture) return FArdaRHIStatus::Error(
                 EArdaRHIResult::WrongDevice, "Vulkan texture clear has the wrong resource type.");
-            if (auto Status = SetTextureState(Object, Desc, InputRange,
-                EArdaRHIResourceState::CopyDest); !Status) return Status;
             const auto Range = InputRange.Resolve(Desc);
+            auto& Layouts = GetTrackedTextureLayouts(*Texture, Desc);
+            eastl::vector<vk::ImageLayout> PreviousLayouts;
+            PreviousLayouts.reserve(
+                static_cast<size_t>(Range.mMipLevelCount) *
+                Range.mArraySliceCount);
+            for (uint32_t ArraySlice = Range.mBaseArraySlice;
+                 ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
+                 ++ArraySlice)
+                for (uint32_t MipLevel = Range.mBaseMipLevel;
+                     MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
+                     ++MipLevel)
+                    PreviousLayouts.push_back(Layouts[
+                        static_cast<size_t>(ArraySlice) * Desc.mMipLevels +
+                        MipLevel]);
+            if (auto Status = TransitionTextureLayout(
+                    Object,
+                    Desc,
+                    InputRange,
+                    vk::ImageLayout::eTransferDstOptimal);
+                !Status)
+                return Status;
             const vk::ImageSubresourceRange NativeRange(
                 vk::ImageAspectFlagBits::eColor, Range.mBaseMipLevel, Range.mMipLevelCount,
                 Range.mBaseArraySlice, Range.mArraySliceCount);
@@ -1796,6 +2019,29 @@ namespace arda::backend
                 Color.mR, Color.mG, Color.mB, Color.mA });
             mCommandBuffer.clearColorImage(Texture->mImage,
                 vk::ImageLayout::eTransferDstOptimal, Value, NativeRange);
+            size_t PreviousIndex = 0;
+            for (uint32_t ArraySlice = Range.mBaseArraySlice;
+                 ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
+                 ++ArraySlice)
+            {
+                for (uint32_t MipLevel = Range.mBaseMipLevel;
+                     MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
+                     ++MipLevel, ++PreviousIndex)
+                {
+                    const vk::ImageLayout Previous =
+                        PreviousLayouts[PreviousIndex];
+                    if (Previous == vk::ImageLayout::eUndefined ||
+                        Previous == vk::ImageLayout::eTransferDstOptimal)
+                        continue;
+                    if (auto Status = TransitionTextureLayout(
+                            Object,
+                            Desc,
+                            { MipLevel, 1, ArraySlice, 1 },
+                            Previous);
+                        !Status)
+                        return Status;
+                }
+            }
             return {};
         }
 
@@ -1807,9 +2053,28 @@ namespace arda::backend
             auto* Texture = dynamic_cast<FVulkanTexture*>(Object.get());
             if (!Texture) return FArdaRHIStatus::Error(
                 EArdaRHIResult::WrongDevice, "Vulkan depth clear has the wrong resource type.");
-            if (auto Status = SetTextureState(Object, Desc, InputRange,
-                EArdaRHIResourceState::CopyDest); !Status) return Status;
             const auto Range = InputRange.Resolve(Desc);
+            auto& Layouts = GetTrackedTextureLayouts(*Texture, Desc);
+            eastl::vector<vk::ImageLayout> PreviousLayouts;
+            PreviousLayouts.reserve(
+                static_cast<size_t>(Range.mMipLevelCount) *
+                Range.mArraySliceCount);
+            for (uint32_t ArraySlice = Range.mBaseArraySlice;
+                 ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
+                 ++ArraySlice)
+                for (uint32_t MipLevel = Range.mBaseMipLevel;
+                     MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
+                     ++MipLevel)
+                    PreviousLayouts.push_back(Layouts[
+                        static_cast<size_t>(ArraySlice) * Desc.mMipLevels +
+                        MipLevel]);
+            if (auto Status = TransitionTextureLayout(
+                    Object,
+                    Desc,
+                    InputRange,
+                    vk::ImageLayout::eTransferDstOptimal);
+                !Status)
+                return Status;
             vk::ImageAspectFlags Aspect{};
             if (bClearDepth) Aspect |= vk::ImageAspectFlagBits::eDepth;
             if (bClearStencil) Aspect |= vk::ImageAspectFlagBits::eStencil;
@@ -1819,6 +2084,29 @@ namespace arda::backend
             mCommandBuffer.clearDepthStencilImage(Texture->mImage,
                 vk::ImageLayout::eTransferDstOptimal,
                 vk::ClearDepthStencilValue(Depth, Stencil), NativeRange);
+            size_t PreviousIndex = 0;
+            for (uint32_t ArraySlice = Range.mBaseArraySlice;
+                 ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
+                 ++ArraySlice)
+            {
+                for (uint32_t MipLevel = Range.mBaseMipLevel;
+                     MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
+                     ++MipLevel, ++PreviousIndex)
+                {
+                    const vk::ImageLayout Previous =
+                        PreviousLayouts[PreviousIndex];
+                    if (Previous == vk::ImageLayout::eUndefined ||
+                        Previous == vk::ImageLayout::eTransferDstOptimal)
+                        continue;
+                    if (auto Status = TransitionTextureLayout(
+                            Object,
+                            Desc,
+                            { MipLevel, 1, ArraySlice, 1 },
+                            Previous);
+                        !Status)
+                        return Status;
+                }
+            }
             return {};
         }
 
@@ -2074,9 +2362,13 @@ namespace arda::backend
                 }
                 {
                     std::lock_guard<std::mutex> Lock(mSubmissionMutex);
-                    mPendingSubmissions.push_back({ Fence, Commands->GetRecording() });
+                    const uint64_t Value =
+                        mContext->mSubmission.fetch_add(
+                            1, std::memory_order_relaxed) + 1;
+                    mPendingSubmissions.push_back(
+                        { Value, Fence, Commands->GetRecording() });
+                    return { Value, {} };
                 }
-                return { mContext->mSubmission.fetch_add(1, std::memory_order_relaxed) + 1, {} };
             }
             catch (const vk::SystemError& Error)
             {
@@ -2084,6 +2376,35 @@ namespace arda::backend
                     mContext->mDevice.destroyFence(Fence);
                 return Fail<uint64_t>(FArdaRHIStatus::Error(
                     EArdaRHIResult::BackendFailure, Error.what()));
+            }
+        }
+
+        FArdaRHIStatus FArdaVulkanApiDevice::WaitForSubmission(uint64_t Value)
+        {
+            try
+            {
+                std::lock_guard<std::mutex> Lock(mSubmissionMutex);
+                const auto It = eastl::find_if(
+                    mPendingSubmissions.begin(), mPendingSubmissions.end(),
+                    [Value](const FPendingSubmission& Submission)
+                    {
+                        return Submission.mValue == Value;
+                    });
+                if (It == mPendingSubmissions.end()) return {};
+                const vk::Result Result = mContext->mDevice.waitForFences(
+                    It->mFence, true, UINT64_MAX);
+                if (Result != vk::Result::eSuccess)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::BackendFailure,
+                        "Failed while waiting for a Vulkan submission fence.");
+                mContext->mDevice.destroyFence(It->mFence);
+                mPendingSubmissions.erase(It);
+                return {};
+            }
+            catch (const vk::SystemError& Error)
+            {
+                return FArdaRHIStatus::Error(
+                    EArdaRHIResult::BackendFailure, Error.what());
             }
         }
 
@@ -2432,6 +2753,9 @@ namespace arda::backend
                 WaitForIdle();
                 mArdaDevice = nullptr;
                 mApiDevice.reset();
+                if (mContext)
+                    mContext->mDiagnosticCallback.store(
+                        nullptr, std::memory_order_release);
                 mContext.reset();
             }
 
@@ -2446,6 +2770,9 @@ namespace arda::backend
                     return EArdaInitializeResult::Failure;
                 }
                 mContext = eastl::make_shared<FArdaVulkanContext>();
+                mContext->mDiagnosticCallback.store(
+                    Configuration.mMessageCallback,
+                    std::memory_order_release);
                 try
                 {
                     const auto GetInstanceProcAddr = mContext->mLoader.getProcAddress<
@@ -2467,19 +2794,75 @@ namespace arda::backend
                     eastl::vector<const char*> Extensions;
                     if (WindowSurface) Extensions = WindowSurface->GetVulkanInstanceExtensions();
                     eastl::vector<const char*> Layers;
+                    bool bValidationLayerEnabled = false;
+                    bool bDebugUtilsEnabled = false;
                     if (Configuration.mbEnableValidation)
                     {
                         for (const auto& Layer : vk::enumerateInstanceLayerProperties())
                             if (std::strcmp(Layer.layerName, "VK_LAYER_KHRONOS_validation") == 0)
                             {
                                 Layers.push_back("VK_LAYER_KHRONOS_validation");
+                                bValidationLayerEnabled = true;
                                 break;
                             }
+                        if (!bValidationLayerEnabled && Configuration.mMessageCallback)
+                        {
+                            Configuration.mMessageCallback->Message(
+                                EArdaDiagnosticSeverity::Warning,
+                                "VK_LAYER_KHRONOS_validation is unavailable; continuing without Vulkan validation.");
+                        }
+                        if (bValidationLayerEnabled)
+                        {
+                            for (const auto& Extension :
+                                 vk::enumerateInstanceExtensionProperties())
+                            {
+                                if (std::strcmp(
+                                        Extension.extensionName,
+                                        VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
+                                {
+                                    bDebugUtilsEnabled = true;
+                                    break;
+                                }
+                            }
+                            if (bDebugUtilsEnabled)
+                            {
+                                const bool bAlreadyEnabled = eastl::any_of(
+                                    Extensions.begin(),
+                                    Extensions.end(),
+                                    [](const char* Extension)
+                                    {
+                                        return Extension &&
+                                            std::strcmp(
+                                                Extension,
+                                                VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0;
+                                    });
+                                if (!bAlreadyEnabled)
+                                    Extensions.push_back(
+                                        VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+                            }
+                            else if (Configuration.mMessageCallback)
+                            {
+                                Configuration.mMessageCallback->Message(
+                                    EArdaDiagnosticSeverity::Warning,
+                                    "VK_EXT_debug_utils is unavailable; Vulkan validation messages cannot be forwarded.");
+                            }
+                        }
                     }
+                    vk::DebugUtilsMessengerCreateInfoEXT DebugInfo;
+                    DebugInfo.messageSeverity =
+                        vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+                        vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
+                    DebugInfo.messageType =
+                        vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+                        vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
+                        vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance;
+                    DebugInfo.pfnUserCallback = VulkanDebugCallback;
+                    DebugInfo.pUserData = &mContext->mDiagnosticCallback;
                     vk::ApplicationInfo Application("Ardashir", VK_MAKE_VERSION(0, 1, 0),
                         "Ardashir native Vulkan", VK_MAKE_VERSION(0, 1, 0),
                         eastl::min(LoaderVersion, VK_API_VERSION_1_4));
                     vk::InstanceCreateInfo InstanceInfo;
+                    InstanceInfo.pNext = bDebugUtilsEnabled ? &DebugInfo : nullptr;
                     InstanceInfo.pApplicationInfo = &Application;
                     InstanceInfo.enabledExtensionCount = static_cast<uint32_t>(Extensions.size());
                     InstanceInfo.ppEnabledExtensionNames = Extensions.data();
@@ -2487,6 +2870,10 @@ namespace arda::backend
                     InstanceInfo.ppEnabledLayerNames = Layers.data();
                     mContext->mInstance = vk::createInstance(InstanceInfo);
                     VULKAN_HPP_DEFAULT_DISPATCHER.init(mContext->mInstance);
+                    if (bDebugUtilsEnabled)
+                        mContext->mDebugMessenger =
+                            mContext->mInstance.createDebugUtilsMessengerEXT(
+                                DebugInfo);
                     if (WindowSurface)
                     {
                         eastl::string SurfaceError;

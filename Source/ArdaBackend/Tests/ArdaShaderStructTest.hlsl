@@ -6,6 +6,15 @@ void ShaderStructTestCS(uint3 dispatchThreadId : SV_DispatchThreadID)
     Output[dispatchThreadId.x] = 0xA2DA;
 }
 
+RWTexture2D<float4> VulkanLayoutOutput : register(u0);
+
+[numthreads(1, 1, 1)]
+void VulkanLayoutTestCS(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+    VulkanLayoutOutput[dispatchThreadId.xy] =
+        float4(0.125, 0.25, 0.5, 1.0);
+}
+
 float4 PipelineStateTestVS(uint vertexId : SV_VertexID) : SV_Position
 {
     const float2 positions[3] = {

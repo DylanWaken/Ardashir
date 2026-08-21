@@ -16,9 +16,20 @@ struct TerrainVertex
 
 float Hash(float3 value)
 {
-    return frac(
-        sin(dot(value, float3(127.1, 311.7, 74.7))) *
-        43758.5453);
+    // ValueNoise calls Hash only with integral lattice coordinates. Keep the
+    // hash entirely in uint arithmetic so DXIL and SPIR-V cannot diverge
+    // through implementation-dependent trigonometric approximations.
+    const uint3 lattice = asuint(int3(value));
+    uint hash = 2166136261u;
+    hash = (hash ^ lattice.x) * 16777619u;
+    hash = (hash ^ lattice.y) * 16777619u;
+    hash = (hash ^ lattice.z) * 16777619u;
+    hash ^= hash >> 16;
+    hash *= 0x7feb352du;
+    hash ^= hash >> 15;
+    hash *= 0x846ca68bu;
+    hash ^= hash >> 16;
+    return float(hash >> 8) * (1.0 / 16777216.0);
 }
 
 float ValueNoise(float3 value)

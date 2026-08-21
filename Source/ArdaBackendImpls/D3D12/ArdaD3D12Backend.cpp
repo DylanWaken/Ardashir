@@ -478,6 +478,9 @@ namespace arda::backend
             EArdaRHINativeResourceType GetBufferImportType() const noexcept override { return EArdaRHINativeResourceType::D3D12Resource; }
             FArdaNativeObjectResult CreateTexture(const FArdaRHITextureDesc&) override;
             FArdaNativeObjectResult CreateBuffer(const FArdaRHIBufferDesc&) override;
+            TArdaRHIResult<void*> MapBuffer(
+                const FArdaNativeObjectRef&, uint64_t, size_t) override;
+            void UnmapBuffer(const FArdaNativeObjectRef&) noexcept override;
             FArdaNativeObjectResult ImportTexture(const FArdaRHINativeTextureImportDesc&) override;
             FArdaNativeObjectResult ImportBuffer(const FArdaRHINativeBufferImportDesc&) override;
             FArdaNativeObjectResult CreateSampler(const FArdaRHISamplerDesc&) override;
@@ -489,6 +492,7 @@ namespace arda::backend
             FArdaNativeObjectResult CreateComputePipeline(const FArdaNativeComputePipelineCreateInfo&) override;
             TArdaRHIResult<eastl::unique_ptr<IArdaNativeCommandList>> CreateCommandList(EArdaRHIQueueType, bool) override;
             TArdaRHIResult<uint64_t> ExecuteCommandList(IArdaNativeCommandList&, EArdaRHIQueueType) override;
+            FArdaRHIStatus WaitForSubmission(uint64_t) override;
             FArdaRHIStatus WaitForIdle() override;
             void RunGarbageCollection() override {}
             FArdaNativeLifetimeStats GetLifetimeStats() const noexcept override
@@ -846,6 +850,44 @@ namespace arda::backend
             if (FAILED(Result)) return Fail<FArdaNativeObjectRef>(
                 D3D12Failure("Failed to create a D3D12 buffer.", Result));
             return { Buffer, {} };
+        }
+
+        TArdaRHIResult<void*> FArdaD3D12ApiDevice::MapBuffer(
+            const FArdaNativeObjectRef& Object,
+            uint64_t Offset,
+            size_t Size)
+        {
+            auto* Buffer = dynamic_cast<FD3D12Buffer*>(Object.get());
+            if (!Buffer || !Buffer->mResource)
+                return Fail<void*>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::WrongDevice,
+                    "D3D12 buffer mapping has the wrong resource type."));
+            if (Buffer->mDesc.mCpuAccess == EArdaRHICpuAccess::None ||
+                Offset > Buffer->mDesc.mByteSize ||
+                Size > Buffer->mDesc.mByteSize - Offset)
+                return Fail<void*>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::InvalidArgument,
+                    "D3D12 buffer mapping range is invalid or not host visible."));
+            const D3D12_RANGE ReadRange =
+                Buffer->mDesc.mCpuAccess == EArdaRHICpuAccess::Read
+                    ? D3D12_RANGE{ static_cast<SIZE_T>(Offset),
+                        static_cast<SIZE_T>(Offset + Size) }
+                    : D3D12_RANGE{ 0, 0 };
+            void* Data = nullptr;
+            const HRESULT Result = Buffer->mResource->Map(0, &ReadRange, &Data);
+            if (FAILED(Result))
+                return Fail<void*>(D3D12Failure(
+                    "Failed to map a D3D12 host-visible buffer.", Result));
+            return { static_cast<uint8_t*>(Data) + Offset, {} };
+        }
+
+        void FArdaD3D12ApiDevice::UnmapBuffer(
+            const FArdaNativeObjectRef& Object) noexcept
+        {
+            auto* Buffer = dynamic_cast<FD3D12Buffer*>(Object.get());
+            if (!Buffer || !Buffer->mResource) return;
+            const D3D12_RANGE WrittenRange{ 0, 0 };
+            Buffer->mResource->Unmap(0, &WrittenRange);
         }
 
         FArdaNativeObjectResult FArdaD3D12ApiDevice::ImportTexture(
@@ -1851,6 +1893,16 @@ namespace arda::backend
                 WaitForSingleObject(mFenceEvent, INFINITE);
             }
             return { Value, {} };
+        }
+
+        FArdaRHIStatus FArdaD3D12ApiDevice::WaitForSubmission(uint64_t Value)
+        {
+            if (!mFence || mFence->GetCompletedValue() >= Value) return {};
+            const HRESULT Result = mFence->SetEventOnCompletion(Value, mFenceEvent);
+            if (FAILED(Result)) return D3D12Failure(
+                "Failed to arm the D3D12 submission fence.", Result);
+            WaitForSingleObject(mFenceEvent, INFINITE);
+            return {};
         }
 
         FArdaRHIStatus FArdaD3D12ApiDevice::WaitForIdle()

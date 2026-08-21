@@ -7,8 +7,22 @@
 #include "ArdaRHICapabilities.h"
 #include "ArdaRHIResources.h"
 
+#include <EASTL/functional.h>
+
 namespace arda::rhi
 {
+    /** Result returned by a device-to-host buffer copy. */
+    using FArdaRHIBufferReadbackResult =
+        TArdaRHIResult<eastl::vector<uint8_t>>;
+
+    /** Called after an asynchronous host-to-device copy reaches the GPU. */
+    using FArdaRHIHostToDeviceCopyCallback =
+        eastl::function<void(FArdaRHIStatus)>;
+
+    /** Called with owned bytes after an asynchronous device-to-host copy. */
+    using FArdaRHIDeviceToHostCopyCallback =
+        eastl::function<void(FArdaRHIBufferReadbackResult)>;
+
     /** Describes staging texture mapping. */
     struct FArdaRHIStagingTextureMapping
     {
@@ -100,6 +114,43 @@ namespace arda::rhi
          * @return A status describing whether the operation succeeded.
          */
         virtual FArdaRHIStatus WriteBuffer(IArdaRHIBuffer& Buffer, const void* Data, size_t Size, uint64_t Offset = 0) = 0;
+        /**
+         * Records a host-to-device copy and makes submission wait for its GPU
+         * completion. The source bytes are copied while this method executes.
+         */
+        virtual FArdaRHIStatus CopyBufferHostToDevice(
+            IArdaRHIBuffer& Destination,
+            const void* SourceData,
+            size_t Size,
+            uint64_t DestinationOffset = 0) = 0;
+        /**
+         * Records a host-to-device copy whose completion callback is invoked
+         * asynchronously after the submitted copy reaches the GPU.
+         */
+        virtual FArdaRHIStatus CopyBufferHostToDeviceAsync(
+            IArdaRHIBuffer& Destination,
+            const void* SourceData,
+            size_t Size,
+            FArdaRHIHostToDeviceCopyCallback Completion,
+            uint64_t DestinationOffset = 0) = 0;
+        /**
+         * Records a device-to-host copy. Submission waits for completion and
+         * fills Output before ExecuteCommandList returns.
+         */
+        virtual FArdaRHIStatus CopyBufferDeviceToHost(
+            IArdaRHIBuffer& Source,
+            eastl::vector<uint8_t>& Output,
+            uint64_t SourceOffset = 0,
+            uint64_t Size = ArdaRHIWholeBuffer) = 0;
+        /**
+         * Records a device-to-host copy and invokes Completion asynchronously
+         * with owned readback bytes after the submitted copy completes.
+         */
+        virtual FArdaRHIStatus CopyBufferDeviceToHostAsync(
+            IArdaRHIBuffer& Source,
+            FArdaRHIDeviceToHostCopyCallback Completion,
+            uint64_t SourceOffset = 0,
+            uint64_t Size = ArdaRHIWholeBuffer) = 0;
         /**
          * Performs the copy buffer operation.
          * @param Destination The destination.

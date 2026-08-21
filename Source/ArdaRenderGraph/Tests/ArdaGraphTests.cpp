@@ -5,9 +5,15 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <cstdio>
 #include <cstdint>
 #include <filesystem>
+#include <mutex>
+#include <thread>
 #include <EASTL/string.h>
 #include <EASTL/type_traits.h>
 #include <EASTL/vector.h>
@@ -27,6 +33,30 @@ namespace
         Configuration.mBackend = Modules.front().mBackendType;
         return arda::backend::ConfigureBackend(Configuration);
     }
+
+    class FARDGCollectingDiagnosticCallback final
+        : public arda::backend::IArdaDiagnosticCallback
+    {
+    public:
+        void Message(
+            arda::backend::EArdaDiagnosticSeverity Severity,
+            const char*) override
+        {
+            if (Severity == arda::backend::EArdaDiagnosticSeverity::Error ||
+                Severity == arda::backend::EArdaDiagnosticSeverity::Fatal)
+            {
+                mErrors.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
+
+        [[nodiscard]] uint32_t GetErrorCount() const noexcept
+        {
+            return mErrors.load(std::memory_order_relaxed);
+        }
+
+    private:
+        std::atomic<uint32_t> mErrors{0};
+    };
 
     struct FARDGTestHandleTag final
     {
@@ -102,6 +132,17 @@ namespace
 
     ARDG_BEGIN_PARAMETER_STRUCT(FARDGBufferAccessParameters)
         ARDG_BUFFER_ACCESS(mBuffer)
+    ARDG_END_PARAMETER_STRUCT()
+
+    ARDG_BEGIN_PARAMETER_STRUCT(FARDGFormationParameters)
+        ARDG_BUFFER_ACCESS(mInputA)
+        ARDG_BUFFER_ACCESS(mInputB)
+        ARDG_BUFFER_ACCESS(mOutput)
+    ARDG_END_PARAMETER_STRUCT()
+
+    ARDG_BEGIN_PARAMETER_STRUCT(FARDGFormationRasterParameters)
+        ARDG_BUFFER_ACCESS(mInput)
+        ARDG_RENDER_TARGET_BINDING_SLOTS(mRenderTargets)
     ARDG_END_PARAMETER_STRUCT()
 
     ARDG_BEGIN_PARAMETER_STRUCT(FARDGAccelStructAccessParameters)
@@ -805,6 +846,362 @@ TEST(ArdaRenderGraph, CompilerUsesManualDependenciesAsCullingEdges)
     EXPECT_FATAL_CHECK(
         Builder.AddDependency(Root, Setup),
         "Cannot add a dependency outside graph building");
+}
+
+TEST(ArdaRenderGraph, CompilerHandlesCanonicalDagFormationMatrix)
+{
+    using namespace arda::render_graph;
+
+    struct FFormationEdge
+    {
+        uint32_t mProducer = 0;
+        uint32_t mConsumer = 0;
+    };
+    struct FFormationCase
+    {
+        const char* mName = nullptr;
+        uint32_t mPassCount = 0;
+        eastl::vector<FFormationEdge> mEdges;
+        eastl::vector<uint32_t> mRoots;
+        eastl::vector<uint32_t> mExpectedLivePasses;
+    };
+
+    const eastl::vector<FFormationCase> Formations{
+        {"Empty", 0, {}, {}, {}},
+        {"SingleRoot", 1, {}, {0}, {0}},
+        {"Linear", 4, {{0, 1}, {1, 2}, {2, 3}}, {3}, {0, 1, 2, 3}},
+        {"FanOut", 4, {{0, 1}, {0, 2}, {0, 3}}, {1, 2, 3}, {0, 1, 2, 3}},
+        {"FanIn", 4, {{0, 3}, {1, 3}, {2, 3}}, {3}, {0, 1, 2, 3}},
+        {"Diamond", 4, {{0, 1}, {0, 2}, {1, 3}, {2, 3}}, {3}, {0, 1, 2, 3}},
+        {"IndependentChains", 4, {{0, 1}, {2, 3}}, {1, 3}, {0, 1, 2, 3}},
+        {"DisconnectedDeadIsland",
+         6,
+         {{0, 1}, {1, 2}, {3, 4}, {4, 5}},
+         {2},
+         {0, 1, 2}}
+    };
+
+    for (const FFormationCase& Formation : Formations)
+    {
+        SCOPED_TRACE(Formation.mName);
+        FARDGBuilder Builder;
+        eastl::vector<FARDGPassHandle> Passes;
+        Passes.reserve(Formation.mPassCount);
+        for (uint32_t Index = 0; Index < Formation.mPassCount; ++Index)
+        {
+            const bool bRoot = eastl::find(
+                Formation.mRoots.begin(), Formation.mRoots.end(), Index) !=
+                Formation.mRoots.end();
+            char Name[32];
+            std::snprintf(Name, sizeof(Name), "%s_%u", Formation.mName, Index);
+            Passes.push_back(Builder.AddPass(
+                Name,
+                bRoot ? EARDGPassFlags::NeverCull : EARDGPassFlags::None,
+                [] {}));
+        }
+        for (const FFormationEdge& Edge : Formation.mEdges)
+        {
+            Builder.AddDependency(
+                Passes[Edge.mProducer], Passes[Edge.mConsumer]);
+            // Repeated declarations must remain one stable graph edge.
+            Builder.AddDependency(
+                Passes[Edge.mProducer], Passes[Edge.mConsumer]);
+        }
+
+        const FARDGCompileResult& Result = Builder.Compile();
+        eastl::vector<FARDGPassHandle> ExpectedOrder{
+            Builder.GetProloguePass()};
+        for (uint32_t Index : Formation.mExpectedLivePasses)
+        {
+            ExpectedOrder.push_back(Passes[Index]);
+        }
+        ExpectedOrder.push_back(Result.mEpilogue);
+        EXPECT_EQ(Result.mExecutionOrder, ExpectedOrder);
+        EXPECT_TRUE(Result.mResourceLifetimes.empty());
+        EXPECT_TRUE(Result.mQueueDependencies.empty());
+
+        for (uint32_t Index = 0; Index < Formation.mPassCount; ++Index)
+        {
+            const bool bExpectedLive = eastl::find(
+                Formation.mExpectedLivePasses.begin(),
+                Formation.mExpectedLivePasses.end(),
+                Index) != Formation.mExpectedLivePasses.end();
+            const FARDGPassState& State =
+                Builder.TryGetPass(Passes[Index])->GetState();
+            EXPECT_EQ(State.mbCulled, !bExpectedLive) << "pass " << Index;
+
+            size_t ExpectedProducerCount = 0;
+            size_t ExpectedConsumerCount = 0;
+            for (const FFormationEdge& Edge : Formation.mEdges)
+            {
+                ExpectedProducerCount += Edge.mConsumer == Index ? 1u : 0u;
+                ExpectedConsumerCount += Edge.mProducer == Index ? 1u : 0u;
+            }
+            EXPECT_EQ(State.mProducers.size(), ExpectedProducerCount)
+                << "pass " << Index;
+            EXPECT_EQ(State.mConsumers.size(), ExpectedConsumerCount)
+                << "pass " << Index;
+        }
+
+        for (const FFormationEdge& Edge : Formation.mEdges)
+        {
+            const FARDGPassState& Producer =
+                Builder.TryGetPass(Passes[Edge.mProducer])->GetState();
+            const FARDGPassState& Consumer =
+                Builder.TryGetPass(Passes[Edge.mConsumer])->GetState();
+            EXPECT_NE(
+                eastl::find(
+                    Producer.mConsumers.begin(),
+                    Producer.mConsumers.end(),
+                    Passes[Edge.mConsumer]),
+                Producer.mConsumers.end());
+            EXPECT_NE(
+                eastl::find(
+                    Consumer.mProducers.begin(),
+                    Consumer.mProducers.end(),
+                    Passes[Edge.mProducer]),
+                Consumer.mProducers.end());
+        }
+    }
+}
+
+TEST(ArdaRenderGraph, CompilerBuildsResourceDiamondWarEdgesAndLiveIntervals)
+{
+    using namespace arda::render_graph;
+
+    FARDGBuilder Builder;
+    rhi::FArdaRHIBufferDesc Desc;
+    Desc.mByteSize = 256;
+    Desc.mUsage |= rhi::EArdaRHIBufferUsage::UnorderedAccess;
+    Desc.mDebugName = "DiamondA";
+    FARDGBufferRef A = Builder.CreateBuffer(Desc);
+    Desc.mDebugName = "DiamondB";
+    FARDGBufferRef B = Builder.CreateBuffer(Desc);
+    Desc.mDebugName = "DiamondC";
+    FARDGBufferRef C = Builder.CreateBuffer(Desc);
+    Desc.mDebugName = "DiamondOutput";
+    FARDGBufferRef Output = Builder.CreateBuffer(Desc);
+    Desc.mDebugName = "DeadA";
+    FARDGBufferRef DeadA = Builder.CreateBuffer(Desc);
+    Desc.mDebugName = "DeadB";
+    FARDGBufferRef DeadB = Builder.CreateBuffer(Desc);
+
+    FARDGFormationParameters ProduceParameters;
+    ProduceParameters.mOutput = {
+        A, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+    const FARDGPassHandle Produce = Builder.AddPass(
+        "DiamondProduce", &ProduceParameters, EARDGPassFlags::Compute, [] {});
+
+    FARDGFormationParameters LeftParameters;
+    LeftParameters.mInputA = {
+        A, rhi::EArdaRHIResourceState::ShaderResource, {}};
+    LeftParameters.mOutput = {
+        B, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+    const FARDGPassHandle Left = Builder.AddPass(
+        "DiamondLeft", &LeftParameters, EARDGPassFlags::Compute, [] {});
+
+    FARDGFormationParameters RightParameters;
+    RightParameters.mInputA = {
+        A, rhi::EArdaRHIResourceState::ShaderResource, {}};
+    RightParameters.mOutput = {
+        C, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+    const FARDGPassHandle Right = Builder.AddPass(
+        "DiamondRight", &RightParameters, EARDGPassFlags::Compute, [] {});
+
+    FARDGFormationParameters OverwriteParameters;
+    OverwriteParameters.mOutput = {
+        A, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+    const FARDGPassHandle Overwrite = Builder.AddPass(
+        "OverwriteAfterReaders",
+        &OverwriteParameters,
+        EARDGPassFlags::Compute | EARDGPassFlags::NeverCull,
+        [] {});
+
+    FARDGFormationParameters JoinParameters;
+    JoinParameters.mInputA = {
+        B, rhi::EArdaRHIResourceState::ShaderResource, {}};
+    JoinParameters.mInputB = {
+        C, rhi::EArdaRHIResourceState::ShaderResource, {}};
+    JoinParameters.mOutput = {
+        Output, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+    const FARDGPassHandle Join = Builder.AddPass(
+        "DiamondJoin", &JoinParameters, EARDGPassFlags::Compute, [] {});
+
+    FARDGFormationParameters DeadProduceParameters;
+    DeadProduceParameters.mOutput = {
+        DeadA, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+    const FARDGPassHandle DeadProduce = Builder.AddPass(
+        "DeadProduce", &DeadProduceParameters, EARDGPassFlags::Compute, [] {});
+    FARDGFormationParameters DeadConsumeParameters;
+    DeadConsumeParameters.mInputA = {
+        DeadA, rhi::EArdaRHIResourceState::ShaderResource, {}};
+    DeadConsumeParameters.mOutput = {
+        DeadB, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+    const FARDGPassHandle DeadConsume = Builder.AddPass(
+        "DeadConsume", &DeadConsumeParameters, EARDGPassFlags::Compute, [] {});
+
+    rhi::FArdaRHIBufferRef Extracted;
+    Builder.QueueBufferExtraction(
+        Output, Extracted, rhi::EArdaRHIResourceState::CopySource);
+    const FARDGCompileResult& Result = Builder.Compile();
+
+    EXPECT_EQ(
+        Result.mExecutionOrder,
+        (eastl::vector<FARDGPassHandle>{
+            Builder.GetProloguePass(),
+            Produce,
+            Left,
+            Right,
+            Overwrite,
+            Join,
+            Result.mEpilogue}));
+    EXPECT_EQ(
+        Builder.TryGetPass(Left)->GetState().mProducers,
+        (eastl::vector<FARDGPassHandle>{Produce}));
+    EXPECT_EQ(
+        Builder.TryGetPass(Right)->GetState().mProducers,
+        (eastl::vector<FARDGPassHandle>{Produce}));
+    EXPECT_EQ(
+        Builder.TryGetPass(Join)->GetState().mProducers,
+        (eastl::vector<FARDGPassHandle>{Left, Right}));
+    EXPECT_EQ(
+        Builder.TryGetPass(Overwrite)->GetState().mProducers,
+        (eastl::vector<FARDGPassHandle>{Produce}));
+    EXPECT_EQ(
+        Builder.TryGetPass(Overwrite)->GetState().mSynchronizationProducers,
+        (eastl::vector<FARDGPassHandle>{Left, Right}));
+    EXPECT_FALSE(Builder.TryGetPass(Produce)->GetState().mbCulled);
+    EXPECT_FALSE(Builder.TryGetPass(Overwrite)->GetState().mbCulled);
+    EXPECT_TRUE(Builder.TryGetPass(DeadProduce)->GetState().mbCulled);
+    EXPECT_TRUE(Builder.TryGetPass(DeadConsume)->GetState().mbCulled);
+
+    const auto FindLifetime = [&Result](FARDGBufferRef Buffer)
+        -> const FARDGResourceLifetime*
+    {
+        const auto Iterator = eastl::find_if(
+            Result.mResourceLifetimes.begin(),
+            Result.mResourceLifetimes.end(),
+            [Buffer](const FARDGResourceLifetime& Lifetime)
+            {
+                return Lifetime.mType == EARDGResourceType::Buffer &&
+                    Lifetime.mResourceIndex == Buffer->GetHandle().GetIndex();
+            });
+        return Iterator == Result.mResourceLifetimes.end()
+            ? nullptr
+            : &*Iterator;
+    };
+    ASSERT_NE(FindLifetime(A), nullptr);
+    ASSERT_NE(FindLifetime(B), nullptr);
+    ASSERT_NE(FindLifetime(C), nullptr);
+    ASSERT_NE(FindLifetime(Output), nullptr);
+    EXPECT_EQ(FindLifetime(A)->mFirstUse, 1u);
+    EXPECT_EQ(FindLifetime(A)->mLastUse, 4u);
+    EXPECT_EQ(FindLifetime(B)->mFirstUse, 2u);
+    EXPECT_EQ(FindLifetime(B)->mLastUse, 5u);
+    EXPECT_EQ(FindLifetime(C)->mFirstUse, 3u);
+    EXPECT_EQ(FindLifetime(C)->mLastUse, 5u);
+    EXPECT_EQ(FindLifetime(Output)->mFirstUse, 5u);
+    EXPECT_EQ(FindLifetime(Output)->mLastUse, 6u);
+    EXPECT_EQ(FindLifetime(DeadA), nullptr);
+    EXPECT_EQ(FindLifetime(DeadB), nullptr);
+}
+
+TEST(ArdaRenderGraph, RejectsMalformedFormationEdgesStatesAndOwnership)
+{
+    using namespace arda::render_graph;
+
+    {
+        FARDGBuilder Builder;
+        const FARDGPassHandle First = Builder.AddPass(
+            "First", EARDGPassFlags::NeverCull, [] {});
+        const FARDGPassHandle Second = Builder.AddPass(
+            "Second", EARDGPassFlags::NeverCull, [] {});
+        EXPECT_FATAL_CHECK(
+            Builder.AddDependency(First, First),
+            "Manual dependencies must name distinct registered passes");
+        EXPECT_FATAL_CHECK(
+            Builder.AddDependency(Second, First),
+            "Manual dependencies must name distinct registered passes");
+        EXPECT_FATAL_CHECK(
+            Builder.AddDependency(FARDGPassHandle(999u), Second),
+            "Manual dependencies must name distinct registered passes");
+    }
+
+    {
+        FARDGBuilder Owner;
+        rhi::FArdaRHIBufferDesc Desc;
+        Desc.mDebugName = "ForeignBuffer";
+        Desc.mByteSize = 64;
+        Desc.mUsage |= rhi::EArdaRHIBufferUsage::UnorderedAccess;
+        FARDGBufferRef Foreign = Owner.CreateBuffer(Desc);
+        FARDGBuilder Other;
+        FARDGBufferAccessParameters Parameters;
+        Parameters.mBuffer = {
+            Foreign, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+        EXPECT_FATAL_CHECK(
+            (void)Other.AddPass(
+                "ForeignOwner",
+                &Parameters,
+                EARDGPassFlags::Compute | EARDGPassFlags::NeverCull,
+                [] {}),
+            "owned by another render graph");
+    }
+
+    {
+        FARDGBuilder Builder;
+        rhi::FArdaRHIBufferDesc Desc;
+        Desc.mDebugName = "ConflictingStates";
+        Desc.mByteSize = 64;
+        Desc.mUsage |= rhi::EArdaRHIBufferUsage::UnorderedAccess;
+        FARDGBufferRef Buffer = Builder.CreateBuffer(Desc);
+        FARDGFormationParameters Parameters;
+        Parameters.mInputA = {
+            Buffer, rhi::EArdaRHIResourceState::ShaderResource, {}};
+        Parameters.mOutput = {
+            Buffer, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+        (void)Builder.AddPass(
+            "ConflictingReadWrite",
+            &Parameters,
+            EARDGPassFlags::Compute | EARDGPassFlags::NeverCull,
+            [] {});
+        EXPECT_FATAL_CHECK(
+            (void)Builder.Compile(),
+            "declares conflicting states for one resource");
+    }
+
+    {
+        FARDGBuilder Builder;
+        rhi::FArdaRHIBufferDesc Desc;
+        Desc.mDebugName = "OutOfBoundsRange";
+        Desc.mByteSize = 64;
+        Desc.mUsage |= rhi::EArdaRHIBufferUsage::UnorderedAccess;
+        FARDGBufferRef Buffer = Builder.CreateBuffer(Desc);
+        FARDGBufferAccessParameters Parameters;
+        Parameters.mBuffer = {
+            Buffer,
+            rhi::EArdaRHIResourceState::UnorderedAccess,
+            {60, 8}};
+        (void)Builder.AddPass(
+            "OutOfBoundsRange",
+            &Parameters,
+            EARDGPassFlags::Compute | EARDGPassFlags::NeverCull,
+            [] {});
+        EXPECT_FATAL_CHECK(
+            (void)Builder.Compile(), "declares an invalid buffer range");
+    }
+
+    {
+        FARDGBuilder Builder;
+        rhi::FArdaRHIBufferDesc Desc;
+        Desc.mDebugName = "UnproducedExtraction";
+        Desc.mByteSize = 64;
+        FARDGBufferRef Buffer = Builder.CreateBuffer(Desc);
+        rhi::FArdaRHIBufferRef Extracted;
+        Builder.QueueBufferExtraction(
+            Buffer, Extracted, rhi::EArdaRHIResourceState::CopySource);
+        EXPECT_FATAL_CHECK(
+            (void)Builder.Compile(), "extracted before it is produced");
+    }
 }
 
 TEST(ArdaRenderGraph, CompilerAssignsQueueFallbackAndAsyncForkJoinMetadata)
@@ -1761,6 +2158,430 @@ TEST(ArdaRenderGraph, FrameTemporaryResourcesAndPassBindingsAreReleased)
         EXPECT_EQ(After.mSamplerDescriptors, Baseline.mSamplerDescriptors);
         EXPECT_EQ(After.mDescriptorSets, Baseline.mDescriptorSets);
         EXPECT_EQ(After.mPendingSubmissions, Baseline.mPendingSubmissions);
+        Device = nullptr;
+        ShutdownBackend();
+    }
+    EXPECT_GT(TestedBackends, 0u);
+    ShutdownBackend();
+}
+
+TEST(ArdaRenderGraph, ExecutesComplexGraphFormationOnEveryNativeBackend)
+{
+    using namespace arda::backend;
+    using namespace arda::render_graph;
+
+    size_t TestedBackends = 0;
+    for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
+    {
+        if (Module.mBackendType != EArdaBackendType::D3D12 &&
+            Module.mBackendType != EArdaBackendType::Vulkan)
+        {
+            continue;
+        }
+        SCOPED_TRACE(Module.mName.c_str());
+        ShutdownBackend();
+        FARDGCollectingDiagnosticCallback Diagnostics;
+        FArdaBackendConfiguration Configuration;
+        Configuration.mBackendName = Module.mName;
+        Configuration.mBackend = Module.mBackendType;
+        Configuration.mbEnableValidation = true;
+        Configuration.mMessageCallback = &Diagnostics;
+        Configuration.mShaderCompilationMode =
+            EArdaShaderCompilationMode::LoadOnly;
+        ASSERT_TRUE(ConfigureBackend(Configuration));
+        ASSERT_TRUE(InitializeBackend())
+            << Module.mName.c_str() << ": " << GetBackendError().c_str();
+        ++TestedBackends;
+
+        rhi::FArdaRHIDeviceRef Device = GetDevice();
+        ASSERT_TRUE(Device);
+        {
+            const FArdaDeviceContext& DeviceContext = GetDeviceContext();
+            FARDGRenderGraphContext GraphContext;
+            GraphContext.mDevice = Device;
+            GraphContext.mQueueCapabilities.mbGraphics =
+                DeviceContext.mQueueCapabilities.mbGraphics;
+            GraphContext.mQueueCapabilities.mbCompute =
+                DeviceContext.mQueueCapabilities.mbCompute;
+            GraphContext.mQueueCapabilities.mbCopy =
+                DeviceContext.mQueueCapabilities.mbCopy;
+            FARDGBuilder Builder(GraphContext);
+
+            rhi::FArdaRHIBufferDesc BufferDesc;
+            BufferDesc.mByteSize = 256;
+            BufferDesc.mUsage |= rhi::EArdaRHIBufferUsage::UnorderedAccess;
+            BufferDesc.mDebugName = "FormationA";
+            FARDGBufferRef A = Builder.CreateBuffer(BufferDesc);
+            BufferDesc.mDebugName = "FormationB";
+            FARDGBufferRef B = Builder.CreateBuffer(BufferDesc);
+            BufferDesc.mDebugName = "FormationC";
+            FARDGBufferRef C = Builder.CreateBuffer(BufferDesc);
+            BufferDesc.mDebugName = "FormationJoin";
+            FARDGBufferRef JoinOutput = Builder.CreateBuffer(BufferDesc);
+            BufferDesc.mDebugName = "FormationCopy";
+            FARDGBufferRef CopyOutput = Builder.CreateBuffer(BufferDesc);
+            BufferDesc.mDebugName = "FormationIndependent";
+            FARDGBufferRef Independent = Builder.CreateBuffer(BufferDesc);
+            BufferDesc.mDebugName = "FormationDead";
+            FARDGBufferRef Dead = Builder.CreateBuffer(BufferDesc);
+
+            rhi::FArdaRHITextureDesc TextureDesc;
+            TextureDesc.mDebugName = "FormationRasterOutput";
+            TextureDesc.mWidth = 8;
+            TextureDesc.mHeight = 8;
+            TextureDesc.mFormat = rhi::EArdaRHIFormat::RGBA8UNorm;
+            TextureDesc.mUsage = rhi::EArdaRHITextureUsage::RenderTarget;
+            FARDGTextureRef RasterOutput = Builder.CreateTexture(TextureDesc);
+
+            std::array<std::atomic<uint32_t>, 9> Invocations{};
+            std::atomic<uint32_t> CommandFailures{0};
+            const auto AddWritePass =
+                [&Builder, &Invocations, &CommandFailures](
+                    const char* Name,
+                    const FARDGFormationParameters& Parameters,
+                    EARDGPassFlags Flags,
+                    uint32_t InvocationIndex,
+                    uint32_t WriteValue)
+                {
+                    return Builder.AddPass(
+                        Name,
+                        &Parameters,
+                        Flags,
+                        [&Invocations,
+                         &CommandFailures,
+                         InvocationIndex,
+                         WriteValue](
+                            FARDGPassExecutionContext& Context,
+                            const FARDGFormationParameters& Frozen)
+                        {
+                            Invocations[InvocationIndex].fetch_add(
+                                1, std::memory_order_relaxed);
+                            std::array<uint32_t, 64> Data;
+                            Data.fill(WriteValue);
+                            if (!Context.mCommandList.WriteBuffer(
+                                    *Context.GetBuffer(Frozen.mOutput.mBuffer),
+                                    Data.data(),
+                                    sizeof(Data)))
+                            {
+                                CommandFailures.fetch_add(
+                                    1, std::memory_order_relaxed);
+                            }
+                        });
+                };
+
+            FARDGFormationParameters ProduceParameters;
+            ProduceParameters.mOutput = {
+                A, rhi::EArdaRHIResourceState::CopyDest, {}};
+            const FARDGPassHandle Produce = AddWritePass(
+                "FormationProduce",
+                ProduceParameters,
+                EARDGPassFlags::Compute,
+                0,
+                1);
+
+            FARDGFormationParameters LeftParameters;
+            LeftParameters.mInputA = {
+                A, rhi::EArdaRHIResourceState::ShaderResource, {}};
+            LeftParameters.mOutput = {
+                B, rhi::EArdaRHIResourceState::CopyDest, {}};
+            const FARDGPassHandle Left = AddWritePass(
+                "FormationLeft",
+                LeftParameters,
+                EARDGPassFlags::Compute,
+                1,
+                2);
+
+            FARDGFormationParameters RightParameters;
+            RightParameters.mInputA = {
+                A, rhi::EArdaRHIResourceState::ShaderResource, {}};
+            RightParameters.mOutput = {
+                C, rhi::EArdaRHIResourceState::CopyDest, {}};
+            const FARDGPassHandle Right = AddWritePass(
+                "FormationRightAsync",
+                RightParameters,
+                EARDGPassFlags::Compute | EARDGPassFlags::AsyncCompute,
+                2,
+                3);
+
+            FARDGFormationParameters OverwriteParameters;
+            OverwriteParameters.mOutput = {
+                A, rhi::EArdaRHIResourceState::CopyDest, {}};
+            const FARDGPassHandle Overwrite = AddWritePass(
+                "FormationOverwriteAfterReaders",
+                OverwriteParameters,
+                EARDGPassFlags::Compute | EARDGPassFlags::NeverCull,
+                3,
+                4);
+
+            FARDGFormationParameters JoinParameters;
+            JoinParameters.mInputA = {
+                B, rhi::EArdaRHIResourceState::ShaderResource, {}};
+            JoinParameters.mInputB = {
+                C, rhi::EArdaRHIResourceState::ShaderResource, {}};
+            JoinParameters.mOutput = {
+                JoinOutput, rhi::EArdaRHIResourceState::CopyDest, {}};
+            const FARDGPassHandle Join = AddWritePass(
+                "FormationJoin",
+                JoinParameters,
+                EARDGPassFlags::Compute,
+                4,
+                5);
+
+            FARDGFormationParameters CopyParameters;
+            CopyParameters.mInputA = {
+                JoinOutput, rhi::EArdaRHIResourceState::CopySource, {}};
+            CopyParameters.mOutput = {
+                CopyOutput, rhi::EArdaRHIResourceState::CopyDest, {}};
+            const FARDGPassHandle Copy = Builder.AddPass(
+                "FormationCopy",
+                &CopyParameters,
+                EARDGPassFlags::Copy,
+                [&Invocations, &CommandFailures](
+                    FARDGPassExecutionContext& Context,
+                    const FARDGFormationParameters& Frozen)
+                {
+                    Invocations[5].fetch_add(1, std::memory_order_relaxed);
+                    if (!Context.mCommandList.CopyBuffer(
+                            *Context.GetBuffer(Frozen.mOutput.mBuffer),
+                            0,
+                            *Context.GetBuffer(Frozen.mInputA.mBuffer),
+                            0,
+                            256))
+                    {
+                        CommandFailures.fetch_add(
+                            1, std::memory_order_relaxed);
+                    }
+                });
+
+            FARDGFormationRasterParameters RasterParameters;
+            RasterParameters.mInput = {
+                CopyOutput, rhi::EArdaRHIResourceState::ShaderResource, {}};
+            RasterParameters.mRenderTargets.mColor[0].mTexture = RasterOutput;
+            const FARDGPassHandle Raster = Builder.AddPass(
+                "FormationRaster",
+                &RasterParameters,
+                EARDGPassFlags::Raster,
+                [&Invocations, &CommandFailures](
+                    FARDGPassExecutionContext& Context,
+                    const FARDGFormationRasterParameters& Frozen)
+                {
+                    Invocations[6].fetch_add(1, std::memory_order_relaxed);
+                    if (!Context.mCommandList.ClearTexture(
+                            *Context.GetTexture(
+                                Frozen.mRenderTargets.mColor[0].mTexture),
+                            {},
+                            {0.25f, 0.5f, 0.75f, 1.0f}))
+                    {
+                        CommandFailures.fetch_add(
+                            1, std::memory_order_relaxed);
+                    }
+                });
+
+            FARDGFormationParameters IndependentParameters;
+            IndependentParameters.mOutput = {
+                Independent, rhi::EArdaRHIResourceState::CopyDest, {}};
+            const FARDGPassHandle IndependentPass = AddWritePass(
+                "FormationIndependent",
+                IndependentParameters,
+                EARDGPassFlags::Compute | EARDGPassFlags::NeverCull,
+                7,
+                6);
+
+            FARDGFormationParameters DeadParameters;
+            DeadParameters.mOutput = {
+                Dead, rhi::EArdaRHIResourceState::CopyDest, {}};
+            const FARDGPassHandle DeadPass = AddWritePass(
+                "FormationDead",
+                DeadParameters,
+                EARDGPassFlags::Compute,
+                8,
+                7);
+
+            rhi::FArdaRHITextureRef ExtractedRasterOutput;
+            Builder.QueueTextureExtraction(
+                RasterOutput,
+                ExtractedRasterOutput,
+                rhi::EArdaRHIResourceState::CopySource);
+            const FARDGCompileResult& CompileResult = Builder.Compile();
+            EXPECT_EQ(
+                CompileResult.mExecutionOrder,
+                (eastl::vector<FARDGPassHandle>{
+                    Builder.GetProloguePass(),
+                    Produce,
+                    Left,
+                    Right,
+                    Overwrite,
+                    Join,
+                    Copy,
+                    Raster,
+                    IndependentPass,
+                    CompileResult.mEpilogue}));
+            EXPECT_TRUE(Builder.TryGetPass(DeadPass)->GetState().mbCulled);
+            EXPECT_EQ(CompileResult.mRasterGroupCount, 1u);
+            EXPECT_EQ(
+                Builder.TryGetPass(Right)->GetState().mPipeline,
+                DeviceContext.mQueueCapabilities.mbCompute
+                    ? EARDGPipeline::AsyncCompute
+                    : EARDGPipeline::Graphics);
+            EXPECT_EQ(
+                Builder.TryGetPass(Copy)->GetState().mPipeline,
+                DeviceContext.mQueueCapabilities.mbCopy
+                    ? EARDGPipeline::Copy
+                    : EARDGPipeline::Graphics);
+            EXPECT_EQ(
+                Builder.TryGetPass(Overwrite)
+                    ->GetState()
+                    .mSynchronizationProducers,
+                (eastl::vector<FARDGPassHandle>{Left, Right}));
+
+            FARDGExecuteOptions Options;
+            Options.mbParallelRecording = true;
+            Options.mMaxRecordingThreads = 4;
+            const FARDGExecutionResult& ExecutionResult =
+                Builder.Execute(Options);
+            EXPECT_TRUE(ExtractedRasterOutput);
+            EXPECT_GE(ExecutionResult.mSubmittedCommandListCount, 8u);
+            EXPECT_TRUE(ExecutionResult.mbUsedParallelRecording);
+            if (DeviceContext.mQueueCapabilities.mbCompute ||
+                DeviceContext.mQueueCapabilities.mbCopy)
+            {
+                EXPECT_FALSE(CompileResult.mQueueDependencies.empty());
+                EXPECT_GT(ExecutionResult.mQueueWaitCount, 0u);
+            }
+            for (uint32_t Index = 0; Index < 8; ++Index)
+            {
+                EXPECT_EQ(
+                    Invocations[Index].load(std::memory_order_relaxed), 1u)
+                    << "live callback " << Index;
+            }
+            EXPECT_EQ(
+                Invocations[8].load(std::memory_order_relaxed), 0u);
+            EXPECT_EQ(CommandFailures.load(std::memory_order_relaxed), 0u);
+            EXPECT_TRUE(Device->WaitForIdle());
+        }
+        EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+        Device = nullptr;
+        ShutdownBackend();
+    }
+    EXPECT_GT(TestedBackends, 0u);
+    ShutdownBackend();
+}
+
+TEST(ArdaRenderGraph, HostDeviceCopyNodesExecuteBlockingAndAsyncOnEveryBackend)
+{
+    using namespace arda::backend;
+    using namespace arda::render_graph;
+
+    size_t TestedBackends = 0;
+    for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
+    {
+        if (Module.mBackendType != EArdaBackendType::D3D12 &&
+            Module.mBackendType != EArdaBackendType::Vulkan)
+            continue;
+        SCOPED_TRACE(Module.mName.c_str());
+        ShutdownBackend();
+        FArdaBackendConfiguration Configuration;
+        Configuration.mBackendName = Module.mName;
+        Configuration.mBackend = Module.mBackendType;
+        Configuration.mbEnableValidation = false;
+        Configuration.mShaderCompilationMode =
+            EArdaShaderCompilationMode::LoadOnly;
+        ASSERT_TRUE(ConfigureBackend(Configuration));
+        ASSERT_TRUE(InitializeBackend())
+            << Module.mName.c_str() << ": " << GetBackendError().c_str();
+        ++TestedBackends;
+
+        rhi::FArdaRHIDeviceRef Device = GetDevice();
+        ASSERT_TRUE(Device);
+        const auto MakeContext = [&]
+        {
+            FARDGRenderGraphContext Context;
+            Context.mDevice = Device;
+            Context.mQueueCapabilities.mbGraphics =
+                GetDeviceContext().mQueueCapabilities.mbGraphics;
+            Context.mQueueCapabilities.mbCompute =
+                GetDeviceContext().mQueueCapabilities.mbCompute;
+            Context.mQueueCapabilities.mbCopy =
+                GetDeviceContext().mQueueCapabilities.mbCopy;
+            return Context;
+        };
+        rhi::FArdaRHIBufferDesc Desc;
+        Desc.mByteSize = 64;
+        Desc.mDebugName = "ARDG host/device copy buffer";
+
+        eastl::vector<uint8_t> Expected(Desc.mByteSize);
+        for (size_t Index = 0; Index < Expected.size(); ++Index)
+            Expected[Index] = static_cast<uint8_t>(Index * 17u + 5u);
+        eastl::vector<uint8_t> BlockingReadback;
+        {
+            FARDGBuilder Builder(MakeContext());
+            FARDGBufferRef Buffer = Builder.CreateBuffer(Desc);
+            const FARDGPassHandle Upload = Builder.QueueBufferUpload(
+                Buffer, Expected.data(), Expected.size());
+            const FARDGPassHandle Readback = Builder.AddDeviceToHostCopyPass(
+                Buffer, BlockingReadback);
+            const FARDGCompileResult& Compiled = Builder.Compile();
+            ASSERT_FALSE(Builder.TryGetPass(Upload)->GetState().mbCulled);
+            ASSERT_FALSE(Builder.TryGetPass(Readback)->GetState().mbCulled);
+            EXPECT_EQ(Builder.TryGetPass(Readback)->GetState().mPipeline,
+                GetDeviceContext().mQueueCapabilities.mbCopy
+                    ? EARDGPipeline::Copy : EARDGPipeline::Graphics);
+            EXPECT_NE(eastl::find(
+                Compiled.mExecutionOrder.begin(),
+                Compiled.mExecutionOrder.end(), Upload),
+                Compiled.mExecutionOrder.end());
+            const FARDGExecutionResult& Executed = Builder.Execute();
+            EXPECT_GT(Executed.mSubmittedCommandListCount, 0u);
+        }
+        EXPECT_EQ(BlockingReadback, Expected);
+
+        for (size_t Index = 0; Index < Expected.size(); ++Index)
+            Expected[Index] = static_cast<uint8_t>(Index * 31u + 11u);
+        std::mutex CallbackMutex;
+        std::condition_variable CallbackCondition;
+        uint32_t CallbackCount = 0;
+        rhi::FArdaRHIStatus UploadStatus;
+        rhi::FArdaRHIBufferReadbackResult AsyncReadback;
+        std::thread::id UploadThread;
+        std::thread::id ReadbackThread;
+        const std::thread::id CallingThread = std::this_thread::get_id();
+        {
+            FARDGBuilder Builder(MakeContext());
+            FARDGBufferRef Buffer = Builder.CreateBuffer(Desc);
+            (void)Builder.AddHostToDeviceCopyPassAsync(
+                Buffer, Expected.data(), Expected.size(),
+                [&](rhi::FArdaRHIStatus Status)
+                {
+                    std::lock_guard<std::mutex> Lock(CallbackMutex);
+                    UploadStatus = eastl::move(Status);
+                    UploadThread = std::this_thread::get_id();
+                    ++CallbackCount;
+                    CallbackCondition.notify_all();
+                });
+            (void)Builder.AddEnqueueCopyPass(
+                Buffer,
+                [&](rhi::FArdaRHIBufferReadbackResult Result)
+                {
+                    std::lock_guard<std::mutex> Lock(CallbackMutex);
+                    AsyncReadback = eastl::move(Result);
+                    ReadbackThread = std::this_thread::get_id();
+                    ++CallbackCount;
+                    CallbackCondition.notify_all();
+                });
+            const FARDGExecutionResult& Executed = Builder.Execute();
+            EXPECT_GT(Executed.mSubmittedCommandListCount, 0u);
+            std::unique_lock<std::mutex> Lock(CallbackMutex);
+            ASSERT_TRUE(CallbackCondition.wait_for(
+                Lock, std::chrono::seconds(10),
+                [&] { return CallbackCount == 2; }));
+        }
+        EXPECT_TRUE(UploadStatus) << UploadStatus.mMessage.c_str();
+        EXPECT_TRUE(AsyncReadback) << AsyncReadback.mStatus.mMessage.c_str();
+        EXPECT_EQ(AsyncReadback.mValue, Expected);
+        EXPECT_NE(UploadThread, CallingThread);
+        EXPECT_NE(ReadbackThread, CallingThread);
+        ASSERT_TRUE(Device->WaitForIdle());
+        Device->RunGarbageCollection();
         Device = nullptr;
         ShutdownBackend();
     }

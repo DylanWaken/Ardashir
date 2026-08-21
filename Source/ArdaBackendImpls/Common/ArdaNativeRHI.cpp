@@ -7,6 +7,7 @@
 #include <atomic>
 #include <cstring>
 #include <mutex>
+#include <thread>
 
 namespace arda::rhi::native
 {
@@ -376,6 +377,16 @@ namespace arda::rhi::native
 
         class FArdaNativeDevice;
 
+        struct FPendingBufferCopyCompletion
+        {
+            bool mbBlocking = false;
+            FArdaNativeObjectRef mReadbackBuffer;
+            size_t mByteSize = 0;
+            eastl::vector<uint8_t>* mOutput = nullptr;
+            FArdaRHIHostToDeviceCopyCallback mUploadCallback;
+            FArdaRHIDeviceToHostCopyCallback mReadbackCallback;
+        };
+
         class FCommandList final : public FResource, public IArdaRHICommandList
         {
         public:
@@ -388,8 +399,19 @@ namespace arda::rhi::native
             EArdaRHIQueueType GetQueueType() const noexcept override { return mQueue; }
             FArdaRHIStatus Open() override { return mNative->Open(); }
             FArdaRHIStatus Close() override { return mNative->Close(); }
-            FArdaRHIStatus Reset() override { return mNative->Reset(); }
+            FArdaRHIStatus Reset() override;
             FArdaRHIStatus WriteBuffer(IArdaRHIBuffer&, const void*, size_t, uint64_t) override;
+            FArdaRHIStatus CopyBufferHostToDevice(
+                IArdaRHIBuffer&, const void*, size_t, uint64_t) override;
+            FArdaRHIStatus CopyBufferHostToDeviceAsync(
+                IArdaRHIBuffer&, const void*, size_t,
+                FArdaRHIHostToDeviceCopyCallback, uint64_t) override;
+            FArdaRHIStatus CopyBufferDeviceToHost(
+                IArdaRHIBuffer&, eastl::vector<uint8_t>&,
+                uint64_t, uint64_t) override;
+            FArdaRHIStatus CopyBufferDeviceToHostAsync(
+                IArdaRHIBuffer&, FArdaRHIDeviceToHostCopyCallback,
+                uint64_t, uint64_t) override;
             FArdaRHIStatus CopyBuffer(IArdaRHIBuffer&, uint64_t, IArdaRHIBuffer&, uint64_t, uint64_t) override;
             FArdaRHIStatus CopyTextureToStaging(IArdaRHIStagingTexture&, const FArdaRHITextureSlice&, IArdaRHITexture&, const FArdaRHITextureSlice&) override;
             FArdaRHIStatus CopyTextureFromStaging(IArdaRHITexture&, const FArdaRHITextureSlice&, IArdaRHIStagingTexture&, const FArdaRHITextureSlice&) override;
@@ -429,12 +451,17 @@ namespace arda::rhi::native
             void EndMarker() override { mNative->EndMarker(); }
 
             IArdaNativeCommandList& GetNative() const noexcept { return *mNative; }
+            eastl::vector<FPendingBufferCopyCompletion> TakeCopyCompletions()
+            {
+                return eastl::move(mCopyCompletions);
+            }
 
         private:
             bool Owns(const FResource* Resource) const noexcept;
             FArdaNativeDevice* mDevice = nullptr;
             EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics;
             eastl::unique_ptr<IArdaNativeCommandList> mNative;
+            eastl::vector<FPendingBufferCopyCompletion> mCopyCompletions;
         };
 
         class FArdaNativeDevice final : public FResource, public IArdaRHIDevice
@@ -543,6 +570,9 @@ namespace arda::rhi::native
             IArdaNativeApiDevice& GetNativeDevice() const noexcept { return *mDevice; }
 
         private:
+            TArdaRHIResult<uint64_t> FinishCommandListSubmission(
+                FCommandList& CommandList,
+                TArdaRHIResult<uint64_t> Submitted);
             template <typename Resource>
             bool IsOwned(const TArdaRHIRef<Resource>& Ref) const noexcept
             {
@@ -1091,12 +1121,112 @@ namespace arda::rhi::native
                 this, Queue, eastl::move(Native.mValue), mLifetimeTracker)), {} };
         }
 
+        TArdaRHIResult<uint64_t> FArdaNativeDevice::FinishCommandListSubmission(
+            FCommandList& CommandList,
+            TArdaRHIResult<uint64_t> Submitted)
+        {
+            auto Completions = CommandList.TakeCopyCompletions();
+            if (Completions.empty()) return Submitted;
+
+            const bool bBlocking = eastl::any_of(
+                Completions.begin(), Completions.end(),
+                [](const FPendingBufferCopyCompletion& Completion)
+                {
+                    return Completion.mbBlocking;
+                });
+            auto NativeDevice = mDevice;
+            const uint64_t Submission = Submitted.mValue;
+            const FArdaRHIStatus SubmissionStatus = Submitted.mStatus;
+            const auto Complete = [NativeDevice, Submission, SubmissionStatus](
+                eastl::vector<FPendingBufferCopyCompletion> Pending)
+            {
+                FArdaRHIStatus WaitStatus = SubmissionStatus;
+                if (WaitStatus && Submission != 0)
+                    WaitStatus = NativeDevice->WaitForSubmission(Submission);
+                FArdaRHIStatus FirstError = WaitStatus;
+
+                for (auto& Completion : Pending)
+                {
+                    FArdaRHIStatus CopyStatus = WaitStatus;
+                    FArdaRHIBufferReadbackResult ReadbackResult;
+                    ReadbackResult.mStatus = CopyStatus;
+                    if (CopyStatus && Completion.mReadbackBuffer)
+                    {
+                        auto Mapping = NativeDevice->MapBuffer(
+                            Completion.mReadbackBuffer, 0,
+                            Completion.mByteSize);
+                        if (!Mapping)
+                        {
+                            CopyStatus = eastl::move(Mapping.mStatus);
+                            ReadbackResult.mStatus = CopyStatus;
+                        }
+                        else
+                        {
+                            ReadbackResult.mValue.resize(
+                                Completion.mByteSize);
+                            std::memcpy(
+                                ReadbackResult.mValue.data(),
+                                Mapping.mValue,
+                                Completion.mByteSize);
+                            NativeDevice->UnmapBuffer(
+                                Completion.mReadbackBuffer);
+                        }
+                    }
+
+                    if (Completion.mOutput)
+                    {
+                        if (CopyStatus)
+                            *Completion.mOutput = ReadbackResult.mValue;
+                        else
+                            Completion.mOutput->clear();
+                    }
+                    try
+                    {
+                        if (Completion.mUploadCallback)
+                            Completion.mUploadCallback(CopyStatus);
+                        if (Completion.mReadbackCallback)
+                            Completion.mReadbackCallback(
+                                eastl::move(ReadbackResult));
+                    }
+                    catch (...)
+                    {
+                        if (CopyStatus)
+                            CopyStatus = FArdaRHIStatus::Error(
+                                EArdaRHIResult::BackendFailure,
+                                "A buffer-copy completion callback threw an exception.");
+                    }
+                    if (FirstError && !CopyStatus)
+                        FirstError = CopyStatus;
+                }
+                return FirstError;
+            };
+
+            if (bBlocking)
+            {
+                const FArdaRHIStatus CompletionStatus =
+                    Complete(eastl::move(Completions));
+                if (!CompletionStatus)
+                    return Failure<uint64_t>(CompletionStatus);
+                return Submitted;
+            }
+
+            std::thread(
+                [Complete, Pending = eastl::move(Completions)]() mutable
+                {
+                    (void)Complete(eastl::move(Pending));
+                }).detach();
+            return Submitted;
+        }
+
         TArdaRHIResult<uint64_t> FArdaNativeDevice::ExecuteCommandList(
             const FArdaRHICommandListRef& CommandList)
         {
             auto* Native = Cast<FCommandList>(CommandList.Get());
             if (!Native || !Owns(Native)) return Failure<uint64_t>(WrongDevice());
-            return mDevice->ExecuteCommandList(Native->GetNative(), Native->GetQueueType());
+            return FinishCommandListSubmission(
+                *Native,
+                mDevice->ExecuteCommandList(
+                    Native->GetNative(), Native->GetQueueType()));
         }
 
         TArdaRHIResult<uint64_t> FArdaNativeDevice::ExecuteCommandLists(
@@ -1112,6 +1242,8 @@ namespace arda::rhi::native
                 if (!Native || !Owns(Native) || Native->GetQueueType() != Queue)
                     return Failure<uint64_t>(WrongDevice());
                 auto Submitted = mDevice->ExecuteCommandList(Native->GetNative(), Queue);
+                Submitted = FinishCommandListSubmission(
+                    *Native, eastl::move(Submitted));
                 if (!Submitted) return Submitted;
                 Last = Submitted.mValue;
             }
@@ -1190,6 +1322,12 @@ namespace arda::rhi::native
             return Resource && Resource->GetOwner() == mDevice;
         }
 
+        FArdaRHIStatus FCommandList::Reset()
+        {
+            mCopyCompletions.clear();
+            return mNative->Reset();
+        }
+
         FArdaRHIStatus FCommandList::WriteBuffer(
             IArdaRHIBuffer& Buffer, const void* Data, size_t Size, uint64_t Offset)
         {
@@ -1199,6 +1337,134 @@ namespace arda::rhi::native
                 Size > Native->mDesc.mByteSize - Offset)
                 return Invalid("Buffer write range is invalid.");
             return mNative->WriteBuffer(Native->mNative, Native->mDesc, Data, Size, Offset);
+        }
+
+        FArdaRHIStatus FCommandList::CopyBufferHostToDevice(
+            IArdaRHIBuffer& Destination,
+            const void* SourceData,
+            size_t Size,
+            uint64_t DestinationOffset)
+        {
+            if (auto Status = WriteBuffer(
+                    Destination, SourceData, Size, DestinationOffset);
+                !Status)
+                return Status;
+            FPendingBufferCopyCompletion Completion;
+            Completion.mbBlocking = true;
+            mCopyCompletions.push_back(eastl::move(Completion));
+            return {};
+        }
+
+        FArdaRHIStatus FCommandList::CopyBufferHostToDeviceAsync(
+            IArdaRHIBuffer& Destination,
+            const void* SourceData,
+            size_t Size,
+            FArdaRHIHostToDeviceCopyCallback Callback,
+            uint64_t DestinationOffset)
+        {
+            if (!Callback)
+                return Invalid(
+                    "An asynchronous host-to-device copy requires a callback.");
+            if (auto Status = WriteBuffer(
+                    Destination, SourceData, Size, DestinationOffset);
+                !Status)
+                return Status;
+            FPendingBufferCopyCompletion Completion;
+            Completion.mUploadCallback = eastl::move(Callback);
+            mCopyCompletions.push_back(eastl::move(Completion));
+            return {};
+        }
+
+        FArdaRHIStatus FCommandList::CopyBufferDeviceToHost(
+            IArdaRHIBuffer& Source,
+            eastl::vector<uint8_t>& Output,
+            uint64_t SourceOffset,
+            uint64_t Size)
+        {
+            auto* Native = Cast<FBuffer>(&Source);
+            if (!Native || !Owns(Native)) return WrongDevice();
+            if (SourceOffset > Native->mDesc.mByteSize)
+                return Invalid("Buffer readback offset is invalid.");
+            const uint64_t ResolvedSize = Size == ArdaRHIWholeBuffer
+                ? Native->mDesc.mByteSize - SourceOffset : Size;
+            if (ResolvedSize == 0 ||
+                ResolvedSize > Native->mDesc.mByteSize - SourceOffset ||
+                ResolvedSize > static_cast<uint64_t>(SIZE_MAX))
+                return Invalid("Buffer readback range is invalid.");
+
+            FArdaRHIBufferDesc ReadbackDesc;
+            ReadbackDesc.mByteSize = ResolvedSize;
+            ReadbackDesc.mCpuAccess = EArdaRHICpuAccess::Read;
+            ReadbackDesc.mInitialState = EArdaRHIResourceState::CopyDest;
+            ReadbackDesc.mbKeepInitialState = true;
+            ReadbackDesc.mDebugName = "Buffer readback";
+            auto Readback = mDevice->GetNativeDevice().CreateBuffer(ReadbackDesc);
+            if (!Readback) return eastl::move(Readback.mStatus);
+            if (auto Status = mNative->SetBufferState(
+                    Native->mNative, Native->mDesc,
+                    EArdaRHIResourceState::CopySource);
+                !Status)
+                return Status;
+            if (auto Status = mNative->CopyBuffer(
+                    Readback.mValue, 0, Native->mNative,
+                    SourceOffset, ResolvedSize);
+                !Status)
+                return Status;
+
+            FPendingBufferCopyCompletion Completion;
+            Completion.mbBlocking = true;
+            Completion.mReadbackBuffer = eastl::move(Readback.mValue);
+            Completion.mByteSize = static_cast<size_t>(ResolvedSize);
+            Completion.mOutput = &Output;
+            mCopyCompletions.push_back(eastl::move(Completion));
+            return {};
+        }
+
+        FArdaRHIStatus FCommandList::CopyBufferDeviceToHostAsync(
+            IArdaRHIBuffer& Source,
+            FArdaRHIDeviceToHostCopyCallback Callback,
+            uint64_t SourceOffset,
+            uint64_t Size)
+        {
+            if (!Callback)
+                return Invalid(
+                    "An asynchronous device-to-host copy requires a callback.");
+            auto* Native = Cast<FBuffer>(&Source);
+            if (!Native || !Owns(Native)) return WrongDevice();
+            if (SourceOffset > Native->mDesc.mByteSize)
+                return Invalid("Buffer readback offset is invalid.");
+            const uint64_t ResolvedSize = Size == ArdaRHIWholeBuffer
+                ? Native->mDesc.mByteSize - SourceOffset : Size;
+            if (ResolvedSize == 0 ||
+                ResolvedSize > Native->mDesc.mByteSize - SourceOffset ||
+                ResolvedSize > static_cast<uint64_t>(SIZE_MAX))
+                return Invalid("Buffer readback range is invalid.");
+
+            FArdaRHIBufferDesc ReadbackDesc;
+            ReadbackDesc.mByteSize = ResolvedSize;
+            ReadbackDesc.mCpuAccess = EArdaRHICpuAccess::Read;
+            ReadbackDesc.mInitialState = EArdaRHIResourceState::CopyDest;
+            ReadbackDesc.mbKeepInitialState = true;
+            ReadbackDesc.mDebugName = "Asynchronous buffer readback";
+            auto Readback = mDevice->GetNativeDevice().CreateBuffer(ReadbackDesc);
+            if (!Readback) return eastl::move(Readback.mStatus);
+            if (auto Status = mNative->SetBufferState(
+                    Native->mNative, Native->mDesc,
+                    EArdaRHIResourceState::CopySource);
+                !Status)
+                return Status;
+            if (auto Status = mNative->CopyBuffer(
+                    Readback.mValue, 0, Native->mNative,
+                    SourceOffset, ResolvedSize);
+                !Status)
+                return Status;
+
+            FPendingBufferCopyCompletion Completion;
+            Completion.mReadbackBuffer = eastl::move(Readback.mValue);
+            Completion.mByteSize = static_cast<size_t>(ResolvedSize);
+            Completion.mReadbackCallback = eastl::move(Callback);
+            mCopyCompletions.push_back(eastl::move(Completion));
+            return {};
         }
 
         FArdaRHIStatus FCommandList::CopyBuffer(

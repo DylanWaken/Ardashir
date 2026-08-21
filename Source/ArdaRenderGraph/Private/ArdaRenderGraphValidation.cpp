@@ -249,8 +249,18 @@ namespace arda::render_graph
             ValidateState(Pass, Access.mState, false);
             const rhi::FArdaRHIBufferDesc& Desc = Buffer->GetDesc();
             const rhi::FArdaRHIBufferRange Resolved = Access.mRange.Resolve(Desc);
-            if (Resolved.mByteSize == 0 || Resolved.mByteOffset > Desc.mByteSize ||
-                Resolved.mByteSize > Desc.mByteSize - Resolved.mByteOffset)
+            const bool bWholeRemainingBuffer =
+                Access.mRange.mByteSize == rhi::ArdaRHIWholeBuffer;
+            const bool bRequestedRangeOverflows =
+                Access.mRange.mByteOffset > Desc.mByteSize ||
+                (!bWholeRemainingBuffer &&
+                 Access.mRange.mByteOffset <= Desc.mByteSize &&
+                 Access.mRange.mByteSize >
+                     Desc.mByteSize - Access.mRange.mByteOffset);
+            if (Resolved.mByteSize == 0 ||
+                Resolved.mByteOffset > Desc.mByteSize ||
+                Resolved.mByteSize > Desc.mByteSize - Resolved.mByteOffset ||
+                bRequestedRangeOverflows)
             {
                 ReportPassError(Pass, "declares an invalid buffer range.");
             }

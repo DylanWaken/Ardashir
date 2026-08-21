@@ -125,6 +125,9 @@ namespace arda::tests::ardg_example
             ARDG_BUFFER_UAV(mTerrainVertices)
             ARDG_BUFFER_UAV(mTerrainIndices)
         ARDG_END_PARAMETER_STRUCT()
+        ARDG_BEGIN_PARAMETER_STRUCT(FUpdateTerrainCameraParameters)
+            ARDG_BUFFER_ACCESS(mDestination)
+        ARDG_END_PARAMETER_STRUCT()
         ARDG_BEGIN_PARAMETER_STRUCT(FRenderTerrainParameters)
             ARDG_BUFFER_ACCESS(mTerrainVertices)
             ARDG_BUFFER_ACCESS(mTerrainIndices)
@@ -174,6 +177,135 @@ namespace arda::tests::ardg_example
             mutable std::mutex mMutex;
             eastl::string mFirstError;
         };
+
+        eastl::string ValidateTerrainReadback(
+            const eastl::vector<uint8_t>& VertexBytes,
+            const eastl::vector<uint8_t>& IndexBytes)
+        {
+            if (VertexBytes.size() !=
+                    static_cast<size_t>(TerrainVertexCount) * sizeof(FTerrainVertex) ||
+                IndexBytes.size() !=
+                    static_cast<size_t>(TerrainIndexCount) * sizeof(uint32_t))
+                return "Terrain GPU readback returned an unexpected byte count.";
+
+            const auto* Vertices = reinterpret_cast<const FTerrainVertex*>(
+                VertexBytes.data());
+            const auto* Indices = reinterpret_cast<const uint32_t*>(
+                IndexBytes.data());
+            constexpr uint32_t LocalIndices[6] = { 0, 2, 1, 1, 2, 3 };
+            float MaximumGradient = 0.0f;
+            uint32_t MaximumGradientCell = 0;
+            for (uint32_t Cell = 0; Cell < CellCount; ++Cell)
+            {
+                const uint32_t VertexBase = Cell * 4;
+                const uint32_t IndexBase = Cell * 6;
+                for (uint32_t Index = 0; Index < 6; ++Index)
+                {
+                    const uint32_t Expected = VertexBase + LocalIndices[Index];
+                    if (Indices[IndexBase + Index] != Expected)
+                    {
+                        char Message[192]{};
+                        std::snprintf(
+                            Message, sizeof(Message),
+                            "Terrain index readback diverged at cell %u index %u: expected %u, got %u.",
+                            Cell, Index, Expected, Indices[IndexBase + Index]);
+                        return Message;
+                    }
+                }
+
+                const uint32_t CellX = Cell % (HeightmapWidth - 1);
+                const uint32_t CellY = Cell / (HeightmapWidth - 1);
+                constexpr uint32_t CornerX[4] = { 0, 1, 0, 1 };
+                constexpr uint32_t CornerY[4] = { 0, 0, 1, 1 };
+                for (uint32_t Corner = 0; Corner < 4; ++Corner)
+                {
+                    const FTerrainVertex& Vertex = Vertices[VertexBase + Corner];
+                    const float ExpectedX =
+                        ((static_cast<float>(CellY + CornerY[Corner]) /
+                            static_cast<float>(HeightmapHeight - 1)) - 0.5f) * 1.45f;
+                    const float ExpectedY =
+                        ((static_cast<float>(CellX + CornerX[Corner]) /
+                            static_cast<float>(HeightmapWidth - 1)) - 0.5f) * 1.45f;
+                    if (!std::isfinite(Vertex.mPosition[0]) ||
+                        !std::isfinite(Vertex.mPosition[1]) ||
+                        !std::isfinite(Vertex.mPosition[2]) ||
+                        !std::isfinite(Vertex.mHeight) ||
+                        std::abs(Vertex.mPosition[0] - ExpectedX) > 0.00001f ||
+                        std::abs(Vertex.mPosition[1] - ExpectedY) > 0.00001f ||
+                        std::abs(Vertex.mPosition[2] -
+                            (Vertex.mHeight * 0.72f - 0.32f)) > 0.00002f)
+                    {
+                        char Message[192]{};
+                        std::snprintf(
+                            Message, sizeof(Message),
+                            "Terrain vertex readback diverged at cell %u corner %u: position=(%.6f, %.6f, %.6f), height=%.6f.",
+                            Cell, Corner,
+                            Vertex.mPosition[0], Vertex.mPosition[1],
+                            Vertex.mPosition[2], Vertex.mHeight);
+                        return Message;
+                    }
+                }
+
+                const auto HeightDiff = [](float Left, float Right)
+                {
+                    return std::abs(Left - Right);
+                };
+                const float HorizontalGradient = HeightDiff(
+                    Vertices[VertexBase + 0].mHeight,
+                    Vertices[VertexBase + 1].mHeight);
+                const float VerticalGradient = HeightDiff(
+                    Vertices[VertexBase + 0].mHeight,
+                    Vertices[VertexBase + 2].mHeight);
+                const float Gradient = eastl::max(
+                    HorizontalGradient, VerticalGradient);
+                if (Gradient > MaximumGradient)
+                {
+                    MaximumGradient = Gradient;
+                    MaximumGradientCell = Cell;
+                }
+                if (CellX + 1 < HeightmapWidth - 1)
+                {
+                    const FTerrainVertex* Right =
+                        Vertices + VertexBase + 4;
+                    if (HeightDiff(Vertices[VertexBase + 1].mHeight,
+                            Right[0].mHeight) > 0.000001f ||
+                        HeightDiff(Vertices[VertexBase + 3].mHeight,
+                            Right[2].mHeight) > 0.000001f)
+                    {
+                        char Message[160]{};
+                        std::snprintf(Message, sizeof(Message),
+                            "Terrain readback has a horizontal height seam after cell %u.",
+                            Cell);
+                        return Message;
+                    }
+                }
+                if (CellY + 1 < HeightmapHeight - 1)
+                {
+                    const FTerrainVertex* Below = Vertices +
+                        VertexBase + (HeightmapWidth - 1) * 4;
+                    if (HeightDiff(Vertices[VertexBase + 2].mHeight,
+                            Below[0].mHeight) > 0.000001f ||
+                        HeightDiff(Vertices[VertexBase + 3].mHeight,
+                            Below[1].mHeight) > 0.000001f)
+                    {
+                        char Message[160]{};
+                        std::snprintf(Message, sizeof(Message),
+                            "Terrain readback has a vertical height seam after cell %u.",
+                            Cell);
+                        return Message;
+                    }
+                }
+            }
+            if (MaximumGradient > 0.10f)
+            {
+                char Message[160]{};
+                std::snprintf(Message, sizeof(Message),
+                    "Terrain readback has a discontinuous height gradient of %.6f at cell %u.",
+                    MaximumGradient, MaximumGradientCell);
+                return Message;
+            }
+            return {};
+        }
     }
 
     ARDA_IMPLEMENT_GLOBAL_SHADER(
@@ -401,6 +533,8 @@ namespace arda::tests::ardg_example
         }
         const auto colorAttachment = framebufferDesc.mColorAttachments[0];
         auto executionErrors = std::make_shared<FFrameExecutionErrors>();
+        eastl::vector<uint8_t> terrainVertexReadback;
+        eastl::vector<uint8_t> terrainIndexReadback;
         render_graph::FARDGBuilder graph(CreateGraphContext());
         auto* backBuffer = graph.RegisterExternalTexture(
             colorAttachment.mTexture, rhi::EArdaRHIResourceState::Present, "BackBuffer");
@@ -566,6 +700,18 @@ namespace arda::tests::ardg_example
             },
             render_graph::EARDGPassFlags::AsyncCompute);
 
+        if (!mbTerrainReadbackValidated)
+        {
+            (void)graph.AddDeviceToHostCopyPass(
+                terrainVertices, terrainVertexReadback,
+                0, rhi::ArdaRHIWholeBuffer,
+                "ReadbackTerrainVertices");
+            (void)graph.AddDeviceToHostCopyPass(
+                terrainIndices, terrainIndexReadback,
+                0, rhi::ArdaRHIWholeBuffer,
+                "ReadbackTerrainIndices");
+        }
+
         FRenderTerrainParameters render;
         render.mTerrainVertices = { terrainVertices, rhi::EArdaRHIResourceState::VertexBuffer, {} };
         render.mTerrainIndices = { terrainIndices, rhi::EArdaRHIResourceState::IndexBuffer, {} };
@@ -608,9 +754,26 @@ namespace arda::tests::ardg_example
                 0.0f, 0.0f, NearPlane, 0.0f
             }};
 
+        FUpdateTerrainCameraParameters updateCamera;
+        updateCamera.mDestination = {
+            cameraBuffer, rhi::EArdaRHIResourceState::CopyDest, {}};
+        (void)graph.AddPass(
+            "UpdateTerrainCamera",
+            &updateCamera,
+            render_graph::EARDGPassFlags::None,
+            [cameraSettings](
+                render_graph::FARDGPassExecutionContext& context,
+                const FUpdateTerrainCameraParameters& frozen)
+            {
+                (void)context.mCommandList.WriteBuffer(
+                    *context.GetBuffer(frozen.mDestination.mBuffer),
+                    &cameraSettings,
+                    sizeof(cameraSettings));
+            });
+
         (void)graph.AddPass(
             "RenderTerrain", &render, render_graph::EARDGPassFlags::Raster,
-            [this, width, height, cameraSettings, executionErrors](
+            [this, width, height, executionErrors](
                 render_graph::FARDGPassExecutionContext& context,
                 const FRenderTerrainParameters& frozen)
             {
@@ -637,9 +800,6 @@ namespace arda::tests::ardg_example
                 (void)context.mCommandList.ClearDepthStencilTexture(
                     *depth, frozen.mTargets.mDepthStencil.mSubresources,
                     true, 0.0f, false, 0);
-                (void)context.mCommandList.WriteBuffer(
-                    *context.GetBuffer(frozen.mCamera.mBuffer),
-                    &cameraSettings, sizeof(cameraSettings));
                 rhi::FArdaRHIGraphicsState state;
                 state.mFramebuffer = terrainFramebuffer.mValue;
                 state.mBindings = {
@@ -698,6 +858,14 @@ namespace arda::tests::ardg_example
         mError = executionErrors->GetFirstError();
         if (!mError.empty())
             return false;
+        if (!mbTerrainReadbackValidated)
+        {
+            mError = ValidateTerrainReadback(
+                terrainVertexReadback, terrainIndexReadback);
+            if (!mError.empty())
+                return false;
+            mbTerrainReadbackValidated = true;
+        }
         if (executionResult.mSubmittedCommandListCount == 0)
         {
             mError = "Terrain render graph submitted no command lists.";

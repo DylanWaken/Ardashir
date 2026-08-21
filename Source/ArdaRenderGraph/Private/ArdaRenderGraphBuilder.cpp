@@ -6,6 +6,7 @@
 #include "ArdaRenderGraphLog.h"
 
 #include <EASTL/algorithm.h>
+#include <cstring>
 #include <sstream>
 #include <string>
 #include <EASTL/unordered_set.h>
@@ -14,6 +15,14 @@ namespace arda::render_graph
 {
     namespace
     {
+        ARDG_BEGIN_PARAMETER_STRUCT(FARDGHostToDeviceCopyParameters)
+            ARDG_BUFFER_ACCESS(mDestination)
+        ARDG_END_PARAMETER_STRUCT()
+
+        ARDG_BEGIN_PARAMETER_STRUCT(FARDGDeviceToHostCopyParameters)
+            ARDG_BUFFER_ACCESS(mSource)
+        ARDG_END_PARAMETER_STRUCT()
+
         /**
          * Converts an EASTL string to the standard string type required by the RHI
          * descriptor debug names. This build-stage adapter copies exactly the
@@ -2018,6 +2027,152 @@ namespace arda::render_graph
         Buffer->AddFlags(EARDGResourceFlags::Extracted);
         Buffer->SetFinalState(FinalState);
         mImpl->mBufferExtractions.push_back({Buffer, Output, FinalState});
+    }
+
+    FARDGPassHandle FARDGBuilder::AddHostToDeviceCopyPass(
+        FARDGBufferRef Destination,
+        const void* SourceData,
+        size_t Size,
+        uint64_t DestinationOffset,
+        eastl::string Name)
+    {
+        if (!Destination || !SourceData || Size == 0 ||
+            DestinationOffset > Destination->GetDesc().mByteSize ||
+            Size > Destination->GetDesc().mByteSize - DestinationOffset)
+            ARDA_CHECK_MSG("Invalid host-to-device render-graph copy range.");
+
+        eastl::vector<uint8_t> OwnedBytes(Size);
+        std::memcpy(OwnedBytes.data(), SourceData, Size);
+        FARDGHostToDeviceCopyParameters Parameters;
+        Parameters.mDestination = {
+            Destination,
+            rhi::EArdaRHIResourceState::CopyDest,
+            { DestinationOffset, Size }};
+        return AddPass(
+            eastl::move(Name), &Parameters,
+            EARDGPassFlags::Copy | EARDGPassFlags::NeverCull |
+                EARDGPassFlags::NeverParallel,
+            [Bytes = eastl::move(OwnedBytes), DestinationOffset](
+                FARDGPassExecutionContext& Context,
+                const FARDGHostToDeviceCopyParameters& Frozen)
+            {
+                (void)Context.mCommandList.CopyBufferHostToDevice(
+                    *Context.GetBuffer(Frozen.mDestination.mBuffer),
+                    Bytes.data(), Bytes.size(), DestinationOffset);
+            });
+    }
+
+    FARDGPassHandle FARDGBuilder::AddHostToDeviceCopyPassAsync(
+        FARDGBufferRef Destination,
+        const void* SourceData,
+        size_t Size,
+        rhi::FArdaRHIHostToDeviceCopyCallback Completion,
+        uint64_t DestinationOffset,
+        eastl::string Name)
+    {
+        if (!Destination || !SourceData || Size == 0 || !Completion ||
+            DestinationOffset > Destination->GetDesc().mByteSize ||
+            Size > Destination->GetDesc().mByteSize - DestinationOffset)
+            ARDA_CHECK_MSG("Invalid asynchronous host-to-device render-graph copy.");
+
+        eastl::vector<uint8_t> OwnedBytes(Size);
+        std::memcpy(OwnedBytes.data(), SourceData, Size);
+        FARDGHostToDeviceCopyParameters Parameters;
+        Parameters.mDestination = {
+            Destination,
+            rhi::EArdaRHIResourceState::CopyDest,
+            { DestinationOffset, Size }};
+        return AddPass(
+            eastl::move(Name), &Parameters,
+            EARDGPassFlags::Copy | EARDGPassFlags::NeverCull |
+                EARDGPassFlags::NeverParallel,
+            [Bytes = eastl::move(OwnedBytes),
+             Callback = eastl::move(Completion),
+             DestinationOffset](
+                FARDGPassExecutionContext& Context,
+                const FARDGHostToDeviceCopyParameters& Frozen) mutable
+            {
+                const auto Status =
+                    Context.mCommandList.CopyBufferHostToDeviceAsync(
+                        *Context.GetBuffer(Frozen.mDestination.mBuffer),
+                        Bytes.data(), Bytes.size(), Callback,
+                        DestinationOffset);
+                if (!Status) Callback(Status);
+            });
+    }
+
+    FARDGPassHandle FARDGBuilder::AddDeviceToHostCopyPass(
+        FARDGBufferRef Source,
+        eastl::vector<uint8_t>& Output,
+        uint64_t SourceOffset,
+        uint64_t Size,
+        eastl::string Name)
+    {
+        if (!Source || SourceOffset > Source->GetDesc().mByteSize)
+            ARDA_CHECK_MSG("Invalid device-to-host render-graph copy offset.");
+        const uint64_t ResolvedSize = Size == rhi::ArdaRHIWholeBuffer
+            ? Source->GetDesc().mByteSize - SourceOffset : Size;
+        if (ResolvedSize == 0 ||
+            ResolvedSize > Source->GetDesc().mByteSize - SourceOffset)
+            ARDA_CHECK_MSG("Invalid device-to-host render-graph copy range.");
+
+        FARDGDeviceToHostCopyParameters Parameters;
+        Parameters.mSource = {
+            Source,
+            rhi::EArdaRHIResourceState::CopySource,
+            { SourceOffset, ResolvedSize }};
+        return AddPass(
+            eastl::move(Name), &Parameters,
+            EARDGPassFlags::Copy | EARDGPassFlags::NeverCull |
+                EARDGPassFlags::NeverParallel,
+            [&Output, SourceOffset, ResolvedSize](
+                FARDGPassExecutionContext& Context,
+                const FARDGDeviceToHostCopyParameters& Frozen)
+            {
+                const auto Status =
+                    Context.mCommandList.CopyBufferDeviceToHost(
+                        *Context.GetBuffer(Frozen.mSource.mBuffer),
+                        Output, SourceOffset, ResolvedSize);
+                if (!Status) Output.clear();
+            });
+    }
+
+    FARDGPassHandle FARDGBuilder::AddDeviceToHostCopyPassAsync(
+        FARDGBufferRef Source,
+        rhi::FArdaRHIDeviceToHostCopyCallback Completion,
+        uint64_t SourceOffset,
+        uint64_t Size,
+        eastl::string Name)
+    {
+        if (!Source || !Completion ||
+            SourceOffset > Source->GetDesc().mByteSize)
+            ARDA_CHECK_MSG("Invalid asynchronous device-to-host render-graph copy.");
+        const uint64_t ResolvedSize = Size == rhi::ArdaRHIWholeBuffer
+            ? Source->GetDesc().mByteSize - SourceOffset : Size;
+        if (ResolvedSize == 0 ||
+            ResolvedSize > Source->GetDesc().mByteSize - SourceOffset)
+            ARDA_CHECK_MSG("Invalid asynchronous device-to-host copy range.");
+
+        FARDGDeviceToHostCopyParameters Parameters;
+        Parameters.mSource = {
+            Source,
+            rhi::EArdaRHIResourceState::CopySource,
+            { SourceOffset, ResolvedSize }};
+        return AddPass(
+            eastl::move(Name), &Parameters,
+            EARDGPassFlags::Copy | EARDGPassFlags::NeverCull |
+                EARDGPassFlags::NeverParallel,
+            [Callback = eastl::move(Completion),
+             SourceOffset, ResolvedSize](
+                FARDGPassExecutionContext& Context,
+                const FARDGDeviceToHostCopyParameters& Frozen) mutable
+            {
+                const auto Status =
+                    Context.mCommandList.CopyBufferDeviceToHostAsync(
+                        *Context.GetBuffer(Frozen.mSource.mBuffer),
+                        Callback, SourceOffset, ResolvedSize);
+                if (!Status) Callback({ {}, Status });
+            });
     }
 
     /**

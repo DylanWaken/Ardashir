@@ -373,6 +373,69 @@ namespace arda::render_graph
         }
 
         /**
+         * Adds a blocking host-to-device buffer copy pass. SourceData is
+         * copied into graph-owned storage immediately, matching Unreal's
+         * QueueBufferUpload ownership behavior.
+         */
+        [[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPass(
+            FARDGBufferRef Destination,
+            const void* SourceData,
+            size_t Size,
+            uint64_t DestinationOffset = 0,
+            eastl::string Name = "HostToDeviceCopy");
+
+        /** Adds a nonblocking host-to-device copy pass with a GPU callback. */
+        [[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPassAsync(
+            FARDGBufferRef Destination,
+            const void* SourceData,
+            size_t Size,
+            rhi::FArdaRHIHostToDeviceCopyCallback Completion,
+            uint64_t DestinationOffset = 0,
+            eastl::string Name = "HostToDeviceCopyAsync");
+
+        /** Adds a blocking device-to-host buffer readback pass. */
+        [[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPass(
+            FARDGBufferRef Source,
+            eastl::vector<uint8_t>& Output,
+            uint64_t SourceOffset = 0,
+            uint64_t Size = rhi::ArdaRHIWholeBuffer,
+            eastl::string Name = "DeviceToHostCopy");
+
+        /** Adds a nonblocking device-to-host readback pass with owned bytes. */
+        [[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPassAsync(
+            FARDGBufferRef Source,
+            rhi::FArdaRHIDeviceToHostCopyCallback Completion,
+            uint64_t SourceOffset = 0,
+            uint64_t Size = rhi::ArdaRHIWholeBuffer,
+            eastl::string Name = "DeviceToHostCopyAsync");
+
+        /** Unreal-style alias for a graph-owned host buffer upload. */
+        [[nodiscard]] FARDGPassHandle QueueBufferUpload(
+            FARDGBufferRef Destination,
+            const void* SourceData,
+            size_t Size,
+            uint64_t DestinationOffset = 0,
+            eastl::string Name = "QueueBufferUpload")
+        {
+            return AddHostToDeviceCopyPass(
+                Destination, SourceData, Size, DestinationOffset,
+                eastl::move(Name));
+        }
+
+        /** Unreal-style alias for an asynchronous GPU buffer readback pass. */
+        [[nodiscard]] FARDGPassHandle AddEnqueueCopyPass(
+            FARDGBufferRef Source,
+            rhi::FArdaRHIDeviceToHostCopyCallback Completion,
+            uint64_t SourceOffset = 0,
+            uint64_t Size = rhi::ArdaRHIWholeBuffer,
+            eastl::string Name = "EnqueueBufferReadback")
+        {
+            return AddDeviceToHostCopyPassAsync(
+                Source, eastl::move(Completion), SourceOffset, Size,
+                eastl::move(Name));
+        }
+
+        /**
          * Registers a typed lambda pass and freezes its parameter storage.
          *
          * Supported lambda signatures accept a pass execution context or RHI
