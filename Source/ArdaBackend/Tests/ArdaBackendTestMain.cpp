@@ -35,6 +35,14 @@ namespace
                 "ArdaBackendTestPixel", StructSource.c_str(),
                 "ArdaPipelineStateTestPS", "PipelineStateTestPS",
                 Stage::Pixel, nullptr);
+            FArdaShaderTypeRegistration BindingSpaceVertex(
+                "ArdaBackendTestBindingSpaceVertex", StructSource.c_str(),
+                "ArdaBindingSpaceVS", "BindingSpaceVS",
+                Stage::Vertex, nullptr);
+            FArdaShaderTypeRegistration BindingSpacePixel(
+                "ArdaBackendTestBindingSpacePixel", StructSource.c_str(),
+                "ArdaBindingSpacePS", "BindingSpacePS",
+                Stage::Pixel, nullptr);
             FArdaShaderTypeRegistration RayGeneration(
                 "ArdaBackendTestRayGeneration", RayTracingSource.c_str(),
                 "ArdaRayTracingTest", "RayGen",

@@ -1637,6 +1637,137 @@ TEST(ArdaRenderGraph, RegisteredShaderBridgeUsesExplicitSlotsAndAllLayouts)
     ShutdownBackend();
 }
 
+TEST(ArdaRenderGraph, FrameTemporaryResourcesAndPassBindingsAreReleased)
+{
+    using namespace arda::backend;
+    using namespace arda::render_graph;
+
+    size_t TestedBackends = 0;
+    for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
+    {
+        if (Module.mBackendType != EArdaBackendType::D3D12 &&
+            Module.mBackendType != EArdaBackendType::Vulkan)
+            continue;
+        ShutdownBackend();
+        FArdaBackendConfiguration Configuration;
+        Configuration.mBackendName = Module.mName;
+        Configuration.mBackend = Module.mBackendType;
+        Configuration.mbEnableValidation = false;
+        Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+        ASSERT_TRUE(ConfigureBackend(Configuration));
+        ASSERT_TRUE(InitializeBackend())
+            << Module.mName.c_str() << ": " << GetBackendError().c_str();
+        ++TestedBackends;
+
+        rhi::FArdaRHIDeviceRef Device = GetDevice();
+        ASSERT_TRUE(Device);
+        Device->TrimDescriptorCaches();
+        const rhi::FArdaRHIResourceLifetimeStats Baseline =
+            Device->GetResourceLifetimeStats();
+
+        {
+            FARDGRenderGraphContext Context;
+            Context.mDevice = Device;
+            Context.mQueueCapabilities.mbGraphics =
+                GetDeviceContext().mQueueCapabilities.mbGraphics;
+            Context.mQueueCapabilities.mbCompute =
+                GetDeviceContext().mQueueCapabilities.mbCompute;
+            Context.mQueueCapabilities.mbCopy =
+                GetDeviceContext().mQueueCapabilities.mbCopy;
+            FARDGBuilder Builder(Context);
+
+            rhi::FArdaRHITextureDesc TextureDesc;
+            TextureDesc.mDebugName = "FrameTemporaryTexture";
+            TextureDesc.mWidth = 8;
+            TextureDesc.mHeight = 8;
+            TextureDesc.mFormat = rhi::EArdaRHIFormat::RGBA8UNorm;
+            TextureDesc.mUsage = rhi::EArdaRHITextureUsage::ShaderResource |
+                rhi::EArdaRHITextureUsage::UnorderedAccess;
+            FARDGTextureRef Texture = Builder.CreateTexture(TextureDesc);
+            FARDGTextureViewDesc TextureViewDesc;
+            TextureViewDesc.mTexture = Texture->GetHandle();
+            FARDGTextureSRVRef TextureSrv =
+                Builder.CreateTextureSRV("FrameTemporaryTextureSRV", TextureViewDesc);
+            FARDGTextureUAVRef TextureUav =
+                Builder.CreateTextureUAV("FrameTemporaryTextureUAV", TextureViewDesc);
+
+            rhi::FArdaRHIBufferDesc BufferDesc;
+            BufferDesc.mDebugName = "FrameTemporaryBuffer";
+            BufferDesc.mByteSize = 256;
+            BufferDesc.mStructureStride = sizeof(uint32_t);
+            BufferDesc.mUsage = rhi::EArdaRHIBufferUsage::Structured |
+                rhi::EArdaRHIBufferUsage::ShaderResource |
+                rhi::EArdaRHIBufferUsage::UnorderedAccess;
+            FARDGBufferRef Buffer = Builder.CreateBuffer(BufferDesc);
+            FARDGBufferViewDesc BufferViewDesc;
+            BufferViewDesc.mBuffer = Buffer->GetHandle();
+            FARDGBufferSRVRef BufferSrv =
+                Builder.CreateBufferSRV("FrameTemporaryBufferSRV", BufferViewDesc);
+            FARDGBufferUAVRef BufferUav =
+                Builder.CreateBufferUAV("FrameTemporaryBufferUAV", BufferViewDesc);
+
+            FARDGInnerParameters UniformContents;
+            UniformContents.mScale = 1.0f;
+            UniformContents.mTexture = Texture;
+            FARDGUniformBufferRef Uniform = Builder.CreateUniformBuffer(
+                "FrameTemporaryUniform", &UniformContents);
+            ASSERT_NE(Uniform, nullptr);
+            ASSERT_NE(TextureSrv, nullptr);
+            ASSERT_NE(BufferSrv, nullptr);
+
+            rhi::FArdaRHIBindingLayoutDesc LayoutDesc;
+            LayoutDesc.mVisibility = rhi::EArdaRHIShaderStage::Compute;
+            LayoutDesc.mItems.push_back(
+                { 0, 1, rhi::EArdaRHIBindingType::TextureUAV });
+            LayoutDesc.mItems.push_back(
+                { 1, 1, rhi::EArdaRHIBindingType::StructuredBufferUAV });
+            auto Layout = Device->CreateBindingLayout(LayoutDesc);
+            ASSERT_TRUE(Layout);
+
+            FARDGBindingSetParameters Parameters;
+            Parameters.mTexture = TextureUav;
+            Parameters.mBuffer = BufferUav;
+            (void)Builder.AddPass(
+                "FrameTemporaryBindings",
+                &Parameters,
+                EARDGPassFlags::Compute |
+                    EARDGPassFlags::NeverCull |
+                    EARDGPassFlags::NeverParallel,
+                [Layout = Layout.mValue](FARDGPassExecutionContext& PassContext)
+                {
+                    rhi::FArdaRHIBindingSetRef BindingSet =
+                        PassContext.CreateBindingSet(Layout.Get());
+                    ASSERT_TRUE(BindingSet);
+                });
+            FARDGExecuteOptions Options;
+            Options.mbParallelRecording = false;
+            const FARDGExecutionResult& Result = Builder.Execute(Options);
+            EXPECT_GT(Result.mSubmittedCommandListCount, 0u);
+        }
+
+        ASSERT_TRUE(Device->WaitForIdle());
+        Device->RunGarbageCollection();
+        Device->TrimDescriptorCaches();
+        const rhi::FArdaRHIResourceLifetimeStats After =
+            Device->GetResourceLifetimeStats();
+        for (size_t Index = 0;
+             Index < static_cast<size_t>(rhi::EArdaRHIResourceType::Count);
+             ++Index)
+        {
+            EXPECT_EQ(After.mLiveResources[Index], Baseline.mLiveResources[Index])
+                << Module.mName.c_str() << " retained frame resource type " << Index;
+        }
+        EXPECT_EQ(After.mResourceDescriptors, Baseline.mResourceDescriptors);
+        EXPECT_EQ(After.mSamplerDescriptors, Baseline.mSamplerDescriptors);
+        EXPECT_EQ(After.mDescriptorSets, Baseline.mDescriptorSets);
+        EXPECT_EQ(After.mPendingSubmissions, Baseline.mPendingSubmissions);
+        Device = nullptr;
+        ShutdownBackend();
+    }
+    EXPECT_GT(TestedBackends, 0u);
+    ShutdownBackend();
+}
+
 TEST(ArdaRenderGraph, ExecutesAndExtractsOnAvailableBackend)
 {
     using namespace arda::backend;

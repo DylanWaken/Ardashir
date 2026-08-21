@@ -309,12 +309,74 @@ namespace arda::backend
             D3D12_GPU_DESCRIPTOR_HANDLE mGpu{};
         };
 
+        struct FD3D12DescriptorAllocation
+        {
+            D3D12_CPU_DESCRIPTOR_HANDLE mCpu{};
+            D3D12_GPU_DESCRIPTOR_HANDLE mGpu{};
+            uint32_t mOffset = 0;
+            uint32_t mCount = 0;
+            bool mbSampler = false;
+        };
+
+        class FD3D12DescriptorAllocator
+        {
+        public:
+            struct FRange
+            {
+                uint32_t mOffset = 0;
+                uint32_t mCount = 0;
+            };
+
+            void Initialize(
+                ComPtr<ID3D12DescriptorHeap> ResourceHeap,
+                ComPtr<ID3D12DescriptorHeap> SamplerHeap,
+                uint32_t ResourceIncrement,
+                uint32_t SamplerIncrement)
+            {
+                mResourceHeap = eastl::move(ResourceHeap);
+                mSamplerHeap = eastl::move(SamplerHeap);
+                mResourceIncrement = ResourceIncrement;
+                mSamplerIncrement = SamplerIncrement;
+                mResourceFree.push_back({ 0, 65536 });
+                mSamplerFree.push_back({ 0, 2048 });
+            }
+
+            TArdaRHIResult<FD3D12DescriptorAllocation> Allocate(
+                bool bSampler,
+                uint32_t Count);
+            void Free(const FD3D12DescriptorAllocation& Allocation) noexcept;
+            [[nodiscard]] size_t GetActiveCount(bool bSampler) const noexcept
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                return bSampler ? mActiveSamplers : mActiveResources;
+            }
+
+        private:
+            mutable std::mutex mMutex;
+            ComPtr<ID3D12DescriptorHeap> mResourceHeap;
+            ComPtr<ID3D12DescriptorHeap> mSamplerHeap;
+            eastl::vector<FRange> mResourceFree;
+            eastl::vector<FRange> mSamplerFree;
+            uint32_t mResourceIncrement = 0;
+            uint32_t mSamplerIncrement = 0;
+            size_t mActiveResources = 0;
+            size_t mActiveSamplers = 0;
+        };
+
         class FD3D12BindingSet final : public IArdaNativeObject
         {
         public:
+            ~FD3D12BindingSet() override
+            {
+                if (mAllocator)
+                    for (const FD3D12DescriptorAllocation& Allocation : mAllocations)
+                        mAllocator->Free(Allocation);
+            }
             const void* GetIdentity() const noexcept override { return this; }
             eastl::vector<FD3D12DescriptorTable> mTables;
             eastl::vector<FArdaNativeObjectRef> mRetainedObjects;
+            eastl::shared_ptr<FD3D12DescriptorAllocator> mAllocator;
+            eastl::vector<FD3D12DescriptorAllocation> mAllocations;
         };
 
         class FD3D12Framebuffer final : public IArdaNativeObject
@@ -374,6 +436,10 @@ namespace arda::backend
             ID3D12CommandList* GetSubmitList() const noexcept { return mCommandList.Get(); }
 
         private:
+            void Retain(const FArdaNativeObjectRef& Object)
+            {
+                if (Object) mRetainedObjects.push_back(Object);
+            }
             FArdaRHIStatus Transition(const FArdaNativeObjectRef&, D3D12_RESOURCE_STATES);
             FArdaRHIStatus BindDescriptorSets(const FD3D12Pipeline&, const eastl::vector<FArdaNativeObjectRef>&, bool);
             FArdaD3D12ApiDevice& mDevice;
@@ -381,6 +447,7 @@ namespace arda::backend
             ComPtr<ID3D12CommandAllocator> mAllocator;
             ComPtr<ID3D12GraphicsCommandList> mCommandList;
             eastl::vector<ComPtr<ID3D12Resource>> mUploadResources;
+            eastl::vector<FArdaNativeObjectRef> mRetainedObjects;
             std::unordered_map<const void*, D3D12_RESOURCE_STATES> mStates;
             FD3D12Pipeline* mBoundGraphicsPipeline = nullptr;
             FD3D12Pipeline* mBoundComputePipeline = nullptr;
@@ -424,6 +491,18 @@ namespace arda::backend
             TArdaRHIResult<uint64_t> ExecuteCommandList(IArdaNativeCommandList&, EArdaRHIQueueType) override;
             FArdaRHIStatus WaitForIdle() override;
             void RunGarbageCollection() override {}
+            FArdaNativeLifetimeStats GetLifetimeStats() const noexcept override
+            {
+                FArdaNativeLifetimeStats Stats;
+                if (mDescriptorAllocator)
+                {
+                    Stats.mResourceDescriptors =
+                        mDescriptorAllocator->GetActiveCount(false);
+                    Stats.mSamplerDescriptors =
+                        mDescriptorAllocator->GetActiveCount(true);
+                }
+                return Stats;
+            }
             void FlushPipelineCache() noexcept override;
 
             ID3D12Device& GetDevice() const noexcept { return *mD3DDevice.Get(); }
@@ -431,12 +510,9 @@ namespace arda::backend
             ID3D12DescriptorHeap* GetSamplerHeap() const noexcept { return mSamplerHeap.Get(); }
 
         private:
-            struct FDescriptorAllocation
-            {
-                D3D12_CPU_DESCRIPTOR_HANDLE mCpu{};
-                D3D12_GPU_DESCRIPTOR_HANDLE mGpu{};
-            };
-            TArdaRHIResult<FDescriptorAllocation> AllocateDescriptors(bool bSampler, uint32_t Count);
+            TArdaRHIResult<FD3D12DescriptorAllocation> AllocateDescriptors(
+                bool bSampler,
+                uint32_t Count);
             FArdaRHIStatus CreateTextureViews(FD3D12Texture& Texture);
             TArdaRHIResult<ComPtr<ID3D12RootSignature>> CreateRootSignature(
                 const eastl::vector<FArdaNativeObjectRef>& Layouts,
@@ -455,9 +531,7 @@ namespace arda::backend
             ComPtr<ID3D12Fence> mFence;
             HANDLE mFenceEvent = nullptr;
             eastl::shared_ptr<void> mLifetimeToken;
-            std::mutex mDescriptorMutex;
-            uint32_t mResourceDescriptorCount = 0;
-            uint32_t mSamplerDescriptorCount = 0;
+            eastl::shared_ptr<FD3D12DescriptorAllocator> mDescriptorAllocator;
             uint32_t mResourceDescriptorSize = 0;
             uint32_t mSamplerDescriptorSize = 0;
             std::atomic<uint64_t> mFenceValue{ 0 };
@@ -494,6 +568,12 @@ namespace arda::backend
                 D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
             mSamplerDescriptorSize = mD3DDevice->GetDescriptorHandleIncrementSize(
                 D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+            mDescriptorAllocator = eastl::make_shared<FD3D12DescriptorAllocator>();
+            mDescriptorAllocator->Initialize(
+                mResourceHeap,
+                mSamplerHeap,
+                mResourceDescriptorSize,
+                mSamplerDescriptorSize);
             Result = mD3DDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFence));
             if (FAILED(Result)) return D3D12Failure("Failed to create the D3D12 queue fence.", Result);
             mFenceEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
@@ -557,25 +637,86 @@ namespace arda::backend
             }
         }
 
-        TArdaRHIResult<FArdaD3D12ApiDevice::FDescriptorAllocation>
+        TArdaRHIResult<FD3D12DescriptorAllocation>
         FArdaD3D12ApiDevice::AllocateDescriptors(bool bSampler, uint32_t Count)
         {
-            std::lock_guard<std::mutex> Lock(mDescriptorMutex);
-            uint32_t& Used = bSampler ? mSamplerDescriptorCount : mResourceDescriptorCount;
-            const uint32_t Capacity = bSampler ? 2048u : 65536u;
-            if (Count == 0 || Used > Capacity || Count > Capacity - Used)
-                return Fail<FDescriptorAllocation>(FArdaRHIStatus::Error(
-                    EArdaRHIResult::BackendFailure,
-                    "The native D3D12 descriptor heap is exhausted."));
-            ID3D12DescriptorHeap* Heap = bSampler ? mSamplerHeap.Get() : mResourceHeap.Get();
-            const uint32_t Increment = bSampler ? mSamplerDescriptorSize : mResourceDescriptorSize;
-            FDescriptorAllocation Allocation;
-            Allocation.mCpu = Heap->GetCPUDescriptorHandleForHeapStart();
-            Allocation.mGpu = Heap->GetGPUDescriptorHandleForHeapStart();
-            Allocation.mCpu.ptr += static_cast<SIZE_T>(Used) * Increment;
-            Allocation.mGpu.ptr += static_cast<UINT64>(Used) * Increment;
-            Used += Count;
-            return { Allocation, {} };
+            return mDescriptorAllocator->Allocate(bSampler, Count);
+        }
+
+        TArdaRHIResult<FD3D12DescriptorAllocation>
+        FD3D12DescriptorAllocator::Allocate(bool bSampler, uint32_t Count)
+        {
+            std::lock_guard<std::mutex> Lock(mMutex);
+            eastl::vector<FRange>& FreeRanges = bSampler ? mSamplerFree : mResourceFree;
+            if (Count == 0)
+                return Fail<FD3D12DescriptorAllocation>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::InvalidArgument,
+                    "A D3D12 descriptor allocation must contain at least one descriptor."));
+            for (size_t Index = 0; Index < FreeRanges.size(); ++Index)
+            {
+                FRange& Range = FreeRanges[Index];
+                if (Range.mCount < Count)
+                    continue;
+                FD3D12DescriptorAllocation Allocation;
+                Allocation.mOffset = Range.mOffset;
+                Allocation.mCount = Count;
+                Allocation.mbSampler = bSampler;
+                ID3D12DescriptorHeap* Heap = bSampler
+                    ? mSamplerHeap.Get() : mResourceHeap.Get();
+                const uint32_t Increment = bSampler
+                    ? mSamplerIncrement : mResourceIncrement;
+                Allocation.mCpu = Heap->GetCPUDescriptorHandleForHeapStart();
+                Allocation.mGpu = Heap->GetGPUDescriptorHandleForHeapStart();
+                Allocation.mCpu.ptr += static_cast<SIZE_T>(Range.mOffset) * Increment;
+                Allocation.mGpu.ptr += static_cast<UINT64>(Range.mOffset) * Increment;
+                Range.mOffset += Count;
+                Range.mCount -= Count;
+                if (Range.mCount == 0)
+                    FreeRanges.erase(FreeRanges.begin() + Index);
+                (bSampler ? mActiveSamplers : mActiveResources) += Count;
+                return { Allocation, {} };
+            }
+            return Fail<FD3D12DescriptorAllocation>(FArdaRHIStatus::Error(
+                EArdaRHIResult::BackendFailure,
+                "The native D3D12 descriptor heap is exhausted."));
+        }
+
+        void FD3D12DescriptorAllocator::Free(
+            const FD3D12DescriptorAllocation& Allocation) noexcept
+        {
+            if (Allocation.mCount == 0)
+                return;
+            std::lock_guard<std::mutex> Lock(mMutex);
+            eastl::vector<FRange>& FreeRanges = Allocation.mbSampler
+                ? mSamplerFree : mResourceFree;
+            FRange Released{ Allocation.mOffset, Allocation.mCount };
+            auto Position = eastl::lower_bound(
+                FreeRanges.begin(), FreeRanges.end(), Released,
+                [](const FRange& Left, const FRange& Right)
+                {
+                    return Left.mOffset < Right.mOffset;
+                });
+            Position = FreeRanges.insert(Position, Released);
+            if (Position != FreeRanges.begin())
+            {
+                auto Previous = Position - 1;
+                if (Previous->mOffset + Previous->mCount == Position->mOffset)
+                {
+                    Previous->mCount += Position->mCount;
+                    Position = FreeRanges.erase(Position);
+                    Position = Previous;
+                }
+            }
+            const auto Next = Position + 1;
+            if (Next != FreeRanges.end() &&
+                Position->mOffset + Position->mCount == Next->mOffset)
+            {
+                Position->mCount += Next->mCount;
+                FreeRanges.erase(Next);
+            }
+            size_t& Active = Allocation.mbSampler
+                ? mActiveSamplers : mActiveResources;
+            Active = Allocation.mCount <= Active ? Active - Allocation.mCount : 0;
         }
 
         FArdaRHIStatus FArdaD3D12ApiDevice::CreateTextureViews(FD3D12Texture& Texture)
@@ -807,6 +948,8 @@ namespace arda::backend
                 return Fail<FArdaNativeObjectRef>(FArdaRHIStatus::Error(
                     EArdaRHIResult::WrongDevice, "D3D12 binding layout has the wrong implementation."));
             auto Set = eastl::make_shared<FD3D12BindingSet>();
+            Set->mAllocator = mDescriptorAllocator;
+            Set->mRetainedObjects.push_back(LayoutObject);
             for (const auto& Binding : Bindings)
                 Set->mRetainedObjects.push_back(Binding.mObject);
 
@@ -817,6 +960,7 @@ namespace arda::backend
                 const bool bSampler = Item.mType == EArdaRHIBindingType::Sampler;
                 auto Allocation = AllocateDescriptors(bSampler, eastl::max(1u, Item.mArraySize));
                 if (!Allocation) return Fail<FArdaNativeObjectRef>(eastl::move(Allocation.mStatus));
+                Set->mAllocations.push_back(Allocation.mValue);
                 Set->mTables.push_back({ Item.mType, Allocation.mValue.mGpu });
                 const uint32_t Increment = bSampler ? mSamplerDescriptorSize : mResourceDescriptorSize;
                 for (uint32_t Element = 0; Element < eastl::max(1u, Item.mArraySize); ++Element)
@@ -1299,6 +1443,7 @@ namespace arda::backend
             Result = mCommandList->Reset(mAllocator.Get(), nullptr);
             if (FAILED(Result)) return D3D12Failure("Failed to reset the D3D12 command list.", Result);
             mUploadResources.clear();
+            mRetainedObjects.clear();
             mStates.clear();
             mBoundGraphicsPipeline = nullptr;
             mBoundComputePipeline = nullptr;
@@ -1335,6 +1480,7 @@ namespace arda::backend
                 Resource = Buffer->mResource.Get();
             if (!Resource) return FArdaRHIStatus::Error(
                 EArdaRHIResult::WrongDevice, "D3D12 transition resource has the wrong implementation.");
+            Retain(Object);
             const void* Identity = Resource;
             auto It = mStates.find(Identity);
             const D3D12_RESOURCE_STATES OldState = It == mStates.end()
@@ -1361,6 +1507,7 @@ namespace arda::backend
             auto* Buffer = dynamic_cast<FD3D12Buffer*>(Object.get());
             if (!Buffer) return FArdaRHIStatus::Error(
                 EArdaRHIResult::WrongDevice, "D3D12 buffer has the wrong implementation.");
+            Retain(Object);
             if (Desc.mCpuAccess == EArdaRHICpuAccess::Write)
             {
                 void* Mapped = nullptr;
@@ -1413,6 +1560,8 @@ namespace arda::backend
             auto* Src = dynamic_cast<FD3D12Buffer*>(Source.get());
             if (!Dst || !Src) return FArdaRHIStatus::Error(
                 EArdaRHIResult::WrongDevice, "D3D12 copy buffer has the wrong implementation.");
+            Retain(Destination);
+            Retain(Source);
             mCommandList->CopyBufferRegion(
                 Dst->mResource.Get(), DestinationOffset,
                 Src->mResource.Get(), SourceOffset, Size);
@@ -1427,6 +1576,7 @@ namespace arda::backend
             if (!Texture || !Texture->mRtv.ptr) return FArdaRHIStatus::Error(
                 EArdaRHIResult::InvalidArgument,
                 "D3D12 texture clear requires a render-target texture.");
+            Retain(Object);
             const float Values[] = { Color.mR, Color.mG, Color.mB, Color.mA };
             mCommandList->ClearRenderTargetView(Texture->mRtv, Values, 0, nullptr);
             return {};
@@ -1441,6 +1591,7 @@ namespace arda::backend
             if (!Texture || !Texture->mDsv.ptr) return FArdaRHIStatus::Error(
                 EArdaRHIResult::InvalidArgument,
                 "D3D12 depth clear requires a depth-stencil texture.");
+            Retain(Object);
             D3D12_CLEAR_FLAGS Flags = static_cast<D3D12_CLEAR_FLAGS>(0);
             if (bClearDepth) Flags |= D3D12_CLEAR_FLAG_DEPTH;
             if (bClearStencil) Flags |= D3D12_CLEAR_FLAG_STENCIL;
@@ -1485,6 +1636,7 @@ namespace arda::backend
             auto* Texture = dynamic_cast<FD3D12Texture*>(Object.get());
             if (!Texture) return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
                 "D3D12 UAV texture has the wrong implementation.");
+            Retain(Object);
             D3D12_RESOURCE_BARRIER Barrier{};
             Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             Barrier.UAV.pResource = Texture->mResource.Get();
@@ -1499,6 +1651,7 @@ namespace arda::backend
             auto* Buffer = dynamic_cast<FD3D12Buffer*>(Object.get());
             if (!Buffer) return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
                 "D3D12 UAV buffer has the wrong implementation.");
+            Retain(Object);
             D3D12_RESOURCE_BARRIER Barrier{};
             Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             Barrier.UAV.pResource = Buffer->mResource.Get();
@@ -1548,6 +1701,11 @@ namespace arda::backend
             if (!Pipeline || !Framebuffer)
                 return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
                     "D3D12 graphics state has the wrong implementation.");
+            Retain(State.mPipeline);
+            Retain(State.mFramebuffer);
+            for (const auto& Binding : State.mBindings) Retain(Binding);
+            for (const auto& Binding : State.mVertexBuffers) Retain(Binding.mBuffer);
+            Retain(State.mIndexBuffer);
             mBoundGraphicsPipeline = Pipeline;
             mBoundComputePipeline = nullptr;
             mCommandList->SetGraphicsRootSignature(Pipeline->mRootSignature.Get());
@@ -1606,6 +1764,8 @@ namespace arda::backend
             auto* Pipeline = dynamic_cast<FD3D12Pipeline*>(State.mPipeline.get());
             if (!Pipeline) return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
                 "D3D12 compute state has the wrong implementation.");
+            Retain(State.mPipeline);
+            for (const auto& Binding : State.mBindings) Retain(Binding);
             mBoundComputePipeline = Pipeline;
             mBoundGraphicsPipeline = nullptr;
             mCommandList->SetComputeRootSignature(Pipeline->mRootSignature.Get());
@@ -2035,6 +2195,17 @@ namespace arda::backend
                 UINT FactoryFlags = Configuration.mbEnableValidation
                     ? DXGI_CREATE_FACTORY_DEBUG : 0;
                 HRESULT Result = CreateDXGIFactory2(FactoryFlags, IID_PPV_ARGS(&mFactory));
+                if (FAILED(Result) && FactoryFlags != 0)
+                {
+                    if (Configuration.mMessageCallback)
+                    {
+                        Configuration.mMessageCallback->Message(
+                            EArdaDiagnosticSeverity::Warning,
+                            "The DXGI debug factory is unavailable; retrying D3D12 initialization without DXGI factory debugging.");
+                    }
+                    mFactory.Reset();
+                    Result = CreateDXGIFactory2(0, IID_PPV_ARGS(&mFactory));
+                }
                 if (FAILED(Result))
                 {
                     mError = D3D12Failure("CreateDXGIFactory2 failed; D3D12 is unavailable.", Result).mMessage;

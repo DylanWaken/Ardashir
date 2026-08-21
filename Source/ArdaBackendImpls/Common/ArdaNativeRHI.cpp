@@ -69,11 +69,41 @@ namespace arda::rhi::native
             return Hash == 0 ? 1 : Hash;
         }
 
+        class FLifetimeTracker
+        {
+        public:
+            void Add(EArdaRHIResourceType Type) noexcept
+            {
+                mLive[static_cast<size_t>(Type)].fetch_add(
+                    1, std::memory_order_relaxed);
+            }
+            void Remove(EArdaRHIResourceType Type) noexcept
+            {
+                mLive[static_cast<size_t>(Type)].fetch_sub(
+                    1, std::memory_order_relaxed);
+            }
+            size_t Get(EArdaRHIResourceType Type) const noexcept
+            {
+                return mLive[static_cast<size_t>(Type)].load(
+                    std::memory_order_relaxed);
+            }
+
+        private:
+            std::atomic<size_t> mLive[
+                static_cast<size_t>(EArdaRHIResourceType::Count)]{};
+        };
+
         class FResource : public virtual IArdaRHIResource
         {
         public:
-            FResource(EArdaRHIResourceType Type, eastl::string Name, const void* Owner)
-                : mType(Type), mName(eastl::move(Name)), mOwner(Owner) {}
+            FResource(EArdaRHIResourceType Type, eastl::string Name,
+                const void* Owner,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker = {})
+                : mType(Type), mName(eastl::move(Name)), mOwner(Owner)
+                , mLifetimeTracker(eastl::move(LifetimeTracker))
+            {
+                if (mLifetimeTracker) mLifetimeTracker->Add(mType);
+            }
 
             void AddRef() noexcept final
             {
@@ -91,13 +121,17 @@ namespace arda::rhi::native
             const void* GetOwner() const noexcept { return mOwner; }
 
         protected:
-            ~FResource() override = default;
+            ~FResource() override
+            {
+                if (mLifetimeTracker) mLifetimeTracker->Remove(mType);
+            }
 
         private:
             std::atomic<uint32_t> mReferences{ 0 };
             EArdaRHIResourceType mType;
             eastl::string mName;
             const void* mOwner = nullptr;
+            eastl::shared_ptr<FLifetimeTracker> mLifetimeTracker;
         };
 
         template <typename Interface, typename Desc, EArdaRHIResourceType Type>
@@ -108,8 +142,10 @@ namespace arda::rhi::native
                 Desc Descriptor,
                 FArdaNativeObjectRef Native,
                 const void* Owner,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker,
                 eastl::shared_ptr<void> LifetimeToken = {})
-                : FResource(Type, Descriptor.mDebugName, Owner)
+                : FResource(Type, Descriptor.mDebugName, Owner,
+                    eastl::move(LifetimeTracker))
                 , mDesc(eastl::move(Descriptor))
                 , mNative(eastl::move(Native))
                 , mLifetimeToken(eastl::move(LifetimeToken))
@@ -147,8 +183,10 @@ namespace arda::rhi::native
         class FTextureReference final : public FResource, public IArdaRHITextureReference
         {
         public:
-            FTextureReference(FArdaRHITextureRef Texture, const void* Owner)
-                : FResource(EArdaRHIResourceType::TextureReference, "TextureReference", Owner)
+            FTextureReference(FArdaRHITextureRef Texture, const void* Owner,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker)
+                : FResource(EArdaRHIResourceType::TextureReference,
+                    "TextureReference", Owner, eastl::move(LifetimeTracker))
                 , mTexture(eastl::move(Texture)) {}
             const FArdaRHITextureRef& GetTexture() const noexcept override { return mTexture; }
             FArdaRHITextureRef mTexture;
@@ -158,8 +196,10 @@ namespace arda::rhi::native
         {
         public:
             FUniformBuffer(FArdaRHIUniformBufferDesc Desc,
-                FArdaRHIBufferRef Buffer, const void* Owner)
-                : FResource(EArdaRHIResourceType::UniformBuffer, Desc.mDebugName, Owner)
+                FArdaRHIBufferRef Buffer, const void* Owner,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker)
+                : FResource(EArdaRHIResourceType::UniformBuffer,
+                    Desc.mDebugName, Owner, eastl::move(LifetimeTracker))
                 , mDesc(eastl::move(Desc)), mBuffer(eastl::move(Buffer)) {}
             const FArdaRHIUniformBufferDesc& GetDesc() const noexcept override { return mDesc; }
             const FArdaRHIBufferRef& GetBuffer() const noexcept override { return mBuffer; }
@@ -170,8 +210,10 @@ namespace arda::rhi::native
         class FStagingTexture final : public FResource, public IArdaRHIStagingTexture
         {
         public:
-            FStagingTexture(FArdaRHIStagingTextureDesc Desc, const void* Owner)
-                : FResource(EArdaRHIResourceType::StagingTexture, Desc.mDebugName, Owner)
+            FStagingTexture(FArdaRHIStagingTextureDesc Desc, const void* Owner,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker)
+                : FResource(EArdaRHIResourceType::StagingTexture,
+                    Desc.mDebugName, Owner, eastl::move(LifetimeTracker))
                 , mDesc(eastl::move(Desc)) {}
             const FArdaRHIStagingTextureDesc& GetDesc() const noexcept override { return mDesc; }
             FArdaRHIStagingTextureDesc mDesc;
@@ -181,8 +223,10 @@ namespace arda::rhi::native
         {
         public:
             FShader(const FArdaRHIShaderDesc& Desc,
-                FArdaNativeObjectRef Native, const void* Owner)
-                : FResource(EArdaRHIResourceType::Shader, Desc.mDebugName, Owner)
+                FArdaNativeObjectRef Native, const void* Owner,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker)
+                : FResource(EArdaRHIResourceType::Shader,
+                    Desc.mDebugName, Owner, eastl::move(LifetimeTracker))
                 , mStage(Desc.mStage)
                 , mPersistentCacheHash(PersistentShaderHash(Desc))
                 , mNative(eastl::move(Native)) {}
@@ -196,8 +240,11 @@ namespace arda::rhi::native
         class FShaderLibrary final : public FResource, public IArdaRHIShaderLibrary
         {
         public:
-            FShaderLibrary(const void* Bytecode, size_t Size, const char* Name, const void* Owner)
-                : FResource(EArdaRHIResourceType::ShaderLibrary, Name ? Name : "", Owner)
+            FShaderLibrary(const void* Bytecode, size_t Size, const char* Name,
+                const void* Owner,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker)
+                : FResource(EArdaRHIResourceType::ShaderLibrary,
+                    Name ? Name : "", Owner, eastl::move(LifetimeTracker))
                 , mBytecode(static_cast<const uint8_t*>(Bytecode),
                     static_cast<const uint8_t*>(Bytecode) + Size) {}
             eastl::vector<uint8_t> mBytecode;
@@ -206,8 +253,10 @@ namespace arda::rhi::native
         class FInputLayout final : public FResource, public IArdaRHIInputLayout
         {
         public:
-            FInputLayout(FArdaRHIInputLayoutDesc Desc, const void* Owner)
-                : FResource(EArdaRHIResourceType::InputLayout, "InputLayout", Owner)
+            FInputLayout(FArdaRHIInputLayoutDesc Desc, const void* Owner,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker)
+                : FResource(EArdaRHIResourceType::InputLayout,
+                    "InputLayout", Owner, eastl::move(LifetimeTracker))
                 , mDesc(eastl::move(Desc)) {}
             const FArdaRHIInputLayoutDesc& GetDesc() const noexcept override { return mDesc; }
             FArdaRHIInputLayoutDesc mDesc;
@@ -218,8 +267,11 @@ namespace arda::rhi::native
         {
         public:
             TView(TArdaRHIRef<IArdaRHIResource> Resource,
-                FArdaRHIViewDesc Desc, const void* Owner)
-                : FResource(Type, Type == EArdaRHIResourceType::ShaderResourceView ? "SRV" : "UAV", Owner)
+                FArdaRHIViewDesc Desc, const void* Owner,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker)
+                : FResource(Type,
+                    Type == EArdaRHIResourceType::ShaderResourceView ? "SRV" : "UAV",
+                    Owner, eastl::move(LifetimeTracker))
                 , mResource(eastl::move(Resource)), mDesc(eastl::move(Desc)) {}
             IArdaRHIResource* GetResource() const noexcept override { return mResource.Get(); }
             const FArdaRHIViewDesc& GetDesc() const noexcept override { return mDesc; }
@@ -236,8 +288,10 @@ namespace arda::rhi::native
         class TLogicalState final : public FResource, public Interface
         {
         public:
-            TLogicalState(Desc Descriptor, const void* Owner)
-                : FResource(Type, "CachedState", Owner), mDesc(eastl::move(Descriptor)) {}
+            TLogicalState(Desc Descriptor, const void* Owner,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker)
+                : FResource(Type, "CachedState", Owner,
+                    eastl::move(LifetimeTracker)), mDesc(eastl::move(Descriptor)) {}
             const Desc& GetDesc() const noexcept override { return mDesc; }
             Desc mDesc;
         };
@@ -253,8 +307,9 @@ namespace arda::rhi::native
         class TSignal final : public FResource, public Interface
         {
         public:
-            TSignal(const char* Name, const void* Owner)
-                : FResource(Type, Name, Owner) {}
+            TSignal(const char* Name, const void* Owner,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker)
+                : FResource(Type, Name, Owner, eastl::move(LifetimeTracker)) {}
             std::atomic<bool> mbSignaled{ false };
             std::atomic<bool> mbBegun{ false };
         };
@@ -326,7 +381,8 @@ namespace arda::rhi::native
         public:
             FCommandList(FArdaNativeDevice* Device,
                 EArdaRHIQueueType Queue,
-                eastl::unique_ptr<IArdaNativeCommandList> Native);
+                eastl::unique_ptr<IArdaNativeCommandList> Native,
+                eastl::shared_ptr<FLifetimeTracker> LifetimeTracker);
 
             IArdaRHIDevice* GetDevice() const noexcept override;
             EArdaRHIQueueType GetQueueType() const noexcept override { return mQueue; }
@@ -386,6 +442,7 @@ namespace arda::rhi::native
         public:
             explicit FArdaNativeDevice(eastl::shared_ptr<IArdaNativeApiDevice> Device)
                 : FResource(EArdaRHIResourceType::Device, "NativeDevice", this)
+                , mLifetimeTracker(eastl::make_shared<FLifetimeTracker>())
                 , mDevice(eastl::move(Device)) {}
 
             ~FArdaNativeDevice() override
@@ -472,6 +529,8 @@ namespace arda::rhi::native
             FArdaRHIStatus QueryStreamSourceSupport() const override { return Unsupported("Stream-source output is unsupported by the native modules."); }
             void TrimDescriptorCaches() override;
             FArdaRHICacheStats GetDescriptorCacheStats() const noexcept override;
+            FArdaRHIResourceLifetimeStats
+                GetResourceLifetimeStats() const noexcept override;
             FArdaRHIStatus WaitForIdle() override { return mDevice->WaitForIdle(); }
             void FlushAndDisablePipelineCachePersistence() noexcept override;
             void RunGarbageCollection() override { mDevice->RunGarbageCollection(); }
@@ -491,6 +550,7 @@ namespace arda::rhi::native
             }
 
             mutable std::mutex mCacheMutex;
+            eastl::shared_ptr<FLifetimeTracker> mLifetimeTracker;
             eastl::shared_ptr<IArdaNativeApiDevice> mDevice;
             bool mbPipelineCacheDetached = false;
             TDescriptorCache<FArdaRHISamplerDesc, FArdaRHISamplerRef> mSamplerCache;
@@ -513,7 +573,8 @@ namespace arda::rhi::native
                     "Virtual and tiled textures are unsupported by the native modules.");
             auto Native = mDevice->CreateTexture(Desc);
             if (!Native) return Failure<FArdaRHITextureRef>(eastl::move(Native.mStatus));
-            return { FArdaRHITextureRef(new FTexture(Desc, eastl::move(Native.mValue), this)), {} };
+            return { FArdaRHITextureRef(new FTexture(
+                Desc, eastl::move(Native.mValue), this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHITextureReferenceRef>
@@ -521,7 +582,8 @@ namespace arda::rhi::native
         {
             if (!IsOwned(Texture))
                 return Failure<FArdaRHITextureReferenceRef>(WrongDevice());
-            return { FArdaRHITextureReferenceRef(new FTextureReference(Texture, this)), {} };
+            return { FArdaRHITextureReferenceRef(new FTextureReference(
+                Texture, this, mLifetimeTracker)), {} };
         }
 
         FArdaRHIStatus FArdaNativeDevice::SetTextureReference(
@@ -544,7 +606,8 @@ namespace arda::rhi::native
                     "Virtual buffers are unsupported by the native modules.");
             auto Native = mDevice->CreateBuffer(Desc);
             if (!Native) return Failure<FArdaRHIBufferRef>(eastl::move(Native.mStatus));
-            return { FArdaRHIBufferRef(new FBuffer(Desc, eastl::move(Native.mValue), this)), {} };
+            return { FArdaRHIBufferRef(new FBuffer(
+                Desc, eastl::move(Native.mValue), this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHIUniformBufferRef> FArdaNativeDevice::CreateUniformBuffer(
@@ -575,7 +638,8 @@ namespace arda::rhi::native
                 auto Submitted = ExecuteCommandList(Commands.mValue);
                 if (!Submitted) return Failure<FArdaRHIUniformBufferRef>(eastl::move(Submitted.mStatus));
             }
-            return { FArdaRHIUniformBufferRef(new FUniformBuffer(Desc, Buffer.mValue, this)), {} };
+            return { FArdaRHIUniformBufferRef(new FUniformBuffer(
+                Desc, Buffer.mValue, this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHITextureRef> FArdaNativeDevice::ImportNativeTexture(
@@ -599,7 +663,8 @@ namespace arda::rhi::native
             TextureDesc.mInitialState = Desc.mInitialState == EArdaRHIResourceState::Unknown
                 ? TextureDesc.mInitialState : Desc.mInitialState;
             FArdaRHITextureRef Result(new FTexture(
-                eastl::move(TextureDesc), eastl::move(Native.mValue), this, Desc.mLifetimeToken));
+                eastl::move(TextureDesc), eastl::move(Native.mValue), this,
+                mLifetimeTracker, Desc.mLifetimeToken));
             mTextureImportCache.Insert(Desc, Result);
             return { Result, {} };
         }
@@ -625,7 +690,8 @@ namespace arda::rhi::native
             BufferDesc.mInitialState = Desc.mInitialState == EArdaRHIResourceState::Unknown
                 ? BufferDesc.mInitialState : Desc.mInitialState;
             FArdaRHIBufferRef Result(new FBuffer(
-                eastl::move(BufferDesc), eastl::move(Native.mValue), this, Desc.mLifetimeToken));
+                eastl::move(BufferDesc), eastl::move(Native.mValue), this,
+                mLifetimeTracker, Desc.mLifetimeToken));
             mBufferImportCache.Insert(Desc, Result);
             return { Result, {} };
         }
@@ -637,7 +703,8 @@ namespace arda::rhi::native
                 return Failure<FArdaRHIStagingTextureRef>(eastl::move(Status));
             if (Desc.mCpuAccess == EArdaRHICpuAccess::None)
                 return Failure<FArdaRHIStagingTextureRef>(Invalid("A staging texture requires CPU access."));
-            return { FArdaRHIStagingTextureRef(new FStagingTexture(Desc, this)), {} };
+            return { FArdaRHIStagingTextureRef(new FStagingTexture(
+                Desc, this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHIShaderResourceViewRef>
@@ -650,7 +717,8 @@ namespace arda::rhi::native
                 return Failure<FArdaRHIShaderResourceViewRef>(WrongDevice());
             if (auto Status = Validate(Desc); !Status)
                 return Failure<FArdaRHIShaderResourceViewRef>(eastl::move(Status));
-            return { FArdaRHIShaderResourceViewRef(new FShaderResourceView(Resource, Desc, this)), {} };
+            return { FArdaRHIShaderResourceViewRef(new FShaderResourceView(
+                Resource, Desc, this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHIUnorderedAccessViewRef>
@@ -663,7 +731,8 @@ namespace arda::rhi::native
                 return Failure<FArdaRHIUnorderedAccessViewRef>(WrongDevice());
             if (auto Status = Validate(Desc); !Status)
                 return Failure<FArdaRHIUnorderedAccessViewRef>(eastl::move(Status));
-            return { FArdaRHIUnorderedAccessViewRef(new FUnorderedAccessView(Resource, Desc, this)), {} };
+            return { FArdaRHIUnorderedAccessViewRef(new FUnorderedAccessView(
+                Resource, Desc, this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHISamplerRef> FArdaNativeDevice::CreateSampler(
@@ -675,7 +744,8 @@ namespace arda::rhi::native
             if (auto Existing = mSamplerCache.Find(Desc)) return { Existing, {} };
             auto Native = mDevice->CreateSampler(Desc);
             if (!Native) return Failure<FArdaRHISamplerRef>(eastl::move(Native.mStatus));
-            FArdaRHISamplerRef Result(new FSampler(Desc, eastl::move(Native.mValue), this));
+            FArdaRHISamplerRef Result(new FSampler(
+                Desc, eastl::move(Native.mValue), this, mLifetimeTracker));
             mSamplerCache.Insert(Desc, Result);
             return { Result, {} };
         }
@@ -687,7 +757,8 @@ namespace arda::rhi::native
                 return Failure<FArdaRHIShaderRef>(Invalid("Shader bytecode and stage are required."));
             auto Native = mDevice->CreateShader(Desc);
             if (!Native) return Failure<FArdaRHIShaderRef>(eastl::move(Native.mStatus));
-            return { FArdaRHIShaderRef(new FShader(Desc, eastl::move(Native.mValue), this)), {} };
+            return { FArdaRHIShaderRef(new FShader(
+                Desc, eastl::move(Native.mValue), this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHIShaderLibraryRef> FArdaNativeDevice::CreateShaderLibrary(
@@ -695,7 +766,8 @@ namespace arda::rhi::native
         {
             if (!Bytecode || BytecodeSize == 0)
                 return Failure<FArdaRHIShaderLibraryRef>(Invalid("Shader-library bytecode is required."));
-            return { FArdaRHIShaderLibraryRef(new FShaderLibrary(Bytecode, BytecodeSize, DebugName, this)), {} };
+            return { FArdaRHIShaderLibraryRef(new FShaderLibrary(
+                Bytecode, BytecodeSize, DebugName, this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHIShaderRef> FArdaNativeDevice::GetShaderFromLibrary(
@@ -728,7 +800,8 @@ namespace arda::rhi::native
                 return Failure<FArdaRHIInputLayoutRef>(WrongDevice());
             std::lock_guard<std::mutex> Lock(mCacheMutex);
             if (auto Existing = mInputLayoutCache.Find(Desc)) return { Existing, {} };
-            FArdaRHIInputLayoutRef Result(new FInputLayout(Desc, this));
+            FArdaRHIInputLayoutRef Result(new FInputLayout(
+                Desc, this, mLifetimeTracker));
             mInputLayoutCache.Insert(Desc, Result);
             return { Result, {} };
         }
@@ -743,7 +816,7 @@ namespace arda::rhi::native
             auto Native = mDevice->CreateBindingLayout(Desc);
             if (!Native) return Failure<FArdaRHIBindingLayoutRef>(eastl::move(Native.mStatus));
             FArdaRHIBindingLayoutRef Result(new FBindingLayout(
-                Desc, eastl::move(Native.mValue), this));
+                Desc, eastl::move(Native.mValue), this, mLifetimeTracker));
             mBindingLayoutCache.Insert(Desc, Result);
             return { Result, {} };
         }
@@ -770,7 +843,7 @@ namespace arda::rhi::native
             auto Native = mDevice->CreateBindingSet(Desc, Layout->mNative, Bindings);
             if (!Native) return Failure<FArdaRHIBindingSetRef>(eastl::move(Native.mStatus));
             return { FArdaRHIBindingSetRef(new FBindingSet(
-                Desc, eastl::move(Native.mValue), this)), {} };
+                Desc, eastl::move(Native.mValue), this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHIFramebufferRef> FArdaNativeDevice::CreateFramebuffer(
@@ -798,7 +871,7 @@ namespace arda::rhi::native
             auto Native = mDevice->CreateFramebuffer(Info);
             if (!Native) return Failure<FArdaRHIFramebufferRef>(eastl::move(Native.mStatus));
             return { FArdaRHIFramebufferRef(new FFramebuffer(
-                Desc, eastl::move(Native.mValue), this)), {} };
+                Desc, eastl::move(Native.mValue), this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHIGraphicsPipelineRef>
@@ -839,7 +912,7 @@ namespace arda::rhi::native
             auto Native = mDevice->CreateGraphicsPipeline(Info);
             if (!Native) return Failure<FArdaRHIGraphicsPipelineRef>(eastl::move(Native.mStatus));
             return { FArdaRHIGraphicsPipelineRef(new FGraphicsPipeline(
-                Desc, eastl::move(Native.mValue), this)), {} };
+                Desc, eastl::move(Native.mValue), this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHIComputePipelineRef>
@@ -861,7 +934,7 @@ namespace arda::rhi::native
             auto Native = mDevice->CreateComputePipeline(Info);
             if (!Native) return Failure<FArdaRHIComputePipelineRef>(eastl::move(Native.mStatus));
             return { FArdaRHIComputePipelineRef(new FComputePipeline(
-                Desc, eastl::move(Native.mValue), this)), {} };
+                Desc, eastl::move(Native.mValue), this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHIRasterStateRef> FArdaNativeDevice::CreateRasterState(
@@ -869,7 +942,8 @@ namespace arda::rhi::native
         {
             std::lock_guard<std::mutex> Lock(mCacheMutex);
             if (auto Existing = mRasterStateCache.Find(Desc)) return { Existing, {} };
-            FArdaRHIRasterStateRef Result(new FRasterState(Desc, this));
+            FArdaRHIRasterStateRef Result(new FRasterState(
+                Desc, this, mLifetimeTracker));
             mRasterStateCache.Insert(Desc, Result);
             return { Result, {} };
         }
@@ -879,7 +953,8 @@ namespace arda::rhi::native
         {
             std::lock_guard<std::mutex> Lock(mCacheMutex);
             if (auto Existing = mBlendStateCache.Find(Desc)) return { Existing, {} };
-            FArdaRHIBlendStateRef Result(new FBlendState(Desc, this));
+            FArdaRHIBlendStateRef Result(new FBlendState(
+                Desc, this, mLifetimeTracker));
             mBlendStateCache.Insert(Desc, Result);
             return { Result, {} };
         }
@@ -889,24 +964,28 @@ namespace arda::rhi::native
         {
             std::lock_guard<std::mutex> Lock(mCacheMutex);
             if (auto Existing = mDepthStateCache.Find(Desc)) return { Existing, {} };
-            FArdaRHIDepthStencilStateRef Result(new FDepthStencilState(Desc, this));
+            FArdaRHIDepthStencilStateRef Result(new FDepthStencilState(
+                Desc, this, mLifetimeTracker));
             mDepthStateCache.Insert(Desc, Result);
             return { Result, {} };
         }
 
         TArdaRHIResult<FArdaRHIEventQueryRef> FArdaNativeDevice::CreateEventQuery()
         {
-            return { FArdaRHIEventQueryRef(new FEventQuery("EventQuery", this)), {} };
+            return { FArdaRHIEventQueryRef(new FEventQuery(
+                "EventQuery", this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHITimerQueryRef> FArdaNativeDevice::CreateTimerQuery()
         {
-            return { FArdaRHITimerQueryRef(new FTimerQuery("TimerQuery", this)), {} };
+            return { FArdaRHITimerQueryRef(new FTimerQuery(
+                "TimerQuery", this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHIGpuFenceRef> FArdaNativeDevice::CreateGpuFence()
         {
-            return { FArdaRHIGpuFenceRef(new FGpuFence("GpuFence", this)), {} };
+            return { FArdaRHIGpuFenceRef(new FGpuFence(
+                "GpuFence", this, mLifetimeTracker)), {} };
         }
 
         FArdaRHIStatus FArdaNativeDevice::SignalEventQuery(
@@ -1009,7 +1088,7 @@ namespace arda::rhi::native
             if (!Native)
                 return Failure<FArdaRHICommandListRef>(eastl::move(Native.mStatus));
             return { FArdaRHICommandListRef(new FCommandList(
-                this, Queue, eastl::move(Native.mValue))), {} };
+                this, Queue, eastl::move(Native.mValue), mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<uint64_t> FArdaNativeDevice::ExecuteCommandList(
@@ -1065,6 +1144,25 @@ namespace arda::rhi::native
             return Stats;
         }
 
+        FArdaRHIResourceLifetimeStats
+        FArdaNativeDevice::GetResourceLifetimeStats() const noexcept
+        {
+            FArdaRHIResourceLifetimeStats Stats;
+            for (size_t Index = 0;
+                 Index < static_cast<size_t>(EArdaRHIResourceType::Count);
+                 ++Index)
+            {
+                Stats.mLiveResources[Index] = mLifetimeTracker->Get(
+                    static_cast<EArdaRHIResourceType>(Index));
+            }
+            const FArdaNativeLifetimeStats Native = mDevice->GetLifetimeStats();
+            Stats.mResourceDescriptors = Native.mResourceDescriptors;
+            Stats.mSamplerDescriptors = Native.mSamplerDescriptors;
+            Stats.mDescriptorSets = Native.mDescriptorSets;
+            Stats.mPendingSubmissions = Native.mPendingSubmissions;
+            return Stats;
+        }
+
         void FArdaNativeDevice::FlushAndDisablePipelineCachePersistence() noexcept
         {
             if (!mbPipelineCacheDetached && mDevice)
@@ -1077,8 +1175,10 @@ namespace arda::rhi::native
         FCommandList::FCommandList(
             FArdaNativeDevice* Device,
             EArdaRHIQueueType Queue,
-            eastl::unique_ptr<IArdaNativeCommandList> Native)
-            : FResource(EArdaRHIResourceType::CommandList, "CommandList", Device)
+            eastl::unique_ptr<IArdaNativeCommandList> Native,
+            eastl::shared_ptr<FLifetimeTracker> LifetimeTracker)
+            : FResource(EArdaRHIResourceType::CommandList, "CommandList", Device,
+                eastl::move(LifetimeTracker))
             , mDevice(Device), mQueue(Queue), mNative(eastl::move(Native))
         {
         }

@@ -21,6 +21,14 @@ namespace arda::rhi::native
     using FArdaNativeObjectRef = eastl::shared_ptr<IArdaNativeObject>;
     using FArdaNativeObjectResult = TArdaRHIResult<FArdaNativeObjectRef>;
 
+    struct FArdaNativeLifetimeStats
+    {
+        size_t mResourceDescriptors = 0;
+        size_t mSamplerDescriptors = 0;
+        size_t mDescriptorSets = 0;
+        size_t mPendingSubmissions = 0;
+    };
+
     struct FArdaNativeBinding
     {
         FArdaRHIBindingItem mItem;
@@ -196,6 +204,8 @@ namespace arda::rhi::native
             EArdaRHIQueueType Queue) = 0;
         virtual FArdaRHIStatus WaitForIdle() = 0;
         virtual void RunGarbageCollection() = 0;
+        [[nodiscard]] virtual FArdaNativeLifetimeStats
+            GetLifetimeStats() const noexcept { return {}; }
         virtual void FlushPipelineCache() noexcept = 0;
     };
 

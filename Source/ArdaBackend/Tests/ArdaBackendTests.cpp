@@ -807,6 +807,36 @@ namespace
         return Result;
     }
 
+    arda::rhi::TArdaRHIResult<arda::rhi::FArdaRHIShaderRef>
+    CreateArtifactShader(
+        arda::rhi::IArdaRHIDevice& Device,
+        arda::backend::EArdaBackendType Backend,
+        const char* Artifact,
+        const char* EntryPoint,
+        arda::rhi::EArdaRHIShaderStage Stage)
+    {
+        using namespace arda;
+        const eastl::string FileName = eastl::string(Artifact) +
+            backend::GetShaderArtifactExtension(Backend);
+        const auto Bytecode = LoadTestBinary(FileName.c_str());
+        if (Bytecode.empty())
+        {
+            return {
+                {},
+                rhi::FArdaRHIStatus::Error(
+                    rhi::EArdaRHIResult::InvalidState,
+                    "A required backend test shader artifact is missing.")
+            };
+        }
+        rhi::FArdaRHIShaderDesc Desc;
+        Desc.mStage = Stage;
+        Desc.mBytecode = Bytecode.data();
+        Desc.mBytecodeSize = Bytecode.size();
+        Desc.mEntryPoint = EntryPoint;
+        Desc.mDebugName = Artifact;
+        return Device.CreateShader(Desc);
+    }
+
     void VerifyAdvancedResources(arda::rhi::IArdaRHIDevice& Device)
     {
         using namespace arda::rhi;
@@ -1053,6 +1083,424 @@ namespace
         EXPECT_FALSE(GetQueueCapabilities().mbCopy);
     }
 }
+
+#if defined(_WIN32) && defined(ARDA_TEST_NATIVE_D3D12)
+TEST(ArdaBackend, D3D12ValidationInitializationAllowsDxgiDebugFallback)
+{
+    using namespace arda::backend;
+    ShutdownBackend();
+    FExternalTestCleanup Cleanup;
+    IArdaBackendModule* Module = FindBackendModule("native-d3d12");
+    ASSERT_NE(Module, nullptr);
+    FArdaBackendConfiguration Configuration;
+    Configuration.mBackendName = Module->GetDescriptor().mName;
+    Configuration.mBackend = EArdaBackendType::D3D12;
+    Configuration.mbEnableValidation = true;
+    Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    ASSERT_TRUE(GetDevice());
+}
+#endif
+
+TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
+{
+    using namespace arda;
+    using namespace backend;
+    using namespace rhi;
+
+    FExternalTestCleanup Cleanup;
+    size_t TestedBackends = 0;
+    for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
+    {
+        if (Module.mBackendType != EArdaBackendType::D3D12 &&
+            Module.mBackendType != EArdaBackendType::Vulkan)
+            continue;
+        ShutdownBackend();
+        FArdaBackendConfiguration Configuration;
+        Configuration.mBackendName = Module.mName;
+        Configuration.mBackend = Module.mBackendType;
+        Configuration.mbEnableValidation = false;
+        Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+        ASSERT_TRUE(ConfigureBackend(Configuration));
+        ASSERT_TRUE(InitializeBackend())
+            << Module.mName.c_str() << ": " << GetBackendError().c_str();
+        ++TestedBackends;
+
+        FArdaRHIDeviceRef Device = GetDevice();
+        ASSERT_TRUE(Device);
+        Device->TrimDescriptorCaches();
+        const FArdaRHIResourceLifetimeStats Baseline =
+            Device->GetResourceLifetimeStats();
+
+        {
+            FArdaRHITextureDesc TextureDesc;
+            TextureDesc.mDebugName = "LifetimeTexture";
+            TextureDesc.mWidth = 8;
+            TextureDesc.mHeight = 8;
+            TextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+            TextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource |
+                EArdaRHITextureUsage::UnorderedAccess |
+                EArdaRHITextureUsage::RenderTarget;
+            auto Texture = Device->CreateTexture(TextureDesc);
+            ASSERT_TRUE(Texture);
+            auto TextureReference = Device->CreateTextureReference(Texture.mValue);
+            ASSERT_TRUE(TextureReference);
+
+            FArdaRHIBufferDesc BufferDesc;
+            BufferDesc.mDebugName = "LifetimeBuffer";
+            BufferDesc.mByteSize = 256;
+            BufferDesc.mStructureStride = sizeof(uint32_t);
+            BufferDesc.mUsage = EArdaRHIBufferUsage::Structured |
+                EArdaRHIBufferUsage::ShaderResource |
+                EArdaRHIBufferUsage::UnorderedAccess;
+            auto Buffer = Device->CreateBuffer(BufferDesc);
+            ASSERT_TRUE(Buffer);
+
+            FArdaRHIUniformBufferDesc UniformDesc;
+            UniformDesc.mDebugName = "LifetimeUniform";
+            UniformDesc.mByteSize = 256;
+            auto Uniform = Device->CreateUniformBuffer(UniformDesc, nullptr);
+            ASSERT_TRUE(Uniform);
+
+            FArdaRHIStagingTextureDesc StagingDesc;
+            StagingDesc.mDebugName = "LifetimeStaging";
+            StagingDesc.mTexture = TextureDesc;
+            StagingDesc.mTexture.mUsage = EArdaRHITextureUsage::ShaderResource;
+            StagingDesc.mCpuAccess = EArdaRHICpuAccess::Read;
+            auto Staging = Device->CreateStagingTexture(StagingDesc);
+            ASSERT_TRUE(Staging);
+
+            TArdaRHIRef<IArdaRHIResource> TextureResource(Texture.mValue.Get());
+            TArdaRHIRef<IArdaRHIResource> BufferResource(Buffer.mValue.Get());
+            auto TextureSrv = Device->CreateShaderResourceView(TextureResource, {});
+            auto TextureUav = Device->CreateUnorderedAccessView(TextureResource, {});
+            auto BufferSrv = Device->CreateShaderResourceView(BufferResource, {});
+            auto BufferUav = Device->CreateUnorderedAccessView(BufferResource, {});
+            ASSERT_TRUE(TextureSrv);
+            ASSERT_TRUE(TextureUav);
+            ASSERT_TRUE(BufferSrv);
+            ASSERT_TRUE(BufferUav);
+
+            auto Sampler = Device->CreateSampler({});
+            ASSERT_TRUE(Sampler);
+            FArdaRHIBindingLayoutDesc BindingLayoutDesc;
+            BindingLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+            BindingLayoutDesc.mItems.push_back(
+                { 0, 1, EArdaRHIBindingType::TextureUAV });
+            BindingLayoutDesc.mItems.push_back(
+                { 1, 1, EArdaRHIBindingType::StructuredBufferUAV });
+            BindingLayoutDesc.mItems.push_back(
+                { 0, 1, EArdaRHIBindingType::Sampler });
+            auto BindingLayout = Device->CreateBindingLayout(BindingLayoutDesc);
+            ASSERT_TRUE(BindingLayout);
+            FArdaRHIBindingSetDesc BindingSetDesc;
+            BindingSetDesc.mLayout = BindingLayout.mValue;
+            BindingSetDesc.mItems.push_back(
+                { 0, 0, EArdaRHIBindingType::TextureUAV, TextureResource, {} });
+            BindingSetDesc.mItems.push_back(
+                { 1, 0, EArdaRHIBindingType::StructuredBufferUAV, BufferResource, {} });
+            BindingSetDesc.mItems.push_back({
+                0, 0, EArdaRHIBindingType::Sampler,
+                TArdaRHIRef<IArdaRHIResource>(Sampler.mValue.Get()), {} });
+            auto BindingSet = Device->CreateBindingSet(BindingSetDesc);
+            ASSERT_TRUE(BindingSet);
+
+            FArdaRHIFramebufferDesc FramebufferDesc;
+            FramebufferDesc.mColorAttachments.push_back({ Texture.mValue, {} });
+            auto Framebuffer = Device->CreateFramebuffer(FramebufferDesc);
+            ASSERT_TRUE(Framebuffer);
+
+            const uint32_t LibraryData[] = { 1, 2, 3, 4 };
+            auto Library = Device->CreateShaderLibrary(
+                LibraryData, sizeof(LibraryData), "LifetimeLibrary");
+            ASSERT_TRUE(Library);
+            auto VertexShader = CreateArtifactShader(
+                *Device, Module.mBackendType, "ArdaPipelineStateTestVS",
+                "PipelineStateTestVS", EArdaRHIShaderStage::Vertex);
+            auto PixelShader = CreateArtifactShader(
+                *Device, Module.mBackendType, "ArdaPipelineStateTestPS",
+                "PipelineStateTestPS", EArdaRHIShaderStage::Pixel);
+            auto ComputeShader = CreateArtifactShader(
+                *Device, Module.mBackendType, "ArdaShaderStructTest",
+                "ShaderStructTestCS", EArdaRHIShaderStage::Compute);
+            ASSERT_TRUE(VertexShader);
+            ASSERT_TRUE(PixelShader);
+            ASSERT_TRUE(ComputeShader);
+            FArdaRHIVertexAttributeDesc Attribute;
+            Attribute.mSemanticName = "POSITION";
+            Attribute.mFormat = EArdaRHIFormat::RG32Float;
+            Attribute.mElementStride = 8;
+            eastl::vector<FArdaRHIVertexAttributeDesc> Attributes;
+            Attributes.push_back(Attribute);
+            auto InputLayout = Device->CreateInputLayout(
+                Attributes, VertexShader.mValue);
+            ASSERT_TRUE(InputLayout);
+
+            FArdaRHIGraphicsPipelineDesc GraphicsDesc;
+            GraphicsDesc.mVertexShader = VertexShader.mValue;
+            GraphicsDesc.mPixelShader = PixelShader.mValue;
+            GraphicsDesc.mInputLayout = InputLayout.mValue;
+            GraphicsDesc.mColorFormats.push_back(EArdaRHIFormat::RGBA8UNorm);
+            GraphicsDesc.mDepthStencilState.mbDepthTest = false;
+            GraphicsDesc.mDepthStencilState.mbDepthWrite = false;
+            auto GraphicsPipeline = Device->CreateGraphicsPipeline(GraphicsDesc);
+            ASSERT_TRUE(GraphicsPipeline);
+
+            FArdaRHIBindingLayoutDesc ComputeLayoutDesc;
+            ComputeLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+            ComputeLayoutDesc.mItems.push_back(
+                { 0, 1, EArdaRHIBindingType::StructuredBufferUAV });
+            auto ComputeLayout = Device->CreateBindingLayout(ComputeLayoutDesc);
+            ASSERT_TRUE(ComputeLayout);
+            FArdaRHIComputePipelineDesc ComputeDesc;
+            ComputeDesc.mComputeShader = ComputeShader.mValue;
+            ComputeDesc.mBindingLayouts.push_back(ComputeLayout.mValue);
+            auto ComputePipeline = Device->CreateComputePipeline(ComputeDesc);
+            ASSERT_TRUE(ComputePipeline);
+
+            auto Raster = Device->CreateRasterState({});
+            auto Blend = Device->CreateBlendState({});
+            auto Depth = Device->CreateDepthStencilState({});
+            auto Event = Device->CreateEventQuery();
+            auto Timer = Device->CreateTimerQuery();
+            auto Fence = Device->CreateGpuFence();
+            auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+            ASSERT_TRUE(Raster);
+            ASSERT_TRUE(Blend);
+            ASSERT_TRUE(Depth);
+            ASSERT_TRUE(Event);
+            ASSERT_TRUE(Timer);
+            ASSERT_TRUE(Fence);
+            ASSERT_TRUE(Commands);
+
+            const FArdaRHIResourceLifetimeStats During =
+                Device->GetResourceLifetimeStats();
+            EXPECT_GT(During.GetLiveResourceCount(
+                EArdaRHIResourceType::BindingSet),
+                Baseline.GetLiveResourceCount(EArdaRHIResourceType::BindingSet));
+            if (Module.mBackendType == EArdaBackendType::D3D12)
+            {
+                EXPECT_GT(During.mResourceDescriptors,
+                    Baseline.mResourceDescriptors);
+                EXPECT_GT(During.mSamplerDescriptors,
+                    Baseline.mSamplerDescriptors);
+            }
+            else
+            {
+                EXPECT_GT(During.mDescriptorSets, Baseline.mDescriptorSets);
+            }
+        }
+
+        {
+            FArdaRHIBufferDesc BufferDesc;
+            BufferDesc.mDebugName = "DescriptorReuseBuffer";
+            BufferDesc.mByteSize = 16;
+            BufferDesc.mStructureStride = sizeof(uint32_t);
+            BufferDesc.mUsage = EArdaRHIBufferUsage::Structured |
+                EArdaRHIBufferUsage::UnorderedAccess;
+            auto Buffer = Device->CreateBuffer(BufferDesc);
+            auto Sampler = Device->CreateSampler({});
+            ASSERT_TRUE(Buffer);
+            ASSERT_TRUE(Sampler);
+
+            FArdaRHIBindingLayoutDesc ResourceLayoutDesc;
+            ResourceLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+            ResourceLayoutDesc.mItems.push_back(
+                { 0, 1, EArdaRHIBindingType::StructuredBufferUAV });
+            FArdaRHIBindingLayoutDesc SamplerLayoutDesc;
+            SamplerLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+            SamplerLayoutDesc.mItems.push_back(
+                { 0, 1, EArdaRHIBindingType::Sampler });
+            auto ResourceLayout = Device->CreateBindingLayout(ResourceLayoutDesc);
+            auto SamplerLayout = Device->CreateBindingLayout(SamplerLayoutDesc);
+            ASSERT_TRUE(ResourceLayout);
+            ASSERT_TRUE(SamplerLayout);
+
+            FArdaRHIBindingSetDesc ResourceSetDesc;
+            ResourceSetDesc.mLayout = ResourceLayout.mValue;
+            ResourceSetDesc.mItems.push_back({
+                0, 0, EArdaRHIBindingType::StructuredBufferUAV,
+                TArdaRHIRef<IArdaRHIResource>(Buffer.mValue.Get()), {} });
+            const uint32_t ResourceIterations =
+                Module.mBackendType == EArdaBackendType::D3D12
+                    ? 65568u : 8224u;
+            for (uint32_t Index = 0; Index < ResourceIterations; ++Index)
+            {
+                auto Set = Device->CreateBindingSet(ResourceSetDesc);
+                ASSERT_TRUE(Set) << Module.mName.c_str()
+                    << " failed to reuse resource descriptors at iteration " << Index;
+            }
+
+            FArdaRHIBindingSetDesc SamplerSetDesc;
+            SamplerSetDesc.mLayout = SamplerLayout.mValue;
+            SamplerSetDesc.mItems.push_back({
+                0, 0, EArdaRHIBindingType::Sampler,
+                TArdaRHIRef<IArdaRHIResource>(Sampler.mValue.Get()), {} });
+            for (uint32_t Index = 0; Index < 2080u; ++Index)
+            {
+                auto Set = Device->CreateBindingSet(SamplerSetDesc);
+                ASSERT_TRUE(Set) << Module.mName.c_str()
+                    << " failed to reuse sampler descriptors at iteration " << Index;
+            }
+        }
+
+        ASSERT_TRUE(Device->WaitForIdle());
+        Device->RunGarbageCollection();
+        Device->TrimDescriptorCaches();
+        const FArdaRHIResourceLifetimeStats After =
+            Device->GetResourceLifetimeStats();
+        for (size_t Index = 0;
+             Index < static_cast<size_t>(EArdaRHIResourceType::Count);
+             ++Index)
+        {
+            EXPECT_EQ(After.mLiveResources[Index], Baseline.mLiveResources[Index])
+                << Module.mName.c_str() << " leaked RHI resource type " << Index;
+        }
+        EXPECT_EQ(After.mResourceDescriptors, Baseline.mResourceDescriptors);
+        EXPECT_EQ(After.mSamplerDescriptors, Baseline.mSamplerDescriptors);
+        EXPECT_EQ(After.mDescriptorSets, Baseline.mDescriptorSets);
+        EXPECT_EQ(After.mPendingSubmissions, Baseline.mPendingSubmissions);
+        Device = nullptr;
+        ShutdownBackend();
+    }
+    EXPECT_GT(TestedBackends, 0u);
+}
+
+#if defined(ARDA_TEST_NATIVE_VULKAN)
+TEST(ArdaBackend, VulkanMergesStageLayoutsThatShareARegisterSpace)
+{
+    using namespace arda;
+    using namespace backend;
+    using namespace rhi;
+
+    ShutdownBackend();
+    FExternalTestCleanup Cleanup;
+    IArdaBackendModule* Module = FindBackendModule("native-vulkan");
+    ASSERT_NE(Module, nullptr);
+    FArdaBackendConfiguration Configuration;
+    Configuration.mBackendName = Module->GetDescriptor().mName;
+    Configuration.mBackend = EArdaBackendType::Vulkan;
+    Configuration.mbEnableValidation = true;
+    Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    FArdaRHIDeviceRef Device = GetDevice();
+    ASSERT_TRUE(Device);
+    Device->TrimDescriptorCaches();
+    const auto Baseline = Device->GetResourceLifetimeStats();
+
+    {
+        auto VertexShader = CreateArtifactShader(
+            *Device, EArdaBackendType::Vulkan, "ArdaBindingSpaceVS",
+            "BindingSpaceVS", EArdaRHIShaderStage::Vertex);
+        auto PixelShader = CreateArtifactShader(
+            *Device, EArdaBackendType::Vulkan, "ArdaBindingSpacePS",
+            "BindingSpacePS", EArdaRHIShaderStage::Pixel);
+        ASSERT_TRUE(VertexShader);
+        ASSERT_TRUE(PixelShader);
+
+        FArdaRHIBindingLayoutDesc VertexLayoutDesc;
+        VertexLayoutDesc.mVisibility = EArdaRHIShaderStage::Vertex;
+        VertexLayoutDesc.mRegisterSpace = 0;
+        VertexLayoutDesc.mItems.push_back(
+            { 0, 1, EArdaRHIBindingType::ConstantBuffer });
+        FArdaRHIBindingLayoutDesc PixelLayoutDesc;
+        PixelLayoutDesc.mVisibility = EArdaRHIShaderStage::Pixel;
+        PixelLayoutDesc.mRegisterSpace = 0;
+        PixelLayoutDesc.mItems.push_back(
+            { 0, 1, EArdaRHIBindingType::TextureSRV });
+        auto VertexLayout = Device->CreateBindingLayout(VertexLayoutDesc);
+        auto PixelLayout = Device->CreateBindingLayout(PixelLayoutDesc);
+        ASSERT_TRUE(VertexLayout);
+        ASSERT_TRUE(PixelLayout);
+
+        FArdaRHIBufferDesc ConstantsDesc;
+        ConstantsDesc.mDebugName = "BindingSpaceConstants";
+        ConstantsDesc.mByteSize = 256;
+        ConstantsDesc.mUsage = EArdaRHIBufferUsage::Constant;
+        ConstantsDesc.mCpuAccess = EArdaRHICpuAccess::Write;
+        ConstantsDesc.mInitialState = EArdaRHIResourceState::ConstantBuffer;
+        ConstantsDesc.mbKeepInitialState = true;
+        auto Constants = Device->CreateBuffer(ConstantsDesc);
+        ASSERT_TRUE(Constants);
+
+        FArdaRHITextureDesc SourceDesc;
+        SourceDesc.mDebugName = "BindingSpaceSource";
+        SourceDesc.mWidth = 1;
+        SourceDesc.mHeight = 1;
+        SourceDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+        SourceDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
+        SourceDesc.mInitialState = EArdaRHIResourceState::ShaderResource;
+        SourceDesc.mbKeepInitialState = true;
+        auto Source = Device->CreateTexture(SourceDesc);
+        ASSERT_TRUE(Source);
+
+        FArdaRHITextureDesc TargetDesc = SourceDesc;
+        TargetDesc.mDebugName = "BindingSpaceTarget";
+        TargetDesc.mUsage = EArdaRHITextureUsage::RenderTarget;
+        TargetDesc.mInitialState = EArdaRHIResourceState::RenderTarget;
+        auto Target = Device->CreateTexture(TargetDesc);
+        ASSERT_TRUE(Target);
+        FArdaRHIFramebufferDesc FramebufferDesc;
+        FramebufferDesc.mColorAttachments.push_back({ Target.mValue, {} });
+        auto Framebuffer = Device->CreateFramebuffer(FramebufferDesc);
+        ASSERT_TRUE(Framebuffer);
+
+        FArdaRHIBindingSetDesc VertexSetDesc;
+        VertexSetDesc.mLayout = VertexLayout.mValue;
+        VertexSetDesc.mItems.push_back({
+            0, 0, EArdaRHIBindingType::ConstantBuffer,
+            TArdaRHIRef<IArdaRHIResource>(Constants.mValue.Get()), {} });
+        FArdaRHIBindingSetDesc PixelSetDesc;
+        PixelSetDesc.mLayout = PixelLayout.mValue;
+        PixelSetDesc.mItems.push_back({
+            0, 0, EArdaRHIBindingType::TextureSRV,
+            TArdaRHIRef<IArdaRHIResource>(Source.mValue.Get()), {} });
+        auto VertexSet = Device->CreateBindingSet(VertexSetDesc);
+        auto PixelSet = Device->CreateBindingSet(PixelSetDesc);
+        ASSERT_TRUE(VertexSet);
+        ASSERT_TRUE(PixelSet);
+
+        FArdaRHIGraphicsPipelineDesc PipelineDesc;
+        PipelineDesc.mVertexShader = VertexShader.mValue;
+        PipelineDesc.mPixelShader = PixelShader.mValue;
+        PipelineDesc.mBindingLayouts.push_back(VertexLayout.mValue);
+        PipelineDesc.mBindingLayouts.push_back(PixelLayout.mValue);
+        PipelineDesc.mColorFormats.push_back(EArdaRHIFormat::RGBA8UNorm);
+        PipelineDesc.mDepthStencilState.mbDepthTest = false;
+        PipelineDesc.mDepthStencilState.mbDepthWrite = false;
+        auto Pipeline = Device->CreateGraphicsPipeline(PipelineDesc);
+        ASSERT_TRUE(Pipeline);
+
+        auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(Commands);
+        ASSERT_TRUE(Commands.mValue->Open());
+        ASSERT_TRUE(Commands.mValue->SetTextureState(
+            *Source.mValue, {}, EArdaRHIResourceState::ShaderResource));
+        FArdaRHIGraphicsState State;
+        State.mPipeline = Pipeline.mValue;
+        State.mFramebuffer = Framebuffer.mValue;
+        State.mBindings.push_back(VertexSet.mValue);
+        State.mBindings.push_back(PixelSet.mValue);
+        ASSERT_TRUE(Commands.mValue->SetGraphicsState(State));
+        Commands.mValue->Draw({ 3 });
+        ASSERT_TRUE(Commands.mValue->Close());
+
+        const auto Recorded = Device->GetResourceLifetimeStats();
+        EXPECT_GE(Recorded.mDescriptorSets, Baseline.mDescriptorSets + 3u);
+        auto Submitted = Device->ExecuteCommandList(Commands.mValue);
+        ASSERT_TRUE(Submitted);
+        ASSERT_TRUE(Device->WaitForIdle());
+    }
+
+    Device->RunGarbageCollection();
+    Device->TrimDescriptorCaches();
+    const auto After = Device->GetResourceLifetimeStats();
+    EXPECT_EQ(After.mDescriptorSets, Baseline.mDescriptorSets);
+    EXPECT_EQ(After.mPendingSubmissions, Baseline.mPendingSubmissions);
+}
+#endif
 
 #if defined(_WIN32) && defined(ARDA_TEST_NATIVE_D3D12)
 TEST(ArdaBackend, InitializesD3D12Device)

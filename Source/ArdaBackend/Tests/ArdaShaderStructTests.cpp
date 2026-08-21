@@ -764,6 +764,18 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
                 VulkanJob->mArguments.end(),
                 eastl::string("-fspv-target-env=vulkan1.3")),
             VulkanJob->mArguments.end());
+        bool bFoundSpaceThreeUavShift = false;
+        for (size_t Index = 0; Index + 2 < VulkanJob->mArguments.size(); ++Index)
+        {
+            if (VulkanJob->mArguments[Index] == "-fvk-u-shift" &&
+                VulkanJob->mArguments[Index + 1] == "384" &&
+                VulkanJob->mArguments[Index + 2] == "3")
+            {
+                bFoundSpaceThreeUavShift = true;
+                break;
+            }
+        }
+        EXPECT_TRUE(bFoundSpaceThreeUavShift);
     }
 
     const FArdaShaderCompileResult SecondJobs =

@@ -43,6 +43,25 @@ namespace arda::rhi
         size_t mDepthStencilStates = 0;
     };
 
+    /** Live object and transient native-allocation counts used for lifetime validation. */
+    struct FArdaRHIResourceLifetimeStats
+    {
+        size_t mLiveResources[
+            static_cast<size_t>(EArdaRHIResourceType::Count)]{};
+        size_t mResourceDescriptors = 0;
+        size_t mSamplerDescriptors = 0;
+        size_t mDescriptorSets = 0;
+        size_t mPendingSubmissions = 0;
+
+        [[nodiscard]] size_t GetLiveResourceCount(
+            EArdaRHIResourceType Type) const noexcept
+        {
+            const size_t Index = static_cast<size_t>(Type);
+            return Index < static_cast<size_t>(EArdaRHIResourceType::Count)
+                ? mLiveResources[Index] : 0;
+        }
+    };
+
     /** Interface for command list. */
     class IArdaRHICommandList : public virtual IArdaRHIResource
     {
@@ -808,6 +827,9 @@ namespace arda::rhi
          * @return The requested value.
          */
         [[nodiscard]] virtual FArdaRHICacheStats GetDescriptorCacheStats() const noexcept = 0;
+        /** Returns live wrapper and native transient-allocation diagnostics. */
+        [[nodiscard]] virtual FArdaRHIResourceLifetimeStats
+            GetResourceLifetimeStats() const noexcept { return {}; }
         /**
          * Performs the wait for idle operation.
          * @return A status describing whether the operation succeeded.

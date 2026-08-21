@@ -44,7 +44,8 @@ namespace arda::rhi
         RasterState,
         BlendState,
         DepthStencilState,
-        CommandList
+        CommandList,
+        Count
     };
 
     /** Interface for resource. */
