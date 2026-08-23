@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="660" viewBox="0 0 960 660" role="img" aria-labelledby="rdg-title rdg-desc">
+  <title id="rdg-title">ArdaRenderGraph compilation and execution flow</title>
+  <desc id="rdg-desc">Pass and resource declarations are compiled into dependencies, culled live work, lifetimes, queues, transitions, and heap placement. Execution records command lists, state-conformance checkpoints, queue waits, submission instances, and extracted resource states.</desc>
+  <defs>
+    <marker id="rdg-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.build{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.compile{fill:#183b4a;stroke:#38bdf8;stroke-width:2}.memory{fill:#214b45;stroke:#34d399;stroke-width:2}.record{fill:#493720;stroke:#fbbf24;stroke-width:2}.submit{fill:#3a294d;stroke:#c084fc;stroke-width:2}.result{fill:#123b31;stroke:#34d399;stroke-width:2}.title{font:700 26px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.tiny{font:11px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle}.flow{fill:none;stroke:#7dd3fc;stroke-width:2.3;marker-end:url(#rdg-arrow)}.feedback{fill:none;stroke:#34d399;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#rdg-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="960" height="660"/>
+  <text class="title" x="32" y="44">ArdaRenderGraph turns declarations into validated native submissions</text>
+  <text class="sub" x="32" y="70">Compilation owns whole-graph decisions; pass callbacks record only the work declared for each pass.</text>
+
+  <rect class="build" x="42" y="112" width="180" height="112" rx="11"/>
+  <text class="label" x="132" y="142">1 · Build</text>
+  <text class="small" x="132" y="168">logical textures/buffers</text><text class="small" x="132" y="188">typed pass parameters</text><text class="small" x="132" y="208">extractions and uploads</text>
+  <path class="flow" d="M222 168 H270"/>
+  <rect class="compile" x="272" y="98" width="196" height="140" rx="11"/>
+  <text class="label" x="370" y="128">2 · Compile</text>
+  <text class="small" x="370" y="154">discover dependencies</text><text class="small" x="370" y="174">cull dead passes</text><text class="small" x="370" y="194">assign queues/lifetimes</text><text class="small" x="370" y="214">lower transitions</text>
+  <path class="flow" d="M468 168 H516"/>
+  <rect class="memory" x="518" y="112" width="180" height="112" rx="11"/>
+  <text class="label" x="608" y="142">3 · Materialize</text>
+  <text class="small" x="608" y="168">transient heap layout</text><text class="small" x="608" y="188">placed binding</text><text class="small" x="608" y="208">aliasing barriers</text>
+  <path class="flow" d="M698 168 H746"/>
+  <rect class="record" x="748" y="98" width="170" height="140" rx="11"/>
+  <text class="label" x="833" y="128">4 · Record</text>
+  <text class="small" x="833" y="154">parallel pass waves</text><text class="small" x="833" y="174">typed physical access</text><text class="small" x="833" y="194">barriers and markers</text><text class="small" x="833" y="214">state checkpoints</text>
+
+  <path class="flow" d="M833 238 V286"/>
+  <rect class="submit" x="640" y="288" width="278" height="116" rx="11"/>
+  <text class="label" x="779" y="318">5 · Submit and synchronize</text>
+  <text class="small" x="779" y="344">graphics / compute / copy command lists</text><text class="small" x="779" y="366">queue dependencies → QueueWait</text><text class="small" x="779" y="388">submission instances + state publication</text>
+  <path class="flow" d="M640 346 H566"/>
+  <rect class="result" x="286" y="288" width="278" height="116" rx="11"/>
+  <text class="label" x="425" y="318">6 · Report and extract</text>
+  <text class="small" x="425" y="344">submitted lists and waits</text><text class="small" x="425" y="366">heap/alias/fallback evidence</text><text class="small" x="425" y="388">final resource refs and states</text>
+  <path class="feedback" d="M286 346 H226 C190 346 170 322 170 286 V226"/>
+
+  <rect class="panel" x="42" y="446" width="876" height="166" rx="12"/>
+  <text class="label" x="480" y="476">Validation evidence emitted by execution</text>
+  <rect class="build" x="68" y="510" width="180" height="66" rx="8"/><text class="label" x="158" y="536">RDG expectation</text><text class="tiny" x="158" y="557">pass · resource · range</text>
+  <rect class="compile" x="282" y="510" width="180" height="66" rx="8"/><text class="label" x="372" y="536">Facade snapshot</text><text class="tiny" x="372" y="557">abstract tracked state</text>
+  <rect class="memory" x="496" y="510" width="180" height="66" rx="8"/><text class="label" x="586" y="536">Backend snapshot</text><text class="tiny" x="586" y="557">independent native tracker</text>
+  <rect class="record" x="710" y="510" width="180" height="66" rx="8"/><text class="label" x="800" y="536">Native encoding</text><text class="tiny" x="800" y="557">state bits or layout/masks</text>
+  <text class="tiny" x="480" y="636">Immediate mode uses the same declarations and validation contract but compiles/submits incrementally for debugging.</text>
+</svg>

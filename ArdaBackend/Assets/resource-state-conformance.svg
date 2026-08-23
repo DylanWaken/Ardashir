@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="700" viewBox="0 0 960 700" role="img" aria-labelledby="state-title state-desc">
+  <title id="state-title">Resource transition and four-layer state conformance</title>
+  <desc id="state-desc">A render graph transition is validated before, during, and after lowering. Expected render graph state is compared with facade state, backend abstract state, and exact D3D12 or Vulkan encoding. Submission publishes terminal state only after start-state validation succeeds.</desc>
+  <defs>
+    <marker id="state-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.expected{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.facade{fill:#183b4a;stroke:#38bdf8;stroke-width:2}.backend{fill:#214b45;stroke:#34d399;stroke-width:2}.native{fill:#493720;stroke:#fbbf24;stroke-width:2}.ok{fill:#123b31;stroke:#34d399;stroke-width:2}.bad{fill:#481f2b;stroke:#fb7185;stroke-width:2}.title{font:700 26px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.tiny{font:11px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle}.flow{fill:none;stroke:#7dd3fc;stroke-width:2.3;marker-end:url(#state-arrow)}.check{fill:none;stroke:#34d399;stroke-width:2;stroke-dasharray:6 4}.reject{fill:none;stroke:#fb7185;stroke-width:2;stroke-dasharray:6 4;marker-end:url(#state-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="960" height="700"/>
+  <text class="title" x="32" y="44">A resource state is proven at four independent layers</text>
+  <text class="sub" x="32" y="70">The test contract does not accept one tracker as evidence for another.</text>
+
+  <rect class="panel" x="32" y="98" width="896" height="106" rx="12"/>
+  <text class="label" x="480" y="126">Example texture transition</text>
+  <rect class="expected" x="72" y="146" width="196" height="38" rx="8"/><text class="small" x="170" y="170">CopyDest</text>
+  <path class="flow" d="M268 165 H374"/>
+  <rect class="facade" x="376" y="136" width="208" height="58" rx="8"/>
+  <text class="small" x="480" y="158">mip 2 · slice 1 · plane 0</text><text class="small" x="480" y="178">Graphics → AsyncCompute</text>
+  <path class="flow" d="M584 165 H690"/>
+  <rect class="backend" x="692" y="146" width="196" height="38" rx="8"/><text class="small" x="790" y="170">ShaderResource</text>
+
+  <text class="label" x="480" y="246">FARDGStateConformanceRecord</text>
+  <rect class="expected" x="32" y="270" width="206" height="104" rx="10"/>
+  <text class="label" x="135" y="299">1 · RDG expected</text><text class="small" x="135" y="324">compiled transition stream</text><text class="small" x="135" y="345">range + checkpoint + state</text>
+  <rect class="facade" x="262" y="270" width="206" height="104" rx="10"/>
+  <text class="label" x="365" y="299">2 · Facade</text><text class="small" x="365" y="324">common command-list tracker</text><text class="small" x="365" y="345">known + abstract state</text>
+  <rect class="backend" x="492" y="270" width="206" height="104" rx="10"/>
+  <text class="label" x="595" y="299">3 · Backend</text><text class="small" x="595" y="324">independent native tracker</text><text class="small" x="595" y="345">known + abstract state</text>
+  <rect class="native" x="722" y="270" width="206" height="104" rx="10"/>
+  <text class="label" x="825" y="299">4 · Native encoding</text><text class="small" x="825" y="324">D3D12 state bits, or</text><text class="small" x="825" y="345">Vk layout + stage + access</text>
+  <path class="check" d="M135 374 V408 H825 V374"/>
+  <rect class="ok" x="310" y="408" width="340" height="50" rx="10"/>
+  <text class="label" x="480" y="438">all known · equal · native-compatible</text>
+
+  <rect class="panel" x="32" y="490" width="896" height="170" rx="12"/>
+  <text class="label" x="480" y="520">Recording and submission checkpoints</text>
+  <text class="tiny" x="124" y="552">before transition</text><text class="tiny" x="302" y="552">split intermediate</text><text class="tiny" x="480" y="552">after transition</text><text class="tiny" x="658" y="552">after pass</text><text class="tiny" x="836" y="552">submission</text>
+  <circle cx="124" cy="580" r="13" fill="#60a5fa"/><circle cx="302" cy="580" r="13" fill="#38bdf8"/><circle cx="480" cy="580" r="13" fill="#34d399"/><circle cx="658" cy="580" r="13" fill="#fbbf24"/><circle cx="836" cy="580" r="13" fill="#c084fc"/>
+  <path class="flow" d="M137 580 H287"/><path class="flow" d="M315 580 H465"/><path class="flow" d="M493 580 H643"/><path class="flow" d="M671 580 H821"/>
+  <rect class="bad" x="68" y="615" width="386" height="28" rx="7"/><text class="tiny" x="261" y="634">wrong declared start → reject command list</text>
+  <rect class="ok" x="506" y="615" width="386" height="28" rx="7"/><text class="tiny" x="699" y="634">valid start → execute, then publish terminal state</text>
+  <path class="reject" d="M454 629 H496"/>
+  <text class="tiny" x="480" y="683">D3D12 has no driver state query; native authority is Arda's persisted barrier state plus clean debug-layer validation.</text>
+</svg>

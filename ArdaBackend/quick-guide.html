@@ -35,7 +35,7 @@
         <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
-        <a href="rhi.html">RHI types &amp; resources</a>
+        <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
         <a href="commands.html">Commands</a>
         <a href="presentation.html">Presentation</a>
         <a href="diagnostics.html">Diagnostics</a>
@@ -301,7 +301,7 @@ config.mShaderCacheDirectory =
           <p><code>LoadOnly</code> never launches DXC and eagerly loads deployed artifacts. <code>Startup</code> validates or compiles every selected active-backend permutation before creating the native device, then eagerly creates map objects. <code>OnDemand</code> defers ensure, file loading, and RHI creation until the first lookup of a slot. Non-debug builds default the two compiler switches to false, so set policy explicitly.</p>
 
           <h3>Exact ray-tracing test artifacts</h3>
-          <p><span class="status">TESTED API PATH</span> With <code>ARDASHIR_BUILD_TESTS=ON</code>, the backend test target compiles <code>ArdaRayTracingTest.hlsl</code> as a <code>lib_6_3</code> DXIL library and as Vulkan 1.2 SPIR-V with <code>SPV_KHR_ray_tracing</code>. The source exports one ray-generation function named <code>RayGen</code> and declares no resources, so this artifact uses no Vulkan register shifts. If you add bindings, define and apply one policy consistently in shader metadata and compilation.</p>
+          <p><span class="status">TESTED API PATH</span> With <code>ARDASHIR_BUILD_TESTS=ON</code>, the backend test target compiles <code>ArdaRayTracingTest.hlsl</code> as a <code>lib_6_3</code> DXIL library and as Vulkan 1.2 SPIR-V with <code>SPV_KHR_ray_tracing</code>. The library exports the baseline <code>RayGen</code> entry plus <code>KnownSceneRayGen</code>, <code>KnownMiss</code>, and <code>KnownClosestHit</code> for deterministic scene traversal. The scene path declares a TLAS at <code>t0</code> and an output UAV at <code>u0</code>; Vulkan compilation applies the backend's register-shift policy, and the shader metadata and descriptor layout use the same logical slots.</p>
 
           <h3>Register virtual source and use the configured global map</h3>
           <p><span class="status">DEMONSTRATED</span> This is the <code>ARDGExample</code> path and is convenient when typed parameters and pipeline initializers should derive from registered shaders.</p>
@@ -517,17 +517,16 @@ commandList->DrawIndexed({ indexCount });
 
         <div id="ray-tracing">
           <h2>11. Add capability-gated hardware ray tracing</h2>
-          <p><span class="status">SYNTHESIZED / NOT YET COVERED BY AN END-TO-END SAMPLE</span> ArdaBackend exposes the complete component path, but the repository does <strong>not</strong> contain a checked-in application that builds geometry, creates BLAS/TLAS, populates a shader table, and calls <code>DispatchRays</code>. <code>ArdaBackendTests</code> verifies capability gating, an empty TLAS creation path, D3D12 library extraction or Vulkan direct RT shader creation, and RT pipeline cache behavior. Treat the sequence below as an integration checklist, not a demonstrated sample.</p>
+          <p><span class="status">TESTED API PATH</span> <code>ArdaBackendTests</code> builds and updates native BLAS/TLAS objects, queries and copies compacted structures, creates hit groups and shader-table records with local arguments, and executes direct/indirect ray dispatch on D3D12 and Vulkan when the selected adapter advertises each ability. This recipe remains an application integration checklist because the windowed examples are intentionally small.</p>
 
           <section id="rt-capabilities">
-          <h3>10.1 Gate both levels of support</h3>
-          <pre><code>const auto&amp; caps = device->GetCapabilities();
-if (!caps.mbRayTracing || !caps.mbRayTracingAccelStruct)
-{
-    // Disable the RT renderer and keep the raster path.
-    return UseRasterFallback();
-}</code></pre>
-          <p><a href="api-reference.html#api-arda-rhi-fardarhicapabilities-mbraytracing-48caf09a"><code>mbRayTracing</code></a> gates RT shaders/pipelines; <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-mbraytracingaccelstruct-ca875a45"><code>mbRayTracingAccelStruct</code></a> gates acceleration structures. Do not infer either from the selected backend name.</p>
+          <h3>11.1 Evaluate the renderer's complete profile</h3>
+          <pre><code>const auto requirements = arda::backend::GetArdaRHIProfileRequirements(
+    arda::backend::EArdaRHIDeviceProfile::RealtimeRayTracingAndML);
+const auto admission = device->GetCapabilities().Evaluate(requirements);
+if (!admission.IsSupported())
+    return Fail(admission.ToStatus().mMessage); // Names every missing ability.</code></pre>
+          <p>Real-time Ardashir modules may explicitly require hardware RT, AS build/update/compaction, ray pipelines, local shader-table arguments, indirect trace, descriptor indexing, queue synchronization, and ML compute facts. Do not infer any of them from the backend name, and do not silently launch a raster fallback. A software tracer should define a separate profile that omits hardware RT cores.</p>
           </section>
 
           <section id="rt-shaders">

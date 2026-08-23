@@ -35,7 +35,7 @@
         <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
-        <a href="rhi.html">RHI types &amp; resources</a>
+        <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
         <a aria-current="page" href="commands.html">Commands</a>
         <a href="presentation.html">Presentation</a>
         <a href="diagnostics.html">Diagnostics</a>
@@ -190,7 +190,7 @@
             <dt>Ray-tracing builds</dt>
             <dd><code>BuildBottomLevelAccelStruct</code>, <code>BuildTopLevelAccelStruct</code>, and <code>BuildTopLevelAccelStructFromBuffer</code> consume build inputs and write acceleration storage. Build flags affect update, compaction, speed, and memory tradeoffs.</dd>
             <dt>Opacity and sampler feedback</dt>
-            <dd><code>BuildOpacityMicromap</code>, <code>ClearSamplerFeedbackTexture</code>, and <code>DecodeSamplerFeedbackTexture</code> encode specialized workflows and must be capability-gated.</dd>
+            <dd><code>BuildOpacityMicromap</code> writes native micromap storage; <code>GetOpacityMicromapCompactedSize</code> sizes a distinct destination; and <code>CompactOpacityMicromap</code> records a native compact copy before BLAS attachment. D3D12 <code>ClearSamplerFeedbackTexture</code> and <code>DecodeSamplerFeedbackTexture</code> implement the feedback-streaming loop. Every operation is capability-gated.</dd>
             <dt>Markers and timer queries</dt>
             <dd><code>BeginMarker</code>/<code>EndMarker</code> create nested diagnostic regions. <code>BeginTimerQuery</code>/<code>EndTimerQuery</code> record GPU timestamps; poll and read only after availability.</dd>
           </dl>
@@ -240,7 +240,7 @@ command-&gt;CommitBarriers();</code></pre>
         <section id="synchronization">
           <h2>Cross-queue waits, fences, and queries</h2>
           <h3>Queue-to-queue dependencies</h3>
-          <p>Use submission instance IDs and <code>QueueWait</code> for GPU-side cross-queue order. The CPU can continue recording while the waiting queue stalls at the dependency. Place the wait before submitting dependent work according to the backend contract and keep producer/consumer queue identities explicit.</p>
+          <p>Use submission instance IDs and <code>QueueWait</code> for GPU-side cross-queue order. D3D12 lowers the edge to a queue fence wait; Vulkan lowers it to a timeline-semaphore wait. The CPU can continue recording while the waiting queue stalls at the dependency. A resource crossing queues also needs a state/ownership handoff: release it in <code>Common</code> on the producer, wait on the destination queue, acquire it there, then enter the consumer state. This keeps D3D12 copy queues from seeing shader-only states. When Vulkan work crosses dedicated families, the paired barriers transfer the native queue-family owner; the exact family index is included in state evidence. ArdaRenderGraph generates this choreography and validates the facade, backend, and native state at <code>QueueRelease</code> and <code>QueueAcquire</code>.</p>
           <h3>Event queries</h3>
           <p><a href="api-reference.html#api-arda-rhi-iardarhidevice-signaleventquery-66bd68bd"><code>SignalEventQuery</code></a> inserts completion on a queue. <code>PollEventQuery</code> supports non-blocking retirement; <code>WaitEventQuery</code> blocks the CPU; <code>ResetEventQuery</code> prepares reuse after completion.</p>
           <h3>GPU fences</h3>
@@ -432,7 +432,7 @@ if (!drawn)
         </section>
 
         <nav class="page-nav" aria-label="Page navigation">
-          <a rel="prev" href="rhi.html">← Previous: RHI types &amp; resources</a>
+          <a rel="prev" href="rhi-feature-guide.html">&larr; Previous: RHI feature guide</a>
           <a rel="next" href="presentation.html">Next: Presentation →</a>
         </nav>
       </article>

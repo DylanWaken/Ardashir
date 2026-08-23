@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" viewBox="0 0 960 620" role="img" aria-labelledby="layers-title layers-desc">
+  <title id="layers-title">Arda rendering layers and responsibility boundaries</title>
+  <desc id="layers-desc">Renderer and render graph intent flows through the ArdaRHI facade and common validation layer into D3D12 or Vulkan. Capability and independently observed state information flow back upward.</desc>
+  <defs>
+    <marker id="layers-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/></marker>
+    <marker id="layers-return" markerWidth="10" markerHeight="8" refX="1" refY="4" orient="auto"><path d="M10 0 L0 4 L10 8 Z" fill="#34d399"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.intent{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.contract{fill:#183b4a;stroke:#38bdf8;stroke-width:2}.native{fill:#214b45;stroke:#34d399;stroke-width:2}.gpu{fill:#493720;stroke:#fbbf24;stroke-width:2}.title{font:700 26px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 16px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.note{font:12px system-ui,sans-serif;fill:#c5d2e3}.flow{fill:none;stroke:#7dd3fc;stroke-width:2.4;marker-end:url(#layers-arrow)}.return{fill:none;stroke:#34d399;stroke-width:2;stroke-dasharray:7 5;marker-start:url(#layers-return)}
+    </style>
+  </defs>
+  <rect class="bg" width="960" height="620"/>
+  <text class="title" x="32" y="44">One renderer contract, two native execution paths</text>
+  <text class="sub" x="32" y="70">Descriptions and commands move downward; capabilities, status, and state evidence move upward.</text>
+
+  <rect class="intent" x="90" y="104" width="350" height="90" rx="12"/>
+  <text class="label" x="265" y="136">Renderer / application</text>
+  <text class="small" x="265" y="160">resources, pipelines, direct command recording</text>
+  <text class="small" x="265" y="178">presentation and platform policy</text>
+  <rect class="intent" x="520" y="104" width="350" height="90" rx="12"/>
+  <text class="label" x="695" y="136">ArdaRenderGraph</text>
+  <text class="small" x="695" y="160">pass declarations, dependencies, lifetimes</text>
+  <text class="small" x="695" y="178">queue selection, transitions, extraction</text>
+
+  <path class="flow" d="M265 194 V232"/><path class="flow" d="M695 194 V232"/>
+  <rect class="contract" x="90" y="234" width="780" height="106" rx="12"/>
+  <text class="label" x="480" y="266">ArdaRHI public facade</text>
+  <text class="small" x="480" y="292">IArdaRHIDevice · IArdaRHICommandList · typed resources · descriptors · capabilities</text>
+  <text class="small" x="480" y="316">portable validation, intrusive ownership, device affinity, facade resource-state tracker</text>
+
+  <path class="flow" d="M480 340 V376"/>
+  <rect class="panel" x="90" y="378" width="780" height="78" rx="12"/>
+  <text class="label" x="480" y="408">Common native boundary</text>
+  <text class="small" x="480" y="432">command translation · submitted-state validation · resource retention · backend-independent conformance snapshots</text>
+
+  <path class="flow" d="M330 456 V490"/><path class="flow" d="M630 456 V490"/>
+  <rect class="native" x="90" y="492" width="350" height="78" rx="12"/>
+  <text class="label" x="265" y="522">Native D3D12</text>
+  <text class="small" x="265" y="546">resource states, descriptor heaps, PSOs, queues</text>
+  <rect class="native" x="520" y="492" width="350" height="78" rx="12"/>
+  <text class="label" x="695" y="522">Native Vulkan</text>
+  <text class="small" x="695" y="546">layouts, stage/access masks, descriptor sets, queues</text>
+
+  <rect class="gpu" x="390" y="584" width="180" height="26" rx="8"/>
+  <text class="small" x="480" y="602">native graphics API → GPU</text>
+  <path class="flow" d="M265 570 C265 590 350 597 390 597"/><path class="flow" d="M695 570 C695 590 610 597 570 597"/>
+
+  <path class="return" d="M70 522 V286 H90"/>
+  <text class="note" x="26" y="414" transform="rotate(-90 26 414)">capabilities · status · observed native state</text>
+</svg>

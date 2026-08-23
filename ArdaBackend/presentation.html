@@ -34,7 +34,7 @@
         <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
-        <a href="rhi.html">RHI types &amp; resources</a>
+        <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
         <a href="commands.html">Commands</a>
         <a aria-current="page" href="presentation.html">Presentation</a>
         <a href="diagnostics.html">Diagnostics</a>
@@ -60,6 +60,7 @@
           <a href="#arda-model">Arda implementation</a>
           <a href="#platforms">D3D12 and Vulkan</a>
           <a href="#timeline">Frame timeline</a>
+          <a href="#custom-present">Custom present</a>
           <a href="#pacing">Latency, pacing, and vsync</a>
           <a href="#resize">Resize and invalidation</a>
           <a href="#compatibility">Format compatibility</a>
@@ -77,6 +78,7 @@
             <li>explain why a swap chain owns several displayable images rather than one permanent screen buffer;</li>
             <li>distinguish a native back buffer from the Arda <a class="term" data-term="framebuffer" href="../glossary.html#term-framebuffer">framebuffer</a> that describes render attachments;</li>
             <li>preserve acquire, render, submit, and present ordering on both supported backends;</li>
+            <li>install a custom-present callback without losing resize or post-present ordering;</li>
             <li>handle resize, minimization, Vulkan out-of-date results, and stale framebuffer references safely;</li>
             <li>separate general latency and present-mode concepts from controls that Arda currently exposes; and</li>
             <li>shut presentation down without destroying native or RHI objects still used by the GPU.</li>
@@ -173,6 +175,22 @@
           <p><a href="api-reference.html#api-arda-backend-iardaswapchain-preparesubmit-a7c52b53"><code>PrepareSubmit()</code></a> returns <code>void</code>, so it provides no immediate portable status channel. Portable code must preserve the required ordering, then observe the later <a href="api-reference.html#api-arda-backend-iardaswapchain-present-84764540"><code>Present()</code></a> result and <a href="api-reference.html#api-arda-backend-iardaswapchain-geterror-0d91ba43"><code>GetError()</code></a>, together with the configured <a href="api-reference.html#api-arda-backend-fardabackendconfiguration-mmessagecallback-2ecd5edd">diagnostic callback</a> and <a href="api-reference.html#api-arda-backend-fardabackendconfiguration-mbenablevalidation-2f50a50d">native validation</a>, for failures. This is a limitation of the current API contract, not evidence that preparation cannot fail internally.</p>
           <h3>Image state and ownership</h3>
           <p>Acquisition controls presentation ownership, while RHI barriers control GPU resource state. These are related but not interchangeable. A semaphore does not transition a texture to render-target state; a texture barrier does not make the presentation engine release an image. Preserve both the RHI state model and swap-chain call order.</p>
+        </section>
+        <section id="custom-present">
+          <h2>Custom present</h2>
+          <p><code>IArdaCustomPresent</code> lets an external compositor, XR runtime, encoder, or host engine replace or augment the final native presentation operation. Install it with <code>IArdaSwapChain::SetCustomPresent</code>; <code>GetCustomPresent</code> returns the retained callback.</p>
+          <ol>
+            <li>Installation immediately calls <code>OnBackBufferResize</code> with the current extent.</li>
+            <li>Each swap-chain <code>Present</code> calls the callback with the current native back-buffer identity and extent.</li>
+            <li>If <code>NeedsNativePresent</code> is false, Arda skips DXGI/<code>vkQueuePresentKHR</code>; otherwise native present follows.</li>
+            <li>After the selected route succeeds, <code>PostPresent</code> runs exactly once.</li>
+            <li>A successful swap-chain resize recreates back buffers and notifies the callback again.</li>
+          </ol>
+          <figure>
+            <img src="Assets/advanced-dispatch-present.svg" loading="lazy" alt="The custom-present path receives an acquired native back buffer, decides whether native swap-chain present is required, and receives a post-present notification.">
+            <figcaption>The callback changes the final delivery route; it does not replace acquisition, RHI state transitions, queue submission, or lifetime rules.</figcaption>
+          </figure>
+          <p>Both desktop swap-chain implementations contain this callback route. Non-interactive D3D12 and Vulkan tests create hidden real Win32 swap chains and verify native handle delivery, native-present bypass, post-present, and resize propagation. Vulkan reports the actual surface extent after native clamping.</p>
         </section>
         <section id="pacing">
           <h2>Frame latency, pacing, and vsync</h2>

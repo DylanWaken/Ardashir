@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Native ray-tracing scene, pipeline, and dispatch flow</title>
+  <desc id="desc">Geometry and optional opacity micromaps build into bottom-level acceleration structures, instances build into a top-level structure, shader libraries form hit groups and shader-table records with local arguments, and direct or indirect dispatch produces output.</desc>
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0 0v6l9-3z" fill="#7387a6"/></marker>
+    <style>.bg{fill:#0f1726}.b{fill:#19263b;stroke:#5c7192;stroke-width:2}.rt{fill:#25294b;stroke:#ab8cff;stroke-width:2}.opt{fill:#173b34;stroke:#55c69a;stroke-width:2}.line{fill:none;stroke:#7387a6;stroke-width:3;marker-end:url(#a)}.dash{fill:none;stroke:#ab8cff;stroke-width:2;stroke-dasharray:8 7;marker-end:url(#a)}.t{font:600 19px system-ui,sans-serif;fill:#f5f7fb}.s{font:14px system-ui,sans-serif;fill:#cbd5e1}.tiny{font:13px system-ui,sans-serif;fill:#afbdd0}</style>
+  </defs>
+  <rect class="bg" width="1200" height="620" rx="20"/>
+  <text class="t" x="45" y="45">Scene structure</text>
+  <rect class="b" x="45" y="75" width="230" height="105" rx="14"/><text class="t" x="160" y="111" text-anchor="middle">Triangle / AABB data</text><text class="s" x="70" y="143">vertex, index, transform buffers</text>
+  <rect class="opt" x="45" y="225" width="230" height="105" rx="14"/><text class="t" x="160" y="261" text-anchor="middle">Opacity micromap</text><text class="s" x="70" y="293">Vulkan EXT build + geometry link</text>
+  <path class="line" d="M275 128 H365"/><path class="line" d="M275 278 H320 V160 H365"/>
+  <rect class="rt" x="365" y="95" width="240" height="130" rx="14"/><text class="t" x="485" y="132" text-anchor="middle">BLAS</text><text class="s" x="390" y="162">build or update with scratch</text><text class="s" x="390" y="188">query compacted size, copy compact</text>
+  <path class="line" d="M605 160 H700"/>
+  <rect class="b" x="700" y="95" width="215" height="130" rx="14"/><text class="t" x="807" y="132" text-anchor="middle">TLAS instances</text><text class="s" x="725" y="162">BLAS references, masks, IDs</text><text class="s" x="725" y="188">instance transforms + SBT offsets</text>
+  <path class="line" d="M915 160 H990"/>
+  <rect class="rt" x="990" y="95" width="165" height="130" rx="14"/><text class="t" x="1072" y="132" text-anchor="middle">TLAS</text><text class="s" x="1015" y="165">build / update</text><text class="s" x="1015" y="191">trace binding</text>
+  <text class="t" x="45" y="395">Pipeline and shader table</text>
+  <rect class="b" x="45" y="425" width="245" height="130" rx="14"/><text class="t" x="167" y="462" text-anchor="middle">Shader libraries</text><text class="s" x="70" y="493">raygen, miss, closest/any hit</text><text class="s" x="70" y="519">intersection + callable exports</text>
+  <path class="line" d="M290 490 H370"/>
+  <rect class="rt" x="370" y="410" width="265" height="160" rx="14"/><text class="t" x="502" y="447" text-anchor="middle">RT pipeline</text><text class="s" x="395" y="478">hit-group export associations</text><text class="s" x="395" y="504">payload / attributes / recursion</text><text class="s" x="395" y="530">global + local binding layouts</text>
+  <path class="line" d="M635 490 H715"/>
+  <rect class="b" x="715" y="410" width="240" height="160" rx="14"/><text class="t" x="835" y="447" text-anchor="middle">Shader table</text><text class="s" x="740" y="478">raygen / miss / hit records</text><text class="s" x="740" y="504">shader identifiers / handles</text><text class="s" x="740" y="530">inline local arguments</text>
+  <path class="line" d="M955 490 H1020"/>
+  <rect class="opt" x="1020" y="410" width="145" height="160" rx="14"/><text class="t" x="1092" y="447" text-anchor="middle">Dispatch</text><text class="s" x="1041" y="480">direct</text><text class="s" x="1041" y="506">or indirect</text><text class="s" x="1041" y="532">GPU arguments</text>
+  <path class="dash" d="M1072 225 V365 H1092 V410"/>
+  <text class="tiny" x="715" y="360">The TLAS, heaps, and descriptors are bound before the shader table is traced.</text>
+</svg>
