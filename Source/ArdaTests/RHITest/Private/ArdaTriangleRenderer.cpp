@@ -33,16 +33,12 @@ namespace arda::tests::rhi_test
     }
 
     bool FArdaTriangleRenderer::Initialize(
-        const backend::FArdaDeviceContext& deviceContext,
+        rhi::FArdaRHIDeviceRef device,
         rhi::EArdaRHIFormat swapChainFormat,
         const std::filesystem::path& shaderDirectory)
     {
-        mDevice = deviceContext.mDevice;
-        mQueueCapabilities = {
-            deviceContext.mQueueCapabilities.mbGraphics,
-            deviceContext.mQueueCapabilities.mbCompute,
-            deviceContext.mQueueCapabilities.mbCopy};
-        if (!mDevice || !mQueueCapabilities.mbGraphics)
+        mDevice = eastl::move(device);
+        if (!mDevice || !mDevice->GetCapabilities().mQueues.mbGraphics)
         {
             mError = "The initialized backend does not expose a graphics device.";
             return false;
@@ -68,7 +64,8 @@ namespace arda::tests::rhi_test
         backend::ConfigureShaderCompiler(runtimeCompiler);
         const backend::FArdaShaderCompileResult compileResult =
             backend::EnsureRegisteredShaderArtifacts(
-                shaderCache, deviceContext.mBackendName.c_str());
+                shaderCache,
+                backend::GetBackendConfiguration().mBackendName.c_str());
         backend::ConfigureShaderCompiler(previousCompiler);
         if (!compileResult)
         {
@@ -78,7 +75,8 @@ namespace arda::tests::rhi_test
             return false;
         }
 
-        const bool vulkan = deviceContext.mBackend == backend::EArdaBackendType::Vulkan;
+        const bool vulkan = backend::GetBackendConfiguration().mBackend ==
+            backend::EArdaBackendType::Vulkan;
         eastl::vector<uint8_t> vertexBinary;
         eastl::vector<uint8_t> pixelBinary;
         if (!LoadBinary(shaderCache / (vulkan ? "TriangleVS.spv" : "TriangleVS.dxil"), vertexBinary, mError) ||
@@ -269,10 +267,7 @@ namespace arda::tests::rhi_test
 
     render_graph::FARDGRenderGraphContext FArdaTriangleRenderer::CreateGraphContext() const
     {
-        render_graph::FARDGRenderGraphContext context;
-        context.mDevice = mDevice;
-        context.mQueueCapabilities = mQueueCapabilities;
-        return context;
+        return render_graph::MakeRenderGraphContext(mDevice);
     }
 
     bool FArdaTriangleRenderer::LoadBinary(

@@ -1,4 +1,4 @@
-#include "ArdaDevice.h"
+#include "ArdaBackend.h"
 #include "ArdaBackendProvider.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 #include "ShaderStructs/ArdaShaderDirectoriesPrivate.h"
@@ -464,7 +464,7 @@ TEST_F(ArdaShaderDirectories, ArtifactFailureReportsVirtualAndPhysicalSource)
 
     FArdaGlobalShaderMap Map;
     EXPECT_FALSE(Map.Initialize(
-        GetDeviceContext(),
+        GetDevice(),
         fs::path(ARDA_BACKEND_TEST_SHADER_DIR)));
     const auto Diagnostics = Map.GetDiagnostics();
     ASSERT_FALSE(Diagnostics.empty());

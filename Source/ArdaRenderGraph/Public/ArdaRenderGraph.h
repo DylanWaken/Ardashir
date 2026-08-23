@@ -6,22 +6,23 @@
 #include "ArdaRenderGraphPass.h"
 #include "ArdaRenderGraphBlackboard.h"
 #include "ArdaRenderGraphBuilder.h"
-#include "ArdaDevice.h"
+#include "ArdaBackend.h"
 
 namespace arda::render_graph
 {
     [[nodiscard]] inline FARDGRenderGraphContext MakeRenderGraphContext(
-        const backend::FArdaDeviceContext& DeviceContext,
+        rhi::FArdaRHIDeviceRef Device,
         FARDGDebugOptions DebugOptions = {})
     {
         FARDGRenderGraphContext Result;
-        Result.mDevice = DeviceContext.mDevice;
-        Result.mQueueCapabilities.mbGraphics =
-            DeviceContext.mQueueCapabilities.mbGraphics;
-        Result.mQueueCapabilities.mbCompute =
-            DeviceContext.mQueueCapabilities.mbCompute;
-        Result.mQueueCapabilities.mbCopy =
-            DeviceContext.mQueueCapabilities.mbCopy;
+        Result.mDevice = eastl::move(Device);
+        if (Result.mDevice)
+        {
+            const auto& Queues = Result.mDevice->GetCapabilities().mQueues;
+            Result.mQueuePolicy.mbGraphics = Queues.mbGraphics;
+            Result.mQueuePolicy.mbCompute = Queues.mbCompute;
+            Result.mQueuePolicy.mbCopy = Queues.mbCopy;
+        }
         Result.mDebugOptions = DebugOptions;
         return Result;
     }

@@ -209,7 +209,7 @@ namespace arda::render_graph
                 if (!Graph.mContext.mDebugOptions.mbImmediateMode &&
                     !Pass->GetState().mbSentinel &&
                     HasAllFlags(Pass->GetFlags(), EARDGPassFlags::Copy) &&
-                    Graph.mContext.mQueueCapabilities.mbCopy &&
+                    Graph.mContext.mQueuePolicy.mbCopy &&
                     IsCopyCompatible(*Pass))
                 {
                     Pipeline = EARDGPipeline::Copy;
@@ -219,7 +219,7 @@ namespace arda::render_graph
                          HasAllFlags(
                              Pass->GetFlags(),
                              EARDGPassFlags::AsyncCompute) &&
-                         Graph.mContext.mQueueCapabilities.mbCompute &&
+                         Graph.mContext.mQueuePolicy.mbCompute &&
                          IsAsyncComputeCompatible(*Pass))
                 {
                     Pipeline = EARDGPipeline::AsyncCompute;
@@ -788,7 +788,7 @@ namespace arda::render_graph
             for (const FARDGAccelStruct* AccelStruct :
                  Graph.mAccelStructs.GetEntries())
             {
-                if (!AccelStruct->IsExternal() ||
+                if ((!AccelStruct->IsExternal() && !AccelStruct->IsExtracted()) ||
                     !AccelStruct->GetFirstUse().IsValid()) continue;
                 const uint32_t Index = AccelStruct->GetHandle().GetIndex();
                 if (AccelStructStates[Index] != AccelStruct->GetFinalState())
@@ -1039,6 +1039,17 @@ namespace arda::render_graph
             {
                 ARDA_CHECK_MSG(
                     "A render-graph buffer is extracted before it is produced.");
+            }
+        }
+        for (const FARDGAccelStruct* AccelStruct :
+             Graph.mAccelStructs.GetEntries())
+        {
+            if (AccelStruct->IsExtracted() &&
+                !AccelStruct->IsExternal() &&
+                !AccelStruct->GetLastProducer().IsValid())
+            {
+                ARDA_CHECK_MSG(
+                    "A render-graph acceleration structure is extracted before it is produced.");
             }
         }
 

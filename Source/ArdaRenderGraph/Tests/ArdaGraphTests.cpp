@@ -2,6 +2,9 @@
 #include "ArdaRenderGraphAllocator.h"
 #include "ArdaRenderGraphRegistry.h"
 #include "ArdaBackend.h"
+#include "ArdaBackendProvider.h"
+#include "ShaderStructs/ArdaGlobalShaderMap.h"
+#include "ShaderStructs/ArdaShaderCompiler.h"
 
 #include <gtest/gtest.h>
 
@@ -57,6 +60,56 @@ namespace
     private:
         std::atomic<uint32_t> mErrors{0};
     };
+
+    void ExpectCompleteStateConformance(
+        const FARDGExecutionResult& Result)
+    {
+        EXPECT_TRUE(Result.mStatus)
+            << Result.mStatus.mMessage.c_str();
+        EXPECT_EQ(Result.mSubmissionFailureCount, 0u);
+        EXPECT_FALSE(Result.mStateConformanceRecords.empty());
+        EXPECT_EQ(Result.mStateConformanceFailureCount, 0u);
+        bool bSawBeforeTransition = false;
+        bool bSawAfterTransition = false;
+        bool bSawAfterPass = false;
+        for (const FARDGStateConformanceRecord& Record :
+             Result.mStateConformanceRecords)
+        {
+            EXPECT_TRUE(Record.IsConsistent())
+                << "pass=" << Record.mPassName.c_str()
+                << " resource=" << Record.mResourceName.c_str()
+                << " checkpoint="
+                << static_cast<uint32_t>(Record.mCheckpoint)
+                << " expected="
+                << static_cast<uint32_t>(Record.mExpectedState)
+                << " facade="
+                << static_cast<uint32_t>(Record.mObserved.mFacadeState)
+                << " backend="
+                << static_cast<uint32_t>(Record.mObserved.mNative.mState)
+                << " native=" << Record.mObserved.mNative.mPrimaryState
+                << " expectedOwner="
+                << static_cast<uint32_t>(Record.mExpectedQueueOwner)
+                << " facadeOwner="
+                << static_cast<uint32_t>(
+                    Record.mObserved.mFacadeQueueOwner)
+                << " expectedFamily=" << Record.mExpectedQueueFamily
+                << " nativeFamily="
+                << Record.mObserved.mNative.mQueueFamily
+                << " stages="
+                << Record.mObserved.mNative.mPipelineStageMask
+                << " access=" << Record.mObserved.mNative.mAccessMask
+                << " status=" << Record.mStatus.mMessage.c_str();
+            bSawBeforeTransition |= Record.mCheckpoint ==
+                EARDGStateCheckpoint::BeforeTransition;
+            bSawAfterTransition |= Record.mCheckpoint ==
+                EARDGStateCheckpoint::AfterTransition;
+            bSawAfterPass |= Record.mCheckpoint ==
+                EARDGStateCheckpoint::AfterPass;
+        }
+        EXPECT_TRUE(bSawBeforeTransition);
+        EXPECT_TRUE(bSawAfterTransition);
+        EXPECT_TRUE(bSawAfterPass);
+    }
 
     struct FARDGTestHandleTag final
     {
@@ -613,8 +666,16 @@ TEST(ArdaRenderGraph, BuilderCreatesLogicalResourcesViewsAndExtractionDeclaratio
     FARDGBufferUAVRef BufferView =
         Builder.CreateBufferUAV("ReadbackUAV", BufferViewDesc);
 
+    rhi::FArdaRHIAccelStructDesc AccelStructDesc;
+    AccelStructDesc.mbTopLevel = true;
+    AccelStructDesc.mTopLevelMaxInstances = 1;
+    AccelStructDesc.mDebugName = "HistoryTLAS";
+    FARDGAccelStructRef AccelStruct =
+        Builder.CreateAccelStruct(AccelStructDesc);
+
     rhi::FArdaRHITextureRef ExtractedTexture;
     rhi::FArdaRHIBufferRef ExtractedBuffer;
+    rhi::FArdaRHIAccelStructRef ExtractedAccelStruct;
     Builder.QueueTextureExtraction(
         Texture,
         ExtractedTexture,
@@ -623,13 +684,19 @@ TEST(ArdaRenderGraph, BuilderCreatesLogicalResourcesViewsAndExtractionDeclaratio
         Buffer,
         ExtractedBuffer,
         rhi::EArdaRHIResourceState::CopySource);
+    Builder.QueueAccelStructExtraction(
+        AccelStruct,
+        ExtractedAccelStruct,
+        rhi::EArdaRHIResourceState::AccelStructRead);
 
     EXPECT_EQ(View->GetDesc().mTexture, Texture->GetHandle());
     EXPECT_EQ(BufferView->GetDesc().mBuffer, Buffer->GetHandle());
     EXPECT_TRUE(Texture->IsExtracted());
     EXPECT_TRUE(Buffer->IsExtracted());
+    EXPECT_TRUE(AccelStruct->IsExtracted());
     EXPECT_EQ(Builder.GetTextureExtractions().size(), 1u);
     EXPECT_EQ(Builder.GetBufferExtractions().size(), 1u);
+    EXPECT_EQ(Builder.GetAccelStructExtractions().size(), 1u);
     EXPECT_EQ(
         Texture->GetFinalState(),
         rhi::EArdaRHIResourceState::ShaderResource);
@@ -1209,8 +1276,8 @@ TEST(ArdaRenderGraph, CompilerAssignsQueueFallbackAndAsyncForkJoinMetadata)
     using namespace arda::render_graph;
 
     FARDGRenderGraphContext Context;
-    Context.mQueueCapabilities.mbCompute = true;
-    Context.mQueueCapabilities.mbCopy = true;
+    Context.mQueuePolicy.mbCompute = true;
+    Context.mQueuePolicy.mbCopy = true;
     FARDGBuilder Builder(Context);
 
     rhi::FArdaRHITextureDesc Desc;
@@ -1514,7 +1581,7 @@ TEST(ArdaRenderGraph, DebugModesExposeConservativeBarriersAndExtendedLifetimes)
     using namespace arda::render_graph;
 
     FARDGRenderGraphContext Context;
-    Context.mQueueCapabilities.mbCompute = true;
+    Context.mQueuePolicy.mbCompute = true;
     Context.mDebugOptions.mbImmediateMode = true;
     Context.mDebugOptions.mbConservativeBarriers = true;
     Context.mDebugOptions.mbExtendResourceLifetimes = true;
@@ -1754,7 +1821,7 @@ TEST(ArdaRenderGraph, CompilerLowersCrossQueueDependencies)
     using namespace arda::render_graph;
 
     FARDGRenderGraphContext Context;
-    Context.mQueueCapabilities.mbCompute = true;
+    Context.mQueuePolicy.mbCompute = true;
     FARDGBuilder Builder(Context);
 
     rhi::FArdaRHIBufferDesc Desc;
@@ -1834,14 +1901,8 @@ TEST(ArdaRenderGraph, PassContextCreatesBindingsFromParameterDescriptors)
     }
 
     {
-        const FArdaDeviceContext& DeviceContext = GetDeviceContext();
-        FARDGRenderGraphContext GraphContext;
-        GraphContext.mDevice = DeviceContext.mDevice;
-        GraphContext.mQueueCapabilities.mbGraphics = true;
-        GraphContext.mQueueCapabilities.mbCompute =
-            DeviceContext.mQueueCapabilities.mbCompute;
-        GraphContext.mQueueCapabilities.mbCopy =
-            DeviceContext.mQueueCapabilities.mbCopy;
+        rhi::FArdaRHIDeviceRef Device = GetDevice();
+        FARDGRenderGraphContext GraphContext = MakeRenderGraphContext(Device);
         FARDGBuilder Builder(GraphContext);
 
         rhi::FArdaRHITextureDesc TextureDesc;
@@ -1876,7 +1937,7 @@ TEST(ArdaRenderGraph, PassContextCreatesBindingsFromParameterDescriptors)
             {0, 1, rhi::EArdaRHIBindingType::TextureUAV});
         LayoutDesc.mItems.push_back(
             {1, 1, rhi::EArdaRHIBindingType::StructuredBufferUAV});
-        auto LayoutResult = DeviceContext.mDevice->CreateBindingLayout(LayoutDesc);
+        auto LayoutResult = GraphContext.mDevice->CreateBindingLayout(LayoutDesc);
         ASSERT_TRUE(LayoutResult);
         rhi::FArdaRHIBindingLayoutRef Layout = eastl::move(LayoutResult.mValue);
 
@@ -1912,7 +1973,7 @@ TEST(ArdaRenderGraph, PassContextCreatesBindingsFromParameterDescriptors)
             GeneratedDesc.mItems[1].mType,
             rhi::EArdaRHIBindingType::StructuredBufferUAV);
         EXPECT_EQ(GeneratedDesc.mItems[1].mSlot, 1u);
-        EXPECT_TRUE(DeviceContext.mDevice->WaitForIdle());
+        EXPECT_TRUE(GraphContext.mDevice->WaitForIdle());
     }
     ShutdownBackend();
 }
@@ -1948,7 +2009,7 @@ TEST(ArdaRenderGraph, RegisteredShaderBridgeUsesExplicitSlotsAndAllLayouts)
         const FArdaShaderCompileResult CompileResult =
             EnsureRegisteredShaderArtifact(
                 Registration.GetType(),
-                GetDeviceContext().mBackendName.c_str(),
+                GetBackendConfiguration().mBackendName.c_str(),
                 0,
                 std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR));
         ConfigureShaderCompiler(PreviousCompiler);
@@ -1958,20 +2019,15 @@ TEST(ArdaRenderGraph, RegisteredShaderBridgeUsesExplicitSlotsAndAllLayouts)
                 : CompileResult.mDiagnostics.front().mMessage.c_str());
         FArdaGlobalShaderMap ShaderMap;
         ASSERT_TRUE(ShaderMap.Initialize(
-            GetDeviceContext(),
+            GetDevice(),
             std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR)));
         const FArdaGlobalShaderInstance* Shader =
             ShaderMap.Find(Registration.GetType());
         ASSERT_NE(Shader, nullptr);
         ASSERT_EQ(Shader->GetBindingLayouts().size(), 2u);
 
-        FARDGRenderGraphContext GraphContext;
-        GraphContext.mDevice = GetDeviceContext().mDevice;
-        GraphContext.mQueueCapabilities.mbGraphics = true;
-        GraphContext.mQueueCapabilities.mbCompute =
-            GetDeviceContext().mQueueCapabilities.mbCompute;
-        GraphContext.mQueueCapabilities.mbCopy =
-            GetDeviceContext().mQueueCapabilities.mbCopy;
+        FARDGRenderGraphContext GraphContext =
+            MakeRenderGraphContext(GetDevice());
         FARDGBuilder Builder(GraphContext);
 
         rhi::FArdaRHIBufferDesc BufferDesc;
@@ -2029,7 +2085,7 @@ TEST(ArdaRenderGraph, RegisteredShaderBridgeUsesExplicitSlotsAndAllLayouts)
         }
         EXPECT_TRUE(bFoundSpaceThreeSlotTwo);
         EXPECT_TRUE(bFoundSpaceZeroSlotFive);
-        EXPECT_TRUE(GetDeviceContext().mDevice->WaitForIdle());
+        EXPECT_TRUE(GetDevice()->WaitForIdle());
     }
     ShutdownBackend();
 }
@@ -2063,14 +2119,7 @@ TEST(ArdaRenderGraph, FrameTemporaryResourcesAndPassBindingsAreReleased)
             Device->GetResourceLifetimeStats();
 
         {
-            FARDGRenderGraphContext Context;
-            Context.mDevice = Device;
-            Context.mQueueCapabilities.mbGraphics =
-                GetDeviceContext().mQueueCapabilities.mbGraphics;
-            Context.mQueueCapabilities.mbCompute =
-                GetDeviceContext().mQueueCapabilities.mbCompute;
-            Context.mQueueCapabilities.mbCopy =
-                GetDeviceContext().mQueueCapabilities.mbCopy;
+            FARDGRenderGraphContext Context = MakeRenderGraphContext(Device);
             FARDGBuilder Builder(Context);
 
             rhi::FArdaRHITextureDesc TextureDesc;
@@ -2196,15 +2245,8 @@ TEST(ArdaRenderGraph, ExecutesComplexGraphFormationOnEveryNativeBackend)
         rhi::FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
         {
-            const FArdaDeviceContext& DeviceContext = GetDeviceContext();
-            FARDGRenderGraphContext GraphContext;
-            GraphContext.mDevice = Device;
-            GraphContext.mQueueCapabilities.mbGraphics =
-                DeviceContext.mQueueCapabilities.mbGraphics;
-            GraphContext.mQueueCapabilities.mbCompute =
-                DeviceContext.mQueueCapabilities.mbCompute;
-            GraphContext.mQueueCapabilities.mbCopy =
-                DeviceContext.mQueueCapabilities.mbCopy;
+            FARDGRenderGraphContext GraphContext =
+                MakeRenderGraphContext(Device);
             FARDGBuilder Builder(GraphContext);
 
             rhi::FArdaRHIBufferDesc BufferDesc;
@@ -2420,12 +2462,12 @@ TEST(ArdaRenderGraph, ExecutesComplexGraphFormationOnEveryNativeBackend)
             EXPECT_EQ(CompileResult.mRasterGroupCount, 1u);
             EXPECT_EQ(
                 Builder.TryGetPass(Right)->GetState().mPipeline,
-                DeviceContext.mQueueCapabilities.mbCompute
+                GraphContext.mQueuePolicy.mbCompute
                     ? EARDGPipeline::AsyncCompute
                     : EARDGPipeline::Graphics);
             EXPECT_EQ(
                 Builder.TryGetPass(Copy)->GetState().mPipeline,
-                DeviceContext.mQueueCapabilities.mbCopy
+                GraphContext.mQueuePolicy.mbCopy
                     ? EARDGPipeline::Copy
                     : EARDGPipeline::Graphics);
             EXPECT_EQ(
@@ -2439,11 +2481,12 @@ TEST(ArdaRenderGraph, ExecutesComplexGraphFormationOnEveryNativeBackend)
             Options.mMaxRecordingThreads = 4;
             const FARDGExecutionResult& ExecutionResult =
                 Builder.Execute(Options);
+            ExpectCompleteStateConformance(ExecutionResult);
             EXPECT_TRUE(ExtractedRasterOutput);
             EXPECT_GE(ExecutionResult.mSubmittedCommandListCount, 8u);
             EXPECT_TRUE(ExecutionResult.mbUsedParallelRecording);
-            if (DeviceContext.mQueueCapabilities.mbCompute ||
-                DeviceContext.mQueueCapabilities.mbCopy)
+            if (GraphContext.mQueuePolicy.mbCompute ||
+                GraphContext.mQueuePolicy.mbCopy)
             {
                 EXPECT_FALSE(CompileResult.mQueueDependencies.empty());
                 EXPECT_GT(ExecutionResult.mQueueWaitCount, 0u);
@@ -2459,6 +2502,104 @@ TEST(ArdaRenderGraph, ExecutesComplexGraphFormationOnEveryNativeBackend)
             EXPECT_EQ(CommandFailures.load(std::memory_order_relaxed), 0u);
             EXPECT_TRUE(Device->WaitForIdle());
         }
+        EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+        Device = nullptr;
+        ShutdownBackend();
+    }
+    EXPECT_GT(TestedBackends, 0u);
+    ShutdownBackend();
+}
+
+TEST(ArdaRenderGraph, ConservativeBarrierCheckpointsMatchEveryNativeBackend)
+{
+    using namespace arda::backend;
+    using namespace arda::render_graph;
+
+    size_t TestedBackends = 0;
+    for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
+    {
+        if (Module.mBackendType != EArdaBackendType::D3D12 &&
+            Module.mBackendType != EArdaBackendType::Vulkan)
+        {
+            continue;
+        }
+        SCOPED_TRACE(Module.mName.c_str());
+        ShutdownBackend();
+        FARDGCollectingDiagnosticCallback Diagnostics;
+        FArdaBackendConfiguration Configuration;
+        Configuration.mBackendName = Module.mName;
+        Configuration.mBackend = Module.mBackendType;
+        Configuration.mbEnableValidation = true;
+        Configuration.mMessageCallback = &Diagnostics;
+        Configuration.mShaderCompilationMode =
+            EArdaShaderCompilationMode::LoadOnly;
+        ASSERT_TRUE(ConfigureBackend(Configuration));
+        ASSERT_TRUE(InitializeBackend())
+            << Module.mName.c_str() << ": " << GetBackendError().c_str();
+        ++TestedBackends;
+
+        rhi::FArdaRHIDeviceRef Device = GetDevice();
+        ASSERT_TRUE(Device);
+        FARDGRenderGraphContext Context;
+        Context.mDevice = Device;
+        Context.mQueuePolicy.mbGraphics = true;
+        Context.mDebugOptions.mbConservativeBarriers = true;
+        FARDGBuilder Builder(Context);
+
+        rhi::FArdaRHIBufferDesc BufferDesc;
+        BufferDesc.mDebugName = "Conservative state buffer";
+        BufferDesc.mByteSize = 64;
+        BufferDesc.mUsage = rhi::EArdaRHIBufferUsage::ShaderResource;
+        FARDGBufferRef Buffer = Builder.CreateBuffer(BufferDesc);
+
+        FARDGBufferAccessParameters WriteParameters;
+        WriteParameters.mBuffer = {
+            Buffer,
+            rhi::EArdaRHIResourceState::CopyDest,
+            {}};
+        (void)Builder.AddPass(
+            "ConservativeWrite",
+            &WriteParameters,
+            EARDGPassFlags::Compute |
+                EARDGPassFlags::NeverCull |
+                EARDGPassFlags::NeverParallel,
+            [](FARDGPassExecutionContext&) {});
+
+        FARDGBufferAccessParameters ReadParameters;
+        ReadParameters.mBuffer = {
+            Buffer,
+            rhi::EArdaRHIResourceState::ShaderResource,
+            {}};
+        (void)Builder.AddPass(
+            "ConservativeReadA",
+            &ReadParameters,
+            EARDGPassFlags::Compute |
+                EARDGPassFlags::NeverCull |
+                EARDGPassFlags::NeverParallel,
+            [](FARDGPassExecutionContext&) {});
+        (void)Builder.AddPass(
+            "ConservativeReadB",
+            &ReadParameters,
+            EARDGPassFlags::Compute |
+                EARDGPassFlags::NeverCull |
+                EARDGPassFlags::NeverParallel,
+            [](FARDGPassExecutionContext&) {});
+
+        FARDGExecuteOptions Options;
+        Options.mbParallelRecording = false;
+        const FARDGExecutionResult& Result = Builder.Execute(Options);
+        ExpectCompleteStateConformance(Result);
+        EXPECT_NE(
+            eastl::find_if(
+                Result.mStateConformanceRecords.begin(),
+                Result.mStateConformanceRecords.end(),
+                [](const FARDGStateConformanceRecord& Record)
+                {
+                    return Record.mCheckpoint ==
+                        EARDGStateCheckpoint::ForcedCommon;
+                }),
+            Result.mStateConformanceRecords.end());
+        ASSERT_TRUE(Device->WaitForIdle());
         EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
         Device = nullptr;
         ShutdownBackend();
@@ -2495,15 +2636,7 @@ TEST(ArdaRenderGraph, HostDeviceCopyNodesExecuteBlockingAndAsyncOnEveryBackend)
         ASSERT_TRUE(Device);
         const auto MakeContext = [&]
         {
-            FARDGRenderGraphContext Context;
-            Context.mDevice = Device;
-            Context.mQueueCapabilities.mbGraphics =
-                GetDeviceContext().mQueueCapabilities.mbGraphics;
-            Context.mQueueCapabilities.mbCompute =
-                GetDeviceContext().mQueueCapabilities.mbCompute;
-            Context.mQueueCapabilities.mbCopy =
-                GetDeviceContext().mQueueCapabilities.mbCopy;
-            return Context;
+            return MakeRenderGraphContext(Device);
         };
         rhi::FArdaRHIBufferDesc Desc;
         Desc.mByteSize = 64;
@@ -2524,7 +2657,7 @@ TEST(ArdaRenderGraph, HostDeviceCopyNodesExecuteBlockingAndAsyncOnEveryBackend)
             ASSERT_FALSE(Builder.TryGetPass(Upload)->GetState().mbCulled);
             ASSERT_FALSE(Builder.TryGetPass(Readback)->GetState().mbCulled);
             EXPECT_EQ(Builder.TryGetPass(Readback)->GetState().mPipeline,
-                GetDeviceContext().mQueueCapabilities.mbCopy
+                Device->GetCapabilities().mQueues.mbCopy
                     ? EARDGPipeline::Copy : EARDGPipeline::Graphics);
             EXPECT_NE(eastl::find(
                 Compiled.mExecutionOrder.begin(),
@@ -2602,15 +2735,8 @@ TEST(ArdaRenderGraph, ExecutesAndExtractsOnAvailableBackend)
     }
 
     {
-        const FArdaDeviceContext& DeviceContext = GetDeviceContext();
-        FARDGRenderGraphContext GraphContext;
-        GraphContext.mDevice = DeviceContext.mDevice;
-        GraphContext.mQueueCapabilities.mbGraphics =
-            DeviceContext.mQueueCapabilities.mbGraphics;
-        GraphContext.mQueueCapabilities.mbCompute =
-            DeviceContext.mQueueCapabilities.mbCompute;
-        GraphContext.mQueueCapabilities.mbCopy =
-            DeviceContext.mQueueCapabilities.mbCopy;
+        FARDGRenderGraphContext GraphContext =
+            MakeRenderGraphContext(GetDevice());
         FARDGBuilder Builder(GraphContext);
 
         rhi::FArdaRHIBufferDesc Desc;
@@ -2684,10 +2810,23 @@ TEST(ArdaRenderGraph, ExecutesAndExtractsOnAvailableBackend)
 
         EXPECT_TRUE(Extracted);
         EXPECT_GE(Result.mSubmittedCommandListCount, 2u);
-        EXPECT_TRUE(Result.mbUsedTransientFallback);
-        EXPECT_EQ(Result.mBufferPoolReuseCount, 1u);
+        if (GraphContext.mDevice->GetCapabilities().mbVirtualResources &&
+            GraphContext.mDevice->GetCapabilities().mbHeaps &&
+            GraphContext.mDevice->GetCapabilities().mbAliasingBarriers)
+        {
+            EXPECT_TRUE(Result.mbUsedVirtualHeaps);
+            EXPECT_TRUE(Result.mbUsedTransientAliasing);
+            EXPECT_FALSE(Result.mbUsedTransientFallback);
+            EXPECT_EQ(Result.mBufferPoolReuseCount, 0u);
+        }
+        else
+        {
+            EXPECT_TRUE(Result.mbUsedTransientFallback);
+            EXPECT_EQ(Result.mBufferPoolReuseCount, 1u);
+        }
+        EXPECT_EQ(Result.mStateConformanceFailureCount, 0u);
         EXPECT_NE(Builder.GetLastExecutionResult(), nullptr);
-        EXPECT_TRUE(DeviceContext.mDevice->WaitForIdle());
+        EXPECT_TRUE(GraphContext.mDevice->WaitForIdle());
     }
     ShutdownBackend();
 }
@@ -2705,14 +2844,8 @@ TEST(ArdaRenderGraph, ImmediateModeExecutesSeriallyWithFirstWriteClobbering)
     }
 
     {
-        const FArdaDeviceContext& DeviceContext = GetDeviceContext();
-        FARDGRenderGraphContext GraphContext;
-        GraphContext.mDevice = DeviceContext.mDevice;
-        GraphContext.mQueueCapabilities.mbGraphics = true;
-        GraphContext.mQueueCapabilities.mbCompute =
-            DeviceContext.mQueueCapabilities.mbCompute;
-        GraphContext.mQueueCapabilities.mbCopy =
-            DeviceContext.mQueueCapabilities.mbCopy;
+        FARDGRenderGraphContext GraphContext =
+            MakeRenderGraphContext(GetDevice());
         GraphContext.mDebugOptions.mbImmediateMode = true;
         GraphContext.mDebugOptions.mbClobberFirstWrites = true;
         FARDGBuilder Builder(GraphContext);
@@ -2751,7 +2884,7 @@ TEST(ArdaRenderGraph, ImmediateModeExecutesSeriallyWithFirstWriteClobbering)
         EXPECT_FALSE(Result.mbUsedParallelRecording);
         EXPECT_EQ(Result.mClobberedResourceCount, 1u);
         EXPECT_EQ(Result.mBufferPoolReuseCount, 0u);
-        EXPECT_TRUE(DeviceContext.mDevice->WaitForIdle());
+        EXPECT_TRUE(GraphContext.mDevice->WaitForIdle());
     }
     ShutdownBackend();
 }
@@ -2769,14 +2902,8 @@ TEST(ArdaRenderGraph, PassContextRejectsUndeclaredPhysicalAccess)
     }
 
     {
-        const FArdaDeviceContext& DeviceContext = GetDeviceContext();
-        FARDGRenderGraphContext GraphContext;
-        GraphContext.mDevice = DeviceContext.mDevice;
-        GraphContext.mQueueCapabilities.mbGraphics = true;
-        GraphContext.mQueueCapabilities.mbCompute =
-            DeviceContext.mQueueCapabilities.mbCompute;
-        GraphContext.mQueueCapabilities.mbCopy =
-            DeviceContext.mQueueCapabilities.mbCopy;
+        FARDGRenderGraphContext GraphContext =
+            MakeRenderGraphContext(GetDevice());
         GraphContext.mDebugOptions.mbImmediateMode = true;
         FARDGBuilder Builder(GraphContext);
 
@@ -2819,7 +2946,7 @@ TEST(ArdaRenderGraph, PassContextRejectsUndeclaredPhysicalAccess)
             (void)Builder.Execute(),
             "A pass requested a buffer absent from its parameter declarations");
         EXPECT_EQ(Builder.GetLastExecutionResult(), nullptr);
-        EXPECT_TRUE(DeviceContext.mDevice->WaitForIdle());
+        EXPECT_TRUE(GraphContext.mDevice->WaitForIdle());
     }
     ShutdownBackend();
 }
@@ -2837,19 +2964,20 @@ TEST(ArdaRenderGraph, RecordsIndependentPassesAndSubmitsCrossQueueWaits)
     }
 
     {
-        const FArdaDeviceContext& DeviceContext = GetDeviceContext();
-        if (!DeviceContext.mQueueCapabilities.mbCompute)
+        rhi::FArdaRHIDeviceRef Device = GetDevice();
+        const auto& Queues = Device->GetCapabilities().mQueues;
+        if (!Queues.mbCompute)
         {
             ShutdownBackend();
             GTEST_SKIP() << "A distinct compute queue is unavailable.";
         }
 
         FARDGRenderGraphContext GraphContext;
-        GraphContext.mDevice = DeviceContext.mDevice;
-        GraphContext.mQueueCapabilities.mbGraphics = true;
-        GraphContext.mQueueCapabilities.mbCompute = true;
-        GraphContext.mQueueCapabilities.mbCopy =
-            DeviceContext.mQueueCapabilities.mbCopy;
+        GraphContext.mDevice = Device;
+        GraphContext.mQueuePolicy.mbGraphics = true;
+        GraphContext.mQueuePolicy.mbCompute = true;
+        GraphContext.mQueuePolicy.mbCopy =
+            Queues.mbCopy;
         FARDGBuilder Builder(GraphContext);
 
         rhi::FArdaRHIBufferDesc Desc;
@@ -2918,7 +3046,113 @@ TEST(ArdaRenderGraph, RecordsIndependentPassesAndSubmitsCrossQueueWaits)
         EXPECT_GE(Result.mQueueWaitCount, 2u);
         EXPECT_NE(Result.mLastSubmittedInstances[0], 0u);
         EXPECT_NE(Result.mLastSubmittedInstances[1], 0u);
-        EXPECT_TRUE(DeviceContext.mDevice->WaitForIdle());
+        EXPECT_TRUE(GraphContext.mDevice->WaitForIdle());
+    }
+    ShutdownBackend();
+}
+
+TEST(ArdaRenderGraph, TransfersAsyncUavOutputThroughDedicatedCopyQueue)
+{
+    using namespace arda::backend;
+    using namespace arda::render_graph;
+
+    FArdaBackendConfiguration Configuration;
+    Configuration.mbEnableValidation = true;
+    if (!ConfigureLinkedBackend(Configuration) || !InitializeBackend())
+    {
+        GTEST_SKIP() << GetBackendError().c_str();
+    }
+
+    {
+        rhi::FArdaRHIDeviceRef Device = GetDevice();
+        const auto& Queues = Device->GetCapabilities().mQueues;
+        if (!Queues.mbCompute || !Queues.mbCopy)
+        {
+            ShutdownBackend();
+            GTEST_SKIP() <<
+                "Distinct compute and copy queues are unavailable.";
+        }
+
+        FARDGRenderGraphContext GraphContext =
+            MakeRenderGraphContext(Device);
+        FARDGBuilder Builder(GraphContext);
+
+        rhi::FArdaRHIBufferDesc Desc;
+        Desc.mDebugName = "AsyncUavCopyReadback";
+        Desc.mByteSize = 64u * sizeof(uint32_t);
+        Desc.mStructureStride = sizeof(uint32_t);
+        Desc.mUsage = rhi::EArdaRHIBufferUsage::Structured |
+            rhi::EArdaRHIBufferUsage::UnorderedAccess;
+        FARDGBufferRef Buffer = Builder.CreateBuffer(Desc);
+
+        eastl::vector<uint8_t> Expected(Desc.mByteSize);
+        for (size_t Index = 0; Index < Expected.size(); ++Index)
+            Expected[Index] = static_cast<uint8_t>(Index * 29u + 7u);
+        (void)Builder.QueueBufferUpload(
+            Buffer,
+            Expected.data(),
+            Expected.size(),
+            0,
+            "DedicatedCopyUpload");
+
+        FARDGBufferAccessParameters Produce;
+        Produce.mBuffer = {
+            Buffer,
+            rhi::EArdaRHIResourceState::UnorderedAccess,
+            {}};
+        (void)Builder.AddPass(
+            "AsyncUavProducer",
+            &Produce,
+            EARDGPassFlags::Compute |
+                EARDGPassFlags::AsyncCompute,
+            [](const FARDGBufferAccessParameters&) {});
+
+        eastl::vector<uint8_t> Readback;
+        (void)Builder.AddDeviceToHostCopyPass(
+            Buffer,
+            Readback,
+            0,
+            rhi::ArdaRHIWholeBuffer,
+            "DedicatedCopyReadback");
+
+        FARDGExecuteOptions Options;
+        Options.mbParallelRecording = false;
+        const FARDGExecutionResult& Result = Builder.Execute(Options);
+        ExpectCompleteStateConformance(Result);
+        EXPECT_GE(Result.mQueueWaitCount, 3u);
+        EXPECT_NE(Result.mLastSubmittedInstances[
+            static_cast<size_t>(rhi::EArdaRHIQueueType::Compute)], 0u);
+        EXPECT_NE(Result.mLastSubmittedInstances[
+            static_cast<size_t>(rhi::EArdaRHIQueueType::Copy)], 0u);
+
+        bool bSawRelease = false;
+        bool bSawAcquire = false;
+        for (const FARDGStateConformanceRecord& Record :
+             Result.mStateConformanceRecords)
+        {
+            if (Record.mResourceType != EARDGResourceType::Buffer ||
+                Record.mResourceIndex != Buffer->GetHandle().GetIndex())
+            {
+                continue;
+            }
+            bSawRelease |= Record.mCheckpoint ==
+                EARDGStateCheckpoint::QueueRelease;
+            bSawAcquire |= Record.mCheckpoint ==
+                EARDGStateCheckpoint::QueueAcquire;
+            if (Record.mCheckpoint == EARDGStateCheckpoint::QueueRelease ||
+                Record.mCheckpoint == EARDGStateCheckpoint::QueueAcquire)
+            {
+                EXPECT_TRUE(Record.mbValidateQueueOwnership);
+                EXPECT_EQ(
+                    Record.mObserved.mFacadeQueueOwner,
+                    Record.mExpectedQueueOwner);
+            }
+        }
+        EXPECT_TRUE(bSawRelease);
+        EXPECT_TRUE(bSawAcquire);
+
+        EXPECT_EQ(Readback, Expected);
+        EXPECT_TRUE(GraphContext.mDevice->WaitForIdle());
     }
     ShutdownBackend();
 }

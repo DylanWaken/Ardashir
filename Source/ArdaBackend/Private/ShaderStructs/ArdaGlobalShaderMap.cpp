@@ -118,7 +118,7 @@ namespace arda::backend
     }
 
     bool FArdaGlobalShaderMap::Initialize(
-        const FArdaDeviceContext& DeviceContext,
+        rhi::FArdaRHIDeviceRef Device,
         const std::filesystem::path& ShaderDirectory)
     {
         std::lock_guard<std::mutex> Lock(mLoadMutex);
@@ -138,9 +138,10 @@ namespace arda::backend
                 "The global shader artifact directory must resolve to a non-empty absolute path."));
             return false;
         }
+        const FArdaBackendConfiguration& Configuration = GetBackendConfiguration();
         if (mbInitialized &&
-            mDevice == DeviceContext.mDevice &&
-            mTarget.mBackendName == DeviceContext.mBackendName &&
+            mDevice == Device &&
+            mTarget.mBackendName == Configuration.mBackendName &&
             mDirectory == ResolvedDirectory)
         {
             return true;
@@ -155,7 +156,7 @@ namespace arda::backend
             return false;
         }
         mDiagnostics.clear();
-        if (!DeviceContext.mDevice)
+        if (!Device)
         {
             mDiagnostics.push_back(MakeDiagnostic(
                 EArdaGlobalShaderMapError::InvalidDevice,
@@ -176,9 +177,9 @@ namespace arda::backend
             return false;
         }
         FArdaShaderTarget Target;
-        const bool bResolvedTarget = DeviceContext.mBackendName.empty()
-            ? ResolveDefaultShaderTarget(DeviceContext.mBackend, Target)
-            : ResolveShaderTarget(DeviceContext.mBackendName.c_str(), Target);
+        const bool bResolvedTarget = Configuration.mBackendName.empty()
+            ? ResolveDefaultShaderTarget(Configuration.mBackend, Target)
+            : ResolveShaderTarget(Configuration.mBackendName.c_str(), Target);
         if (!bResolvedTarget)
         {
             mDiagnostics.push_back(MakeDiagnostic(
@@ -220,7 +221,7 @@ namespace arda::backend
             }
         }
 
-        mDevice = DeviceContext.mDevice;
+        mDevice = eastl::move(Device);
         mTarget = eastl::move(Target);
         mMode = GetBackendConfiguration().mShaderCompilationMode;
         mDirectory = ResolvedDirectory;
@@ -245,10 +246,10 @@ namespace arda::backend
     }
 
     bool FArdaGlobalShaderMap::Initialize(
-        const FArdaDeviceContext& DeviceContext)
+        rhi::FArdaRHIDeviceRef Device)
     {
         return Initialize(
-            DeviceContext,
+            eastl::move(Device),
             GetBackendConfiguration().mShaderCacheDirectory);
     }
 

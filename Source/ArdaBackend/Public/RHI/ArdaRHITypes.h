@@ -126,6 +126,23 @@ namespace arda::rhi
     enum class EArdaRHICpuAccess : uint8_t { None, Read, Write };
     /** Enumerates queue type values. */
     enum class EArdaRHIQueueType : uint8_t { Graphics, Compute, Copy };
+    /** Pipeline domains participating in a resource transition. */
+    enum class EArdaRHIPipeline : uint8_t
+    {
+        None = 0,
+        Graphics = 1u << 0,
+        AsyncCompute = 1u << 1,
+        Copy = 1u << 2,
+        All = 0x07
+    };
+    /** Optional transition scheduling and lifetime semantics. */
+    enum class EArdaRHITransitionFlags : uint8_t
+    {
+        None = 0,
+        BeginOnly = 1u << 0,
+        EndOnly = 1u << 1,
+        Discard = 1u << 2
+    };
     /** Enumerates heap type values. */
     enum class EArdaRHIHeapType : uint8_t { DeviceLocal, Upload, Readback };
     /** Enumerates bindless layout type values. */
@@ -141,7 +158,10 @@ namespace arda::rhi
         /** Standard Direct3D 12 resource object. */
         D3D12Resource,
         VulkanImage,
-        VulkanBuffer
+        VulkanBuffer,
+        D3D12AccelerationStructure,
+        VulkanAccelerationStructure,
+        VulkanOpacityMicromap
     };
     /** Controls whether an imported native resource remains caller-owned. */
     enum class EArdaRHINativeOwnership : uint8_t
@@ -167,7 +187,8 @@ namespace arda::rhi
         RayGeneration = 1u << 8, AnyHit = 1u << 9,
         ClosestHit = 1u << 10, Miss = 1u << 11,
         Intersection = 1u << 12, Callable = 1u << 13,
-        AllGraphics = 0x00df, AllRayTracing = 0x3f00, All = 0x3fff
+        WorkGraph = 1u << 14,
+        AllGraphics = 0x00df, AllRayTracing = 0x3f00, All = 0x7fff
     };
 
     /** Enumerates resource state values. */
@@ -184,7 +205,59 @@ namespace arda::rhi
         ResolveDest = 1u << 13, ResolveSource = 1u << 14, Present = 1u << 15,
         AccelStructRead = 1u << 16, AccelStructWrite = 1u << 17,
         AccelStructBuildInput = 1u << 18, AccelStructBuildBlas = 1u << 19,
-        OpacityMicromapWrite = 1u << 21, OpacityMicromapBuildInput = 1u << 22
+        CpuRead = 1u << 20,
+        OpacityMicromapWrite = 1u << 21, OpacityMicromapBuildInput = 1u << 22,
+        Discard = 1u << 23, ShadingRateSource = 1u << 24
+    };
+
+    /** Describes the state independently tracked by a native backend. */
+    struct FArdaRHINativeResourceState
+    {
+        /** Abstract Arda state represented by the backend tracker. */
+        EArdaRHIResourceState mState = EArdaRHIResourceState::Unknown;
+        /** Native resource representation that owns the encoded state. */
+        EArdaRHINativeResourceType mNativeType =
+            EArdaRHINativeResourceType::BackendDefined;
+        /** D3D12 state bits or Vulkan image layout, depending on native type. */
+        uint64_t mPrimaryState = 0;
+        /** Native synchronization pipeline-stage mask, when applicable. */
+        uint64_t mPipelineStageMask = 0;
+        /** Native synchronization access mask, when applicable. */
+        uint64_t mAccessMask = 0;
+        /** Owning Vulkan queue family, or 0xffffffff for APIs without families. */
+        uint32_t mQueueFamily = 0xffffffffu;
+        /** Whether the backend has an authoritative state for the range. */
+        bool mbKnown = false;
+        /** Whether the encoded native values are valid for mState. */
+        bool mbNativeCompatible = false;
+    };
+
+    /** Describes independently observed facade and native resource state. */
+    struct FArdaRHIResourceStateSnapshot
+    {
+        /** State maintained by the common ArdaRHI facade tracker. */
+        EArdaRHIResourceState mFacadeState = EArdaRHIResourceState::Unknown;
+        /** Queue whose command list produced this observation. */
+        EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics;
+        /** Queue that owns the resource after the recorded operation. */
+        EArdaRHIQueueType mFacadeQueueOwner = EArdaRHIQueueType::Graphics;
+        /** Whether facade queue ownership is authoritative. */
+        bool mbFacadeQueueOwnerKnown = false;
+        /** Native backend tracker and exact barrier encoding. */
+        FArdaRHINativeResourceState mNative;
+        /** Whether the facade has an authoritative state for the range. */
+        bool mbFacadeKnown = false;
+
+        /**
+         * Tests whether every independently tracked layer agrees.
+         * @return True when facade, backend, and native encoding are consistent.
+         */
+        [[nodiscard]] bool IsConsistent() const noexcept
+        {
+            return mbFacadeKnown && mNative.mbKnown &&
+                mNative.mbNativeCompatible &&
+                mFacadeState == mNative.mState;
+        }
     };
 
     /** Enumerates texture usage values. */
@@ -202,7 +275,8 @@ namespace arda::rhi
         Vertex = 1u << 2, Index = 1u << 3, Constant = 1u << 4,
         Indirect = 1u << 5, Raw = 1u << 6, Structured = 1u << 7,
         Volatile = 1u << 8, AccelStructBuildInput = 1u << 9,
-        AccelStructStorage = 1u << 10, ShaderBindingTable = 1u << 11
+        AccelStructStorage = 1u << 10, ShaderBindingTable = 1u << 11,
+        OpacityMicromapBuildInput = 1u << 12
     };
 
     /** Enumerates ray tracing geometry flags values. */
@@ -238,6 +312,8 @@ namespace arda::rhi
 
     ARDA_RHI_FLAG_OPERATORS(EArdaRHIShaderStage)
     ARDA_RHI_FLAG_OPERATORS(EArdaRHIResourceState)
+    ARDA_RHI_FLAG_OPERATORS(EArdaRHIPipeline)
+    ARDA_RHI_FLAG_OPERATORS(EArdaRHITransitionFlags)
     ARDA_RHI_FLAG_OPERATORS(EArdaRHITextureUsage)
     ARDA_RHI_FLAG_OPERATORS(EArdaRHIBufferUsage)
     ARDA_RHI_FLAG_OPERATORS(EArdaRHIRayTracingGeometryFlags)
@@ -303,6 +379,10 @@ namespace arda::rhi
         uint32_t mBaseArraySlice = 0;
         /** Stores the array slice count. */
         uint32_t mArraySliceCount = ArdaRHIAllSubresources;
+        /** First format plane (depth is zero and stencil is one). */
+        uint32_t mBasePlane = 0;
+        /** Number of format planes. */
+        uint32_t mPlaneCount = ArdaRHIAllSubresources;
         /**
          * Compares two values for equality.
          * @param O The o.
@@ -311,7 +391,8 @@ namespace arda::rhi
         bool operator==(const FArdaRHITextureSubresourceRange& O) const noexcept
         {
             return mBaseMipLevel == O.mBaseMipLevel && mMipLevelCount == O.mMipLevelCount &&
-                mBaseArraySlice == O.mBaseArraySlice && mArraySliceCount == O.mArraySliceCount;
+                mBaseArraySlice == O.mBaseArraySlice && mArraySliceCount == O.mArraySliceCount &&
+                mBasePlane == O.mBasePlane && mPlaneCount == O.mPlaneCount;
         }
         /**
          * Performs the resolve operation.
@@ -413,6 +494,8 @@ namespace arda::rhi
         bool mbKeepInitialState = false;
         /** Stores the virtual. */
         bool mbVirtual = false;
+        /** Creates a sparse/reserved buffer committed in physical tiles. */
+        bool mbTiled = false;
         /** Stores the debug name. */
         eastl::string mDebugName;
         /**
@@ -541,6 +624,38 @@ namespace arda::rhi
         uint32_t mMipLevel = 0;
         /** Array slice containing the region. */
         uint32_t mArraySlice = 0;
+        /** Format plane containing the region. */
+        uint32_t mPlane = 0;
+    };
+
+    /** Explicit texture transition including expected state and pipeline domains. */
+    struct FArdaRHITextureTransitionDesc
+    {
+        FArdaRHITextureSubresourceRange mSubresources;
+        EArdaRHIResourceState mStateBefore = EArdaRHIResourceState::Unknown;
+        EArdaRHIResourceState mStateAfter = EArdaRHIResourceState::Unknown;
+        EArdaRHIPipeline mSourcePipelines = EArdaRHIPipeline::Graphics;
+        EArdaRHIPipeline mDestinationPipelines = EArdaRHIPipeline::Graphics;
+        EArdaRHITransitionFlags mFlags = EArdaRHITransitionFlags::None;
+        /** Source queue for a paired queue-family release/acquire transfer. */
+        EArdaRHIQueueType mSourceQueue = EArdaRHIQueueType::Graphics;
+        /** Destination queue for a paired queue-family release/acquire transfer. */
+        EArdaRHIQueueType mDestinationQueue = EArdaRHIQueueType::Graphics;
+        /** True when this transition transfers native queue-family ownership. */
+        bool mbQueueOwnershipTransfer = false;
+    };
+
+    /** Explicit buffer transition including expected state and pipeline domains. */
+    struct FArdaRHIBufferTransitionDesc
+    {
+        EArdaRHIResourceState mStateBefore = EArdaRHIResourceState::Unknown;
+        EArdaRHIResourceState mStateAfter = EArdaRHIResourceState::Unknown;
+        EArdaRHIPipeline mSourcePipelines = EArdaRHIPipeline::Graphics;
+        EArdaRHIPipeline mDestinationPipelines = EArdaRHIPipeline::Graphics;
+        EArdaRHITransitionFlags mFlags = EArdaRHITransitionFlags::None;
+        EArdaRHIQueueType mSourceQueue = EArdaRHIQueueType::Graphics;
+        EArdaRHIQueueType mDestinationQueue = EArdaRHIQueueType::Graphics;
+        bool mbQueueOwnershipTransfer = false;
     };
 
     /** Describes tiled texture coordinate. */
@@ -893,6 +1008,8 @@ namespace arda::rhi
         uint64_t mSize = 0;
         /** Stores the alignment. */
         uint64_t mAlignment = 0;
+        /** Backend memory-type compatibility mask (all bits for APIs without memory types). */
+        uint32_t mMemoryTypeBits = 0xffffffffu;
     };
 
     /**

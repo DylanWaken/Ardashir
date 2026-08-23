@@ -3,8 +3,9 @@
  */
 #pragma once
 
-#include "ArdaDevice.h"
+#include "ArdaBackend.h"
 #include "ArdaSwapChain.h"
+#include "RHI/ArdaRHIProvider.h"
 
 #include <EASTL/string.h>
 #include <EASTL/unique_ptr.h>
@@ -18,7 +19,7 @@ namespace arda::backend
     class IArdaExternalDeviceProvider;
 
     /** C++ provider contract version required by this ArdaBackend build. */
-    inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 1;
+    inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 3;
 
     /** Identifies the bytecode family consumed by a backend module. */
     enum class EArdaShaderBinaryFormat : uint8_t
@@ -114,7 +115,21 @@ namespace arda::backend
         eastl::vector<eastl::string> mArguments;
     };
 
-    /** Defines the runtime device supplied by a backend module. */
+    /** Result of creating presentation resources for an initialized backend device. */
+    struct FArdaSwapChainCreateResult
+    {
+        /** Created swap chain, or empty on failure. */
+        eastl::unique_ptr<IArdaSwapChain> mSwapChain;
+        /** Failure diagnostic. Empty on success. */
+        eastl::string mError;
+
+        [[nodiscard]] explicit operator bool() const noexcept
+        {
+            return mSwapChain != nullptr;
+        }
+    };
+
+    /** Defines an initialized runtime device supplied by a backend module. */
     class IArdaBackendDevice
     {
     public:
@@ -122,38 +137,35 @@ namespace arda::backend
         virtual ~IArdaBackendDevice() = default;
 
         /**
-         * Initializes an owned or externally supplied backend device.
-         * @param Configuration Process configuration selected for this module.
-         * @param WindowSurface Optional presentation surface.
-         * @param ExternalProvider Provider selected for ExternalProvider mode, or null.
-         * @return Initialization outcome.
-         */
-        [[nodiscard]] virtual EArdaInitializeResult Initialize(
-            const FArdaBackendConfiguration& Configuration,
-            IArdaWindowSurface* WindowSurface,
-            const IArdaExternalDeviceProvider* ExternalProvider) = 0;
-
-        /**
          * Creates presentation resources for an initialized presentation device.
          * @param Width Initial width in pixels.
          * @param Height Initial height in pixels.
-         * @return Backend swap chain, or an empty pointer on failure.
+         * @param Device Core-owned RHI facade used to import presentation images.
+         * @return Swap-chain result containing either the resource or its error.
          */
-        [[nodiscard]] virtual eastl::unique_ptr<IArdaSwapChain> CreateSwapChain(
+        [[nodiscard]] virtual FArdaSwapChainCreateResult CreateSwapChain(
             uint32_t Width,
-            uint32_t Height) = 0;
+            uint32_t Height,
+            rhi::FArdaRHIDeviceRef Device) = 0;
+    };
 
-        /** Blocks until all submitted backend work has completed. */
-        virtual void WaitForIdle() noexcept = 0;
+    /** Result of atomically creating and initializing a backend device. */
+    struct FArdaBackendDeviceCreateResult
+    {
+        /** Initialization outcome. */
+        EArdaInitializeResult mResult = EArdaInitializeResult::Failure;
+        /** Initialized device. Empty unless initialization succeeded. */
+        eastl::unique_ptr<IArdaBackendDevice> mBackendDevice;
+        /** Provider implementation wrapped by ArdaBackend's concrete RHI device. */
+        eastl::shared_ptr<rhi::provider::IArdaRHIProviderDevice> mProviderDevice;
+        /** Failure diagnostic. Empty on success. */
+        eastl::string mError;
 
-        /** @return Backend-neutral RHI facade implemented by this module. */
-        [[nodiscard]] virtual rhi::FArdaRHIDeviceRef GetDevice() const noexcept = 0;
-
-        /** @return Queues exposed by the initialized device. */
-        [[nodiscard]] virtual FArdaQueueCapabilities GetQueueCapabilities() const noexcept = 0;
-
-        /** @return Most recent module-owned initialization or presentation error. */
-        [[nodiscard]] virtual const eastl::string& GetError() const noexcept = 0;
+        [[nodiscard]] explicit operator bool() const noexcept
+        {
+            return mResult == EArdaInitializeResult::Success &&
+                mBackendDevice != nullptr && mProviderDevice != nullptr;
+        }
     };
 
     /** Contract implemented by every linkable Arda backend module. */
@@ -163,16 +175,20 @@ namespace arda::backend
         /** Destroys the module only after it has been unregistered and is no longer active. */
         virtual ~IArdaBackendModule() = default;
 
-        /** @return Stable descriptor copied by the registry. */
+        /** @return Module-owned descriptor, immutable while the module is registered. */
         [[nodiscard]] virtual const FArdaBackendModuleDescriptor& GetDescriptor() const noexcept = 0;
 
         /**
-         * Allocates an uninitialized device implementation.
-         * @param Source Whether the device will be owned or externally supplied.
-         * @return Device implementation, or empty when that source is unsupported.
+         * Creates and initializes a device as one operation.
+         * @param Configuration Process configuration selected for this module.
+         * @param WindowSurface Optional presentation surface.
+         * @param ExternalProvider Provider selected for ExternalProvider mode, or null.
+         * @return Initialized device result.
          */
-        [[nodiscard]] virtual eastl::unique_ptr<IArdaBackendDevice> CreateDevice(
-            EArdaDeviceSource Source) = 0;
+        [[nodiscard]] virtual FArdaBackendDeviceCreateResult CreateDevice(
+            const FArdaBackendConfiguration& Configuration,
+            IArdaWindowSurface* WindowSurface,
+            const IArdaExternalDeviceProvider* ExternalProvider) = 0;
 
         /**
          * Allows a module to validate or replace the fallback compiler command.

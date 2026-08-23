@@ -1,4 +1,5 @@
 #include "ArdaBackend.h"
+#include "ArdaBackendProvider.h"
 #include "ShaderStructs/ArdaShaderCompiler.h"
 
 #include <gtest/gtest.h>
@@ -7,6 +8,13 @@
 
 namespace
 {
+    bool CompileOnlyForD3D12(
+        const arda::backend::FArdaShaderPermutationParameters& Parameters)
+    {
+        return Parameters.mBackend ==
+            arda::backend::EArdaBackendType::D3D12;
+    }
+
     class FArdaRuntimeShaderEnvironment final : public testing::Environment
     {
     public:
@@ -31,6 +39,11 @@ namespace
                 "ArdaBackendTestVulkanLayoutCompute", StructSource.c_str(),
                 "ArdaVulkanLayoutTest", "VulkanLayoutTestCS",
                 Stage::Compute, nullptr);
+            FArdaShaderTypeRegistration DirectHeapSamplerCompute(
+                "ArdaBackendTestDirectHeapSamplerCompute",
+                StructSource.c_str(),
+                "ArdaDirectHeapSamplerTest", "DirectHeapSamplerTestCS",
+                Stage::Compute, nullptr);
             FArdaShaderTypeRegistration Vertex(
                 "ArdaBackendTestVertex", StructSource.c_str(),
                 "ArdaPipelineStateTestVS", "PipelineStateTestVS",
@@ -38,6 +51,14 @@ namespace
             FArdaShaderTypeRegistration Pixel(
                 "ArdaBackendTestPixel", StructSource.c_str(),
                 "ArdaPipelineStateTestPS", "PipelineStateTestPS",
+                Stage::Pixel, nullptr);
+            FArdaShaderTypeRegistration Mesh(
+                "ArdaBackendTestMesh", StructSource.c_str(),
+                "ArdaMeshPipelineTestMS", "MeshPipelineTestMS",
+                Stage::Mesh, nullptr);
+            FArdaShaderTypeRegistration MeshPixel(
+                "ArdaBackendTestMeshPixel", StructSource.c_str(),
+                "ArdaMeshPipelineTestPS", "MeshPipelineTestPS",
                 Stage::Pixel, nullptr);
             FArdaShaderTypeRegistration BindingSpaceVertex(
                 "ArdaBackendTestBindingSpaceVertex", StructSource.c_str(),
@@ -51,6 +72,10 @@ namespace
                 "ArdaBackendTestRayGeneration", RayTracingSource.c_str(),
                 "ArdaRayTracingTest", "RayGen",
                 Stage::RayGeneration, nullptr);
+            FArdaShaderTypeRegistration WorkGraph(
+                "ArdaBackendTestWorkGraph", StructSource.c_str(),
+                "ArdaWorkGraphTest", "WorkGraphMain",
+                Stage::WorkGraph, nullptr, 1, &CompileOnlyForD3D12);
 
             const FArdaShaderCompilerConfiguration PreviousConfiguration =
                 GetShaderCompilerConfiguration();

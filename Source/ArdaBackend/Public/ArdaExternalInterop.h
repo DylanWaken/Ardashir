@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#include "ArdaDevice.h"
+#include "ArdaBackend.h"
 
 #include <EASTL/shared_ptr.h>
 #include <EASTL/string.h>

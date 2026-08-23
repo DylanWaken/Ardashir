@@ -83,6 +83,8 @@ namespace arda::rhi
         uint64_t mCapacity = 0;
         /** Stores the type. */
         EArdaRHIHeapType mType = EArdaRHIHeapType::DeviceLocal;
+        /** Compatible backend memory types, normally copied/intersected from requirements. */
+        uint32_t mMemoryTypeBits = 0xffffffffu;
         /** Stores the debug name. */
         eastl::string mDebugName;
     };
@@ -250,6 +252,8 @@ namespace arda::rhi
         FArdaRHIBindingLayoutRef mLayout;
         /** Stores the items. */
         eastl::vector<FArdaRHIBindingItem> mItems;
+        /** Actual count allocated for a variable-count bindless binding. */
+        uint32_t mVariableDescriptorCount = 0;
         /** Stores the debug name. */
         eastl::string mDebugName;
     };
@@ -272,21 +276,31 @@ namespace arda::rhi
         EArdaRHIShaderStage mVisibility = EArdaRHIShaderStage::None;
         /** Stores the first slot. */
         uint32_t mFirstSlot = 0;
+        /** Native descriptor-set/register-space selected for this table. */
+        uint32_t mRegisterSpace = 0;
         /** Stores the max capacity. */
         uint32_t mMaxCapacity = 0;
+        /** Zero-capacity layouts request the backend's maximum runtime array. */
+        bool mbUnbounded = false;
+        /** Descriptors may be changed after a table has been bound. */
+        bool mbUpdateAfterBind = false;
+        /** The last native binding uses the table's actual descriptor count. */
+        bool mbVariableDescriptorCount = false;
+        /** Shaders directly index the native resource/sampler heap. */
+        bool mbDirectHeapIndexing = false;
         /** Stores the layout type. */
         EArdaRHIBindlessLayoutType mLayoutType = EArdaRHIBindlessLayoutType::Immutable;
         /** Stores the register spaces. */
         eastl::vector<FArdaRHIBindingLayoutItem> mRegisterSpaces;
         /** Stores the debug name. */
         eastl::string mDebugName;
-        /** Required opt-in because descriptor-table writes do not retain resources. */
+        /** Deprecated compatibility flag; descriptor-table versions retain their resources. */
         bool mbAllowUnsafeDescriptorTableLifetime = false;
     };
 
     /**
-     * Mutable descriptor table. Written resources are deliberately not retained;
-     * the caller must keep them alive through all GPU uses of the table.
+     * Mutable bounded descriptor table. Each native table version retains its
+     * written resources through all command-list uses of that version.
      */
     class IArdaRHIDescriptorTable : public virtual IArdaRHIBindingSet
     {
@@ -301,6 +315,51 @@ namespace arda::rhi
          * @return The requested numeric value.
          */
         [[nodiscard]] virtual uint32_t GetFirstDescriptorIndexInHeap() const noexcept = 0;
+    };
+
+    /** Kind of resource retained by a general resource collection. */
+    enum class EArdaRHIResourceCollectionItemType : uint8_t
+    {
+        Texture,
+        TextureReference,
+        Buffer,
+        ShaderResourceView,
+        UnorderedAccessView,
+        AccelerationStructure,
+        Sampler
+    };
+
+    /** One typed member of a general resource collection. */
+    struct FArdaRHIResourceCollectionItem
+    {
+        EArdaRHIResourceCollectionItemType mType =
+            EArdaRHIResourceCollectionItemType::Texture;
+        FArdaRHITextureRef mTexture;
+        FArdaRHITextureReferenceRef mTextureReference;
+        FArdaRHIBufferRef mBuffer;
+        FArdaRHIShaderResourceViewRef mShaderResourceView;
+        FArdaRHIUnorderedAccessViewRef mUnorderedAccessView;
+        FArdaRHIAccelStructRef mAccelerationStructure;
+        FArdaRHISamplerRef mSampler;
+    };
+
+    /** Mutable collection used by bindless and ray/ML systems. */
+    struct FArdaRHIResourceCollectionDesc
+    {
+        eastl::vector<FArdaRHIResourceCollectionItem> mItems;
+        bool mbMutable = false;
+        bool mbDirectlyIndexed = false;
+        eastl::string mDebugName;
+    };
+
+    /** General resource collection with an optional native bindless base. */
+    class IArdaRHIResourceCollection : public virtual IArdaRHIResource
+    {
+    public:
+        [[nodiscard]] virtual const FArdaRHIResourceCollectionDesc&
+            GetDesc() const noexcept = 0;
+        [[nodiscard]] virtual uint32_t GetFirstDescriptorIndexInHeap()
+            const noexcept = 0;
     };
 
     /** Describes framebuffer target. */
@@ -528,6 +587,15 @@ namespace arda::rhi
         [[nodiscard]] virtual const FArdaRHIDepthStencilState& GetDesc() const noexcept = 0;
     };
 
+    /** Lifecycle state independently tracked for acceleration structures and micromaps. */
+    enum class EArdaRHIAccelStructBuildState : uint8_t
+    {
+        Unbuilt,
+        Built,
+        Updated,
+        Compacted
+    };
+
     /** Describes opacity micromap usage count. */
     struct FArdaRHIOpacityMicromapUsageCount
     {
@@ -554,6 +622,8 @@ namespace arda::rhi
         FArdaRHIBufferRef mPerMicromapDescBuffer;
         /** Stores the per micromap desc buffer offset. */
         uint64_t mPerMicromapDescBufferOffset = 0;
+        /** Optional storage size for a destination created from a compacted-size query. */
+        uint64_t mResultSizeOverride = 0;
         /** Stores the track liveness. */
         bool mbTrackLiveness = true;
         /** Must be true when disabling backend liveness tracking. */
@@ -581,6 +651,14 @@ namespace arda::rhi
          * @return The requested numeric value.
          */
         [[nodiscard]] virtual uint64_t GetDeviceAddress() const noexcept = 0;
+        /** Native micromap handle identity used by conformance diagnostics. */
+        [[nodiscard]] virtual const void* GetPhysicalIdentity() const noexcept = 0;
+        /** Last successfully submitted build lifecycle state. */
+        [[nodiscard]] virtual EArdaRHIAccelStructBuildState
+            GetBuildState() const noexcept
+        {
+            return EArdaRHIAccelStructBuildState::Unbuilt;
+        }
     };
 
     /** Describes ray tracing geometry desc. */
@@ -637,8 +715,20 @@ namespace arda::rhi
         bool mbTopLevel = false;
         /** Stores the virtual. */
         bool mbVirtual = false;
+        /** Optional exact result size, used for a compacted destination. */
+        uint64_t mResultSizeOverride = 0;
         /** Stores the debug name. */
         eastl::string mDebugName;
+    };
+
+    /** Native sizes required to build or update an acceleration structure. */
+    struct FArdaRHIAccelStructMemoryRequirements
+    {
+        uint64_t mResultSize = 0;
+        uint64_t mBuildScratchSize = 0;
+        uint64_t mUpdateScratchSize = 0;
+        uint64_t mResultAlignment = 0;
+        uint64_t mScratchAlignment = 0;
     };
 
     /** Interface for accel struct. */
@@ -662,6 +752,12 @@ namespace arda::rhi
         [[nodiscard]] virtual uint64_t GetDeviceAddress() const noexcept = 0;
         /** Returns the physical identity. */
         [[nodiscard]] virtual const void* GetPhysicalIdentity() const noexcept = 0;
+        /** Last successfully submitted build/compact lifecycle state. */
+        [[nodiscard]] virtual EArdaRHIAccelStructBuildState
+            GetBuildState() const noexcept
+        {
+            return EArdaRHIAccelStructBuildState::Unbuilt;
+        }
     };
 
     /** Describes ray tracing pipeline shader desc. */
@@ -769,8 +865,35 @@ namespace arda::rhi
         bool mbCached = false;
         /** Stores the max entries. */
         uint32_t mMaxEntries = 0;
+        /** Maximum bytes copied after the native shader identifier in a record. */
+        uint32_t mMaxLocalArgumentBytes = 0;
+        /** Table contents persist until explicitly replaced. */
+        bool mbPersistent = false;
         /** Stores the debug name. */
         eastl::string mDebugName;
+    };
+
+    /** Category of a shader-binding-table record. */
+    enum class EArdaRHIShaderTableRecordType : uint8_t
+    {
+        RayGeneration,
+        Miss,
+        HitGroup,
+        Callable
+    };
+
+    /** Complete portable shader-binding-table record. */
+    struct FArdaRHIShaderTableRecordDesc
+    {
+        EArdaRHIShaderTableRecordType mType =
+            EArdaRHIShaderTableRecordType::RayGeneration;
+        uint32_t mRecordIndex = 0;
+        eastl::string mExportName;
+        FArdaRHIBindingSetRef mBindings;
+        eastl::vector<uint8_t> mLocalArguments;
+        uint32_t mUserData = 0;
+        FArdaRHIAccelStructRef mGeometry;
+        uint32_t mGeometrySegment = 0;
     };
 
     /** Interface for shader table. */
@@ -787,6 +910,53 @@ namespace arda::rhi
          * @return The requested numeric value.
          */
         [[nodiscard]] virtual uint32_t GetEntryCount() const noexcept = 0;
+    };
+
+    /** Work-graph executable state object and backing-memory policy. */
+    struct FArdaRHIWorkGraphPipelineDesc
+    {
+        eastl::string mProgramName;
+        eastl::string mEntryPoint;
+        eastl::vector<FArdaRHIShaderRef> mShaders;
+        eastl::vector<FArdaRHIBindingLayoutRef> mGlobalBindingLayouts;
+        uint32_t mMaxInputRecords = 1;
+        eastl::string mDebugName;
+    };
+
+    class IArdaRHIWorkGraphPipeline : public virtual IArdaRHIResource
+    {
+    public:
+        [[nodiscard]] virtual const FArdaRHIWorkGraphPipelineDesc&
+            GetDesc() const noexcept = 0;
+        [[nodiscard]] virtual uint64_t GetBackingMemorySize() const noexcept = 0;
+    };
+
+    /** One executable compute or mesh record in a shader bundle. */
+    struct FArdaRHIShaderBundleRecord
+    {
+        FArdaRHIComputePipelineRef mComputePipeline;
+        FArdaRHIMeshletPipelineRef mMeshPipeline;
+        eastl::vector<FArdaRHIBindingSetRef> mBindings;
+        eastl::vector<uint8_t> mLocalArguments;
+        uint32_t mGroupsX = 1;
+        uint32_t mGroupsY = 1;
+        uint32_t mGroupsZ = 1;
+    };
+
+    struct FArdaRHIShaderBundleDesc
+    {
+        uint32_t mMaxRecords = 0;
+        bool mbMeshRecords = false;
+        bool mbPersistent = false;
+        eastl::string mDebugName;
+    };
+
+    class IArdaRHIShaderBundle : public virtual IArdaRHIResource
+    {
+    public:
+        [[nodiscard]] virtual const FArdaRHIShaderBundleDesc&
+            GetDesc() const noexcept = 0;
+        [[nodiscard]] virtual uint32_t GetRecordCount() const noexcept = 0;
     };
 
     /** Describes sampler feedback texture desc. */
@@ -822,6 +992,8 @@ namespace arda::rhi
          * @return A reference to the requested value.
          */
         [[nodiscard]] virtual const FArdaRHITextureRef& GetPairedTexture() const noexcept = 0;
+        /** Native feedback-map identity used by state-conformance diagnostics. */
+        [[nodiscard]] virtual const void* GetPhysicalIdentity() const noexcept = 0;
     };
 
     /** Describes vertex buffer binding. */
@@ -932,6 +1104,26 @@ namespace arda::rhi
         FArdaRHITileShape mTileShape;
         /** Stores the subresources. */
         eastl::vector<FArdaRHISubresourceTiling> mSubresources;
+    };
+
+    /** Generic contiguous tile mapping for sparse/reserved buffers. */
+    struct FArdaRHIBufferTileMapping
+    {
+        uint64_t mBufferOffset = 0;
+        uint64_t mByteSize = 0;
+        uint64_t mHeapOffset = 0;
+        FArdaRHIHeapRef mHeap;
+        bool mbCommit = true;
+    };
+
+    /** Current local or non-local GPU memory budget telemetry. */
+    struct FArdaRHIStreamingBudget
+    {
+        uint64_t mBudgetBytes = 0;
+        uint64_t mCurrentUsageBytes = 0;
+        uint64_t mAvailableForReservationBytes = 0;
+        uint64_t mCurrentReservationBytes = 0;
+        bool mbLocalMemory = true;
     };
 
     /**

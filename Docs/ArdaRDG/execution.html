@@ -194,6 +194,13 @@
           <h2>Deterministic submission and queue waits</h2>
           <p>E7 ignores worker completion order and walks <code>mExecutionOrder</code>, which compilation preserves deterministically from registration order after culling and sentinel insertion. Each pass list is submitted separately. Its returned instance is stored by pass and as the last instance for that queue.</p>
           <p>For every <a href="api-reference.html#api-arda-rdg-fardgqueuedependency-ccd4a634"><code>FARDGQueueDependency</code></a> whose consumer is the current pass, execution looks up the producer pass instance and calls the RHI queue wait from the consumer pipeline to the producer pipeline. Same-queue dependencies need no explicit queue dependency: deterministic queue submission order supplies execution order.</p>
+          <h3>Portable resource handoff between queues</h3>
+          <p>A wait orders queue execution, but it does not by itself make every native resource state legal on the destination queue. When physical transition replay detects that the next use moves to another queue, the producer transitions the affected texture subresource or whole buffer to <code>Common</code>, emits a queue release, and records a <code>QueueRelease</code> state-conformance checkpoint. After the GPU wait, the consumer emits the matching acquire, records <code>QueueAcquire</code>, and transitions from <code>Common</code> to its declared state.</p>
+          <figure>
+            <img src="Assets/rdg-cross-queue-handoff.svg" alt="An async-compute UAV resource is released through Common state, ordered by a GPU wait, acquired on a copy queue, and transitioned to CopySource while state conformance is checked at both handoff points.">
+            <figcaption>One portable handoff serves both D3D12's copy-queue state restrictions and Vulkan's explicit queue-family ownership rules.</figcaption>
+          </figure>
+          <p>D3D12 uses the <code>Common</code> boundary so a copy list never receives an illegal UAV-to-copy transition. Vulkan combines the same state boundary with paired queue-family release/acquire barriers when the selected families differ. If both logical queues share one Vulkan family, the ownership operation reduces to synchronization while normal state/layout transitions remain intact.</p>
           <p>Queue waits are placed before the consuming list. A missing or zero producer instance is skipped; successful paths should therefore correlate the result count and backend statuses if submission loss is suspected. The current telemetry counts requested waits and submitted list attempts, not confirmed GPU completions.</p>
         </section>
 
@@ -201,6 +208,7 @@
           <h2>Extraction after submit, garbage collection, and completion</h2>
           <p>Extraction publication happens only after the submission loop. The output pointer supplied during graph construction must still be valid. Publication transfers a durable RHI reference and the compiler has already arranged the requested final state, but the referenced GPU contents may still be in flight.</p>
           <p>E9 calls device garbage collection once at the graph-submission boundary. Collection cooperates with backend retention; it does not replace external <a class="term" data-term="synchronization" href="../glossary.html#term-synchronization">synchronization</a>. Before CPU readback, manual memory reuse, or destruction outside retained ownership, wait for the appropriate queue instances through the RHI completion contract.</p>
+          <p>On D3D12, ending the recorded-pass scope does not destroy in-flight native work. Submission captures the command allocator/list, transient upload or readback resources, command signatures, descriptor owners, and referenced native resources beside the exact graphics, compute, or copy fence value. Garbage collection retires that capture only when the same queue completes it. The 120-frame D3D12 ARDG regression exists specifically to detect premature retirement that may otherwise surface later as device removal during present or command-list allocation.</p>
         </section>
 
         <section id="telemetry">
@@ -242,7 +250,7 @@
             <li><strong>Render terrain</strong> consumes camera, terrain buffers, and the imported back buffer on graphics.</li>
             <li><strong>Terrain overlay</strong> is the last back-buffer writer and remains rooted through the graph epilogue.</li>
           </ol>
-          <p>At execution, imported camera/back-buffer resources retain their RHI handles. Created transient terrain resources materialize from committed pools. Independent recording may overlap on CPU, but submit order remains the compiled order. Queue waits are generated only where producer and consumer pipelines differ.</p>
+          <p>At execution, imported camera/back-buffer resources retain their RHI handles. Created transient terrain resources materialize from committed pools. Independent recording may overlap on CPU, but submit order remains the compiled order. Queue waits are generated only where producer and consumer pipelines differ. The terrain vertex and index readbacks specifically exercise the async-compute UAV to dedicated-copy handoff; both queues observe <code>Common</code> at the ownership boundary before the copy queue enters <code>CopySource</code>.</p>
           <aside class="callout warning">
             <h3>Terrain example API version</h3>
             <p>The current checked-in terrain example still uses the deprecated <code>mCommandList</code> alias. New code should use <code>mUnsafeRawCommandList</code> only for the narrow commands that require raw RHI access, while declaring every graph resource access in pass parameters and resolving graph resources through the execution context.</p>

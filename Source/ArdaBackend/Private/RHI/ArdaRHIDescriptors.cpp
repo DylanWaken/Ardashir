@@ -1,4 +1,4 @@
-#include "RHIWrappers/ArdaRHIResources.h"
+#include "RHI/ArdaRHIResources.h"
 
 #include <cmath>
 #include <cstring>

@@ -1,4 +1,4 @@
-#include "Common/ArdaNativePipelineCache.h"
+#include "RHI/ArdaRHIProviderPipelineCache.h"
 
 #include "ArdaBackendProvider.h"
 
@@ -14,7 +14,7 @@
 #include <unistd.h>
 #endif
 
-namespace arda::rhi::native::pipeline_cache
+namespace arda::rhi::provider::pipeline_cache
 {
     namespace
     {

@@ -1,4 +1,4 @@
-#include "ArdaDevice.h"
+#include "ArdaBackend.h"
 #include "ArdaBackendProvider.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 #include "ShaderStructs/ArdaShaderCompiler.h"
@@ -1248,7 +1248,7 @@ TEST(ArdaShaderStructs, GlobalMapIndexesOnlyCompiledPermutations)
     }
 
     FArdaGlobalShaderMap Map;
-    ASSERT_TRUE(Map.Initialize(GetDeviceContext(), TestDirectory));
+    ASSERT_TRUE(Map.Initialize(GetDevice(), TestDirectory));
     ASSERT_EQ(Map.Enumerate().size(), 3u);
     EXPECT_NE(Map.Find(Registration.GetType(), 0), nullptr);
     EXPECT_EQ(Map.Find(Registration.GetType(), 1), nullptr);
@@ -1307,7 +1307,7 @@ TEST(ArdaShaderStructs, OnDemandMapDefersMissingArtifactAndHonorsOverride)
         Error));
 
     FArdaGlobalShaderMap ConfiguredMap;
-    ASSERT_TRUE(ConfiguredMap.Initialize(GetDeviceContext()));
+    ASSERT_TRUE(ConfiguredMap.Initialize(GetDevice()));
     EXPECT_FALSE(std::filesystem::exists(ConfiguredCache));
     EXPECT_EQ(ConfiguredMap.Find(Registration.GetType()), nullptr);
     ASSERT_FALSE(ConfiguredMap.GetDiagnostics().empty());
@@ -1325,7 +1325,7 @@ TEST(ArdaShaderStructs, OnDemandMapDefersMissingArtifactAndHonorsOverride)
     EXPECT_NE(ConfiguredMap.Find(Registration.GetType()), nullptr);
 
     FArdaGlobalShaderMap OverrideMap;
-    ASSERT_TRUE(OverrideMap.Initialize(GetDeviceContext(), OverrideCache));
+    ASSERT_TRUE(OverrideMap.Initialize(GetDevice(), OverrideCache));
     std::vector<const FArdaGlobalShaderInstance*> ConcurrentResults(8);
     std::vector<std::thread> Finders;
     for (size_t Index = 0; Index < ConcurrentResults.size(); ++Index)
@@ -1401,14 +1401,14 @@ TEST(ArdaShaderStructs, LoadsGlobalMapIdempotentlyAndBuildsDirectBindings)
             FArdaShaderTypeRegistration Missing(
                 "ZMissingShader", "MissingSource", "missing-partial-artifact",
                 "ShaderStructTestCS", Stage::Compute, nullptr);
-            EXPECT_FALSE(Map.Initialize(GetDeviceContext(), Directory));
+            EXPECT_FALSE(Map.Initialize(GetDevice(), Directory));
             ASSERT_FALSE(Map.GetDiagnostics().empty());
             EXPECT_EQ(
                 Map.GetDiagnostics().back().mCode,
                 EArdaGlobalShaderMapError::BytecodeMissing);
             EXPECT_FALSE(Map.IsInitialized());
         }
-        ASSERT_TRUE(Map.Initialize(GetDeviceContext(), Directory));
+        ASSERT_TRUE(Map.Initialize(GetDevice(), Directory));
         const FArdaGlobalShaderInstance* First = Map.Find(Registration.GetType());
         ASSERT_NE(First, nullptr);
         ASSERT_EQ(First->GetBindingLayouts().size(), 2u);
@@ -1427,13 +1427,13 @@ TEST(ArdaShaderStructs, LoadsGlobalMapIdempotentlyAndBuildsDirectBindings)
         }
         ASSERT_NE(ArrayLayout, nullptr);
         IArdaRHIBindingLayout* LayoutIdentity = ArrayLayout->Get();
-        ASSERT_TRUE(Map.Initialize(GetDeviceContext(), Directory));
+        ASSERT_TRUE(Map.Initialize(GetDevice(), Directory));
         const FArdaGlobalShaderInstance* Second = Map.Find(Registration.GetType());
         ASSERT_NE(Second, nullptr);
         EXPECT_EQ(Second, First);
         EXPECT_EQ(Second->GetShader().Get(), ShaderIdentity);
         EXPECT_FALSE(Map.Initialize(
-            GetDeviceContext(),
+            GetDevice(),
             Directory / "different-directory"));
         ASSERT_FALSE(Map.GetDiagnostics().empty());
         EXPECT_EQ(
@@ -1497,7 +1497,7 @@ TEST(ArdaShaderStructs, LoadsGlobalMapIdempotentlyAndBuildsDirectBindings)
             sizeof(FPushPayload));
 
         Map.Reset();
-        EXPECT_TRUE(Map.Initialize(GetDeviceContext(), Directory));
+        EXPECT_TRUE(Map.Initialize(GetDevice(), Directory));
         std::filesystem::remove_all(Directory, ArtifactError);
     }
     ShutdownBackend();

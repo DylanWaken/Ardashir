@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720" role="img" aria-labelledby="binding-title binding-desc">
+  <title id="binding-title">Binding layouts, descriptor tables, and pipeline families</title>
+  <desc id="binding-desc">Shader parameter declarations produce binding layouts. Binding sets or bounded mutable descriptor tables populate those layouts and retain resources. Native D3D12 descriptor heaps or Vulkan descriptor sets feed graphics, compute, mesh, or ray-generation pipelines.</desc>
+  <defs>
+    <marker id="binding-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.source{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.layout{fill:#183b4a;stroke:#38bdf8;stroke-width:2}.resource{fill:#214b45;stroke:#34d399;stroke-width:2}.native{fill:#493720;stroke:#fbbf24;stroke-width:2}.advanced{fill:#3a294d;stroke:#c084fc;stroke-width:2}.off{fill:#2b2430;stroke:#fb7185;stroke-width:1.5;stroke-dasharray:6 4}.title{font:700 26px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.tiny{font:11px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle}.flow{fill:none;stroke:#7dd3fc;stroke-width:2.3;marker-end:url(#binding-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="960" height="720"/>
+  <text class="title" x="32" y="44">Bindings connect retained resources to compatible pipelines</text>
+  <text class="sub" x="32" y="70">The layout is the schema; a binding set or descriptor table is one populated instance.</text>
+
+  <rect class="panel" x="32" y="98" width="896" height="280" rx="12"/>
+  <text class="label" x="480" y="128">Descriptor path</text>
+  <rect class="source" x="60" y="158" width="182" height="72" rx="9"/><text class="label" x="151" y="184">Shader declaration</text><text class="tiny" x="151" y="205">slot · space · type · visibility</text>
+  <path class="flow" d="M242 194 H300"/>
+  <rect class="layout" x="302" y="158" width="182" height="72" rx="9"/><text class="label" x="393" y="184">Binding layout</text><text class="tiny" x="393" y="205">validated immutable schema</text>
+  <path class="flow" d="M484 194 H542"/>
+  <rect class="resource" x="544" y="146" width="182" height="96" rx="9"/><text class="label" x="635" y="176">Populated bindings</text><text class="tiny" x="635" y="198">fixed binding set, or</text><text class="tiny" x="635" y="217">bounded mutable table</text>
+  <path class="flow" d="M726 194 H784"/>
+  <rect class="native" x="786" y="146" width="118" height="96" rx="9"/><text class="label" x="845" y="176">Native</text><text class="tiny" x="845" y="198">D3D12 heap</text><text class="tiny" x="845" y="217">Vk set</text>
+
+  <rect class="source" x="60" y="270" width="182" height="70" rx="9"/><text class="label" x="151" y="296">Resources and views</text><text class="tiny" x="151" y="317">CBV · SRV · UAV · sampler</text>
+  <path class="flow" d="M242 305 C370 305 416 250 544 212"/>
+  <rect class="advanced" x="302" y="270" width="182" height="70" rx="9"/><text class="label" x="393" y="296">Resize / partial write</text><text class="tiny" x="393" y="317">typed nulls fill empty slots</text>
+  <path class="flow" d="M484 305 C520 305 526 250 566 236"/>
+  <text class="tiny" x="635" y="272">Each table version retains every written resource</text>
+  <text class="tiny" x="635" y="291">until all recorded command-list uses complete.</text>
+  <text class="tiny" x="480" y="362">Current bindless is bounded; Vulkan descriptor indexing, update-after-bind, and unbounded arrays remain disabled.</text>
+
+  <rect class="panel" x="32" y="404" width="896" height="276" rx="12"/>
+  <text class="label" x="480" y="434">Pipeline families</text>
+  <rect class="source" x="64" y="468" width="174" height="76" rx="9"/><text class="label" x="151" y="494">Shader artifacts</text><text class="tiny" x="151" y="515">DXIL or SPIR-V</text><text class="tiny" x="151" y="532">stage + entry point</text>
+  <path class="flow" d="M238 506 H300"/>
+  <rect class="layout" x="302" y="456" width="206" height="100" rx="9"/><text class="label" x="405" y="484">Pipeline description</text><text class="tiny" x="405" y="505">shaders + binding layouts</text><text class="tiny" x="405" y="522">fixed state + target formats</text><text class="tiny" x="405" y="539">semantic cache identity</text>
+  <path class="flow" d="M508 506 H568"/>
+
+  <rect class="native" x="570" y="450" width="154" height="54" rx="9"/><text class="label" x="647" y="473">Graphics</text><text class="tiny" x="647" y="491">D3D12 + Vulkan</text>
+  <rect class="resource" x="746" y="450" width="154" height="54" rx="9"/><text class="label" x="823" y="473">Compute</text><text class="tiny" x="823" y="491">D3D12 + Vulkan</text>
+  <rect class="advanced" x="570" y="522" width="154" height="54" rx="9"/><text class="label" x="647" y="545">Mesh</text><text class="tiny" x="647" y="563">D3D12 capability-gated</text>
+  <rect class="advanced" x="746" y="522" width="154" height="54" rx="9"/><text class="label" x="823" y="545">Ray generation</text><text class="tiny" x="823" y="563">D3D12 partial</text>
+  <rect class="off" x="570" y="594" width="330" height="50" rx="9"/><text class="label" x="735" y="616">Not advertised: full RT · work graphs · bundles</text><text class="tiny" x="735" y="634">capability stays false until native execution tests pass</text>
+  <text class="tiny" x="480" y="704">Graphics and compute pipelines may use persistent native cache data; invalid cache data is treated as an optimization miss.</text>
+</svg>

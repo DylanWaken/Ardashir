@@ -27,31 +27,35 @@ target_include_directories(ArdaBackend
 target_precompile_headers(ArdaBackend PRIVATE Private/ArdaBackendCorePch.h)
 
 target_link_libraries(ArdaBackend PRIVATE ${CMAKE_DL_LIBS})
-set(ARDA_LINKED_BACKEND_TARGETS ${ARDASHIR_BACKEND_MODULE_TARGETS})
-set(ARDA_LINKED_BACKEND_FUNCTIONS
-    ${ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS})
-foreach(ARDA_LINKED_BACKEND_TARGET IN LISTS ARDA_LINKED_BACKEND_TARGETS)
-    if(NOT TARGET ${ARDA_LINKED_BACKEND_TARGET})
-        message(FATAL_ERROR
-            "Arda backend target does not exist: ${ARDA_LINKED_BACKEND_TARGET}")
-    endif()
-    target_link_libraries(ArdaBackend INTERFACE
-        "$<LINK_ONLY:${ARDA_LINKED_BACKEND_TARGET}>")
-endforeach()
-
-set(ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT "")
-foreach(ARDA_LINKED_BACKEND_FUNCTION IN LISTS ARDA_LINKED_BACKEND_FUNCTIONS)
-    if(NOT ARDA_LINKED_BACKEND_FUNCTION MATCHES "^[A-Za-z_][A-Za-z0-9_]*$")
-        message(FATAL_ERROR
-            "Invalid arda::backend registration function: ${ARDA_LINKED_BACKEND_FUNCTION}")
-    endif()
-    string(APPEND ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT
-        "ARDA_LINKED_BACKEND(${ARDA_LINKED_BACKEND_FUNCTION})\n")
-endforeach()
-file(GENERATE
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ArdaLinkedBackendRegistrations.inl"
-    CONTENT "${ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT}")
 target_include_directories(ArdaBackend PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+
+# Called by the project after all built-in and externally supplied provider
+# targets exist. Providers link the compiled ArdaBackend contract; consumers
+# link ArdaBackend and receive the selected providers through its interface.
+function(ardashir_finalize_backend_modules)
+    foreach(ARDA_LINKED_BACKEND_TARGET IN LISTS ARDASHIR_BACKEND_MODULE_TARGETS)
+        if(NOT TARGET ${ARDA_LINKED_BACKEND_TARGET})
+            message(FATAL_ERROR
+                "Arda backend target does not exist: ${ARDA_LINKED_BACKEND_TARGET}")
+        endif()
+        target_link_libraries(ArdaBackend INTERFACE
+            "$<LINK_ONLY:${ARDA_LINKED_BACKEND_TARGET}>")
+    endforeach()
+
+    set(ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT "")
+    foreach(ARDA_LINKED_BACKEND_FUNCTION IN LISTS
+            ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS)
+        if(NOT ARDA_LINKED_BACKEND_FUNCTION MATCHES "^[A-Za-z_][A-Za-z0-9_]*$")
+            message(FATAL_ERROR
+                "Invalid arda::backend registration function: ${ARDA_LINKED_BACKEND_FUNCTION}")
+        endif()
+        string(APPEND ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT
+            "ARDA_LINKED_BACKEND(${ARDA_LINKED_BACKEND_FUNCTION})\n")
+    endforeach()
+    file(GENERATE
+        OUTPUT "${PROJECT_BINARY_DIR}/Source/ArdaBackend/ArdaLinkedBackendRegistrations.inl"
+        CONTENT "${ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT}")
+endfunction()
 
 target_link_libraries(ArdaBackend
     PUBLIC Ardashir::EASTL
@@ -100,6 +104,11 @@ if(ARDASHIR_BUILD_TESTS)
     if(ARDASHIR_BACKEND_VULKAN)
         target_compile_definitions(ArdaBackendTests PRIVATE
             ARDA_TEST_NATIVE_VULKAN)
+        if(TARGET Vulkan::Headers)
+            target_link_libraries(ArdaBackendTests PRIVATE Vulkan::Headers)
+        elseif(TARGET Vulkan-Headers)
+            target_link_libraries(ArdaBackendTests PRIVATE Vulkan-Headers)
+        endif()
     endif()
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         target_compile_definitions(ArdaBackendTests PRIVATE

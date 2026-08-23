@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="680" viewBox="0 0 960 680" role="img" aria-labelledby="heap-title heap-desc">
+  <title id="heap-title">Explicit heap placement and render-graph transient aliasing</title>
+  <desc id="heap-desc">Virtual resources expose memory requirements before binding. The render graph places resources with non-overlapping lifetimes at reusable heap offsets and emits an aliasing barrier at the first use of replacement storage.</desc>
+  <defs>
+    <marker id="heap-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.a{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.b{fill:#214b45;stroke:#34d399;stroke-width:2}.c{fill:#493720;stroke:#fbbf24;stroke-width:2}.alias{fill:#3a294d;stroke:#c084fc;stroke-width:2}.title{font:700 26px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.tiny{font:11px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle}.axis{font:700 11px system-ui,sans-serif;fill:#7dd3fc}.grid{stroke:#334155;stroke-width:1}.flow{fill:none;stroke:#7dd3fc;stroke-width:2.3;marker-end:url(#heap-arrow)}.barrier{stroke:#c084fc;stroke-width:3;stroke-dasharray:7 5}
+    </style>
+  </defs>
+  <rect class="bg" width="960" height="680"/>
+  <text class="title" x="32" y="44">Transient resources reuse heap bytes only when lifetimes do not overlap</text>
+  <text class="sub" x="32" y="70">Placement reduces committed allocations; the alias barrier transfers interpretation of reused storage.</text>
+
+  <rect class="panel" x="32" y="98" width="896" height="144" rx="12"/>
+  <text class="label" x="480" y="126">Placement sequence</text>
+  <rect class="a" x="58" y="152" width="176" height="58" rx="9"/><text class="label" x="146" y="177">Virtual resource</text><text class="tiny" x="146" y="197">no physical memory yet</text>
+  <path class="flow" d="M234 181 H292"/>
+  <rect class="b" x="294" y="152" width="176" height="58" rx="9"/><text class="label" x="382" y="177">Requirements</text><text class="tiny" x="382" y="197">size · alignment · type mask</text>
+  <path class="flow" d="M470 181 H528"/>
+  <rect class="c" x="530" y="152" width="176" height="58" rx="9"/><text class="label" x="618" y="177">Shared heap</text><text class="tiny" x="618" y="197">device-local allocation</text>
+  <path class="flow" d="M706 181 H764"/>
+  <rect class="alias" x="766" y="152" width="136" height="58" rx="9"/><text class="label" x="834" y="177">Bind offset</text><text class="tiny" x="834" y="197">placed identity</text>
+
+  <rect class="panel" x="32" y="270" width="896" height="364" rx="12"/>
+  <text class="label" x="480" y="300">Pass timeline and physical heap layout</text>
+  <text class="axis" x="214" y="336">PASS 0</text><text class="axis" x="348" y="336">PASS 1</text><text class="axis" x="482" y="336">PASS 2</text><text class="axis" x="616" y="336">PASS 3</text><text class="axis" x="750" y="336">PASS 4</text><text class="axis" x="862" y="336">PASS 5</text>
+  <line class="grid" x1="180" y1="348" x2="900" y2="348"/><line class="grid" x1="180" y1="400" x2="900" y2="400"/><line class="grid" x1="180" y1="452" x2="900" y2="452"/>
+  <text class="axis" x="62" y="378">LIFETIME A</text><text class="axis" x="62" y="430">LIFETIME B</text><text class="axis" x="62" y="482">LIFETIME C</text>
+  <rect class="a" x="190" y="356" width="270" height="34" rx="6"/><text class="tiny" x="325" y="378">GBuffer · passes 0–2</text>
+  <rect class="b" x="470" y="408" width="266" height="34" rx="6"/><text class="tiny" x="603" y="430">Lighting · passes 2–4</text>
+  <rect class="c" x="746" y="460" width="146" height="34" rx="6"/><text class="tiny" x="819" y="482">Post · pass 5</text>
+
+  <text class="axis" x="62" y="536">HEAP BYTES</text>
+  <rect class="panel" x="180" y="516" width="712" height="88" rx="8"/>
+  <rect class="a" x="194" y="530" width="310" height="60" rx="6"/><text class="small" x="349" y="556">offset 0 · resource A</text><text class="tiny" x="349" y="577">reused later by resource C</text>
+  <rect class="b" x="518" y="530" width="360" height="60" rx="6"/><text class="small" x="698" y="556">aligned offset N · resource B</text><text class="tiny" x="698" y="577">overlaps A in time, so bytes cannot overlap</text>
+  <line class="barrier" x1="746" y1="348" x2="746" y2="604"/>
+  <text class="tiny" x="746" y="622">first use of C: AliasingBarrier(A, C)</text>
+  <text class="tiny" x="480" y="660">If heaps, compatible memory types, or placement fail, execution reports committed-resource fallback instead of pretending aliasing occurred.</text>
+</svg>

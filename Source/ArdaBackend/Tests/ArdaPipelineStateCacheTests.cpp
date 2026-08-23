@@ -1,4 +1,4 @@
-#include "ArdaDevice.h"
+#include "ArdaBackend.h"
 #include "PipelineStateCache/ArdaPipelineStateCache.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 
@@ -416,13 +416,13 @@ TEST(ArdaPipelineStateCache, CachesPrecachesEvictsAndReportsFailures)
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
         auto ShaderA = CreateTestShader(
-            *Device, GetDeviceContext().mBackend, "ArdaShaderStructTest",
+            *Device, GetBackendConfiguration().mBackend, "ArdaShaderStructTest",
             "ShaderStructTestCS", EArdaRHIShaderStage::Compute);
         auto ShaderB = CreateTestShader(
-            *Device, GetDeviceContext().mBackend, "ArdaShaderStructTest",
+            *Device, GetBackendConfiguration().mBackend, "ArdaShaderStructTest",
             "ShaderStructTestCS", EArdaRHIShaderStage::Compute);
         auto ShaderC = CreateTestShader(
-            *Device, GetDeviceContext().mBackend, "ArdaShaderStructTest",
+            *Device, GetBackendConfiguration().mBackend, "ArdaShaderStructTest",
             "ShaderStructTestCS", EArdaRHIShaderStage::Compute);
         ASSERT_TRUE(ShaderA);
         ASSERT_TRUE(ShaderB);
@@ -524,10 +524,10 @@ TEST(ArdaPipelineStateCache, ResolvesFramebufferFormatsAndRejectsMismatches)
     {
         FArdaRHIDeviceRef Device = GetDevice();
         auto VertexShader = CreateTestShader(
-            *Device, GetDeviceContext().mBackend, "ArdaPipelineStateTestVS",
+            *Device, GetBackendConfiguration().mBackend, "ArdaPipelineStateTestVS",
             "PipelineStateTestVS", EArdaRHIShaderStage::Vertex);
         auto PixelShader = CreateTestShader(
-            *Device, GetDeviceContext().mBackend, "ArdaPipelineStateTestPS",
+            *Device, GetBackendConfiguration().mBackend, "ArdaPipelineStateTestPS",
             "PipelineStateTestPS", EArdaRHIShaderStage::Pixel);
         ASSERT_TRUE(VertexShader);
         ASSERT_TRUE(PixelShader);
@@ -684,7 +684,7 @@ TEST(ArdaPipelineStateCache, DeterministicLruKeepsMostRecentlyUsedEntry)
         for (auto& Initializer : Initializers)
         {
             auto Shader = CreateTestShader(
-                *Device, GetDeviceContext().mBackend,
+                *Device, GetBackendConfiguration().mBackend,
                 "ArdaShaderStructTest", "ShaderStructTestCS",
                 EArdaRHIShaderStage::Compute);
             ASSERT_TRUE(Shader);
@@ -752,7 +752,7 @@ TEST(ArdaPipelineStateCache, ConcurrentSameKeyCreatesOneOuterEntry)
     {
         FArdaRHIDeviceRef Device = GetDevice();
         auto Shader = CreateTestShader(
-            *Device, GetDeviceContext().mBackend,
+            *Device, GetBackendConfiguration().mBackend,
             "ArdaShaderStructTest", "ShaderStructTestCS",
             EArdaRHIShaderStage::Compute);
         ASSERT_TRUE(Shader);

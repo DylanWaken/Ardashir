@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ArdaBackend.h"
+#include "ArdaSwapChain.h"
 #include "ArdaRenderGraph.h"
 
 #include <filesystem>
@@ -12,7 +12,7 @@ namespace arda::tests::rhi_test
     {
     public:
         bool Initialize(
-            const backend::FArdaDeviceContext& deviceContext,
+            rhi::FArdaRHIDeviceRef device,
             rhi::EArdaRHIFormat swapChainFormat,
             const std::filesystem::path& shaderDirectory);
         bool RenderFrame(backend::IArdaSwapChain& swapChain);
@@ -27,7 +27,6 @@ namespace arda::tests::rhi_test
         [[nodiscard]] render_graph::FARDGRenderGraphContext CreateGraphContext() const;
 
         rhi::FArdaRHIDeviceRef mDevice;
-        render_graph::FARDGQueueCapabilities mQueueCapabilities;
         rhi::FArdaRHIShaderRef mVertexShader;
         rhi::FArdaRHIShaderRef mPixelShader;
         rhi::FArdaRHIInputLayoutRef mInputLayout;

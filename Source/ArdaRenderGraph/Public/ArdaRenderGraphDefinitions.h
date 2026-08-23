@@ -6,7 +6,7 @@
 #include <EASTL/numeric_limits.h>
 #include <EASTL/type_traits.h>
 
-#include "RHIWrappers/ArdaRHI.h"
+#include "RHI/ArdaRHI.h"
 
 namespace arda::render_graph
 {
@@ -147,8 +147,8 @@ namespace arda::render_graph
         Copy
     };
 
-    /** Describes which command queues may be selected by graph compilation. */
-    struct FARDGQueueCapabilities
+    /** Restricts which device queues graph compilation may select. */
+    struct FARDGQueuePolicy
     {
         /** Whether graphics command execution is available. */
         bool mbGraphics = true;
@@ -320,8 +320,8 @@ namespace arda::render_graph
         /** The RHI device on which render-graph work is executed. */
         rhi::FArdaRHIDeviceRef mDevice;
 
-        /** Queue capabilities used for deterministic pipeline fallback. */
-        FARDGQueueCapabilities mQueueCapabilities;
+        /** Per-graph queue policy, normally derived from the RHI device. */
+        FARDGQueuePolicy mQueuePolicy;
 
         /** Optional correctness and diagnostic behavior for this graph. */
         FARDGDebugOptions mDebugOptions;

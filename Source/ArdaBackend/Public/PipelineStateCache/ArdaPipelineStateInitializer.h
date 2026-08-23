@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#include "RHIWrappers/ArdaRHIResources.h"
+#include "RHI/ArdaRHIResources.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 
 namespace arda::backend

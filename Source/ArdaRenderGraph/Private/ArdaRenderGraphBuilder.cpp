@@ -709,7 +709,7 @@ namespace arda::render_graph
     FARDGBuilder::FARDGBuilder(FARDGRenderGraphContext Context)
         : mImpl(eastl::make_unique<FImpl>(eastl::move(Context)))
     {
-        if (!mImpl->mContext.mQueueCapabilities.mbGraphics)
+        if (!mImpl->mContext.mQueuePolicy.mbGraphics)
         {
             ARDA_CHECK_MSG(
                 "A render graph requires graphics queue capability.");
@@ -2029,6 +2029,40 @@ namespace arda::render_graph
         mImpl->mBufferExtractions.push_back({Buffer, Output, FinalState});
     }
 
+    /** Publishes a graph-created acceleration structure for later graphs. */
+    void FARDGBuilder::QueueAccelStructExtraction(
+        FARDGAccelStructRef AccelStruct,
+        rhi::FArdaRHIAccelStructRef* Output,
+        rhi::EArdaRHIResourceState FinalState)
+    {
+        if (!IsBuilding(*mImpl) ||
+            AccelStruct == nullptr ||
+            Output == nullptr ||
+            mImpl->mAccelStructs.TryGet(AccelStruct->GetHandle()) !=
+                AccelStruct ||
+            FinalState == rhi::EArdaRHIResourceState::Unknown)
+        {
+            ARDA_CHECK_MSG("Invalid logical acceleration-structure extraction.");
+        }
+        const auto Existing = eastl::find_if(
+            mImpl->mAccelStructExtractions.begin(),
+            mImpl->mAccelStructExtractions.end(),
+            [AccelStruct, Output](const FARDGAccelStructExtraction& Extraction)
+            {
+                return Extraction.mAccelStruct == AccelStruct ||
+                    Extraction.mOutput == Output;
+            });
+        if (Existing != mImpl->mAccelStructExtractions.end())
+        {
+            ARDA_CHECK_MSG(
+                "A logical acceleration-structure extraction cannot be queued twice.");
+        }
+        AccelStruct->AddFlags(EARDGResourceFlags::Extracted);
+        AccelStruct->SetFinalState(FinalState);
+        mImpl->mAccelStructExtractions.push_back(
+            {AccelStruct, Output, FinalState});
+    }
+
     FARDGPassHandle FARDGBuilder::AddHostToDeviceCopyPass(
         FARDGBufferRef Destination,
         const void* SourceData,
@@ -2431,6 +2465,12 @@ namespace arda::render_graph
     FARDGBuilder::GetBufferExtractions() const noexcept
     {
         return mImpl->mBufferExtractions;
+    }
+
+    const eastl::vector<FARDGAccelStructExtraction>&
+    FARDGBuilder::GetAccelStructExtractions() const noexcept
+    {
+        return mImpl->mAccelStructExtractions;
     }
 
     /**

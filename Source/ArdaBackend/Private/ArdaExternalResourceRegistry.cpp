@@ -63,7 +63,9 @@ namespace arda::backend
                     rhi::EArdaRHIResult::InvalidState,
                     "External resources require an initialized backend.") };
             }
-            if (Provider->GetBackendType() != GetDeviceContext().mBackend)
+            const FArdaBackendConfiguration& Configuration =
+                GetBackendConfiguration();
+            if (Provider->GetBackendType() != Configuration.mBackend)
             {
                 return { {}, rhi::FArdaRHIStatus::Error(
                     rhi::EArdaRHIResult::WrongDevice,
@@ -71,7 +73,7 @@ namespace arda::backend
             }
             const char* RequiredBackendName = Provider->GetBackendName();
             if (RequiredBackendName && RequiredBackendName[0] &&
-                GetDeviceContext().mBackendName != RequiredBackendName)
+                Configuration.mBackendName != RequiredBackendName)
             {
                 return { {}, rhi::FArdaRHIStatus::Error(
                     rhi::EArdaRHIResult::WrongDevice,

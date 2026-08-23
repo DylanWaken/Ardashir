@@ -2,8 +2,11 @@
 
 #include "ArdaARDGExampleConfig.h"
 #include "ArdaBackend.h"
+#include "ArdaSwapChain.h"
 #include "ArdaGlfwWindow.h"
 #include "ArdaTerrainRenderer.h"
+#include "ShaderStructs/ArdaShaderCompiler.h"
+#include "ShaderStructs/ArdaShaderDirectories.h"
 
 #include <chrono>
 
@@ -372,7 +375,7 @@ namespace arda::tests::ardg_example
 
             FArdaTerrainRenderer renderer;
             if (!renderer.Initialize(
-                    backend::GetDeviceContext(),
+                    backend::GetDevice(),
                     swapChain->GetFormat()))
             {
                 ARDA_LOG(

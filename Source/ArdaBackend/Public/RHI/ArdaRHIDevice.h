@@ -161,6 +161,18 @@ namespace arda::rhi
          * @return A status describing whether the operation succeeded.
          */
         virtual FArdaRHIStatus CopyBuffer(IArdaRHIBuffer& Destination, uint64_t DestinationOffset, IArdaRHIBuffer& Source, uint64_t SourceOffset, uint64_t Size) = 0;
+        /** Copies a texture region between matching subresources. */
+        virtual FArdaRHIStatus CopyTexture(
+            IArdaRHITexture& Destination,
+            const FArdaRHITextureSlice& DestinationSlice,
+            IArdaRHITexture& Source,
+            const FArdaRHITextureSlice& SourceSlice) = 0;
+        /** Resolves one multisampled texture subresource into a single-sample texture. */
+        virtual FArdaRHIStatus ResolveTexture(
+            IArdaRHITexture& Destination,
+            const FArdaRHITextureSlice& DestinationSlice,
+            IArdaRHITexture& Source,
+            const FArdaRHITextureSlice& SourceSlice) = 0;
         /**
          * Performs the copy texture to staging operation.
          * @param Destination The destination.
@@ -202,6 +214,14 @@ namespace arda::rhi
          * @return A status describing whether the operation succeeded.
          */
         virtual FArdaRHIStatus SetBufferState(IArdaRHIBuffer& Buffer, EArdaRHIResourceState State) = 0;
+        /** Records an explicit before/after texture transition. */
+        virtual FArdaRHIStatus TransitionTexture(
+            IArdaRHITexture& Texture,
+            const FArdaRHITextureTransitionDesc& Transition) = 0;
+        /** Records an explicit before/after buffer transition. */
+        virtual FArdaRHIStatus TransitionBuffer(
+            IArdaRHIBuffer& Buffer,
+            const FArdaRHIBufferTransitionDesc& Transition) = 0;
         /**
          * Performs the set accel struct state operation.
          * @param AccelStruct The accel struct.
@@ -209,6 +229,9 @@ namespace arda::rhi
          * @return A status describing whether the operation succeeded.
          */
         virtual FArdaRHIStatus SetAccelStructState(IArdaRHIAccelStruct& AccelStruct, EArdaRHIResourceState State) = 0;
+        /** Observes facade/backend/native acceleration-structure state. */
+        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIResourceStateSnapshot>
+            QueryAccelStructState(IArdaRHIAccelStruct& AccelStruct) const = 0;
         /**
          * Performs the set automatic barriers operation.
          * @param bEnabled The b enabled.
@@ -230,6 +253,75 @@ namespace arda::rhi
          */
         virtual FArdaRHIStatus BeginTrackingBufferState(IArdaRHIBuffer& Buffer, EArdaRHIResourceState State) = 0;
         /**
+         * Observes independently tracked facade, backend, and native texture
+         * state. The resolved range must contain a uniform state.
+         * @param Texture The texture.
+         * @param Range The texture subresources to observe.
+         * @return The state snapshot or a diagnostic status.
+         */
+        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIResourceStateSnapshot>
+            QueryTextureState(
+                IArdaRHITexture& Texture,
+                const FArdaRHITextureSubresourceRange& Range) const = 0;
+        /**
+         * Observes independently tracked facade, backend, and native buffer
+         * state.
+         * @param Buffer The buffer.
+         * @return The state snapshot or a diagnostic status.
+         */
+        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIResourceStateSnapshot>
+            QueryBufferState(IArdaRHIBuffer& Buffer) const = 0;
+        /** Returns facade, command-tracker, and native state for sampler feedback. */
+        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIResourceStateSnapshot>
+            QuerySamplerFeedbackTextureState(
+                IArdaRHISamplerFeedbackTexture& Texture) const = 0;
+        /**
+         * Validates the observed texture state against an expected state.
+         * @param Texture The texture.
+         * @param Range The texture subresources to validate.
+         * @param ExpectedState The required state.
+         * @return Success when every tracked layer agrees with ExpectedState.
+         */
+        [[nodiscard]] FArdaRHIStatus AssertTextureState(
+            IArdaRHITexture& Texture,
+            const FArdaRHITextureSubresourceRange& Range,
+            EArdaRHIResourceState ExpectedState) const
+        {
+            const auto Snapshot = QueryTextureState(Texture, Range);
+            if (!Snapshot)
+                return Snapshot.mStatus;
+            if (!Snapshot.mValue.IsConsistent() ||
+                Snapshot.mValue.mFacadeState != ExpectedState)
+            {
+                return FArdaRHIStatus::Error(
+                    EArdaRHIResult::InvalidState,
+                    "Texture state does not match the expected facade/backend/native state.");
+            }
+            return {};
+        }
+        /**
+         * Validates the observed buffer state against an expected state.
+         * @param Buffer The buffer.
+         * @param ExpectedState The required state.
+         * @return Success when every tracked layer agrees with ExpectedState.
+         */
+        [[nodiscard]] FArdaRHIStatus AssertBufferState(
+            IArdaRHIBuffer& Buffer,
+            EArdaRHIResourceState ExpectedState) const
+        {
+            const auto Snapshot = QueryBufferState(Buffer);
+            if (!Snapshot)
+                return Snapshot.mStatus;
+            if (!Snapshot.mValue.IsConsistent() ||
+                Snapshot.mValue.mFacadeState != ExpectedState)
+            {
+                return FArdaRHIStatus::Error(
+                    EArdaRHIResult::InvalidState,
+                    "Buffer state does not match the expected facade/backend/native state.");
+            }
+            return {};
+        }
+        /**
          * Performs the set UAVbarriers for texture operation.
          * @param Texture The texture.
          * @param bEnabled The b enabled.
@@ -245,6 +337,10 @@ namespace arda::rhi
         virtual FArdaRHIStatus SetUAVBarriersForBuffer(IArdaRHIBuffer& Buffer, bool bEnabled) = 0;
         /** Performs the commit barriers operation. */
         virtual void CommitBarriers() = 0;
+        /** Declares that memory is changing ownership between aliased resources. */
+        virtual FArdaRHIStatus AliasingBarrier(
+            IArdaRHIResource* ResourceBefore,
+            IArdaRHIResource* ResourceAfter) = 0;
         /**
          * Performs the clear texture uint operation.
          * @param Texture The texture.
@@ -311,6 +407,18 @@ namespace arda::rhi
          * @param Arguments The arguments.
          */
         virtual void DrawIndexed(const FArdaRHIDrawArguments& Arguments) = 0;
+        /** Executes non-indexed draw arguments from a GPU buffer. */
+        virtual FArdaRHIStatus DrawIndirect(
+            IArdaRHIBuffer& Arguments,
+            uint64_t Offset = 0,
+            uint32_t DrawCount = 1,
+            uint32_t Stride = 0) = 0;
+        /** Executes indexed draw arguments from a GPU buffer. */
+        virtual FArdaRHIStatus DrawIndexedIndirect(
+            IArdaRHIBuffer& Arguments,
+            uint64_t Offset = 0,
+            uint32_t DrawCount = 1,
+            uint32_t Stride = 0) = 0;
         /**
          * Performs the dispatch operation.
          * @param GroupsX The groups x.
@@ -318,6 +426,10 @@ namespace arda::rhi
          * @param GroupsZ The groups z.
          */
         virtual void Dispatch(uint32_t GroupsX, uint32_t GroupsY = 1, uint32_t GroupsZ = 1) = 0;
+        /** Executes compute dispatch dimensions from a GPU buffer. */
+        virtual FArdaRHIStatus DispatchIndirect(
+            IArdaRHIBuffer& Arguments,
+            uint64_t Offset = 0) = 0;
         /**
          * Performs the dispatch mesh operation.
          * @param GroupsX The groups x.
@@ -334,6 +446,9 @@ namespace arda::rhi
          * @return A status describing whether the operation succeeded.
          */
         virtual FArdaRHIStatus DispatchRays(uint32_t Width, uint32_t Height = 1, uint32_t Depth = 1) = 0;
+        /** Executes ray-dispatch dimensions from a GPU argument buffer. */
+        virtual FArdaRHIStatus DispatchRaysIndirect(
+            IArdaRHIBuffer& Arguments, uint64_t Offset = 0) = 0;
         /**
          * Performs the build bottom level accel struct operation.
          * @param AccelStruct The accel struct.
@@ -360,12 +475,47 @@ namespace arda::rhi
          * @return A status describing whether the operation succeeded.
          */
         virtual FArdaRHIStatus BuildTopLevelAccelStructFromBuffer(IArdaRHIAccelStruct& AccelStruct, IArdaRHIBuffer& InstanceBuffer, uint64_t Offset, size_t InstanceCount, EArdaRHIAccelStructBuildFlags Flags) = 0;
+        /** Copies a built acceleration structure into a compact-size destination. */
+        virtual FArdaRHIStatus CompactAccelStruct(
+            IArdaRHIAccelStruct& Destination,
+            IArdaRHIAccelStruct& Source) = 0;
+        /** Dispatches a work graph with CPU entry records. */
+        virtual FArdaRHIStatus DispatchWorkGraph(
+            IArdaRHIWorkGraphPipeline&,
+            const void*, uint32_t, uint32_t,
+            const eastl::vector<FArdaRHIBindingSetRef>& = {})
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Work graphs are unsupported by this command-list implementation.");
+        }
+        /** Dispatches every enabled record in a shader bundle. */
+        virtual FArdaRHIStatus DispatchShaderBundle(IArdaRHIShaderBundle&)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Shader bundles are unsupported by this command-list implementation.");
+        }
         /**
          * Performs the build opacity micromap operation.
          * @param Micromap The micromap.
          * @return A status describing whether the operation succeeded.
          */
         virtual FArdaRHIStatus BuildOpacityMicromap(IArdaRHIOpacityMicromap& Micromap) = 0;
+        /** Copies a built opacity micromap into a compact-size destination. */
+        virtual FArdaRHIStatus CompactOpacityMicromap(
+            IArdaRHIOpacityMicromap&,
+            IArdaRHIOpacityMicromap&)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Opacity-micromap compaction is unsupported by this command-list implementation.");
+        }
+        /** Observes facade/backend/native opacity-micromap state. */
+        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIResourceStateSnapshot>
+            QueryOpacityMicromapState(
+                IArdaRHIOpacityMicromap&) const
+        {
+            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Opacity-micromap state queries are unsupported by this command-list implementation.")};
+        }
         /**
          * Performs the clear sampler feedback texture operation.
          * @param Texture The texture.
@@ -379,7 +529,7 @@ namespace arda::rhi
          * @param Format The format.
          * @return A status describing whether the operation succeeded.
          */
-        virtual FArdaRHIStatus DecodeSamplerFeedbackTexture(IArdaRHIBuffer& Destination, IArdaRHISamplerFeedbackTexture& Texture, EArdaRHIFormat Format) = 0;
+        virtual FArdaRHIStatus DecodeSamplerFeedbackTexture(IArdaRHITexture& Destination, IArdaRHISamplerFeedbackTexture& Texture, EArdaRHIFormat Format) = 0;
         /**
          * Performs the set sampler feedback texture state operation.
          * @param Texture The texture.
@@ -417,6 +567,18 @@ namespace arda::rhi
          * @return A reference to the requested value.
          */
         [[nodiscard]] virtual const FArdaRHICapabilities& GetCapabilities() const noexcept = 0;
+        /** Evaluates a future module's required abilities against this device. */
+        [[nodiscard]] FArdaRHIFeatureSupportReport CheckFeatureSupport(
+            const FArdaRHIFeatureRequirements& Requirements) const
+        {
+            return GetCapabilities().Evaluate(Requirements);
+        }
+        /** Returns Unsupported with every missing ability when requirements fail. */
+        [[nodiscard]] FArdaRHIStatus RequireFeatures(
+            const FArdaRHIFeatureRequirements& Requirements) const
+        {
+            return CheckFeatureSupport(Requirements).ToStatus();
+        }
         /**
          * Creates a texture.
          * @param Desc The desc.
@@ -561,6 +723,21 @@ namespace arda::rhi
          * @return The requested value and its operation status.
          */
         [[nodiscard]] virtual TArdaRHIResult<FArdaRHIDescriptorTableRef> CreateDescriptorTable(const FArdaRHIBindingLayoutRef& Layout) = 0;
+        /** Creates a general resource collection retained by the device. */
+        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIResourceCollectionRef>
+            CreateResourceCollection(const FArdaRHIResourceCollectionDesc&)
+        {
+            return { {}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Resource collections are unsupported by this device.") };
+        }
+        /** Replaces one mutable resource-collection member. */
+        virtual FArdaRHIStatus UpdateResourceCollection(
+            const FArdaRHIResourceCollectionRef&, uint32_t,
+            const FArdaRHIResourceCollectionItem&)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Mutable resource collections are unsupported by this device.");
+        }
         /**
          * Performs the resize descriptor table operation.
          * @param Table The table.
@@ -624,12 +801,28 @@ namespace arda::rhi
          * @return The requested value and its operation status.
          */
         [[nodiscard]] virtual TArdaRHIResult<FArdaRHIAccelStructRef> CreateAccelStruct(const FArdaRHIAccelStructDesc& Desc) = 0;
+        /** Returns result and scratch sizes for an acceleration-structure descriptor. */
+        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIAccelStructMemoryRequirements>
+            GetAccelStructBuildMemoryRequirements(
+                const FArdaRHIAccelStructDesc& Desc) = 0;
+        /** Returns compacted size after a compaction-enabled build completes. */
+        [[nodiscard]] virtual TArdaRHIResult<uint64_t>
+            GetAccelStructCompactedSize(
+                const FArdaRHIAccelStructRef& AccelStruct) = 0;
         /**
          * Creates a opacity micromap.
          * @param Desc The desc.
          * @return The requested value and its operation status.
          */
         [[nodiscard]] virtual TArdaRHIResult<FArdaRHIOpacityMicromapRef> CreateOpacityMicromap(const FArdaRHIOpacityMicromapDesc& Desc) = 0;
+        /** Returns compacted size after a compaction-enabled micromap build completes. */
+        [[nodiscard]] virtual TArdaRHIResult<uint64_t>
+            GetOpacityMicromapCompactedSize(
+                const FArdaRHIOpacityMicromapRef&)
+        {
+            return {0, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Opacity-micromap compaction is unsupported by this device.")};
+        }
         /**
          * Creates a ray tracing pipeline.
          * @param Desc The desc.
@@ -643,6 +836,13 @@ namespace arda::rhi
          * @return The requested value and its operation status.
          */
         [[nodiscard]] virtual TArdaRHIResult<FArdaRHIShaderTableRef> CreateShaderTable(const FArdaRHIRayTracingPipelineRef& Pipeline, const FArdaRHIShaderTableDesc& Desc) = 0;
+        /** Writes or replaces one complete shader-table record. */
+        virtual FArdaRHIStatus SetShaderTableRecord(
+            const FArdaRHIShaderTableRef& Table,
+            const FArdaRHIShaderTableRecordDesc& Record) = 0;
+        /** Makes pending shader-table writes visible to dispatch. */
+        virtual FArdaRHIStatus CommitShaderTable(
+            const FArdaRHIShaderTableRef& Table) = 0;
         /**
          * Performs the set shader table ray generation operation.
          * @param Table The table.
@@ -682,6 +882,28 @@ namespace arda::rhi
          * @return The requested value and its operation status.
          */
         [[nodiscard]] virtual TArdaRHIResult<FArdaRHISamplerFeedbackTextureRef> CreateSamplerFeedbackTexture(const FArdaRHITextureRef& PairedTexture, const FArdaRHISamplerFeedbackTextureDesc& Desc) = 0;
+        /** Creates a work-graph executable on a backend with a reported tier. */
+        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIWorkGraphPipelineRef>
+            CreateWorkGraphPipeline(const FArdaRHIWorkGraphPipelineDesc&)
+        {
+            return { {}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Work graphs are unsupported by this device.") };
+        }
+        /** Creates a mutable or persistent shader bundle. */
+        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIShaderBundleRef>
+            CreateShaderBundle(const FArdaRHIShaderBundleDesc&)
+        {
+            return { {}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Shader bundles are unsupported by this device.") };
+        }
+        /** Replaces records stored in a shader bundle. */
+        virtual FArdaRHIStatus SetShaderBundleRecords(
+            const FArdaRHIShaderBundleRef&,
+            const eastl::vector<FArdaRHIShaderBundleRecord>&)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Shader bundles are unsupported by this device.");
+        }
         /**
          * Creates a event query.
          * @return The requested value and its operation status.
@@ -851,6 +1073,36 @@ namespace arda::rhi
          * @return A status describing whether the operation succeeded.
          */
         virtual FArdaRHIStatus UpdateTextureTileMappings(const FArdaRHITextureRef& Texture, const eastl::vector<FArdaRHITextureTileMapping>& Mappings, EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) = 0;
+        /** Updates sparse/reserved mappings for a tiled buffer. */
+        virtual FArdaRHIStatus UpdateBufferTileMappings(
+            const FArdaRHIBufferRef&,
+            const eastl::vector<FArdaRHIBufferTileMapping>&,
+            EArdaRHIQueueType = EArdaRHIQueueType::Copy)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Sparse buffers are unsupported by this device.");
+        }
+        /** Grows or shrinks the committed prefix of a reserved resource. */
+        virtual FArdaRHIStatus CommitReservedResource(
+            const FArdaRHIResourceRef&, uint64_t,
+            EArdaRHIQueueType = EArdaRHIQueueType::Copy)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Reserved-resource commit is unsupported by this device.");
+        }
+        /** Returns current native streaming budget telemetry. */
+        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIStreamingBudget>
+            QueryStreamingBudget(bool = true) const
+        {
+            return { {}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Streaming budget telemetry is unsupported by this device.") };
+        }
+        /** Requests a native memory-budget reservation where supported. */
+        virtual FArdaRHIStatus SetStreamingBudgetReservation(uint64_t, bool = true)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Streaming budget reservation is unsupported by this device.");
+        }
         /**
          * Performs the query work graph support operation.
          * @return A status describing whether the operation succeeded.

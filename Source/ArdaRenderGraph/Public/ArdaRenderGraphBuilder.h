@@ -61,13 +61,93 @@ namespace arda::render_graph
 
         /** Maximum recording workers, or zero to use hardware concurrency. */
         uint32_t mMaxRecordingThreads = 0;
+
+        /** Captures and validates RHI/native state at every graph checkpoint. */
+        bool mbValidateResourceStates = true;
+    };
+
+    /** Identifies when a render-graph resource-state snapshot was captured. */
+    enum class EARDGStateCheckpoint : uint8_t
+    {
+        /** Captured before lowering a physical transition. */
+        BeforeTransition,
+        /** Captured after a conservative forced-Common barrier. */
+        ForcedCommon,
+        /** Captured after transition lowering. */
+        AfterTransition,
+        /** Captured after the pass callback completes. */
+        AfterPass,
+        /** Captured after the producer releases a resource in Common state. */
+        QueueRelease,
+        /** Captured after the consumer acquires a resource in Common state. */
+        QueueAcquire
+    };
+
+    /** Records one expected RDG state and the state observed through ArdaRHI. */
+    struct FARDGStateConformanceRecord
+    {
+        /** Pass associated with the state checkpoint. */
+        FARDGPassHandle mPass;
+        /** Human-readable pass name. */
+        eastl::string mPassName;
+        /** Texture or buffer resource kind. */
+        EARDGResourceType mResourceType = EARDGResourceType::Texture;
+        /** Resource registry index for mResourceType. */
+        uint32_t mResourceIndex = 0;
+        /** Human-readable logical resource name. */
+        eastl::string mResourceName;
+        /** Texture subresources, or the default range for a buffer. */
+        rhi::FArdaRHITextureSubresourceRange mTextureSubresources;
+        /** Checkpoint within transition recording or pass execution. */
+        EARDGStateCheckpoint mCheckpoint =
+            EARDGStateCheckpoint::BeforeTransition;
+        /** State expected by physical RDG transition lowering. */
+        rhi::EArdaRHIResourceState mExpectedState =
+            rhi::EArdaRHIResourceState::Unknown;
+        /** Queue expected to own the resource at an ownership checkpoint. */
+        rhi::EArdaRHIQueueType mExpectedQueueOwner =
+            rhi::EArdaRHIQueueType::Graphics;
+        /** Expected Vulkan family, or the invalid-family sentinel on D3D12. */
+        uint32_t mExpectedQueueFamily =
+            rhi::ArdaRHIInvalidQueueFamily;
+        /** Whether queue and native-family ownership participate in consistency. */
+        bool mbValidateQueueOwnership = false;
+        /** Independently observed facade/backend/native state. */
+        rhi::FArdaRHIResourceStateSnapshot mObserved;
+        /** Query status when the observation could not be produced. */
+        rhi::FArdaRHIStatus mStatus;
+
+        /**
+         * Tests whether RDG, facade, backend, and native encoding agree.
+         * @return True when every state source matches.
+         */
+        [[nodiscard]] bool IsConsistent() const noexcept
+        {
+            if (!mStatus.IsSuccess() || !mObserved.IsConsistent() ||
+                mObserved.mFacadeState != mExpectedState)
+            {
+                return false;
+            }
+            if (!mbValidateQueueOwnership)
+                return true;
+            return mObserved.mbFacadeQueueOwnerKnown &&
+                mObserved.mFacadeQueueOwner == mExpectedQueueOwner &&
+                (mExpectedQueueFamily == rhi::ArdaRHIInvalidQueueFamily ||
+                 mObserved.mNative.mQueueFamily == mExpectedQueueFamily);
+        }
     };
 
     /** Reports the completed CPU submission phase of graph execution. */
     struct FARDGExecutionResult
     {
+        /** Overall recording, conformance-validation, and submission status. */
+        rhi::FArdaRHIStatus mStatus;
+
         /** Number of pass and boundary-barrier command lists submitted. */
         uint32_t mSubmittedCommandListCount = 0;
+
+        /** Number of command lists rejected by the RHI during submission. */
+        uint32_t mSubmissionFailureCount = 0;
 
         /** Number of explicit waits inserted between different queues. */
         uint32_t mQueueWaitCount = 0;
@@ -96,6 +176,12 @@ namespace arda::render_graph
         /** Number of resources clobbered before a safely supported first write. */
         uint32_t mClobberedResourceCount = 0;
 
+        /** Per-checkpoint RDG/facade/backend/native state evidence. */
+        eastl::vector<FARDGStateConformanceRecord> mStateConformanceRecords;
+
+        /** Number of state checkpoints that did not agree across all layers. */
+        uint32_t mStateConformanceFailureCount = 0;
+
         /** Last submitted RHI instance for graphics, compute, and copy queues. */
         eastl::array<uint64_t, 3> mLastSubmittedInstances{};
     };
@@ -111,6 +197,19 @@ namespace arda::render_graph
 
         /** Thread-group count along Z. */
         uint32_t mGroupCountZ = 1;
+    };
+
+    /** Defines direct hardware ray-dispatch dimensions. */
+    struct FARDGRayDispatchArguments
+    {
+        /** Ray-generation launch width. */
+        uint32_t mWidth = 1;
+
+        /** Ray-generation launch height. */
+        uint32_t mHeight = 1;
+
+        /** Ray-generation launch depth. */
+        uint32_t mDepth = 1;
     };
 
     /** Describes a texture handle requested from graph execution. */
@@ -137,6 +236,20 @@ namespace arda::render_graph
 
         /** The state required when graph execution completes. */
         rhi::EArdaRHIResourceState mFinalState = rhi::EArdaRHIResourceState::Unknown;
+    };
+
+    /** Describes an acceleration-structure handle requested from graph execution. */
+    struct FARDGAccelStructExtraction
+    {
+        /** The logical acceleration structure to extract. */
+        FARDGAccelStructRef mAccelStruct = nullptr;
+
+        /** Receives the physical handle after graph submission. */
+        rhi::FArdaRHIAccelStructRef* mOutput = nullptr;
+
+        /** The state required when graph execution completes. */
+        rhi::EArdaRHIResourceState mFinalState =
+            rhi::EArdaRHIResourceState::Unknown;
     };
 
     /** Immutable products emitted by device-independent graph compilation. */
@@ -372,6 +485,22 @@ namespace arda::render_graph
             QueueBufferExtraction(Buffer, eastl::addressof(Output), FinalState);
         }
 
+        /** Declares that a logical acceleration structure survives graph completion. */
+        void QueueAccelStructExtraction(
+            FARDGAccelStructRef AccelStruct,
+            rhi::FArdaRHIAccelStructRef* Output,
+            rhi::EArdaRHIResourceState FinalState);
+
+        /** Declares acceleration-structure extraction using an RHI reference. */
+        void QueueAccelStructExtraction(
+            FARDGAccelStructRef AccelStruct,
+            rhi::FArdaRHIAccelStructRef& Output,
+            rhi::EArdaRHIResourceState FinalState)
+        {
+            QueueAccelStructExtraction(
+                AccelStruct, eastl::addressof(Output), FinalState);
+        }
+
         /**
          * Adds a blocking host-to-device buffer copy pass. SourceData is
          * copied into graph-owned storage immediately, matching Unreal's
@@ -531,6 +660,34 @@ namespace arda::render_graph
                 });
         }
 
+        /** Registers a typed hardware ray-tracing pass that dispatches after setup. */
+        template <typename ParameterType, typename ExecuteType>
+        [[nodiscard]] FARDGPassHandle AddRayDispatchPass(
+            eastl::string Name,
+            const ParameterType* Parameters,
+            FARDGRayDispatchArguments Dispatch,
+            ExecuteType&& Setup,
+            EARDGPassFlags Flags = EARDGPassFlags::Compute)
+        {
+            Flags |= EARDGPassFlags::Compute;
+            return AddPass(
+                eastl::move(Name),
+                Parameters,
+                Flags,
+                [Function = eastl::decay_t<ExecuteType>(
+                     eastl::forward<ExecuteType>(Setup)),
+                 Dispatch](
+                    FARDGPassExecutionContext& Context,
+                    const ParameterType& FrozenParameters) mutable
+                {
+                    InvokePassLambda(Function, Context, FrozenParameters);
+                    Context.mUnsafeRawCommandList.DispatchRays(
+                        Dispatch.mWidth,
+                        Dispatch.mHeight,
+                        Dispatch.mDepth);
+                });
+        }
+
         /** Adds an explicit producer dependency between registered passes. */
         void AddDependency(FARDGPassHandle Producer, FARDGPassHandle Consumer);
 
@@ -616,6 +773,10 @@ namespace arda::render_graph
         /** Returns buffer extraction declarations in registration order. */
         [[nodiscard]] const eastl::vector<FARDGBufferExtraction>&
         GetBufferExtractions() const noexcept;
+
+        /** Returns acceleration-structure extraction declarations in registration order. */
+        [[nodiscard]] const eastl::vector<FARDGAccelStructExtraction>&
+        GetAccelStructExtractions() const noexcept;
 
         /** Returns a deterministic textual description of the compiled graph. */
         [[nodiscard]] eastl::string DumpGraph() const;

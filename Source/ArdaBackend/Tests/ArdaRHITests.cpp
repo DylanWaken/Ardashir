@@ -1,9 +1,9 @@
-#include "ArdaDevice.h"
+#include "ArdaBackend.h"
 #include "ArdaBackendProvider.h"
-#include "RHIWrappers/ArdaRHICapabilities.h"
-#include "RHIWrappers/ArdaRHIRef.h"
-#include "RHIWrappers/ArdaRHIResource.h"
-#include "RHIWrappers/ArdaRHIResources.h"
+#include "RHI/ArdaRHICapabilities.h"
+#include "RHI/ArdaRHIRef.h"
+#include "RHI/ArdaRHIResource.h"
+#include "RHI/ArdaRHIResources.h"
 
 #include <gtest/gtest.h>
 
@@ -275,7 +275,7 @@ TEST(ArdaRHI, NativeBufferImportValidationIsDeterministic)
     auto WrongType = Null;
     WrongType.mNativeObject = 1;
     WrongType.mNativeType =
-        backend::GetDeviceContext().mBackend ==
+        backend::GetBackendConfiguration().mBackend ==
             backend::EArdaBackendType::D3D12
         ? rhi::EArdaRHINativeResourceType::VulkanBuffer
         : rhi::EArdaRHINativeResourceType::D3D12Resource;
@@ -308,11 +308,12 @@ TEST(ArdaRHI, BindingItemsRetainTheirResources)
 TEST(ArdaRHI, QueueCapabilitiesUseArdaQueueTypes)
 {
     arda::rhi::FArdaRHICapabilities Capabilities;
-    Capabilities.mbComputeQueue = true;
+    Capabilities.mQueues.mbCompute = true;
 
     EXPECT_TRUE(Capabilities.IsQueueSupported(arda::rhi::EArdaRHIQueueType::Graphics));
     EXPECT_TRUE(Capabilities.IsQueueSupported(arda::rhi::EArdaRHIQueueType::Compute));
     EXPECT_FALSE(Capabilities.IsQueueSupported(arda::rhi::EArdaRHIQueueType::Copy));
+    EXPECT_TRUE(Capabilities.mQueues.mbCompute);
 }
 
 TEST(ArdaRHI, AdvancedResourceDescriptorsRemainBackendOpaque)
@@ -342,4 +343,132 @@ TEST(ArdaRHI, AdvancedResourceDescriptorsRemainBackendOpaque)
     EXPECT_EQ(
         static_cast<uint16_t>(EArdaRHIShaderStage::RayGeneration),
         0x100u);
+}
+
+TEST(ArdaRHI, CapabilityAdmissionReportsEveryMissingAdvancedAbility)
+{
+    using namespace arda::rhi;
+    FArdaRHIFeatureRequirements Requirements;
+    Requirements.mbRequireRayTracingInfrastructure = true;
+    Requirements.mbRequireHardwareRayTracing = true;
+    Requirements.mbRequireRayTracingPipelines = true;
+    Requirements.mbRequireAccelerationStructures = true;
+    Requirements.mbRequireAccelerationStructureUpdate = true;
+    Requirements.mbRequireAccelerationStructureCompaction = true;
+    Requirements.mbRequireIndirectRayDispatch = true;
+    Requirements.mbRequireLocalShaderTableArguments = true;
+    Requirements.mbRequireOpacityMicromaps = true;
+    Requirements.mbRequireMeshShaders = true;
+    Requirements.mbRequireUnboundedDescriptors = true;
+    Requirements.mbRequireUpdateAfterBind = true;
+    Requirements.mbRequireDirectDescriptorIndexing = true;
+    Requirements.mbRequireDedicatedComputeQueue = true;
+    Requirements.mbRequireDedicatedCopyQueue = true;
+    Requirements.mbRequireGpuQueueWaits = true;
+    Requirements.mbRequireSparseResidency = true;
+    Requirements.mbRequireStreamingBudget = true;
+    Requirements.mbRequireSamplerFeedback = true;
+    Requirements.mbRequireWorkGraphs = true;
+    Requirements.mbRequireShaderBundles = true;
+    Requirements.mbRequireCustomPresent = true;
+    Requirements.mbRequireNativeFloat16 = true;
+    Requirements.mbRequireNativeInt8 = true;
+
+    const FArdaRHICapabilities Empty;
+    const auto Report = Empty.Evaluate(Requirements);
+    EXPECT_FALSE(Report.IsSupported());
+    EXPECT_EQ(Report.mMissingAbilities.size(), 24u);
+    const auto Status = Report.ToStatus();
+    EXPECT_EQ(Status.mCode, EArdaRHIResult::Unsupported);
+    for (const char* Name : {
+             "ray-tracing infrastructure",
+             "hardware ray tracing",
+             "ray-tracing pipelines",
+             "acceleration structures",
+             "acceleration-structure update",
+             "acceleration-structure compaction",
+             "indirect ray dispatch",
+             "local shader-table arguments",
+             "opacity micromaps",
+             "mesh shaders",
+             "unbounded descriptors",
+             "descriptor update-after-bind",
+             "direct descriptor indexing",
+             "dedicated compute queue",
+             "dedicated copy queue",
+             "GPU queue waits",
+             "sparse residency",
+             "streaming budget telemetry",
+             "native sampler feedback",
+             "work graphs",
+             "shader bundles",
+             "custom present",
+             "native float16",
+             "native int8"})
+    {
+        EXPECT_NE(Status.mMessage.find(Name), eastl::string::npos)
+            << Name;
+    }
+}
+
+TEST(ArdaRHI, CapabilityAdmissionAcceptsCompleteAdvancedDesktopProfile)
+{
+    using namespace arda::rhi;
+    FArdaRHICapabilities Capabilities;
+    Capabilities.mRayTracing.mbInfrastructure = true;
+    Capabilities.mRayTracing.mbHardwareAccelerated = true;
+    Capabilities.mRayTracing.mbPipelineShaders = true;
+    Capabilities.mRayTracing.mbAccelerationStructures = true;
+    Capabilities.mRayTracing.mbBuildUpdate = true;
+    Capabilities.mRayTracing.mbCompaction = true;
+    Capabilities.mRayTracing.mbIndirectDispatch = true;
+    Capabilities.mRayTracing.mbLocalShaderTableArguments = true;
+    Capabilities.mRayTracing.mbOpacityMicromaps = true;
+    Capabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::Tier1;
+    Capabilities.mDescriptors.mbUnboundedArrays = true;
+    Capabilities.mDescriptors.mbUpdateAfterBind = true;
+    Capabilities.mDescriptors.mbDirectResourceHeapIndexing = true;
+    Capabilities.mQueues.mbDedicatedComputeFamily = true;
+    Capabilities.mQueues.mbDedicatedCopyFamily = true;
+    Capabilities.mQueues.mbGpuWaits = true;
+    Capabilities.mResidency.mbSparseBinding = true;
+    Capabilities.mResidency.mbStreamingBudget = true;
+    Capabilities.mSamplerFeedbackTier =
+        EArdaRHISamplerFeedbackTier::Tier10;
+    Capabilities.mWorkGraphTier = EArdaRHIWorkGraphTier::Tier11;
+    Capabilities.mbShaderBundleDispatch = true;
+    Capabilities.mbCustomPresent = true;
+    Capabilities.mMachineLearning.mbNativeFloat16 = true;
+    Capabilities.mMachineLearning.mbNativeInt8 = true;
+
+    FArdaRHIFeatureRequirements Requirements;
+    Requirements.mbRequireRayTracingInfrastructure = true;
+    Requirements.mbRequireHardwareRayTracing = true;
+    Requirements.mbRequireRayTracingPipelines = true;
+    Requirements.mbRequireAccelerationStructures = true;
+    Requirements.mbRequireAccelerationStructureUpdate = true;
+    Requirements.mbRequireAccelerationStructureCompaction = true;
+    Requirements.mbRequireIndirectRayDispatch = true;
+    Requirements.mbRequireLocalShaderTableArguments = true;
+    Requirements.mbRequireOpacityMicromaps = true;
+    Requirements.mbRequireMeshShaders = true;
+    Requirements.mbRequireUnboundedDescriptors = true;
+    Requirements.mbRequireUpdateAfterBind = true;
+    Requirements.mbRequireDirectDescriptorIndexing = true;
+    Requirements.mbRequireDedicatedComputeQueue = true;
+    Requirements.mbRequireDedicatedCopyQueue = true;
+    Requirements.mbRequireGpuQueueWaits = true;
+    Requirements.mbRequireSparseResidency = true;
+    Requirements.mbRequireStreamingBudget = true;
+    Requirements.mbRequireSamplerFeedback = true;
+    Requirements.mbRequireWorkGraphs = true;
+    Requirements.mbRequireShaderBundles = true;
+    Requirements.mbRequireCustomPresent = true;
+    Requirements.mbRequireNativeFloat16 = true;
+    Requirements.mbRequireNativeInt8 = true;
+
+    const auto Report = Capabilities.Evaluate(Requirements);
+    EXPECT_TRUE(Report.IsSupported());
+    EXPECT_TRUE(Report.ToStatus());
+    EXPECT_TRUE(Report.mMissingAbilities.empty());
 }

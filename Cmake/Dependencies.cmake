@@ -6,6 +6,18 @@ if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
+macro(ardashir_fetch_content_resolve Dependency Source)
+    string(TIMESTAMP _ardashir_fetch_started "%Y-%m-%dT%H:%M:%SZ" UTC)
+    message(STATUS
+        "[network] FetchContent resolve started: ${Dependency} <- ${Source} "
+        "(${_ardashir_fetch_started})")
+    FetchContent_MakeAvailable("${Dependency}")
+    string(TIMESTAMP _ardashir_fetch_finished "%Y-%m-%dT%H:%M:%SZ" UTC)
+    message(STATUS
+        "[network] FetchContent resolve finished: ${Dependency} "
+        "(${_ardashir_fetch_finished})")
+endmacro()
+
 # Declare project-wide fetched dependencies before making any of them available.
 # This keeps Ardashir in control if a dependency also uses FetchContent.
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "Disable GLFW documentation" FORCE)
@@ -45,7 +57,10 @@ FetchContent_Declare(
     URL_HASH "${_ardashir_dxc_hash}"
 )
 
-FetchContent_MakeAvailable(ardashir_glfw ardashir_dxc)
+ardashir_fetch_content_resolve(
+    ardashir_glfw
+    "https://github.com/glfw/glfw.git@7b6aead9fb88b3623e3b3725ebb42670cbe4c579")
+ardashir_fetch_content_resolve(ardashir_dxc "${_ardashir_dxc_url}")
 
 set(ARDASHIR_DXC_EXECUTABLE
     "${ardashir_dxc_SOURCE_DIR}/${_ardashir_dxc_relative_path}"
@@ -117,7 +132,9 @@ if(ARDASHIR_BACKEND_VULKAN)
         GIT_REPOSITORY "https://github.com/KhronosGroup/Vulkan-Headers.git"
         GIT_TAG "v1.4.357"
         GIT_SHALLOW TRUE)
-    FetchContent_MakeAvailable(ardashir_vulkan_headers)
+    ardashir_fetch_content_resolve(
+        ardashir_vulkan_headers
+        "https://github.com/KhronosGroup/Vulkan-Headers.git@v1.4.357")
 endif()
 
 # The retail Agility package supplies both the current Direct3D headers and the
@@ -127,7 +144,9 @@ if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         ardashir_d3d12_agility
         URL "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.619.5"
         URL_HASH "SHA256=0e9bcf32aac9a79343ede9b21e4864950ee54577e3d8e19bfcdf002bb4e9bfd6")
-    FetchContent_MakeAvailable(ardashir_d3d12_agility)
+    ardashir_fetch_content_resolve(
+        ardashir_d3d12_agility
+        "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/1.619.5")
     set(ARDASHIR_D3D12_AGILITY_INCLUDE_DIR
         "${ardashir_d3d12_agility_SOURCE_DIR}/build/native/include"
         CACHE INTERNAL "Direct3D 12 Agility SDK include directory")

@@ -120,7 +120,7 @@ MODULES = (
         api_js_path="assets/backend-api.js",
         api_global="ArdaBackendApi",
         include_only_umbrellas=(
-            "Source/ArdaBackend/Public/RHIWrappers/ArdaRHI.h",
+            "Source/ArdaBackend/Public/RHI/ArdaRHI.h",
         ),
     ),
     ModuleConfig(

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="590" viewBox="0 0 1200 590" role="img" aria-labelledby="title desc">
+  <title id="title">Work graphs, shader bundles, and custom present</title>
+  <desc id="desc">Three advanced execution paths are shown: work-graph input records schedule shader nodes, shader-bundle records replay prepared compute work, and custom present receives a native back buffer before deciding whether native swap-chain presentation is still required.</desc>
+  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0 0v6l9-3z" fill="#7588a5"/></marker><style>.bg{fill:#0f1726}.b{fill:#19263b;stroke:#586e8e;stroke-width:2}.purple{fill:#302848;stroke:#ad8cff;stroke-width:2}.green{fill:#183a32;stroke:#55c69a;stroke-width:2}.orange{fill:#452f20;stroke:#e8a45b;stroke-width:2}.line{fill:none;stroke:#7588a5;stroke-width:3;marker-end:url(#a)}.branch{fill:none;stroke:#e8a45b;stroke-width:2;stroke-dasharray:8 7;marker-end:url(#a)}.t{font:600 19px system-ui,sans-serif;fill:#f5f7fb}.s{font:14px system-ui,sans-serif;fill:#cbd5e1}.tiny{font:13px system-ui,sans-serif;fill:#afbdd0}</style></defs>
+  <rect class="bg" width="1200" height="590" rx="20"/>
+  <text class="t" x="40" y="45">Work graph (D3D12)</text>
+  <rect class="b" x="40" y="70" width="190" height="100" rx="14"/><text class="t" x="135" y="107" text-anchor="middle">Input records</text><text class="s" x="65" y="138">CPU or GPU launch data</text>
+  <path class="line" d="M230 120 H310"/>
+  <rect class="purple" x="310" y="70" width="170" height="100" rx="14"/><text class="t" x="395" y="107" text-anchor="middle">Entry node</text><text class="s" x="335" y="138">broadcast / coalesce</text>
+  <path class="line" d="M480 120 H550"/>
+  <rect class="purple" x="550" y="70" width="170" height="100" rx="14"/><text class="t" x="635" y="107" text-anchor="middle">Child nodes</text><text class="s" x="575" y="138">GPU-scheduled records</text>
+  <path class="line" d="M720 120 H800"/>
+  <rect class="green" x="800" y="70" width="180" height="100" rx="14"/><text class="t" x="890" y="107" text-anchor="middle">Resource output</text><text class="s" x="825" y="138">state tracked normally</text>
+  <text class="t" x="40" y="235">Shader bundle (portable prepared replay)</text>
+  <rect class="b" x="40" y="260" width="210" height="120" rx="14"/><text class="t" x="145" y="297" text-anchor="middle">Persistent records</text><text class="s" x="65" y="328">pipeline + bindings</text><text class="s" x="65" y="352">dispatch dimensions</text>
+  <path class="line" d="M250 320 H335"/>
+  <rect class="purple" x="335" y="260" width="250" height="120" rx="14"/><text class="t" x="460" y="297" text-anchor="middle">Execute bundle range</text><text class="s" x="360" y="328">validate retained resources</text><text class="s" x="360" y="352">replay records in order</text>
+  <path class="line" d="M585 320 H670"/>
+  <rect class="green" x="670" y="260" width="210" height="120" rx="14"/><text class="t" x="775" y="297" text-anchor="middle">Native dispatches</text><text class="s" x="695" y="328">D3D12 / Vulkan</text><text class="s" x="695" y="352">ordinary state evidence</text>
+  <text class="t" x="40" y="455">Custom present</text>
+  <rect class="b" x="40" y="480" width="210" height="80" rx="14"/><text class="t" x="145" y="514" text-anchor="middle">Acquired back buffer</text><text class="s" x="70" y="541">native identity + extent</text>
+  <path class="line" d="M250 520 H335"/>
+  <rect class="orange" x="335" y="470" width="235" height="100" rx="14"/><text class="t" x="452" y="507" text-anchor="middle">Custom callback</text><text class="s" x="360" y="538">Present + policy decision</text>
+  <path class="branch" d="M570 500 H680"/><path class="branch" d="M570 540 H680"/>
+  <rect class="b" x="680" y="450" width="210" height="80" rx="14"/><text class="t" x="785" y="484" text-anchor="middle">Native swap-chain present</text><text class="tiny" x="716" y="510">when still required</text>
+  <rect class="green" x="680" y="535" width="210" height="45" rx="14"/><text class="s" x="785" y="563" text-anchor="middle">PostPresent notification</text>
+  <text class="tiny" x="940" y="514">Resize notifications keep the callback's</text><text class="tiny" x="940" y="537">external presentation resources in sync.</text>
+</svg>

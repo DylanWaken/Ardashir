@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A feature-by-feature guide to ArdaRHI resources, synchronization, data movement, memory, bindings, pipelines, queues, diagnostics, presentation, and ArdaRenderGraph state conformance.">
+  <title>RHI feature guide | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="backend-modules.html">Backend modules</a>
+        <a href="external-interop.html">External interop</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a>
+        <a aria-current="page" href="rhi-feature-guide.html">RHI feature guide</a>
+        <a href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaBackend</a> /
+        RHI feature guide
+      </nav>
+      <article class="prose">
+        <header class="page-header">
+          <p class="eyebrow">Public contract, native execution, and validation</p>
+          <h1>ArdaRHI feature guide</h1>
+          <p class="lede">This chapter explains every major ArdaRHI feature, how renderer intent reaches D3D12 or Vulkan, what the render graph adds, and where the current abstraction deliberately stops. It describes the implementation after the Unreal RHI/RDG parity work, not an aspirational interface.</p>
+        </header>
+
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Learning objectives</a>
+          <a href="#reading-status">How to read support status</a>
+          <a href="#layers">Layers and capabilities</a>
+          <a href="#admission">RT/ML capability admission</a>
+          <a href="#resources">Resources, views, and ownership</a>
+          <a href="#states">Resource states and transitions</a>
+          <a href="#data-movement">Copy, resolve, staging, and indirect work</a>
+          <a href="#memory">Heaps, aliasing, and residency</a>
+          <a href="#bindings">Descriptor indexing and direct heaps</a>
+          <a href="#shaders-pipelines">Shaders and pipeline families</a>
+          <a href="#ray-tracing">Ray tracing and opacity micromaps</a>
+          <a href="#queues">Command lists, queues, and synchronization</a>
+          <a href="#render-graph">ArdaRenderGraph</a>
+          <a href="#feedback">Sampler feedback and streaming</a>
+          <a href="#advanced-dispatch">Work graphs and shader bundles</a>
+          <a href="#queries">Queries, diagnostics, caches, and lifetime</a>
+          <a href="#presentation">Presentation and external interop</a>
+          <a href="#backend-truth">Backend support summary</a>
+          <a href="#platform-limits">Desktop scope and deliberate limits</a>
+          <a href="#testing">Native conformance test contract</a>
+          <a href="#summary">Summary</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives</h2>
+          <p>After this chapter, you should be able to:</p>
+          <ul>
+            <li>separate renderer and render-graph policy from the portable RHI contract and native D3D12/Vulkan execution;</li>
+            <li>choose resource, view, transfer, heap, binding, pipeline, queue, and synchronization features from truthful device capabilities;</li>
+            <li>explain how a resource transition is tracked and validated independently by RDG, the facade, the backend, and the native encoding;</li>
+            <li>reason about staging pitch, indirect arguments, placed-resource lifetime, alias barriers, and descriptor-table retention;</li>
+            <li>identify the supported graphics, compute, mesh, ray-generation, queue, presentation, and interop slices on each backend; and</li>
+            <li>distinguish tested implementation from declarations that remain capability-gated or partial relative to Unreal RHI.</li>
+          </ul>
+        </section>
+
+        <section id="reading-status">
+          <h2>How to read support status</h2>
+          <p>Feature declarations are not treated as proof of native support. This guide uses the same strict labels as the Unreal parity audit:</p>
+          <div class="card-grid">
+            <article class="card">
+              <span class="status">Implemented</span>
+              <h3>Executable end to end</h3>
+              <p>The public facade reaches a native backend, the capability is truthful, and a non-interactive execution test exercises the path.</p>
+            </article>
+            <article class="card">
+              <span class="status">Capability-gated</span>
+              <h3>Portable contract, conditional execution</h3>
+              <p>The interface exists, but callers must inspect <code>FArdaRHICapabilities</code>. Unsupported devices return a recoverable <code>Unsupported</code> status.</p>
+            </article>
+            <article class="card">
+              <span class="status">Partial</span>
+              <h3>Useful bounded subset</h3>
+              <p>The implemented contract is real, but narrower than Unreal or the underlying native API. The missing semantics are named explicitly.</p>
+            </article>
+          </div>
+          <aside class="callout">
+            <h3>Capability rule</h3>
+            <p>A capability remains false until its native path and execution test both exist. A C++ type or virtual method alone does not make a feature supported.</p>
+          </aside>
+        </section>
+
+        <section id="layers">
+          <h2>Layers and capabilities</h2>
+          <p>ArdaBackend selects and owns a backend module. <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> is the stable renderer-facing factory and submission authority; <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-a83aba52"><code>IArdaRHICommandList</code></a> records portable work. The common native boundary validates descriptors, ownership, device affinity, command-list state, and submitted resource state before dispatching to D3D12 or Vulkan.</p>
+          <figure>
+            <img src="Assets/rhi-feature-layers.svg" loading="lazy" alt="Renderer and ArdaRenderGraph flow through the ArdaRHI facade and common native boundary to D3D12 or Vulkan, while capabilities and state evidence flow upward.">
+            <figcaption>Backend-specific types stay below the public RHI boundary. Capability and validation evidence travel in the opposite direction from commands.</figcaption>
+          </figure>
+
+          <h3>Device capabilities</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> advertises queue topology, synchronization, heaps, staging, copies/resolves, indirect commands, aliasing, descriptor models, queries, pipeline caches, mesh shaders, ray tracing, sampler feedback, sparse residency, opacity micromaps, work graphs, shader bundles, custom present, and the exact limits needed to size native objects. Nested capability groups keep related facts together instead of reducing an advanced family to one misleading Boolean.</p>
+          <p>Capabilities answer whether the selected backend and physical adapter can execute a feature. They do not replace descriptor validation: a supported feature can still reject an invalid format, range, queue, shader combination, or foreign-device object.</p>
+
+          <h3>Status and device affinity</h3>
+          <p>Fallible operations return <code>FArdaRHIStatus</code> or <code>TArdaRHIResult&lt;T&gt;</code>. Invalid arguments, unsupported features, wrong-device objects, invalid command state, and native backend failures remain distinguishable. Every composite object must be built from resources owned by the same device.</p>
+        </section>
+
+        <section id="admission">
+          <h2>RT/ML capability admission</h2>
+          <p>Ardashir is ray-tracing and machine-learning first. Backend initialization probes the desktop adapter and publishes <code>FArdaRHICapabilities</code> as the device's ability table. Its <code>Evaluate</code> method compares the table with <code>FArdaRHIFeatureRequirements</code> and returns an explicit report containing every missing ability. <code>GetArdaRHIProfileRequirements</code> produces the requirements for a standard <code>EArdaRHIDeviceProfile</code>. Callers never infer support from the backend name.</p>
+          <p>The built-in real-time RT profile can require hardware ray-tracing cores, acceleration-structure build, a ray-tracing pipeline, shader tables, indirect ray dispatch, bindless descriptors, and queue features. A software tracer can select a different profile that omits hardware RT while still requiring its compute and memory prerequisites. Each later rendering or ML module evaluates its own profile before allocating resources or compiling pipelines.</p>
+          <figure>
+            <img src="Assets/rt-ml-capability-admission.svg" loading="lazy" alt="Desktop native feature probes populate an immutable ability table. Runtime and module requirement profiles either admit execution or return a list of unsupported abilities.">
+            <figcaption>One device table supports strict real-time RT admission and less restrictive software or offline profiles without pretending the hardware paths are equivalent.</figcaption>
+          </figure>
+          <aside class="callout warning">
+            <h3>Failure is a supported outcome</h3>
+            <p>If required RT infrastructure is absent, initialization or module admission returns <code>Unsupported</code> with an ability trace. No hidden raster or CPU fallback is launched.</p>
+          </aside>
+        </section>
+
+        <section id="resources">
+          <h2>Resources, views, and ownership</h2>
+          <p><strong>Buffers</strong> are linear byte-addressable allocations described by byte size, structured stride, typed format, usage, CPU access, initial state, and optional virtual placement. They back vertex and index data, constants, structured data, indirect arguments, uploads, and readback.</p>
+          <p><strong>Textures</strong> add dimension, width, height, depth, array size, mip count, sample count, format, usage, clear value, initial state, and virtual or tiled intent. The abstraction covers 1D, 2D, 3D, array, cube, and multisampled shapes. A texture subresource is identified by mip, array slice, and format plane.</p>
+          <p><strong>Uniform buffers</strong> package constant data with the buffer object that stores it. <strong>Texture references</strong> provide stable indirection: a reference object can be retained while its target texture changes.</p>
+
+          <h3>Views, samplers, and framebuffers</h3>
+          <p>A resource owns storage; a view selects and interprets part of that storage. <a href="api-reference.html#api-arda-rhi-fardarhiviewdesc-0a3012d6"><code>FArdaRHIViewDesc</code></a> carries a format plus a texture subresource range or buffer byte range. SRVs authorize shader reads and UAVs authorize shader reads/writes. Samplers define filtering and addressing independently of texture storage. A framebuffer groups color and depth/stencil texture attachments for raster output.</p>
+          <figure>
+            <img src="Assets/resource-view-subresource.svg" loading="lazy" alt="Texture mip and array subresources selected by SRV, UAV, color, and depth attachment ranges, plus a buffer byte range.">
+            <figcaption>Views can overlap storage, but overlapping accesses still require legal resource states and synchronization.</figcaption>
+          </figure>
+
+          <h3>Ownership and native import</h3>
+          <p>RHI objects use intrusive references. Binding sets, descriptor-table versions, framebuffers, command lists, and submitted work retain the resources needed by their native operations. Imported D3D12 or Vulkan textures and buffers declare native type, truthful portable description, initial state, and borrowed or transferred ownership. A shared lifetime token can keep host or plugin state alive for a borrowed import.</p>
+          <p><strong>Implemented:</strong> committed, placed, reserved, and sparse textures/buffers; uniform buffers; texture references; SRV/UAV objects; samplers; framebuffers; staging textures; borrowed native D3D12/Vulkan imports; and mutable resource collections. A collection owns a validated group of buffers, textures, samplers, or acceleration structures and can optionally allocate a directly indexed descriptor span.</p>
+        </section>
+
+        <section id="states">
+          <h2>Resource states and transitions</h2>
+          <p>A resource state names the legal use of storage at a point in command order. Arda distinguishes common, constant, vertex, index, indirect-argument, pixel and non-pixel shader reads, UAV access, render target, depth read/write, copy source/destination, resolve source/destination, present, acceleration-structure roles, CPU read, discard, opacity-micromap roles, and shading-rate source. Compatible read-only flags can be combined.</p>
+
+          <h3>Subresource and plane tracking</h3>
+          <p>Textures are tracked over concrete mip, array, and plane ranges. Depth is plane zero and stencil is plane one for split depth/stencil formats. A transition of one mip or plane does not silently change its siblings. Buffers currently transition as whole resources, while views may still select byte ranges for binding and copy validation.</p>
+
+          <h3>Explicit transition descriptors</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhitexturetransitiondesc"><code>FArdaRHITextureTransitionDesc</code></a> and <a href="api-reference.html#api-arda-rhi-fardarhibuffertransitiondesc"><code>FArdaRHIBufferTransitionDesc</code></a> declare the expected state before, state after, source pipeline domains, destination pipeline domains, and optional begin-only, end-only, or discard semantics. A wrong <code>mStateBefore</code> is rejected instead of being repaired silently. Begin-only and end-only calls model a split transition and must pair correctly.</p>
+          <pre><code>FArdaRHITextureTransitionDesc transition;
+transition.mSubresources = mipAndPlaneRange;
+transition.mStateBefore = EArdaRHIResourceState::CopyDest;
+transition.mStateAfter = EArdaRHIResourceState::ShaderResource;
+transition.mSourcePipelines = EArdaRHIPipeline::Copy;
+transition.mDestinationPipelines = EArdaRHIPipeline::Graphics;
+status = commandList.TransitionTexture(texture, transition);</code></pre>
+
+          <h3>Automatic barriers, UAV ordering, and aliasing</h3>
+          <p>Automatic tracking can infer ordinary transitions for command families that know their required states. Explicit tracking is available when scheduling needs exact before/after or pipeline semantics. UAV barriers order unordered writes without changing state. Aliasing barriers transfer the physical bytes of a heap range from one resource identity to another.</p>
+
+          <h3>Four-layer conformance</h3>
+          <p>The facade tracker and native backend tracker are independent. A <a href="api-reference.html#api-arda-rhi-fardarhiresourcestatesnapshot"><code>FArdaRHIResourceStateSnapshot</code></a> contains facade state, backend abstract state, and the exact native encoding. ArdaRenderGraph adds its compiled expected state. Tests compare all four at every transition and pass checkpoint.</p>
+          <figure>
+            <img src="Assets/resource-state-conformance.svg" loading="lazy" alt="Render graph expected state, facade state, backend abstract state, and native D3D12 or Vulkan encoding are compared at each checkpoint before submission state is published.">
+            <figcaption>A command list with a stale declared start state is rejected and cannot publish its terminal state.</figcaption>
+          </figure>
+          <p>D3D12 does not expose a driver query for current resource state; the native authority is the exact <code>D3D12_RESOURCE_STATES</code> value persisted for emitted barriers plus a clean debug-layer result. Vulkan snapshots persist <code>VkImageLayout</code>, synchronization2 stage/access masks, and the selected queue family plus clean validation output.</p>
+        </section>
+
+        <section id="data-movement">
+          <h2>Copy, resolve, staging, and indirect work</h2>
+          <p><strong>Buffer movement</strong> includes direct writes, synchronous and asynchronous host-to-device and device-to-host transfers, and buffer-to-buffer range copies. The RHI validates offsets, sizes, CPU access, usage, and required copy states.</p>
+          <p><strong>Texture copy</strong> moves a region between matching or otherwise backend-compatible texture slices. <code>FArdaRHITextureSlice</code> names origin, extent, mip, array slice, and plane. <strong>Resolve</strong> converts one multisampled subresource into a compatible single-sample destination. It requires explicit <code>ResolveSource</code> and <code>ResolveDest</code> states.</p>
+          <p><strong>Staging textures</strong> expose CPU-visible row and depth pitch. Upload maps writable staging storage, copies it into a texture, and unmaps it; readback copies a texture into readable staging storage before mapping. Callers must honor the returned pitch rather than assuming tightly packed texels.</p>
+          <p><strong>Indirect commands</strong> let the GPU supply draw, indexed-draw, compute-dispatch, or ray-dispatch arguments from a buffer in <code>IndirectArgument</code> state. Arda validates command-specific structure size, buffer range, usage, queue support, and facade/backend/native state agreement before recording the native call. Ray dispatch has one portable three-<code>uint32_t</code> width/height/depth ABI: Vulkan consumes it directly, while D3D12 combines it on the GPU with the bound shader-table address ranges to form <code>D3D12_DISPATCH_RAYS_DESC</code>. Callers never manufacture backend-specific shader-table GPU addresses.</p>
+          <figure>
+            <img src="Assets/rhi-data-and-queues.svg" loading="lazy" alt="CPU data travels through upload or staging resources to GPU resources, then graphics or compute work; command lists submit to copy, compute, or graphics queues through a state-validation gate.">
+            <figcaption>All data movement paths participate in ordinary resource-state tracking and submitted-state validation.</figcaption>
+          </figure>
+          <p><strong>Implemented on D3D12 and Vulkan:</strong> texture region copy, multisample resolve, staging upload/readback, draw indirect, indexed draw indirect, and dispatch indirect. Multi-draw/count variants and the full Unreal format-conversion/reallocation surface are not yet implemented.</p>
+        </section>
+
+        <section id="memory">
+          <h2>Heaps, aliasing, and residency</h2>
+          <p>Committed resources let the backend choose and own an allocation per resource. Explicit heaps separate storage reservation from resource creation. A virtual texture or buffer is created without bound physical memory; the device reports size, alignment, and compatible native memory types. The caller creates an upload, readback, or device-local heap and binds the resource at a correctly aligned offset.</p>
+          <pre><code>auto requirements = device.GetTextureMemoryRequirements(virtualTexture);
+FArdaRHIHeapDesc heapDesc;
+heapDesc.mCapacity = requirements.mValue.mSize;
+heapDesc.mMemoryTypeBits = requirements.mValue.mMemoryTypeBits;
+auto heap = device.CreateHeap(heapDesc);
+status = device.BindTextureMemory(virtualTexture, heap.mValue, 0);</code></pre>
+          <p>ArdaRenderGraph uses this contract for transient device-local resources. It computes live intervals, intersects Vulkan memory-type masks, places simultaneously live resources at non-overlapping offsets, and reuses bytes for non-overlapping lifetimes. The first use of a replacement resource emits an aliasing barrier.</p>
+          <figure>
+            <img src="Assets/transient-heap-aliasing.svg" loading="lazy" alt="Virtual resources report memory requirements, bind into a shared heap, and reuse offsets only across non-overlapping pass lifetimes with an alias barrier.">
+            <figcaption>Logical lifetime analysis determines when physical bytes may be reused; the barrier makes that change of identity explicit.</figcaption>
+          </figure>
+          <p>If heap creation, memory-type compatibility, or placement fails, graph execution records committed-resource fallback. It never reports aliasing unless a native heap was used and an alias event was actually emitted.</p>
+          <h3>Sparse and tiled residency</h3>
+          <p>A reserved or sparse resource owns a virtual address range without committing every tile. <code>GetTextureTiling</code> exposes native tile shape and per-subresource layout. <code>UpdateTextureTileMappings</code> and <code>UpdateBufferTileMappings</code> map or unmap heap ranges, while <code>CommitReservedResource</code> provides a simpler prefix-commit policy. D3D12 lowers this to reserved resources and tile mappings; Vulkan lowers it to sparse resources and queue sparse binding.</p>
+          <p><code>QueryStreamingBudget</code> reports local/non-local budget, usage, availability, and reservation. <code>SetStreamingBudgetReservation</code> requests a reservation where the native API supports it. Budget numbers are advisory snapshots: streaming code must continue to handle allocation or residency failure.</p>
+          <p><strong>Implemented and capability-gated on D3D12 and Vulkan:</strong> memory requirements, heaps, placed resources, alias barriers, RDG transient placement, reserved/sparse buffers and 2D textures, tile mapping/unmapping, prefix commit, streaming-budget queries/reservations, and resource collections. The native conformance path commits a sparse buffer prefix, writes <code>0x51A25EED</code>, copies it through a native readback resource, checks <code>CopySource</code> state agreement, and compares the CPU result before decommitting it. Three-dimensional sparse shapes and native support details remain governed by <code>mResidency</code>.</p>
+        </section>
+
+        <section id="bindings">
+          <h2>Descriptor indexing and direct heaps</h2>
+          <p>A <strong>binding layout</strong> is an immutable schema: slot, register space or Vulkan descriptor set, descriptor type, array shape, and shader-stage visibility. A <strong>binding set</strong> populates the schema with buffers, textures, acceleration structures, and samplers. Layout compatibility, object ownership, usage flags, and view ranges are validated before native binding.</p>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhibindlesslayoutdesc-fb23c4e8"><code>FArdaRHIBindlessLayoutDesc</code></a> additionally controls table class, maximum capacity, register space, update-after-bind, variable descriptor count, unbounded declaration, and direct-heap indexing. Tables can resize, accept partial writes, and use typed null descriptors for unwritten entries. Each submitted table version retains the resources used by that version, so later host updates cannot invalidate in-flight work.</p>
+          <pre><code>auto layout = device.CreateBindlessLayout(layoutDesc);
+auto table = device.CreateDescriptorTable(layout.mValue);
+device.ResizeDescriptorTable(table.mValue, 1024, true);
+device.WriteDescriptorTable(table.mValue, textureItem);</code></pre>
+          <figure>
+            <img src="Assets/descriptor-heaps-indexing.svg" loading="lazy" alt="A bindless descriptor table can use classic indexed descriptor sets or global resource and sampler heaps. The direct path pushes each table's base index before shader execution.">
+            <figcaption>Classic indexing and direct heap indexing share the facade contract but have different native ABIs. A capability says which ABI the adapter can execute.</figcaption>
+          </figure>
+          <h3>Classic descriptor indexing</h3>
+          <p>D3D12 allocates shader-visible descriptor ranges. Vulkan enables descriptor-indexing feature bits and uses update-after-bind pools/layouts plus variable-count allocation when requested. “Unbounded” means the shader ABI has an unsized array; allocation still has a finite, capability-reported live capacity.</p>
+          <h3>Direct descriptor-heap indexing</h3>
+          <p>D3D12 uses Shader Model 6.6 heap indexing. Vulkan uses <code>VK_EXT_descriptor_heap</code>: the backend creates native resource and sampler heaps, encodes descriptors directly into mapped heap memory, supplies heap-source mappings to every pipeline stage, binds both heaps on the command list, and pushes the selected table base index. Resource and sampler heaps are independent, and multi-layout register spaces remain distinct.</p>
+          <p><strong>Implemented and execution-tested on D3D12 and Vulkan where advertised:</strong> conventional sets, mutable bindless tables, unbounded declarations, update-after-bind, variable counts, direct resource/sampler heap indexing, acceleration-structure descriptors, and directly indexed resource collections. Unsupported extension/feature combinations return <code>Unsupported</code>.</p>
+        </section>
+
+        <section id="shaders-pipelines">
+          <h2>Shaders and pipeline families</h2>
+          <p>The shader system resolves registered modules and permutations into backend-specific artifacts. D3D12 consumes DXIL and Vulkan consumes SPIR-V. Stage identity covers conventional raster stages, compute, amplification/task, mesh, ray-tracing libraries, and D3D12 work-graph libraries. Shader libraries expose named exports without leaking native pipeline objects through the RHI.</p>
+
+          <h3>Graphics pipeline</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhigraphicspipelinedesc-e352046e"><code>FArdaRHIGraphicsPipelineDesc</code></a> combines input layout; vertex, hull, domain, geometry, and pixel shaders; binding layouts; topology; blend, raster, and depth/stencil state; color and depth formats; and sample count. The framebuffer, viewport/scissor, vertex/index buffers, and binding sets remain command state. Target formats and sample count must match the framebuffer before drawing.</p>
+
+          <h3>Compute pipeline</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhicomputepipelinedesc-698735b5"><code>FArdaRHIComputePipelineDesc</code></a> combines one compute shader with binding layouts. <code>FArdaRHIComputeState</code> binds the pipeline and sets before direct or indirect dispatch. Compute work may execute on a compute queue or on graphics when the algorithm and capabilities permit.</p>
+
+          <h3>Mesh pipeline</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhimeshletpipelinedesc-822a65d8"><code>FArdaRHIMeshletPipelineDesc</code></a> replaces vertex input with optional amplification/task and required mesh stages. D3D12 creates a pipeline-state stream and calls <code>DispatchMesh</code>; Vulkan creates an <code>VK_EXT_mesh_shader</code> pipeline and calls <code>vkCmdDrawMeshTasksEXT</code>. Creation and dispatch are advertised only when the adapter exposes the required tier or extension/features.</p>
+
+          <h3>Ray-tracing pipeline family</h3>
+          <p><a href="api-reference.html#api-arda-rhi-fardarhiraytracingpipelinedesc-83c3a852"><code>FArdaRHIRayTracingPipelineDesc</code></a> combines shader-library exports, hit groups, payload and attribute limits, recursion depth, global layouts, and export-associated local layouts. The next section covers its scene and dispatch lifecycle.</p>
+
+          <h3>Pipeline caches</h3>
+          <p>The renderer-facing pipeline-state cache hashes semantic descriptors, performs thread-safe same-key creation, and retains bounded LRU entries. Optional persistent native caches store backend data across runs. D3D12 uses a pipeline library and Vulkan uses <code>VkPipelineCache</code>; invalid persisted data is an optimization miss, never a reason to reject an otherwise valid descriptor.</p>
+        </section>
+
+        <section id="ray-tracing">
+          <h2>Ray tracing and opacity micromaps</h2>
+          <p>The acceleration-structure contract covers triangle and procedural AABB BLAS geometry, TLAS instances, scratch/storage size queries, build, update, compacted-size query, compact-copy, and state snapshots. Update requires compatible source/destination descriptions and build flags. Compaction creates a smaller immutable copy after the native size query; it is not an in-place resize.</p>
+          <p>Ray-tracing pipelines support ray-generation, miss, closest-hit, any-hit, intersection, and callable exports. Hit groups associate the appropriate exports. Shader-table records select an export and append validated local arguments matching that export's local layout. Direct dispatch supplies dimensions on the CPU; indirect dispatch reads the portable three-dimension record from a GPU buffer in <code>IndirectArgument</code> state.</p>
+          <figure>
+            <img src="Assets/raytracing-native-flow.svg" loading="lazy" alt="Geometry and optional opacity micromaps build into BLAS objects, instances build into a TLAS, shader libraries produce a ray-tracing pipeline and shader table, and direct or indirect dispatch traces rays.">
+            <figcaption>Build/update/compaction and dispatch are separate synchronized phases. Their buffers and acceleration structures participate in ordinary facade/backend/native state conformance.</figcaption>
+          </figure>
+          <h3>D3D12 and Vulkan lowering</h3>
+          <p>D3D12 uses DXR state objects, root-signature associations, shader identifiers, acceleration-structure build/copy commands, and direct or indirect ray dispatch. Vulkan enables the acceleration-structure, ray-tracing-pipeline, ray-query, deferred-host-operations, buffer-device-address, and required SPIR-V extension chain; it builds native structures, creates shader groups, obtains group handles, and traces with strided device-address regions.</p>
+          <h3>Opacity micromaps</h3>
+          <p>On Vulkan adapters with <code>VK_EXT_opacity_micromap</code>, <code>FArdaRHIOpacityMicromapDesc</code> describes microtriangle opacity input and usage counts. Build consumes input and scratch buffers; a compaction-enabled build exposes a destination-size query and native compact copy; and geometry can attach either the built or compacted micromap to a BLAS later in the same list. If a desktop driver advertises compact copy but rejects the optional compacted-size query-pool type, Arda returns the legal conservative source-storage size and still executes <code>VK_COPY_MICROMAP_MODE_COMPACT_EXT</code>. The conformance test uses an opaque two-state microtriangle, compacts it, builds BLAS and TLAS objects, traces one hit and one miss, and reads back <code>0x0C105E57</code> and <code>0x0000B055</code>. State queries verify facade, common-backend, and native lifecycle state at each boundary. D3D12 reports this Vulkan-specific feature unsupported.</p>
+          <p>Every subfeature has a separate ability bit. A device may support software ray queries but fail the real-time profile because it lacks hardware RT cores, indirect dispatch, local bindings, or another required component.</p>
+        </section>
+
+        <section id="queues">
+          <h2>Command lists, queues, and synchronization</h2>
+          <p>A command list follows <code>Open</code> &rarr; record &rarr; <code>Close</code> &rarr; submit. <code>Reset</code> makes a completed list reusable. Lists are created for graphics, compute, or copy queues and reject commands outside their queue's legal family.</p>
+          <p>Submission returns a monotonically increasing instance for that queue. Same-queue order is implicit. <code>QueueWait</code> connects a consumer queue to a producer instance with a native GPU-side fence or timeline-semaphore dependency; the submitting CPU does not wait for device idle. Event queries and GPU fences expose completion to the CPU, timer queries measure GPU intervals, and markers annotate native captures.</p>
+          <p>Owned D3D12 devices create direct, compute, and copy queues. Vulkan selects dedicated compute and transfer families when the physical device provides them, otherwise it uses legal shared-family fallbacks. Commands crossing Vulkan families emit release/acquire synchronization and update the tracked queue-family owner. Sparse binds and ordinary submissions participate in the same timeline ordering.</p>
+          <p>Before native submission, Arda compares every command list's declared starting resource states with the device's submitted states. Only successful execution publishes terminal states. This closes the gap between locally valid recording and globally stale command lists.</p>
+          <h3>D3D12 in-flight retirement</h3>
+          <p>Each D3D12 queue owns an independent fence sequence. The opaque submission instance encodes its queue plus that queue's fence value, so compute or copy completion cannot falsely retire work from another queue. Submission snapshots retain the command allocator, command list, upload/readback helpers, command signatures, descriptor owners, and referenced native resources. Garbage collection releases a snapshot only after its own queue fence reaches the recorded value.</p>
+          <figure>
+            <img src="Assets/d3d12-submission-retirement.svg" loading="lazy" alt="D3D12 graphics, compute, and copy submissions each signal a per-queue fence while a pending lifetime snapshot retains command objects and resources until that exact queue value completes.">
+            <figcaption>CPU scope and graph submission may end immediately; native objects remain alive until the corresponding GPU queue proves completion.</figcaption>
+          </figure>
+          <aside class="callout">
+            <h3>Ownership is part of native state</h3>
+            <p>For Vulkan, matching layout and access masks are insufficient when a resource is exclusive to another family. State evidence therefore includes the native queue-family index.</p>
+          </aside>
+        </section>
+
+        <section id="render-graph">
+          <h2>ArdaRenderGraph</h2>
+          <p><a href="../ArdaRDG/api-reference.html#api-arda-rdg-fardgbuilder-e0fc26d2"><code>FARDGBuilder</code></a> raises scheduling from imperative calls to declared pass inputs and outputs. It creates logical textures, buffers, views, and acceleration structures; registers external resources with known initial state; accepts typed pass parameters; queues uploads and extractions; and records graphics, async-compute, or copy intent.</p>
+
+          <h3>Compilation</h3>
+          <p><code>Compile</code> discovers producer/consumer dependencies, culls dead passes and resources, selects queue fallbacks from actual device capabilities, computes lifetimes, groups compatible raster work, lowers physical transitions, and emits cross-queue dependencies. Compilation happens once for deferred execution.</p>
+
+          <h3>Execution</h3>
+          <p><code>Execute</code> materializes physical resources, builds a shared transient heap where possible, records independent pass waves in parallel, inserts transitions and alias barriers, submits lists, emits queue waits, publishes extraction states, and returns <a href="../ArdaRDG/api-reference.html#api-arda-rdg-fardgexecutionresult-55e456b3"><code>FARDGExecutionResult</code></a>. Immediate mode remains available for debugging and reports that it was selected.</p>
+
+          <h3>Access and validation</h3>
+          <p>A callback using <code>FARDGPassExecutionContext</code> can request only declared physical resources. The raw command-list callback is intentionally marked unsafe because the graph cannot prove accesses to independently retained objects. When <code>mbValidateResourceStates</code> is true, execution records before-transition, forced-common, after-transition, and after-pass snapshots for every relevant range.</p>
+          <figure>
+            <img src="Assets/rdg-execution-conformance.svg" loading="lazy" alt="Render graph declarations compile into dependencies, culling, queues, lifetimes, transitions, and heap placement, then record and submit work while returning state conformance and extraction results.">
+            <figcaption>The execution report is evidence: it states which queues, heap strategy, aliasing, fallbacks, submissions, and state checkpoints actually occurred.</figcaption>
+          </figure>
+        </section>
+
+        <section id="feedback">
+          <h2>Sampler feedback and streaming</h2>
+          <p>D3D12 sampler feedback pairs a sampled tiled texture with a native feedback map. The map records minimum-mip or mip-region usage through a sampler-feedback UAV. <code>DecodeSamplerFeedbackTexture</code> decodes the opaque map into an ordinary texture that readback or GPU streaming logic can consume. The paired texture, feedback map, and decoded destination each have explicit states. The conformance test clears a minimum-mip map, decodes it to <code>R8UInt</code>, transitions the result from <code>ResolveDest</code> to <code>CopySource</code>, maps a staging readback, and verifies every texel is the known clear result <code>0xFF</code>.</p>
+          <p>A typical loop is: sample the sparse texture, resolve feedback, delay until the result is complete, prioritize missing tiles within the reported streaming budget, map new heap tiles, and retire cold tiles only after their last queue use. Feedback is evidence for a residency policy; it does not automatically make memory resident.</p>
+          <p>Vulkan has no equivalent native feature in this contract and reports sampler feedback unsupported. Its sparse-residency path remains usable with application-generated demand information.</p>
+        </section>
+
+        <section id="advanced-dispatch">
+          <h2>Work graphs and shader bundles</h2>
+          <p><strong>Work graphs</strong> are capability-gated D3D12 programs compiled as Shader Model 6.8 libraries. The pipeline identifies a graph program and entry node; dispatch initializes the backing memory when required and supplies CPU or GPU input records. Node shaders can schedule further records without returning scheduling decisions to the CPU. Work-graph buffers still use ordinary RHI resource states and diagnostics.</p>
+          <p><strong>Shader bundles</strong> are portable persistent execution records. A bundle retains validated compute pipeline/binding state and dispatch dimensions; a command list can execute a selected record range repeatedly on D3D12 or Vulkan. This reduces repeated facade setup and keeps lifetime validation explicit. It is not advertised as native Vulkan device-generated commands.</p>
+          <figure>
+            <img src="Assets/advanced-dispatch-present.svg" loading="lazy" alt="Work-graph records schedule nodes, shader-bundle records replay prepared dispatches, and a custom-present callback decides whether the native swap-chain present is needed.">
+            <figcaption>Advanced dispatch and presentation retain ordinary state, ownership, and capability rules even though their scheduling paths differ.</figcaption>
+          </figure>
+        </section>
+
+        <section id="queries">
+          <h2>Queries, diagnostics, caches, and lifetime</h2>
+          <p><strong>Event queries</strong> signal a queue point and can be polled, waited, or reset. <strong>GPU fences</strong> provide the same one-signal-at-a-time completion facade for ownership retirement. <strong>Timer queries</strong> bracket command-list work and report elapsed seconds when ready. Callers must query <code>mbQueries</code> and handle asynchronous readiness.</p>
+          <p><strong>Markers</strong> place named regions into backend diagnostics. Native D3D12 debug-layer and Vulkan validation messages flow through the configured diagnostic callback. Portable status messages preserve the failed descriptor or command context where possible.</p>
+          <p><strong>Descriptor caches</strong> expose statistics and a trim operation. <strong>Pipeline cache persistence</strong> is flushed and disabled during backend shutdown before global context ownership is released. <strong>Garbage collection</strong> retires deferred native objects only after their queue work completes. D3D12 uses per-queue fences and retained submission snapshots; Vulkan retains each command recording beside its native submission fence. <code>WaitForIdle</code> is a correctness and teardown tool, not a routine frame synchronization primitive.</p>
+        </section>
+
+        <section id="presentation">
+          <h2>Presentation and external interop</h2>
+          <p>The swap-chain layer owns platform surface integration, frame acquisition, back-buffer access, submission preparation, present, and resize/recreation. Renderable presentation images still use ordinary RHI states: acquire exposes a back buffer, rendering transitions it to <code>RenderTarget</code>, and presentation requires <code>Present</code>.</p>
+          <p><code>IArdaCustomPresent</code> can replace or augment the final swap-chain operation. It receives the native back-buffer identity and dimensions, is notified on resize, chooses whether native present is still required, and receives <code>PostPresent</code> after the selected route succeeds. D3D12 and Vulkan implement the callback contract; the native D3D12 test uses a real hidden Win32 swap chain and verifies callback, bypass, post-present, and resize behavior.</p>
+          <p>Native D3D12 and Vulkan window surfaces currently use a fixed BGRA8 UNorm contract. HDR metadata, color-space negotiation, broad display-mode policy, and Unreal-style viewport pacing remain outside this desktop renderer contract.</p>
+          <p>External-device providers can adopt host-owned devices and queues. External-resource providers resolve stable application IDs into truthful texture or buffer import descriptors. Device affinity, native type, ownership, initial state, and host lifetime remain explicit; interop does not infer or repair an incomplete native contract.</p>
+        </section>
+
+        <section id="backend-truth">
+          <h2>Backend support summary</h2>
+          <p>The following summary is intentionally prose-based so qualifications stay beside each capability.</p>
+          <dl>
+            <dt>D3D12 and Vulkan</dt>
+            <dd>Core resources/views; graphics, compute, mesh, and ray-tracing pipelines where the adapter supports them; AS build/update/compaction; hit groups, local shader-table arguments, direct/indirect ray dispatch; conventional and indexed descriptors; direct resource/sampler heap indexing where supported; copies/resolves/staging; heaps/aliasing/sparse residency/budgets; shader bundles; GPU cross-queue waits; native import; custom present; pipeline caches; and RDG state conformance.</dd>
+
+            <dt>D3D12-specific implemented slice</dt>
+            <dd>DXR state objects and indirect ray dispatch, Shader Model 6.6 direct descriptor heaps, native sampler feedback, reserved resources/tile mappings, mesh pipeline-state streams, Shader Model 6.8 work graphs, and a tested Win32 custom-present swap chain.</dd>
+
+            <dt>Vulkan-specific implemented slice</dt>
+            <dd><code>VK_KHR_acceleration_structure</code>/<code>VK_KHR_ray_tracing_pipeline</code>, <code>VK_EXT_mesh_shader</code>, <code>VK_EXT_opacity_micromap</code>, descriptor indexing and <code>VK_EXT_descriptor_heap</code>, sparse binding, dedicated-family selection, timeline-semaphore waits, queue-family ownership transfer, synchronization2 state evidence, native memory-type intersection, and a tested Win32 custom-present swap chain.</dd>
+
+            <dt>Portable fallback behavior</dt>
+            <dd>Unsupported queues fall back only where RDG policy permits. Heap placement reports committed fallback. Platform-specific advanced features remain false and return <code>Unsupported</code>. The profile evaluator reports which requirement prevented a renderer or ML module from starting.</dd>
+          </dl>
+        </section>
+
+        <section id="platform-limits">
+          <h2>Desktop scope and deliberate limits</h2>
+          <p>Arda follows Unreal's separation of facade, native RHI, and render graph, but it is not trying to reproduce every Unreal platform or raster-era policy. The supported platform breadth is 64-bit desktop D3D12 and desktop Vulkan. Console, mobile, and Metal backends are intentionally out of scope.</p>
+          <ul>
+            <li>raster pipelines remain available for tools, presentation, compatibility, and mesh-feature validation, but the real-time renderer may require RT/ML profiles and launch no rasterizer for its shading path;</li>
+            <li>D3D12-only features such as sampler feedback and work graphs are not emulated on Vulkan, while Vulkan opacity micromaps are not claimed on D3D12;</li>
+            <li>shader bundles are portable prepared record replay, not a claim of native Vulkan device-generated commands;</li>
+            <li>HDR/display-mode policy, multi-GPU topology, Unreal's render-pass/subpass breadth, multi-draw/count variants, and its full validation/replay ecosystem are not part of the current contract; and</li>
+            <li>an adapter can initialize for a limited profile while a real-time RT module is separately rejected. Capability truth is per device and per feature profile.</li>
+          </ul>
+          <p>The engineering order and Unreal source references are maintained in <a href="Unreal-RHI-Parity-Plan.md">the Unreal RHI/RDG parity review</a>.</p>
+        </section>
+
+        <section id="testing">
+          <h2>Native conformance test contract</h2>
+          <p>The parity suite validates behavior rather than interface presence. It compares RDG expectation, facade state, common-backend state, and exact native encoding. It covers transitions and planes; copy/resolve/staging; indirect work; heap aliasing; classic and direct descriptor indexing; mesh and ray dispatch; AS build/update/compaction; Vulkan opacity micromaps; sparse residency and budgets; dedicated queues, GPU waits, and ownership; sampler feedback; work graphs; shader bundles; custom present; RDG culling/recording/extraction; and transient placement.</p>
+          <p>Known-result GPU tests include bindless/direct-heap compute, shader bundles, work graphs, mesh pixels, BLAS/TLAS hit and miss routing, local shader-table record packing, indirect rays, compacted opacity-micromap traversal, sparse-buffer commit/readback, and decoded sampler feedback. A D3D12 lifetime unit test immediately releases 256 submitted command lists and still reads the final GPU value; <code>ARDGExample.D3D12.MultiFrameLifetime</code> renders 120 hidden frames to catch frame-to-frame retirement regressions. Capability admission tests separately require every advanced desktop feature against empty and complete profiles so a missing tracker cannot silently admit a module.</p>
+          <pre><code>ctest --test-dir build-state-parity --output-on-failure -j 1 -E "^(RHITest|ARDGExample)\."</code></pre>
+          <p>Capability-dependent tests skip only when the selected adapter truthfully reports the feature unavailable. A supported feature must create native objects, execute native work, validate output or lifecycle evidence, and produce no D3D12 debug-layer or Vulkan validation error. Interactive windowed examples are excluded from the non-interactive suite.</p>
+          <aside class="callout">
+            <h3>Acceptance invariant</h3>
+            <p>Every reported graph checkpoint must have a successful query, a known facade state, a known backend state, a native-compatible encoding, and equality with the compiled RDG expected state.</p>
+          </aside>
+        </section>
+
+        <section id="summary">
+          <h2>Summary</h2>
+          <p>ArdaRHI now exposes a desktop RT/ML-first D3D12/Vulkan core: explicit resources and state, texture data movement, heaps/aliasing/sparse residency, resource collections, advanced descriptor indexing, mesh and ray pipelines, full AS lifecycle, shader tables and indirect tracing, platform-native sampler feedback or opacity micromaps, GPU queue synchronization, work graphs, shader bundles, custom present, external interop, and RDG scheduling. Correctness remains observable: every capability is probed, every unsupported requirement is traceable, and state-sensitive tests compare facade, common backend, RDG expectation, and exact native encoding.</p>
+        </section>
+
+        <section id="further-reading">
+          <h2>Further reading</h2>
+          <ul>
+            <li><a href="rhi.html">RHI resources and memory</a> &mdash; descriptor details, formats, views, ownership, and a worked resource example.</li>
+            <li><a href="commands.html">Commands</a> &mdash; recording state, hazards, synchronization, and direct/RDG execution.</li>
+            <li><a href="shaders.html">Shaders</a> and <a href="pipelines.html">pipeline states</a> &mdash; artifact identity, layouts, PSO compatibility, and caches.</li>
+            <li><a href="../ArdaRDG/index.html">ArdaRenderGraph documentation</a> &mdash; graph concepts, passes, resources, compilation, execution, and debugging.</li>
+            <li><a href="Unreal-RHI-Parity-Plan.md">Unreal RHI/RDG parity review</a> &mdash; audited comparison, implementation status, test contract, and prioritized backlog.</li>
+            <li><a href="https://microsoft.github.io/DirectX-Specs/d3d/Raytracing.html">DirectX Raytracing</a>, <a href="https://microsoft.github.io/DirectX-Specs/d3d/SamplerFeedback.html">Sampler Feedback</a>, and <a href="https://microsoft.github.io/DirectX-Specs/d3d/WorkGraphs.html">Work Graphs</a> &mdash; Microsoft native behavior used by the D3D12 backend.</li>
+            <li><a href="https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html">Vulkan specification</a> &mdash; synchronization2, descriptor indexing/heaps, sparse binding, mesh shading, ray tracing, and opacity micromap contracts used by the Vulkan backend.</li>
+          </ul>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+          <a rel="prev" href="rhi.html">&larr; Previous: RHI resources</a>
+          <a rel="next" href="commands.html">Next: Commands &rarr;</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer">
+    <p>ArdaBackend documentation &middot; Source boundary: <code>Source/ArdaBackend</code> and <code>Source/ArdaRenderGraph</code> &middot; <a href="api-reference.html">Central API reference</a></p>
+  </footer>
+</body>
+</html>

@@ -1,4 +1,7 @@
 #include "ArdaBackend.h"
+#include "ArdaBackendProvider.h"
+#include "ArdaExternalInterop.h"
+#include "ShaderStructs/ArdaGlobalShaderMap.h"
 
 #include <gtest/gtest.h>
 
@@ -53,6 +56,12 @@ namespace
                 static_cast<void>(
                     arda::backend::UnregisterExternalDeviceProvider(**It));
             }
+            // ConfigureBackend(backend/name) deliberately preserves the rest
+            // of the current configuration. Restore defaults before any
+            // stack-owned diagnostic callback or provider is destroyed so a
+            // later test cannot inherit an expired non-owning pointer.
+            static_cast<void>(arda::backend::ConfigureBackend(
+                arda::backend::FArdaBackendConfiguration{}));
         }
 
         bool Register(arda::backend::IArdaExternalDeviceProvider& Provider)
@@ -193,8 +202,10 @@ namespace
             return mDescriptor;
         }
 
-        eastl::unique_ptr<arda::backend::IArdaBackendDevice> CreateDevice(
-            arda::backend::EArdaDeviceSource) override
+        arda::backend::FArdaBackendDeviceCreateResult CreateDevice(
+            const arda::backend::FArdaBackendConfiguration&,
+            arda::backend::IArdaWindowSurface*,
+            const arda::backend::IArdaExternalDeviceProvider*) override
         {
             return {};
         }
@@ -303,7 +314,7 @@ TEST(ArdaBackend, ExternalDeviceSourceReportsMissingAndMismatchedProviders)
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureBackend(Configuration));
     EXPECT_EQ(
-        GetDeviceContext().mDeviceSource,
+        GetBackendConfiguration().mDeviceSource,
         EArdaDeviceSource::ExternalProvider);
     EXPECT_FALSE(InitializeBackend());
     EXPECT_NE(GetBackendError().find("registered provider"), eastl::string::npos);
@@ -406,22 +417,16 @@ TEST(ArdaBackend, NamedExternalResourceImportFailsCleanly)
     EXPECT_EQ(Provider.mLastTextureId, 15u);
 }
 
-TEST(ArdaBackend, ExposesProcessWideConfigurationAndContext)
+TEST(ArdaBackend, ExposesSingleProcessWideConfigurationAndDevice)
 {
     using namespace arda::backend;
 
     ShutdownBackend();
     ASSERT_TRUE(ConfigureBackend(DefaultBackend));
 
-    EXPECT_EQ(gCurrentBackend, DefaultBackend);
     EXPECT_EQ(GetBackendConfiguration().mBackend, DefaultBackend);
-    EXPECT_EQ(GetDeviceContext().mBackend, DefaultBackend);
-    EXPECT_EQ(&GetDeviceContext(), &GetDeviceContext());
     EXPECT_FALSE(IsBackendInitialized());
     EXPECT_EQ(GetDevice(), nullptr);
-    EXPECT_FALSE(GetQueueCapabilities().mbGraphics);
-    EXPECT_FALSE(GetQueueCapabilities().mbCompute);
-    EXPECT_FALSE(GetQueueCapabilities().mbCopy);
     EXPECT_STREQ(ToString(EArdaBackendType::D3D12), "D3D12");
     EXPECT_STREQ(ToString(EArdaBackendType::Vulkan), "Vulkan");
     EXPECT_STREQ(GetModuleName(), "ArdaBackend");
@@ -483,13 +488,13 @@ TEST(ArdaBackend, ValidatesAndResolvesShaderCacheConfiguration)
 
 TEST(ArdaBackend, ReportsQueueAvailabilityByArdaQueueType)
 {
-    arda::backend::FArdaQueueCapabilities Capabilities;
+    arda::rhi::FArdaRHIQueueCapabilities Capabilities;
     Capabilities.mbGraphics = true;
     Capabilities.mbCopy = true;
 
-    EXPECT_TRUE(Capabilities.IsQueueAvailable(arda::rhi::EArdaRHIQueueType::Graphics));
-    EXPECT_FALSE(Capabilities.IsQueueAvailable(arda::rhi::EArdaRHIQueueType::Compute));
-    EXPECT_TRUE(Capabilities.IsQueueAvailable(arda::rhi::EArdaRHIQueueType::Copy));
+    EXPECT_TRUE(Capabilities.IsSupported(arda::rhi::EArdaRHIQueueType::Graphics));
+    EXPECT_FALSE(Capabilities.IsSupported(arda::rhi::EArdaRHIQueueType::Compute));
+    EXPECT_TRUE(Capabilities.IsSupported(arda::rhi::EArdaRHIQueueType::Copy));
 }
 
 TEST(ArdaBackend, EmptyOpaqueDeviceReferencesAreSafe)
@@ -617,13 +622,10 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
     ASSERT_TRUE(ConfigureBackend(Configuration));
     ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
 
-    EXPECT_EQ(GetDeviceContext().mBackend, EArdaBackendType::D3D12);
+    EXPECT_EQ(GetBackendConfiguration().mBackend, EArdaBackendType::D3D12);
     EXPECT_EQ(
-        GetDeviceContext().mDeviceSource,
+        GetBackendConfiguration().mDeviceSource,
         EArdaDeviceSource::ExternalProvider);
-    EXPECT_TRUE(GetQueueCapabilities().mbGraphics);
-    EXPECT_TRUE(GetQueueCapabilities().mbCompute);
-    EXPECT_FALSE(GetQueueCapabilities().mbCopy);
 
     FArdaRHIDeviceRef Device = GetDevice();
     FArdaRHIDeviceRef SurvivingDevice = Device;
@@ -868,12 +870,14 @@ namespace
     {
         using namespace arda::rhi;
 
-        EXPECT_EQ(
-            Device.QueryWorkGraphSupport().mCode,
-            EArdaRHIResult::Unsupported);
-        EXPECT_EQ(
-            Device.QueryShaderBundleSupport().mCode,
-            EArdaRHIResult::Unsupported);
+        const auto& Capabilities = Device.GetCapabilities();
+        const bool bWorkGraphs =
+            Capabilities.mWorkGraphTier != EArdaRHIWorkGraphTier::None;
+        const bool bShaderBundles = Capabilities.mbShaderBundleDispatch;
+        EXPECT_EQ(static_cast<bool>(Device.QueryWorkGraphSupport()),
+            bWorkGraphs);
+        EXPECT_EQ(static_cast<bool>(Device.QueryShaderBundleSupport()),
+            bShaderBundles);
 
         auto Event = Device.CreateEventQuery();
         auto Timer = Device.CreateTimerQuery();
@@ -901,7 +905,6 @@ namespace
         StagingDesc.mCpuAccess = EArdaRHICpuAccess::Read;
         EXPECT_TRUE(Device.CreateStagingTexture(StagingDesc));
 
-        const auto& Capabilities = Device.GetCapabilities();
         if (Capabilities.mbHeaps)
         {
             FArdaRHIBufferDesc BufferDesc;
@@ -922,7 +925,7 @@ namespace
                 Device.BindBufferMemory(Buffer.mValue, Heap.mValue, 0));
         }
 
-        if (Capabilities.mbBindless)
+        if (Capabilities.mDescriptors.mbBindless)
         {
             FArdaRHIBindlessLayoutDesc LayoutDesc;
             LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
@@ -938,7 +941,7 @@ namespace
             EXPECT_GE(Table.mValue->GetCapacity(), 8u);
         }
 
-        if (Capabilities.mbRayTracingAccelStruct)
+        if (Capabilities.mRayTracing.mbAccelerationStructures)
         {
             FArdaRHIAccelStructDesc Desc;
             Desc.mDebugName = "EmptyTLAS";
@@ -947,10 +950,10 @@ namespace
             EXPECT_TRUE(Device.CreateAccelStruct(Desc));
         }
 
-        if (Capabilities.mbRayTracing)
+        if (Capabilities.mRayTracing.mbPipelineShaders)
         {
             const bool bD3D12 =
-                arda::backend::gCurrentBackend ==
+                arda::backend::GetBackendConfiguration().mBackend ==
                 arda::backend::EArdaBackendType::D3D12;
             const auto Bytecode = LoadTestBinary(
                 bD3D12
@@ -991,6 +994,13 @@ namespace
             PipelineDesc.mMaxPayloadSize = 4;
             PipelineDesc.mShaders.push_back(
                 { "RayGen", RayGenerationShader, {} });
+            FArdaRHIBindingLayoutDesc RayLayoutDesc;
+            RayLayoutDesc.mVisibility = EArdaRHIShaderStage::AllRayTracing;
+            RayLayoutDesc.mItems.push_back(
+                { 0, 1, EArdaRHIBindingType::StructuredBufferUAV });
+            auto RayLayout = Device.CreateBindingLayout(RayLayoutDesc);
+            ASSERT_TRUE(RayLayout);
+            PipelineDesc.mGlobalBindingLayouts.push_back(RayLayout.mValue);
             const auto SameKeyDifferentLabel = [&PipelineDesc]()
             {
                 auto Copy = PipelineDesc;
@@ -1047,22 +1057,17 @@ namespace
 
         EXPECT_TRUE(IsBackendInitialized());
         EXPECT_NE(GetDevice(), nullptr);
-        EXPECT_NE(GetDeviceContext().mDevice, nullptr);
-        EXPECT_EQ(GetDeviceContext().mBackend, Backend);
-        EXPECT_EQ(gCurrentBackend, Backend);
+        EXPECT_EQ(GetBackendConfiguration().mBackend, Backend);
 
         arda::rhi::FArdaRHIDeviceRef Device = GetDevice();
-        const auto& Capabilities = GetQueueCapabilities();
-        EXPECT_EQ(
-            &Capabilities,
-            &GetDeviceContext().mQueueCapabilities);
+        const auto& Capabilities = Device->GetCapabilities().mQueues;
         EXPECT_TRUE(Capabilities.mbGraphics);
         EXPECT_EQ(
             Capabilities.mbCompute,
-            Device->GetCapabilities().mbComputeQueue);
+            Device->GetCapabilities().mQueues.mbCompute);
         EXPECT_EQ(
             Capabilities.mbCopy,
-            Device->GetCapabilities().mbCopyQueue);
+            Device->GetCapabilities().mQueues.mbCopy);
         if (bRequireComputeAndCopy)
         {
             EXPECT_TRUE(Capabilities.mbCompute);
@@ -1079,7 +1084,7 @@ namespace
         };
         for (const arda::rhi::EArdaRHIQueueType Queue : Queues)
         {
-            if (!Capabilities.IsQueueAvailable(Queue))
+            if (!Capabilities.IsSupported(Queue))
             {
                 continue;
             }
@@ -1101,13 +1106,11 @@ namespace
 
         ShutdownBackend();
         EXPECT_TRUE(SharedDevice);
-        EXPECT_TRUE(SharedDevice->GetCapabilities().mbGraphicsQueue);
+        EXPECT_TRUE(SharedDevice->GetCapabilities().mQueues.mbGraphics);
         arda::rhi::FArdaRHISamplerDesc PostShutdownSampler;
         EXPECT_TRUE(SharedDevice->CreateSampler(PostShutdownSampler));
         EXPECT_FALSE(IsBackendInitialized());
-        EXPECT_FALSE(GetQueueCapabilities().mbGraphics);
-        EXPECT_FALSE(GetQueueCapabilities().mbCompute);
-        EXPECT_FALSE(GetQueueCapabilities().mbCopy);
+        EXPECT_EQ(GetDevice(), nullptr);
     }
 }
 

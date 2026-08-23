@@ -1,9 +1,9 @@
-/** @file ArdaNativePipelineCache.h
- * Shared, provider-owned persistence helpers for native pipeline caches.
+/** @file RHI/ArdaRHIProviderPipelineCache.h
+ * Shared provider-contract persistence helpers implemented by ArdaBackend.
  */
 #pragma once
 
-#include "ArdaDevice.h"
+#include "ArdaBackend.h"
 
 #include <EASTL/string.h>
 
@@ -15,7 +15,7 @@ namespace arda::backend
     class IArdaDiagnosticCallback;
 }
 
-namespace arda::rhi::native::pipeline_cache
+namespace arda::rhi::provider::pipeline_cache
 {
     inline constexpr uint64_t MaxPayloadSize = 256ull * 1024ull * 1024ull;
 

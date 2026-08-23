@@ -49,6 +49,7 @@ namespace arda::rhi
     class IArdaRHIBindingSet;
     /** Forward declaration of descriptor table. */
     class IArdaRHIDescriptorTable;
+    class IArdaRHIResourceCollection;
     /** Forward declaration of framebuffer. */
     class IArdaRHIFramebuffer;
     /** Forward declaration of graphics pipeline. */
@@ -63,6 +64,8 @@ namespace arda::rhi
     class IArdaRHIRayTracingPipeline;
     /** Forward declaration of shader table. */
     class IArdaRHIShaderTable;
+    class IArdaRHIWorkGraphPipeline;
+    class IArdaRHIShaderBundle;
     /** Forward declaration of sampler feedback texture. */
     class IArdaRHISamplerFeedbackTexture;
     /** Forward declaration of opacity micromap. */
@@ -76,6 +79,8 @@ namespace arda::rhi
     /** Forward declaration of command list. */
     class IArdaRHICommandList;
 
+    /** Intrusive owning reference to device. */
+    using FArdaRHIResourceRef = TArdaRHIRef<IArdaRHIResource>;
     /** Intrusive owning reference to device. */
     using FArdaRHIDeviceRef = TArdaRHIRef<IArdaRHIDevice>;
     /** Intrusive owning reference to texture. */
@@ -114,6 +119,8 @@ namespace arda::rhi
     using FArdaRHIBindingSetRef = TArdaRHIRef<IArdaRHIBindingSet>;
     /** Intrusive owning reference to descriptor table. */
     using FArdaRHIDescriptorTableRef = TArdaRHIRef<IArdaRHIDescriptorTable>;
+    /** Intrusive owning reference to a general resource collection. */
+    using FArdaRHIResourceCollectionRef = TArdaRHIRef<IArdaRHIResourceCollection>;
     /** Intrusive owning reference to framebuffer. */
     using FArdaRHIFramebufferRef = TArdaRHIRef<IArdaRHIFramebuffer>;
     /** Intrusive owning reference to graphics pipeline. */
@@ -128,6 +135,10 @@ namespace arda::rhi
     using FArdaRHIRayTracingPipelineRef = TArdaRHIRef<IArdaRHIRayTracingPipeline>;
     /** Intrusive owning reference to shader table. */
     using FArdaRHIShaderTableRef = TArdaRHIRef<IArdaRHIShaderTable>;
+    /** Intrusive owning reference to a work-graph pipeline. */
+    using FArdaRHIWorkGraphPipelineRef = TArdaRHIRef<IArdaRHIWorkGraphPipeline>;
+    /** Intrusive owning reference to a shader bundle. */
+    using FArdaRHIShaderBundleRef = TArdaRHIRef<IArdaRHIShaderBundle>;
     /** Intrusive owning reference to sampler feedback texture. */
     using FArdaRHISamplerFeedbackTextureRef = TArdaRHIRef<IArdaRHISamplerFeedbackTexture>;
     /** Intrusive owning reference to opacity micromap. */

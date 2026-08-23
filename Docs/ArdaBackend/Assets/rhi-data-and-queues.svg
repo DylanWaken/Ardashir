@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="670" viewBox="0 0 960 670" role="img" aria-labelledby="data-title data-desc">
+  <title id="data-title">ArdaRHI data movement, indirect work, and queue submission</title>
+  <desc id="data-desc">CPU data moves through upload or staging resources into GPU textures and buffers, while readback reverses that flow. Command lists target graphics, compute, or copy queues. Queue dependencies and submitted-state validation preserve ordering.</desc>
+  <defs>
+    <marker id="data-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0 L10 4 L0 8 Z" fill="#7dd3fc"/></marker>
+    <style>
+      .bg{fill:#0b1220}.panel{fill:#101a2c;stroke:#52647d;stroke-width:1.5}.cpu{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.copy{fill:#183b4a;stroke:#38bdf8;stroke-width:2}.compute{fill:#214b45;stroke:#34d399;stroke-width:2}.graphics{fill:#493720;stroke:#fbbf24;stroke-width:2}.sync{fill:#3a294d;stroke:#c084fc;stroke-width:2}.title{font:700 26px system-ui,sans-serif;fill:#eef6ff}.sub{font:14px system-ui,sans-serif;fill:#b9c8db}.label{font:700 15px system-ui,sans-serif;fill:#eef6ff;text-anchor:middle}.small{font:12px system-ui,sans-serif;fill:#c5d2e3;text-anchor:middle}.tiny{font:11px system-ui,sans-serif;fill:#aebdd0;text-anchor:middle}.flow{fill:none;stroke:#7dd3fc;stroke-width:2.3;marker-end:url(#data-arrow)}.wait{fill:none;stroke:#c084fc;stroke-width:2.3;stroke-dasharray:7 5;marker-end:url(#data-arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="960" height="670"/>
+  <text class="title" x="32" y="44">Data movement and work submission use the same state contract</text>
+  <text class="sub" x="32" y="70">Copy, resolve, staging, and indirect commands validate ranges, usage, state, and queue compatibility.</text>
+
+  <rect class="panel" x="32" y="98" width="896" height="218" rx="12"/>
+  <text class="label" x="480" y="128">Upload, copy, resolve, and readback</text>
+  <rect class="cpu" x="58" y="158" width="150" height="58" rx="9"/><text class="label" x="133" y="184">CPU bytes</text><text class="tiny" x="133" y="203">row/depth pitch</text>
+  <path class="flow" d="M208 187 H266"/>
+  <rect class="copy" x="268" y="148" width="174" height="78" rx="9"/><text class="label" x="355" y="176">Upload / staging</text><text class="tiny" x="355" y="197">map → write → unmap</text><text class="tiny" x="355" y="214">CopyDest source path</text>
+  <path class="flow" d="M442 187 H500"/>
+  <rect class="compute" x="502" y="148" width="174" height="78" rx="9"/><text class="label" x="589" y="176">GPU resource</text><text class="tiny" x="589" y="197">buffer or texture slice</text><text class="tiny" x="589" y="214">placed or committed</text>
+  <path class="flow" d="M676 187 H734"/>
+  <rect class="graphics" x="736" y="148" width="166" height="78" rx="9"/><text class="label" x="819" y="176">GPU use</text><text class="tiny" x="819" y="197">draw · dispatch</text><text class="tiny" x="819" y="214">indirect arguments</text>
+  <path class="flow" d="M589 226 V264 H355 V226"/>
+  <text class="tiny" x="472" y="284">texture/buffer readback reverses the staging path</text>
+  <path class="flow" d="M589 148 V120 H819 V148"/>
+  <text class="tiny" x="704" y="114">MSAA ResolveSource → ResolveDest</text>
+
+  <rect class="panel" x="32" y="340" width="896" height="292" rx="12"/>
+  <text class="label" x="480" y="370">Command lists, queues, and submitted state</text>
+  <rect class="copy" x="66" y="402" width="204" height="66" rx="10"/><text class="label" x="168" y="429">Copy command list</text><text class="tiny" x="168" y="450">copy/resolve/staging</text>
+  <rect class="compute" x="66" y="486" width="204" height="66" rx="10"/><text class="label" x="168" y="513">Compute command list</text><text class="tiny" x="168" y="534">dispatch / indirect</text>
+  <rect class="graphics" x="66" y="570" width="204" height="42" rx="10"/><text class="label" x="168" y="596">Graphics command list</text>
+  <path class="flow" d="M270 435 H368"/><path class="flow" d="M270 519 H368"/><path class="flow" d="M270 591 H368"/>
+  <rect class="copy" x="370" y="402" width="176" height="66" rx="10"/><text class="label" x="458" y="429">Copy queue</text><text class="tiny" x="458" y="450">instance C</text>
+  <rect class="compute" x="370" y="486" width="176" height="66" rx="10"/><text class="label" x="458" y="513">Compute queue</text><text class="tiny" x="458" y="534">instance K</text>
+  <rect class="graphics" x="370" y="570" width="176" height="42" rx="10"/><text class="label" x="458" y="596">Graphics queue</text>
+  <path class="wait" d="M546 435 C612 435 584 519 650 519"/><text class="tiny" x="603" y="468">QueueWait</text>
+  <path class="wait" d="M546 519 C612 519 584 591 650 591"/><text class="tiny" x="603" y="552">QueueWait</text>
+  <rect class="sync" x="652" y="402" width="238" height="210" rx="10"/>
+  <text class="label" x="771" y="430">Submission gate</text>
+  <text class="small" x="771" y="458">1 · compare declared start</text><text class="small" x="771" y="480">with submitted state</text>
+  <text class="small" x="771" y="512">2 · execute native lists</text>
+  <text class="small" x="771" y="544">3 · publish terminal state</text>
+  <text class="small" x="771" y="576">4 · retire retained resources</text>
+  <text class="tiny" x="480" y="654">D3D12 exposes direct/compute/copy queues; Vulkan advertises auxiliary same-family queues only when distinct handles are available.</text>
+</svg>

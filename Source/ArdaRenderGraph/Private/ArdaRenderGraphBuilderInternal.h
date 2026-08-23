@@ -71,6 +71,9 @@ namespace arda::render_graph
         /** Build-order buffer extraction requests; output pointers remain caller-owned through execution. */
         eastl::vector<FARDGBufferExtraction> mBufferExtractions;
 
+        /** Build-order acceleration-structure extraction requests. */
+        eastl::vector<FARDGAccelStructExtraction> mAccelStructExtractions;
+
         /** Graph-scoped typed data store, mutable only while building and retained through execution. */
         FARDGBlackboard mBlackboard;
 

@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#include "ArdaDevice.h"
+#include "ArdaBackend.h"
 #include "ShaderStructs/ArdaShaderType.h"
 
 #include <EASTL/string.h>
@@ -120,19 +120,19 @@ namespace arda::backend
          *
          * The same context/path is idempotent and pointer-stable. A successful
          * map must be explicitly Reset before changing either input.
-         * @param DeviceContext Device and backend used to create shaders.
+         * @param Device Device used to create shaders. The configured backend is authoritative.
          * @param ShaderDirectory Directory containing compiled shader artifacts.
          * @return True when all global shaders were initialized successfully.
          */
         [[nodiscard]] bool Initialize(
-            const FArdaDeviceContext& DeviceContext,
+            rhi::FArdaRHIDeviceRef Device,
             const std::filesystem::path& ShaderDirectory);
         /**
          * Initializes using the configured persistent backend shader cache.
-         * @param DeviceContext Device and backend used to create shaders.
+         * @param Device Device used to create shaders.
          * @return True when registration and policy-specific initialization succeed.
          */
-        [[nodiscard]] bool Initialize(const FArdaDeviceContext& DeviceContext);
+        [[nodiscard]] bool Initialize(rhi::FArdaRHIDeviceRef Device);
 
         /** @return True when the map contains initialized global shaders. */
         [[nodiscard]] bool IsInitialized() const noexcept;

@@ -121,6 +121,7 @@ namespace arda::backend
             if (Stage == StageType::Domain) return "ds_6_0";
             if (Stage == StageType::Amplification) return "as_6_5";
             if (Stage == StageType::Mesh) return "ms_6_5";
+            if (Stage == StageType::WorkGraph) return "lib_6_8";
             if (IsRayStage(Stage)) return "lib_6_3";
             return {};
         }
@@ -636,7 +637,8 @@ namespace arda::backend
             Job.mArguments.push_back("-nologo");
             Job.mArguments.push_back("-T");
             Job.mArguments.push_back(Job.mProfile);
-            if (Job.mProfile != "lib_6_3" && Type.GetEntryPoint()[0] != '\0')
+            if (Job.mProfile.rfind("lib_", 0) != 0 &&
+                Type.GetEntryPoint()[0] != '\0')
             {
                 Job.mArguments.push_back("-E");
                 Job.mArguments.push_back(Type.GetEntryPoint());

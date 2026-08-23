@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#include "RHIWrappers/ArdaRHIDevice.h"
+#include "RHI/ArdaRHIDevice.h"
 
 #include <EASTL/array.h>
 #include <EASTL/string.h>

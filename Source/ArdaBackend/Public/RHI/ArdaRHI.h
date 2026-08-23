@@ -1,5 +1,5 @@
 /** @file ArdaRHI.h
- * Provides the umbrella include for the complete backend-neutral RHI wrapper API.
+ * Provides the umbrella include for the complete backend-neutral RHI API.
  */
 
 #pragma once

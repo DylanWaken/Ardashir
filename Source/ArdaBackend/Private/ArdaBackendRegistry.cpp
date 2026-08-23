@@ -16,7 +16,6 @@ namespace arda::backend
     {
         struct FArdaBackendModuleEntry
         {
-            FArdaBackendModuleDescriptor mDescriptor;
             IArdaBackendModule* mModule = nullptr;
         };
 
@@ -55,7 +54,7 @@ namespace arda::backend
         std::lock_guard<std::mutex> Lock(Registry.mMutex);
         for (const FArdaBackendModuleEntry& Entry : Registry.mEntries)
         {
-            if (Entry.mDescriptor.mName != Descriptor.mName)
+            if (Entry.mModule->GetDescriptor().mName != Descriptor.mName)
             {
                 continue;
             }
@@ -66,13 +65,14 @@ namespace arda::backend
             return false;
         }
 
-        Registry.mEntries.push_back({ Descriptor, &Module });
+        Registry.mEntries.push_back({ &Module });
         eastl::sort(
             Registry.mEntries.begin(),
             Registry.mEntries.end(),
             [](const FArdaBackendModuleEntry& Left, const FArdaBackendModuleEntry& Right)
             {
-                return Left.mDescriptor.mName < Right.mDescriptor.mName;
+                return Left.mModule->GetDescriptor().mName <
+                    Right.mModule->GetDescriptor().mName;
             });
         return true;
     }
@@ -107,7 +107,7 @@ namespace arda::backend
         std::lock_guard<std::mutex> Lock(Registry.mMutex);
         for (const FArdaBackendModuleEntry& Entry : Registry.mEntries)
         {
-            if (Entry.mDescriptor.mName == Name)
+            if (Entry.mModule->GetDescriptor().mName == Name)
             {
                 return Entry.mModule;
             }
@@ -124,11 +124,13 @@ namespace arda::backend
         int32_t BestPriority = std::numeric_limits<int32_t>::min();
         for (const FArdaBackendModuleEntry& Entry : Registry.mEntries)
         {
-            if (Entry.mDescriptor.mBackendType == BackendType &&
-                Entry.mDescriptor.mPriority > BestPriority)
+            const FArdaBackendModuleDescriptor& Descriptor =
+                Entry.mModule->GetDescriptor();
+            if (Descriptor.mBackendType == BackendType &&
+                Descriptor.mPriority > BestPriority)
             {
                 BestModule = Entry.mModule;
-                BestPriority = Entry.mDescriptor.mPriority;
+                BestPriority = Descriptor.mPriority;
             }
         }
         return BestModule;
@@ -176,7 +178,7 @@ namespace arda::backend
         Result.reserve(Registry.mEntries.size());
         for (const FArdaBackendModuleEntry& Entry : Registry.mEntries)
         {
-            Result.push_back(Entry.mDescriptor);
+            Result.push_back(Entry.mModule->GetDescriptor());
         }
         return Result;
     }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ArdaBackend.h"
+#include "ArdaSwapChain.h"
 #include "ArdaRenderGraph.h"
 #include "PipelineStateCache/ArdaPipelineStateCache.h"
 
@@ -14,7 +15,7 @@ namespace arda::tests::ardg_example
     {
     public:
         bool Initialize(
-            const backend::FArdaDeviceContext& deviceContext,
+            rhi::FArdaRHIDeviceRef device,
             rhi::EArdaRHIFormat swapChainFormat);
         void UpdateCamera(
             float forward,
@@ -27,8 +28,7 @@ namespace arda::tests::ardg_example
         [[nodiscard]] const eastl::string& GetError() const { return mError; }
 
     private:
-        bool CreateShadersAndInitializers(
-            const backend::FArdaDeviceContext& deviceContext);
+        bool CreateShadersAndInitializers();
         bool CreateSettingsUploadBuffer();
         bool CreateCameraResources();
 
@@ -36,7 +36,6 @@ namespace arda::tests::ardg_example
         CreateGraphContext() const;
 
         rhi::FArdaRHIDeviceRef mDevice;
-        render_graph::FARDGQueueCapabilities mQueueCapabilities;
         backend::FArdaGlobalShaderMap mShaderMap;
         std::unique_ptr<backend::FArdaPipelineStateCache> mPipelineStateCache;
         const backend::FArdaGlobalShaderInstance* mGenerateShader = nullptr;

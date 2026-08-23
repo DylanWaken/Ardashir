@@ -619,6 +619,25 @@ namespace arda::render_graph
                     "A render-graph buffer extraction is invalid or duplicated.");
             }
         }
+        eastl::unordered_set<uint32_t> ExtractedAccelStructs;
+        eastl::unordered_set<const void*> AccelStructOutputs;
+        for (const FARDGAccelStructExtraction& Extraction :
+             Graph.mAccelStructExtractions)
+        {
+            if (Extraction.mAccelStruct == nullptr ||
+                Extraction.mOutput == nullptr ||
+                Graph.mAccelStructs.TryGet(
+                    Extraction.mAccelStruct->GetHandle()) !=
+                    Extraction.mAccelStruct ||
+                !Extraction.mAccelStruct->IsExtracted() ||
+                !ExtractedAccelStructs.insert(
+                    Extraction.mAccelStruct->GetHandle().GetIndex()).second ||
+                !AccelStructOutputs.insert(Extraction.mOutput).second)
+            {
+                ARDA_CHECK_MSG(
+                    "A render-graph acceleration-structure extraction is invalid or duplicated.");
+            }
+        }
 
         ValidateProducedBeforeRead(Graph);
     }
@@ -841,7 +860,7 @@ namespace arda::render_graph
         for (const FARDGAccelStruct* AccelStruct :
              Graph.mAccelStructs.GetEntries())
         {
-            if (!AccelStruct->IsExternal() ||
+            if ((!AccelStruct->IsExternal() && !AccelStruct->IsExtracted()) ||
                 !AccelStruct->GetFirstUse().IsValid()) continue;
             if (AccelStructStates[AccelStruct->GetHandle().GetIndex()] !=
                 AccelStruct->GetFinalState())

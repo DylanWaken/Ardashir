@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="600" viewBox="0 0 1240 600" role="img" aria-labelledby="title desc">
+  <title id="title">ARDG cross-queue resource handoff</title>
+  <desc id="desc">An unordered-access buffer leaves async compute through Common state, is ordered with a GPU semaphore or fence wait, is acquired by the copy queue, and enters CopySource. Facade, backend, and native states are checked at release and acquire.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#93c5fd"/></marker>
+    <marker id="wait" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#fbbf24"/></marker>
+    <style>.lane{fill:#101a2c;stroke:#42536b;stroke-width:2}.compute{fill:#173f3a;stroke:#34d399;stroke-width:2}.copy{fill:#352546;stroke:#c084fc;stroke-width:2}.state{fill:#1d2c43;stroke:#93c5fd;stroke-width:2}.check{fill:#1d382c;stroke:#4ade80;stroke-width:2}.note{fill:#3b3020;stroke:#fbbf24;stroke-width:2}.h1{font:700 29px system-ui,sans-serif;fill:#eef6ff}.h2{font:700 18px system-ui,sans-serif;fill:#eef6ff}.t{font:14px system-ui,sans-serif;fill:#c5d2e3}.s{font:12px system-ui,sans-serif;fill:#aebdd0}.flow{fill:none;stroke:#93c5fd;stroke-width:3;marker-end:url(#arrow)}.sync{fill:none;stroke:#fbbf24;stroke-width:3;stroke-dasharray:8 6;marker-end:url(#wait)}</style>
+  </defs>
+  <rect width="1240" height="600" rx="24" fill="url(#bg)"/>
+  <text x="42" y="50" class="h1">Portable async-compute → copy-queue handoff</text>
+  <text x="42" y="77" class="t">Physical replay inserts a legal state boundary and ownership transfer around the existing GPU dependency.</text>
+
+  <rect x="42" y="105" width="1156" height="155" rx="17" class="lane"/>
+  <text x="66" y="137" class="h2">Producer: async compute queue</text>
+  <rect x="72" y="168" width="210" height="62" rx="10" class="compute"/><text x="177" y="194" class="h2" text-anchor="middle">Triangulate</text><text x="177" y="216" class="s" text-anchor="middle">state: UnorderedAccess</text>
+  <path d="M282 199H352" class="flow"/>
+  <rect x="362" y="168" width="214" height="62" rx="10" class="state"/><text x="469" y="194" class="h2" text-anchor="middle">Release boundary</text><text x="469" y="216" class="s" text-anchor="middle">UAV → Common</text>
+  <path d="M576 199H646" class="flow"/>
+  <rect x="656" y="157" width="270" height="84" rx="10" class="check"/><text x="791" y="184" class="h2" text-anchor="middle">QueueRelease checkpoint</text><text x="791" y="207" class="s" text-anchor="middle">RDG = facade = backend = native</text><text x="791" y="225" class="s" text-anchor="middle">state: Common</text>
+
+  <path d="M926 199C1030 199 1030 324 926 324" class="sync"/>
+  <rect x="972" y="250" width="195" height="54" rx="10" class="note"/><text x="1069" y="273" class="h2" text-anchor="middle">GPU queue wait</text><text x="1069" y="293" class="s" text-anchor="middle">fence / timeline semaphore</text>
+
+  <rect x="42" y="284" width="1156" height="155" rx="17" class="lane"/>
+  <text x="66" y="316" class="h2">Consumer: dedicated copy queue</text>
+  <rect x="656" y="346" width="270" height="64" rx="10" class="check"/><text x="791" y="372" class="h2" text-anchor="middle">QueueAcquire checkpoint</text><text x="791" y="394" class="s" text-anchor="middle">state remains Common</text>
+  <path d="M656 378H586" class="flow"/>
+  <rect x="362" y="346" width="214" height="64" rx="10" class="state"/><text x="469" y="372" class="h2" text-anchor="middle">Consumer transition</text><text x="469" y="394" class="s" text-anchor="middle">Common → CopySource</text>
+  <path d="M362 378H292" class="flow"/>
+  <rect x="72" y="346" width="210" height="64" rx="10" class="copy"/><text x="177" y="372" class="h2" text-anchor="middle">Readback copy</text><text x="177" y="394" class="s" text-anchor="middle">state: CopySource</text>
+
+  <rect x="42" y="469" width="554" height="88" rx="12" class="state"/><text x="64" y="497" class="h2">D3D12 lowering</text><text x="64" y="522" class="t">Common keeps copy-list barriers legal; the fence wait orders engines.</text><text x="64" y="544" class="s">No UAV state is presented as a copy-queue barrier before-state.</text>
+  <rect x="620" y="469" width="578" height="88" rx="12" class="state"/><text x="642" y="497" class="h2">Vulkan lowering</text><text x="642" y="522" class="t">The same boundary carries a paired family release/acquire when needed.</text><text x="642" y="544" class="s">Shared-family queues retain the state transitions without a family move.</text>
+</svg>

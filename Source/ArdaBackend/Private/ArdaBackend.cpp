@@ -2,11 +2,12 @@
 
 #include "ArdaBackend.h"
 #include "ArdaBackendRegistry.h"
+#include "ArdaExternalInterop.h"
 #include "ArdaLinkedBackends.h"
+#include "ArdaSwapChain.h"
+#include "RHI/ArdaRHIDevicePrivate.h"
 #include "ShaderStructs/ArdaShaderCompiler.h"
 #include "ShaderStructs/ArdaShaderDirectoriesPrivate.h"
-
-#include <atomic>
 
 namespace arda::backend
 {
@@ -55,19 +56,15 @@ namespace arda::backend
             }
         };
 
-        EArdaBackendType currentBackend = DefaultBackend;
-
         struct FArdaBackendState
         {
             std::mutex mMutex;
             FArdaBackendConfiguration mConfiguration;
-            FArdaDeviceContext mContext;
             FArdaDefaultMessageCallback mDefaultMessageCallback;
             eastl::unique_ptr<IArdaBackendDevice> mBackendDevice;
-            IArdaBackendModule* mBackendModule = nullptr;
+            rhi::FArdaRHIDeviceRef mDevice;
             IArdaExternalDeviceProvider* mExternalDeviceProvider = nullptr;
             eastl::string mError;
-            std::atomic_bool mbInitialized{ false };
         };
 
         FArdaBackendState& GetState()
@@ -76,15 +73,17 @@ namespace arda::backend
             return state;
         }
 
-        bool ResolveAndValidateRuntimeConfiguration(
+        bool ResolveConfiguration(
             FArdaBackendState& State,
-            FArdaBackendConfiguration& Configuration)
+            FArdaBackendConfiguration& Configuration,
+            IArdaBackendModule*& OutModule,
+            bool bValidateRuntimeProvider)
         {
             private_api::RegisterLinkedBackendModules();
-            IArdaBackendModule* Module = Configuration.mBackendName.empty()
+            OutModule = Configuration.mBackendName.empty()
                 ? FindDefaultBackendModule(Configuration.mBackend)
                 : FindBackendModule(Configuration.mBackendName.c_str());
-            if (!Module)
+            if (!OutModule)
             {
                 State.mError = Configuration.mBackendName.empty()
                     ? "No linked backend module supports the configured graphics API."
@@ -92,14 +91,7 @@ namespace arda::backend
                 return false;
             }
             const FArdaBackendModuleDescriptor& ModuleDescriptor =
-                Module->GetDescriptor();
-            if (!Configuration.mBackendName.empty() &&
-                ModuleDescriptor.mBackendType != Configuration.mBackend)
-            {
-                State.mError =
-                    "The configured module name and graphics API compatibility class disagree.";
-                return false;
-            }
+                OutModule->GetDescriptor();
             Configuration.mBackendName = ModuleDescriptor.mName;
             Configuration.mBackend = ModuleDescriptor.mBackendType;
             const bool bExternal = Configuration.mDeviceSource ==
@@ -112,7 +104,6 @@ namespace arda::backend
                     : "The configured backend module cannot create an owned device.";
                 return false;
             }
-            State.mBackendModule = Module;
             if (Configuration.mShaderCacheDirectory.empty())
             {
                 State.mError = "The shader cache directory must not be empty.";
@@ -149,7 +140,8 @@ namespace arda::backend
                     return false;
                 }
             }
-            if (Configuration.mDeviceSource == EArdaDeviceSource::ExternalProvider)
+            if (bValidateRuntimeProvider &&
+                Configuration.mDeviceSource == EArdaDeviceSource::ExternalProvider)
             {
                 if (!State.mExternalDeviceProvider)
                 {
@@ -177,65 +169,42 @@ namespace arda::backend
             return true;
         }
 
-        bool CreateConfiguredDevice(
+        EArdaInitializeResult CreateConfiguredDevice(
             FArdaBackendState& State,
-            const FArdaBackendConfiguration& Configuration)
+            const FArdaBackendConfiguration& Configuration,
+            IArdaBackendModule& Module,
+            IArdaWindowSurface* WindowSurface)
         {
-            if (Configuration.mDeviceSource == EArdaDeviceSource::ExternalProvider)
+            const IArdaExternalDeviceProvider* ExternalProvider =
+                Configuration.mDeviceSource == EArdaDeviceSource::ExternalProvider
+                ? State.mExternalDeviceProvider
+                : nullptr;
+            FArdaBackendDeviceCreateResult Result = Module.CreateDevice(
+                Configuration, WindowSurface, ExternalProvider);
+            if (!Result)
             {
-                if (!State.mExternalDeviceProvider)
-                {
-                    State.mError =
-                        "ExternalProvider device source requires a registered provider.";
-                    return false;
-                }
-                if (State.mExternalDeviceProvider->GetBackendType() !=
-                    Configuration.mBackend)
-                {
-                    State.mError =
-                        "The external device provider backend does not match the configuration.";
-                    return false;
-                }
-                const char* ProviderBackendName =
-                    State.mExternalDeviceProvider->GetBackendName();
-                if (ProviderBackendName && ProviderBackendName[0] &&
-                    Configuration.mBackendName != ProviderBackendName)
-                {
-                    State.mError =
-                        "The external device provider requires a different backend module.";
-                    return false;
-                }
+                State.mError = eastl::move(Result.mError);
+                if (State.mError.empty())
+                    State.mError = "The selected backend module failed to create a device.";
+                return Result.mResult;
             }
-            if (!State.mBackendModule)
+            State.mDevice = rhi::provider::CreateArdaRHIDevice(
+                eastl::move(Result.mProviderDevice));
+            if (!State.mDevice)
             {
-                State.mError = "No backend module was selected.";
-                return false;
+                State.mError =
+                    "The backend module returned an invalid RHI provider device.";
+                return EArdaInitializeResult::Failure;
             }
-            State.mBackendDevice = State.mBackendModule->CreateDevice(
-                Configuration.mDeviceSource);
-
-            if (!State.mBackendDevice)
-            {
-                State.mError = "The selected backend module failed to allocate a device implementation.";
-                return false;
-            }
-
-            return true;
+            State.mBackendDevice = eastl::move(Result.mBackendDevice);
+            return EArdaInitializeResult::Success;
         }
 
         void PublishInitializedDevice(
             FArdaBackendState& State,
-            const FArdaBackendConfiguration& Configuration)
+            IArdaBackendModule& Module)
         {
-            State.mContext.mDevice = State.mBackendDevice->GetDevice();
-            State.mContext.mBackendName = Configuration.mBackendName;
-            State.mContext.mBackend = Configuration.mBackend;
-            State.mContext.mDeviceSource = Configuration.mDeviceSource;
-            State.mContext.mQueueCapabilities =
-                State.mBackendDevice->GetQueueCapabilities();
-            currentBackend = Configuration.mBackend;
-            State.mbInitialized.store(true, std::memory_order_release);
-            private_api::SetActiveBackendModule(State.mBackendModule);
+            private_api::SetActiveBackendModule(&Module);
             State.mError.clear();
         }
 
@@ -297,22 +266,28 @@ namespace arda::backend
             }
             return false;
         }
-    }
 
-    const EArdaBackendType& gCurrentBackend = currentBackend;
-
-    bool FArdaQueueCapabilities::IsQueueAvailable(rhi::EArdaRHIQueueType Queue) const noexcept
-    {
-        switch (Queue)
+        bool PrepareInitialization(
+            FArdaBackendState& State,
+            FArdaBackendConfiguration& RuntimeConfiguration,
+            IArdaBackendModule*& OutModule)
         {
-        case rhi::EArdaRHIQueueType::Graphics:
-            return mbGraphics;
-        case rhi::EArdaRHIQueueType::Compute:
-            return mbCompute;
-        case rhi::EArdaRHIQueueType::Copy:
-            return mbCopy;
+            if (!ResolveConfiguration(
+                    State, RuntimeConfiguration, OutModule, true))
+                return false;
+            State.mConfiguration = RuntimeConfiguration;
+            if (!RuntimeConfiguration.mMessageCallback)
+                RuntimeConfiguration.mMessageCallback = &State.mDefaultMessageCallback;
+            if (!BeginShaderDirectoryUse(State))
+                return false;
+            if (!FreezeAndValidateShaderSources(State) ||
+                !EnsureStartupShaders(State, RuntimeConfiguration))
+            {
+                private_api::CompleteShaderDirectoryRegistryUse(false);
+                return false;
+            }
+            return true;
         }
-        return false;
     }
 
     bool ConfigureBackend(const FArdaBackendConfiguration& configuration)
@@ -325,80 +300,12 @@ namespace arda::backend
             return false;
         }
 
-        private_api::RegisterLinkedBackendModules();
-        FArdaBackendConfiguration selectedConfiguration = configuration;
-        if (!configuration.mBackendName.empty())
-        {
-            IArdaBackendModule* Module = FindBackendModule(
-                configuration.mBackendName.c_str());
-            if (!Module)
-            {
-                state.mError = "The requested backend module is not registered.";
-                return false;
-            }
-            selectedConfiguration.mBackend = Module->GetDescriptor().mBackendType;
-        }
-
-        if (configuration.mShaderCacheDirectory.empty())
-        {
-            state.mError = "The shader cache directory must not be empty.";
+        FArdaBackendConfiguration resolvedConfiguration = configuration;
+        IArdaBackendModule* Module = nullptr;
+        if (!ResolveConfiguration(
+                state, resolvedConfiguration, Module, false))
             return false;
-        }
-        std::error_code PathError;
-        FArdaBackendConfiguration resolvedConfiguration = selectedConfiguration;
-        resolvedConfiguration.mShaderCacheDirectory =
-            std::filesystem::absolute(
-                configuration.mShaderCacheDirectory,
-                PathError).lexically_normal();
-        if (PathError || resolvedConfiguration.mShaderCacheDirectory.empty())
-        {
-            state.mError =
-                "The shader cache directory could not be resolved to an absolute path.";
-            return false;
-        }
-        if (!configuration.mPipelineCacheDirectory.empty())
-        {
-            PathError.clear();
-            resolvedConfiguration.mPipelineCacheDirectory =
-                std::filesystem::absolute(
-                    configuration.mPipelineCacheDirectory,
-                    PathError).lexically_normal();
-            if (PathError || resolvedConfiguration.mPipelineCacheDirectory.empty())
-            {
-                state.mError =
-                    "The pipeline cache directory could not be resolved to an absolute path.";
-                return false;
-            }
-            PathError.clear();
-            const bool bPipelineCachePathExists = std::filesystem::exists(
-                resolvedConfiguration.mPipelineCacheDirectory, PathError);
-            if (PathError)
-            {
-                state.mError =
-                    "The pipeline cache directory could not be inspected.";
-                return false;
-            }
-            if (bPipelineCachePathExists &&
-                !std::filesystem::is_directory(
-                    resolvedConfiguration.mPipelineCacheDirectory, PathError))
-            {
-                state.mError =
-                    "The pipeline cache path exists but is not a directory.";
-                return false;
-            }
-            if (PathError)
-            {
-                state.mError =
-                    "The pipeline cache directory could not be inspected.";
-                return false;
-            }
-        }
-
         state.mConfiguration = resolvedConfiguration;
-        state.mContext.mBackend = resolvedConfiguration.mBackend;
-        state.mContext.mBackendName = resolvedConfiguration.mBackendName;
-        state.mContext.mDeviceSource = configuration.mDeviceSource;
-        currentBackend = resolvedConfiguration.mBackend;
         state.mError.clear();
         return true;
     }
@@ -433,53 +340,21 @@ namespace arda::backend
         auto& state = GetState();
         std::lock_guard<std::mutex> lock(state.mMutex);
         if (state.mBackendDevice)
-        {
-            return state.mContext.mDevice != nullptr;
-        }
+            return state.mDevice != nullptr;
 
         FArdaBackendConfiguration runtimeConfiguration = state.mConfiguration;
-        if (!ResolveAndValidateRuntimeConfiguration(state, runtimeConfiguration))
+        IArdaBackendModule* Module = nullptr;
+        if (!PrepareInitialization(state, runtimeConfiguration, Module))
             return false;
-        state.mConfiguration = runtimeConfiguration;
-        if (!runtimeConfiguration.mMessageCallback)
-        {
-            runtimeConfiguration.mMessageCallback = &state.mDefaultMessageCallback;
-        }
-
-        if (!BeginShaderDirectoryUse(state))
-            return false;
-        if (!FreezeAndValidateShaderSources(state))
-        {
-            private_api::CompleteShaderDirectoryRegistryUse(false);
-            return false;
-        }
-        if (!EnsureStartupShaders(state, runtimeConfiguration))
-        {
-            private_api::CompleteShaderDirectoryRegistryUse(false);
-            return false;
-        }
-
-        if (!CreateConfiguredDevice(state, runtimeConfiguration))
-        {
-            private_api::CompleteShaderDirectoryRegistryUse(false);
-            return false;
-        }
-
-        const IArdaExternalDeviceProvider* externalProvider =
-            runtimeConfiguration.mDeviceSource == EArdaDeviceSource::ExternalProvider
-            ? state.mExternalDeviceProvider
-            : nullptr;
-        if (state.mBackendDevice->Initialize(
-                runtimeConfiguration, nullptr, externalProvider) !=
+        if (CreateConfiguredDevice(
+                state, runtimeConfiguration, *Module, nullptr) !=
             EArdaInitializeResult::Success)
         {
-            state.mError = state.mBackendDevice->GetError();
-            state.mBackendDevice.reset();
             private_api::CompleteShaderDirectoryRegistryUse(false);
             return false;
         }
 
-        PublishInitializedDevice(state, runtimeConfiguration);
+        PublishInitializedDevice(state, *Module);
         private_api::CompleteShaderDirectoryRegistryUse(true);
         return true;
     }
@@ -506,59 +381,31 @@ namespace arda::backend
         }
 
         FArdaBackendConfiguration runtimeConfiguration = state.mConfiguration;
-        if (!ResolveAndValidateRuntimeConfiguration(state, runtimeConfiguration))
+        IArdaBackendModule* Module = nullptr;
+        if (!PrepareInitialization(state, runtimeConfiguration, Module))
             return EArdaInitializeResult::Failure;
-        state.mConfiguration = runtimeConfiguration;
-        if (!runtimeConfiguration.mMessageCallback)
-        {
-            runtimeConfiguration.mMessageCallback = &state.mDefaultMessageCallback;
-        }
-
-        if (!BeginShaderDirectoryUse(state))
-            return EArdaInitializeResult::Failure;
-        if (!FreezeAndValidateShaderSources(state))
-        {
-            private_api::CompleteShaderDirectoryRegistryUse(false);
-            return EArdaInitializeResult::Failure;
-        }
-        if (!EnsureStartupShaders(state, runtimeConfiguration))
-        {
-            private_api::CompleteShaderDirectoryRegistryUse(false);
-            return EArdaInitializeResult::Failure;
-        }
-
-        if (!CreateConfiguredDevice(state, runtimeConfiguration))
-        {
-            private_api::CompleteShaderDirectoryRegistryUse(false);
-            return runtimeConfiguration.mBackend == EArdaBackendType::D3D12
-                ? EArdaInitializeResult::Unavailable
-                : EArdaInitializeResult::Failure;
-        }
-
-        const IArdaExternalDeviceProvider* externalProvider =
-            runtimeConfiguration.mDeviceSource == EArdaDeviceSource::ExternalProvider
-            ? state.mExternalDeviceProvider
-            : nullptr;
-        const EArdaInitializeResult result = state.mBackendDevice->Initialize(
-            runtimeConfiguration, &WindowSurface, externalProvider);
+        const EArdaInitializeResult result = CreateConfiguredDevice(
+            state, runtimeConfiguration, *Module, &WindowSurface);
         if (result != EArdaInitializeResult::Success)
         {
-            state.mError = state.mBackendDevice->GetError();
-            state.mBackendDevice.reset();
             private_api::CompleteShaderDirectoryRegistryUse(false);
             return result;
         }
 
-        OutSwapChain = state.mBackendDevice->CreateSwapChain(Width, Height);
-        if (!OutSwapChain)
+        FArdaSwapChainCreateResult SwapChainResult =
+            state.mBackendDevice->CreateSwapChain(
+                Width, Height, state.mDevice);
+        if (!SwapChainResult)
         {
-            state.mError = state.mBackendDevice->GetError();
+            state.mError = eastl::move(SwapChainResult.mError);
+            state.mDevice = nullptr;
             state.mBackendDevice.reset();
             private_api::CompleteShaderDirectoryRegistryUse(false);
             return EArdaInitializeResult::Failure;
         }
+        OutSwapChain = eastl::move(SwapChainResult.mSwapChain);
 
-        PublishInitializedDevice(state, runtimeConfiguration);
+        PublishInitializedDevice(state, *Module);
         private_api::CompleteShaderDirectoryRegistryUse(true);
         return EArdaInitializeResult::Success;
     }
@@ -567,42 +414,22 @@ namespace arda::backend
     {
         auto& state = GetState();
         std::lock_guard<std::mutex> lock(state.mMutex);
-        if (state.mBackendDevice)
-        {
-            if (state.mContext.mDevice)
-                state.mContext.mDevice->FlushAndDisablePipelineCachePersistence();
-            else
-                state.mBackendDevice->WaitForIdle();
-        }
-        state.mContext.mDevice = nullptr;
-        state.mContext.mBackendName.clear();
-        state.mContext.mQueueCapabilities = {};
-        state.mContext.mDeviceSource = state.mConfiguration.mDeviceSource;
+        if (state.mDevice)
+            state.mDevice->FlushAndDisablePipelineCachePersistence();
+        state.mDevice = nullptr;
         state.mBackendDevice.reset();
-        state.mBackendModule = nullptr;
-        state.mbInitialized.store(false, std::memory_order_release);
         private_api::SetActiveBackendModule(nullptr);
         private_api::ReleaseShaderDirectoryRegistryAfterShutdown();
     }
 
     bool IsBackendInitialized() noexcept
     {
-        return GetState().mbInitialized.load(std::memory_order_acquire);
-    }
-
-    const FArdaDeviceContext& GetDeviceContext() noexcept
-    {
-        return GetState().mContext;
-    }
-
-    const FArdaQueueCapabilities& GetQueueCapabilities() noexcept
-    {
-        return GetState().mContext.mQueueCapabilities;
+        return GetState().mDevice != nullptr;
     }
 
     rhi::FArdaRHIDeviceRef GetDevice() noexcept
     {
-        return GetState().mContext.mDevice;
+        return GetState().mDevice;
     }
 
     eastl::string GetBackendError()

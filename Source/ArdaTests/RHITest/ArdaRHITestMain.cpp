@@ -1,6 +1,7 @@
 #include "ArdaRHITestPch.h"
 
 #include "ArdaBackend.h"
+#include "ArdaSwapChain.h"
 #include "ArdaGlfwWindow.h"
 #include "ArdaTriangleRenderer.h"
 
@@ -197,7 +198,7 @@ namespace arda::tests::rhi_test
 
             FArdaTriangleRenderer renderer;
             if (!renderer.Initialize(
-                backend::GetDeviceContext(),
+                backend::GetDevice(),
                 swapChain->GetFormat(),
                 GetExecutableDirectory(arguments[0])))
             {

@@ -186,7 +186,17 @@ namespace arda::tests::ardg_example
                     static_cast<size_t>(TerrainVertexCount) * sizeof(FTerrainVertex) ||
                 IndexBytes.size() !=
                     static_cast<size_t>(TerrainIndexCount) * sizeof(uint32_t))
-                return "Terrain GPU readback returned an unexpected byte count.";
+            {
+                char Message[256]{};
+                std::snprintf(
+                    Message, sizeof(Message),
+                    "Terrain GPU readback returned unexpected byte counts: vertices expected %zu, got %zu; indices expected %zu, got %zu.",
+                    static_cast<size_t>(TerrainVertexCount) * sizeof(FTerrainVertex),
+                    VertexBytes.size(),
+                    static_cast<size_t>(TerrainIndexCount) * sizeof(uint32_t),
+                    IndexBytes.size());
+                return Message;
+            }
 
             const auto* Vertices = reinterpret_cast<const FTerrainVertex*>(
                 VertexBytes.data());
@@ -331,22 +341,18 @@ namespace arda::tests::ardg_example
         "TerrainOverlayPS", rhi::EArdaRHIShaderStage::Pixel)
 
     bool FArdaTerrainRenderer::Initialize(
-        const backend::FArdaDeviceContext& deviceContext,
+        rhi::FArdaRHIDeviceRef device,
         rhi::EArdaRHIFormat)
     {
-        mDevice = deviceContext.mDevice;
-        mQueueCapabilities = {
-            deviceContext.mQueueCapabilities.mbGraphics,
-            deviceContext.mQueueCapabilities.mbCompute,
-            deviceContext.mQueueCapabilities.mbCopy};
-        if (!mDevice || !mQueueCapabilities.mbGraphics)
+        mDevice = eastl::move(device);
+        if (!mDevice || !mDevice->GetCapabilities().mQueues.mbGraphics)
         {
             mError = "The initialized backend does not expose a graphics device.";
             return false;
         }
         mPipelineStateCache =
             std::make_unique<backend::FArdaPipelineStateCache>(mDevice);
-        if (!CreateShadersAndInitializers(deviceContext) ||
+        if (!CreateShadersAndInitializers() ||
             !CreateSettingsUploadBuffer() ||
             !CreateCameraResources())
         {
@@ -356,10 +362,9 @@ namespace arda::tests::ardg_example
         return true;
     }
 
-    bool FArdaTerrainRenderer::CreateShadersAndInitializers(
-        const backend::FArdaDeviceContext& deviceContext)
+    bool FArdaTerrainRenderer::CreateShadersAndInitializers()
     {
-        if (!mShaderMap.Initialize(deviceContext))
+        if (!mShaderMap.Initialize(mDevice))
         {
             const auto& Diagnostics = mShaderMap.GetDiagnostics();
             mError = Diagnostics.empty()
@@ -858,6 +863,12 @@ namespace arda::tests::ardg_example
         mError = executionErrors->GetFirstError();
         if (!mError.empty())
             return false;
+        if (!executionResult.mStatus)
+        {
+            mError = "Terrain render graph execution failed: ";
+            mError += executionResult.mStatus.mMessage;
+            return false;
+        }
         if (!mbTerrainReadbackValidated)
         {
             mError = ValidateTerrainReadback(
@@ -882,15 +893,7 @@ namespace arda::tests::ardg_example
 
     render_graph::FARDGRenderGraphContext FArdaTerrainRenderer::CreateGraphContext() const
     {
-        backend::FArdaDeviceContext DeviceContext;
-        DeviceContext.mDevice = mDevice;
-        DeviceContext.mQueueCapabilities.mbGraphics =
-            mQueueCapabilities.mbGraphics;
-        DeviceContext.mQueueCapabilities.mbCompute =
-            mQueueCapabilities.mbCompute;
-        DeviceContext.mQueueCapabilities.mbCopy =
-            mQueueCapabilities.mbCopy;
-        return render_graph::MakeRenderGraphContext(DeviceContext);
+        return render_graph::MakeRenderGraphContext(mDevice);
     }
 
 }

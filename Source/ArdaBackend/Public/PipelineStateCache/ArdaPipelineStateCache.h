@@ -4,7 +4,7 @@
 #pragma once
 
 #include "PipelineStateCache/ArdaPipelineStateInitializer.h"
-#include "RHIWrappers/ArdaRHIDevice.h"
+#include "RHI/ArdaRHIDevice.h"
 
 #include <EASTL/string.h>
 #include <EASTL/vector.h>

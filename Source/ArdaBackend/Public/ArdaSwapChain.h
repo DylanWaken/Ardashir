@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#include "ArdaDevice.h"
+#include "ArdaBackend.h"
 
 #include <cstdint>
 #include <EASTL/unique_ptr.h>
@@ -13,6 +13,21 @@
 
 namespace arda::backend
 {
+    /** Application callback that can replace or augment native presentation. */
+    class IArdaCustomPresent
+    {
+    public:
+        virtual ~IArdaCustomPresent() = default;
+        virtual void OnBackBufferResize(uint32_t Width, uint32_t Height) = 0;
+        [[nodiscard]] virtual bool NeedsNativePresent() const noexcept = 0;
+        /** Returns true when custom presentation succeeded. */
+        [[nodiscard]] virtual bool Present(
+            FArdaNativeObject BackBuffer,
+            uint32_t Width,
+            uint32_t Height) = 0;
+        virtual void PostPresent() = 0;
+    };
+
     /**
      * Bridges a platform window system to the backend without exposing its types.
      * Native platform handles are encoded in FArdaNativeObject.
@@ -68,6 +83,11 @@ namespace arda::backend
         virtual void PrepareSubmit() = 0;
         /** @return True when the submitted frame was presented successfully. */
         [[nodiscard]] virtual bool Present() = 0;
+        /** Installs or clears a custom-present callback. */
+        virtual void SetCustomPresent(eastl::shared_ptr<IArdaCustomPresent>) {}
+        /** Returns the currently installed custom-present callback. */
+        [[nodiscard]] virtual eastl::shared_ptr<IArdaCustomPresent>
+            GetCustomPresent() const { return {}; }
         /** Blocks until pending swap-chain operations have completed. */
         virtual void WaitForIdle() noexcept = 0;
 

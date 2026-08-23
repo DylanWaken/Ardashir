@@ -47,7 +47,13 @@ if(ARDASHIR_BUILD_TESTS)
             NAME ARDGExample.D3D12
             COMMAND ARDGExample --backend d3d12 --frames 3 --hidden
         )
-        list(APPEND ARDG_EXAMPLE_GPU_TESTS ARDGExample.D3D12)
+        add_test(
+            NAME ARDGExample.D3D12.MultiFrameLifetime
+            COMMAND ARDGExample --backend d3d12 --frames 120 --hidden
+        )
+        list(APPEND ARDG_EXAMPLE_GPU_TESTS
+            ARDGExample.D3D12
+            ARDGExample.D3D12.MultiFrameLifetime)
     endif()
     if(ARDASHIR_BACKEND_VULKAN)
         add_test(

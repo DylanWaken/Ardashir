@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RHIWrappers/ArdaRHI.h"
+#include "RHI/ArdaRHI.h"
 
 namespace arda::phys
 {

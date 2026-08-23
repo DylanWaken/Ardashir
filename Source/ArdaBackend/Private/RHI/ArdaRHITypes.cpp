@@ -1,4 +1,4 @@
-#include "RHIWrappers/ArdaRHITypes.h"
+#include "RHI/ArdaRHITypes.h"
 
 #include <EASTL/algorithm.h>
 #include <cstring>
@@ -38,6 +38,13 @@ namespace arda::rhi
         Result.mArraySliceCount = eastl::min(
             Result.mArraySliceCount,
             Desc.mArraySize - eastl::min(Result.mBaseArraySlice, Desc.mArraySize));
+        const FArdaRHIFormatInfo& FormatInfo =
+            GetArdaRHIFormatInfo(Desc.mFormat);
+        const uint32_t PlaneCount =
+            FormatInfo.mbDepth && FormatInfo.mbStencil ? 2u : 1u;
+        Result.mPlaneCount = eastl::min(
+            Result.mPlaneCount,
+            PlaneCount - eastl::min(Result.mBasePlane, PlaneCount));
         return Result;
     }
 
@@ -110,6 +117,7 @@ namespace arda::rhi
             mMaxVersions == O.mMaxVersions && mFormat == O.mFormat && mUsage == O.mUsage &&
             mCpuAccess == O.mCpuAccess && mInitialState == O.mInitialState &&
             mbKeepInitialState == O.mbKeepInitialState && mbVirtual == O.mbVirtual &&
+            mbTiled == O.mbTiled &&
             mDebugName == O.mDebugName;
     }
 
@@ -127,6 +135,7 @@ namespace arda::rhi
         size_t H = 0;
         HashCombine(H, V.mBaseMipLevel); HashCombine(H, V.mMipLevelCount);
         HashCombine(H, V.mBaseArraySlice); HashCombine(H, V.mArraySliceCount);
+        HashCombine(H, V.mBasePlane); HashCombine(H, V.mPlaneCount);
         return H;
     }
 
@@ -154,7 +163,8 @@ namespace arda::rhi
         HashCombine(H, V.mByteSize); HashCombine(H, V.mStructureStride); HashCombine(H, V.mMaxVersions);
         HashCombine(H, static_cast<uint8_t>(V.mFormat)); HashCombine(H, static_cast<uint16_t>(V.mUsage));
         HashCombine(H, static_cast<uint8_t>(V.mCpuAccess)); HashCombine(H, static_cast<uint32_t>(V.mInitialState));
-        HashCombine(H, V.mbKeepInitialState); HashCombine(H, V.mbVirtual); HashString(H, V.mDebugName); return H;
+        HashCombine(H, V.mbKeepInitialState); HashCombine(H, V.mbVirtual);
+        HashCombine(H, V.mbTiled); HashString(H, V.mDebugName); return H;
     }
 
     size_t HashValue(const FArdaRHISamplerDesc& V) noexcept
