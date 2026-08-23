@@ -7,6 +7,8 @@ on:
     paths:
       - "Docs/**"
       - "Skills/document-codebase/**"
+      - "Source/ArdaBackend/Public/**"
+      - "Source/ArdaRenderGraph/Public/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -32,6 +34,12 @@ jobs:
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+
+      - name: Check generated API inventories
+        run: >-
+          python3 Skills/document-codebase/scripts/sync_api_inventories.py
+          --repo-root .
+          --check
 
       - name: Validate documentation
         run: >-

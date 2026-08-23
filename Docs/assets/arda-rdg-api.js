@@ -9901,3 +9901,351 @@ window.ArdaRDGApi = {
   ]
 };
 window.ArdaCurrentApi = window.ArdaRDGApi;
+
+/* BEGIN GENERATED ARDA RDG API GAPS */
+(() => {
+  const generatedSymbols = [
+  {
+    "id": "api-arda-render-graph-fardgraydispatcharguments-2cfac7ec",
+    "name": "FARDGRayDispatchArguments",
+    "qualifiedName": "arda::render_graph::FARDGRayDispatchArguments",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FARDGRayDispatchArguments",
+    "summary": "Defines f a r d g ray dispatch arguments in the public render-graph contract.",
+    "details": "Defines f a r d g ray dispatch arguments in the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgraydispatcharguments-mwidth-b454adde",
+    "name": "mWidth",
+    "qualifiedName": "arda::render_graph::FARDGRayDispatchArguments::mWidth",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint32_t mWidth = 1",
+    "summary": "Stores width in this public render-graph value.",
+    "details": "Stores width in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGRayDispatchArguments"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgraydispatcharguments-mheight-7b82e677",
+    "name": "mHeight",
+    "qualifiedName": "arda::render_graph::FARDGRayDispatchArguments::mHeight",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint32_t mHeight = 1",
+    "summary": "Stores height in this public render-graph value.",
+    "details": "Stores height in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGRayDispatchArguments"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgraydispatcharguments-mdepth-b6d5b1cf",
+    "name": "mDepth",
+    "qualifiedName": "arda::render_graph::FARDGRayDispatchArguments::mDepth",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint32_t mDepth = 1",
+    "summary": "Stores depth in this public render-graph value.",
+    "details": "Stores depth in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGRayDispatchArguments"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgaccelstructextraction-56a16946",
+    "name": "FARDGAccelStructExtraction",
+    "qualifiedName": "arda::render_graph::FARDGAccelStructExtraction",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FARDGAccelStructExtraction",
+    "summary": "Defines f a r d g accel struct extraction in the public render-graph contract.",
+    "details": "Defines f a r d g accel struct extraction in the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-queueaccelstructextraction-541dfffc",
+    "name": "QueueAccelStructExtraction",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::QueueAccelStructExtraction",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "void QueueAccelStructExtraction( FARDGAccelStructRef AccelStruct, rhi::FArdaRHIAccelStructRef* Output, rhi::EArdaRHIResourceState FinalState)",
+    "summary": "Performs queue accel struct extraction through the public render-graph contract.",
+    "details": "Performs queue accel struct extraction through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-queueaccelstructextraction-72f77d2a",
+    "name": "QueueAccelStructExtraction",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::QueueAccelStructExtraction",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "void QueueAccelStructExtraction( FARDGAccelStructRef AccelStruct, rhi::FArdaRHIAccelStructRef& Output, rhi::EArdaRHIResourceState FinalState)",
+    "summary": "Performs queue accel struct extraction through the public render-graph contract.",
+    "details": "Performs queue accel struct extraction through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-addhosttodevicecopypass-955504b3",
+    "name": "AddHostToDeviceCopyPass",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::AddHostToDeviceCopyPass",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPass( FARDGBufferRef Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0, eastl::string Name = \"HostToDeviceCopy\")",
+    "summary": "Performs add host to device copy pass through the public render-graph contract.",
+    "details": "Performs add host to device copy pass through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-addhosttodevicecopypassasync-2aae6f28",
+    "name": "AddHostToDeviceCopyPassAsync",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::AddHostToDeviceCopyPassAsync",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPassAsync( FARDGBufferRef Destination, const void* SourceData, size_t Size, rhi::FArdaRHIHostToDeviceCopyCallback Completion, uint64_t DestinationOffset = 0, eastl::string Name = \"HostToDeviceCopyAsync\")",
+    "summary": "Performs add host to device copy pass async through the public render-graph contract.",
+    "details": "Performs add host to device copy pass async through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-adddevicetohostcopypass-f760f42c",
+    "name": "AddDeviceToHostCopyPass",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::AddDeviceToHostCopyPass",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPass( FARDGBufferRef Source, eastl::vector<uint8_t>& Output, uint64_t SourceOffset = 0, uint64_t Size = rhi::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopy\")",
+    "summary": "Performs add device to host copy pass through the public render-graph contract.",
+    "details": "Performs add device to host copy pass through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-adddevicetohostcopypassasync-85e4adeb",
+    "name": "AddDeviceToHostCopyPassAsync",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::AddDeviceToHostCopyPassAsync",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPassAsync( FARDGBufferRef Source, rhi::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = rhi::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopyAsync\")",
+    "summary": "Performs add device to host copy pass async through the public render-graph contract.",
+    "details": "Performs add device to host copy pass async through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-queuebufferupload-38616f14",
+    "name": "QueueBufferUpload",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::QueueBufferUpload",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FARDGPassHandle QueueBufferUpload( FARDGBufferRef Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0, eastl::string Name = \"QueueBufferUpload\")",
+    "summary": "Performs queue buffer upload through the public render-graph contract.",
+    "details": "Performs queue buffer upload through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-addenqueuecopypass-2c79bde8",
+    "name": "AddEnqueueCopyPass",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::AddEnqueueCopyPass",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FARDGPassHandle AddEnqueueCopyPass( FARDGBufferRef Source, rhi::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = rhi::ArdaRHIWholeBuffer, eastl::string Name = \"EnqueueBufferReadback\")",
+    "summary": "Performs add enqueue copy pass through the public render-graph contract.",
+    "details": "Performs add enqueue copy pass through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-addraydispatchpass-537bf94c",
+    "name": "AddRayDispatchPass",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::AddRayDispatchPass",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template <typename ParameterType, typename ExecuteType> [[nodiscard]] FARDGPassHandle AddRayDispatchPass( eastl::string Name, const ParameterType* Parameters, FARDGRayDispatchArguments Dispatch, ExecuteType&& Setup, EARDGPassFlags Flags = EARDGPassFlags::Compute)",
+    "summary": "Performs add ray dispatch pass through the public render-graph contract.",
+    "details": "Performs add ray dispatch pass through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-getaccelstructextractions-97b1a7ba",
+    "name": "GetAccelStructExtractions",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::GetAccelStructExtractions",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] const eastl::vector<FARDGAccelStructExtraction>& GetAccelStructExtractions() const noexcept",
+    "summary": "Performs get accel struct extractions through the public render-graph contract.",
+    "details": "Performs get accel struct extractions through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgqueuepolicy-b1936ac6",
+    "name": "FARDGQueuePolicy",
+    "qualifiedName": "arda::render_graph::FARDGQueuePolicy",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FARDGQueuePolicy",
+    "summary": "Defines f a r d g queue policy in the public render-graph contract.",
+    "details": "Defines f a r d g queue policy in the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgrendergraphcontext-mqueuepolicy-de6d9b38",
+    "name": "mQueuePolicy",
+    "qualifiedName": "arda::render_graph::FARDGRenderGraphContext::mQueuePolicy",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FARDGQueuePolicy mQueuePolicy",
+    "summary": "Stores queue policy in this public render-graph value.",
+    "details": "Stores queue policy in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGRenderGraphContext"
+    ]
+  }
+];
+  window.ArdaRDGApi.symbols.push(...generatedSymbols);
+})();
+/* END GENERATED ARDA RDG API GAPS */
