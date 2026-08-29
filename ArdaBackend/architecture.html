@@ -129,7 +129,7 @@
             <dt>Public RHI layer — <code>arda::rhi</code></dt>
             <dd>Defines descriptors, capabilities, result types, resource interfaces, command lists, and the device creation/submission surface.</dd>
             <dt>Backend provider contract</dt>
-            <dd><code>IArdaBackendModule</code> advertises a linked implementation and creates an <code>IArdaBackendDevice</code>; the runtime device publishes the RHI facade, queues, errors, optional presentation, and shader services.</dd>
+            <dd><code>IArdaBackendModule</code> advertises a linked implementation and creates an <code>IArdaBackendRuntime</code> plus an RHI provider. The runtime owns module-private lifetime and presentation state; <code>FArdaRHIDeviceRef</code> is the public device.</dd>
             <dt>Linked implementation layer</dt>
             <dd>Converts Arda descriptors and calls to a native API or a host <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine RHI</a>, wraps returned objects, and carries device identity.</dd>
             <dt>Native backend layer</dt>
@@ -157,7 +157,7 @@
             <dt>Diagnostic callback</dt>
             <dd>Caller-owned raw pointer stored by configuration. It must outlive backend use and is not deleted by ArdaBackend.</dd>
             <dt>Process backend state</dt>
-            <dd>Owns the selected configuration, published context, private backend device, current error, default callback, mutex, and initialized flag.</dd>
+            <dd>Owns the selected configuration, backend runtime, public RHI device, current error, default callback, and mutex.</dd>
             <dt>Device context</dt>
             <dd>Contains an intrusive device reference, selected backend, and queue capabilities. The context is process storage; copies of its device reference are independent owners.</dd>
             <dt>Swap chain</dt>
@@ -198,7 +198,7 @@
 
         <section id="process-state">
           <h2>Process singleton state</h2>
-          <p>The private <code>FArdaBackendState</code> is a function-local process singleton. It contains a mutex, configuration, context, default callback, private backend device, error text, and atomic initialized flag.</p>
+          <p>The private <code>FArdaBackendState</code> is a function-local process singleton. It contains a mutex, configuration, default callback, backend runtime, public RHI device, external-device provider, and error text.</p>
 
           <h3>Why process-wide state exists</h3>
           <p>Shader directory freezing, global shader registration, compilation mode, persistent cache paths, and a canonical device context all benefit from one authoritative lifecycle. Startup-mode shader ensure occurs before native device creation; native pipeline-cache loading occurs while that device is constructed. A process facade also makes simple tools and applications easy to bootstrap.</p>

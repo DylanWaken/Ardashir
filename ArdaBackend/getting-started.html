@@ -146,7 +146,7 @@ for (const auto&amp; module : arda::backend::EnumerateBackendModules())
 
         <section id="configuration">
           <h2>Configuration strategy</h2>
-          <p><a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> replaces process-wide configuration before a backend device exists. It selects an optional exact <code>mBackendName</code>, a fallback compatibility class, device source, validation and diagnostics, registered-shader timing, and persistent shader/pipeline cache directories. Relative cache paths are resolved to stable absolute paths when accepted. The shader path must be non-empty; an empty pipeline path explicitly disables native pipeline-cache disk I/O.</p>
+          <p><a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> replaces process-wide configuration before a backend runtime exists. It selects an optional exact <code>mBackendName</code>, a fallback compatibility class, device source, validation and diagnostics, registered-shader timing, and persistent shader/pipeline cache directories. Relative cache paths are resolved to stable absolute paths when accepted. The shader path must be non-empty; an empty pipeline path explicitly disables native pipeline-cache disk I/O.</p>
 
           <h3>Validation policy</h3>
           <p>Validation defaults to enabled. Keep it enabled in development, continuous integration smoke tests, and reproducible diagnostic builds. Production shipping policy may disable it for performance and external-dependency reasons, but a validation-enabled build should remain available for field reproduction.</p>
@@ -193,7 +193,7 @@ for (const auto&amp; module : arda::backend::EnumerateBackendModules())
             <li><strong>Scan and freeze shader sources.</strong> Virtual mappings become an immutable manifest; collisions and invalid paths fail before device publication.</li>
             <li><strong>Commit shader types.</strong> Deferred global-shader registrations are validated into a deterministic set.</li>
             <li><strong>Ensure startup shaders when selected.</strong> Every active-backend registered permutation is checked against its persistent sidecar and compiled if policy allows. Failure occurs before a native device is created.</li>
-            <li><strong>Select and create the linked backend.</strong> Core resolves the exact stable module name or highest-priority compatible descriptor, validates the requested device source, and asks the module to allocate its runtime device.</li>
+            <li><strong>Select and create the linked backend.</strong> Core resolves the exact stable module name or highest-priority compatible descriptor, validates the requested device source, and asks the module to allocate its backend runtime and RHI provider.</li>
             <li><strong>Initialize implementation state.</strong> The module creates or adopts its native/engine device and queues, checks required capabilities, and constructs the opaque RHI device.</li>
             <li><strong>Load native pipeline-cache data.</strong> The checked-in modules validate their backend-tagged wrapper, initialize a D3D12 pipeline library or Vulkan pipeline cache, safely fall back to an empty cache, and report support through <code>FArdaRHICapabilities::mbPipelineCachePersistence</code>.</li>
             <li><strong>Create presentation state, if requested.</strong> The window surface and swap chain must succeed before publication.</li>
@@ -319,7 +319,7 @@ arda::rhi::FArdaRHIDeviceRef device = arda::backend::GetDevice();
           <h2>Failure analysis</h2>
           <dl>
             <dt><code>ConfigureBackend</code> returns false</dt>
-            <dd>The configuration is unsupported in the current process or a backend device already exists. Read <code>GetBackendError()</code>; on non-Windows, selecting D3D12 is rejected here.</dd>
+            <dd>The configuration is unsupported in the current process or a backend runtime already exists. Read <code>GetBackendError()</code>; on non-Windows, selecting D3D12 is rejected here.</dd>
             <dt>Shader registry gate fails</dt>
             <dd>A mapping, scan, collision, or global shader registration error occurred before native device creation. Correct the shader setup described in <a href="shaders.html">Shaders</a> and retry.</dd>
             <dt>Initialization returns unavailable</dt>

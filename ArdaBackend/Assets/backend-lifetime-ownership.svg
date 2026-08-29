@@ -44,7 +44,7 @@
   <rect x="430" y="108" width="240" height="92" class="box process"/>
   <text x="550" y="138" class="label">Process backend state</text>
   <text x="550" y="164" class="body">configuration &#183; context &#183; error &#183; mutex</text>
-  <text x="550" y="184" class="body">owns private backend device</text>
+  <text x="550" y="184" class="body">owns private backend runtime</text>
 
   <rect x="812" y="108" width="240" height="92" class="box caller"/>
   <text x="932" y="138" class="label">Diagnostic callback</text>

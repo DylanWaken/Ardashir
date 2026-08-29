@@ -32848,7 +32848,7 @@ window.ArdaBackendApi = {
       "kind": "constant",
       "component": "backend-modules",
       "page": "api-reference.html",
-      "signature": "inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 1",
+      "signature": "inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 4",
       "summary": "Identifies the C++ provider ABI contract expected by this ArdaBackend build.",
       "details": "A linked module publishes the same value in its descriptor. Registration rejects descriptors compiled for a different interface revision so incompatible virtual contracts never become selectable.",
       "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
@@ -33409,181 +33409,6 @@ window.ArdaBackendApi = {
       ]
     },
     {
-      "id": "api-arda-backend-iardabackenddevice-ce421f3b",
-      "name": "IArdaBackendDevice",
-      "qualifiedName": "arda::backend::IArdaBackendDevice",
-      "kind": "class",
-      "component": "backend-modules",
-      "page": "api-reference.html",
-      "signature": "class IArdaBackendDevice",
-      "summary": "Defines the runtime device object supplied by a backend module.",
-      "details": "The core owns this object from module factory creation through shutdown. It delegates initialization, presentation, idle waiting, RHI access, queue discovery, and module-local error reporting.",
-      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
-      "params": [],
-      "returns": "Not applicable.",
-      "ownership": "CreateDevice transfers a unique pointer to core; the backend device owns its native or engine-RHI wrapper state but not host-owned external objects.",
-      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
-      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
-      "related": [
-        "arda::backend",
-        "arda::rhi"
-      ]
-    },
-    {
-      "id": "api-arda-backend-iardabackenddevice-iardabackenddevice-4ff0f353",
-      "name": "~IArdaBackendDevice",
-      "qualifiedName": "arda::backend::IArdaBackendDevice::~IArdaBackendDevice",
-      "kind": "destructor",
-      "component": "backend-modules",
-      "page": "api-reference.html",
-      "signature": "virtual ~IArdaBackendDevice() = default",
-      "summary": "Declares arda::backend::IArdaBackendDevice::~IArdaBackendDevice in the current public backend API.",
-      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
-      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
-      "params": [],
-      "returns": "Not applicable.",
-      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
-      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
-      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
-      "related": [
-        "arda::backend",
-        "arda::rhi"
-      ]
-    },
-    {
-      "id": "api-arda-backend-iardabackenddevice-initialize-885abf36",
-      "name": "Initialize",
-      "qualifiedName": "arda::backend::IArdaBackendDevice::Initialize",
-      "kind": "method",
-      "component": "backend-modules",
-      "page": "api-reference.html",
-      "signature": "virtual EArdaInitializeResult Initialize(const FArdaBackendConfiguration& Configuration, IArdaWindowSurface* WindowSurface, const IArdaExternalDeviceProvider* ExternalProvider) = 0",
-      "summary": "Declares arda::backend::IArdaBackendDevice::Initialize in the current public backend API.",
-      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
-      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
-      "params": [
-        "const FArdaBackendConfiguration& Configuration",
-        "IArdaWindowSurface* WindowSurface",
-        "const IArdaExternalDeviceProvider* ExternalProvider"
-      ],
-      "returns": "Success, Unavailable, or Failure.",
-      "ownership": "Configuration is borrowed for the call; window surface and external provider remain host-owned.",
-      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
-      "threading": "Called by the serialized process-wide initialization path.",
-      "related": [
-        "arda::backend",
-        "arda::rhi"
-      ]
-    },
-    {
-      "id": "api-arda-backend-iardabackenddevice-createswapchain-efff074f",
-      "name": "CreateSwapChain",
-      "qualifiedName": "arda::backend::IArdaBackendDevice::CreateSwapChain",
-      "kind": "method",
-      "component": "backend-modules",
-      "page": "api-reference.html",
-      "signature": "virtual eastl::unique_ptr<IArdaSwapChain> CreateSwapChain(uint32_t Width, uint32_t Height) = 0",
-      "summary": "Declares arda::backend::IArdaBackendDevice::CreateSwapChain in the current public backend API.",
-      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
-      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
-      "params": [
-        "uint32_t Width",
-        "uint32_t Height"
-      ],
-      "returns": "A caller-owned swap chain, or an empty pointer on failure.",
-      "ownership": "Transfers unique ownership of the swap chain to core/application presentation state.",
-      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
-      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
-      "related": [
-        "arda::backend",
-        "arda::rhi"
-      ]
-    },
-    {
-      "id": "api-arda-backend-iardabackenddevice-waitforidle-dcb3b7a0",
-      "name": "WaitForIdle",
-      "qualifiedName": "arda::backend::IArdaBackendDevice::WaitForIdle",
-      "kind": "method",
-      "component": "backend-modules",
-      "page": "api-reference.html",
-      "signature": "virtual void WaitForIdle() noexcept = 0",
-      "summary": "Declares arda::backend::IArdaBackendDevice::WaitForIdle in the current public backend API.",
-      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
-      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
-      "params": [],
-      "returns": "See the canonical signature and source contract.",
-      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
-      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
-      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
-      "related": [
-        "arda::backend",
-        "arda::rhi"
-      ]
-    },
-    {
-      "id": "api-arda-backend-iardabackenddevice-getdevice-6c0a1c44",
-      "name": "GetDevice",
-      "qualifiedName": "arda::backend::IArdaBackendDevice::GetDevice",
-      "kind": "method",
-      "component": "backend-modules",
-      "page": "api-reference.html",
-      "signature": "virtual rhi::FArdaRHIDeviceRef GetDevice() const noexcept = 0",
-      "summary": "Declares arda::backend::IArdaBackendDevice::GetDevice in the current public backend API.",
-      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
-      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
-      "params": [],
-      "returns": "An intrusive reference to the backend-neutral device facade.",
-      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
-      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
-      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
-      "related": [
-        "arda::backend",
-        "arda::rhi"
-      ]
-    },
-    {
-      "id": "api-arda-backend-iardabackenddevice-getqueuecapabilities-032c3fc6",
-      "name": "GetQueueCapabilities",
-      "qualifiedName": "arda::backend::IArdaBackendDevice::GetQueueCapabilities",
-      "kind": "method",
-      "component": "backend-modules",
-      "page": "api-reference.html",
-      "signature": "virtual FArdaQueueCapabilities GetQueueCapabilities() const noexcept = 0",
-      "summary": "Declares arda::backend::IArdaBackendDevice::GetQueueCapabilities in the current public backend API.",
-      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
-      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
-      "params": [],
-      "returns": "See the canonical signature and source contract.",
-      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
-      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
-      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
-      "related": [
-        "arda::backend",
-        "arda::rhi"
-      ]
-    },
-    {
-      "id": "api-arda-backend-iardabackenddevice-geterror-ed7f6c9e",
-      "name": "GetError",
-      "qualifiedName": "arda::backend::IArdaBackendDevice::GetError",
-      "kind": "method",
-      "component": "backend-modules",
-      "page": "api-reference.html",
-      "signature": "virtual const eastl::string& GetError() const noexcept = 0",
-      "summary": "Declares arda::backend::IArdaBackendDevice::GetError in the current public backend API.",
-      "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
-      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
-      "params": [],
-      "returns": "A borrowed reference valid while the backend device remains alive.",
-      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
-      "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
-      "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
-      "related": [
-        "arda::backend",
-        "arda::rhi"
-      ]
-    },
-    {
       "id": "api-arda-backend-iardabackendmodule-83673c0b",
       "name": "IArdaBackendModule",
       "qualifiedName": "arda::backend::IArdaBackendModule",
@@ -33592,7 +33417,7 @@ window.ArdaBackendApi = {
       "page": "api-reference.html",
       "signature": "class IArdaBackendModule",
       "summary": "Contract implemented by every statically or dynamically linkable backend module.",
-      "details": "A module publishes identity and capabilities, creates backend devices, and participates in shader compilation. Registration is explicit and module lifetime must outlive every registry and active-device use.",
+      "details": "A module publishes identity and capabilities, creates a backend runtime and RHI provider, and participates in shader compilation. Registration is explicit and module lifetime must outlive every registry and active-runtime use.",
       "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
       "params": [],
       "returns": "Not applicable.",
@@ -33653,15 +33478,17 @@ window.ArdaBackendApi = {
       "kind": "method",
       "component": "backend-modules",
       "page": "api-reference.html",
-      "signature": "virtual eastl::unique_ptr<IArdaBackendDevice> CreateDevice(EArdaDeviceSource Source) = 0",
+      "signature": "[[nodiscard]] virtual FArdaBackendDeviceCreateResult CreateDevice(const FArdaBackendConfiguration& Configuration, IArdaWindowSurface* WindowSurface, const IArdaExternalDeviceProvider* ExternalProvider) = 0",
       "summary": "Declares arda::backend::IArdaBackendModule::CreateDevice in the current public backend API.",
       "details": "The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.",
       "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
       "params": [
-        "EArdaDeviceSource Source"
+        "const FArdaBackendConfiguration& Configuration",
+        "IArdaWindowSurface* WindowSurface",
+        "const IArdaExternalDeviceProvider* ExternalProvider"
       ],
-      "returns": "A transferred backend-device implementation, or empty when the source is unsupported.",
-      "ownership": "Value members own their state; references, pointers, device handles, and returned views retain the lifetime rules stated by the containing API.",
+      "returns": "An initialized backend runtime and RHI provider, or a failure result.",
+      "ownership": "Configuration, the optional surface, and the optional external provider are borrowed for the call; the result transfers runtime ownership and shares provider ownership.",
       "errors": "Invalid inputs, unavailable compilation, stale or missing artifacts, and backend persistence failures are reported through the declared status, result, diagnostic, or fallback behavior.",
       "threading": "Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.",
       "related": [
@@ -34853,15 +34680,15 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-backend-fardabackenddevicecreateresult-6dca0034",
-    "name": "FArdaBackendDeviceCreateResult",
-    "qualifiedName": "arda::backend::FArdaBackendDeviceCreateResult",
-    "kind": "struct",
+    "id": "api-arda-backend-iardabackendruntime-0f27896c",
+    "name": "IArdaBackendRuntime",
+    "qualifiedName": "arda::backend::IArdaBackendRuntime",
+    "kind": "class",
     "component": "backend-modules",
     "page": "api-reference.html",
-    "signature": "struct FArdaBackendDeviceCreateResult",
-    "summary": "Defines f arda backend device create result in the public backend and RHI contract.",
-    "details": "Defines f arda backend device create result in the public backend and RHI contract. The signature is generated from the current public header.",
+    "signature": "class IArdaBackendRuntime",
+    "summary": "Defines i arda backend runtime in the public backend and RHI contract.",
+    "details": "Defines i arda backend runtime in the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
     "params": [],
     "returns": "",
@@ -34870,6 +34697,46 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::backend"
+    ]
+  },
+  {
+    "id": "api-arda-backend-iardabackendruntime-iardabackendruntime-324e77d0",
+    "name": "~IArdaBackendRuntime",
+    "qualifiedName": "arda::backend::IArdaBackendRuntime::~IArdaBackendRuntime",
+    "kind": "destructor",
+    "component": "backend-modules",
+    "page": "api-reference.html",
+    "signature": "virtual ~IArdaBackendRuntime() = default",
+    "summary": "Destroys the backend and RHI object after dependent work is released.",
+    "details": "Destroys the backend and RHI object after dependent work is released. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::backend::IArdaBackendRuntime"
+    ]
+  },
+  {
+    "id": "api-arda-backend-iardabackendruntime-createswapchain-6fcbf877",
+    "name": "CreateSwapChain",
+    "qualifiedName": "arda::backend::IArdaBackendRuntime::CreateSwapChain",
+    "kind": "method",
+    "component": "backend-modules",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual FArdaSwapChainCreateResult CreateSwapChain( uint32_t Width, uint32_t Height, rhi::FArdaRHIDeviceRef Device) = 0",
+    "summary": "Performs create swap chain through the public backend and RHI contract.",
+    "details": "Performs create swap chain through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::backend::IArdaBackendRuntime"
     ]
   },
   {
@@ -34893,15 +34760,15 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-backend-fardabackenddevicecreateresult-mbackenddevice-1e4ed9b7",
-    "name": "mBackendDevice",
-    "qualifiedName": "arda::backend::FArdaBackendDeviceCreateResult::mBackendDevice",
+    "id": "api-arda-backend-fardabackenddevicecreateresult-mbackendruntime-cd9f4981",
+    "name": "mBackendRuntime",
+    "qualifiedName": "arda::backend::FArdaBackendDeviceCreateResult::mBackendRuntime",
     "kind": "member variable",
     "component": "backend-modules",
     "page": "api-reference.html",
-    "signature": "eastl::unique_ptr<IArdaBackendDevice> mBackendDevice",
-    "summary": "Stores backend device in this public backend and RHI value.",
-    "details": "Stores backend device in this public backend and RHI value. The signature is generated from the current public header.",
+    "signature": "eastl::unique_ptr<IArdaBackendRuntime> mBackendRuntime",
+    "summary": "Stores backend runtime in this public backend and RHI value.",
+    "details": "Stores backend runtime in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
     "params": [],
     "returns": "",
