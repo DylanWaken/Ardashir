@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="backend-provider-title backend-provider-desc">
   <title id="backend-provider-title">ArdaBackend provider selection and runtime flow</title>
-  <desc id="backend-provider-desc">The application configures a stable backend name. Link-generated registration populates the core registry with native Vulkan, native D3D12, or custom engine modules. The selected module creates a backend device, which exposes Arda RHI, optional presentation, and shader compiler services. External hosts supply generic device and resource descriptors directly to a module that supports adoption.</desc>
+  <desc id="backend-provider-desc">The application configures a stable backend name. Link-generated registration populates the core registry with native Vulkan, native D3D12, or custom engine modules. The selected module creates a backend runtime and RHI provider. ArdaBackend publishes the provider as the public RHI device. External hosts supply generic device and resource descriptors directly to a module that supports adoption.</desc>
   <defs>
     <marker id="backend-provider-arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L0,6 L9,3 z" fill="#6ea8fe"/>
@@ -17,7 +17,7 @@
   <rect x="375" y="45" width="310" height="125" rx="12" class="box"/>
   <text x="530" y="82" text-anchor="middle" class="label">ArdaBackend core</text>
   <text x="530" y="113" text-anchor="middle" class="small">registry + lifecycle policy</text>
-  <text x="530" y="138" text-anchor="middle" class="small">owns active backend device</text>
+  <text x="530" y="138" text-anchor="middle" class="small">owns active backend runtime</text>
   <path d="M290 108 H370" class="arrow"/>
 
   <rect x="65" y="245" width="265" height="100" rx="12" class="module"/>
@@ -35,9 +35,9 @@
   <text x="890" y="205" text-anchor="middle" class="small">link-generated registration</text>
 
   <rect x="355" y="430" width="350" height="115" rx="12" class="box"/>
-  <text x="530" y="470" text-anchor="middle" class="label">IArdaBackendDevice</text>
-  <text x="530" y="500" text-anchor="middle" class="small">owned or externally adopted device</text>
-  <text x="530" y="525" text-anchor="middle" class="small">queue capabilities + errors</text>
+  <text x="530" y="470" text-anchor="middle" class="label">IArdaBackendRuntime</text>
+  <text x="530" y="500" text-anchor="middle" class="small">module lifetime + presentation state</text>
+  <text x="530" y="525" text-anchor="middle" class="small">CreateSwapChain + teardown</text>
   <path d="M197 345 L450 425" class="arrow"/>
   <path d="M497 345 L515 425" class="arrow"/>
   <path d="M797 345 L610 425" class="arrow"/>

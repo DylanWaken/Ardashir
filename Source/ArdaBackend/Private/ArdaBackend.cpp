@@ -61,7 +61,7 @@ namespace arda::backend
             std::mutex mMutex;
             FArdaBackendConfiguration mConfiguration;
             FArdaDefaultMessageCallback mDefaultMessageCallback;
-            eastl::unique_ptr<IArdaBackendDevice> mBackendDevice;
+            eastl::unique_ptr<IArdaBackendRuntime> mBackendRuntime;
             rhi::FArdaRHIDeviceRef mDevice;
             IArdaExternalDeviceProvider* mExternalDeviceProvider = nullptr;
             eastl::string mError;
@@ -196,7 +196,7 @@ namespace arda::backend
                     "The backend module returned an invalid RHI provider device.";
                 return EArdaInitializeResult::Failure;
             }
-            State.mBackendDevice = eastl::move(Result.mBackendDevice);
+            State.mBackendRuntime = eastl::move(Result.mBackendRuntime);
             return EArdaInitializeResult::Success;
         }
 
@@ -294,7 +294,7 @@ namespace arda::backend
     {
         auto& state = GetState();
         std::lock_guard<std::mutex> lock(state.mMutex);
-        if (state.mBackendDevice)
+        if (state.mBackendRuntime)
         {
             state.mError = "The backend cannot be reconfigured after initialization.";
             return false;
@@ -339,7 +339,7 @@ namespace arda::backend
     {
         auto& state = GetState();
         std::lock_guard<std::mutex> lock(state.mMutex);
-        if (state.mBackendDevice)
+        if (state.mBackendRuntime)
             return state.mDevice != nullptr;
 
         FArdaBackendConfiguration runtimeConfiguration = state.mConfiguration;
@@ -369,7 +369,7 @@ namespace arda::backend
 
         auto& state = GetState();
         std::lock_guard<std::mutex> lock(state.mMutex);
-        if (state.mBackendDevice)
+        if (state.mBackendRuntime)
         {
             state.mError = "The backend is already initialized.";
             return EArdaInitializeResult::Failure;
@@ -393,13 +393,13 @@ namespace arda::backend
         }
 
         FArdaSwapChainCreateResult SwapChainResult =
-            state.mBackendDevice->CreateSwapChain(
+            state.mBackendRuntime->CreateSwapChain(
                 Width, Height, state.mDevice);
         if (!SwapChainResult)
         {
             state.mError = eastl::move(SwapChainResult.mError);
             state.mDevice = nullptr;
-            state.mBackendDevice.reset();
+            state.mBackendRuntime.reset();
             private_api::CompleteShaderDirectoryRegistryUse(false);
             return EArdaInitializeResult::Failure;
         }
@@ -417,7 +417,7 @@ namespace arda::backend
         if (state.mDevice)
             state.mDevice->FlushAndDisablePipelineCachePersistence();
         state.mDevice = nullptr;
-        state.mBackendDevice.reset();
+        state.mBackendRuntime.reset();
         private_api::SetActiveBackendModule(nullptr);
         private_api::ReleaseShaderDirectoryRegistryAfterShutdown();
     }
@@ -443,7 +443,7 @@ namespace arda::backend
     {
         auto& state = GetState();
         std::lock_guard<std::mutex> lock(state.mMutex);
-        if (state.mBackendDevice)
+        if (state.mBackendRuntime)
         {
             state.mError =
                 "External device provider registration cannot change while initialized.";
@@ -464,7 +464,7 @@ namespace arda::backend
     {
         auto& state = GetState();
         std::lock_guard<std::mutex> lock(state.mMutex);
-        if (state.mBackendDevice)
+        if (state.mBackendRuntime)
         {
             state.mError =
                 "External device provider registration cannot change while initialized.";

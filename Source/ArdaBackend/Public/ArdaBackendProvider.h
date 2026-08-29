@@ -19,7 +19,7 @@ namespace arda::backend
     class IArdaExternalDeviceProvider;
 
     /** C++ provider contract version required by this ArdaBackend build. */
-    inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 3;
+    inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 4;
 
     /** Identifies the bytecode family consumed by a backend module. */
     enum class EArdaShaderBinaryFormat : uint8_t
@@ -129,12 +129,12 @@ namespace arda::backend
         }
     };
 
-    /** Defines an initialized runtime device supplied by a backend module. */
-    class IArdaBackendDevice
+    /** Owns the module-private runtime state that accompanies an RHI device. */
+    class IArdaBackendRuntime
     {
     public:
-        /** Destroys the device after Arda has released its RHI and swap-chain references. */
-        virtual ~IArdaBackendDevice() = default;
+        /** Destroys the runtime after Arda has released its RHI and swap-chain references. */
+        virtual ~IArdaBackendRuntime() = default;
 
         /**
          * Creates presentation resources for an initialized presentation device.
@@ -154,8 +154,8 @@ namespace arda::backend
     {
         /** Initialization outcome. */
         EArdaInitializeResult mResult = EArdaInitializeResult::Failure;
-        /** Initialized device. Empty unless initialization succeeded. */
-        eastl::unique_ptr<IArdaBackendDevice> mBackendDevice;
+        /** Module-private runtime and lifetime owner. Empty unless initialization succeeded. */
+        eastl::unique_ptr<IArdaBackendRuntime> mBackendRuntime;
         /** Provider implementation wrapped by ArdaBackend's concrete RHI device. */
         eastl::shared_ptr<rhi::provider::IArdaRHIProviderDevice> mProviderDevice;
         /** Failure diagnostic. Empty on success. */
@@ -164,7 +164,7 @@ namespace arda::backend
         [[nodiscard]] explicit operator bool() const noexcept
         {
             return mResult == EArdaInitializeResult::Success &&
-                mBackendDevice != nullptr && mProviderDevice != nullptr;
+                mBackendRuntime != nullptr && mProviderDevice != nullptr;
         }
     };
 

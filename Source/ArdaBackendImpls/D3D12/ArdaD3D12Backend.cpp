@@ -6847,10 +6847,10 @@ namespace arda::backend
             eastl::string mError;
         };
 
-        class FArdaD3D12BackendDevice final : public IArdaBackendDevice
+        class FArdaD3D12BackendRuntime final : public IArdaBackendRuntime
         {
         public:
-            ~FArdaD3D12BackendDevice() override
+            ~FArdaD3D12BackendRuntime() override
             {
                 if (mProviderDevice) (void)mProviderDevice->WaitForIdle();
                 mProviderDevice.reset();
@@ -6868,16 +6868,16 @@ namespace arda::backend
                 const IArdaExternalDeviceProvider* ExternalProvider)
             {
                 FArdaBackendDeviceCreateResult Result;
-                auto Device = eastl::make_unique<FArdaD3D12BackendDevice>();
-                Result.mResult = Device->Initialize(
+                auto Runtime = eastl::make_unique<FArdaD3D12BackendRuntime>();
+                Result.mResult = Runtime->Initialize(
                     Configuration, WindowSurface, ExternalProvider);
                 if (Result.mResult == EArdaInitializeResult::Success)
                 {
-                    Result.mProviderDevice = Device->mProviderDevice;
-                    Result.mBackendDevice = eastl::move(Device);
+                    Result.mProviderDevice = Runtime->mProviderDevice;
+                    Result.mBackendRuntime = eastl::move(Runtime);
                 }
                 else
-                    Result.mError = eastl::move(Device->mError);
+                    Result.mError = eastl::move(Runtime->mError);
                 return Result;
             }
 
@@ -7145,7 +7145,7 @@ namespace arda::backend
                 IArdaWindowSurface* WindowSurface,
                 const IArdaExternalDeviceProvider* ExternalProvider) override
             {
-                return FArdaD3D12BackendDevice::Create(
+                return FArdaD3D12BackendRuntime::Create(
                     Configuration, WindowSurface, ExternalProvider);
             }
             FArdaRHIStatus ConfigureShaderCompileInvocation(

@@ -83,7 +83,7 @@
 
     <rect class="native" x="1285" y="212" width="459" height="150"/>
     <text x="1515" y="242" class="label">Selected backend module</text>
-    <text x="1515" y="270" class="small">IArdaBackendModule + IArdaBackendDevice</text>
+    <text x="1515" y="270" class="small">IArdaBackendModule + IArdaBackendRuntime</text>
     <text x="1515" y="293" class="small">native API or engine-RHI adapter</text>
     <text x="1515" y="316" class="small">descriptor conversion and external-object import</text>
     <text x="1515" y="343" class="tiny">implementation types remain private to the linked module</text>
@@ -100,7 +100,7 @@
 
     <rect class="validation" x="860" y="400" width="884" height="188"/>
     <text x="1302" y="430" class="label">Lifetime contract</text>
-    <text x="1302" y="458" class="small">Core owns IArdaBackendDevice; concrete RHI refs pin module and native/engine lifetime</text>
+    <text x="1302" y="458" class="small">Core owns IArdaBackendRuntime; concrete RHI refs pin provider and native/engine lifetime</text>
     <text x="1302" y="481" class="small">Caller owns unique_ptr&lt;IArdaSwapChain&gt;, FArdaGlobalShaderMap, and FArdaPipelineStateCache</text>
     <text x="1302" y="504" class="small">RHI refs may be copied or moved; cache entries retain their pipelines and layouts</text>
     <line x1="890" y1="525" x2="1714" y2="525" class="divider"/>
@@ -110,7 +110,7 @@
     <rect class="validation" x="48" y="626" width="1696" height="190"/>
     <text x="896" y="656" class="label">Initialization call chain and invariants</text>
     <text x="896" y="684" class="small">ConfigureBackend &#8594; begin shader-directory registry use &#8594; scan and freeze sources &#8594; FArdaShaderTypeRegistration::CommitAll()</text>
-    <text x="896" y="707" class="small">&#8594; select registered module &#8594; CreateDevice(source) &#8594; Initialize &#8594; GetDevice &#8594; publish FArdaDeviceContext</text>
+    <text x="896" y="707" class="small">&#8594; select module &#8594; CreateDevice(config, surface, provider) &#8594; wrap provider as FArdaRHIDeviceRef &#8594; publish module</text>
     <text x="896" y="742" class="small">Configure before initialize | initialize once | shader mappings are immutable while a backend is live | validation defaults on</text>
     <text x="896" y="765" class="small">Headless initialization creates a device only; presentation initialization also consumes IArdaWindowSurface and creates a swap chain</text>
     <text x="896" y="793" class="tiny">Failure unwinds device state and releases the shader-directory registry for correction and retry</text>
@@ -320,11 +320,11 @@
     <path class="flow" d="M468 2804 H516"/>
 
     <rect class="device" x="520" y="2712" width="420" height="184"/>
-    <text x="730" y="2742" class="label">Sample IArdaBackendDevice</text>
-    <text x="730" y="2770" class="small">FArdaD3D12BackendDevice</text>
-    <text x="730" y="2793" class="small">or FArdaVulkanBackendDevice</text>
-    <text x="730" y="2816" class="small">Initialize; CreateSwapChain; GetDevice</text>
-    <text x="730" y="2839" class="small">owns or adopts native device and queues</text>
+    <text x="730" y="2742" class="label">Sample IArdaBackendRuntime</text>
+    <text x="730" y="2770" class="small">FArdaD3D12BackendRuntime</text>
+    <text x="730" y="2793" class="small">or FArdaVulkanBackendRuntime</text>
+    <text x="730" y="2816" class="small">CreateSwapChain; lifetime teardown</text>
+    <text x="730" y="2839" class="small">owns module-private runtime state</text>
     <text x="730" y="2885" class="tiny">registered as native-d3d12 or native-vulkan; exact name wins</text>
     <path class="flow" d="M940 2804 H986"/>
 

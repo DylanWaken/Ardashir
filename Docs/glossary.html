@@ -124,10 +124,10 @@
           <p><strong>In Ardashir:</strong> ArdaBackend generates calls from <code>ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS</code> so static backend libraries are retained and registered.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-backend-module">Backend module</a></li><li><a href="#term-provider-contract">Provider contract</a></li><li><a href="#term-singleton">Singleton</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-provider-contract" data-glossary-entry data-category="Software architecture" data-search="Provider contract Software architecture The versioned interface a replaceable implementation must satisfy to participate in a host system. IArdaBackendModule and IArdaBackendDevice define the contract between backend-neutral ArdaBackend core and a linked graphics implementation.">
+        <article class="glossary-entry" id="term-provider-contract" data-glossary-entry data-category="Software architecture" data-search="Provider contract Software architecture The versioned interface a replaceable implementation must satisfy to participate in a host system. IArdaBackendModule and IArdaBackendRuntime define the contract between backend-neutral ArdaBackend core and a linked graphics implementation.">
           <div class="glossary-entry__meta"><h3>Provider contract</h3><span class="category">Software architecture</span></div>
           <p>The versioned interface a replaceable implementation must satisfy to participate in a host system.</p>
-          <p><strong>In Ardashir:</strong> <code>IArdaBackendModule</code> and <code>IArdaBackendDevice</code> define the contract between backend-neutral ArdaBackend core and a linked graphics implementation.</p>
+          <p><strong>In Ardashir:</strong> <code>IArdaBackendModule</code> and <code>IArdaBackendRuntime</code> define the contract between backend-neutral ArdaBackend core and a linked graphics implementation.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-backend-module">Backend module</a></li><li><a href="#term-abi">ABI</a></li><li><a href="#term-rhi">RHI</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-barrier" data-glossary-entry data-category="Graphics" data-search="Barrier Graphics An ordering and visibility operation that makes resource usage transitions safe. ArdaBackend emits native barriers when resources change state or access pattern.">
@@ -190,10 +190,10 @@
           <p><strong>In Ardashir:</strong> ArdaBackend expresses descriptors through backend-neutral binding layouts and binding sets implemented by the active module.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-binding-layout">Binding layout</a></li><li><a href="#term-binding-set">Binding set</a></li><li><a href="#term-bindless">Bindless</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-device" data-glossary-entry data-category="Graphics" data-search="Device Graphics The logical interface to a GPU used to create resources, pipelines, and command contexts. ArdaBackend device objects are the root for native resource allocations and capability queries.">
+        <article class="glossary-entry" id="term-device" data-glossary-entry data-category="Graphics" data-search="Device Graphics The logical interface to a GPU used to create resources, pipelines, and command contexts. FArdaRHIDeviceRef is ArdaBackend's public device and the root for native resource allocations and capability queries.">
           <div class="glossary-entry__meta"><h3>Device</h3><span class="category">Graphics</span></div>
           <p>The logical interface to a GPU used to create resources, pipelines, and command contexts.</p>
-          <p><strong>In Ardashir:</strong> ArdaBackend device objects are the root for native resource allocations and capability queries.</p>
+          <p><strong>In Ardashir:</strong> <code>FArdaRHIDeviceRef</code> is ArdaBackend's public device and the root for native resource allocations and capability queries.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-queue">Queue</a></li><li><a href="#term-command-list">Command list</a></li><li><a href="#term-device-affinity">Device affinity</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-device-affinity" data-glossary-entry data-category="Graphics" data-search="Device affinity Graphics The association of work or data with one GPU in a multi-device system. ArdaBackend preserves device identity so resources and commands are used with the device that created them.">

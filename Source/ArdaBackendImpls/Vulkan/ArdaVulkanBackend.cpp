@@ -8174,10 +8174,10 @@ namespace arda::backend
             eastl::string mError;
         };
 
-        class FArdaVulkanBackendDevice final : public IArdaBackendDevice
+        class FArdaVulkanBackendRuntime final : public IArdaBackendRuntime
         {
         public:
-            ~FArdaVulkanBackendDevice() override
+            ~FArdaVulkanBackendRuntime() override
             {
                 if (mProviderDevice) (void)mProviderDevice->WaitForIdle();
                 mProviderDevice.reset();
@@ -8193,16 +8193,16 @@ namespace arda::backend
                 const IArdaExternalDeviceProvider* ExternalProvider)
             {
                 FArdaBackendDeviceCreateResult Result;
-                auto Device = eastl::make_unique<FArdaVulkanBackendDevice>();
-                Result.mResult = Device->Initialize(
+                auto Runtime = eastl::make_unique<FArdaVulkanBackendRuntime>();
+                Result.mResult = Runtime->Initialize(
                     Configuration, WindowSurface, ExternalProvider);
                 if (Result.mResult == EArdaInitializeResult::Success)
                 {
-                    Result.mProviderDevice = Device->mProviderDevice;
-                    Result.mBackendDevice = eastl::move(Device);
+                    Result.mProviderDevice = Runtime->mProviderDevice;
+                    Result.mBackendRuntime = eastl::move(Runtime);
                 }
                 else
-                    Result.mError = eastl::move(Device->mError);
+                    Result.mError = eastl::move(Runtime->mError);
                 return Result;
             }
 
@@ -8768,7 +8768,7 @@ namespace arda::backend
                 IArdaWindowSurface* WindowSurface,
                 const IArdaExternalDeviceProvider* ExternalProvider) override
             {
-                return FArdaVulkanBackendDevice::Create(
+                return FArdaVulkanBackendRuntime::Create(
                     Configuration, WindowSurface, ExternalProvider);
             }
             FArdaRHIStatus ConfigureShaderCompileInvocation(

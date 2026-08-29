@@ -92,9 +92,9 @@
 
         <section id="mental-model">
           <h2>Mental model: declaration core plus linked implementation</h2>
-          <p>Think of ArdaBackend as two concentric contracts. The outer contract is used by Ardashir systems: configure one backend, obtain an <code>IArdaRHIDevice</code>, create resources, record commands, compile registered shaders, and optionally present. The inner <a class="term" data-term="provider-contract" href="../glossary.html#term-provider-contract">provider contract</a> is used only by linked backend libraries: advertise a module, manufacture its runtime device, and bridge module-specific services.</p>
+          <p>Think of ArdaBackend as two concentric contracts. The outer contract is used by Ardashir systems: configure one backend, obtain an <code>IArdaRHIDevice</code>, create resources, record commands, compile registered shaders, and optionally present. The inner <a class="term" data-term="provider-contract" href="../glossary.html#term-provider-contract">provider contract</a> is used only by linked backend libraries: advertise a module, manufacture its backend runtime and RHI provider, and bridge module-specific services.</p>
           <figure>
-            <img src="Assets/backend-provider-module-flow.svg" alt="Application selection enters the ArdaBackend registry, chooses one of several linked modules, creates its runtime backend device, and exposes RHI, presentation, and shader services; an external host can provide devices and resources to the selected module.">
+            <img src="Assets/backend-provider-module-flow.svg" alt="Application selection enters the ArdaBackend registry, chooses one of several linked modules, creates its backend runtime and RHI provider, and exposes RHI, presentation, and shader services; an external host can provide devices and resources to the selected module.">
             <figcaption>Module identity is chosen at runtime from the implementations made available at link time. External objects cross only through copied, backend-routed descriptors.</figcaption>
           </figure>
           <p>The distinction between identity and compatibility matters. <code>native-vulkan</code> and a future <code>unreal-vulkan-rhi</code> could both use the Vulkan <a class="term" data-term="compatibility-class" href="../glossary.html#term-compatibility-class">compatibility class</a>, but they are not interchangeable implementations and need not accept the same external payload.</p>
@@ -105,7 +105,7 @@
           <h3>Ardashir/application audience</h3>
           <p>Application and renderer code uses <code>ArdaBackend.h</code>, the RHI headers, shader APIs, and optional external-provider APIs. It may select a module by stable name with <a href="api-reference.html#api-arda-backend-configurebackend-42d0f49a"><code>ConfigureBackend(const char*)</code></a>, or leave <code>mBackendName</code> empty and select the highest-priority module compatible with <code>mBackend</code>.</p>
           <h3>Backend implementer audience</h3>
-          <p>A backend library includes <code>ArdaBackendProvider.h</code> and implements <a href="api-reference.html#api-arda-backend-iardabackendmodule-83673c0b"><code>IArdaBackendModule</code></a> plus <a href="api-reference.html#api-arda-backend-iardabackenddevice-ce421f3b"><code>IArdaBackendDevice</code></a>. Native SDK or engine headers belong in that library. Do not add their types to <code>Source/ArdaBackend/Public</code>; carry them as <code>FArdaNativeObject</code>, stable named objects, or module-owned private state.</p>
+          <p>A backend library includes <code>ArdaBackendProvider.h</code> and implements <a href="api-reference.html#api-arda-backend-iardabackendmodule-83673c0b"><code>IArdaBackendModule</code></a> plus <a href="api-reference.html#api-arda-backend-iardabackendruntime-0f27896c"><code>IArdaBackendRuntime</code></a>. Native SDK or engine headers belong in that library. Do not add their types to <code>Source/ArdaBackend/Public</code>; carry them as <code>FArdaNativeObject</code>, stable named objects, or module-owned private state.</p>
           <p>This keeps the public binary and include boundary independent of Vulkan, D3D12, Unreal, Unity, and Godot. It also makes an implementation replaceable by changing build options and linked registration functions rather than rewriting Ardashir call sites.</p>
         </section>
 
@@ -125,10 +125,10 @@
         </section>
 
         <section id="device-contract">
-          <h2>The runtime device contract</h2>
-          <p><code>IArdaBackendModule::CreateDevice</code> performs provider initialization atomically from the selected configuration, optional presentation surface, and optional external provider. Success returns both a unique <code>IArdaBackendDevice</code> for presentation ownership and a shared <code>IArdaRHIProviderDevice</code> implementing the public provider SPI. Core validates that pair and constructs the only backend-neutral <code>FArdaRHIDeviceRef</code>.</p>
+          <h2>The backend runtime contract</h2>
+          <p><code>IArdaBackendModule::CreateDevice</code> performs provider initialization atomically from the selected configuration, optional presentation surface, and optional external provider. Success returns both a unique <code>IArdaBackendRuntime</code> for module-private lifetime and presentation state and a shared <code>IArdaRHIProviderDevice</code> implementing the public provider SPI. Core validates that pair and constructs the only backend-neutral device, <code>FArdaRHIDeviceRef</code>.</p>
           <p><code>CreateSwapChain</code> receives that core-owned RHI facade and may return an error when presentation is unsupported or invalid for the chosen device source. Queue capabilities, waiting, submissions, and resource operations have one source of truth: the provider device consumed by the facade.</p>
-          <p>Core owns the backend-device unique pointer and the RHI facade owns the shared provider device. Copied RHI references can outlive the global backend state, so provider code and its backing library must remain loaded until all copies are gone. Unloading an engine plugin while one of its virtual objects or deleters is reachable is undefined behavior.</p>
+          <p>Core owns the backend-runtime unique pointer and the RHI facade owns the shared provider device. Copied RHI references can outlive the global backend state, so provider code and its backing library must remain loaded until all copies are gone. Unloading an engine plugin while one of its virtual objects or deleters is reachable is undefined behavior.</p>
         </section>
 
         <section id="selection-flow">
@@ -217,7 +217,7 @@ add_subdirectory(path/to/Ardashir)</code></pre>
           <h2>Ownership, synchronization, and performance</h2>
           <ul>
             <li><strong>Module:</strong> owned by its library/host; borrowed by the registry; must outlive registration, active device, and every concrete RHI object whose code lives in that library.</li>
-            <li><strong>Backend device:</strong> uniquely owned by core; owns module-private wrapper state; borrows host objects for external-device mode.</li>
+            <li><strong>Backend runtime:</strong> uniquely owned by core; owns module-private lifetime and presentation state; borrows host objects for external-device mode.</li>
             <li><strong>Descriptors:</strong> copied value metadata. Opaque handles remain non-owning unless a documented native retention mechanism or lifetime token says otherwise.</li>
             <li><strong>Queues:</strong> the module may submit directly. The host must grant a coordinated interval; registration mutexes do not synchronize GPU queues.</li>
             <li><strong>Registry:</strong> registration functions are thread-safe, but callbacks must not reenter registry/lifecycle operations. Serialize configuration, initialization, shutdown, plugin unloading, and device use.</li>
@@ -240,7 +240,7 @@ add_subdirectory(path/to/Ardashir)</code></pre>
           <p>This skeleton shows responsibility placement. Native details intentionally remain in the module library.</p>
           <pre><code>namespace arda::backend
 {
-class FMyDevice final : public IArdaBackendDevice
+class FMyRuntime final : public IArdaBackendRuntime
 {
 public:
     FArdaSwapChainCreateResult CreateSwapChain(
@@ -274,7 +274,7 @@ bool RegisterMyEngineArdaBackend()
     return RegisterBackendModule(module);
 }
 } // namespace arda::backend</code></pre>
-          <p>Construction alone performs no GPU work. <code>Initialize</code> validates the exact external schema or creates native state, then constructs a concrete object implementing the full <code>IArdaRHIDevice</code> surface returned by <code>GetDevice</code>. That RHI object validates backend-defined resource type names and payloads in its import methods. Partial failure must release module-owned objects, leave host-owned objects untouched, and retain an error message. Shutdown waits for Arda submissions, releases core-owned objects in dependency order, and only then permits module unregistration or library unload.</p>
+          <p><code>CreateDevice</code> validates the exact external schema or creates native state, then returns a provider device plus its backend runtime. ArdaBackend wraps the provider as the public <code>FArdaRHIDeviceRef</code>. That RHI object validates backend-defined resource type names and payloads in its import methods. Partial failure must release module-owned objects, leave host-owned objects untouched, and retain an error message. Shutdown waits for Arda submissions, releases core-owned objects in dependency order, and only then permits module unregistration or library unload.</p>
         </section>
 
         <section id="failures">
@@ -295,7 +295,7 @@ bool RegisterMyEngineArdaBackend()
           <ul>
             <li>ArdaBackend core defines stable renderer-facing semantics; linkable modules make them operative.</li>
             <li>A module name identifies an implementation; backend type is only a compatibility class.</li>
-            <li>The module/device split separates persistent registration identity from one runtime device instance.</li>
+            <li>The module/runtime split separates persistent registration identity from one initialized backend instance.</li>
             <li>Build-generated registration makes the linked module set explicit and safe for static archives.</li>
             <li>Generic external-device/resource descriptors are routed and interpreted by the selected module.</li>
             <li>Module lifetime must cover every concrete object and callback implemented by its library.</li>
@@ -305,7 +305,7 @@ bool RegisterMyEngineArdaBackend()
             <li>Why can two modules share <code>EArdaBackendType::Vulkan</code> but require different external payloads?</li>
             <li>Which descriptor field rejects a provider compiled against an incompatible virtual interface?</li>
             <li>Why are a linked library and a registration function both required for a static backend module?</li>
-            <li>Who owns a module, backend device, generic descriptor bytes, and external native device?</li>
+            <li>Who owns a module, backend runtime, generic descriptor bytes, and external native device?</li>
             <li>When should a shader module return NotHandled rather than Success or Failure?</li>
             <li>What must be drained before an engine plugin containing a backend module can unload?</li>
           </ol>
