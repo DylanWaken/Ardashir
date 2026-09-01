@@ -116,8 +116,8 @@
 
         <section id="project-mapping">
           <h2>Exact project mapping</h2>
-          <p><a href="api-reference.html#api-arda-backend-eardadevicesource-3877d02f"><code>EArdaDeviceSource</code></a> selects between module-created native state and a registered external provider. Set <a href="api-reference.html#api-arda-backend-fardabackendconfiguration-mdevicesource-ef35d91b"><code>FArdaBackendConfiguration::mDeviceSource</code></a> to the external-provider enumerator and choose the matching module name or compatibility class before calling the headless <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend</code></a>.</p>
-          <p>The process-wide <a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-f1c0d75e"><code>IArdaExternalDeviceProvider</code></a> supplies one copied universal <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> and an optional shared token. <code>GetBackendName</code> can require one exact module; named objects, repeated named properties, and backend bytes are interpreted only by that module. No native API declaration appears in the public ArdaBackend API. After initialization, <code>FArdaDeviceContext::mBackendName</code> and <a href="api-reference.html#api-arda-backend-fardadevicecontext-mdevicesource-ef35d91b"><code>mDeviceSource</code></a> report which implementation and source produced the live wrapper.</p>
+          <p><a href="api-reference.html#api-arda-backend-eardadevicesource-3877d02f"><code>EArdaDeviceSource</code></a> selects between module-created native state and a registered external provider. Set <code>FArdaBackendConfiguration::mDeviceSource</code> to the external-provider enumerator and choose the provider's exact module name before calling headless <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend</code></a>.</p>
+          <p>The process-wide <code>IArdaExternalDeviceProvider</code> supplies one copied universal <code>FArdaExternalDeviceDesc</code> and an optional shared token. <code>GetBackendName</code> returns the exact registered module; named objects, repeated named properties, and backend bytes are interpreted only by that module. After initialization, <code>GetBackendConfiguration().mBackendName</code> and <code>mDeviceSource</code> report which implementation and source produced the live wrapper.</p>
           <p>Named <a href="api-reference.html#api-arda-backend-iardaexternalresourceprovider-4c32a8df"><code>IArdaExternalResourceProvider</code></a> objects form a separate registry. They turn a provider name and stable 64-bit ID into complete native import descriptions consumed by <a href="api-reference.html#api-arda-backend-importexternaltexture-6d277d20"><code>ImportExternalTexture</code></a> or <a href="api-reference.html#api-arda-backend-importexternalbuffer-13f26bef"><code>ImportExternalBuffer</code></a>.</p>
         </section>
 
@@ -140,9 +140,9 @@ public:
             arda::backend::FArdaNativeObject(graphics) });
     }
 
-    arda::backend::EArdaBackendType GetBackendType() const noexcept override
+    const char* GetBackendName() const noexcept override
     {
-        return arda::backend::EArdaBackendType::D3D12;
+        return "native-d3d12";
     }
 
     bool GetExternalDeviceDesc(
@@ -260,7 +260,7 @@ if (!arda::backend::RegisterExternalDeviceProvider(deviceProvider) ||
     return Fail(arda::backend::GetBackendError());
 
 arda::backend::FArdaBackendConfiguration config;
-config.mBackend = arda::backend::EArdaBackendType::D3D12;
+config.mBackendName = deviceProvider.GetBackendName();
 config.mDeviceSource = arda::backend::EArdaDeviceSource::ExternalProvider;
 if (!arda::backend::ConfigureBackend(config) ||
     !arda::backend::InitializeBackend())

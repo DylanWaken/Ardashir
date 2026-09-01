@@ -12,7 +12,7 @@
   <rect x="40" y="55" width="250" height="105" rx="12" class="box"/>
   <text x="165" y="92" text-anchor="middle" class="label">Application</text>
   <text x="165" y="123" text-anchor="middle" class="small">mBackendName</text>
-  <text x="165" y="146" text-anchor="middle" class="small">or compatibility class</text>
+  <text x="165" y="146" text-anchor="middle" class="small">or global priority</text>
 
   <rect x="375" y="45" width="310" height="125" rx="12" class="box"/>
   <text x="530" y="82" text-anchor="middle" class="label">ArdaBackend core</text>

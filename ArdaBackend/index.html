@@ -103,7 +103,7 @@
 
           <h3>What ArdaBackend does</h3>
           <ul>
-            <li>Discovers linked <a class="term" data-term="backend-module" href="../glossary.html#term-backend-module">backend modules</a>, selects one by stable name or compatibility class, and publishes an opaque <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>.</li>
+            <li>Discovers linked <a class="term" data-term="backend-module" href="../glossary.html#term-backend-module">backend modules</a>, selects one by stable name or global priority, and publishes an opaque RHI device.</li>
             <li>Exposes backend-neutral resource descriptions, object interfaces, capability queries, status values, and intrusive references.</li>
             <li>Enumerates registered shader permutations, delegates compiler configuration or execution to the selected module with a DXC-compatible fallback, persists keyed artifacts, and constructs binding layouts from C++ parameter metadata.</li>
             <li>Creates immutable pipeline state, reuses live objects in a bounded cache, and persists backend-native D3D12/Vulkan cache data across runs.</li>

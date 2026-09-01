@@ -155,7 +155,6 @@ endif()</code></pre>
           <pre><code>using namespace arda;
 
 backend::FArdaBackendConfiguration config;
-config.mBackend = backend::DefaultBackend;
 config.mDeviceSource = backend::EArdaDeviceSource::ArdaCreated;
 config.mbEnableValidation = true;
 config.mMessageCallback = &amp;diagnostics; // Must outlive every retained device ref.
@@ -197,7 +196,7 @@ if (!arda::backend::RegisterExternalDeviceProvider(provider))
     return Fail(arda::backend::GetBackendError());
 
 arda::backend::FArdaBackendConfiguration config;
-config.mBackend = arda::backend::EArdaBackendType::D3D12;
+config.mBackendName = provider.GetBackendName();
 config.mDeviceSource = arda::backend::EArdaDeviceSource::ExternalProvider;
 RegisterApplicationShaderDirectoriesBeforeBackendInitialization(); // Optional.
 if (!arda::backend::ConfigureBackend(config) ||
@@ -217,7 +216,7 @@ arda::rhi::FArdaRHIDeviceRef device =
     pluginLifetime);
 
 RegisterAndInitializeExternal(
-    provider, arda::backend::EArdaBackendType::Vulkan); // Host helper.</code></pre>
+    provider, provider.GetBackendName()); // Host helper.</code></pre>
           <p>Raw Vulkan handles are not reference-counted. Host/token lifetime and Vulkan host synchronization must cover every Arda wrapper and GPU use. This recipe is assembled from implemented contracts; it is not an end-to-end Vulkan or Unreal sample.</p>
 
           <h3>Named texture and buffer recipe</h3>
