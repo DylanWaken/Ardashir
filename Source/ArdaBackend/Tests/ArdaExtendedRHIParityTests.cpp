@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <string>
 #include <vector>
 
 #if defined(_WIN32)
@@ -2946,6 +2947,58 @@ namespace
             Texture.mValue, {TextureMapping},
             EArdaRHIQueueType::Graphics));
 
+        if (Residency.mbReservedTexture3D)
+        {
+            FArdaRHITextureDesc VolumeDesc = TextureDesc;
+            VolumeDesc.mDebugName = "Sparse parity 3D texture";
+            VolumeDesc.mDimension = EArdaRHITextureDimension::Texture3D;
+            VolumeDesc.mWidth = 64;
+            VolumeDesc.mHeight = 64;
+            VolumeDesc.mDepth = 16;
+            auto Volume = Device->CreateTexture(VolumeDesc);
+            ASSERT_TRUE(Volume) << Volume.mStatus.mMessage.c_str();
+            const auto VolumeTiling = Device->GetTextureTiling(Volume.mValue);
+            ASSERT_TRUE(VolumeTiling)
+                << VolumeTiling.mStatus.mMessage.c_str();
+            ASSERT_GT(VolumeTiling.mValue.mTileCount, 0u);
+            FArdaRHITextureTileMapping VolumeMapping;
+            VolumeMapping.mCoordinates.push_back({0, 0, 0, 0, 0});
+            VolumeMapping.mRegions.push_back({1, 1, 1, 1});
+            VolumeMapping.mByteOffsets.push_back(0);
+            VolumeMapping.mHeap = Heap.mValue;
+            ASSERT_TRUE(Device->UpdateTextureTileMappings(
+                Volume.mValue, {VolumeMapping},
+                EArdaRHIQueueType::Graphics));
+            VolumeMapping.mHeap = {};
+            ASSERT_TRUE(Device->UpdateTextureTileMappings(
+                Volume.mValue, {VolumeMapping},
+                EArdaRHIQueueType::Graphics));
+        }
+
+        if (Residency.mbAliasedMappings)
+        {
+            BufferDesc.mDebugName = "Sparse parity alias buffer";
+            auto Alias = Device->CreateBuffer(BufferDesc);
+            ASSERT_TRUE(Alias) << Alias.mStatus.mMessage.c_str();
+            FArdaRHIBufferTileMapping AliasedMapping;
+            AliasedMapping.mByteSize = BufferTileBytes;
+            AliasedMapping.mHeap = Heap.mValue;
+            ASSERT_TRUE(Device->UpdateBufferTileMappings(
+                Buffer.mValue, {AliasedMapping},
+                EArdaRHIQueueType::Graphics));
+            ASSERT_TRUE(Device->UpdateBufferTileMappings(
+                Alias.mValue, {AliasedMapping},
+                EArdaRHIQueueType::Graphics));
+            AliasedMapping.mbCommit = false;
+            AliasedMapping.mHeap = {};
+            ASSERT_TRUE(Device->UpdateBufferTileMappings(
+                Alias.mValue, {AliasedMapping},
+                EArdaRHIQueueType::Graphics));
+            ASSERT_TRUE(Device->UpdateBufferTileMappings(
+                Buffer.mValue, {AliasedMapping},
+                EArdaRHIQueueType::Graphics));
+        }
+
         if (Residency.mbStreamingBudget)
         {
             const auto Budget = Device->QueryStreamingBudget(true);
@@ -2956,6 +3009,145 @@ namespace
                 ASSERT_TRUE(Device->SetStreamingBudgetReservation(
                     Budget.mValue.mCurrentReservationBytes, true));
         }
+        EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+    }
+
+    void VerifyStreamingBudgetExecution(
+        arda::backend::EArdaBackendType Backend,
+        const char* BackendName)
+    {
+        using namespace arda::backend;
+        using namespace arda::rhi;
+
+        ShutdownBackend();
+        FExtendedBackendCleanup Cleanup;
+        FExtendedDiagnosticCallback Diagnostics;
+        FArdaBackendConfiguration Configuration;
+        Configuration.mBackendName = BackendName;
+        Configuration.mBackend = Backend;
+        Configuration.mbEnableValidation = true;
+        Configuration.mMessageCallback = &Diagnostics;
+        ASSERT_TRUE(ConfigureBackend(Configuration));
+        if (!InitializeBackend())
+            GTEST_SKIP() << GetBackendError().c_str();
+
+        auto Device = GetDevice();
+        ASSERT_TRUE(Device);
+        const auto& Residency = Device->GetCapabilities().mResidency;
+        ASSERT_TRUE(Residency.mbStreamingBudget);
+        const auto Budget = Device->QueryStreamingBudget(true);
+        ASSERT_TRUE(Budget) << Budget.mStatus.mMessage.c_str();
+        EXPECT_GT(Budget.mValue.mBudgetBytes, 0u);
+        EXPECT_TRUE(Budget.mValue.mbLocalMemory);
+        if (Residency.mbBudgetReservation)
+        {
+            ASSERT_TRUE(Device->SetStreamingBudgetReservation(
+                Budget.mValue.mCurrentReservationBytes, true));
+        }
+        EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+    }
+
+    void VerifyQueryExecution(
+        arda::backend::EArdaBackendType Backend,
+        const char* BackendName)
+    {
+        using namespace arda::backend;
+        using namespace arda::rhi;
+
+        ShutdownBackend();
+        FExtendedBackendCleanup Cleanup;
+        FExtendedDiagnosticCallback Diagnostics;
+        FArdaBackendConfiguration Configuration;
+        Configuration.mBackendName = BackendName;
+        Configuration.mBackend = Backend;
+        Configuration.mbEnableValidation = true;
+        Configuration.mMessageCallback = &Diagnostics;
+        ASSERT_TRUE(ConfigureBackend(Configuration));
+        if (!InitializeBackend())
+            GTEST_SKIP() << GetBackendError().c_str();
+
+        auto Device = GetDevice();
+        ASSERT_TRUE(Device);
+        ASSERT_TRUE(Device->GetCapabilities().mbQueries);
+        auto Event = Device->CreateEventQuery();
+        auto Timer = Device->CreateTimerQuery();
+        ASSERT_TRUE(Event) << Event.mStatus.mMessage.c_str();
+        ASSERT_TRUE(Timer) << Timer.mStatus.mMessage.c_str();
+
+        ASSERT_TRUE(Device->SignalEventQuery(
+            Event.mValue, EArdaRHIQueueType::Graphics));
+        ASSERT_TRUE(Device->WaitEventQuery(Event.mValue));
+        const auto EventComplete = Device->PollEventQuery(Event.mValue);
+        ASSERT_TRUE(EventComplete) << EventComplete.mStatus.mMessage.c_str();
+        EXPECT_TRUE(EventComplete.mValue);
+        ASSERT_TRUE(Device->ResetEventQuery(Event.mValue));
+
+        auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(Commands) << Commands.mStatus.mMessage.c_str();
+        ASSERT_TRUE(Commands.mValue->Open());
+        ASSERT_TRUE(Commands.mValue->BeginTimerQuery(*Timer.mValue));
+        ASSERT_TRUE(Commands.mValue->EndTimerQuery(*Timer.mValue));
+        ASSERT_TRUE(Commands.mValue->Close());
+        ASSERT_TRUE(Device->ExecuteCommandList(Commands.mValue));
+        ASSERT_TRUE(Device->WaitForIdle());
+        const auto TimerComplete = Device->PollTimerQuery(Timer.mValue);
+        ASSERT_TRUE(TimerComplete) << TimerComplete.mStatus.mMessage.c_str();
+        EXPECT_TRUE(TimerComplete.mValue);
+        const auto Seconds = Device->GetTimerQuerySeconds(Timer.mValue);
+        ASSERT_TRUE(Seconds) << Seconds.mStatus.mMessage.c_str();
+        EXPECT_GE(Seconds.mValue, 0.0f);
+        ASSERT_TRUE(Device->ResetTimerQuery(Timer.mValue));
+        EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+    }
+
+    void VerifyShaderLibraryExecution(
+        arda::backend::EArdaBackendType Backend,
+        const char* BackendName)
+    {
+        using namespace arda::backend;
+        using namespace arda::rhi;
+
+        ShutdownBackend();
+        FExtendedBackendCleanup Cleanup;
+        FExtendedDiagnosticCallback Diagnostics;
+        FArdaBackendConfiguration Configuration;
+        Configuration.mBackendName = BackendName;
+        Configuration.mBackend = Backend;
+        Configuration.mbEnableValidation = true;
+        Configuration.mMessageCallback = &Diagnostics;
+        Configuration.mShaderCompilationMode =
+            EArdaShaderCompilationMode::LoadOnly;
+        ASSERT_TRUE(ConfigureBackend(Configuration));
+        if (!InitializeBackend())
+            GTEST_SKIP() << GetBackendError().c_str();
+
+        auto Device = GetDevice();
+        ASSERT_TRUE(Device);
+        ASSERT_TRUE(Device->GetCapabilities().mbShaderLibraries);
+        const eastl::string FileName = eastl::string("ArdaShaderStructTest") +
+            GetShaderArtifactExtension(Backend);
+        const std::vector<uint8_t> Bytecode =
+            LoadExtendedShaderArtifact(FileName.c_str());
+        ASSERT_FALSE(Bytecode.empty());
+        auto Library = Device->CreateShaderLibrary(
+            Bytecode.data(), Bytecode.size(), "Capability shader library");
+        ASSERT_TRUE(Library) << Library.mStatus.mMessage.c_str();
+        auto Shader = Device->GetShaderFromLibrary(
+            Library.mValue, "ShaderStructTestCS",
+            EArdaRHIShaderStage::Compute,
+            "Capability shader-library compute shader");
+        ASSERT_TRUE(Shader) << Shader.mStatus.mMessage.c_str();
+
+        FArdaRHIBindingLayoutDesc LayoutDesc;
+        LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+        LayoutDesc.mItems.push_back(
+            {0, 1, EArdaRHIBindingType::StructuredBufferUAV});
+        auto Layout = Device->CreateBindingLayout(LayoutDesc);
+        ASSERT_TRUE(Layout) << Layout.mStatus.mMessage.c_str();
+        FArdaRHIComputePipelineDesc PipelineDesc;
+        PipelineDesc.mComputeShader = Shader.mValue;
+        PipelineDesc.mBindingLayouts.push_back(Layout.mValue);
+        ASSERT_TRUE(Device->CreateComputePipeline(PipelineDesc));
         EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
     }
 
@@ -3166,7 +3358,496 @@ namespace
     }
 #endif
 #endif
+
+    enum class ECapabilityProbe : uint8_t
+    {
+        Contract,
+        ExtendedCommands,
+        Resolve,
+        HeapAliasing,
+        Bindless,
+        DirectResourceHeap,
+        DirectResourceAndSamplerHeaps,
+        ExpandedDescriptors,
+        QueueBreadth,
+        SparseResidency,
+        StreamingBudget,
+        ShaderBundle,
+        WorkGraph,
+        MeshShader,
+        RayTracingPipeline,
+        AccelerationStructure,
+        RayTracingScene,
+        OpacityMicromap,
+        SamplerFeedback,
+        CustomPresent,
+        Queries,
+        ShaderLibrary
+    };
+
+    using FCapabilityPredicate = bool (*)(
+        const arda::rhi::FArdaRHICapabilities&);
+
+    struct FCapabilityDefinition
+    {
+        const char* mName = nullptr;
+        FCapabilityPredicate mIsAdvertised = nullptr;
+        ECapabilityProbe mProbe = ECapabilityProbe::Contract;
+    };
+
+    struct FCapabilityConformanceCase
+    {
+        arda::backend::EArdaBackendType mBackend =
+            arda::backend::EArdaBackendType::D3D12;
+        const char* mBackendName = nullptr;
+        const char* mBackendLabel = nullptr;
+        FCapabilityDefinition mCapability;
+    };
+
+    void VerifyCapabilityInvariants(
+        const arda::rhi::FArdaRHICapabilities& Caps)
+    {
+        using namespace arda::rhi;
+        const auto& Ray = Caps.mRayTracing;
+        if (Ray.mbHardwareAccelerated)
+            EXPECT_TRUE(Ray.mbInfrastructure);
+        if (Ray.mbPipelineShaders)
+        {
+            EXPECT_TRUE(Ray.mbInfrastructure);
+            EXPECT_TRUE(Ray.mbHardwareAccelerated);
+        }
+        if (Ray.mbInlineRayQueries)
+        {
+            EXPECT_TRUE(Ray.mbHardwareAccelerated);
+            EXPECT_TRUE(Ray.mbAccelerationStructures);
+        }
+        if (Ray.mbBottomLevel || Ray.mbTopLevel || Ray.mbBuildUpdate ||
+            Ray.mbCompaction)
+            EXPECT_TRUE(Ray.mbAccelerationStructures);
+        if (Ray.mbIndirectDispatch || Ray.mbLocalShaderTableArguments ||
+            Ray.mbPersistentShaderTables)
+            EXPECT_TRUE(Ray.mbPipelineShaders);
+        if (Ray.mbIndirectTopLevelBuild)
+            EXPECT_TRUE(Ray.mbTopLevel);
+        if (Ray.mbOpacityMicromaps)
+            EXPECT_TRUE(Ray.mbAccelerationStructures);
+
+        const auto& Descriptors = Caps.mDescriptors;
+        if (Descriptors.mbRuntimeDescriptorArrays ||
+            Descriptors.mbUnboundedArrays || Descriptors.mbPartiallyBound ||
+            Descriptors.mbUpdateAfterBind ||
+            Descriptors.mbUpdateUnusedWhilePending ||
+            Descriptors.mbVariableDescriptorCount ||
+            Descriptors.mbDirectResourceHeapIndexing ||
+            Descriptors.mbDirectSamplerHeapIndexing ||
+            Descriptors.mbDescriptorBuffer || Descriptors.mbDescriptorHeap)
+            EXPECT_TRUE(Descriptors.mbBindless);
+        if (Descriptors.mbDirectSamplerHeapIndexing)
+            EXPECT_TRUE(Descriptors.mbDirectResourceHeapIndexing);
+
+        const auto& Queues = Caps.mQueues;
+        if (Queues.mbDedicatedComputeFamily)
+            EXPECT_TRUE(Queues.mbCompute);
+        if (Queues.mbDedicatedCopyFamily)
+            EXPECT_TRUE(Queues.mbCopy);
+        if (Queues.mbSparseBindingQueue)
+            EXPECT_TRUE(Queues.mbGraphics || Queues.mbCompute || Queues.mbCopy);
+
+        const auto& Residency = Caps.mResidency;
+        if (Residency.mbReservedBuffers || Residency.mbReservedTexture2D ||
+            Residency.mbReservedTexture3D || Residency.mbAliasedMappings)
+            EXPECT_TRUE(Residency.mbSparseBinding);
+        if (Residency.mbBudgetReservation)
+            EXPECT_TRUE(Residency.mbStreamingBudget);
+
+        const auto& MachineLearning = Caps.mMachineLearning;
+        if (MachineLearning.mbSubgroupOperations)
+        {
+            EXPECT_GT(MachineLearning.mSubgroupMinSize, 0u);
+            EXPECT_GE(MachineLearning.mSubgroupMaxSize,
+                MachineLearning.mSubgroupMinSize);
+        }
+    }
+
+    void RunCapabilityProbe(const FCapabilityConformanceCase& TestCase)
+    {
+        using namespace arda::backend;
+        switch (TestCase.mCapability.mProbe)
+        {
+        case ECapabilityProbe::Contract:
+            return;
+        case ECapabilityProbe::ExtendedCommands:
+            VerifyExtendedCommands(TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::Resolve:
+            VerifyResolveAndPlaneTracking(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::HeapAliasing:
+            VerifyExplicitHeapAliasing(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::Bindless:
+            VerifyBindlessDescriptorTable(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::DirectResourceHeap:
+            VerifyBindlessDescriptorTable(
+                TestCase.mBackend, TestCase.mBackendName, true);
+            return;
+        case ECapabilityProbe::DirectResourceAndSamplerHeaps:
+            VerifyDirectResourceAndSamplerHeapIndexing(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::ExpandedDescriptors:
+            VerifyExpandedDescriptorsAndResourceCollections(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::QueueBreadth:
+            VerifyQueueBreadth(TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::SparseResidency:
+            VerifySparseResidencyAndStreamingBudget(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::StreamingBudget:
+            VerifyStreamingBudgetExecution(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::ShaderBundle:
+            VerifyShaderBundleExecution(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::WorkGraph:
+            ASSERT_EQ(TestCase.mBackend, EArdaBackendType::D3D12)
+                << "A backend advertised work graphs without a native "
+                   "conformance workload.";
+            VerifyD3D12WorkGraphExecution();
+            return;
+        case ECapabilityProbe::MeshShader:
+            VerifyMeshPipelineCapabilityAndExecution(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::RayTracingPipeline:
+            VerifyRayTracingPipelineCapabilityAndExecution(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::AccelerationStructure:
+            VerifyAccelerationStructureLifecycleAndStateParity(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::RayTracingScene:
+            VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::OpacityMicromap:
+#if defined(ARDA_TEST_NATIVE_VULKAN)
+            ASSERT_EQ(TestCase.mBackend, EArdaBackendType::Vulkan)
+                << "A non-Vulkan provider advertised opacity micromaps "
+                   "without a conformance implementation.";
+            VerifyVulkanOpacityMicromapLifecycleAndStateParity();
+#else
+            FAIL() << "Opacity micromaps were advertised without the Vulkan "
+                      "conformance implementation.";
+#endif
+            return;
+        case ECapabilityProbe::SamplerFeedback:
+            ASSERT_EQ(TestCase.mBackend, EArdaBackendType::D3D12)
+                << "A non-D3D12 provider advertised sampler feedback without "
+                   "a conformance implementation.";
+            VerifySamplerFeedbackStateParity();
+            return;
+        case ECapabilityProbe::CustomPresent:
+#if defined(_WIN32)
+            if (TestCase.mBackend == EArdaBackendType::D3D12)
+            {
+                VerifyD3D12CustomPresentExecution();
+                return;
+            }
+#if defined(ARDA_TEST_NATIVE_VULKAN)
+            VerifyVulkanCustomPresentExecution();
+            return;
+#endif
+#endif
+            FAIL() << "Custom present was advertised without a platform "
+                      "conformance implementation.";
+            return;
+        case ECapabilityProbe::Queries:
+            VerifyQueryExecution(TestCase.mBackend, TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::ShaderLibrary:
+            VerifyShaderLibraryExecution(
+                TestCase.mBackend, TestCase.mBackendName);
+            return;
+        }
+        FAIL() << "Unknown RHI capability conformance probe.";
+    }
+
+#define ARDA_CAPABILITY(Name, Expression, Probe) \
+    { Name, +[](const arda::rhi::FArdaRHICapabilities& C) \
+        { return static_cast<bool>(Expression); }, ECapabilityProbe::Probe }
+
+    const std::vector<FCapabilityConformanceCase>&
+    GetCapabilityConformanceCases()
+    {
+        static const FCapabilityDefinition Definitions[] = {
+            ARDA_CAPABILITY("RayTracingInfrastructure",
+                C.mRayTracing.mbInfrastructure, RayTracingPipeline),
+            ARDA_CAPABILITY("HardwareRayTracing",
+                C.mRayTracing.mbHardwareAccelerated, AccelerationStructure),
+            ARDA_CAPABILITY("RayTracingPipelineShaders",
+                C.mRayTracing.mbPipelineShaders, RayTracingPipeline),
+            ARDA_CAPABILITY("InlineRayQueries",
+                C.mRayTracing.mbInlineRayQueries, AccelerationStructure),
+            ARDA_CAPABILITY("AccelerationStructures",
+                C.mRayTracing.mbAccelerationStructures, AccelerationStructure),
+            ARDA_CAPABILITY("BottomLevelAccelerationStructures",
+                C.mRayTracing.mbBottomLevel, AccelerationStructure),
+            ARDA_CAPABILITY("TopLevelAccelerationStructures",
+                C.mRayTracing.mbTopLevel, AccelerationStructure),
+            ARDA_CAPABILITY("AccelerationStructureBuildUpdate",
+                C.mRayTracing.mbBuildUpdate, AccelerationStructure),
+            ARDA_CAPABILITY("AccelerationStructureCompaction",
+                C.mRayTracing.mbCompaction, AccelerationStructure),
+            ARDA_CAPABILITY("IndirectRayDispatch",
+                C.mRayTracing.mbIndirectDispatch, RayTracingScene),
+            ARDA_CAPABILITY("IndirectTopLevelBuild",
+                C.mRayTracing.mbIndirectTopLevelBuild, AccelerationStructure),
+            ARDA_CAPABILITY("LocalShaderTableArguments",
+                C.mRayTracing.mbLocalShaderTableArguments, RayTracingScene),
+            ARDA_CAPABILITY("PersistentShaderTables",
+                C.mRayTracing.mbPersistentShaderTables, RayTracingScene),
+            ARDA_CAPABILITY("OpacityMicromaps",
+                C.mRayTracing.mbOpacityMicromaps, OpacityMicromap),
+            ARDA_CAPABILITY("RayTracingTier",
+                C.mRayTracing.GetTier() !=
+                    arda::rhi::EArdaRHIRayTracingTier::None,
+                AccelerationStructure),
+            ARDA_CAPABILITY("RayShaderIdentifierSize",
+                C.mRayTracing.mShaderIdentifierSize > 0, RayTracingPipeline),
+            ARDA_CAPABILITY("RayShaderRecordAlignment",
+                C.mRayTracing.mShaderRecordAlignment > 0, RayTracingPipeline),
+            ARDA_CAPABILITY("RayShaderTableAlignment",
+                C.mRayTracing.mShaderTableAlignment > 0, RayTracingPipeline),
+            ARDA_CAPABILITY("AccelerationStructureAlignment",
+                C.mRayTracing.mAccelerationStructureAlignment > 0,
+                AccelerationStructure),
+            ARDA_CAPABILITY("MaximumRayRecursionDepth",
+                C.mRayTracing.mMaxRecursionDepth > 0, RayTracingPipeline),
+            ARDA_CAPABILITY("MaximumRayPayloadSize",
+                C.mRayTracing.mMaxRayPayloadSize > 0, RayTracingPipeline),
+            ARDA_CAPABILITY("MaximumRayDispatchInvocations",
+                C.mRayTracing.mMaxRayDispatchInvocations > 0,
+                RayTracingPipeline),
+
+            ARDA_CAPABILITY("BindlessDescriptors",
+                C.mDescriptors.mbBindless, Bindless),
+            ARDA_CAPABILITY("RuntimeDescriptorArrays",
+                C.mDescriptors.mbRuntimeDescriptorArrays, Bindless),
+            ARDA_CAPABILITY("UnboundedDescriptorArrays",
+                C.mDescriptors.mbUnboundedArrays, ExpandedDescriptors),
+            ARDA_CAPABILITY("PartiallyBoundDescriptors",
+                C.mDescriptors.mbPartiallyBound, Bindless),
+            ARDA_CAPABILITY("DescriptorUpdateAfterBind",
+                C.mDescriptors.mbUpdateAfterBind, ExpandedDescriptors),
+            ARDA_CAPABILITY("UpdateUnusedDescriptorsWhilePending",
+                C.mDescriptors.mbUpdateUnusedWhilePending, Bindless),
+            ARDA_CAPABILITY("VariableDescriptorCount",
+                C.mDescriptors.mbVariableDescriptorCount,
+                ExpandedDescriptors),
+            ARDA_CAPABILITY("DirectResourceHeapIndexing",
+                C.mDescriptors.mbDirectResourceHeapIndexing,
+                DirectResourceHeap),
+            ARDA_CAPABILITY("DirectSamplerHeapIndexing",
+                C.mDescriptors.mbDirectSamplerHeapIndexing,
+                DirectResourceAndSamplerHeaps),
+            ARDA_CAPABILITY("DescriptorBuffer",
+                C.mDescriptors.mbDescriptorBuffer, Bindless),
+            ARDA_CAPABILITY("DescriptorHeap",
+                C.mDescriptors.mbDescriptorHeap, Bindless),
+            ARDA_CAPABILITY("MaximumResourceDescriptors",
+                C.mDescriptors.mMaxResourceDescriptors > 0, Bindless),
+            ARDA_CAPABILITY("MaximumSamplerDescriptors",
+                C.mDescriptors.mMaxSamplerDescriptors > 0, Bindless),
+
+            ARDA_CAPABILITY("GraphicsQueue", C.mQueues.mbGraphics,
+                QueueBreadth),
+            ARDA_CAPABILITY("ComputeQueue", C.mQueues.mbCompute,
+                QueueBreadth),
+            ARDA_CAPABILITY("CopyQueue", C.mQueues.mbCopy, QueueBreadth),
+            ARDA_CAPABILITY("DedicatedComputeQueueFamily",
+                C.mQueues.mbDedicatedComputeFamily, QueueBreadth),
+            ARDA_CAPABILITY("DedicatedCopyQueueFamily",
+                C.mQueues.mbDedicatedCopyFamily, QueueBreadth),
+            ARDA_CAPABILITY("GpuQueueWaits", C.mQueues.mbGpuWaits,
+                QueueBreadth),
+            ARDA_CAPABILITY("TimelineSynchronization",
+                C.mQueues.mbTimelineSynchronization, QueueBreadth),
+            ARDA_CAPABILITY("QueueFamilyOwnershipTransfer",
+                C.mQueues.mbQueueFamilyOwnershipTransfer, QueueBreadth),
+            ARDA_CAPABILITY("SparseBindingQueue",
+                C.mQueues.mbSparseBindingQueue, SparseResidency),
+            ARDA_CAPABILITY("GraphicsQueueFamilyIndex",
+                C.mQueues.mGraphicsFamily !=
+                    arda::rhi::ArdaRHIInvalidQueueFamily, QueueBreadth),
+            ARDA_CAPABILITY("ComputeQueueFamilyIndex",
+                C.mQueues.mComputeFamily !=
+                    arda::rhi::ArdaRHIInvalidQueueFamily, QueueBreadth),
+            ARDA_CAPABILITY("CopyQueueFamilyIndex",
+                C.mQueues.mCopyFamily !=
+                    arda::rhi::ArdaRHIInvalidQueueFamily, QueueBreadth),
+
+            ARDA_CAPABILITY("SparseBinding",
+                C.mResidency.mbSparseBinding, SparseResidency),
+            ARDA_CAPABILITY("ReservedBuffers",
+                C.mResidency.mbReservedBuffers, SparseResidency),
+            ARDA_CAPABILITY("ReservedTexture2D",
+                C.mResidency.mbReservedTexture2D, SparseResidency),
+            ARDA_CAPABILITY("ReservedTexture3D",
+                C.mResidency.mbReservedTexture3D, SparseResidency),
+            ARDA_CAPABILITY("AliasedSparseMappings",
+                C.mResidency.mbAliasedMappings, SparseResidency),
+            ARDA_CAPABILITY("StreamingBudget",
+                C.mResidency.mbStreamingBudget, StreamingBudget),
+            ARDA_CAPABILITY("StreamingBudgetReservation",
+                C.mResidency.mbBudgetReservation, StreamingBudget),
+            ARDA_CAPABILITY("SparseTileSize",
+                C.mResidency.mTileSizeInBytes > 0, SparseResidency),
+
+            ARDA_CAPABILITY("SubgroupOperations",
+                C.mMachineLearning.mbSubgroupOperations, QueueBreadth),
+            ARDA_CAPABILITY("NativeFloat16",
+                C.mMachineLearning.mbNativeFloat16, QueueBreadth),
+            ARDA_CAPABILITY("NativeInt8",
+                C.mMachineLearning.mbNativeInt8, QueueBreadth),
+            ARDA_CAPABILITY("BufferDeviceAddress",
+                C.mMachineLearning.mbBufferDeviceAddress, QueueBreadth),
+            ARDA_CAPABILITY("MinimumSubgroupSize",
+                C.mMachineLearning.mSubgroupMinSize > 0, QueueBreadth),
+            ARDA_CAPABILITY("MaximumSubgroupSize",
+                C.mMachineLearning.mSubgroupMaxSize > 0, QueueBreadth),
+
+            ARDA_CAPABILITY("MeshShaders",
+                C.mMeshShaderTier != arda::rhi::EArdaRHIMeshShaderTier::None,
+                MeshShader),
+            ARDA_CAPABILITY("WorkGraphs",
+                C.mWorkGraphTier != arda::rhi::EArdaRHIWorkGraphTier::None,
+                WorkGraph),
+            ARDA_CAPABILITY("SamplerFeedback",
+                C.mSamplerFeedbackTier !=
+                    arda::rhi::EArdaRHISamplerFeedbackTier::None,
+                SamplerFeedback),
+            ARDA_CAPABILITY("ShaderBundleDispatch",
+                C.mbShaderBundleDispatch, ShaderBundle),
+            ARDA_CAPABILITY("CustomPresent", C.mbCustomPresent,
+                CustomPresent),
+            ARDA_CAPABILITY("ResourceCollections", C.mbResourceCollections,
+                ExpandedDescriptors),
+            ARDA_CAPABILITY("ConservativeRasterization",
+                C.mbConservativeRasterization, Contract),
+            ARDA_CAPABILITY("VariableRateShading",
+                C.mbVariableRateShading, Contract),
+            ARDA_CAPABILITY("VirtualResources", C.mbVirtualResources,
+                HeapAliasing),
+            ARDA_CAPABILITY("ExplicitHeaps", C.mbHeaps, HeapAliasing),
+            ARDA_CAPABILITY("StagingTextures", C.mbStagingTextures,
+                ExtendedCommands),
+            ARDA_CAPABILITY("TextureCopies", C.mbTextureCopies,
+                ExtendedCommands),
+            ARDA_CAPABILITY("TextureResolve", C.mbTextureResolve, Resolve),
+            ARDA_CAPABILITY("ExplicitTransitions", C.mbExplicitTransitions,
+                ExtendedCommands),
+            ARDA_CAPABILITY("SplitTransitions", C.mbSplitTransitions,
+                ExtendedCommands),
+            ARDA_CAPABILITY("IndirectCommands", C.mbIndirectCommands,
+                ExtendedCommands),
+            ARDA_CAPABILITY("AliasingBarriers", C.mbAliasingBarriers,
+                HeapAliasing),
+            ARDA_CAPABILITY("Queries", C.mbQueries, Queries),
+            ARDA_CAPABILITY("ShaderLibraries", C.mbShaderLibraries,
+                ShaderLibrary),
+            ARDA_CAPABILITY("PipelineCachePersistence",
+                C.mbPipelineCachePersistence, Contract)
+        };
+
+        static const std::vector<FCapabilityConformanceCase> Cases = []
+        {
+            std::vector<FCapabilityConformanceCase> Result;
+            const auto AddBackend = [&Result](
+                arda::backend::EArdaBackendType Backend,
+                const char* BackendName,
+                const char* BackendLabel)
+            {
+                for (const FCapabilityDefinition& Definition : Definitions)
+                    Result.push_back(
+                        {Backend, BackendName, BackendLabel, Definition});
+            };
+#if defined(_WIN32) && defined(ARDA_TEST_NATIVE_D3D12)
+            AddBackend(arda::backend::EArdaBackendType::D3D12,
+                "native-d3d12", "D3D12");
+#endif
+#if defined(ARDA_TEST_NATIVE_VULKAN)
+            AddBackend(arda::backend::EArdaBackendType::Vulkan,
+                "native-vulkan", "Vulkan");
+#endif
+            return Result;
+        }();
+        return Cases;
+    }
+
+#undef ARDA_CAPABILITY
+
+    class FArdaRHICapabilityConformanceTest
+        : public testing::TestWithParam<FCapabilityConformanceCase>
+    {
+    };
 }
+
+TEST_P(FArdaRHICapabilityConformanceTest, AdvertisedCapabilityConforms)
+{
+    using namespace arda::backend;
+
+    const FCapabilityConformanceCase& TestCase = GetParam();
+    ShutdownBackend();
+    FExtendedBackendCleanup Cleanup;
+    FExtendedDiagnosticCallback Diagnostics;
+    FArdaBackendConfiguration Configuration;
+    Configuration.mBackendName = TestCase.mBackendName;
+    Configuration.mBackend = TestCase.mBackend;
+    Configuration.mbEnableValidation = true;
+    Configuration.mMessageCallback = &Diagnostics;
+    Configuration.mShaderCompilationMode =
+        EArdaShaderCompilationMode::LoadOnly;
+    ASSERT_TRUE(ConfigureBackend(Configuration));
+    if (!InitializeBackend())
+        GTEST_SKIP() << GetBackendError().c_str();
+
+    arda::rhi::FArdaRHIDeviceRef Device = GetDevice();
+    ASSERT_TRUE(Device);
+    const arda::rhi::FArdaRHICapabilities Capabilities =
+        Device->GetCapabilities();
+    if (!TestCase.mCapability.mIsAdvertised(Capabilities))
+    {
+        GTEST_SKIP() << TestCase.mBackendLabel << " does not advertise "
+            << TestCase.mCapability.mName << " on this adapter.";
+    }
+
+    VerifyCapabilityInvariants(Capabilities);
+    EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+    Device = nullptr;
+    ShutdownBackend();
+    RunCapabilityProbe(TestCase);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    NativeHardware,
+    FArdaRHICapabilityConformanceTest,
+    testing::ValuesIn(GetCapabilityConformanceCases()),
+    [](const testing::TestParamInfo<FCapabilityConformanceCase>& Info)
+    {
+        return std::string(Info.param.mBackendLabel) + "_" +
+            Info.param.mCapability.mName;
+    });
 
 #if defined(_WIN32) && defined(ARDA_TEST_NATIVE_D3D12)
 TEST(ArdaBackend, D3D12ExtendedCopyTransitionAndIndirectStateParity)

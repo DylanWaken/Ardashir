@@ -1803,7 +1803,9 @@ namespace arda::backend
                 Ray.mbTopLevel = true;
                 Ray.mbBuildUpdate = true;
                 Ray.mbCompaction = true;
-                Ray.mbIndirectTopLevelBuild = true;
+                // vkCmdBuildAccelerationStructuresIndirectKHR is not exposed
+                // by the public RHI command surface yet.
+                Ray.mbIndirectTopLevelBuild = false;
                 Ray.mAccelerationStructureAlignment = 256;
                 if (mContext->mbRayTracingPipeline)
                 {

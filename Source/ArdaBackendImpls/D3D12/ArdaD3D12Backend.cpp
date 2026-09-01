@@ -1222,9 +1222,11 @@ namespace arda::backend
                     Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1;
                 Ray.mbInlineRayQueries =
                     Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1;
-                Ray.mbOpacityMicromaps =
-                    Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_2;
-                Ray.mbIndirectTopLevelBuild = true;
+                // Do not advertise provider/hardware abilities that the
+                // public RHI cannot execute. D3D12 opacity-micromap objects
+                // and indirect TLAS builds have no facade implementation yet.
+                Ray.mbOpacityMicromaps = false;
+                Ray.mbIndirectTopLevelBuild = false;
                 Ray.mbLocalShaderTableArguments = true;
                 Ray.mbPersistentShaderTables = true;
                 Ray.mShaderIdentifierSize =

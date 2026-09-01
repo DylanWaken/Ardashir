@@ -123,7 +123,7 @@ if(ARDASHIR_BUILD_TESTS)
         ardashir_deploy_d3d12_agility(ArdaBackendTests)
     endif()
     set_target_properties(ArdaBackendTests PROPERTIES FOLDER "Ardashir/Tests")
-    gtest_discover_tests(ArdaBackendTests)
+    gtest_discover_tests(ArdaBackendTests NO_PRETTY_VALUES)
 
     add_executable(ArdaRHITests Tests/ArdaRHITests.cpp)
     target_compile_definitions(ArdaRHITests PRIVATE ARDA_ENABLE_CHECKS)
