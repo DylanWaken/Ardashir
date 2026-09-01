@@ -196,8 +196,6 @@ namespace arda::rhi
     {
         /** Stores the attributes. */
         eastl::vector<FArdaRHIVertexAttributeDesc> mAttributes;
-        /** Stores the vertex shader. */
-        FArdaRHIShaderRef mVertexShader;
         /**
          * Compares two values for equality.
          * @param O The o.
@@ -205,7 +203,7 @@ namespace arda::rhi
          */
         bool operator==(const FArdaRHIInputLayoutDesc& O) const noexcept
         {
-            return mAttributes == O.mAttributes && mVertexShader == O.mVertexShader;
+            return mAttributes == O.mAttributes;
         }
     };
 

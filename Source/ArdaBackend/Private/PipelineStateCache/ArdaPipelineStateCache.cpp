@@ -1,5 +1,7 @@
 #include "PipelineStateCache/ArdaPipelineStateCache.h"
 
+#include "ArdaHash.h"
+
 #include <algorithm>
 #include <condition_variable>
 #include <mutex>
@@ -34,23 +36,19 @@ namespace arda::backend
             void AddString(const eastl::string& Value) noexcept
             {
                 Add(Value.size());
-                for (char Byte : Value)
-                {
-                    mHash ^= static_cast<uint8_t>(Byte);
-                    mHash *= 1099511628211ull;
-                }
+                private_api::AppendFnv1a64(
+                    mHash, Value.data(), Value.size());
             }
-            uint64_t Finish() const noexcept { return mHash == 0 ? 1 : mHash; }
+            uint64_t Finish() const noexcept
+            {
+                return private_api::FinishPersistentHash(mHash);
+            }
         private:
             void AddUnsigned(uint64_t Value) noexcept
             {
-                for (uint32_t Shift = 0; Shift < 64; Shift += 8)
-                {
-                    mHash ^= static_cast<uint8_t>(Value >> Shift);
-                    mHash *= 1099511628211ull;
-                }
+                private_api::AppendFnv1a64LittleEndian(mHash, Value);
             }
-            uint64_t mHash = 14695981039346656037ull;
+            uint64_t mHash = private_api::ArdaFnv1a64OffsetBasis;
         };
 
         void HashShader(
@@ -105,7 +103,6 @@ namespace arda::backend
                 Hash.Add(Attribute.mElementStride);
                 Hash.Add(Attribute.mbInstanced);
             }
-            HashShader(Hash, Desc.mVertexShader);
         }
 
         void HashLayouts(
@@ -115,6 +112,35 @@ namespace arda::backend
             Hash.Add(Layouts.size());
             for (const auto& Layout : Layouts)
                 HashBindingLayout(Hash, Layout);
+        }
+
+        template <typename PipelineDesc>
+        void HashRasterFixedFunctionState(
+            FStablePipelineHasher& Hash,
+            const PipelineDesc& Desc) noexcept
+        {
+            Hash.Add(Desc.mBlendState.mbAlphaToCoverage);
+            for (const auto& Target : Desc.mBlendState.mTargets)
+            {
+                Hash.Add(Target.mbEnable);
+                Hash.AddEnum(Target.mSourceColor);
+                Hash.AddEnum(Target.mDestinationColor);
+                Hash.AddEnum(Target.mSourceAlpha);
+                Hash.AddEnum(Target.mDestinationAlpha);
+            }
+            Hash.AddEnum(Desc.mRasterState.mFillMode);
+            Hash.AddEnum(Desc.mRasterState.mCullMode);
+            Hash.Add(Desc.mRasterState.mbFrontCounterClockwise);
+            Hash.Add(Desc.mRasterState.mbDepthClip);
+            Hash.Add(Desc.mRasterState.mbScissor);
+            Hash.Add(Desc.mDepthStencilState.mbDepthTest);
+            Hash.Add(Desc.mDepthStencilState.mbDepthWrite);
+            Hash.AddEnum(Desc.mDepthStencilState.mDepthFunc);
+            Hash.Add(Desc.mColorFormats.size());
+            for (auto Format : Desc.mColorFormats)
+                Hash.AddEnum(Format);
+            Hash.AddEnum(Desc.mDepthFormat);
+            Hash.Add(Desc.mSampleCount);
         }
 
         uint64_t PersistentKey(const FArdaRHIComputePipelineDesc& Desc) noexcept
@@ -139,28 +165,7 @@ namespace arda::backend
             HashShader(Hash, Desc.mGeometryShader);
             HashShader(Hash, Desc.mPixelShader);
             HashLayouts(Hash, Desc.mBindingLayouts);
-            Hash.Add(Desc.mBlendState.mbAlphaToCoverage);
-            for (const auto& Target : Desc.mBlendState.mTargets)
-            {
-                Hash.Add(Target.mbEnable);
-                Hash.AddEnum(Target.mSourceColor);
-                Hash.AddEnum(Target.mDestinationColor);
-                Hash.AddEnum(Target.mSourceAlpha);
-                Hash.AddEnum(Target.mDestinationAlpha);
-            }
-            Hash.AddEnum(Desc.mRasterState.mFillMode);
-            Hash.AddEnum(Desc.mRasterState.mCullMode);
-            Hash.Add(Desc.mRasterState.mbFrontCounterClockwise);
-            Hash.Add(Desc.mRasterState.mbDepthClip);
-            Hash.Add(Desc.mRasterState.mbScissor);
-            Hash.Add(Desc.mDepthStencilState.mbDepthTest);
-            Hash.Add(Desc.mDepthStencilState.mbDepthWrite);
-            Hash.AddEnum(Desc.mDepthStencilState.mDepthFunc);
-            Hash.Add(Desc.mColorFormats.size());
-            for (auto Format : Desc.mColorFormats)
-                Hash.AddEnum(Format);
-            Hash.AddEnum(Desc.mDepthFormat);
-            Hash.Add(Desc.mSampleCount);
+            HashRasterFixedFunctionState(Hash, Desc);
             return Hash.Finish();
         }
 
@@ -173,29 +178,29 @@ namespace arda::backend
             HashShader(Hash, Desc.mMeshShader);
             HashShader(Hash, Desc.mPixelShader);
             HashLayouts(Hash, Desc.mBindingLayouts);
-            Hash.Add(Desc.mBlendState.mbAlphaToCoverage);
-            for (const auto& Target : Desc.mBlendState.mTargets)
-            {
-                Hash.Add(Target.mbEnable);
-                Hash.AddEnum(Target.mSourceColor);
-                Hash.AddEnum(Target.mDestinationColor);
-                Hash.AddEnum(Target.mSourceAlpha);
-                Hash.AddEnum(Target.mDestinationAlpha);
-            }
-            Hash.AddEnum(Desc.mRasterState.mFillMode);
-            Hash.AddEnum(Desc.mRasterState.mCullMode);
-            Hash.Add(Desc.mRasterState.mbFrontCounterClockwise);
-            Hash.Add(Desc.mRasterState.mbDepthClip);
-            Hash.Add(Desc.mRasterState.mbScissor);
-            Hash.Add(Desc.mDepthStencilState.mbDepthTest);
-            Hash.Add(Desc.mDepthStencilState.mbDepthWrite);
-            Hash.AddEnum(Desc.mDepthStencilState.mDepthFunc);
-            Hash.Add(Desc.mColorFormats.size());
-            for (auto Format : Desc.mColorFormats)
-                Hash.AddEnum(Format);
-            Hash.AddEnum(Desc.mDepthFormat);
-            Hash.Add(Desc.mSampleCount);
+            HashRasterFixedFunctionState(Hash, Desc);
             return Hash.Finish();
+        }
+
+        auto CreatePipeline(
+            IArdaRHIDevice& Device,
+            const FArdaRHIComputePipelineDesc& Desc)
+        {
+            return Device.CreateComputePipeline(Desc);
+        }
+
+        auto CreatePipeline(
+            IArdaRHIDevice& Device,
+            const FArdaRHIGraphicsPipelineDesc& Desc)
+        {
+            return Device.CreateGraphicsPipeline(Desc);
+        }
+
+        auto CreatePipeline(
+            IArdaRHIDevice& Device,
+            const FArdaRHIMeshletPipelineDesc& Desc)
+        {
+            return Device.CreateMeshletPipeline(Desc);
         }
 
         template <typename PipelineDesc>
@@ -274,29 +279,21 @@ namespace arda::backend
 
     struct FArdaPipelineStateCache::FImpl
     {
-        struct FComputeEntry
+        template <typename Desc, typename Pipeline>
+        struct TEntry
         {
-            rhi::FArdaRHIComputePipelineDesc mDesc;
-            rhi::FArdaRHIComputePipelineRef mPipeline;
+            Desc mDesc;
+            Pipeline mPipeline;
             uint64_t mLastUse = 0;
             bool mbInFlight = false;
         };
 
-        struct FGraphicsEntry
-        {
-            rhi::FArdaRHIGraphicsPipelineDesc mDesc;
-            rhi::FArdaRHIGraphicsPipelineRef mPipeline;
-            uint64_t mLastUse = 0;
-            bool mbInFlight = false;
-        };
-
-        struct FMeshletEntry
-        {
-            rhi::FArdaRHIMeshletPipelineDesc mDesc;
-            rhi::FArdaRHIMeshletPipelineRef mPipeline;
-            uint64_t mLastUse = 0;
-            bool mbInFlight = false;
-        };
+        using FComputeEntry = TEntry<rhi::FArdaRHIComputePipelineDesc,
+            rhi::FArdaRHIComputePipelineRef>;
+        using FGraphicsEntry = TEntry<rhi::FArdaRHIGraphicsPipelineDesc,
+            rhi::FArdaRHIGraphicsPipelineRef>;
+        using FMeshletEntry = TEntry<rhi::FArdaRHIMeshletPipelineDesc,
+            rhi::FArdaRHIMeshletPipelineRef>;
 
         explicit FImpl(
             rhi::FArdaRHIDeviceRef InDevice,
@@ -363,6 +360,106 @@ namespace arda::backend
             return {};
         }
 
+        template <typename Entry, typename Desc, typename Pipeline>
+        rhi::FArdaRHIStatus GetOrCreate(
+            eastl::vector<Entry>& Entries,
+            const Desc& CanonicalDesc,
+            const rhi::FArdaRHIStatus& PreparationStatus,
+            EArdaPipelineStateKind Kind,
+            size_t Capacity,
+            Pipeline& OutPipeline,
+            const rhi::IArdaRHIDevice* RequestingDevice)
+        {
+            OutPipeline.Reset();
+            const size_t Hash = rhi::HashValue(CanonicalDesc);
+            std::unique_lock<std::mutex> Lock(mMutex);
+            if (auto Status = CheckDevice(
+                    RequestingDevice, Kind, Hash,
+                    CanonicalDesc.mDebugName);
+                !Status)
+                return Status;
+            if (!PreparationStatus)
+            {
+                AddDiagnostic(
+                    Kind, PreparationStatus, Hash,
+                    CanonicalDesc.mDebugName);
+                return PreparationStatus;
+            }
+
+            for (;;)
+            {
+                auto It = std::find_if(
+                    Entries.begin(), Entries.end(),
+                    [&CanonicalDesc](const Entry& Candidate)
+                    {
+                        return Candidate.mDesc == CanonicalDesc;
+                    });
+                if (It == Entries.end())
+                    break;
+                if (It->mbInFlight)
+                {
+                    ++mWaits;
+                    mChanged.wait(
+                        Lock,
+                        [this, &Entries, &CanonicalDesc]
+                        {
+                            const auto Pending = std::find_if(
+                                Entries.begin(), Entries.end(),
+                                [&CanonicalDesc](const Entry& Candidate)
+                                {
+                                    return Candidate.mDesc == CanonicalDesc;
+                                });
+                            return Pending == Entries.end() ||
+                                !Pending->mbInFlight;
+                        });
+                    continue;
+                }
+                ++mHits;
+                It->mLastUse = ++mUseSerial;
+                OutPipeline = It->mPipeline;
+                return {};
+            }
+
+            ++mMisses;
+            ++mInFlight;
+            Entries.push_back(
+                { CanonicalDesc, {}, ++mUseSerial, true });
+            Lock.unlock();
+            auto CreationDesc = CanonicalDesc;
+            CreationDesc.mPersistentCacheKey = PersistentKey(CreationDesc);
+            auto Created = CreatePipeline(*mDevice, CreationDesc);
+            Lock.lock();
+            --mInFlight;
+            auto Pending = std::find_if(
+                Entries.begin(), Entries.end(),
+                [&CanonicalDesc](const Entry& Candidate)
+                {
+                    return Candidate.mbInFlight &&
+                        Candidate.mDesc == CanonicalDesc;
+                });
+            if (!Created)
+            {
+                ++mCreateFailures;
+                AddDiagnostic(
+                    Kind, Created.mStatus, Hash,
+                    CanonicalDesc.mDebugName);
+                if (Pending != Entries.end())
+                    Entries.erase(Pending);
+                mChanged.notify_all();
+                return Created.mStatus;
+            }
+            OutPipeline = Created.mValue;
+            if (Pending != Entries.end())
+            {
+                Pending->mPipeline = Created.mValue;
+                Pending->mbInFlight = false;
+                Pending->mLastUse = ++mUseSerial;
+            }
+            EvictTo(Entries, Capacity);
+            mChanged.notify_all();
+            return {};
+        }
+
         rhi::FArdaRHIDeviceRef mDevice;
         FArdaPipelineStateCacheConfiguration mConfiguration;
         mutable std::mutex mMutex;
@@ -393,86 +490,14 @@ namespace arda::backend
         rhi::FArdaRHIComputePipelineRef& OutPipeline,
         const rhi::IArdaRHIDevice* RequestingDevice)
     {
-        OutPipeline.Reset();
-        const size_t Hash = rhi::HashValue(Initializer.mDesc);
-        std::unique_lock<std::mutex> Lock(mImpl->mMutex);
-        if (auto Status = mImpl->CheckDevice(
-                RequestingDevice, EArdaPipelineStateKind::Compute,
-                Hash, Initializer.mDesc.mDebugName);
-            !Status)
-            return Status;
-
-        for (;;)
-        {
-            auto It = std::find_if(
-                mImpl->mCompute.begin(), mImpl->mCompute.end(),
-                [&Initializer](const FImpl::FComputeEntry& Entry)
-                {
-                    return Entry.mDesc == Initializer.mDesc;
-                });
-            if (It == mImpl->mCompute.end())
-                break;
-            if (It->mbInFlight)
-            {
-                ++mImpl->mWaits;
-                mImpl->mChanged.wait(
-                    Lock,
-                    [this, &Initializer]
-                    {
-                        const auto Pending = std::find_if(
-                            mImpl->mCompute.begin(), mImpl->mCompute.end(),
-                            [&Initializer](const FImpl::FComputeEntry& Entry)
-                            {
-                                return Entry.mDesc == Initializer.mDesc;
-                            });
-                        return Pending == mImpl->mCompute.end() ||
-                            !Pending->mbInFlight;
-                    });
-                continue;
-            }
-            ++mImpl->mHits;
-            It->mLastUse = ++mImpl->mUseSerial;
-            OutPipeline = It->mPipeline;
-            return {};
-        }
-
-        ++mImpl->mMisses;
-        ++mImpl->mInFlight;
-        mImpl->mCompute.push_back(
-            { Initializer.mDesc, {}, ++mImpl->mUseSerial, true });
-        Lock.unlock();
-        auto CreationDesc = Initializer.mDesc;
-        CreationDesc.mPersistentCacheKey = PersistentKey(CreationDesc);
-        auto Created = mImpl->mDevice->CreateComputePipeline(CreationDesc);
-        Lock.lock();
-        --mImpl->mInFlight;
-        auto Pending = std::find_if(
-            mImpl->mCompute.begin(), mImpl->mCompute.end(),
-            [&Initializer](const FImpl::FComputeEntry& Entry)
-            {
-                return Entry.mbInFlight && Entry.mDesc == Initializer.mDesc;
-            });
-        if (!Created)
-        {
-            ++mImpl->mCreateFailures;
-            mImpl->AddDiagnostic(
-                EArdaPipelineStateKind::Compute, Created.mStatus, Hash,
-                Initializer.mDesc.mDebugName);
-            if (Pending != mImpl->mCompute.end())
-                mImpl->mCompute.erase(Pending);
-            mImpl->mChanged.notify_all();
-            return Created.mStatus;
-        }
-        OutPipeline = Created.mValue;
-        if (Pending != mImpl->mCompute.end())
-        {
-            Pending->mPipeline = Created.mValue;
-            Pending->mbInFlight = false;
-            Pending->mLastUse = ++mImpl->mUseSerial;
-        }
-        FImpl::EvictTo(mImpl->mCompute, mImpl->mConfiguration.mMaxComputeEntries);
-        mImpl->mChanged.notify_all();
-        return {};
+        return mImpl->GetOrCreate(
+            mImpl->mCompute,
+            Initializer.mDesc,
+            rhi::FArdaRHIStatus::Success(),
+            EArdaPipelineStateKind::Compute,
+            mImpl->mConfiguration.mMaxComputeEntries,
+            OutPipeline,
+            RequestingDevice);
     }
 
     rhi::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateGraphics(
@@ -481,98 +506,19 @@ namespace arda::backend
         rhi::FArdaRHIGraphicsPipelineRef& OutPipeline,
         const rhi::IArdaRHIDevice* RequestingDevice)
     {
-        OutPipeline.Reset();
         rhi::FArdaRHIGraphicsPipelineDesc Completed;
         auto CompletionStatus = CompleteFramebufferDesc(
             Initializer.mDesc, Framebuffer, Completed);
-        const size_t Hash = CompletionStatus
-            ? rhi::HashValue(Completed)
-            : rhi::HashValue(Initializer.mDesc);
-        std::unique_lock<std::mutex> Lock(mImpl->mMutex);
-        if (auto Status = mImpl->CheckDevice(
-                RequestingDevice, EArdaPipelineStateKind::Graphics,
-                Hash, Initializer.mDesc.mDebugName);
-            !Status)
-            return Status;
         if (!CompletionStatus)
-        {
-            mImpl->AddDiagnostic(
-                EArdaPipelineStateKind::Graphics, CompletionStatus, Hash,
-                Initializer.mDesc.mDebugName);
-            return CompletionStatus;
-        }
-
-        for (;;)
-        {
-            auto It = std::find_if(
-                mImpl->mGraphics.begin(), mImpl->mGraphics.end(),
-                [&Completed](const FImpl::FGraphicsEntry& Entry)
-                {
-                    return Entry.mDesc == Completed;
-                });
-            if (It == mImpl->mGraphics.end())
-                break;
-            if (It->mbInFlight)
-            {
-                ++mImpl->mWaits;
-                mImpl->mChanged.wait(
-                    Lock,
-                    [this, &Completed]
-                    {
-                        const auto Pending = std::find_if(
-                            mImpl->mGraphics.begin(), mImpl->mGraphics.end(),
-                            [&Completed](const FImpl::FGraphicsEntry& Entry)
-                            {
-                                return Entry.mDesc == Completed;
-                            });
-                        return Pending == mImpl->mGraphics.end() ||
-                            !Pending->mbInFlight;
-                    });
-                continue;
-            }
-            ++mImpl->mHits;
-            It->mLastUse = ++mImpl->mUseSerial;
-            OutPipeline = It->mPipeline;
-            return {};
-        }
-
-        ++mImpl->mMisses;
-        ++mImpl->mInFlight;
-        mImpl->mGraphics.push_back(
-            { Completed, {}, ++mImpl->mUseSerial, true });
-        Lock.unlock();
-        auto CreationDesc = Completed;
-        CreationDesc.mPersistentCacheKey = PersistentKey(CreationDesc);
-        auto Created = mImpl->mDevice->CreateGraphicsPipeline(CreationDesc);
-        Lock.lock();
-        --mImpl->mInFlight;
-        auto Pending = std::find_if(
-            mImpl->mGraphics.begin(), mImpl->mGraphics.end(),
-            [&Completed](const FImpl::FGraphicsEntry& Entry)
-            {
-                return Entry.mbInFlight && Entry.mDesc == Completed;
-            });
-        if (!Created)
-        {
-            ++mImpl->mCreateFailures;
-            mImpl->AddDiagnostic(
-                EArdaPipelineStateKind::Graphics, Created.mStatus, Hash,
-                Initializer.mDesc.mDebugName);
-            if (Pending != mImpl->mGraphics.end())
-                mImpl->mGraphics.erase(Pending);
-            mImpl->mChanged.notify_all();
-            return Created.mStatus;
-        }
-        OutPipeline = Created.mValue;
-        if (Pending != mImpl->mGraphics.end())
-        {
-            Pending->mPipeline = Created.mValue;
-            Pending->mbInFlight = false;
-            Pending->mLastUse = ++mImpl->mUseSerial;
-        }
-        FImpl::EvictTo(mImpl->mGraphics, mImpl->mConfiguration.mMaxGraphicsEntries);
-        mImpl->mChanged.notify_all();
-        return {};
+            Completed = Initializer.mDesc;
+        return mImpl->GetOrCreate(
+            mImpl->mGraphics,
+            Completed,
+            CompletionStatus,
+            EArdaPipelineStateKind::Graphics,
+            mImpl->mConfiguration.mMaxGraphicsEntries,
+            OutPipeline,
+            RequestingDevice);
     }
 
     rhi::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateMeshlet(
@@ -581,99 +527,19 @@ namespace arda::backend
         rhi::FArdaRHIMeshletPipelineRef& OutPipeline,
         const rhi::IArdaRHIDevice* RequestingDevice)
     {
-        OutPipeline.Reset();
         rhi::FArdaRHIMeshletPipelineDesc Completed;
         auto CompletionStatus = CompleteFramebufferDesc(
             Initializer.mDesc, Framebuffer, Completed);
-        const size_t Hash = CompletionStatus
-            ? rhi::HashValue(Completed)
-            : rhi::HashValue(Initializer.mDesc);
-        std::unique_lock<std::mutex> Lock(mImpl->mMutex);
-        if (auto Status = mImpl->CheckDevice(
-                RequestingDevice, EArdaPipelineStateKind::Meshlet,
-                Hash, Initializer.mDesc.mDebugName);
-            !Status)
-            return Status;
         if (!CompletionStatus)
-        {
-            mImpl->AddDiagnostic(
-                EArdaPipelineStateKind::Meshlet, CompletionStatus, Hash,
-                Initializer.mDesc.mDebugName);
-            return CompletionStatus;
-        }
-
-        for (;;)
-        {
-            auto It = std::find_if(
-                mImpl->mMeshlet.begin(), mImpl->mMeshlet.end(),
-                [&Completed](const FImpl::FMeshletEntry& Entry)
-                {
-                    return Entry.mDesc == Completed;
-                });
-            if (It == mImpl->mMeshlet.end())
-                break;
-            if (It->mbInFlight)
-            {
-                ++mImpl->mWaits;
-                mImpl->mChanged.wait(
-                    Lock,
-                    [this, &Completed]
-                    {
-                        const auto Pending = std::find_if(
-                            mImpl->mMeshlet.begin(), mImpl->mMeshlet.end(),
-                            [&Completed](const FImpl::FMeshletEntry& Entry)
-                            {
-                                return Entry.mDesc == Completed;
-                            });
-                        return Pending == mImpl->mMeshlet.end() ||
-                            !Pending->mbInFlight;
-                    });
-                continue;
-            }
-            ++mImpl->mHits;
-            It->mLastUse = ++mImpl->mUseSerial;
-            OutPipeline = It->mPipeline;
-            return {};
-        }
-
-        ++mImpl->mMisses;
-        ++mImpl->mInFlight;
-        mImpl->mMeshlet.push_back(
-            { Completed, {}, ++mImpl->mUseSerial, true });
-        Lock.unlock();
-        auto CreationDesc = Completed;
-        CreationDesc.mPersistentCacheKey = PersistentKey(CreationDesc);
-        auto Created = mImpl->mDevice->CreateMeshletPipeline(CreationDesc);
-        Lock.lock();
-        --mImpl->mInFlight;
-        auto Pending = std::find_if(
-            mImpl->mMeshlet.begin(), mImpl->mMeshlet.end(),
-            [&Completed](const FImpl::FMeshletEntry& Entry)
-            {
-                return Entry.mbInFlight && Entry.mDesc == Completed;
-            });
-        if (!Created)
-        {
-            ++mImpl->mCreateFailures;
-            mImpl->AddDiagnostic(
-                EArdaPipelineStateKind::Meshlet, Created.mStatus, Hash,
-                Initializer.mDesc.mDebugName);
-            if (Pending != mImpl->mMeshlet.end())
-                mImpl->mMeshlet.erase(Pending);
-            mImpl->mChanged.notify_all();
-            return Created.mStatus;
-        }
-        OutPipeline = Created.mValue;
-        if (Pending != mImpl->mMeshlet.end())
-        {
-            Pending->mPipeline = Created.mValue;
-            Pending->mbInFlight = false;
-            Pending->mLastUse = ++mImpl->mUseSerial;
-        }
-        FImpl::EvictTo(
-            mImpl->mMeshlet, mImpl->mConfiguration.mMaxMeshletEntries);
-        mImpl->mChanged.notify_all();
-        return {};
+            Completed = Initializer.mDesc;
+        return mImpl->GetOrCreate(
+            mImpl->mMeshlet,
+            Completed,
+            CompletionStatus,
+            EArdaPipelineStateKind::Meshlet,
+            mImpl->mConfiguration.mMaxMeshletEntries,
+            OutPipeline,
+            RequestingDevice);
     }
 
     rhi::FArdaRHIStatus FArdaPipelineStateCache::PrecacheCompute(

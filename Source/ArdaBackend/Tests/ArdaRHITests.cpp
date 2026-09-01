@@ -90,6 +90,158 @@ TEST(ArdaRHI, DescriptorEqualityAndHashAreStable)
     EXPECT_NE(HashValue(A), HashValue(C));
 }
 
+TEST(ArdaRHI, FormatStorageMetadataCoversEveryKnownFormat)
+{
+    using namespace arda::rhi;
+    for (uint32_t Value = 1;
+         Value < static_cast<uint32_t>(EArdaRHIFormat::Count);
+         ++Value)
+    {
+        const auto Format = static_cast<EArdaRHIFormat>(Value);
+        const FArdaRHIFormatInfo& Info = GetArdaRHIFormatInfo(Format);
+        EXPECT_GT(Info.mBytesPerBlock, 0u) << Value;
+        EXPECT_GT(Info.mBlockWidth, 0u) << Value;
+        EXPECT_GT(Info.mBlockHeight, 0u) << Value;
+    }
+
+    EXPECT_EQ(GetArdaRHIFormatElementSize(EArdaRHIFormat::RGBA8UNorm), 4u);
+    EXPECT_EQ(GetArdaRHIFormatElementSize(EArdaRHIFormat::BC1UNorm), 0u);
+    EXPECT_FALSE(IsArdaRHIFormatKnown(EArdaRHIFormat::Unknown));
+    EXPECT_FALSE(IsArdaRHIFormatKnown(EArdaRHIFormat::Count));
+    EXPECT_EQ(GetArdaRHIFormatPlaneCount(EArdaRHIFormat::Unknown), 1u);
+    EXPECT_EQ(GetArdaRHIFormatPlaneCount(EArdaRHIFormat::D32S8), 2u);
+    EXPECT_EQ(GetArdaRHIFormatPlaneCount(EArdaRHIFormat::D32), 1u);
+    EXPECT_EQ(GetArdaRHITextureMipExtent(16, 2), 4u);
+    EXPECT_EQ(GetArdaRHITextureMipExtent(16, 40), 1u);
+    const auto& Block = GetArdaRHIFormatInfo(EArdaRHIFormat::BC1UNorm);
+    EXPECT_EQ(Block.mBytesPerBlock, 8u);
+    EXPECT_EQ(Block.mBlockWidth, 4u);
+    EXPECT_EQ(Block.mBlockHeight, 4u);
+}
+
+TEST(ArdaRHI, QueueIndexAndShaderStageClassificationHaveOneMapping)
+{
+    using namespace arda::rhi;
+    static_assert(ArdaRHIQueueTypeCount == 3);
+    EXPECT_EQ(GetArdaRHIQueueIndex(EArdaRHIQueueType::Graphics), 0u);
+    EXPECT_EQ(GetArdaRHIQueueIndex(EArdaRHIQueueType::Compute), 1u);
+    EXPECT_EQ(GetArdaRHIQueueIndex(EArdaRHIQueueType::Copy), 2u);
+
+    EXPECT_TRUE(IsArdaRHIRayTracingShaderStage(
+        EArdaRHIShaderStage::RayGeneration));
+    EXPECT_TRUE(IsArdaRHIRayTracingShaderStage(EArdaRHIShaderStage::Callable));
+    EXPECT_FALSE(IsArdaRHIRayTracingShaderStage(EArdaRHIShaderStage::Vertex));
+    EXPECT_FALSE(IsArdaRHIRayTracingShaderStage(
+        EArdaRHIShaderStage::RayGeneration | EArdaRHIShaderStage::Miss));
+}
+
+TEST(ArdaRHI, RayTracingTierIsDerivedFromAbilities)
+{
+    using namespace arda::rhi;
+    FArdaRHIRayTracingCapabilities Capabilities;
+    EXPECT_EQ(Capabilities.GetTier(), EArdaRHIRayTracingTier::None);
+
+    Capabilities.mbInfrastructure = true;
+    EXPECT_EQ(Capabilities.GetTier(), EArdaRHIRayTracingTier::Software);
+    Capabilities.mbHardwareAccelerated = true;
+    EXPECT_EQ(Capabilities.GetTier(), EArdaRHIRayTracingTier::None);
+    Capabilities.mbOpacityMicromaps = true;
+    EXPECT_EQ(Capabilities.GetTier(), EArdaRHIRayTracingTier::None);
+    Capabilities.mbOpacityMicromaps = false;
+    Capabilities.mbAccelerationStructures = true;
+    EXPECT_EQ(
+        Capabilities.GetTier(),
+        EArdaRHIRayTracingTier::HardwareAccelerationStructures);
+    Capabilities.mbInlineRayQueries = true;
+    EXPECT_EQ(
+        Capabilities.GetTier(),
+        EArdaRHIRayTracingTier::HardwareInlineQueries);
+    Capabilities.mbOpacityMicromaps = true;
+    EXPECT_EQ(
+        Capabilities.GetTier(),
+        EArdaRHIRayTracingTier::HardwareOpacityMicromaps);
+}
+
+TEST(ArdaRHI, TextureCopyAndResolveUseCentralRegionPolicy)
+{
+    using namespace arda::rhi;
+    FArdaRHITextureDesc Source;
+    Source.mWidth = 16;
+    Source.mHeight = 8;
+    Source.mDepth = 1;
+    Source.mMipLevels = 2;
+    Source.mFormat = EArdaRHIFormat::RGBA8UNorm;
+    FArdaRHITextureDesc Destination = Source;
+
+    FArdaRHITextureSlice SourceSlice;
+    SourceSlice.mMipLevel = 1;
+    SourceSlice.mX = 2;
+    FArdaRHITextureSlice DestinationSlice;
+    DestinationSlice.mMipLevel = 1;
+    DestinationSlice.mX = 1;
+    FArdaRHITextureCopyExtent Extent;
+    EXPECT_TRUE(ResolveArdaRHITextureCopyExtent(
+        Destination, DestinationSlice, Source, SourceSlice, Extent));
+    EXPECT_EQ(Extent.mWidth, 6u);
+    EXPECT_EQ(Extent.mHeight, 4u);
+    EXPECT_EQ(Extent.mDepth, 1u);
+
+    DestinationSlice.mX = 3;
+    EXPECT_FALSE(ResolveArdaRHITextureCopyExtent(
+        Destination, DestinationSlice, Source, SourceSlice, Extent));
+    DestinationSlice.mX = 0;
+    Destination.mFormat = EArdaRHIFormat::BGRA8UNorm;
+    EXPECT_FALSE(ResolveArdaRHITextureCopyExtent(
+        Destination, DestinationSlice, Source, SourceSlice, Extent));
+
+    Source.mFormat = EArdaRHIFormat::BC1UNorm;
+    Destination = Source;
+    SourceSlice = {};
+    DestinationSlice = {};
+    SourceSlice.mX = 1;
+    EXPECT_FALSE(ResolveArdaRHITextureCopyExtent(
+        Destination, DestinationSlice, Source, SourceSlice, Extent));
+    SourceSlice.mX = 4;
+    SourceSlice.mWidth = 4;
+    DestinationSlice.mX = 4;
+    EXPECT_TRUE(ResolveArdaRHITextureCopyExtent(
+        Destination, DestinationSlice, Source, SourceSlice, Extent));
+
+    Source.mFormat = EArdaRHIFormat::RGBA8UNorm;
+    Destination = Source;
+    Destination.mSampleCount = 1;
+    Source.mSampleCount = 4;
+    SourceSlice = {};
+    DestinationSlice = {};
+    EXPECT_TRUE(ValidateArdaRHITextureResolve(
+        Destination, DestinationSlice, Source, SourceSlice, Extent));
+    EXPECT_EQ(Extent.mWidth, 16u);
+    EXPECT_EQ(Extent.mHeight, 8u);
+    SourceSlice.mX = 1;
+    EXPECT_FALSE(ValidateArdaRHITextureResolve(
+        Destination, DestinationSlice, Source, SourceSlice, Extent));
+    SourceSlice = {};
+    Destination.mWidth = 8;
+    EXPECT_FALSE(ValidateArdaRHITextureResolve(
+        Destination, DestinationSlice, Source, SourceSlice, Extent));
+}
+
+TEST(ArdaRHI, InputLayoutIdentityContainsOnlyVertexAttributes)
+{
+    using namespace arda::rhi;
+    FArdaRHIInputLayoutDesc First;
+    First.mAttributes.push_back(
+        {"POSITION", EArdaRHIFormat::RGB32Float, 1, 0, 0, 12, false});
+    const FArdaRHIInputLayoutDesc Same = First;
+    EXPECT_EQ(First, Same);
+    EXPECT_EQ(HashValue(First), HashValue(Same));
+
+    FArdaRHIInputLayoutDesc Different = First;
+    Different.mAttributes.front().mOffset = 12;
+    EXPECT_FALSE(First == Different);
+    EXPECT_NE(HashValue(First), HashValue(Different));
+}
+
 TEST(ArdaRHI, NativeImportDescriptorEqualityIncludesLifetimeTokenIdentity)
 {
     using namespace arda::rhi;

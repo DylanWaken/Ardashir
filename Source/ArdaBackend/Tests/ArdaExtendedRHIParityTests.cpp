@@ -491,15 +491,29 @@ namespace
         ASSERT_TRUE(UploadMapping);
         ASSERT_NE(UploadMapping.mValue.mData, nullptr);
         ASSERT_GE(UploadMapping.mValue.mRowPitch, 16u);
-        const uint8_t ExpectedPixel[4] = { 17, 91, 203, 255 };
         for (uint32_t Y = 0; Y < 4; ++Y)
         {
             auto* Row = static_cast<uint8_t*>(UploadMapping.mValue.mData) +
                 Y * UploadMapping.mValue.mRowPitch;
             for (uint32_t X = 0; X < 4; ++X)
-                std::memcpy(Row + X * 4, ExpectedPixel, sizeof(ExpectedPixel));
+            {
+                const uint8_t Pixel[4] = {
+                    static_cast<uint8_t>(17 + X),
+                    static_cast<uint8_t>(91 + Y),
+                    203,
+                    255};
+                std::memcpy(Row + X * 4, Pixel, sizeof(Pixel));
+            }
         }
         ASSERT_TRUE(Device->UnmapStagingTexture(Upload.mValue));
+
+        FArdaRHITextureSlice TextureRegion;
+        TextureRegion.mWidth = 2;
+        TextureRegion.mHeight = 2;
+        TextureRegion.mDepth = 1;
+        FArdaRHITextureSlice StagingRegion = TextureRegion;
+        StagingRegion.mX = 1;
+        StagingRegion.mY = 1;
 
         FArdaRHIBufferDesc OutputDesc;
         OutputDesc.mDebugName = "Extended indirect output";
@@ -555,12 +569,14 @@ namespace
             EArdaRHIResourceState::Common);
 
         ASSERT_TRUE(Commands.mValue->CopyTextureFromStaging(
-            *Source.mValue, WholeSlice, *Upload.mValue, WholeSlice));
+            *Source.mValue, TextureRegion,
+            *Upload.mValue, StagingRegion));
         ExpectTextureState(
             *Commands.mValue, *Source.mValue, WholeRange,
             EArdaRHIResourceState::Common);
         ASSERT_TRUE(Commands.mValue->CopyTexture(
-            *Destination.mValue, WholeSlice, *Source.mValue, WholeSlice));
+            *Destination.mValue, TextureRegion,
+            *Source.mValue, TextureRegion));
         ExpectTextureState(
             *Commands.mValue, *Source.mValue, WholeRange,
             EArdaRHIResourceState::Common);
@@ -568,7 +584,8 @@ namespace
             *Commands.mValue, *Destination.mValue, WholeRange,
             EArdaRHIResourceState::Common);
         ASSERT_TRUE(Commands.mValue->CopyTextureToStaging(
-            *Readback.mValue, WholeSlice, *Destination.mValue, WholeSlice));
+            *Readback.mValue, StagingRegion,
+            *Destination.mValue, TextureRegion));
         ExpectTextureState(
             *Commands.mValue, *Destination.mValue, WholeRange,
             EArdaRHIResourceState::Common);
@@ -675,14 +692,23 @@ namespace
             << ReadbackMapping.mStatus.mMessage.c_str();
         ASSERT_NE(ReadbackMapping.mValue.mData, nullptr);
         ASSERT_GE(ReadbackMapping.mValue.mRowPitch, 16u);
-        for (uint32_t Y = 0; Y < 4; ++Y)
+        for (uint32_t Y = 0; Y < 2; ++Y)
         {
             const auto* Row =
                 static_cast<const uint8_t*>(ReadbackMapping.mValue.mData) +
-                Y * ReadbackMapping.mValue.mRowPitch;
-            for (uint32_t X = 0; X < 4; ++X)
+                (Y + StagingRegion.mY) * ReadbackMapping.mValue.mRowPitch;
+            for (uint32_t X = 0; X < 2; ++X)
+            {
+                const uint8_t ExpectedPixel[4] = {
+                    static_cast<uint8_t>(17 + X + StagingRegion.mX),
+                    static_cast<uint8_t>(91 + Y + StagingRegion.mY),
+                    203,
+                    255};
                 EXPECT_EQ(0, std::memcmp(
-                    Row + X * 4, ExpectedPixel, sizeof(ExpectedPixel)));
+                    Row + (X + StagingRegion.mX) * 4,
+                    ExpectedPixel,
+                    sizeof(ExpectedPixel)));
+            }
         }
         ASSERT_TRUE(Device->UnmapStagingTexture(Readback.mValue));
         ASSERT_EQ(OutputReadback.size(), sizeof(uint32_t));

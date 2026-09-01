@@ -695,10 +695,11 @@ namespace arda::rhi
         /**
          * Creates a input layout.
          * @param Attributes The attributes.
-         * @param VertexShader The vertex shader.
          * @return The requested value and its operation status.
          */
-        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIInputLayoutRef> CreateInputLayout(const eastl::vector<FArdaRHIVertexAttributeDesc>& Attributes, const FArdaRHIShaderRef& VertexShader = {}) = 0;
+        [[nodiscard]] virtual TArdaRHIResult<FArdaRHIInputLayoutRef>
+            CreateInputLayout(
+                const eastl::vector<FArdaRHIVertexAttributeDesc>& Attributes) = 0;
         /**
          * Creates a binding layout.
          * @param Desc The desc.

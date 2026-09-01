@@ -3044,8 +3044,12 @@ TEST(ArdaRenderGraph, RecordsIndependentPassesAndSubmitsCrossQueueWaits)
         EXPECT_TRUE(Extracted);
         EXPECT_TRUE(Result.mbUsedParallelRecording);
         EXPECT_GE(Result.mQueueWaitCount, 2u);
-        EXPECT_NE(Result.mLastSubmittedInstances[0], 0u);
-        EXPECT_NE(Result.mLastSubmittedInstances[1], 0u);
+        EXPECT_NE(Result.mLastSubmittedInstances[
+            rhi::GetArdaRHIQueueIndex(
+                rhi::EArdaRHIQueueType::Graphics)], 0u);
+        EXPECT_NE(Result.mLastSubmittedInstances[
+            rhi::GetArdaRHIQueueIndex(
+                rhi::EArdaRHIQueueType::Compute)], 0u);
         EXPECT_TRUE(GraphContext.mDevice->WaitForIdle());
     }
     ShutdownBackend();
@@ -3121,9 +3125,11 @@ TEST(ArdaRenderGraph, TransfersAsyncUavOutputThroughDedicatedCopyQueue)
         ExpectCompleteStateConformance(Result);
         EXPECT_GE(Result.mQueueWaitCount, 3u);
         EXPECT_NE(Result.mLastSubmittedInstances[
-            static_cast<size_t>(rhi::EArdaRHIQueueType::Compute)], 0u);
+            rhi::GetArdaRHIQueueIndex(
+                rhi::EArdaRHIQueueType::Compute)], 0u);
         EXPECT_NE(Result.mLastSubmittedInstances[
-            static_cast<size_t>(rhi::EArdaRHIQueueType::Copy)], 0u);
+            rhi::GetArdaRHIQueueIndex(
+                rhi::EArdaRHIQueueType::Copy)], 0u);
 
         bool bSawRelease = false;
         bool bSawAcquire = false;

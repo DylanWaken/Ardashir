@@ -120,13 +120,6 @@ namespace arda::render_graph
             return rhi::EArdaRHIQueueType::Graphics;
         }
 
-        /** Converts an RHI queue enum to the result-array bookkeeping index. */
-        [[nodiscard]] size_t GetQueueIndex(
-            rhi::EArdaRHIQueueType Queue) noexcept
-        {
-            return static_cast<size_t>(Queue);
-        }
-
         /** Maps a submit queue to the matching explicit-transition pipeline. */
         [[nodiscard]] rhi::EArdaRHIPipeline GetTransitionPipeline(
             rhi::EArdaRHIQueueType Queue) noexcept
@@ -678,7 +671,7 @@ namespace arda::render_graph
                     continue;
                 }
                 const int32_t PassDomain = static_cast<int32_t>(
-                    GetQueueIndex(
+                    rhi::GetArdaRHIQueueIndex(
                         GetCommandQueue(Pass.GetState().mPipeline)));
                 if (Domain >= 0 && Domain != PassDomain)
                 {
@@ -712,7 +705,7 @@ namespace arda::render_graph
                     continue;
                 }
                 const int32_t PassDomain = static_cast<int32_t>(
-                    GetQueueIndex(
+                    rhi::GetArdaRHIQueueIndex(
                         GetCommandQueue(Pass.GetState().mPipeline)));
                 if (Domain >= 0 && Domain != PassDomain)
                 {
@@ -1956,7 +1949,7 @@ namespace arda::render_graph
         }
 
         const uint64_t UploadInstance = UploadUniformBuffers(Graph);
-        eastl::array<bool, 3> bUploadWaited{};
+        eastl::array<bool, rhi::ArdaRHIQueueTypeCount> bUploadWaited{};
         eastl::vector<uint64_t> PassInstances(Graph.mPasses.GetCount(), 0);
         // Submission order remains deterministic even when recording completed
         // out of order. Per-pass instances become synchronization tokens for
@@ -1986,7 +1979,8 @@ namespace arda::render_graph
                 break;
             }
 
-            const size_t ConsumerQueueIndex = GetQueueIndex(Pass.mQueue);
+            const size_t ConsumerQueueIndex =
+                rhi::GetArdaRHIQueueIndex(Pass.mQueue);
             if (UploadInstance != 0 &&
                 Pass.mQueue != rhi::EArdaRHIQueueType::Graphics &&
                 !bUploadWaited[ConsumerQueueIndex])

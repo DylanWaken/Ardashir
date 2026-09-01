@@ -3,6 +3,8 @@
 #include "ArdaExternalInterop.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 
+#include "ArdaHash.h"
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -219,6 +221,14 @@ namespace
     private:
         arda::backend::FArdaBackendModuleDescriptor mDescriptor;
     };
+}
+
+TEST(ArdaBackendPrivateUtilities, Fnv1aUsesTheCanonical64BitDefinition)
+{
+    uint64_t Hash = arda::private_api::ArdaFnv1a64OffsetBasis;
+    constexpr char Value[] = "hello";
+    arda::private_api::AppendFnv1a64(Hash, Value, sizeof(Value) - 1);
+    EXPECT_EQ(Hash, 0xa430d84680aabd0bull);
 }
 
 TEST(ArdaBackend, LinkableBackendRegistrySelectsStableNamedModules)
@@ -1263,8 +1273,7 @@ TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
             Attribute.mElementStride = 8;
             eastl::vector<FArdaRHIVertexAttributeDesc> Attributes;
             Attributes.push_back(Attribute);
-            auto InputLayout = Device->CreateInputLayout(
-                Attributes, VertexShader.mValue);
+            auto InputLayout = Device->CreateInputLayout(Attributes);
             ASSERT_TRUE(InputLayout);
 
             FArdaRHIGraphicsPipelineDesc GraphicsDesc;

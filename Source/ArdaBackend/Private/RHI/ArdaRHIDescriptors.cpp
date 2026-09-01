@@ -1,8 +1,8 @@
 #include "RHI/ArdaRHIResources.h"
 
+#include "ArdaHash.h"
+
 #include <cmath>
-#include <cstring>
-#include <functional>
 
 namespace arda::rhi
 {
@@ -11,13 +11,12 @@ namespace arda::rhi
         template <typename T>
         void Combine(size_t& Seed, const T& Value) noexcept
         {
-            Seed ^= std::hash<T>{}(Value) + size_t(0x9e3779b9) +
-                (Seed << 6) + (Seed >> 2);
+            private_api::HashCombine(Seed, Value);
         }
 
         void CombineString(size_t& Seed, const eastl::string& Value) noexcept
         {
-            for (char C : Value) Combine(Seed, static_cast<uint8_t>(C));
+            private_api::HashString(Seed, Value);
         }
 
         template <typename T>
@@ -37,6 +36,19 @@ namespace arda::rhi
         {
             return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, Message);
         }
+
+        template <typename PipelineDesc>
+        void CombineRasterFixedFunctionState(
+            size_t& Hash, const PipelineDesc& Value)
+        {
+            Combine(Hash, HashValue(Value.mBlendState));
+            Combine(Hash, HashValue(Value.mRasterState));
+            Combine(Hash, HashValue(Value.mDepthStencilState));
+            for (auto Format : Value.mColorFormats)
+                Combine(Hash, static_cast<uint8_t>(Format));
+            Combine(Hash, static_cast<uint8_t>(Value.mDepthFormat));
+            Combine(Hash, Value.mSampleCount);
+        }
     }
 
     FArdaRHIStatus Validate(const FArdaRHITextureDesc& D) noexcept
@@ -44,7 +56,7 @@ namespace arda::rhi
         if (!D.mWidth || !D.mHeight || !D.mDepth || !D.mArraySize ||
             !D.mMipLevels || !D.mSampleCount)
             return Invalid("Texture dimensions, array size, mip count, and sample count must be non-zero.");
-        if (D.mFormat == EArdaRHIFormat::Unknown)
+        if (!IsArdaRHIFormatKnown(D.mFormat))
             return Invalid("Texture format must be specified.");
         if (D.mSampleCount > 1 && D.mMipLevels != 1)
             return Invalid("Multisampled textures must have exactly one mip level.");
@@ -148,7 +160,6 @@ namespace arda::rhi
         size_t H = 0;
         Combine(H, V.mAttributes.size());
         for (const auto& A : V.mAttributes) Combine(H, HashValue(A));
-        CombineRef(H, V.mVertexShader);
         return H;
     }
 
@@ -164,12 +175,7 @@ namespace arda::rhi
         CombineRef(H, V.mGeometryShader);
         CombineRef(H, V.mPixelShader);
         CombineRefs(H, V.mBindingLayouts);
-        Combine(H, HashValue(V.mBlendState));
-        Combine(H, HashValue(V.mRasterState));
-        Combine(H, HashValue(V.mDepthStencilState));
-        for (auto F : V.mColorFormats) Combine(H, static_cast<uint8_t>(F));
-        Combine(H, static_cast<uint8_t>(V.mDepthFormat));
-        Combine(H, V.mSampleCount);
+        CombineRasterFixedFunctionState(H, V);
         return H;
     }
 
@@ -189,12 +195,7 @@ namespace arda::rhi
         CombineRef(H, V.mMeshShader);
         CombineRef(H, V.mPixelShader);
         CombineRefs(H, V.mBindingLayouts);
-        Combine(H, HashValue(V.mBlendState));
-        Combine(H, HashValue(V.mRasterState));
-        Combine(H, HashValue(V.mDepthStencilState));
-        for (auto F : V.mColorFormats) Combine(H, static_cast<uint8_t>(F));
-        Combine(H, static_cast<uint8_t>(V.mDepthFormat));
-        Combine(H, V.mSampleCount);
+        CombineRasterFixedFunctionState(H, V);
         return H;
     }
 
@@ -254,7 +255,7 @@ namespace arda::rhi
 
     FArdaRHIStatus Validate(const FArdaRHIVertexAttributeDesc& V) noexcept
     {
-        if (V.mSemanticName.empty() || V.mFormat == EArdaRHIFormat::Unknown ||
+        if (V.mSemanticName.empty() || !IsArdaRHIFormatKnown(V.mFormat) ||
             V.mArraySize == 0 || V.mElementStride == 0)
             return Invalid("Vertex attributes require a semantic, format, array size, and stride.");
         return {};

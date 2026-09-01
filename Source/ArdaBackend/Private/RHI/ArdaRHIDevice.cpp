@@ -1,5 +1,7 @@
 #include "RHI/ArdaRHIDevicePrivate.h"
 
+#include "ArdaHash.h"
+
 #include <EASTL/algorithm.h>
 #include <EASTL/atomic.h>
 #include <EASTL/vector.h>
@@ -45,22 +47,14 @@ namespace arda::rhi::provider
 
         uint64_t PersistentShaderHash(const FArdaRHIShaderDesc& Desc) noexcept
         {
-            uint64_t Hash = 14695981039346656037ull;
+            uint64_t Hash = private_api::ArdaFnv1a64OffsetBasis;
             const auto Append = [&Hash](const void* Data, size_t Size)
             {
-                const auto* Bytes = static_cast<const uint8_t*>(Data);
-                for (size_t Index = 0; Index < Size; ++Index)
-                {
-                    Hash ^= Bytes[Index];
-                    Hash *= 1099511628211ull;
-                }
+                private_api::AppendFnv1a64(Hash, Data, Size);
             };
-            const auto AppendUnsigned = [&Append](uint64_t Value)
+            const auto AppendUnsigned = [&Hash](uint64_t Value)
             {
-                uint8_t Bytes[8]{};
-                for (uint32_t Index = 0; Index < 8; ++Index)
-                    Bytes[Index] = static_cast<uint8_t>(Value >> (Index * 8));
-                Append(Bytes, sizeof(Bytes));
+                private_api::AppendFnv1a64LittleEndian(Hash, Value);
             };
             AppendUnsigned(static_cast<uint64_t>(Desc.mStage));
             AppendUnsigned(Desc.mEntryPoint.size());
@@ -68,7 +62,7 @@ namespace arda::rhi::provider
             AppendUnsigned(Desc.mBytecodeSize);
             if (Desc.mBytecode && Desc.mBytecodeSize)
                 Append(Desc.mBytecode, Desc.mBytecodeSize);
-            return Hash == 0 ? 1 : Hash;
+            return private_api::FinishPersistentHash(Hash);
         }
 
         class FLifetimeTracker
@@ -677,13 +671,6 @@ namespace arda::rhi::provider
             return dynamic_cast<const T*>(Resource);
         }
 
-        uint32_t TexturePlaneCount(const FArdaRHITextureDesc& Desc) noexcept
-        {
-            const FArdaRHIFormatInfo& Info =
-                GetArdaRHIFormatInfo(Desc.mFormat);
-            return Info.mbDepth && Info.mbStencil ? 2u : 1u;
-        }
-
         size_t TextureStateIndex(
             const FArdaRHITextureDesc& Desc,
             uint32_t MipLevel,
@@ -1106,7 +1093,8 @@ namespace arda::rhi::provider
             TArdaRHIResult<FArdaRHIShaderRef> CreateShader(const FArdaRHIShaderDesc&) override;
             TArdaRHIResult<FArdaRHIShaderLibraryRef> CreateShaderLibrary(const void*, size_t, const char*) override;
             TArdaRHIResult<FArdaRHIShaderRef> GetShaderFromLibrary(const FArdaRHIShaderLibraryRef&, const char*, EArdaRHIShaderStage, const char*) override;
-            TArdaRHIResult<FArdaRHIInputLayoutRef> CreateInputLayout(const eastl::vector<FArdaRHIVertexAttributeDesc>&, const FArdaRHIShaderRef&) override;
+            TArdaRHIResult<FArdaRHIInputLayoutRef> CreateInputLayout(
+                const eastl::vector<FArdaRHIVertexAttributeDesc>&) override;
             TArdaRHIResult<FArdaRHIBindingLayoutRef> CreateBindingLayout(const FArdaRHIBindingLayoutDesc&) override;
             TArdaRHIResult<FArdaRHIBindingLayoutRef> CreateBindlessLayout(const FArdaRHIBindlessLayoutDesc&) override;
             TArdaRHIResult<FArdaRHIBindingSetRef> CreateBindingSet(const FArdaRHIBindingSetDesc&) override;
@@ -1768,14 +1756,11 @@ namespace arda::rhi::provider
         }
 
         TArdaRHIResult<FArdaRHIInputLayoutRef> FArdaRHIDeviceImpl::CreateInputLayout(
-            const eastl::vector<FArdaRHIVertexAttributeDesc>& Attributes,
-            const FArdaRHIShaderRef& VertexShader)
+            const eastl::vector<FArdaRHIVertexAttributeDesc>& Attributes)
         {
-            FArdaRHIInputLayoutDesc Desc{ Attributes, VertexShader };
+            FArdaRHIInputLayoutDesc Desc{ Attributes };
             if (auto Status = Validate(Desc); !Status)
                 return Failure<FArdaRHIInputLayoutRef>(eastl::move(Status));
-            if (!IsOwned(VertexShader))
-                return Failure<FArdaRHIInputLayoutRef>(WrongDevice());
             std::lock_guard<std::mutex> Lock(mCacheMutex);
             if (auto Existing = mInputLayoutCache.Find(Desc)) return { Existing, {} };
             FArdaRHIInputLayoutRef Result(new FInputLayout(
@@ -3303,7 +3288,7 @@ namespace arda::rhi::provider
                 States.assign(
                     static_cast<size_t>(Texture.mDesc.mMipLevels) *
                         Texture.mDesc.mArraySize *
-                        TexturePlaneCount(Texture.mDesc),
+                        GetArdaRHIFormatPlaneCount(Texture.mDesc.mFormat),
                     Texture.mDesc.mInitialState);
             }
             return mFacadeTextureStates.emplace(
@@ -3375,7 +3360,7 @@ namespace arda::rhi::provider
                     Submitted.assign(
                         static_cast<size_t>(Texture->mDesc.mMipLevels) *
                             Texture->mDesc.mArraySize *
-                            TexturePlaneCount(Texture->mDesc),
+                            GetArdaRHIFormatPlaneCount(Texture->mDesc.mFormat),
                         Texture->mDesc.mInitialState);
                 }
                 for (size_t Index = 0; Index < Entry.second.size(); ++Index)
@@ -3588,6 +3573,20 @@ namespace arda::rhi::provider
             auto* Src = Cast<FTexture>(&Source);
             if (!Dst || !Src || !Owns(Dst) || !Owns(Src))
                 return WrongDevice();
+            FArdaRHITextureCopyExtent Extent;
+            if (auto Status = ResolveArdaRHITextureCopyExtent(
+                    Dst->mDesc, DestinationSlice,
+                    Src->mDesc, SourceSlice, Extent);
+                !Status)
+                return Status;
+            if (Dst == Src &&
+                DestinationSlice.mMipLevel == SourceSlice.mMipLevel &&
+                DestinationSlice.mArraySlice == SourceSlice.mArraySlice &&
+                DestinationSlice.mPlane == SourceSlice.mPlane)
+            {
+                return Invalid(
+                    "A texture subresource cannot be copied onto itself.");
+            }
             return mNative->CopyTexture(
                 Dst->mNative, Dst->mDesc, DestinationSlice,
                 Src->mNative, Src->mDesc, SourceSlice);
@@ -3603,13 +3602,11 @@ namespace arda::rhi::provider
             auto* Src = Cast<FTexture>(&Source);
             if (!Dst || !Src || !Owns(Dst) || !Owns(Src))
                 return WrongDevice();
-            if (Src->mDesc.mSampleCount <= 1 ||
-                Dst->mDesc.mSampleCount != 1 ||
-                Src->mDesc.mFormat != Dst->mDesc.mFormat)
-            {
-                return Invalid(
-                    "Texture resolve requires matching formats and MSAA-to-single-sample resources.");
-            }
+            FArdaRHITextureCopyExtent Extent;
+            if (auto Status = ValidateArdaRHITextureResolve(
+                    Dst->mDesc, DestinationSlice,
+                    Src->mDesc, SourceSlice, Extent); !Status)
+                return Status;
             return mNative->ResolveTexture(
                 Dst->mNative, Dst->mDesc, DestinationSlice,
                 Src->mNative, Src->mDesc, SourceSlice);
@@ -3627,6 +3624,12 @@ namespace arda::rhi::provider
                 return WrongDevice();
             if (Dst->mDesc.mCpuAccess != EArdaRHICpuAccess::Read)
                 return Invalid("A texture readback requires a read staging texture.");
+            FArdaRHITextureCopyExtent Extent;
+            if (auto Status = ResolveArdaRHITextureCopyExtent(
+                    Dst->mDesc.mTexture, DestinationSlice,
+                    Src->mDesc, SourceSlice, Extent);
+                !Status)
+                return Status;
             return mNative->CopyTextureToStaging(
                 Dst->mNative,
                 Dst->mDesc,
@@ -3648,6 +3651,12 @@ namespace arda::rhi::provider
                 return WrongDevice();
             if (Src->mDesc.mCpuAccess != EArdaRHICpuAccess::Write)
                 return Invalid("A texture upload requires a write staging texture.");
+            FArdaRHITextureCopyExtent Extent;
+            if (auto Status = ResolveArdaRHITextureCopyExtent(
+                    Dst->mDesc, DestinationSlice,
+                    Src->mDesc.mTexture, SourceSlice, Extent);
+                !Status)
+                return Status;
             return mNative->CopyTextureFromStaging(
                 Dst->mNative,
                 Dst->mDesc,
@@ -3856,7 +3865,7 @@ namespace arda::rhi::provider
                     Expected.assign(
                         static_cast<size_t>(Native->mDesc.mMipLevels) *
                             Native->mDesc.mArraySize *
-                            TexturePlaneCount(Native->mDesc),
+                            GetArdaRHIFormatPlaneCount(Native->mDesc.mFormat),
                         EArdaRHIResourceState::Unknown);
                 }
                 StoreFacadeTextureState(

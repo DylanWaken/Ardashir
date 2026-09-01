@@ -1,5 +1,6 @@
 #include "ShaderStructs/ArdaShaderType.h"
 
+#include "ArdaHash.h"
 #include "ShaderStructs/ArdaShaderDirectories.h"
 
 #include <EASTL/algorithm.h>
@@ -33,29 +34,27 @@ namespace arda::backend
 
         uint64_t HashIdentity(const FArdaShaderType& Type)
         {
-            uint64_t Hash = 1469598103934665603ull;
+            uint64_t Hash = private_api::ArdaFnv1a64OffsetBasis;
             const auto Append = [&Hash](const char* Text)
             {
                 if (Text == nullptr)
                     return;
                 while (*Text != '\0')
                 {
-                    Hash ^= static_cast<uint8_t>(*Text++);
-                    Hash *= 1099511628211ull;
+                    private_api::AppendFnv1a64(Hash, Text, 1);
+                    ++Text;
                 }
-                Hash ^= 0xffu;
-                Hash *= 1099511628211ull;
+                const uint8_t Delimiter = 0xffu;
+                private_api::AppendFnv1a64(
+                    Hash, &Delimiter, sizeof(Delimiter));
             };
             Append(Type.GetSourceStem());
             Append(Type.GetOutputStem());
             Append(Type.GetEntryPoint());
             const auto AppendUint32 = [&Hash](uint32_t Value)
             {
-                for (uint32_t Shift = 0; Shift < 32; Shift += 8)
-                {
-                    Hash ^= static_cast<uint8_t>(Value >> Shift);
-                    Hash *= 1099511628211ull;
-                }
+                private_api::AppendFnv1a64LittleEndian(
+                    Hash, Value, sizeof(Value));
             };
             AppendUint32(static_cast<uint32_t>(Type.GetStage()));
             AppendUint32(Type.GetPermutationCount());

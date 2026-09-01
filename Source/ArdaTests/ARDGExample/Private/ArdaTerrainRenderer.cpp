@@ -407,8 +407,7 @@ namespace arda::tests::ardg_example
         attributes[1].mFormat = rhi::EArdaRHIFormat::R32Float;
         attributes[1].mOffset = offsetof(FTerrainVertex, mHeight);
         attributes[1].mElementStride = sizeof(FTerrainVertex);
-        auto inputLayout = mDevice->CreateInputLayout(
-            attributes, mTerrainVertexShader->GetShader());
+        auto inputLayout = mDevice->CreateInputLayout(attributes);
         if (!TakeResult(inputLayout, mTerrainInputLayout, mError))
         {
             return false;

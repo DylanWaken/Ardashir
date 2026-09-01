@@ -2,6 +2,9 @@
 
 #include "ArdaBackendProvider.h"
 
+#include "ArdaHash.h"
+#include "ArdaString.h"
+
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 #include "ShaderStructs/ArdaShaderDirectories.h"
 
@@ -31,8 +34,6 @@ namespace arda::backend
 {
     namespace
     {
-        constexpr uint64_t FnvOffset = 14695981039346656037ull;
-        constexpr uint64_t FnvPrime = 1099511628211ull;
         constexpr const char* CacheSchema = "ArdaShaderCompileKey-v3";
 
         std::mutex GConfigurationMutex;
@@ -40,16 +41,6 @@ namespace arda::backend
         std::mutex GOutputMutexMapMutex;
         std::map<std::string, std::weak_ptr<std::mutex>> GOutputMutexes;
         std::atomic<uint64_t> GTemporaryId{ 0 };
-
-        eastl::string ToEastl(const std::string& Value)
-        {
-            return eastl::string(Value.data(), Value.size());
-        }
-
-        std::string ToStd(const eastl::string& Value)
-        {
-            return std::string(Value.data(), Value.size());
-        }
 
         FArdaShaderCompilerConfiguration MakeDefaultConfiguration()
         {
@@ -99,17 +90,6 @@ namespace arda::backend
             return Result;
         }
 
-        bool IsRayStage(rhi::EArdaRHIShaderStage Stage)
-        {
-            using StageType = rhi::EArdaRHIShaderStage;
-            return Stage == StageType::RayGeneration ||
-                Stage == StageType::AnyHit ||
-                Stage == StageType::ClosestHit ||
-                Stage == StageType::Miss ||
-                Stage == StageType::Intersection ||
-                Stage == StageType::Callable;
-        }
-
         eastl::string ProfileForStage(rhi::EArdaRHIShaderStage Stage)
         {
             using StageType = rhi::EArdaRHIShaderStage;
@@ -122,7 +102,7 @@ namespace arda::backend
             if (Stage == StageType::Amplification) return "as_6_5";
             if (Stage == StageType::Mesh) return "ms_6_5";
             if (Stage == StageType::WorkGraph) return "lib_6_8";
-            if (IsRayStage(Stage)) return "lib_6_3";
+            if (rhi::IsArdaRHIRayTracingShaderStage(Stage)) return "lib_6_3";
             return {};
         }
 
@@ -154,12 +134,7 @@ namespace arda::backend
 
         void HashBytes(uint64_t& Hash, const void* Data, size_t Size)
         {
-            const auto* Bytes = static_cast<const uint8_t*>(Data);
-            for (size_t Index = 0; Index < Size; ++Index)
-            {
-                Hash ^= Bytes[Index];
-                Hash *= FnvPrime;
-            }
+            private_api::AppendFnv1a64(Hash, Data, Size);
         }
 
         void HashString(uint64_t& Hash, const std::string& Value)
@@ -717,7 +692,7 @@ namespace arda::backend
                     return false;
                 }
             }
-            uint64_t Hash = FnvOffset;
+            uint64_t Hash = private_api::ArdaFnv1a64OffsetBasis;
             HashString(Hash, CacheSchema);
             HashString(Hash, Type.GetName());
             HashString(Hash, ToStd(Target.mBackendName));

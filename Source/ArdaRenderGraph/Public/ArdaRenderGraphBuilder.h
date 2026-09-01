@@ -183,7 +183,8 @@ namespace arda::render_graph
         uint32_t mStateConformanceFailureCount = 0;
 
         /** Last submitted RHI instance for graphics, compute, and copy queues. */
-        eastl::array<uint64_t, 3> mLastSubmittedInstances{};
+        eastl::array<uint64_t,
+            rhi::ArdaRHIQueueTypeCount> mLastSubmittedInstances{};
     };
 
     /** Defines direct compute dispatch dimensions. */

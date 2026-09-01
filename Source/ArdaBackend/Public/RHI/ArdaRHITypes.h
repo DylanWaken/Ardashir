@@ -112,8 +112,17 @@ namespace arda::rhi
         D16, D24S8, D32, D32S8,
         BC1UNorm, BC1UNormSRGB, BC2UNorm, BC2UNormSRGB,
         BC3UNorm, BC3UNormSRGB, BC4UNorm, BC4SNorm,
-        BC5UNorm, BC5SNorm, BC6HUFloat, BC6HSFloat, BC7UNorm, BC7UNormSRGB
+        BC5UNorm, BC5SNorm, BC6HUFloat, BC6HSFloat, BC7UNorm, BC7UNormSRGB,
+        /** Number of format values, including Unknown. */
+        Count
     };
+    /** @return True for a usable format value rather than a sentinel. */
+    [[nodiscard]] inline constexpr bool IsArdaRHIFormatKnown(
+        EArdaRHIFormat Format) noexcept
+    {
+        return Format > EArdaRHIFormat::Unknown &&
+            Format < EArdaRHIFormat::Count;
+    }
 
     /** Enumerates texture dimension values. */
     enum class EArdaRHITextureDimension : uint8_t
@@ -125,7 +134,22 @@ namespace arda::rhi
     /** Enumerates CPU access values. */
     enum class EArdaRHICpuAccess : uint8_t { None, Read, Write };
     /** Enumerates queue type values. */
-    enum class EArdaRHIQueueType : uint8_t { Graphics, Compute, Copy };
+    enum class EArdaRHIQueueType : uint8_t
+    {
+        Graphics = 0,
+        Compute = 1,
+        Copy = 2,
+        Count
+    };
+    /** Number of queue types represented by EArdaRHIQueueType. */
+    inline constexpr size_t ArdaRHIQueueTypeCount =
+        static_cast<size_t>(EArdaRHIQueueType::Count);
+    /** @return The canonical array index for a queue type. */
+    [[nodiscard]] inline constexpr size_t GetArdaRHIQueueIndex(
+        EArdaRHIQueueType Queue) noexcept
+    {
+        return static_cast<size_t>(Queue);
+    }
     /** Pipeline domains participating in a resource transition. */
     enum class EArdaRHIPipeline : uint8_t
     {
@@ -190,6 +214,16 @@ namespace arda::rhi
         WorkGraph = 1u << 14,
         AllGraphics = 0x00df, AllRayTracing = 0x3f00, All = 0x7fff
     };
+    /** @return True when Stage names exactly one ray-tracing shader stage. */
+    [[nodiscard]] inline constexpr bool IsArdaRHIRayTracingShaderStage(
+        EArdaRHIShaderStage Stage) noexcept
+    {
+        const uint16_t Value = static_cast<uint16_t>(Stage);
+        const uint16_t RayStages =
+            static_cast<uint16_t>(EArdaRHIShaderStage::AllRayTracing);
+        return Value != 0 && (Value & (Value - 1)) == 0 &&
+            (Value & RayStages) == Value;
+    }
 
     /** Enumerates resource state values. */
     enum class EArdaRHIResourceState : uint32_t
@@ -628,6 +662,14 @@ namespace arda::rhi
         uint32_t mPlane = 0;
     };
 
+    /** Concrete extent resolved for a texture-region copy. */
+    struct FArdaRHITextureCopyExtent
+    {
+        uint32_t mWidth = 0;
+        uint32_t mHeight = 0;
+        uint32_t mDepth = 0;
+    };
+
     /** Explicit texture transition including expected state and pipeline domains. */
     struct FArdaRHITextureTransitionDesc
     {
@@ -999,6 +1041,12 @@ namespace arda::rhi
         bool mbStencil = false;
         /** Stores the integer. */
         bool mbInteger = false;
+        /** Bytes occupied by one texel or one compressed block. */
+        uint32_t mBytesPerBlock = 0;
+        /** Width in texels of one storage block. */
+        uint32_t mBlockWidth = 1;
+        /** Height in texels of one storage block. */
+        uint32_t mBlockHeight = 1;
     };
 
     /** Describes memory requirements. */
@@ -1018,6 +1066,35 @@ namespace arda::rhi
      * @return A reference to the requested value.
      */
     [[nodiscard]] const FArdaRHIFormatInfo& GetArdaRHIFormatInfo(EArdaRHIFormat Format) noexcept;
+    /** @return The byte size of one uncompressed format element, or zero for compressed/unknown formats. */
+    [[nodiscard]] uint32_t GetArdaRHIFormatElementSize(
+        EArdaRHIFormat Format) noexcept;
+    /** @return The number of independently addressable format planes. */
+    [[nodiscard]] uint32_t GetArdaRHIFormatPlaneCount(
+        EArdaRHIFormat Format) noexcept;
+    /** @return One dimension of a texture at the requested mip level. */
+    [[nodiscard]] uint32_t GetArdaRHITextureMipExtent(
+        uint32_t BaseExtent, uint32_t MipLevel) noexcept;
+    /**
+     * Validates matching texture slices and resolves sentinel source extents.
+     * @return Success and a concrete non-empty copy extent, or a validation error.
+     */
+    [[nodiscard]] FArdaRHIStatus ResolveArdaRHITextureCopyExtent(
+        const FArdaRHITextureDesc& DestinationDesc,
+        const FArdaRHITextureSlice& DestinationSlice,
+        const FArdaRHITextureDesc& SourceDesc,
+        const FArdaRHITextureSlice& SourceSlice,
+        FArdaRHITextureCopyExtent& OutExtent) noexcept;
+    /**
+     * Validates a whole-subresource multisample resolve and returns its extent.
+     * Slice width, height, and depth are ignored because resolves are not regions.
+     */
+    [[nodiscard]] FArdaRHIStatus ValidateArdaRHITextureResolve(
+        const FArdaRHITextureDesc& DestinationDesc,
+        const FArdaRHITextureSlice& DestinationSlice,
+        const FArdaRHITextureDesc& SourceDesc,
+        const FArdaRHITextureSlice& SourceSlice,
+        FArdaRHITextureCopyExtent& OutExtent) noexcept;
 
     /**
      * Tests for the requested h value.

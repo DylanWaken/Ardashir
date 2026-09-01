@@ -115,7 +115,7 @@ namespace arda::tests::rhi_test
         attributes[1].mFormat = rhi::EArdaRHIFormat::RGB32Float;
         attributes[1].mOffset = offsetof(FArdaVertex, mColor);
         attributes[1].mElementStride = sizeof(FArdaVertex);
-        auto inputLayout = mDevice->CreateInputLayout(attributes, mVertexShader);
+        auto inputLayout = mDevice->CreateInputLayout(attributes);
         if (!inputLayout)
         {
             mError = inputLayout.mStatus.mMessage;

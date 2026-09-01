@@ -41,6 +41,9 @@ namespace arda::backend
         using namespace rhi;
         using namespace rhi::provider;
 
+        constexpr uint32_t D3D12ResourceDescriptorHeapCapacity = 65536;
+        constexpr uint32_t D3D12SamplerDescriptorHeapCapacity = 2048;
+
         template <typename T, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE Type>
         struct alignas(void*) TD3D12PipelineSubobject
         {
@@ -197,62 +200,6 @@ namespace arda::backend
             }
         }
 
-        uint32_t FormatSize(EArdaRHIFormat Format) noexcept
-        {
-            switch (Format)
-            {
-            case EArdaRHIFormat::R8UInt:
-            case EArdaRHIFormat::R8SInt:
-            case EArdaRHIFormat::R8UNorm:
-            case EArdaRHIFormat::R8SNorm: return 1;
-            case EArdaRHIFormat::RG8UInt:
-            case EArdaRHIFormat::RG8SInt:
-            case EArdaRHIFormat::RG8UNorm:
-            case EArdaRHIFormat::RG8SNorm:
-            case EArdaRHIFormat::R16UInt:
-            case EArdaRHIFormat::R16SInt:
-            case EArdaRHIFormat::R16UNorm:
-            case EArdaRHIFormat::R16SNorm:
-            case EArdaRHIFormat::R16Float:
-            case EArdaRHIFormat::D16: return 2;
-            case EArdaRHIFormat::RGBA8UInt:
-            case EArdaRHIFormat::RGBA8SInt:
-            case EArdaRHIFormat::RGBA8UNorm:
-            case EArdaRHIFormat::RGBA8SNorm:
-            case EArdaRHIFormat::BGRA8UNorm:
-            case EArdaRHIFormat::SRGBA8UNorm:
-            case EArdaRHIFormat::SBGRA8UNorm:
-            case EArdaRHIFormat::R10G10B10A2UNorm:
-            case EArdaRHIFormat::R11G11B10Float:
-            case EArdaRHIFormat::RG16UInt:
-            case EArdaRHIFormat::RG16SInt:
-            case EArdaRHIFormat::RG16UNorm:
-            case EArdaRHIFormat::RG16SNorm:
-            case EArdaRHIFormat::RG16Float:
-            case EArdaRHIFormat::R32UInt:
-            case EArdaRHIFormat::R32SInt:
-            case EArdaRHIFormat::R32Float:
-            case EArdaRHIFormat::D24S8:
-            case EArdaRHIFormat::D32: return 4;
-            case EArdaRHIFormat::RGBA16UInt:
-            case EArdaRHIFormat::RGBA16SInt:
-            case EArdaRHIFormat::RGBA16Float:
-            case EArdaRHIFormat::RGBA16UNorm:
-            case EArdaRHIFormat::RGBA16SNorm:
-            case EArdaRHIFormat::RG32UInt:
-            case EArdaRHIFormat::RG32SInt:
-            case EArdaRHIFormat::RG32Float:
-            case EArdaRHIFormat::D32S8: return 8;
-            case EArdaRHIFormat::RGB32UInt:
-            case EArdaRHIFormat::RGB32SInt:
-            case EArdaRHIFormat::RGB32Float: return 12;
-            case EArdaRHIFormat::RGBA32UInt:
-            case EArdaRHIFormat::RGBA32SInt:
-            case EArdaRHIFormat::RGBA32Float: return 16;
-            default: return 0;
-            }
-        }
-
         D3D12_RESOURCE_STATES ToD3D12State(EArdaRHIResourceState State) noexcept
         {
             if (State == EArdaRHIResourceState::Unknown ||
@@ -349,38 +296,21 @@ namespace arda::backend
             return {eastl::move(Resource), {}};
         }
 
-        uint32_t D3D12PlaneCount(EArdaRHIFormat Format) noexcept
-        {
-            return Format == EArdaRHIFormat::D24S8 ||
-                Format == EArdaRHIFormat::D32S8 ? 2u : 1u;
-        }
-
         size_t D3D12TextureStateCount(
             const FArdaRHITextureDesc& Desc) noexcept
         {
             return static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize *
-                D3D12PlaneCount(Desc.mFormat);
+                GetArdaRHIFormatPlaneCount(Desc.mFormat);
         }
 
         constexpr uint64_t D3D12SubmissionQueueShift = 62;
         constexpr uint64_t D3D12SubmissionValueMask =
             (uint64_t{1} << D3D12SubmissionQueueShift) - 1;
 
-        uint32_t D3D12QueueIndex(EArdaRHIQueueType Queue) noexcept
-        {
-            switch (Queue)
-            {
-            case EArdaRHIQueueType::Graphics: return 0;
-            case EArdaRHIQueueType::Compute: return 1;
-            case EArdaRHIQueueType::Copy: return 2;
-            }
-            return 0;
-        }
-
         uint64_t EncodeD3D12Submission(
             EArdaRHIQueueType Queue, uint64_t QueueValue) noexcept
         {
-            return (static_cast<uint64_t>(D3D12QueueIndex(Queue)) <<
+            return (static_cast<uint64_t>(GetArdaRHIQueueIndex(Queue)) <<
                 D3D12SubmissionQueueShift) | QueueValue;
         }
 
@@ -641,8 +571,10 @@ namespace arda::backend
                 mSamplerHeap = eastl::move(SamplerHeap);
                 mResourceIncrement = ResourceIncrement;
                 mSamplerIncrement = SamplerIncrement;
-                mResourceFree.push_back({ 0, 65536 });
-                mSamplerFree.push_back({ 0, 2048 });
+                mResourceFree.push_back(
+                    { 0, mResourceHeap->GetDesc().NumDescriptors });
+                mSamplerFree.push_back(
+                    { 0, mSamplerHeap->GetDesc().NumDescriptors });
             }
 
             TArdaRHIResult<FD3D12DescriptorAllocation> Allocate(
@@ -1117,8 +1049,10 @@ namespace arda::backend
                 uint64_t mQueueValue = 0;
                 FD3D12SubmissionLifetime mLifetime;
             };
-            eastl::array<ComPtr<ID3D12Fence>, 3> mQueueFences;
-            eastl::array<std::atomic<uint64_t>, 3> mQueueFenceValues{};
+            eastl::array<ComPtr<ID3D12Fence>,
+                ArdaRHIQueueTypeCount> mQueueFences;
+            eastl::array<std::atomic<uint64_t>,
+                ArdaRHIQueueTypeCount> mQueueFenceValues{};
             ComPtr<IDXGIAdapter3> mDxgiAdapter;
             HANDLE mFenceEvent = nullptr;
             eastl::shared_ptr<void> mLifetimeToken;
@@ -1146,13 +1080,13 @@ namespace arda::backend
         {
             D3D12_DESCRIPTOR_HEAP_DESC HeapDesc{};
             HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-            HeapDesc.NumDescriptors = 65536;
+            HeapDesc.NumDescriptors = D3D12ResourceDescriptorHeapCapacity;
             HeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
             HRESULT Result = mD3DDevice->CreateDescriptorHeap(
                 &HeapDesc, IID_PPV_ARGS(&mResourceHeap));
             if (FAILED(Result)) return D3D12Failure("Failed to create the D3D12 resource descriptor heap.", Result);
             HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-            HeapDesc.NumDescriptors = 2048;
+            HeapDesc.NumDescriptors = D3D12SamplerDescriptorHeapCapacity;
             Result = mD3DDevice->CreateDescriptorHeap(
                 &HeapDesc, IID_PPV_ARGS(&mSamplerHeap));
             if (FAILED(Result)) return D3D12Failure("Failed to create the D3D12 sampler descriptor heap.", Result);
@@ -1246,8 +1180,10 @@ namespace arda::backend
             // Half of the physical heap is the safe logical maximum so a
             // table can be versioned while its previous allocation remains
             // live for update-after-bind command lists.
-            mCapabilities.mDescriptors.mMaxResourceDescriptors = 32768;
-            mCapabilities.mDescriptors.mMaxSamplerDescriptors = 2048;
+            mCapabilities.mDescriptors.mMaxResourceDescriptors =
+                mResourceHeap->GetDesc().NumDescriptors / 2;
+            mCapabilities.mDescriptors.mMaxSamplerDescriptors =
+                mSamplerHeap->GetDesc().NumDescriptors;
             mCapabilities.mDescriptors.mbRuntimeDescriptorArrays = true;
             mCapabilities.mDescriptors.mbUnboundedArrays = true;
             mCapabilities.mDescriptors.mbPartiallyBound = true;
@@ -1284,14 +1220,13 @@ namespace arda::backend
                 Ray.mbCompaction = true;
                 Ray.mbIndirectDispatch =
                     Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1;
+                Ray.mbInlineRayQueries =
+                    Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1;
+                Ray.mbOpacityMicromaps =
+                    Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_2;
                 Ray.mbIndirectTopLevelBuild = true;
                 Ray.mbLocalShaderTableArguments = true;
                 Ray.mbPersistentShaderTables = true;
-                Ray.mTier = Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_2
-                    ? EArdaRHIRayTracingTier::HardwareOpacityMicromaps
-                    : Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1
-                        ? EArdaRHIRayTracingTier::HardwareInlineQueries
-                        : EArdaRHIRayTracingTier::HardwareAccelerationStructures;
                 Ray.mShaderIdentifierSize =
                     D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
                 Ray.mShaderRecordAlignment =
@@ -2116,7 +2051,7 @@ namespace arda::backend
             D3D12_TILE_SHAPE Shape{};
             UINT SubresourceCount = static_cast<UINT>(
                 Texture->mDesc.mMipLevels * Texture->mDesc.mArraySize *
-                D3D12PlaneCount(Texture->mDesc.mFormat));
+                GetArdaRHIFormatPlaneCount(Texture->mDesc.mFormat));
             eastl::vector<D3D12_SUBRESOURCE_TILING> Native(
                 SubresourceCount);
             UINT FirstSubresource = 0;
@@ -2509,7 +2444,7 @@ namespace arda::backend
             if (Access != Texture->mDesc.mCpuAccess ||
                 Slice.mMipLevel >= Desc.mMipLevels ||
                 Slice.mArraySlice >= Desc.mArraySize ||
-                Slice.mPlane >= D3D12PlaneCount(Desc.mFormat) ||
+                Slice.mPlane >= GetArdaRHIFormatPlaneCount(Desc.mFormat) ||
                 Slice.mX || Slice.mY || Slice.mZ)
             {
                 return Fail<FArdaRHIStagingTextureMapping>(
@@ -3015,7 +2950,8 @@ namespace arda::backend
                         const EArdaRHIFormat Format = Binding->mItem.mView.mFormat == EArdaRHIFormat::Unknown
                             ? Buffer->mDesc.mFormat : Binding->mItem.mView.mFormat;
                         const uint32_t Stride = bStructured ? Buffer->mDesc.mStructureStride
-                            : (bRaw ? 4u : eastl::max(1u, FormatSize(Format)));
+                            : (bRaw ? 4u : eastl::max(
+                                1u, GetArdaRHIFormatElementSize(Format)));
                         D3D12_SHADER_RESOURCE_VIEW_DESC View{};
                         View.Format = bRaw ? DXGI_FORMAT_R32_TYPELESS
                             : (bStructured ? DXGI_FORMAT_UNKNOWN : ToDxgi(Format));
@@ -3040,7 +2976,8 @@ namespace arda::backend
                         const EArdaRHIFormat Format = Binding->mItem.mView.mFormat == EArdaRHIFormat::Unknown
                             ? Buffer->mDesc.mFormat : Binding->mItem.mView.mFormat;
                         const uint32_t Stride = bStructured ? Buffer->mDesc.mStructureStride
-                            : (bRaw ? 4u : eastl::max(1u, FormatSize(Format)));
+                            : (bRaw ? 4u : eastl::max(
+                                1u, GetArdaRHIFormatElementSize(Format)));
                         D3D12_UNORDERED_ACCESS_VIEW_DESC View{};
                         View.Format = bRaw ? DXGI_FORMAT_R32_TYPELESS
                             : (bStructured ? DXGI_FORMAT_UNKNOWN : ToDxgi(Format));
@@ -3224,7 +3161,8 @@ namespace arda::backend
                         Native.SemanticIndex = Element;
                         Native.Format = ToDxgi(Attribute.mFormat);
                         Native.InputSlot = Attribute.mBufferIndex;
-                        Native.AlignedByteOffset = Attribute.mOffset + Element * FormatSize(Attribute.mFormat);
+                        Native.AlignedByteOffset = Attribute.mOffset + Element *
+                            GetArdaRHIFormatElementSize(Attribute.mFormat);
                         Native.InputSlotClass = Attribute.mbInstanced
                             ? D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA
                             : D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
@@ -4644,60 +4582,15 @@ namespace arda::backend
                 return FArdaRHIStatus::Error(
                     EArdaRHIResult::WrongDevice,
                     "D3D12 texture copy has the wrong resource type.");
-            if (DestinationDesc.mFormat != SourceDesc.mFormat ||
-                DestinationSlice.mMipLevel >= DestinationDesc.mMipLevels ||
-                SourceSlice.mMipLevel >= SourceDesc.mMipLevels ||
-                DestinationSlice.mArraySlice >= DestinationDesc.mArraySize ||
-                SourceSlice.mArraySlice >= SourceDesc.mArraySize ||
-                DestinationSlice.mPlane >= D3D12PlaneCount(DestinationDesc.mFormat) ||
-                SourceSlice.mPlane >= D3D12PlaneCount(SourceDesc.mFormat))
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "D3D12 texture copy slice or format is invalid.");
-            }
-            const auto MipExtent = [](uint32_t Size, uint32_t Mip)
-            {
-                return eastl::max(1u, Size >> Mip);
-            };
-            const uint32_t SourceWidth = MipExtent(
-                SourceDesc.mWidth, SourceSlice.mMipLevel);
-            const uint32_t SourceHeight = MipExtent(
-                SourceDesc.mHeight, SourceSlice.mMipLevel);
-            const uint32_t SourceDepth = MipExtent(
-                SourceDesc.mDepth, SourceSlice.mMipLevel);
-            if (SourceSlice.mX >= SourceWidth ||
-                SourceSlice.mY >= SourceHeight ||
-                SourceSlice.mZ >= SourceDepth)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "D3D12 texture copy source origin is out of range.");
-            }
-            const uint32_t Width = eastl::min(
-                SourceSlice.mWidth, SourceWidth - SourceSlice.mX);
-            const uint32_t Height = eastl::min(
-                SourceSlice.mHeight, SourceHeight - SourceSlice.mY);
-            const uint32_t Depth = eastl::min(
-                SourceSlice.mDepth, SourceDepth - SourceSlice.mZ);
-            const uint32_t DestinationWidth = MipExtent(
-                DestinationDesc.mWidth, DestinationSlice.mMipLevel);
-            const uint32_t DestinationHeight = MipExtent(
-                DestinationDesc.mHeight, DestinationSlice.mMipLevel);
-            const uint32_t DestinationDepth = MipExtent(
-                DestinationDesc.mDepth, DestinationSlice.mMipLevel);
-            if (!Width || !Height || !Depth ||
-                DestinationSlice.mX > DestinationWidth ||
-                Width > DestinationWidth - DestinationSlice.mX ||
-                DestinationSlice.mY > DestinationHeight ||
-                Height > DestinationHeight - DestinationSlice.mY ||
-                DestinationSlice.mZ > DestinationDepth ||
-                Depth > DestinationDepth - DestinationSlice.mZ)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "D3D12 texture copy destination region is out of range.");
-            }
+            FArdaRHITextureCopyExtent CopyExtent;
+            if (auto Status = ResolveArdaRHITextureCopyExtent(
+                    DestinationDesc, DestinationSlice,
+                    SourceDesc, SourceSlice, CopyExtent);
+                !Status)
+                return Status;
+            const uint32_t Width = CopyExtent.mWidth;
+            const uint32_t Height = CopyExtent.mHeight;
+            const uint32_t Depth = CopyExtent.mDepth;
 
             FArdaRHITextureSubresourceRange DstRange;
             DstRange.mBaseMipLevel = DestinationSlice.mMipLevel;
@@ -4796,18 +4689,11 @@ namespace arda::backend
                 return FArdaRHIStatus::Error(
                     EArdaRHIResult::WrongDevice,
                     "D3D12 texture resolve has the wrong resource type.");
-            if (DestinationSlice.mX || DestinationSlice.mY || DestinationSlice.mZ ||
-                SourceSlice.mX || SourceSlice.mY || SourceSlice.mZ ||
-                DestinationSlice.mPlane || SourceSlice.mPlane ||
-                DestinationSlice.mMipLevel >= DestinationDesc.mMipLevels ||
-                SourceSlice.mMipLevel >= SourceDesc.mMipLevels ||
-                DestinationSlice.mArraySlice >= DestinationDesc.mArraySize ||
-                SourceSlice.mArraySlice >= SourceDesc.mArraySize)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "D3D12 resolves require valid whole color subresources.");
-            }
+            FArdaRHITextureCopyExtent Extent;
+            if (auto Status = ValidateArdaRHITextureResolve(
+                    DestinationDesc, DestinationSlice,
+                    SourceDesc, SourceSlice, Extent); !Status)
+                return Status;
             FArdaRHITextureSubresourceRange DstRange{
                 DestinationSlice.mMipLevel, 1,
                 DestinationSlice.mArraySlice, 1, 0, 1};
@@ -4875,18 +4761,15 @@ namespace arda::backend
                 return FArdaRHIStatus::Error(
                     EArdaRHIResult::WrongDevice,
                     "D3D12 texture readback has the wrong resource type.");
-            if (DestinationDesc.mTexture.mFormat != SourceDesc.mFormat ||
-                DestinationSlice.mMipLevel >= DestinationDesc.mTexture.mMipLevels ||
-                SourceSlice.mMipLevel >= SourceDesc.mMipLevels ||
-                DestinationSlice.mArraySlice >= DestinationDesc.mTexture.mArraySize ||
-                SourceSlice.mArraySlice >= SourceDesc.mArraySize ||
-                DestinationSlice.mPlane >= D3D12PlaneCount(SourceDesc.mFormat) ||
-                SourceSlice.mPlane != DestinationSlice.mPlane)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "D3D12 texture readback slices are incompatible.");
-            }
+            FArdaRHITextureCopyExtent CopyExtent;
+            if (auto Status = ResolveArdaRHITextureCopyExtent(
+                    DestinationDesc.mTexture, DestinationSlice,
+                    SourceDesc, SourceSlice, CopyExtent);
+                !Status)
+                return Status;
+            const uint32_t Width = CopyExtent.mWidth;
+            const uint32_t Height = CopyExtent.mHeight;
+            const uint32_t Depth = CopyExtent.mDepth;
             const uint32_t Subresource = ArdaD3D12CalcSubresource(
                 SourceSlice.mMipLevel,
                 SourceSlice.mArraySlice,
@@ -4899,44 +4782,6 @@ namespace arda::backend
                 DestinationSlice.mPlane,
                 DestinationDesc.mTexture.mMipLevels,
                 DestinationDesc.mTexture.mArraySize);
-            const auto MipExtent = [](uint32_t Size, uint32_t Mip)
-            {
-                return eastl::max(1u, Size >> Mip);
-            };
-            const uint32_t SourceWidth = MipExtent(
-                SourceDesc.mWidth, SourceSlice.mMipLevel);
-            const uint32_t SourceHeight = MipExtent(
-                SourceDesc.mHeight, SourceSlice.mMipLevel);
-            const uint32_t SourceDepth = MipExtent(
-                SourceDesc.mDepth, SourceSlice.mMipLevel);
-            const auto& Footprint =
-                Dst->mFootprints[StagingSubresource].Footprint;
-            if (SourceSlice.mX >= SourceWidth ||
-                SourceSlice.mY >= SourceHeight ||
-                SourceSlice.mZ >= SourceDepth)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "D3D12 texture readback source origin is out of range.");
-            }
-            const uint32_t Width = eastl::min(
-                SourceSlice.mWidth, SourceWidth - SourceSlice.mX);
-            const uint32_t Height = eastl::min(
-                SourceSlice.mHeight, SourceHeight - SourceSlice.mY);
-            const uint32_t Depth = eastl::min(
-                SourceSlice.mDepth, SourceDepth - SourceSlice.mZ);
-            if (!Width || !Height || !Depth ||
-                DestinationSlice.mX > Footprint.Width ||
-                Width > Footprint.Width - DestinationSlice.mX ||
-                DestinationSlice.mY > Footprint.Height ||
-                Height > Footprint.Height - DestinationSlice.mY ||
-                DestinationSlice.mZ > Footprint.Depth ||
-                Depth > Footprint.Depth - DestinationSlice.mZ)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "D3D12 texture readback destination region is out of range.");
-            }
             const EArdaRHIResourceState Previous =
                 GetTextureTracking(*Src).mAbstractStates[Subresource];
             FArdaRHITextureSubresourceRange Range{
@@ -4997,18 +4842,15 @@ namespace arda::backend
                 return FArdaRHIStatus::Error(
                     EArdaRHIResult::WrongDevice,
                     "D3D12 texture upload has the wrong resource type.");
-            if (SourceDesc.mTexture.mFormat != DestinationDesc.mFormat ||
-                DestinationSlice.mMipLevel >= DestinationDesc.mMipLevels ||
-                SourceSlice.mMipLevel >= SourceDesc.mTexture.mMipLevels ||
-                DestinationSlice.mArraySlice >= DestinationDesc.mArraySize ||
-                SourceSlice.mArraySlice >= SourceDesc.mTexture.mArraySize ||
-                SourceSlice.mPlane >= D3D12PlaneCount(DestinationDesc.mFormat) ||
-                SourceSlice.mPlane != DestinationSlice.mPlane)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "D3D12 texture upload slices are incompatible.");
-            }
+            FArdaRHITextureCopyExtent CopyExtent;
+            if (auto Status = ResolveArdaRHITextureCopyExtent(
+                    DestinationDesc, DestinationSlice,
+                    SourceDesc.mTexture, SourceSlice, CopyExtent);
+                !Status)
+                return Status;
+            const uint32_t Width = CopyExtent.mWidth;
+            const uint32_t Height = CopyExtent.mHeight;
+            const uint32_t Depth = CopyExtent.mDepth;
             const uint32_t Subresource = ArdaD3D12CalcSubresource(
                 DestinationSlice.mMipLevel,
                 DestinationSlice.mArraySlice,
@@ -5021,43 +4863,6 @@ namespace arda::backend
                 SourceSlice.mPlane,
                 SourceDesc.mTexture.mMipLevels,
                 SourceDesc.mTexture.mArraySize);
-            const auto& Footprint = Src->mFootprints[StagingSubresource].Footprint;
-            const auto MipExtent = [](uint32_t Size, uint32_t Mip)
-            {
-                return eastl::max(1u, Size >> Mip);
-            };
-            const uint32_t DestinationWidth = MipExtent(
-                DestinationDesc.mWidth, DestinationSlice.mMipLevel);
-            const uint32_t DestinationHeight = MipExtent(
-                DestinationDesc.mHeight, DestinationSlice.mMipLevel);
-            const uint32_t DestinationDepth = MipExtent(
-                DestinationDesc.mDepth, DestinationSlice.mMipLevel);
-            if (SourceSlice.mX >= Footprint.Width ||
-                SourceSlice.mY >= Footprint.Height ||
-                SourceSlice.mZ >= Footprint.Depth)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "D3D12 texture upload source origin is out of range.");
-            }
-            const uint32_t Width = eastl::min(
-                SourceSlice.mWidth, Footprint.Width - SourceSlice.mX);
-            const uint32_t Height = eastl::min(
-                SourceSlice.mHeight, Footprint.Height - SourceSlice.mY);
-            const uint32_t Depth = eastl::min(
-                SourceSlice.mDepth, Footprint.Depth - SourceSlice.mZ);
-            if (!Width || !Height || !Depth ||
-                DestinationSlice.mX > DestinationWidth ||
-                Width > DestinationWidth - DestinationSlice.mX ||
-                DestinationSlice.mY > DestinationHeight ||
-                Height > DestinationHeight - DestinationSlice.mY ||
-                DestinationSlice.mZ > DestinationDepth ||
-                Depth > DestinationDepth - DestinationSlice.mZ)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "D3D12 texture upload destination region is out of range.");
-            }
             const EArdaRHIResourceState Previous =
                 GetTextureTracking(*Dst).mAbstractStates[Subresource];
             FArdaRHITextureSubresourceRange Range{
@@ -6516,7 +6321,7 @@ namespace arda::backend
             }
             ID3D12CommandList* Lists[] = { Native->GetSubmitList() };
             Queue->ExecuteCommandLists(1, Lists);
-            const uint32_t QueueIndex = D3D12QueueIndex(QueueType);
+            const size_t QueueIndex = GetArdaRHIQueueIndex(QueueType);
             const uint64_t QueueValue = mQueueFenceValues[QueueIndex].fetch_add(
                 1, std::memory_order_relaxed) + 1;
             HRESULT Result = Queue->Signal(
@@ -6545,7 +6350,7 @@ namespace arda::backend
                     "The requested D3D12 wait queue is unavailable.");
             const uint32_t EncodedQueue = static_cast<uint32_t>(
                 Value >> D3D12SubmissionQueueShift);
-            if (EncodedQueue != D3D12QueueIndex(ExecutionQueue))
+            if (EncodedQueue != GetArdaRHIQueueIndex(ExecutionQueue))
                 return FArdaRHIStatus::Error(
                     EArdaRHIResult::InvalidArgument,
                     "The D3D12 submission does not belong to the declared execution queue.");
@@ -6618,7 +6423,7 @@ namespace arda::backend
                     [this](const FPendingSubmission& Submission)
                     {
                         const uint32_t QueueIndex =
-                            D3D12QueueIndex(Submission.mQueue);
+                            GetArdaRHIQueueIndex(Submission.mQueue);
                         ID3D12Fence* Fence =
                             mQueueFences[QueueIndex].Get();
                         return !Fence || Fence->GetCompletedValue() >=

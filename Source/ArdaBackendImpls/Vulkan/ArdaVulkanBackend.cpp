@@ -32,6 +32,8 @@ namespace arda::backend
         using namespace rhi::provider;
 
         constexpr uint32_t ArdaVulkanHeaderVersion = VK_HEADER_VERSION;
+        constexpr uint32_t VulkanResourceDescriptorCapacity = 4096;
+        constexpr uint32_t VulkanSamplerDescriptorCapacity = 1024;
 
         FArdaRHIStatus VulkanFailure(const char* Message, vk::Result Result = vk::Result::eErrorUnknown)
         {
@@ -150,74 +152,6 @@ namespace arda::backend
             case EArdaRHIFormat::BC7UNorm: return vk::Format::eBc7UnormBlock;
             case EArdaRHIFormat::BC7UNormSRGB: return vk::Format::eBc7SrgbBlock;
             default: return vk::Format::eUndefined;
-            }
-        }
-
-        uint32_t FormatSize(EArdaRHIFormat Format) noexcept
-        {
-            switch (Format)
-            {
-            case EArdaRHIFormat::R8UInt: case EArdaRHIFormat::R8SInt:
-            case EArdaRHIFormat::R8UNorm: case EArdaRHIFormat::R8SNorm: return 1;
-            case EArdaRHIFormat::RG8UInt: case EArdaRHIFormat::RG8SInt:
-            case EArdaRHIFormat::RG8UNorm: case EArdaRHIFormat::RG8SNorm:
-            case EArdaRHIFormat::R16UInt: case EArdaRHIFormat::R16SInt:
-            case EArdaRHIFormat::R16UNorm: case EArdaRHIFormat::R16SNorm:
-            case EArdaRHIFormat::R16Float: case EArdaRHIFormat::D16: return 2;
-            case EArdaRHIFormat::RGBA8UInt: case EArdaRHIFormat::RGBA8SInt:
-            case EArdaRHIFormat::RGBA8UNorm: case EArdaRHIFormat::RGBA8SNorm:
-            case EArdaRHIFormat::BGRA8UNorm: case EArdaRHIFormat::SRGBA8UNorm:
-            case EArdaRHIFormat::SBGRA8UNorm: case EArdaRHIFormat::R10G10B10A2UNorm:
-            case EArdaRHIFormat::R11G11B10Float: case EArdaRHIFormat::RG16UInt:
-            case EArdaRHIFormat::RG16SInt: case EArdaRHIFormat::RG16UNorm:
-            case EArdaRHIFormat::RG16SNorm: case EArdaRHIFormat::RG16Float:
-            case EArdaRHIFormat::R32UInt: case EArdaRHIFormat::R32SInt:
-            case EArdaRHIFormat::R32Float: case EArdaRHIFormat::D24S8:
-            case EArdaRHIFormat::D32: return 4;
-            case EArdaRHIFormat::RGBA16UInt: case EArdaRHIFormat::RGBA16SInt:
-            case EArdaRHIFormat::RGBA16Float: case EArdaRHIFormat::RGBA16UNorm:
-            case EArdaRHIFormat::RGBA16SNorm: case EArdaRHIFormat::RG32UInt:
-            case EArdaRHIFormat::RG32SInt: case EArdaRHIFormat::RG32Float:
-            case EArdaRHIFormat::D32S8: return 8;
-            case EArdaRHIFormat::RGB32UInt: case EArdaRHIFormat::RGB32SInt:
-            case EArdaRHIFormat::RGB32Float: return 12;
-            case EArdaRHIFormat::RGBA32UInt: case EArdaRHIFormat::RGBA32SInt:
-            case EArdaRHIFormat::RGBA32Float: return 16;
-            default: return 0;
-            }
-        }
-
-        struct FFormatBlockInfo
-        {
-            uint32_t mBytes = 0;
-            uint32_t mWidth = 1;
-            uint32_t mHeight = 1;
-        };
-
-        FFormatBlockInfo FormatBlockInfo(EArdaRHIFormat Format) noexcept
-        {
-            if (const uint32_t Bytes = FormatSize(Format))
-                return {Bytes, 1, 1};
-            switch (Format)
-            {
-            case EArdaRHIFormat::BC1UNorm:
-            case EArdaRHIFormat::BC1UNormSRGB:
-            case EArdaRHIFormat::BC4UNorm:
-            case EArdaRHIFormat::BC4SNorm:
-                return {8, 4, 4};
-            case EArdaRHIFormat::BC2UNorm:
-            case EArdaRHIFormat::BC2UNormSRGB:
-            case EArdaRHIFormat::BC3UNorm:
-            case EArdaRHIFormat::BC3UNormSRGB:
-            case EArdaRHIFormat::BC5UNorm:
-            case EArdaRHIFormat::BC5SNorm:
-            case EArdaRHIFormat::BC6HUFloat:
-            case EArdaRHIFormat::BC6HSFloat:
-            case EArdaRHIFormat::BC7UNorm:
-            case EArdaRHIFormat::BC7UNormSRGB:
-                return {16, 4, 4};
-            default:
-                return {};
             }
         }
 
@@ -393,11 +327,6 @@ namespace arda::backend
             return Aspects;
         }
 
-        uint32_t TexturePlaneCount(EArdaRHIFormat Format) noexcept
-        {
-            return GetArdaRHIFormatInfo(Format).mbStencil ? 2u : 1u;
-        }
-
         size_t TextureSubresourceIndex(
             const FArdaRHITextureDesc& Desc,
             uint32_t MipLevel,
@@ -414,7 +343,7 @@ namespace arda::backend
             const FArdaRHITextureDesc& Desc) noexcept
         {
             return static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize *
-                TexturePlaneCount(Desc.mFormat);
+                GetArdaRHIFormatPlaneCount(Desc.mFormat);
         }
 
         vk::ImageViewType ToViewType(EArdaRHITextureDimension Dimension) noexcept
@@ -680,16 +609,10 @@ namespace arda::backend
             return Result;
         }
 
-        constexpr uint32_t QueueIndex(EArdaRHIQueueType Queue) noexcept
-        {
-            return Queue == EArdaRHIQueueType::Compute ? 1u
-                : Queue == EArdaRHIQueueType::Copy ? 2u : 0u;
-        }
-
         constexpr uint64_t EncodeVulkanSubmission(
             EArdaRHIQueueType Queue, uint64_t Value) noexcept
         {
-            return (static_cast<uint64_t>(QueueIndex(Queue)) << 60) |
+            return (static_cast<uint64_t>(GetArdaRHIQueueIndex(Queue)) << 60) |
                 (Value & ((uint64_t{1} << 60) - 1));
         }
 
@@ -846,13 +769,15 @@ namespace arda::backend
             vk::SurfaceKHR mSurface;
             vk::DebugUtilsMessengerEXT mDebugMessenger;
             vk::DescriptorPool mDescriptorPool;
-            eastl::array<vk::Semaphore, 3> mQueueTimelines{};
-            std::atomic<uint64_t> mQueueTimelineValues[3]{};
+            eastl::array<vk::Semaphore,
+                ArdaRHIQueueTypeCount> mQueueTimelines{};
+            eastl::array<std::atomic<uint64_t>,
+                ArdaRHIQueueTypeCount> mQueueTimelineValues{};
             uint32_t mQueueFamily = 0;
             uint32_t mComputeQueueFamily = 0;
             uint32_t mCopyQueueFamily = 0;
             uint32_t mQueueCount = 1;
-            eastl::array<bool, 3> mQueueSparseBinding{};
+            eastl::array<bool, ArdaRHIQueueTypeCount> mQueueSparseBinding{};
             bool mbAccelerationStructure = false;
             bool mbRayTracingPipeline = false;
             bool mbRayQuery = false;
@@ -1064,6 +989,53 @@ namespace arda::backend
             std::mutex mMapMutex;
             bool mbMapped = false;
         };
+
+        FArdaRHIStatus ConfigureVulkanStagingCopyRegion(
+            vk::BufferImageCopy& Region,
+            const FVulkanStagingTexture& Texture,
+            size_t SubresourceIndex,
+            const FArdaRHITextureSlice& Slice)
+        {
+            if (SubresourceIndex >= Texture.mOffsets.size() ||
+                SubresourceIndex >= Texture.mRowPitches.size())
+            {
+                return FArdaRHIStatus::Error(
+                    EArdaRHIResult::InvalidArgument,
+                    "Vulkan staging texture subresource is invalid.");
+            }
+            const FArdaRHIFormatInfo& Format =
+                GetArdaRHIFormatInfo(Texture.mDesc.mTexture.mFormat);
+            if (!Format.mBytesPerBlock ||
+                Slice.mX % Format.mBlockWidth ||
+                Slice.mY % Format.mBlockHeight)
+            {
+                return FArdaRHIStatus::Error(
+                    EArdaRHIResult::InvalidArgument,
+                    "Vulkan staging texture origin is not format-block aligned.");
+            }
+            const uint32_t MipWidth = GetArdaRHITextureMipExtent(
+                Texture.mDesc.mTexture.mWidth, Slice.mMipLevel);
+            const uint32_t MipHeight = GetArdaRHITextureMipExtent(
+                Texture.mDesc.mTexture.mHeight, Slice.mMipLevel);
+            const uint32_t BlocksPerRow =
+                (MipWidth + Format.mBlockWidth - 1) /
+                    Format.mBlockWidth;
+            const uint32_t BlockRows =
+                (MipHeight + Format.mBlockHeight - 1) /
+                    Format.mBlockHeight;
+            const vk::DeviceSize RowPitch = Texture.mRowPitches[SubresourceIndex];
+            const vk::DeviceSize SlicePitch = RowPitch * BlockRows;
+            Region.bufferOffset = Texture.mOffsets[SubresourceIndex] +
+                static_cast<vk::DeviceSize>(Slice.mZ) * SlicePitch +
+                static_cast<vk::DeviceSize>(
+                    Slice.mY / Format.mBlockHeight) * RowPitch +
+                static_cast<vk::DeviceSize>(
+                    Slice.mX / Format.mBlockWidth) *
+                    Format.mBytesPerBlock;
+            Region.bufferRowLength = BlocksPerRow * Format.mBlockWidth;
+            Region.bufferImageHeight = BlockRows * Format.mBlockHeight;
+            return {};
+        }
 
         class FVulkanSampler final : public IArdaProviderObject
         {
@@ -1672,11 +1644,11 @@ namespace arda::backend
                     };
                     if (auto Status = InitializeDescriptorHeap(
                             mContext->mResourceDescriptorHeap,
-                            false, 4096); !Status)
+                            false, VulkanResourceDescriptorCapacity); !Status)
                         return Status;
                     if (auto Status = InitializeDescriptorHeap(
                             mContext->mSamplerDescriptorHeap,
-                            true, 1024); !Status)
+                            true, VulkanSamplerDescriptorCapacity); !Status)
                         return Status;
                 }
                 vk::SemaphoreTypeCreateInfo TimelineType(
@@ -1748,9 +1720,10 @@ namespace arda::backend
                 mCapabilities.mQueues.mbDedicatedComputeFamily ||
                 mCapabilities.mQueues.mbDedicatedCopyFamily;
             mCapabilities.mQueues.mbSparseBindingQueue =
-                mContext->mQueueSparseBinding[0] ||
-                mContext->mQueueSparseBinding[1] ||
-                mContext->mQueueSparseBinding[2];
+                eastl::any_of(
+                    mContext->mQueueSparseBinding.begin(),
+                    mContext->mQueueSparseBinding.end(),
+                    [](bool bSupported) { return bSupported; });
             mCapabilities.mbStagingTextures = true;
             mCapabilities.mbTextureCopies = true;
             mCapabilities.mbTextureResolve = true;
@@ -1812,11 +1785,11 @@ namespace arda::backend
             Descriptors.mMaxResourceDescriptors =
                 mContext->mbDescriptorHeap
                     ? mContext->mResourceDescriptorHeap.mCapacity
-                    : 4096;
+                    : VulkanResourceDescriptorCapacity;
             Descriptors.mMaxSamplerDescriptors =
                 mContext->mbDescriptorHeap
                     ? mContext->mSamplerDescriptorHeap.mCapacity
-                    : 1024;
+                    : VulkanSamplerDescriptorCapacity;
             mCapabilities.mMeshShaderTier = mContext->mbMeshShader
                 ? EArdaRHIMeshShaderTier::MeshAndAmplificationShaders
                 : EArdaRHIMeshShaderTier::None;
@@ -1858,11 +1831,6 @@ namespace arda::backend
                 }
                 Ray.mbInlineRayQueries = mContext->mbRayQuery;
                 Ray.mbOpacityMicromaps = mContext->mbOpacityMicromap;
-                Ray.mTier = Ray.mbOpacityMicromaps
-                    ? EArdaRHIRayTracingTier::HardwareOpacityMicromaps
-                    : Ray.mbInlineRayQueries
-                        ? EArdaRHIRayTracingTier::HardwareInlineQueries
-                        : EArdaRHIRayTracingTier::HardwareAccelerationStructures;
             }
             mCapabilities.mbShaderLibraries = true;
             mCapabilities.mbPipelineCachePersistence = mPipelineCache != nullptr;
@@ -2717,12 +2685,12 @@ namespace arda::backend
                     for (uint32_t Mip = 0;
                          Mip < Texture->mDesc.mMipLevels; ++Mip)
                     {
-                        const uint32_t Width = eastl::max(
-                            1u, Texture->mDesc.mWidth >> Mip);
-                        const uint32_t Height = eastl::max(
-                            1u, Texture->mDesc.mHeight >> Mip);
-                        const uint32_t Depth = eastl::max(
-                            1u, Texture->mDesc.mDepth >> Mip);
+                        const uint32_t Width = GetArdaRHITextureMipExtent(
+                            Texture->mDesc.mWidth, Mip);
+                        const uint32_t Height = GetArdaRHITextureMipExtent(
+                            Texture->mDesc.mHeight, Mip);
+                        const uint32_t Depth = GetArdaRHITextureMipExtent(
+                            Texture->mDesc.mDepth, Mip);
                         FArdaRHISubresourceTiling Entry;
                         Entry.mWidthInTiles = (Width +
                             Result.mTileShape.mWidthInTexels - 1) /
@@ -2759,7 +2727,7 @@ namespace arda::backend
             EArdaRHIQueueType QueueType)
         {
             auto* Texture = dynamic_cast<FVulkanTexture*>(Object.get());
-            const uint32_t SparseQueueIndex = QueueIndex(QueueType);
+            const size_t SparseQueueIndex = GetArdaRHIQueueIndex(QueueType);
             if (!Texture || !Texture->mImage || !Texture->mDesc.mbTiled ||
                 !mContext->mQueueSparseBinding[SparseQueueIndex])
                 return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
@@ -2798,12 +2766,12 @@ namespace arda::backend
                         const auto& Coordinate =
                             Mapping.mCoordinates[Index];
                         const auto& Region = Mapping.mRegions[Index];
-                        const uint32_t MipWidth = eastl::max(
-                            1u, Texture->mDesc.mWidth >> Coordinate.mMipLevel);
-                        const uint32_t MipHeight = eastl::max(
-                            1u, Texture->mDesc.mHeight >> Coordinate.mMipLevel);
-                        const uint32_t MipDepth = eastl::max(
-                            1u, Texture->mDesc.mDepth >> Coordinate.mMipLevel);
+                        const uint32_t MipWidth = GetArdaRHITextureMipExtent(
+                            Texture->mDesc.mWidth, Coordinate.mMipLevel);
+                        const uint32_t MipHeight = GetArdaRHITextureMipExtent(
+                            Texture->mDesc.mHeight, Coordinate.mMipLevel);
+                        const uint32_t MipDepth = GetArdaRHITextureMipExtent(
+                            Texture->mDesc.mDepth, Coordinate.mMipLevel);
                         const vk::Extent3D Granularity =
                             Requirement.formatProperties.imageGranularity;
                         vk::SparseImageMemoryBind Bind;
@@ -2869,7 +2837,7 @@ namespace arda::backend
             EArdaRHIQueueType QueueType)
         {
             auto* Buffer = dynamic_cast<FVulkanBuffer*>(Object.get());
-            const uint32_t SparseQueueIndex = QueueIndex(QueueType);
+            const size_t SparseQueueIndex = GetArdaRHIQueueIndex(QueueType);
             if (!Buffer || !Buffer->mBuffer || !Buffer->mDesc.mbTiled ||
                 !mContext->mQueueSparseBinding[SparseQueueIndex])
                 return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
@@ -2940,7 +2908,7 @@ namespace arda::backend
             uint64_t RequestedBytes,
             EArdaRHIQueueType QueueType)
         {
-            const uint32_t SparseQueueIndex = QueueIndex(QueueType);
+            const size_t SparseQueueIndex = GetArdaRHIQueueIndex(QueueType);
             if (!mContext->mQueueSparseBinding[SparseQueueIndex])
                 return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
                     "The requested Vulkan queue cannot bind sparse memory.");
@@ -3098,9 +3066,10 @@ namespace arda::backend
         {
             try
             {
-                const FFormatBlockInfo Block =
-                    FormatBlockInfo(Desc.mTexture.mFormat);
-                if (!Block.mBytes || Desc.mTexture.mSampleCount != 1)
+                const FArdaRHIFormatInfo& Block =
+                    GetArdaRHIFormatInfo(Desc.mTexture.mFormat);
+                if (!Block.mBytesPerBlock ||
+                    Desc.mTexture.mSampleCount != 1)
                     return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(
                         EArdaRHIResult::Unsupported,
                         "Vulkan staging textures require a supported single-sample format."));
@@ -3108,7 +3077,7 @@ namespace arda::backend
                 Texture->mContext = mContext;
                 Texture->mDesc = Desc;
                 const uint32_t PlaneCount =
-                    TexturePlaneCount(Desc.mTexture.mFormat);
+                    GetArdaRHIFormatPlaneCount(Desc.mTexture.mFormat);
                 const size_t SubresourceCount =
                     static_cast<size_t>(Desc.mTexture.mMipLevels) *
                     Desc.mTexture.mArraySize * PlaneCount;
@@ -3133,24 +3102,28 @@ namespace arda::backend
                                 static_cast<size_t>(ArraySlice) *
                                     Desc.mTexture.mMipLevels +
                                 MipLevel;
-                            const uint32_t Width = eastl::max(
-                                1u, Desc.mTexture.mWidth >> MipLevel);
-                            const uint32_t Height = eastl::max(
-                                1u, Desc.mTexture.mHeight >> MipLevel);
-                            const uint32_t Depth = eastl::max(
-                                1u, Desc.mTexture.mDepth >> MipLevel);
+                            const uint32_t Width = GetArdaRHITextureMipExtent(
+                                Desc.mTexture.mWidth, MipLevel);
+                            const uint32_t Height = GetArdaRHITextureMipExtent(
+                                Desc.mTexture.mHeight, MipLevel);
+                            const uint32_t Depth = GetArdaRHITextureMipExtent(
+                                Desc.mTexture.mDepth, MipLevel);
                             const uint32_t BlocksX =
-                                (Width + Block.mWidth - 1) / Block.mWidth;
+                                (Width + Block.mBlockWidth - 1) /
+                                    Block.mBlockWidth;
                             const uint32_t BlocksY =
-                                (Height + Block.mHeight - 1) / Block.mHeight;
+                                (Height + Block.mBlockHeight - 1) /
+                                    Block.mBlockHeight;
                             const size_t RowPitch =
-                                static_cast<size_t>(BlocksX) * Block.mBytes;
+                                static_cast<size_t>(BlocksX) *
+                                    Block.mBytesPerBlock;
                             const vk::DeviceSize ByteSize =
                                 static_cast<vk::DeviceSize>(RowPitch) *
                                 BlocksY * Depth;
                             TotalBytes = AlignDeviceSize(
                                 TotalBytes,
-                                eastl::max<vk::DeviceSize>(4, Block.mBytes));
+                                eastl::max<vk::DeviceSize>(
+                                    4, Block.mBytesPerBlock));
                             Texture->mOffsets[Index] = TotalBytes;
                             Texture->mRowPitches[Index] = RowPitch;
                             Texture->mByteSizes[Index] = ByteSize;
@@ -3202,7 +3175,7 @@ namespace arda::backend
                         "Vulkan staging mapping has the wrong resource type."));
             const FArdaRHITextureDesc& Desc = Texture->mDesc.mTexture;
             const uint32_t PlaneCount =
-                GetArdaRHIFormatInfo(Desc.mFormat).mbStencil ? 2u : 1u;
+                GetArdaRHIFormatPlaneCount(Desc.mFormat);
             if (Access != Texture->mDesc.mCpuAccess ||
                 Slice.mMipLevel >= Desc.mMipLevels ||
                 Slice.mArraySlice >= Desc.mArraySize ||
@@ -4293,7 +4266,8 @@ namespace arda::backend
                         for (uint32_t Element = 0; Element < eastl::max(1u, Attribute.mArraySize); ++Element)
                             VertexAttributes.push_back(vk::VertexInputAttributeDescription(
                                 Location++, Attribute.mBufferIndex, ToVulkan(Attribute.mFormat),
-                                Attribute.mOffset + Element * FormatSize(Attribute.mFormat)));
+                                Attribute.mOffset + Element *
+                                    GetArdaRHIFormatElementSize(Attribute.mFormat)));
                     }
                 }
                 vk::PipelineVertexInputStateCreateInfo VertexInput;
@@ -5251,62 +5225,15 @@ namespace arda::backend
                 return FArdaRHIStatus::Error(
                     EArdaRHIResult::WrongDevice,
                     "Vulkan texture copy has the wrong resource type.");
-            if (DestinationDesc.mFormat != SourceDesc.mFormat ||
-                DestinationSlice.mMipLevel >= DestinationDesc.mMipLevels ||
-                SourceSlice.mMipLevel >= SourceDesc.mMipLevels ||
-                DestinationSlice.mArraySlice >= DestinationDesc.mArraySize ||
-                SourceSlice.mArraySlice >= SourceDesc.mArraySize ||
-                DestinationSlice.mPlane >=
-                    (GetArdaRHIFormatInfo(DestinationDesc.mFormat).mbStencil ? 2u : 1u) ||
-                SourceSlice.mPlane >=
-                    (GetArdaRHIFormatInfo(SourceDesc.mFormat).mbStencil ? 2u : 1u))
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture copy slice or format is invalid.");
-            }
-            const auto MipExtent = [](uint32_t Size, uint32_t Mip)
-            {
-                return eastl::max(1u, Size >> Mip);
-            };
-            const uint32_t SourceWidth = MipExtent(
-                SourceDesc.mWidth, SourceSlice.mMipLevel);
-            const uint32_t SourceHeight = MipExtent(
-                SourceDesc.mHeight, SourceSlice.mMipLevel);
-            const uint32_t SourceDepth = MipExtent(
-                SourceDesc.mDepth, SourceSlice.mMipLevel);
-            if (SourceSlice.mX >= SourceWidth ||
-                SourceSlice.mY >= SourceHeight ||
-                SourceSlice.mZ >= SourceDepth)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture copy source origin is out of range.");
-            }
-            const uint32_t Width = eastl::min(
-                SourceSlice.mWidth, SourceWidth - SourceSlice.mX);
-            const uint32_t Height = eastl::min(
-                SourceSlice.mHeight, SourceHeight - SourceSlice.mY);
-            const uint32_t Depth = eastl::min(
-                SourceSlice.mDepth, SourceDepth - SourceSlice.mZ);
-            const uint32_t DestinationWidth = MipExtent(
-                DestinationDesc.mWidth, DestinationSlice.mMipLevel);
-            const uint32_t DestinationHeight = MipExtent(
-                DestinationDesc.mHeight, DestinationSlice.mMipLevel);
-            const uint32_t DestinationDepth = MipExtent(
-                DestinationDesc.mDepth, DestinationSlice.mMipLevel);
-            if (!Width || !Height || !Depth ||
-                DestinationSlice.mX > DestinationWidth ||
-                Width > DestinationWidth - DestinationSlice.mX ||
-                DestinationSlice.mY > DestinationHeight ||
-                Height > DestinationHeight - DestinationSlice.mY ||
-                DestinationSlice.mZ > DestinationDepth ||
-                Depth > DestinationDepth - DestinationSlice.mZ)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture copy destination region is out of range.");
-            }
+            FArdaRHITextureCopyExtent CopyExtent;
+            if (auto Status = ResolveArdaRHITextureCopyExtent(
+                    DestinationDesc, DestinationSlice,
+                    SourceDesc, SourceSlice, CopyExtent);
+                !Status)
+                return Status;
+            const uint32_t Width = CopyExtent.mWidth;
+            const uint32_t Height = CopyExtent.mHeight;
+            const uint32_t Depth = CopyExtent.mDepth;
             const size_t DstIndex = TextureSubresourceIndex(
                 DestinationDesc,
                 DestinationSlice.mMipLevel,
@@ -5402,58 +5329,11 @@ namespace arda::backend
                 return FArdaRHIStatus::Error(
                     EArdaRHIResult::WrongDevice,
                     "Vulkan texture resolve has the wrong resource type.");
-            if (DestinationSlice.mPlane || SourceSlice.mPlane ||
-                DestinationSlice.mMipLevel >= DestinationDesc.mMipLevels ||
-                SourceSlice.mMipLevel >= SourceDesc.mMipLevels ||
-                DestinationSlice.mArraySlice >= DestinationDesc.mArraySize ||
-                SourceSlice.mArraySlice >= SourceDesc.mArraySize)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan resolves require valid color subresources.");
-            }
-            const auto MipExtent = [](uint32_t Size, uint32_t Mip)
-            {
-                return eastl::max(1u, Size >> Mip);
-            };
-            const uint32_t SourceWidth = MipExtent(
-                SourceDesc.mWidth, SourceSlice.mMipLevel);
-            const uint32_t SourceHeight = MipExtent(
-                SourceDesc.mHeight, SourceSlice.mMipLevel);
-            const uint32_t SourceDepth = MipExtent(
-                SourceDesc.mDepth, SourceSlice.mMipLevel);
-            if (SourceSlice.mX >= SourceWidth ||
-                SourceSlice.mY >= SourceHeight ||
-                SourceSlice.mZ >= SourceDepth)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture resolve source origin is out of range.");
-            }
-            const uint32_t Width = eastl::min(
-                SourceSlice.mWidth, SourceWidth - SourceSlice.mX);
-            const uint32_t Height = eastl::min(
-                SourceSlice.mHeight, SourceHeight - SourceSlice.mY);
-            const uint32_t Depth = eastl::min(
-                SourceSlice.mDepth, SourceDepth - SourceSlice.mZ);
-            const uint32_t DestinationWidth = MipExtent(
-                DestinationDesc.mWidth, DestinationSlice.mMipLevel);
-            const uint32_t DestinationHeight = MipExtent(
-                DestinationDesc.mHeight, DestinationSlice.mMipLevel);
-            const uint32_t DestinationDepth = MipExtent(
-                DestinationDesc.mDepth, DestinationSlice.mMipLevel);
-            if (!Width || !Height || !Depth ||
-                DestinationSlice.mX > DestinationWidth ||
-                Width > DestinationWidth - DestinationSlice.mX ||
-                DestinationSlice.mY > DestinationHeight ||
-                Height > DestinationHeight - DestinationSlice.mY ||
-                DestinationSlice.mZ > DestinationDepth ||
-                Depth > DestinationDepth - DestinationSlice.mZ)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture resolve destination region is out of range.");
-            }
+            FArdaRHITextureCopyExtent Extent;
+            if (auto Status = ValidateArdaRHITextureResolve(
+                    DestinationDesc, DestinationSlice,
+                    SourceDesc, SourceSlice, Extent); !Status)
+                return Status;
             FArdaRHITextureSubresourceRange DstRange{
                 DestinationSlice.mMipLevel, 1,
                 DestinationSlice.mArraySlice, 1, 0, 1};
@@ -5494,18 +5374,15 @@ namespace arda::backend
                 SourceSlice.mMipLevel,
                 SourceSlice.mArraySlice,
                 1);
-            Region.srcOffset = vk::Offset3D(
-                SourceSlice.mX, SourceSlice.mY, SourceSlice.mZ);
+            Region.srcOffset = vk::Offset3D(0, 0, 0);
             Region.dstSubresource = vk::ImageSubresourceLayers(
                 vk::ImageAspectFlagBits::eColor,
                 DestinationSlice.mMipLevel,
                 DestinationSlice.mArraySlice,
                 1);
-            Region.dstOffset = vk::Offset3D(
-                DestinationSlice.mX,
-                DestinationSlice.mY,
-                DestinationSlice.mZ);
-            Region.extent = vk::Extent3D(Width, Height, Depth);
+            Region.dstOffset = vk::Offset3D(0, 0, 0);
+            Region.extent = vk::Extent3D(
+                Extent.mWidth, Extent.mHeight, Extent.mDepth);
             mCommandBuffer.resolveImage(
                 Src->mImage,
                 vk::ImageLayout::eTransferSrcOptimal,
@@ -5540,23 +5417,14 @@ namespace arda::backend
                 return FArdaRHIStatus::Error(
                     EArdaRHIResult::WrongDevice,
                     "Vulkan texture readback has the wrong resource type.");
-            if (DestinationDesc.mTexture.mFormat != SourceDesc.mFormat ||
-                DestinationSlice.mMipLevel >= DestinationDesc.mTexture.mMipLevels ||
-                SourceSlice.mMipLevel >= SourceDesc.mMipLevels ||
-                DestinationSlice.mArraySlice >= DestinationDesc.mTexture.mArraySize ||
-                SourceSlice.mArraySlice >= SourceDesc.mArraySize ||
-                DestinationSlice.mPlane != SourceSlice.mPlane ||
-                DestinationSlice.mX || DestinationSlice.mY || DestinationSlice.mZ)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture readback slices are incompatible.");
-            }
-            const uint32_t PlaneCount = TexturePlaneCount(SourceDesc.mFormat);
-            if (SourceSlice.mPlane >= PlaneCount)
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture readback plane is invalid.");
+            FArdaRHITextureCopyExtent CopyExtent;
+            if (auto Status = ResolveArdaRHITextureCopyExtent(
+                    DestinationDesc.mTexture, DestinationSlice,
+                    SourceDesc, SourceSlice, CopyExtent); !Status)
+                return Status;
+            const uint32_t Width = CopyExtent.mWidth;
+            const uint32_t Height = CopyExtent.mHeight;
+            const uint32_t Depth = CopyExtent.mDepth;
             const size_t StagingIndex =
                 static_cast<size_t>(DestinationSlice.mPlane) *
                     DestinationDesc.mTexture.mMipLevels *
@@ -5569,34 +5437,6 @@ namespace arda::backend
                 SourceSlice.mMipLevel,
                 SourceSlice.mArraySlice,
                 SourceSlice.mPlane);
-            const auto MipExtent = [](uint32_t Size, uint32_t Mip)
-            {
-                return eastl::max(1u, Size >> Mip);
-            };
-            const uint32_t SourceWidth = MipExtent(
-                SourceDesc.mWidth, SourceSlice.mMipLevel);
-            const uint32_t SourceHeight = MipExtent(
-                SourceDesc.mHeight, SourceSlice.mMipLevel);
-            const uint32_t SourceDepth = MipExtent(
-                SourceDesc.mDepth, SourceSlice.mMipLevel);
-            if (SourceSlice.mX >= SourceWidth ||
-                SourceSlice.mY >= SourceHeight ||
-                SourceSlice.mZ >= SourceDepth)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture readback source origin is out of range.");
-            }
-            const uint32_t Width = eastl::min(
-                SourceSlice.mWidth, SourceWidth - SourceSlice.mX);
-            const uint32_t Height = eastl::min(
-                SourceSlice.mHeight, SourceHeight - SourceSlice.mY);
-            const uint32_t Depth = eastl::min(
-                SourceSlice.mDepth, SourceDepth - SourceSlice.mZ);
-            if (!Width || !Height || !Depth)
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture readback region is empty.");
             (void)GetTrackedTextureLayouts(*Src, SourceDesc);
             const EArdaRHIResourceState Previous =
                 mTextureAbstractStates.at(Src->GetIdentity())[SourceIndex];
@@ -5612,7 +5452,9 @@ namespace arda::backend
                     return Status;
             }
             vk::BufferImageCopy Region;
-            Region.bufferOffset = Dst->mOffsets[StagingIndex];
+            if (auto Status = ConfigureVulkanStagingCopyRegion(
+                    Region, *Dst, StagingIndex, DestinationSlice); !Status)
+                return Status;
             Region.imageSubresource = vk::ImageSubresourceLayers(
                 ImageAspect(SourceDesc.mFormat, SourceSlice.mPlane),
                 SourceSlice.mMipLevel,
@@ -5652,24 +5494,14 @@ namespace arda::backend
                 return FArdaRHIStatus::Error(
                     EArdaRHIResult::WrongDevice,
                     "Vulkan texture upload has the wrong resource type.");
-            if (SourceDesc.mTexture.mFormat != DestinationDesc.mFormat ||
-                DestinationSlice.mMipLevel >= DestinationDesc.mMipLevels ||
-                SourceSlice.mMipLevel >= SourceDesc.mTexture.mMipLevels ||
-                DestinationSlice.mArraySlice >= DestinationDesc.mArraySize ||
-                SourceSlice.mArraySlice >= SourceDesc.mTexture.mArraySize ||
-                DestinationSlice.mPlane != SourceSlice.mPlane ||
-                SourceSlice.mX || SourceSlice.mY || SourceSlice.mZ)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture upload slices are incompatible.");
-            }
-            const uint32_t PlaneCount =
-                TexturePlaneCount(DestinationDesc.mFormat);
-            if (DestinationSlice.mPlane >= PlaneCount)
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture upload plane is invalid.");
+            FArdaRHITextureCopyExtent CopyExtent;
+            if (auto Status = ResolveArdaRHITextureCopyExtent(
+                    DestinationDesc, DestinationSlice,
+                    SourceDesc.mTexture, SourceSlice, CopyExtent); !Status)
+                return Status;
+            const uint32_t Width = CopyExtent.mWidth;
+            const uint32_t Height = CopyExtent.mHeight;
+            const uint32_t Depth = CopyExtent.mDepth;
             const size_t StagingIndex =
                 static_cast<size_t>(SourceSlice.mPlane) *
                     SourceDesc.mTexture.mMipLevels *
@@ -5682,37 +5514,6 @@ namespace arda::backend
                 DestinationSlice.mMipLevel,
                 DestinationSlice.mArraySlice,
                 DestinationSlice.mPlane);
-            const auto MipExtent = [](uint32_t Size, uint32_t Mip)
-            {
-                return eastl::max(1u, Size >> Mip);
-            };
-            const uint32_t Width = eastl::min(
-                SourceSlice.mWidth,
-                MipExtent(SourceDesc.mTexture.mWidth, SourceSlice.mMipLevel));
-            const uint32_t Height = eastl::min(
-                SourceSlice.mHeight,
-                MipExtent(SourceDesc.mTexture.mHeight, SourceSlice.mMipLevel));
-            const uint32_t Depth = eastl::min(
-                SourceSlice.mDepth,
-                MipExtent(SourceDesc.mTexture.mDepth, SourceSlice.mMipLevel));
-            const uint32_t DestinationWidth = MipExtent(
-                DestinationDesc.mWidth, DestinationSlice.mMipLevel);
-            const uint32_t DestinationHeight = MipExtent(
-                DestinationDesc.mHeight, DestinationSlice.mMipLevel);
-            const uint32_t DestinationDepth = MipExtent(
-                DestinationDesc.mDepth, DestinationSlice.mMipLevel);
-            if (!Width || !Height || !Depth ||
-                DestinationSlice.mX > DestinationWidth ||
-                Width > DestinationWidth - DestinationSlice.mX ||
-                DestinationSlice.mY > DestinationHeight ||
-                Height > DestinationHeight - DestinationSlice.mY ||
-                DestinationSlice.mZ > DestinationDepth ||
-                Depth > DestinationDepth - DestinationSlice.mZ)
-            {
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "Vulkan texture upload destination region is out of range.");
-            }
             (void)GetTrackedTextureLayouts(*Dst, DestinationDesc);
             const EArdaRHIResourceState Previous =
                 mTextureAbstractStates.at(Dst->GetIdentity())[DestinationIndex];
@@ -5728,7 +5529,9 @@ namespace arda::backend
                     return Status;
             }
             vk::BufferImageCopy Region;
-            Region.bufferOffset = Src->mOffsets[StagingIndex];
+            if (auto Status = ConfigureVulkanStagingCopyRegion(
+                    Region, *Src, StagingIndex, SourceSlice); !Status)
+                return Status;
             Region.imageSubresource = vk::ImageSubresourceLayers(
                 ImageAspect(DestinationDesc.mFormat, DestinationSlice.mPlane),
                 DestinationSlice.mMipLevel,
@@ -7681,7 +7484,7 @@ namespace arda::backend
             {
                 Fence = mContext->mDevice.createFence({});
                 const vk::CommandBuffer Buffer = Commands->GetCommandBuffer();
-                const uint32_t TimelineIndex = QueueIndex(QueueType);
+                const size_t TimelineIndex = GetArdaRHIQueueIndex(QueueType);
                 const uint64_t TimelineValue =
                     mContext->mQueueTimelineValues[TimelineIndex].fetch_add(
                         1, std::memory_order_relaxed) + 1;
@@ -7738,7 +7541,8 @@ namespace arda::backend
             }
             try
             {
-                const uint32_t ExecutionIndex = QueueIndex(ExecutionQueue);
+                const size_t ExecutionIndex =
+                    GetArdaRHIQueueIndex(ExecutionQueue);
                 vk::SemaphoreSubmitInfo WaitInfo(
                     mContext->mQueueTimelines[ExecutionIndex],
                     DecodeVulkanSubmissionValue(Submission),
@@ -8456,20 +8260,23 @@ namespace arda::backend
                         CopyQueueIndex = 1;
                     }
                     mContext->mQueueCount = GraphicsQueueCount;
-                    mContext->mQueueSparseBinding[0] =
+                    mContext->mQueueSparseBinding[GetArdaRHIQueueIndex(
+                        EArdaRHIQueueType::Graphics)] =
                         static_cast<bool>(SelectedQueueFamilies[
                             mContext->mQueueFamily].queueFlags &
                             vk::QueueFlagBits::eSparseBinding);
-                    mContext->mQueueSparseBinding[1] =
+                    mContext->mQueueSparseBinding[GetArdaRHIQueueIndex(
+                        EArdaRHIQueueType::Compute)] =
                         static_cast<bool>(SelectedQueueFamilies[
                             mContext->mComputeQueueFamily].queueFlags &
                             vk::QueueFlagBits::eSparseBinding);
-                    mContext->mQueueSparseBinding[2] =
+                    mContext->mQueueSparseBinding[GetArdaRHIQueueIndex(
+                        EArdaRHIQueueType::Copy)] =
                         static_cast<bool>(SelectedQueueFamilies[
                             mContext->mCopyQueueFamily].queueFlags &
                             vk::QueueFlagBits::eSparseBinding);
-                    const eastl::array<float, 3> Priorities = {
-                        1.f, 1.f, 1.f };
+                    eastl::array<float, ArdaRHIQueueTypeCount> Priorities{};
+                    Priorities.fill(1.f);
                     eastl::vector<vk::DeviceQueueCreateInfo> QueueInfos;
                     QueueInfos.emplace_back(vk::DeviceQueueCreateFlags{},
                         mContext->mQueueFamily, GraphicsQueueCount,
@@ -8781,9 +8588,7 @@ namespace arda::backend
                 Invocation.mArguments.push_back("-spirv");
                 Invocation.mArguments.push_back("-fspv-target-env=vulkan1.3");
                 using Stage = EArdaRHIShaderStage;
-                if (Invocation.mStage == Stage::RayGeneration || Invocation.mStage == Stage::AnyHit ||
-                    Invocation.mStage == Stage::ClosestHit || Invocation.mStage == Stage::Miss ||
-                    Invocation.mStage == Stage::Intersection || Invocation.mStage == Stage::Callable)
+                if (IsArdaRHIRayTracingShaderStage(Invocation.mStage))
                     Invocation.mArguments.push_back("-fspv-extension=SPV_KHR_ray_tracing");
                 if (Invocation.mStage == Stage::Amplification ||
                     Invocation.mStage == Stage::Mesh)

@@ -54,7 +54,6 @@ namespace arda::rhi
     /** Ray-tracing abilities and native limits reported by one device. */
     struct FArdaRHIRayTracingCapabilities
     {
-        EArdaRHIRayTracingTier mTier = EArdaRHIRayTracingTier::None;
         bool mbInfrastructure = false;
         bool mbHardwareAccelerated = false;
         bool mbPipelineShaders = false;
@@ -77,6 +76,25 @@ namespace arda::rhi
         uint32_t mMaxRayPayloadSize = 0;
         /** Maximum ray-generation invocations accepted by one direct dispatch. */
         uint32_t mMaxRayDispatchInvocations = 0;
+
+        /**
+         * Derives the summary tier from the authoritative individual abilities.
+         * @return The highest fully reported ray-tracing implementation level.
+         */
+        [[nodiscard]] EArdaRHIRayTracingTier GetTier() const noexcept
+        {
+            if (!mbInfrastructure)
+                return EArdaRHIRayTracingTier::None;
+            if (!mbHardwareAccelerated)
+                return EArdaRHIRayTracingTier::Software;
+            if (!mbAccelerationStructures)
+                return EArdaRHIRayTracingTier::None;
+            if (mbOpacityMicromaps)
+                return EArdaRHIRayTracingTier::HardwareOpacityMicromaps;
+            if (mbInlineRayQueries)
+                return EArdaRHIRayTracingTier::HardwareInlineQueries;
+            return EArdaRHIRayTracingTier::HardwareAccelerationStructures;
+        }
     };
 
     /** Bindless and direct descriptor-indexing abilities. */
@@ -240,8 +258,8 @@ namespace arda::rhi
         bool mbSplitTransitions = false;
         bool mbIndirectCommands = false;
         bool mbAliasingBarriers = false;
-        bool mbQueries = true;
-        bool mbShaderLibraries = true;
+        bool mbQueries = false;
+        bool mbShaderLibraries = false;
         bool mbPipelineCachePersistence = false;
 
         [[nodiscard]] bool IsQueueSupported(EArdaRHIQueueType Queue) const noexcept

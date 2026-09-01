@@ -1,6 +1,7 @@
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 
 #include "ArdaBackendProvider.h"
+#include "ArdaString.h"
 #include "ShaderStructs/ArdaShaderCompiler.h"
 #include "ShaderStructs/ArdaShaderDirectories.h"
 
@@ -10,12 +11,6 @@ namespace arda::backend
 {
     namespace
     {
-        eastl::string ToEastlString(const std::filesystem::path& Path)
-        {
-            const std::string Value = Path.string();
-            return eastl::string(Value.data(), Value.size());
-        }
-
         FArdaGlobalShaderMapDiagnostic MakeDiagnostic(
             EArdaGlobalShaderMapError Code,
             const char* ShaderType,

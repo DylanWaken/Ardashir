@@ -1,5 +1,6 @@
 #include "ShaderStructs/ArdaShaderDirectories.h"
 
+#include "ArdaString.h"
 #include "ShaderStructs/ArdaShaderDirectoriesPrivate.h"
 
 #include <EASTL/sort.h>
@@ -28,16 +29,6 @@ namespace arda::backend
         {
             static FDirectoryRegistry Registry;
             return Registry;
-        }
-
-        eastl::string ToEastl(const std::string& Value)
-        {
-            return eastl::string(Value.data(), Value.size());
-        }
-
-        std::string ToStd(const eastl::string& Value)
-        {
-            return std::string(Value.data(), Value.size());
         }
 
         std::string PortableKey(std::string Value)

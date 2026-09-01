@@ -1,5 +1,6 @@
 #include "RHI/ArdaRHIProviderPipelineCache.h"
 
+#include "ArdaHash.h"
 #include "ArdaBackendProvider.h"
 
 #include <atomic>
@@ -34,12 +35,8 @@ namespace arda::rhi::provider::pipeline_cache
 
         uint64_t StableNameHash(const eastl::string& Name) noexcept
         {
-            uint64_t Hash = 14695981039346656037ull;
-            for (const unsigned char Character : Name)
-            {
-                Hash ^= Character;
-                Hash *= 1099511628211ull;
-            }
+            uint64_t Hash = private_api::ArdaFnv1a64OffsetBasis;
+            private_api::AppendFnv1a64(Hash, Name.data(), Name.size());
             return Hash;
         }
 

@@ -1,5 +1,7 @@
 #include "ShaderStructs/ArdaShaderParameters.h"
 
+#include "ArdaHash.h"
+
 #include <EASTL/algorithm.h>
 #include <EASTL/utility.h>
 
@@ -7,17 +9,9 @@ namespace arda::backend
 {
     namespace
     {
-        constexpr uint64_t FnvOffset = 1469598103934665603ull;
-        constexpr uint64_t FnvPrime = 1099511628211ull;
-
         void HashBytes(uint64_t& Hash, const void* Data, size_t Size)
         {
-            const auto* Bytes = static_cast<const uint8_t*>(Data);
-            for (size_t Index = 0; Index < Size; ++Index)
-            {
-                Hash ^= Bytes[Index];
-                Hash *= FnvPrime;
-            }
+            private_api::AppendFnv1a64(Hash, Data, Size);
         }
 
         void HashString(uint64_t& Hash, const char* Text)
@@ -163,7 +157,7 @@ namespace arda::backend
 
     void FArdaShaderParameterMetadata::ValidateAndHash()
     {
-        mLayoutHash = FnvOffset;
+        mLayoutHash = private_api::ArdaFnv1a64OffsetBasis;
         if (mName == nullptr || *mName == '\0' || mSize == 0 || mAlignment == 0)
         {
             mStatus = MakeError(
