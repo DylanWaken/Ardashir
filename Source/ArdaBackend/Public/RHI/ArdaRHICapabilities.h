@@ -13,19 +13,43 @@ namespace arda::rhi
     /** Native ray-tracing implementation level. */
     enum class EArdaRHIRayTracingTier : uint8_t
     {
+        /** No native or software ray-tracing implementation. */
         None,
+        /** Software-emulated ray tracing. */
         Software,
-        Hardware10,
-        Hardware11,
-        Hardware12
+        /** Hardware acceleration structures and shader traversal. */
+        HardwareAccelerationStructures,
+        /** Hardware traversal including inline ray queries. */
+        HardwareInlineQueries,
+        /** Hardware traversal including opacity micromaps. */
+        HardwareOpacityMicromaps
     };
 
     /** Native mesh-shader implementation level. */
-    enum class EArdaRHIMeshShaderTier : uint8_t { None, Tier1 };
+    enum class EArdaRHIMeshShaderTier : uint8_t
+    {
+        None,
+        /** Mesh and optional amplification shader stages are available. */
+        MeshAndAmplificationShaders
+    };
     /** Native work-graph implementation level. */
-    enum class EArdaRHIWorkGraphTier : uint8_t { None, Tier1, Tier11 };
+    enum class EArdaRHIWorkGraphTier : uint8_t
+    {
+        None,
+        /** Compute-style work-graph nodes are available. */
+        ComputeNodes,
+        /** Work graphs can feed mesh nodes into rasterization. */
+        MeshNodes
+    };
     /** Native sampler-feedback implementation level. */
-    enum class EArdaRHISamplerFeedbackTier : uint8_t { None, Tier09, Tier10 };
+    enum class EArdaRHISamplerFeedbackTier : uint8_t
+    {
+        None,
+        /** Feedback is limited to wrap/clamp addressing and full-resource views. */
+        RestrictedAddressingAndViews,
+        /** Feedback supports every addressing mode and arbitrary resource views. */
+        UnrestrictedAddressingAndViews
+    };
 
     /** Ray-tracing abilities and native limits reported by one device. */
     struct FArdaRHIRayTracingCapabilities

@@ -14,11 +14,12 @@
 
 namespace arda::backend
 {
-    /** Identifies whether a cached pipeline state is compute or graphics. */
+    /** Identifies the kind of cached pipeline state. */
     enum class EArdaPipelineStateKind : uint8_t
     {
         Compute,
-        Graphics
+        Graphics,
+        Meshlet
     };
 
     /** Configures pipeline cache capacities and diagnostic retention. */
@@ -30,6 +31,8 @@ namespace arda::backend
         size_t mMaxGraphicsEntries = 128;
         /** Maximum retained creation diagnostics. */
         size_t mMaxDiagnostics = 64;
+        /** Maximum retained meshlet pipeline entries. */
+        size_t mMaxMeshletEntries = 128;
     };
 
     /** Snapshot of pipeline cache activity and occupancy. */
@@ -49,6 +52,8 @@ namespace arda::backend
         size_t mComputeEntries = 0;
         /** Number of retained graphics entries. */
         size_t mGraphicsEntries = 0;
+        /** Number of retained meshlet entries. */
+        size_t mMeshletEntries = 0;
     };
 
     /** Describes one failed pipeline state creation. */
@@ -117,6 +122,19 @@ namespace arda::backend
             const rhi::FArdaRHIFramebufferRef& Framebuffer,
             rhi::FArdaRHIGraphicsPipelineRef& OutPipeline,
             const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+        /**
+         * Resolves or creates a framebuffer-compatible meshlet pipeline state.
+         * @param Initializer Meshlet pipeline description.
+         * @param Framebuffer Framebuffer used to complete dynamic formats.
+         * @param OutPipeline Receives the resolved pipeline.
+         * @param RequestingDevice Optional device used to validate ownership.
+         * @return RHI status for lookup or creation.
+         */
+        [[nodiscard]] rhi::FArdaRHIStatus GetOrCreateMeshlet(
+            const FArdaMeshletPipelineStateInitializer& Initializer,
+            const rhi::FArdaRHIFramebufferRef& Framebuffer,
+            rhi::FArdaRHIMeshletPipelineRef& OutPipeline,
+            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
 
         /**
          * Creates and caches a compute pipeline without returning it.
@@ -136,6 +154,17 @@ namespace arda::backend
          */
         [[nodiscard]] rhi::FArdaRHIStatus PrecacheGraphics(
             const FArdaGraphicsPipelineStateInitializer& Initializer,
+            const rhi::FArdaRHIFramebufferRef& Framebuffer,
+            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+        /**
+         * Creates and caches a framebuffer-compatible meshlet pipeline.
+         * @param Initializer Meshlet pipeline description.
+         * @param Framebuffer Framebuffer used to complete dynamic formats.
+         * @param RequestingDevice Optional device used to validate ownership.
+         * @return RHI status for lookup or creation.
+         */
+        [[nodiscard]] rhi::FArdaRHIStatus PrecacheMeshlet(
+            const FArdaMeshletPipelineStateInitializer& Initializer,
             const rhi::FArdaRHIFramebufferRef& Framebuffer,
             const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
 
@@ -161,6 +190,17 @@ namespace arda::backend
             rhi::IArdaRHICommandList& CommandList,
             const FArdaGraphicsPipelineStateInitializer& Initializer,
             rhi::FArdaRHIGraphicsState State);
+        /**
+         * Resolves and binds a meshlet pipeline state.
+         * @param CommandList Command list receiving the state.
+         * @param Initializer Meshlet pipeline description.
+         * @param State Additional meshlet state, including the framebuffer.
+         * @return RHI status for resolution and binding.
+         */
+        [[nodiscard]] rhi::FArdaRHIStatus SetMeshletPipelineState(
+            rhi::IArdaRHICommandList& CommandList,
+            const FArdaMeshletPipelineStateInitializer& Initializer,
+            rhi::FArdaRHIMeshletState State);
 
         /**
          * Evicts least-recently-used entries until capacities are satisfied.
@@ -168,6 +208,16 @@ namespace arda::backend
          * @param MaxGraphicsEntries Maximum retained graphics entries.
          */
         void Trim(size_t MaxComputeEntries, size_t MaxGraphicsEntries);
+        /**
+         * Evicts least-recently-used entries until all capacities are satisfied.
+         * @param MaxComputeEntries Maximum retained compute entries.
+         * @param MaxGraphicsEntries Maximum retained graphics entries.
+         * @param MaxMeshletEntries Maximum retained meshlet entries.
+         */
+        void Trim(
+            size_t MaxComputeEntries,
+            size_t MaxGraphicsEntries,
+            size_t MaxMeshletEntries);
         /** Removes all completed cached pipeline entries. */
         void Clear();
 

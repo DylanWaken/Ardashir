@@ -1818,7 +1818,7 @@ namespace arda::backend
                     ? mContext->mSamplerDescriptorHeap.mCapacity
                     : 1024;
             mCapabilities.mMeshShaderTier = mContext->mbMeshShader
-                ? EArdaRHIMeshShaderTier::Tier1
+                ? EArdaRHIMeshShaderTier::MeshAndAmplificationShaders
                 : EArdaRHIMeshShaderTier::None;
             if (mContext->mbAccelerationStructure)
             {
@@ -1832,7 +1832,6 @@ namespace arda::backend
                 Ray.mbCompaction = true;
                 Ray.mbIndirectTopLevelBuild = true;
                 Ray.mAccelerationStructureAlignment = 256;
-                Ray.mTier = EArdaRHIRayTracingTier::Hardware11;
                 if (mContext->mbRayTracingPipeline)
                 {
                     Ray.mbPipelineShaders = true;
@@ -1859,6 +1858,11 @@ namespace arda::backend
                 }
                 Ray.mbInlineRayQueries = mContext->mbRayQuery;
                 Ray.mbOpacityMicromaps = mContext->mbOpacityMicromap;
+                Ray.mTier = Ray.mbOpacityMicromaps
+                    ? EArdaRHIRayTracingTier::HardwareOpacityMicromaps
+                    : Ray.mbInlineRayQueries
+                        ? EArdaRHIRayTracingTier::HardwareInlineQueries
+                        : EArdaRHIRayTracingTier::HardwareAccelerationStructures;
             }
             mCapabilities.mbShaderLibraries = true;
             mCapabilities.mbPipelineCachePersistence = mPipelineCache != nullptr;

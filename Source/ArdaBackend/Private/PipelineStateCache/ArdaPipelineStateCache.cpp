@@ -164,12 +164,47 @@ namespace arda::backend
             return Hash.Finish();
         }
 
-        FArdaRHIStatus CompleteGraphicsDesc(
-            const FArdaGraphicsPipelineStateInitializer& Initializer,
-            const FArdaRHIFramebufferRef& Framebuffer,
-            FArdaRHIGraphicsPipelineDesc& Out)
+        uint64_t PersistentKey(const FArdaRHIMeshletPipelineDesc& Desc) noexcept
         {
-            Out = Initializer.mDesc;
+            FStablePipelineHasher Hash;
+            Hash.Add(0x4D4553484C4554ull);
+            Hash.AddEnum(Desc.mTopology);
+            HashShader(Hash, Desc.mAmplificationShader);
+            HashShader(Hash, Desc.mMeshShader);
+            HashShader(Hash, Desc.mPixelShader);
+            HashLayouts(Hash, Desc.mBindingLayouts);
+            Hash.Add(Desc.mBlendState.mbAlphaToCoverage);
+            for (const auto& Target : Desc.mBlendState.mTargets)
+            {
+                Hash.Add(Target.mbEnable);
+                Hash.AddEnum(Target.mSourceColor);
+                Hash.AddEnum(Target.mDestinationColor);
+                Hash.AddEnum(Target.mSourceAlpha);
+                Hash.AddEnum(Target.mDestinationAlpha);
+            }
+            Hash.AddEnum(Desc.mRasterState.mFillMode);
+            Hash.AddEnum(Desc.mRasterState.mCullMode);
+            Hash.Add(Desc.mRasterState.mbFrontCounterClockwise);
+            Hash.Add(Desc.mRasterState.mbDepthClip);
+            Hash.Add(Desc.mRasterState.mbScissor);
+            Hash.Add(Desc.mDepthStencilState.mbDepthTest);
+            Hash.Add(Desc.mDepthStencilState.mbDepthWrite);
+            Hash.AddEnum(Desc.mDepthStencilState.mDepthFunc);
+            Hash.Add(Desc.mColorFormats.size());
+            for (auto Format : Desc.mColorFormats)
+                Hash.AddEnum(Format);
+            Hash.AddEnum(Desc.mDepthFormat);
+            Hash.Add(Desc.mSampleCount);
+            return Hash.Finish();
+        }
+
+        template <typename PipelineDesc>
+        FArdaRHIStatus CompleteFramebufferDesc(
+            const PipelineDesc& InitializerDesc,
+            const FArdaRHIFramebufferRef& Framebuffer,
+            PipelineDesc& Out)
+        {
+            Out = InitializerDesc;
             if (!Framebuffer)
             {
                 if (Out.mColorFormats.empty() || Out.mSampleCount == 0)
@@ -255,6 +290,14 @@ namespace arda::backend
             bool mbInFlight = false;
         };
 
+        struct FMeshletEntry
+        {
+            rhi::FArdaRHIMeshletPipelineDesc mDesc;
+            rhi::FArdaRHIMeshletPipelineRef mPipeline;
+            uint64_t mLastUse = 0;
+            bool mbInFlight = false;
+        };
+
         explicit FImpl(
             rhi::FArdaRHIDeviceRef InDevice,
             FArdaPipelineStateCacheConfiguration InConfiguration)
@@ -326,6 +369,7 @@ namespace arda::backend
         std::condition_variable mChanged;
         eastl::vector<FComputeEntry> mCompute;
         eastl::vector<FGraphicsEntry> mGraphics;
+        eastl::vector<FMeshletEntry> mMeshlet;
         eastl::vector<FArdaPipelineStateDiagnostic> mDiagnostics;
         uint64_t mUseSerial = 0;
         uint64_t mHits = 0;
@@ -439,8 +483,8 @@ namespace arda::backend
     {
         OutPipeline.Reset();
         rhi::FArdaRHIGraphicsPipelineDesc Completed;
-        auto CompletionStatus = CompleteGraphicsDesc(
-            Initializer, Framebuffer, Completed);
+        auto CompletionStatus = CompleteFramebufferDesc(
+            Initializer.mDesc, Framebuffer, Completed);
         const size_t Hash = CompletionStatus
             ? rhi::HashValue(Completed)
             : rhi::HashValue(Initializer.mDesc);
@@ -531,6 +575,107 @@ namespace arda::backend
         return {};
     }
 
+    rhi::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateMeshlet(
+        const FArdaMeshletPipelineStateInitializer& Initializer,
+        const rhi::FArdaRHIFramebufferRef& Framebuffer,
+        rhi::FArdaRHIMeshletPipelineRef& OutPipeline,
+        const rhi::IArdaRHIDevice* RequestingDevice)
+    {
+        OutPipeline.Reset();
+        rhi::FArdaRHIMeshletPipelineDesc Completed;
+        auto CompletionStatus = CompleteFramebufferDesc(
+            Initializer.mDesc, Framebuffer, Completed);
+        const size_t Hash = CompletionStatus
+            ? rhi::HashValue(Completed)
+            : rhi::HashValue(Initializer.mDesc);
+        std::unique_lock<std::mutex> Lock(mImpl->mMutex);
+        if (auto Status = mImpl->CheckDevice(
+                RequestingDevice, EArdaPipelineStateKind::Meshlet,
+                Hash, Initializer.mDesc.mDebugName);
+            !Status)
+            return Status;
+        if (!CompletionStatus)
+        {
+            mImpl->AddDiagnostic(
+                EArdaPipelineStateKind::Meshlet, CompletionStatus, Hash,
+                Initializer.mDesc.mDebugName);
+            return CompletionStatus;
+        }
+
+        for (;;)
+        {
+            auto It = std::find_if(
+                mImpl->mMeshlet.begin(), mImpl->mMeshlet.end(),
+                [&Completed](const FImpl::FMeshletEntry& Entry)
+                {
+                    return Entry.mDesc == Completed;
+                });
+            if (It == mImpl->mMeshlet.end())
+                break;
+            if (It->mbInFlight)
+            {
+                ++mImpl->mWaits;
+                mImpl->mChanged.wait(
+                    Lock,
+                    [this, &Completed]
+                    {
+                        const auto Pending = std::find_if(
+                            mImpl->mMeshlet.begin(), mImpl->mMeshlet.end(),
+                            [&Completed](const FImpl::FMeshletEntry& Entry)
+                            {
+                                return Entry.mDesc == Completed;
+                            });
+                        return Pending == mImpl->mMeshlet.end() ||
+                            !Pending->mbInFlight;
+                    });
+                continue;
+            }
+            ++mImpl->mHits;
+            It->mLastUse = ++mImpl->mUseSerial;
+            OutPipeline = It->mPipeline;
+            return {};
+        }
+
+        ++mImpl->mMisses;
+        ++mImpl->mInFlight;
+        mImpl->mMeshlet.push_back(
+            { Completed, {}, ++mImpl->mUseSerial, true });
+        Lock.unlock();
+        auto CreationDesc = Completed;
+        CreationDesc.mPersistentCacheKey = PersistentKey(CreationDesc);
+        auto Created = mImpl->mDevice->CreateMeshletPipeline(CreationDesc);
+        Lock.lock();
+        --mImpl->mInFlight;
+        auto Pending = std::find_if(
+            mImpl->mMeshlet.begin(), mImpl->mMeshlet.end(),
+            [&Completed](const FImpl::FMeshletEntry& Entry)
+            {
+                return Entry.mbInFlight && Entry.mDesc == Completed;
+            });
+        if (!Created)
+        {
+            ++mImpl->mCreateFailures;
+            mImpl->AddDiagnostic(
+                EArdaPipelineStateKind::Meshlet, Created.mStatus, Hash,
+                Initializer.mDesc.mDebugName);
+            if (Pending != mImpl->mMeshlet.end())
+                mImpl->mMeshlet.erase(Pending);
+            mImpl->mChanged.notify_all();
+            return Created.mStatus;
+        }
+        OutPipeline = Created.mValue;
+        if (Pending != mImpl->mMeshlet.end())
+        {
+            Pending->mPipeline = Created.mValue;
+            Pending->mbInFlight = false;
+            Pending->mLastUse = ++mImpl->mUseSerial;
+        }
+        FImpl::EvictTo(
+            mImpl->mMeshlet, mImpl->mConfiguration.mMaxMeshletEntries);
+        mImpl->mChanged.notify_all();
+        return {};
+    }
+
     rhi::FArdaRHIStatus FArdaPipelineStateCache::PrecacheCompute(
         const FArdaComputePipelineStateInitializer& Initializer,
         const rhi::IArdaRHIDevice* RequestingDevice)
@@ -546,6 +691,16 @@ namespace arda::backend
     {
         rhi::FArdaRHIGraphicsPipelineRef Pipeline;
         return GetOrCreateGraphics(
+            Initializer, Framebuffer, Pipeline, RequestingDevice);
+    }
+
+    rhi::FArdaRHIStatus FArdaPipelineStateCache::PrecacheMeshlet(
+        const FArdaMeshletPipelineStateInitializer& Initializer,
+        const rhi::FArdaRHIFramebufferRef& Framebuffer,
+        const rhi::IArdaRHIDevice* RequestingDevice)
+    {
+        rhi::FArdaRHIMeshletPipelineRef Pipeline;
+        return GetOrCreateMeshlet(
             Initializer, Framebuffer, Pipeline, RequestingDevice);
     }
 
@@ -570,6 +725,17 @@ namespace arda::backend
         return Status ? CommandList.SetGraphicsState(State) : Status;
     }
 
+    rhi::FArdaRHIStatus FArdaPipelineStateCache::SetMeshletPipelineState(
+        rhi::IArdaRHICommandList& CommandList,
+        const FArdaMeshletPipelineStateInitializer& Initializer,
+        rhi::FArdaRHIMeshletState State)
+    {
+        auto Status = GetOrCreateMeshlet(
+            Initializer, State.mFramebuffer, State.mPipeline,
+            CommandList.GetDevice());
+        return Status ? CommandList.SetMeshletState(State) : Status;
+    }
+
     void FArdaPipelineStateCache::Trim(
         size_t MaxComputeEntries,
         size_t MaxGraphicsEntries)
@@ -580,12 +746,25 @@ namespace arda::backend
         FImpl::EvictTo(mImpl->mGraphics, MaxGraphicsEntries);
     }
 
+    void FArdaPipelineStateCache::Trim(
+        size_t MaxComputeEntries,
+        size_t MaxGraphicsEntries,
+        size_t MaxMeshletEntries)
+    {
+        std::unique_lock<std::mutex> Lock(mImpl->mMutex);
+        mImpl->mChanged.wait(Lock, [this] { return mImpl->mInFlight == 0; });
+        FImpl::EvictTo(mImpl->mCompute, MaxComputeEntries);
+        FImpl::EvictTo(mImpl->mGraphics, MaxGraphicsEntries);
+        FImpl::EvictTo(mImpl->mMeshlet, MaxMeshletEntries);
+    }
+
     void FArdaPipelineStateCache::Clear()
     {
         std::unique_lock<std::mutex> Lock(mImpl->mMutex);
         mImpl->mChanged.wait(Lock, [this] { return mImpl->mInFlight == 0; });
         FImpl::EvictTo(mImpl->mCompute, 0);
         FImpl::EvictTo(mImpl->mGraphics, 0);
+        FImpl::EvictTo(mImpl->mMeshlet, 0);
     }
 
     FArdaPipelineStateCacheStats FArdaPipelineStateCache::GetStats() const
@@ -598,7 +777,8 @@ namespace arda::backend
             mImpl->mCreateFailures,
             mImpl->mInFlight,
             mImpl->mCompute.size(),
-            mImpl->mGraphics.size()
+            mImpl->mGraphics.size(),
+            mImpl->mMeshlet.size()
         };
     }
 

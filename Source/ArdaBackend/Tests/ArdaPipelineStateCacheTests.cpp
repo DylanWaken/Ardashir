@@ -128,7 +128,8 @@ namespace
     arda::rhi::FArdaRHIStatus CreatePersistentTestPipelines(
         arda::backend::EArdaBackendType Backend,
         uint64_t& OutComputeKey,
-        uint64_t& OutGraphicsKey)
+        uint64_t& OutGraphicsKey,
+        uint64_t* OutMeshletKey = nullptr)
     {
         using namespace arda;
         using namespace backend;
@@ -182,6 +183,42 @@ namespace
             !Status)
             return Status;
         OutGraphicsKey = GraphicsPipeline->GetDesc().mPersistentCacheKey;
+
+        if (OutMeshletKey != nullptr)
+        {
+            *OutMeshletKey = 0;
+            if (Device->GetCapabilities().mMeshShaderTier !=
+                EArdaRHIMeshShaderTier::None)
+            {
+                auto MeshShader = CreateTestShader(
+                    *Device, Backend, "ArdaMeshPipelineTestMS",
+                    "MeshPipelineTestMS", EArdaRHIShaderStage::Mesh);
+                if (!MeshShader)
+                    return MeshShader.mStatus;
+                auto MeshPixelShader = CreateTestShader(
+                    *Device, Backend, "ArdaMeshPipelineTestPS",
+                    "MeshPipelineTestPS", EArdaRHIShaderStage::Pixel);
+                if (!MeshPixelShader)
+                    return MeshPixelShader.mStatus;
+                FArdaMeshletPipelineStateInitializer MeshletInitializer;
+                MeshletInitializer.mDesc.mMeshShader = MeshShader.mValue;
+                MeshletInitializer.mDesc.mPixelShader = MeshPixelShader.mValue;
+                MeshletInitializer.mDesc.mColorFormats.push_back(
+                    EArdaRHIFormat::RGBA8UNorm);
+                MeshletInitializer.mDesc.mSampleCount = 1;
+                MeshletInitializer.mDesc.mRasterState.mCullMode =
+                    EArdaRHICullMode::None;
+                MeshletInitializer.mDesc.mDepthStencilState.mbDepthTest = false;
+                MeshletInitializer.mDesc.mDepthStencilState.mbDepthWrite = false;
+                FArdaRHIMeshletPipelineRef MeshletPipeline;
+                if (auto Status = Cache.GetOrCreateMeshlet(
+                        MeshletInitializer, {}, MeshletPipeline);
+                    !Status)
+                    return Status;
+                *OutMeshletKey =
+                    MeshletPipeline->GetDesc().mPersistentCacheKey;
+            }
+        }
         return {};
     }
 }
@@ -202,6 +239,13 @@ TEST(ArdaPipelineStateCache, PersistentKeysAreNonSemanticMetadata)
     GraphicsB.mPersistentCacheKey = 4;
     EXPECT_EQ(GraphicsA, GraphicsB);
     EXPECT_EQ(HashValue(GraphicsA), HashValue(GraphicsB));
+
+    FArdaRHIMeshletPipelineDesc MeshletA;
+    FArdaRHIMeshletPipelineDesc MeshletB;
+    MeshletA.mPersistentCacheKey = 5;
+    MeshletB.mPersistentCacheKey = 6;
+    EXPECT_EQ(MeshletA, MeshletB);
+    EXPECT_EQ(HashValue(MeshletA), HashValue(MeshletB));
 }
 
 #if defined(_WIN32)
@@ -242,9 +286,11 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
     FArdaRHIDeviceRef RetainedFirstDevice = GetDevice();
     uint64_t FirstComputeKey = 0;
     uint64_t FirstGraphicsKey = 0;
+    uint64_t FirstMeshletKey = 0;
     const auto FirstCreateStatus =
         CreatePersistentTestPipelines(
-            EArdaBackendType::D3D12, FirstComputeKey, FirstGraphicsKey);
+            EArdaBackendType::D3D12, FirstComputeKey, FirstGraphicsKey,
+            &FirstMeshletKey);
     ASSERT_TRUE(FirstCreateStatus)
         << FirstCreateStatus.mMessage.c_str();
     EXPECT_NE(FirstComputeKey, 0u);
@@ -260,17 +306,22 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
     ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
     uint64_t ReloadedComputeKey = 0;
     uint64_t ReloadedGraphicsKey = 0;
+    uint64_t ReloadedMeshletKey = 0;
     const auto ReloadedCreateStatus =
         CreatePersistentTestPipelines(
             EArdaBackendType::D3D12,
             ReloadedComputeKey,
-            ReloadedGraphicsKey);
+            ReloadedGraphicsKey,
+            &ReloadedMeshletKey);
     EXPECT_TRUE(ReloadedCreateStatus)
         << ReloadedCreateStatus.mMessage.c_str();
     EXPECT_EQ(ReloadedComputeKey, FirstComputeKey);
     EXPECT_EQ(ReloadedGraphicsKey, FirstGraphicsKey);
+    EXPECT_EQ(ReloadedMeshletKey, FirstMeshletKey);
     EXPECT_TRUE(Diagnostics.Contains("LoadComputePipeline accepted"));
     EXPECT_TRUE(Diagnostics.Contains("LoadGraphicsPipeline accepted"));
+    if (FirstMeshletKey != 0)
+        EXPECT_TRUE(Diagnostics.Contains("cached D3D12 meshlet PSO"));
     ShutdownBackend();
 
     {
@@ -369,8 +420,10 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
 
     uint64_t FirstComputeKey = 0;
     uint64_t FirstGraphicsKey = 0;
+    uint64_t FirstMeshletKey = 0;
     const auto FirstCreateStatus = CreatePersistentTestPipelines(
-        EArdaBackendType::Vulkan, FirstComputeKey, FirstGraphicsKey);
+        EArdaBackendType::Vulkan, FirstComputeKey, FirstGraphicsKey,
+        &FirstMeshletKey);
     ASSERT_TRUE(FirstCreateStatus)
         << FirstCreateStatus.mMessage.c_str();
     ShutdownBackend();
@@ -386,14 +439,17 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
         "Vulkan persistent pipeline cache data was accepted"));
     uint64_t ReloadedComputeKey = 0;
     uint64_t ReloadedGraphicsKey = 0;
+    uint64_t ReloadedMeshletKey = 0;
     const auto ReloadedCreateStatus = CreatePersistentTestPipelines(
         EArdaBackendType::Vulkan,
         ReloadedComputeKey,
-        ReloadedGraphicsKey);
+        ReloadedGraphicsKey,
+        &ReloadedMeshletKey);
     EXPECT_TRUE(ReloadedCreateStatus)
         << ReloadedCreateStatus.mMessage.c_str();
     EXPECT_EQ(ReloadedComputeKey, FirstComputeKey);
     EXPECT_EQ(ReloadedGraphicsKey, FirstGraphicsKey);
+    EXPECT_EQ(ReloadedMeshletKey, FirstMeshletKey);
     ShutdownBackend();
 
     std::filesystem::remove_all(Directory, Error);
@@ -655,6 +711,123 @@ TEST(ArdaPipelineStateCache, ResolvesFramebufferFormatsAndRejectsMismatches)
             EArdaRHIResult::InvalidArgument);
     }
 
+    ShutdownBackend();
+}
+
+TEST(ArdaPipelineStateCache, CachesPrecachesBindsAndEvictsMeshletPipelines)
+{
+    using namespace arda;
+    using namespace backend;
+    using namespace rhi;
+
+    ShutdownBackend();
+    FArdaBackendConfiguration BackendConfiguration;
+    BackendConfiguration.mbEnableValidation = false;
+    ASSERT_TRUE(ConfigureBackend(BackendConfiguration));
+    if (!InitializeBackend())
+        GTEST_SKIP() << GetBackendError().c_str();
+
+    FArdaRHIDeviceRef Device = GetDevice();
+    ASSERT_TRUE(Device);
+    if (Device->GetCapabilities().mMeshShaderTier ==
+        EArdaRHIMeshShaderTier::None)
+    {
+        ShutdownBackend();
+        GTEST_SKIP() << "The selected device does not support mesh shaders.";
+    }
+
+    {
+        auto MeshShader = CreateTestShader(
+            *Device, GetBackendConfiguration().mBackend,
+            "ArdaMeshPipelineTestMS", "MeshPipelineTestMS",
+            EArdaRHIShaderStage::Mesh);
+        auto PixelShader = CreateTestShader(
+            *Device, GetBackendConfiguration().mBackend,
+            "ArdaMeshPipelineTestPS", "MeshPipelineTestPS",
+            EArdaRHIShaderStage::Pixel);
+        ASSERT_TRUE(MeshShader) << MeshShader.mStatus.mMessage.c_str();
+        ASSERT_TRUE(PixelShader) << PixelShader.mStatus.mMessage.c_str();
+
+        FArdaRHITextureDesc TargetDesc;
+        TargetDesc.mWidth = 4;
+        TargetDesc.mHeight = 4;
+        TargetDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+        TargetDesc.mUsage = EArdaRHITextureUsage::RenderTarget;
+        TargetDesc.mInitialState = EArdaRHIResourceState::RenderTarget;
+        TargetDesc.mbKeepInitialState = true;
+        auto Target = Device->CreateTexture(TargetDesc);
+        ASSERT_TRUE(Target) << Target.mStatus.mMessage.c_str();
+        FArdaRHIFramebufferDesc FramebufferDesc;
+        FramebufferDesc.mColorAttachments.push_back({ Target.mValue, {} });
+        auto Framebuffer = Device->CreateFramebuffer(FramebufferDesc);
+        ASSERT_TRUE(Framebuffer) << Framebuffer.mStatus.mMessage.c_str();
+
+        FArdaMeshletPipelineStateInitializer Initializer;
+        Initializer.mDesc.mMeshShader = MeshShader.mValue;
+        Initializer.mDesc.mPixelShader = PixelShader.mValue;
+        Initializer.mDesc.mRasterState.mCullMode = EArdaRHICullMode::None;
+        Initializer.mDesc.mDepthStencilState.mbDepthTest = false;
+        Initializer.mDesc.mDepthStencilState.mbDepthWrite = false;
+        Initializer.mDesc.mDebugName = "Cached meshlet";
+
+        FArdaPipelineStateCacheConfiguration Configuration;
+        Configuration.mMaxMeshletEntries = 2;
+        FArdaPipelineStateCache Cache(Device, Configuration);
+        ASSERT_TRUE(Cache.PrecacheMeshlet(Initializer, Framebuffer.mValue));
+        EXPECT_EQ(Cache.GetStats().mMisses, 1u);
+        EXPECT_EQ(Cache.GetStats().mMeshletEntries, 1u);
+
+        FArdaRHIMeshletPipelineRef First;
+        ASSERT_TRUE(Cache.GetOrCreateMeshlet(
+            Initializer, Framebuffer.mValue, First));
+        ASSERT_TRUE(First);
+        EXPECT_EQ(Cache.GetStats().mHits, 1u);
+        ASSERT_EQ(First->GetDesc().mColorFormats.size(), 1u);
+        EXPECT_EQ(
+            First->GetDesc().mColorFormats[0],
+            EArdaRHIFormat::RGBA8UNorm);
+        EXPECT_EQ(First->GetDesc().mSampleCount, 1u);
+        EXPECT_NE(First->GetDesc().mPersistentCacheKey, 0u);
+
+        auto Relabeled = Initializer;
+        Relabeled.mDesc.mDebugName = "Another meshlet label";
+        FArdaRHIMeshletPipelineRef Reused;
+        ASSERT_TRUE(Cache.GetOrCreateMeshlet(
+            Relabeled, Framebuffer.mValue, Reused));
+        EXPECT_EQ(Reused.Get(), First.Get());
+
+        auto CommandList =
+            Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(CommandList);
+        ASSERT_TRUE(CommandList.mValue->Open());
+        FArdaRHIMeshletState State;
+        State.mFramebuffer = Framebuffer.mValue;
+        State.mViewports.push_back({ 0.f, 4.f, 0.f, 4.f, 0.f, 1.f });
+        State.mScissors.push_back({ 0, 4, 0, 4 });
+        EXPECT_TRUE(Cache.SetMeshletPipelineState(
+            *CommandList.mValue, Initializer, eastl::move(State)));
+        EXPECT_TRUE(CommandList.mValue->Close());
+
+        Cache.Trim(128, 128, 0);
+        EXPECT_EQ(Cache.GetStats().mMeshletEntries, 0u);
+        FArdaRHIMeshletPipelineRef AfterTrim;
+        ASSERT_TRUE(Cache.GetOrCreateMeshlet(
+            Initializer, Framebuffer.mValue, AfterTrim));
+        EXPECT_NE(AfterTrim.Get(), First.Get());
+
+        auto Mismatched = Initializer;
+        Mismatched.mDesc.mColorFormats.push_back(
+            EArdaRHIFormat::BGRA8UNorm);
+        EXPECT_EQ(
+            Cache.GetOrCreateMeshlet(
+                Mismatched, Framebuffer.mValue, Reused).mCode,
+            EArdaRHIResult::InvalidArgument);
+
+        Cache.Clear();
+        EXPECT_EQ(Cache.GetStats().mMeshletEntries, 0u);
+    }
+
+    Device.Reset();
     ShutdownBackend();
 }
 

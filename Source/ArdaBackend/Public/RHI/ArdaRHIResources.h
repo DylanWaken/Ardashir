@@ -526,6 +526,12 @@ namespace arda::rhi
         EArdaRHIFormat mDepthFormat = EArdaRHIFormat::Unknown;
         /** Stores the sample count. */
         uint32_t mSampleCount = 1;
+        /**
+         * Stable metadata key used by backend-native persistent caches.
+         * Zero disables named lookup. It is intentionally ignored by equality
+         * and semantic descriptor hashing.
+         */
+        uint64_t mPersistentCacheKey = 0;
         /** Stores the debug name. */
         eastl::string mDebugName;
         /**

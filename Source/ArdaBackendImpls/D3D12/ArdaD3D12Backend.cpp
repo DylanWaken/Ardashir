@@ -1288,10 +1288,10 @@ namespace arda::backend
                 Ray.mbLocalShaderTableArguments = true;
                 Ray.mbPersistentShaderTables = true;
                 Ray.mTier = Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_2
-                    ? EArdaRHIRayTracingTier::Hardware12
+                    ? EArdaRHIRayTracingTier::HardwareOpacityMicromaps
                     : Options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_1
-                        ? EArdaRHIRayTracingTier::Hardware11
-                        : EArdaRHIRayTracingTier::Hardware10;
+                        ? EArdaRHIRayTracingTier::HardwareInlineQueries
+                        : EArdaRHIRayTracingTier::HardwareAccelerationStructures;
                 Ray.mShaderIdentifierSize =
                     D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
                 Ray.mShaderRecordAlignment =
@@ -1312,15 +1312,15 @@ namespace arda::backend
                 sizeof(Options7))) &&
                 Options7.MeshShaderTier != D3D12_MESH_SHADER_TIER_NOT_SUPPORTED;
             mCapabilities.mMeshShaderTier = bMeshShaders
-                ? EArdaRHIMeshShaderTier::Tier1
+                ? EArdaRHIMeshShaderTier::MeshAndAmplificationShaders
                 : EArdaRHIMeshShaderTier::None;
             mCapabilities.mSamplerFeedbackTier =
                 Options7.SamplerFeedbackTier >=
                     D3D12_SAMPLER_FEEDBACK_TIER_1_0
-                ? EArdaRHISamplerFeedbackTier::Tier10
+                ? EArdaRHISamplerFeedbackTier::UnrestrictedAddressingAndViews
                 : Options7.SamplerFeedbackTier >=
                         D3D12_SAMPLER_FEEDBACK_TIER_0_9
-                    ? EArdaRHISamplerFeedbackTier::Tier09
+                    ? EArdaRHISamplerFeedbackTier::RestrictedAddressingAndViews
                     : EArdaRHISamplerFeedbackTier::None;
             D3D12_FEATURE_DATA_D3D12_OPTIONS21 Options21{};
             if (SUCCEEDED(mD3DDevice->CheckFeatureSupport(
@@ -1329,7 +1329,7 @@ namespace arda::backend
                 Options21.WorkGraphsTier !=
                     D3D12_WORK_GRAPHS_TIER_NOT_SUPPORTED)
                 mCapabilities.mWorkGraphTier =
-                    EArdaRHIWorkGraphTier::Tier1;
+                    EArdaRHIWorkGraphTier::ComputeNodes;
             D3D12_FEATURE_DATA_D3D12_OPTIONS1 Options1{};
             if (SUCCEEDED(mD3DDevice->CheckFeatureSupport(
                     D3D12_FEATURE_D3D12_OPTIONS1,
@@ -3542,8 +3542,42 @@ namespace arda::backend
 
             const D3D12_PIPELINE_STATE_STREAM_DESC Desc{
                 sizeof(Stream), &Stream };
-            Result = Device2->CreatePipelineState(
-                &Desc, IID_PPV_ARGS(&Pipeline->mPipeline));
+            if (mPipelineLibrary && Info.mDesc.mPersistentCacheKey != 0)
+            {
+                std::lock_guard<std::mutex> Lock(mPipelineCacheMutex);
+                const std::wstring Name = L"Meshlet-" +
+                    std::to_wstring(Info.mDesc.mPersistentCacheKey);
+                ComPtr<ID3D12PipelineLibrary1> PipelineLibrary1;
+                Result = mPipelineLibrary.As(&PipelineLibrary1);
+                if (SUCCEEDED(Result))
+                {
+                    Result = PipelineLibrary1->LoadPipeline(
+                        Name.c_str(), &Desc,
+                        IID_PPV_ARGS(&Pipeline->mPipeline));
+                }
+                if (SUCCEEDED(Result))
+                {
+                    pipeline_cache::Message(
+                        mDiagnosticCallback,
+                        EArdaDiagnosticSeverity::Info,
+                        "LoadPipeline accepted a cached D3D12 meshlet PSO.");
+                }
+                else
+                {
+                    Pipeline->mPipeline.Reset();
+                    Result = Device2->CreatePipelineState(
+                        &Desc, IID_PPV_ARGS(&Pipeline->mPipeline));
+                    if (SUCCEEDED(Result) &&
+                        SUCCEEDED(mPipelineLibrary->StorePipeline(
+                            Name.c_str(), Pipeline->mPipeline.Get())))
+                        mbPipelineCacheDirty = true;
+                }
+            }
+            else
+            {
+                Result = Device2->CreatePipelineState(
+                    &Desc, IID_PPV_ARGS(&Pipeline->mPipeline));
+            }
             if (FAILED(Result))
             {
                 return Fail<FArdaProviderObjectRef>(D3D12Failure(

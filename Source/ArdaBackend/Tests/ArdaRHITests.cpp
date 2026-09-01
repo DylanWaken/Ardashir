@@ -424,7 +424,8 @@ TEST(ArdaRHI, CapabilityAdmissionAcceptsCompleteAdvancedDesktopProfile)
     Capabilities.mRayTracing.mbIndirectDispatch = true;
     Capabilities.mRayTracing.mbLocalShaderTableArguments = true;
     Capabilities.mRayTracing.mbOpacityMicromaps = true;
-    Capabilities.mMeshShaderTier = EArdaRHIMeshShaderTier::Tier1;
+    Capabilities.mMeshShaderTier =
+        EArdaRHIMeshShaderTier::MeshAndAmplificationShaders;
     Capabilities.mDescriptors.mbUnboundedArrays = true;
     Capabilities.mDescriptors.mbUpdateAfterBind = true;
     Capabilities.mDescriptors.mbDirectResourceHeapIndexing = true;
@@ -434,8 +435,8 @@ TEST(ArdaRHI, CapabilityAdmissionAcceptsCompleteAdvancedDesktopProfile)
     Capabilities.mResidency.mbSparseBinding = true;
     Capabilities.mResidency.mbStreamingBudget = true;
     Capabilities.mSamplerFeedbackTier =
-        EArdaRHISamplerFeedbackTier::Tier10;
-    Capabilities.mWorkGraphTier = EArdaRHIWorkGraphTier::Tier11;
+        EArdaRHISamplerFeedbackTier::UnrestrictedAddressingAndViews;
+    Capabilities.mWorkGraphTier = EArdaRHIWorkGraphTier::MeshNodes;
     Capabilities.mbShaderBundleDispatch = true;
     Capabilities.mbCustomPresent = true;
     Capabilities.mMachineLearning.mbNativeFloat16 = true;
