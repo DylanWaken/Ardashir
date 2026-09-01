@@ -96,7 +96,7 @@ namespace
 
     arda::rhi::TArdaRHIResult<arda::rhi::FArdaRHIShaderRef> CreateTestShader(
         arda::rhi::IArdaRHIDevice& Device,
-        arda::backend::EArdaBackendType Backend,
+        const char* BackendName,
         const char* Artifact,
         const char* EntryPoint,
         arda::rhi::EArdaRHIShaderStage Stage)
@@ -105,7 +105,7 @@ namespace
         const std::filesystem::path Path =
             std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR) /
             (eastl::string(Artifact) +
-             backend::GetShaderArtifactExtension(Backend)).c_str();
+             backend::GetShaderArtifactExtension(BackendName)).c_str();
         auto Bytecode = backend::LoadShaderBytecode(Path);
         if (!Bytecode)
         {
@@ -126,7 +126,7 @@ namespace
     }
 
     arda::rhi::FArdaRHIStatus CreatePersistentTestPipelines(
-        arda::backend::EArdaBackendType Backend,
+        const char* BackendName,
         uint64_t& OutComputeKey,
         uint64_t& OutGraphicsKey,
         uint64_t* OutMeshletKey = nullptr)
@@ -137,7 +137,7 @@ namespace
 
         auto Device = GetDevice();
         auto ComputeShader = CreateTestShader(
-            *Device, Backend, "ArdaShaderStructTest",
+            *Device, BackendName, "ArdaShaderStructTest",
             "ShaderStructTestCS", EArdaRHIShaderStage::Compute);
         if (!ComputeShader)
             return ComputeShader.mStatus;
@@ -160,12 +160,12 @@ namespace
         OutComputeKey = ComputePipeline->GetDesc().mPersistentCacheKey;
 
         auto VertexShader = CreateTestShader(
-            *Device, Backend, "ArdaPipelineStateTestVS",
+            *Device, BackendName, "ArdaPipelineStateTestVS",
             "PipelineStateTestVS", EArdaRHIShaderStage::Vertex);
         if (!VertexShader)
             return VertexShader.mStatus;
         auto PixelShader = CreateTestShader(
-            *Device, Backend, "ArdaPipelineStateTestPS",
+            *Device, BackendName, "ArdaPipelineStateTestPS",
             "PipelineStateTestPS", EArdaRHIShaderStage::Pixel);
         if (!PixelShader)
             return PixelShader.mStatus;
@@ -191,12 +191,12 @@ namespace
                 EArdaRHIMeshShaderTier::None)
             {
                 auto MeshShader = CreateTestShader(
-                    *Device, Backend, "ArdaMeshPipelineTestMS",
+                    *Device, BackendName, "ArdaMeshPipelineTestMS",
                     "MeshPipelineTestMS", EArdaRHIShaderStage::Mesh);
                 if (!MeshShader)
                     return MeshShader.mStatus;
                 auto MeshPixelShader = CreateTestShader(
-                    *Device, Backend, "ArdaMeshPipelineTestPS",
+                    *Device, BackendName, "ArdaMeshPipelineTestPS",
                     "MeshPipelineTestPS", EArdaRHIShaderStage::Pixel);
                 if (!MeshPixelShader)
                     return MeshPixelShader.mStatus;
@@ -266,7 +266,7 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
 
     FArdaBackendConfiguration Configuration;
     FCapturingDiagnosticCallback Diagnostics;
-    Configuration.mBackend = EArdaBackendType::D3D12;
+    Configuration.mBackendName = "native-d3d12";
     Configuration.mbEnableValidation = false;
     Configuration.mPipelineCacheDirectory = Directory;
     Configuration.mMessageCallback = &Diagnostics;
@@ -289,7 +289,7 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
     uint64_t FirstMeshletKey = 0;
     const auto FirstCreateStatus =
         CreatePersistentTestPipelines(
-            EArdaBackendType::D3D12, FirstComputeKey, FirstGraphicsKey,
+            "native-d3d12", FirstComputeKey, FirstGraphicsKey,
             &FirstMeshletKey);
     ASSERT_TRUE(FirstCreateStatus)
         << FirstCreateStatus.mMessage.c_str();
@@ -309,7 +309,7 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
     uint64_t ReloadedMeshletKey = 0;
     const auto ReloadedCreateStatus =
         CreatePersistentTestPipelines(
-            EArdaBackendType::D3D12,
+            "native-d3d12",
             ReloadedComputeKey,
             ReloadedGraphicsKey,
             &ReloadedMeshletKey);
@@ -339,16 +339,15 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
     }
 
     {
-        std::fstream WrongBackend(
+        std::fstream InvalidHeader(
             CacheFile, std::ios::binary | std::ios::in | std::ios::out);
-        ASSERT_TRUE(WrongBackend);
-        const uint32_t VulkanBackend =
-            static_cast<uint32_t>(EArdaBackendType::Vulkan);
-        WrongBackend.seekp(12);
-        WrongBackend.write(
-            reinterpret_cast<const char*>(&VulkanBackend),
-            sizeof(VulkanBackend));
-        ASSERT_TRUE(WrongBackend);
+        ASSERT_TRUE(InvalidHeader);
+        constexpr uint32_t NonZeroReserved = 1;
+        InvalidHeader.seekp(12);
+        InvalidHeader.write(
+            reinterpret_cast<const char*>(&NonZeroReserved),
+            sizeof(NonZeroReserved));
+        ASSERT_TRUE(InvalidHeader);
     }
     ASSERT_TRUE(ConfigureBackend(Configuration));
     ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
@@ -356,7 +355,7 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
     uint64_t WrongBackendGraphicsKey = 0;
     const auto WrongBackendCreateStatus =
         CreatePersistentTestPipelines(
-            EArdaBackendType::D3D12,
+            "native-d3d12",
             WrongBackendComputeKey,
             WrongBackendGraphicsKey);
     EXPECT_TRUE(WrongBackendCreateStatus)
@@ -373,7 +372,7 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
     uint64_t CorruptGraphicsKey = 0;
     const auto CorruptCreateStatus =
         CreatePersistentTestPipelines(
-            EArdaBackendType::D3D12,
+            "native-d3d12",
             CorruptComputeKey,
             CorruptGraphicsKey);
     EXPECT_TRUE(CorruptCreateStatus)
@@ -401,7 +400,7 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
 
     FArdaBackendConfiguration Configuration;
     FCapturingDiagnosticCallback Diagnostics;
-    Configuration.mBackend = EArdaBackendType::Vulkan;
+    Configuration.mBackendName = "native-vulkan";
     Configuration.mbEnableValidation = false;
     Configuration.mPipelineCacheDirectory = Directory;
     Configuration.mMessageCallback = &Diagnostics;
@@ -422,7 +421,7 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
     uint64_t FirstGraphicsKey = 0;
     uint64_t FirstMeshletKey = 0;
     const auto FirstCreateStatus = CreatePersistentTestPipelines(
-        EArdaBackendType::Vulkan, FirstComputeKey, FirstGraphicsKey,
+        "native-vulkan", FirstComputeKey, FirstGraphicsKey,
         &FirstMeshletKey);
     ASSERT_TRUE(FirstCreateStatus)
         << FirstCreateStatus.mMessage.c_str();
@@ -441,7 +440,7 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
     uint64_t ReloadedGraphicsKey = 0;
     uint64_t ReloadedMeshletKey = 0;
     const auto ReloadedCreateStatus = CreatePersistentTestPipelines(
-        EArdaBackendType::Vulkan,
+        "native-vulkan",
         ReloadedComputeKey,
         ReloadedGraphicsKey,
         &ReloadedMeshletKey);
@@ -472,13 +471,13 @@ TEST(ArdaPipelineStateCache, CachesPrecachesEvictsAndReportsFailures)
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
         auto ShaderA = CreateTestShader(
-            *Device, GetBackendConfiguration().mBackend, "ArdaShaderStructTest",
+            *Device, GetBackendConfiguration().mBackendName.c_str(), "ArdaShaderStructTest",
             "ShaderStructTestCS", EArdaRHIShaderStage::Compute);
         auto ShaderB = CreateTestShader(
-            *Device, GetBackendConfiguration().mBackend, "ArdaShaderStructTest",
+            *Device, GetBackendConfiguration().mBackendName.c_str(), "ArdaShaderStructTest",
             "ShaderStructTestCS", EArdaRHIShaderStage::Compute);
         auto ShaderC = CreateTestShader(
-            *Device, GetBackendConfiguration().mBackend, "ArdaShaderStructTest",
+            *Device, GetBackendConfiguration().mBackendName.c_str(), "ArdaShaderStructTest",
             "ShaderStructTestCS", EArdaRHIShaderStage::Compute);
         ASSERT_TRUE(ShaderA);
         ASSERT_TRUE(ShaderB);
@@ -580,10 +579,10 @@ TEST(ArdaPipelineStateCache, ResolvesFramebufferFormatsAndRejectsMismatches)
     {
         FArdaRHIDeviceRef Device = GetDevice();
         auto VertexShader = CreateTestShader(
-            *Device, GetBackendConfiguration().mBackend, "ArdaPipelineStateTestVS",
+            *Device, GetBackendConfiguration().mBackendName.c_str(), "ArdaPipelineStateTestVS",
             "PipelineStateTestVS", EArdaRHIShaderStage::Vertex);
         auto PixelShader = CreateTestShader(
-            *Device, GetBackendConfiguration().mBackend, "ArdaPipelineStateTestPS",
+            *Device, GetBackendConfiguration().mBackendName.c_str(), "ArdaPipelineStateTestPS",
             "PipelineStateTestPS", EArdaRHIShaderStage::Pixel);
         ASSERT_TRUE(VertexShader);
         ASSERT_TRUE(PixelShader);
@@ -738,11 +737,11 @@ TEST(ArdaPipelineStateCache, CachesPrecachesBindsAndEvictsMeshletPipelines)
 
     {
         auto MeshShader = CreateTestShader(
-            *Device, GetBackendConfiguration().mBackend,
+            *Device, GetBackendConfiguration().mBackendName.c_str(),
             "ArdaMeshPipelineTestMS", "MeshPipelineTestMS",
             EArdaRHIShaderStage::Mesh);
         auto PixelShader = CreateTestShader(
-            *Device, GetBackendConfiguration().mBackend,
+            *Device, GetBackendConfiguration().mBackendName.c_str(),
             "ArdaMeshPipelineTestPS", "MeshPipelineTestPS",
             EArdaRHIShaderStage::Pixel);
         ASSERT_TRUE(MeshShader) << MeshShader.mStatus.mMessage.c_str();
@@ -857,7 +856,7 @@ TEST(ArdaPipelineStateCache, DeterministicLruKeepsMostRecentlyUsedEntry)
         for (auto& Initializer : Initializers)
         {
             auto Shader = CreateTestShader(
-                *Device, GetBackendConfiguration().mBackend,
+                *Device, GetBackendConfiguration().mBackendName.c_str(),
                 "ArdaShaderStructTest", "ShaderStructTestCS",
                 EArdaRHIShaderStage::Compute);
             ASSERT_TRUE(Shader);
@@ -925,7 +924,7 @@ TEST(ArdaPipelineStateCache, ConcurrentSameKeyCreatesOneOuterEntry)
     {
         FArdaRHIDeviceRef Device = GetDevice();
         auto Shader = CreateTestShader(
-            *Device, GetBackendConfiguration().mBackend,
+            *Device, GetBackendConfiguration().mBackendName.c_str(),
             "ArdaShaderStructTest", "ShaderStructTestCS",
             EArdaRHIShaderStage::Compute);
         ASSERT_TRUE(Shader);

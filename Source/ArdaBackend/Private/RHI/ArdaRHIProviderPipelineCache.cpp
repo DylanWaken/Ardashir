@@ -20,14 +20,14 @@ namespace arda::rhi::provider::pipeline_cache
     namespace
     {
         constexpr uint64_t Magic = 0x45484341434F5350ull; // "PSOCACHE"
-        constexpr uint32_t Schema = 3;
+        constexpr uint32_t Schema = 4;
         std::atomic_uint64_t TempCounter{ 0 };
 
         struct FBlobHeader
         {
             uint64_t mMagic = Magic;
             uint32_t mSchema = Schema;
-            uint32_t mBackend = 0;
+            uint32_t mReserved = 0;
             uint64_t mBackendHash = 0;
             uint64_t mPayloadSize = 0;
         };
@@ -81,7 +81,6 @@ namespace arda::rhi::provider::pipeline_cache
     bool ReadBlob(
         const std::filesystem::path& Path,
         const eastl::string& BackendName,
-        backend::EArdaBackendType Backend,
         std::vector<uint8_t>& Payload)
     {
         Payload.clear();
@@ -95,7 +94,7 @@ namespace arda::rhi::provider::pipeline_cache
         FBlobHeader Header;
         Input.read(reinterpret_cast<char*>(&Header), sizeof(Header));
         if (!Input || Header.mMagic != Magic || Header.mSchema != Schema ||
-            Header.mBackend != static_cast<uint32_t>(Backend) ||
+            Header.mReserved != 0 ||
             Header.mBackendHash != StableNameHash(BackendName) ||
             Header.mPayloadSize > MaxPayloadSize ||
             FileSize != sizeof(Header) + Header.mPayloadSize)
@@ -118,7 +117,6 @@ namespace arda::rhi::provider::pipeline_cache
     bool WriteBlob(
         const std::filesystem::path& Path,
         const eastl::string& BackendName,
-        backend::EArdaBackendType Backend,
         const std::vector<uint8_t>& Payload)
     {
         if (Payload.size() > MaxPayloadSize || Path.empty())
@@ -135,7 +133,6 @@ namespace arda::rhi::provider::pipeline_cache
         {
             std::ofstream Output(Temporary, std::ios::binary | std::ios::trunc);
             FBlobHeader Header;
-            Header.mBackend = static_cast<uint32_t>(Backend);
             Header.mBackendHash = StableNameHash(BackendName);
             Header.mPayloadSize = Payload.size();
             Output.write(reinterpret_cast<const char*>(&Header), sizeof(Header));

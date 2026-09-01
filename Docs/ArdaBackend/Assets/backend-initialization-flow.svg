@@ -74,7 +74,7 @@
   <text class="tag" x="738" y="366">PRIVATE IMPLEMENTATION DETAIL</text>
   <text class="label" x="738" y="385">PublishInitializedDevice</text>
   <text class="small" x="738" y="403">FArdaDeviceContext: device, module name,</text>
-  <text class="small" x="738" y="420">compatibility class, queue capabilities</text>
+  <text class="small" x="738" y="420">module identity, runtime capabilities</text>
   <path class="output" d="M560 391 H624"/>
 
   <rect class="data" x="628" y="476" width="220" height="62" rx="8"/>

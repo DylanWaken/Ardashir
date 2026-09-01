@@ -33,7 +33,6 @@ namespace
         if (Modules.empty())
             return false;
         Configuration.mBackendName = Modules.front().mName;
-        Configuration.mBackend = Modules.front().mBackendType;
         return arda::backend::ConfigureBackend(Configuration);
     }
 
@@ -2098,13 +2097,11 @@ TEST(ArdaRenderGraph, FrameTemporaryResourcesAndPassBindingsAreReleased)
     size_t TestedBackends = 0;
     for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
     {
-        if (Module.mBackendType != EArdaBackendType::D3D12 &&
-            Module.mBackendType != EArdaBackendType::Vulkan)
+        if (!Module.mbSupportsOwnedDevice)
             continue;
         ShutdownBackend();
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module.mName;
-        Configuration.mBackend = Module.mBackendType;
         Configuration.mbEnableValidation = false;
         Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -2222,8 +2219,7 @@ TEST(ArdaRenderGraph, ExecutesComplexGraphFormationOnEveryNativeBackend)
     size_t TestedBackends = 0;
     for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
     {
-        if (Module.mBackendType != EArdaBackendType::D3D12 &&
-            Module.mBackendType != EArdaBackendType::Vulkan)
+        if (!Module.mbSupportsOwnedDevice)
         {
             continue;
         }
@@ -2232,7 +2228,6 @@ TEST(ArdaRenderGraph, ExecutesComplexGraphFormationOnEveryNativeBackend)
         FARDGCollectingDiagnosticCallback Diagnostics;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module.mName;
-        Configuration.mBackend = Module.mBackendType;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -2518,8 +2513,7 @@ TEST(ArdaRenderGraph, ConservativeBarrierCheckpointsMatchEveryNativeBackend)
     size_t TestedBackends = 0;
     for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
     {
-        if (Module.mBackendType != EArdaBackendType::D3D12 &&
-            Module.mBackendType != EArdaBackendType::Vulkan)
+        if (!Module.mbSupportsOwnedDevice)
         {
             continue;
         }
@@ -2528,7 +2522,6 @@ TEST(ArdaRenderGraph, ConservativeBarrierCheckpointsMatchEveryNativeBackend)
         FARDGCollectingDiagnosticCallback Diagnostics;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module.mName;
-        Configuration.mBackend = Module.mBackendType;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -2616,14 +2609,12 @@ TEST(ArdaRenderGraph, HostDeviceCopyNodesExecuteBlockingAndAsyncOnEveryBackend)
     size_t TestedBackends = 0;
     for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
     {
-        if (Module.mBackendType != EArdaBackendType::D3D12 &&
-            Module.mBackendType != EArdaBackendType::Vulkan)
+        if (!Module.mbSupportsOwnedDevice)
             continue;
         SCOPED_TRACE(Module.mName.c_str());
         ShutdownBackend();
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module.mName;
-        Configuration.mBackend = Module.mBackendType;
         Configuration.mbEnableValidation = false;
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;

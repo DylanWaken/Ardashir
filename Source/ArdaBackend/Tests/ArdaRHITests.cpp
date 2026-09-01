@@ -18,7 +18,6 @@ namespace
         if (Modules.empty())
             return false;
         Configuration.mBackendName = Modules.front().mName;
-        Configuration.mBackend = Modules.front().mBackendType;
         return arda::backend::ConfigureBackend(Configuration);
     }
 
@@ -427,8 +426,7 @@ TEST(ArdaRHI, NativeBufferImportValidationIsDeterministic)
     auto WrongType = Null;
     WrongType.mNativeObject = 1;
     WrongType.mNativeType =
-        backend::GetBackendConfiguration().mBackend ==
-            backend::EArdaBackendType::D3D12
+        backend::GetBackendConfiguration().mBackendName == "native-d3d12"
         ? rhi::EArdaRHINativeResourceType::VulkanBuffer
         : rhi::EArdaRHINativeResourceType::D3D12Resource;
     auto WrongTypeResult = Device->ImportNativeBuffer(WrongType);

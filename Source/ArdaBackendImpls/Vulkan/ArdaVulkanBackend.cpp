@@ -1667,7 +1667,7 @@ namespace arda::backend
                     std::error_code Error;
                     const bool bExists = std::filesystem::exists(Path, Error);
                     const bool bValid = bExists && pipeline_cache::ReadBlob(
-                        Path, BackendName, EArdaBackendType::Vulkan, Payload);
+                        Path, BackendName, Payload);
                     vk::PipelineCacheCreateInfo CacheInfo;
                     if (bValid)
                     {
@@ -4992,7 +4992,7 @@ namespace arda::backend
                     if (!pipeline_cache::WriteBlob(
                             pipeline_cache::MakePath(
                                 mPipelineCacheDirectory, "native-vulkan"),
-                            "native-vulkan", EArdaBackendType::Vulkan, Payload))
+                            "native-vulkan", Payload))
                     {
                         pipeline_cache::Message(mDiagnosticCallback,
                             EArdaDiagnosticSeverity::Warning,
@@ -8564,7 +8564,6 @@ namespace arda::backend
             {
                 mDescriptor.mName = "native-vulkan";
                 mDescriptor.mDisplayName = "Native Vulkan 1.4 (headers 1.4.357)";
-                mDescriptor.mBackendType = EArdaBackendType::Vulkan;
                 mDescriptor.mShaderBinaryFormat = EArdaShaderBinaryFormat::Spirv;
                 mDescriptor.mShaderArtifactExtension = ".spv";
                 mDescriptor.mShaderCompilerIdentity = "dxc-vulkan1.3-native-v2";

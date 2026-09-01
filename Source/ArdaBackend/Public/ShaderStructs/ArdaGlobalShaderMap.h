@@ -60,13 +60,6 @@ namespace arda::backend
         }
     };
 
-    /**
-     * Returns the centralized artifact extension for a backend.
-     * @param Backend Backend whose artifact extension is requested.
-     * @return Stable null-terminated artifact extension.
-     */
-    [[nodiscard]] const char* GetShaderArtifactExtension(EArdaBackendType Backend) noexcept;
-
     /** Returns the artifact extension declared by an exact backend module. */
     [[nodiscard]] const char* GetShaderArtifactExtension(const char* BackendName) noexcept;
 

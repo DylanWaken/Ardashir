@@ -94,28 +94,9 @@ namespace arda::backend
         [[nodiscard]] uint64_t GetIdentityHash() const noexcept { return mIdentityHash; }
         /** @return Number of encoded permutations declared by the shader class. */
         [[nodiscard]] uint32_t GetPermutationCount() const noexcept { return mPermutationCount; }
-        /**
-         * Evaluates the shader class's optional compile policy.
-         * @param Backend Target graphics backend.
-         * @param PermutationId Encoded permutation identifier.
-         * @return True when the valid permutation should be compiled.
-         */
-        [[nodiscard]] bool ShouldCompilePermutation(
-            EArdaBackendType Backend,
-            uint32_t PermutationId) const;
         /** Evaluates compile policy for an exact backend-module target. */
         [[nodiscard]] bool ShouldCompilePermutation(
             const FArdaShaderTarget& Target,
-            uint32_t PermutationId) const;
-        /**
-         * Builds deterministic definitions without invoking an external compiler.
-         * This is the compiler-integration hook point for a future process layer.
-         * @param Backend Target graphics backend.
-         * @param PermutationId Encoded permutation identifier.
-         * @return Compilation environment containing dimension and class definitions.
-         */
-        [[nodiscard]] FArdaShaderCompileEnvironment BuildCompilationEnvironment(
-            EArdaBackendType Backend,
             uint32_t PermutationId) const;
         /** Builds definitions for an exact backend-module target. */
         [[nodiscard]] FArdaShaderCompileEnvironment BuildCompilationEnvironment(

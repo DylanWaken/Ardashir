@@ -2,6 +2,7 @@
 
 #include "ArdaARDGExampleConfig.h"
 #include "ArdaBackend.h"
+#include "ArdaBackendProvider.h"
 #include "ArdaSwapChain.h"
 #include "ArdaGlfwWindow.h"
 #include "ArdaTerrainRenderer.h"
@@ -20,7 +21,7 @@ namespace arda::tests::ardg_example
 
         struct FArdaOptions
         {
-            backend::EArdaBackendType mBackend = backend::DefaultBackend;
+            eastl::string mBackendName;
             uint32_t mFrameLimit = 0;
             uint32_t mWindowWidth = 1280;
             uint32_t mWindowHeight = 720;
@@ -162,11 +163,11 @@ namespace arda::tests::ardg_example
                     const eastl::string_view backendArgument(arguments[++index]);
                     if (backendArgument == "d3d12")
                     {
-                        options.mBackend = backend::EArdaBackendType::D3D12;
+                        options.mBackendName = "native-d3d12";
                     }
                     else if (backendArgument == "vulkan")
                     {
-                        options.mBackend = backend::EArdaBackendType::Vulkan;
+                        options.mBackendName = "native-vulkan";
                     }
                     else
                     {
@@ -237,10 +238,13 @@ namespace arda::tests::ardg_example
                 return EXIT_FAILURE;
             }
 
-            const std::vector<backend::EArdaBackendType> backends = {
-                backend::EArdaBackendType::D3D12,
-                backend::EArdaBackendType::Vulkan
-            };
+            eastl::vector<eastl::string> backends;
+            for (const backend::FArdaBackendModuleDescriptor& module :
+                 backend::EnumerateBackendModules())
+            {
+                if (!module.mShaderArtifactExtension.empty())
+                    backends.push_back(module.mName);
+            }
             const backend::FArdaShaderCompileResult result =
                 backend::CompileRegisteredShaderArtifacts(
                     outputDirectory,
@@ -256,7 +260,7 @@ namespace arda::tests::ardg_example
                     "Shader cook diagnostic: shader=%s backend=%s "
                     "permutation=%u source=%s output=%s message=%s",
                     diagnostic.mShaderType.c_str(),
-                    backend::ToString(diagnostic.mBackend),
+                    diagnostic.mBackendName.c_str(),
                     diagnostic.mPermutationId,
                     sourcePath.c_str(),
                     outputPath.c_str(),
@@ -322,7 +326,7 @@ namespace arda::tests::ardg_example
 
             FArdaMessageCallback messageCallback;
             backend::FArdaBackendConfiguration configuration;
-            configuration.mBackend = options.mBackend;
+            configuration.mBackendName = options.mBackendName;
             configuration.mbEnableValidation = true;
             configuration.mMessageCallback = &messageCallback;
             configuration.mShaderCompilationMode = options.mShaderMode;

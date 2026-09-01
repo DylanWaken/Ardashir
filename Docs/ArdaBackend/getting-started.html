@@ -115,22 +115,19 @@
 
         <section id="selection">
           <h2>Selecting a backend</h2>
-          <p><a href="api-reference.html#api-arda-backend-defaultbackend-def1cc2f"><code>DefaultBackend</code></a> is a compatibility-class preference: D3D12 on Windows and Vulkan elsewhere. Initialization still requires at least one linked module advertising that class. D3D12 is rejected on non-Windows platforms; Vulkan can be unavailable because its module, loader, driver, required feature, extension, or queue family is missing.</p>
+          <p>An empty <code>FArdaBackendConfiguration::mBackendName</code> selects the globally highest-priority registered module. Initialization still requires at least one linked module, and any implementation can be unavailable because its module, loader, driver, required features, or platform integration is missing.</p>
 
           <h3>Selection policy</h3>
           <ol>
-            <li>Use an explicit stable module name for deterministic production or engine integration; use a compatibility-class override when any conforming implementation is acceptable.</li>
-            <li>Use the platform default when no override is supplied.</li>
+            <li>Use an explicit stable module name for deterministic production or engine integration.</li>
+            <li>Leave the name empty when global module priority is the intended product policy.</li>
             <li>Log the requested backend before initialization and the published backend after success.</li>
             <li>Do not silently switch APIs after an arbitrary failure unless product policy explicitly permits it; fallback can conceal driver defects and produce different artifacts or behavior.</li>
           </ol>
 
-          <pre><code>arda::backend::EArdaBackendType ChooseBackend(bool requestVulkan)
+          <pre><code>const char* ChooseBackend(bool requestPortableNativeModule)
 {
-    using arda::backend::EArdaBackendType;
-    return requestVulkan
-        ? EArdaBackendType::Vulkan
-        : arda::backend::DefaultBackend;
+    return requestPortableNativeModule ? "native-vulkan" : "native-d3d12";
 }</code></pre>
 
           <pre><code>// Exact implementation selection, independent of priority.
@@ -141,12 +138,12 @@ config.mBackendName = "native-vulkan";
 for (const auto&amp; module : arda::backend::EnumerateBackendModules())
     Log(module.mName.c_str());</code></pre>
 
-          <p>The selected module declares its shader representation and artifact extension. The sample D3D12 module consumes DXIL and the sample Vulkan module consumes SPIR-V; a custom module may declare a backend-defined format and compiler service. Confirm deployment includes artifacts for the actual module, not only its coarse compatibility class.</p>
+          <p>The selected module declares its shader representation and artifact extension. The sample native modules consume DXIL or SPIR-V; another module may declare a backend-defined format and compiler service. Confirm deployment includes artifacts for the exact selected module.</p>
         </section>
 
         <section id="configuration">
           <h2>Configuration strategy</h2>
-          <p><a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> replaces process-wide configuration before a backend runtime exists. It selects an optional exact <code>mBackendName</code>, a fallback compatibility class, device source, validation and diagnostics, registered-shader timing, and persistent shader/pipeline cache directories. Relative cache paths are resolved to stable absolute paths when accepted. The shader path must be non-empty; an empty pipeline path explicitly disables native pipeline-cache disk I/O.</p>
+          <p><a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> replaces process-wide configuration before a backend runtime exists. It selects an optional exact <code>mBackendName</code>, device source, validation and diagnostics, registered-shader timing, and persistent shader/pipeline cache directories. Relative cache paths are resolved to stable absolute paths when accepted. The shader path must be non-empty; an empty pipeline path explicitly disables native pipeline-cache disk I/O.</p>
 
           <h3>Validation policy</h3>
           <p>Validation defaults to enabled. Keep it enabled in development, continuous integration smoke tests, and reproducible diagnostic builds. Production shipping policy may disable it for performance and external-dependency reasons, but a validation-enabled build should remain available for field reproduction.</p>
@@ -156,12 +153,12 @@ for (const auto&amp; module : arda::backend::EnumerateBackendModules())
           <p><a href="api-reference.html#api-arda-backend-iardadiagnosticcallback-f00c8ba0"><code>IArdaDiagnosticCallback</code></a> is caller-owned. The pointer stored in configuration must remain valid for as long as it may receive backend messages. A process service or an object that outlives backend shutdown is appropriate; a stack-local callback that dies after a helper returns is not.</p>
 
           <pre><code>arda::backend::FArdaBackendConfiguration BuildConfiguration(
-    arda::backend::EArdaBackendType backend,
+    const char* backendName,
     bool enableValidation,
     arda::backend::IArdaDiagnosticCallback&amp; diagnostics)
 {
     arda::backend::FArdaBackendConfiguration config;
-    config.mBackend = backend;
+    config.mBackendName = backendName;
     config.mbEnableValidation = enableValidation;
     config.mMessageCallback = &amp;diagnostics;
     config.mShaderCompilationMode =
@@ -193,11 +190,11 @@ for (const auto&amp; module : arda::backend::EnumerateBackendModules())
             <li><strong>Scan and freeze shader sources.</strong> Virtual mappings become an immutable manifest; collisions and invalid paths fail before device publication.</li>
             <li><strong>Commit shader types.</strong> Deferred global-shader registrations are validated into a deterministic set.</li>
             <li><strong>Ensure startup shaders when selected.</strong> Every active-backend registered permutation is checked against its persistent sidecar and compiled if policy allows. Failure occurs before a native device is created.</li>
-            <li><strong>Select and create the linked backend.</strong> Core resolves the exact stable module name or highest-priority compatible descriptor, validates the requested device source, and asks the module to allocate its backend runtime and RHI provider.</li>
+            <li><strong>Select and create the linked backend.</strong> Core resolves the exact stable module name or globally highest-priority descriptor, validates the requested device source, and asks the module to allocate its backend runtime and RHI provider.</li>
             <li><strong>Initialize implementation state.</strong> The module creates or adopts its native/engine device and queues, checks required capabilities, and constructs the opaque RHI device.</li>
-            <li><strong>Load native pipeline-cache data.</strong> The checked-in modules validate their backend-tagged wrapper, initialize a D3D12 pipeline library or Vulkan pipeline cache, safely fall back to an empty cache, and report support through <code>FArdaRHICapabilities::mbPipelineCachePersistence</code>.</li>
+            <li><strong>Load native pipeline-cache data.</strong> The checked-in modules validate a wrapper keyed by exact module name, initialize their provider cache, safely fall back to an empty cache, and report support through <code>FArdaRHICapabilities::mbPipelineCachePersistence</code>.</li>
             <li><strong>Create presentation state, if requested.</strong> The window surface and swap chain must succeed before publication.</li>
-            <li><strong>Publish.</strong> Device, selected module name, compatibility class, source, and queue capabilities become the stable <a href="api-reference.html#api-arda-backend-fardadevicecontext-ceb32bdc"><code>FArdaDeviceContext</code></a>; initialized state is released atomically afterward.</li>
+            <li><strong>Publish.</strong> Device, selected module name, source, and runtime capabilities become stable process state; initialized state is released atomically afterward.</li>
           </ol>
 
           <p>This ordering is a design derivation: publishing early would force every caller to handle half-initialized states. A late commit point makes success mean “the complete selected startup mode is ready.”</p>
@@ -214,7 +211,6 @@ int RunHeadlessGpuJob()
     using namespace arda::backend;
 
     FArdaBackendConfiguration config;
-    config.mBackend = DefaultBackend;
     config.mbEnableValidation = true;
     config.mShaderCompilationMode = EArdaShaderCompilationMode::OnDemand;
     config.mShaderCacheDirectory = GetWritableUserCache() / "MyTool" / "shaders";
@@ -366,7 +362,7 @@ arda::rhi::FArdaRHIDeviceRef device = arda::backend::GetDevice();
 
           <h3>Review and checkpoint questions</h3>
           <ol>
-            <li>Why does <code>DefaultBackend</code> not guarantee successful initialization?</li>
+            <li>Why does priority-based module selection not guarantee successful initialization?</li>
             <li>When should a tool use headless startup rather than presentation startup?</li>
             <li>Why must the diagnostic callback outlive initialization?</li>
             <li>What is the commit point of initialization, and what problem does it prevent?</li>

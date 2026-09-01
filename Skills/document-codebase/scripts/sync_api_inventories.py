@@ -41,8 +41,12 @@ CONTRACT_HEADERS = (
 )
 
 COMPLETE_BACKEND_SOURCES = {
+    "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
+    "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
+    "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
+    "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
 }
 
 CALLABLE_KINDS = {

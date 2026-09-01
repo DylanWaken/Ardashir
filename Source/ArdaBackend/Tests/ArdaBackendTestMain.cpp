@@ -11,8 +11,8 @@ namespace
     bool CompileOnlyForD3D12(
         const arda::backend::FArdaShaderPermutationParameters& Parameters)
     {
-        return Parameters.mBackend ==
-            arda::backend::EArdaBackendType::D3D12;
+        return Parameters.mBinaryFormat ==
+            arda::backend::EArdaShaderBinaryFormat::Dxil;
     }
 
     class FArdaRuntimeShaderEnvironment final : public testing::Environment

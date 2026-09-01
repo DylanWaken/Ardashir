@@ -80,20 +80,28 @@ namespace arda::backend
             bool bValidateRuntimeProvider)
         {
             private_api::RegisterLinkedBackendModules();
+            if (Configuration.mBackendName.empty() &&
+                Configuration.mDeviceSource == EArdaDeviceSource::ExternalProvider &&
+                State.mExternalDeviceProvider)
+            {
+                const char* ProviderBackendName =
+                    State.mExternalDeviceProvider->GetBackendName();
+                if (ProviderBackendName && ProviderBackendName[0])
+                    Configuration.mBackendName = ProviderBackendName;
+            }
             OutModule = Configuration.mBackendName.empty()
-                ? FindDefaultBackendModule(Configuration.mBackend)
+                ? FindDefaultBackendModule()
                 : FindBackendModule(Configuration.mBackendName.c_str());
             if (!OutModule)
             {
                 State.mError = Configuration.mBackendName.empty()
-                    ? "No linked backend module supports the configured graphics API."
+                    ? "No linked backend module is registered in this build."
                     : "The configured backend module is not registered in this build.";
                 return false;
             }
             const FArdaBackendModuleDescriptor& ModuleDescriptor =
                 OutModule->GetDescriptor();
             Configuration.mBackendName = ModuleDescriptor.mName;
-            Configuration.mBackend = ModuleDescriptor.mBackendType;
             const bool bExternal = Configuration.mDeviceSource ==
                 EArdaDeviceSource::ExternalProvider;
             if ((bExternal && !ModuleDescriptor.mbSupportsExternalDevice) ||
@@ -149,17 +157,15 @@ namespace arda::backend
                         "ExternalProvider device source requires a registered provider before startup shader compilation.";
                     return false;
                 }
-                if (State.mExternalDeviceProvider->GetBackendType() !=
-                    Configuration.mBackend)
-                {
-                    State.mError =
-                        "The registered external device provider backend does not match the configured backend.";
-                    return false;
-                }
                 const char* ProviderBackendName =
                     State.mExternalDeviceProvider->GetBackendName();
-                if (ProviderBackendName && ProviderBackendName[0] &&
-                    Configuration.mBackendName != ProviderBackendName)
+                if (!ProviderBackendName || !ProviderBackendName[0])
+                {
+                    State.mError =
+                        "The external device provider must identify an exact registered backend module.";
+                    return false;
+                }
+                if (Configuration.mBackendName != ProviderBackendName)
                 {
                     State.mError =
                         "The external device provider requires a different backend module.";
@@ -255,7 +261,7 @@ namespace arda::backend
             const FArdaShaderCompileResult Result =
                 EnsureRegisteredShaderArtifacts(
                     Configuration.mShaderCacheDirectory,
-                    Configuration.mBackend);
+                    Configuration.mBackendName.c_str());
             if (Result)
                 return true;
             State.mError = "Startup shader compilation failed";
@@ -308,14 +314,6 @@ namespace arda::backend
         state.mConfiguration = resolvedConfiguration;
         state.mError.clear();
         return true;
-    }
-
-    bool ConfigureBackend(EArdaBackendType backend)
-    {
-        auto configuration = GetBackendConfiguration();
-        configuration.mBackend = backend;
-        configuration.mBackendName.clear();
-        return ConfigureBackend(configuration);
     }
 
     bool ConfigureBackend(const char* BackendName)
@@ -493,20 +491,6 @@ namespace arda::backend
         auto& state = GetState();
         std::lock_guard<std::mutex> lock(state.mMutex);
         state.mError = Error ? Error : "";
-    }
-
-    const char* ToString(EArdaBackendType backend) noexcept
-    {
-        switch (backend)
-        {
-        case EArdaBackendType::D3D12:
-            return "D3D12";
-        case EArdaBackendType::Vulkan:
-            return "Vulkan";
-        case EArdaBackendType::Custom:
-            return "Custom";
-        }
-        return "Unknown";
     }
 
     const char* GetModuleName() noexcept

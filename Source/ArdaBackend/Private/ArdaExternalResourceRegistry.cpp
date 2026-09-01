@@ -65,14 +65,8 @@ namespace arda::backend
             }
             const FArdaBackendConfiguration& Configuration =
                 GetBackendConfiguration();
-            if (Provider->GetBackendType() != Configuration.mBackend)
-            {
-                return { {}, rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::WrongDevice,
-                    "External resource provider backend does not match the active device.") };
-            }
             const char* RequiredBackendName = Provider->GetBackendName();
-            if (RequiredBackendName && RequiredBackendName[0] &&
+            if (!RequiredBackendName || !RequiredBackendName[0] ||
                 Configuration.mBackendName != RequiredBackendName)
             {
                 return { {}, rhi::FArdaRHIStatus::Error(

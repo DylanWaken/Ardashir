@@ -94,8 +94,6 @@ namespace arda::backend
     {
         /** Owned immutable shader-type snapshot driving the job. */
         FArdaShaderType mType;
-        /** Compatibility class retained for existing permutation policies. */
-        EArdaBackendType mBackend = DefaultBackend;
         /** Immutable module target selected for this job. */
         FArdaShaderTarget mTarget;
         /** Encoded permutation identifier. */
@@ -125,8 +123,6 @@ namespace arda::backend
         EArdaShaderCompileError mCode = EArdaShaderCompileError::None;
         /** Registered shader type name, when applicable. */
         eastl::string mShaderType;
-        /** Target backend. */
-        EArdaBackendType mBackend = DefaultBackend;
         /** Stable backend module associated with the diagnostic. */
         eastl::string mBackendName;
         /** Encoded permutation identifier. */
@@ -176,93 +172,25 @@ namespace arda::backend
     /** Restores development defaults and build/environment executable resolution. */
     void ResetShaderCompilerConfiguration();
 
-    /**
-     * Enumerates deterministic compile jobs from committed static registrations.
-     * The cache deliberately hashes every frozen shader-source file, so unrelated
-     * include/source edits may conservatively invalidate all jobs.
-     * @param OutputDirectory Directory receiving backend artifacts.
-     * @param Backends Compatibility classes resolved to their default registered modules.
-     * @return Jobs, skipped count, or registration/source/input diagnostics.
-     */
-    [[nodiscard]] FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(
-        const std::filesystem::path& OutputDirectory,
-        const std::vector<EArdaBackendType>& Backends);
-
-    /** Builds jobs for exact registered module names without consulting the active device. */
+    /** Builds deterministic jobs for exact registered module names. */
     [[nodiscard]] FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(
         const std::filesystem::path& OutputDirectory,
         const eastl::vector<eastl::string>& BackendNames);
-
-    /**
-     * Explicitly cooks all requested registered jobs, bypassing cache compatibility.
-     * A deterministic ArdaShaderManifest.json is atomically written only after all
-     * jobs succeed. Publication is serialized within this process and uses rollback
-     * backups; concurrent writers in other processes are handled on a best-effort
-     * basis because no portable cross-process lock is required.
-     * @param OutputDirectory Directory receiving cooked artifacts and manifest.
-     * @param Backends Explicit target backends.
-     * @return Aggregate compilation counts, jobs, and diagnostics.
-     */
-    [[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
-        const std::filesystem::path& OutputDirectory,
-        const std::vector<EArdaBackendType>& Backends);
 
     /** Cooks artifacts for exact registered module names. */
     [[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
         const std::filesystem::path& OutputDirectory,
         const eastl::vector<eastl::string>& BackendNames);
 
-    /**
-     * Explicitly cooks registered jobs for one compatibility class.
-     * @param OutputDirectory Directory receiving cooked artifacts and manifest.
-     * @param Backend Compatibility class resolved to its default registered module.
-     * @return Aggregate compilation counts, jobs, and diagnostics.
-     */
-    [[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
-        const std::filesystem::path& OutputDirectory,
-        EArdaBackendType Backend);
-
     /** Cooks artifacts for one exact registered module. */
     [[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
         const std::filesystem::path& OutputDirectory,
         const char* BackendName);
 
-    /**
-     * Ensures every registered permutation selected for one compatibility class.
-     *
-     * Each selected permutation uses EnsureRegisteredShaderArtifact, preserving
-     * persistent .arda-key cache hits across application executions. This is
-     * not a force-cook operation and does not write a cook manifest.
-     * @param OutputDirectory Persistent runtime shader cache directory.
-     * @param Backend Compatibility class resolved to its default registered module.
-     * @return Aggregate jobs, cache hits, compilations, skips, and diagnostics.
-     */
-    [[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(
-        const std::filesystem::path& OutputDirectory,
-        EArdaBackendType Backend);
-
     /** Ensures all artifacts for one exact registered module. */
     [[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(
         const std::filesystem::path& OutputDirectory,
         const char* BackendName);
-
-    /**
-     * Ensures one artifact for development global-map loading.
-     * Existing artifacts without an .arda-key sidecar remain accepted as legacy
-     * prebuilt bytecode. Missing/stale artifacts compile only when configured;
-     * otherwise this behaves as shipping-style bytecode-only loading. Same-process
-     * writes to one output are serialized; cross-process exclusion is best-effort.
-     * @param Type Registered shader type.
-     * @param Backend Target graphics backend.
-     * @param PermutationId Encoded permutation identifier.
-     * @param OutputDirectory Directory containing runtime artifacts.
-     * @return Compilation, cache-hit, compatibility, or actionable failure result.
-     */
-    [[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifact(
-        const FArdaShaderType& Type,
-        EArdaBackendType Backend,
-        uint32_t PermutationId,
-        const std::filesystem::path& OutputDirectory);
 
     /** Ensures one artifact for an exact registered module. */
     [[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifact(

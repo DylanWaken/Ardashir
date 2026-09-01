@@ -52,8 +52,6 @@ namespace arda::backend
         eastl::string mName;
         /** Human-readable module name used by diagnostics and tools. */
         eastl::string mDisplayName;
-        /** Graphics API compatibility class used by existing shader permutations. */
-        EArdaBackendType mBackendType = DefaultBackend;
         /** Shader bytecode family accepted by the module. */
         EArdaShaderBinaryFormat mShaderBinaryFormat =
             EArdaShaderBinaryFormat::BackendDefined;
@@ -65,7 +63,7 @@ namespace arda::backend
         bool mbSupportsOwnedDevice = false;
         /** Whether the module can adopt a device supplied by an external provider. */
         bool mbSupportsExternalDevice = false;
-        /** Default-selection priority among modules for the same compatibility API. */
+        /** Default-selection priority among all registered backend modules. */
         int32_t mPriority = 0;
     };
 
@@ -74,8 +72,6 @@ namespace arda::backend
     {
         /** Stable module registry name. */
         eastl::string mBackendName;
-        /** Compatibility class exposed to shader permutation policy. */
-        EArdaBackendType mBackend = DefaultBackend;
         /** Bytecode family consumed by the module. */
         EArdaShaderBinaryFormat mBinaryFormat =
             EArdaShaderBinaryFormat::BackendDefined;
@@ -241,22 +237,16 @@ namespace arda::backend
      */
     [[nodiscard]] IArdaBackendModule* FindBackendModule(const char* Name) noexcept;
 
-    /**
-     * Selects the highest-priority module compatible with a graphics API.
-     * @param BackendType Compatibility API requested by legacy configuration.
-     * @return Non-owning module pointer, or null.
-     */
-    [[nodiscard]] IArdaBackendModule* FindDefaultBackendModule(
-        EArdaBackendType BackendType) noexcept;
+    /** @return The highest-priority registered backend module, or null. */
+    [[nodiscard]] IArdaBackendModule* FindDefaultBackendModule() noexcept;
 
     /** Resolves a registered module into an immutable shader target. */
     [[nodiscard]] bool ResolveShaderTarget(
         const char* BackendName,
         FArdaShaderTarget& OutTarget) noexcept;
 
-    /** Resolves the highest-priority module for a compatibility class. */
+    /** Resolves the highest-priority registered module into a shader target. */
     [[nodiscard]] bool ResolveDefaultShaderTarget(
-        EArdaBackendType BackendType,
         FArdaShaderTarget& OutTarget) noexcept;
 
     /** @return Copies of all registered descriptors in stable name order. */

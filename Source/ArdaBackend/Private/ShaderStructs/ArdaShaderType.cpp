@@ -131,15 +131,6 @@ namespace arda::backend
     }
 
     bool FArdaShaderType::ShouldCompilePermutation(
-        EArdaBackendType Backend,
-        uint32_t PermutationId) const
-    {
-        FArdaShaderTarget Target;
-        Target.mBackend = Backend;
-        return ShouldCompilePermutation(Target, PermutationId);
-    }
-
-    bool FArdaShaderType::ShouldCompilePermutation(
         const FArdaShaderTarget& Target,
         uint32_t PermutationId) const
     {
@@ -150,20 +141,10 @@ namespace arda::backend
         }
         FArdaShaderPermutationParameters Parameters;
         Parameters.mType = this;
-        Parameters.mBackend = Target.mBackend;
         Parameters.mBackendName = Target.mBackendName;
         Parameters.mBinaryFormat = Target.mBinaryFormat;
         Parameters.mPermutationId = PermutationId;
         return mShouldCompilePermutationFunction(Parameters);
-    }
-
-    FArdaShaderCompileEnvironment FArdaShaderType::BuildCompilationEnvironment(
-        EArdaBackendType Backend,
-        uint32_t PermutationId) const
-    {
-        FArdaShaderTarget Target;
-        Target.mBackend = Backend;
-        return BuildCompilationEnvironment(Target, PermutationId);
     }
 
     FArdaShaderCompileEnvironment FArdaShaderType::BuildCompilationEnvironment(
@@ -176,7 +157,6 @@ namespace arda::backend
         {
             FArdaShaderPermutationParameters Parameters;
             Parameters.mType = this;
-            Parameters.mBackend = Target.mBackend;
             Parameters.mBackendName = Target.mBackendName;
             Parameters.mBinaryFormat = Target.mBinaryFormat;
             Parameters.mPermutationId = PermutationId;

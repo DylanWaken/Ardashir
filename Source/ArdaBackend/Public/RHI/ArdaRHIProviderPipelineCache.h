@@ -31,12 +31,10 @@ namespace arda::rhi::provider::pipeline_cache
     [[nodiscard]] bool ReadBlob(
         const std::filesystem::path& Path,
         const eastl::string& BackendName,
-        backend::EArdaBackendType Backend,
         std::vector<uint8_t>& Payload);
 
     [[nodiscard]] bool WriteBlob(
         const std::filesystem::path& Path,
         const eastl::string& BackendName,
-        backend::EArdaBackendType Backend,
         const std::vector<uint8_t>& Payload);
 }

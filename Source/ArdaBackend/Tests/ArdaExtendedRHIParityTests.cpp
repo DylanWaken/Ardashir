@@ -213,14 +213,14 @@ namespace
     arda::rhi::TArdaRHIResult<arda::rhi::FArdaRHIShaderRef>
     CreateExtendedShader(
         arda::rhi::IArdaRHIDevice& Device,
-        arda::backend::EArdaBackendType Backend,
+        const char* BackendName,
         const char* Artifact,
         const char* EntryPoint,
         arda::rhi::EArdaRHIShaderStage Stage)
     {
         using namespace arda;
         const eastl::string FileName = eastl::string(Artifact) +
-            backend::GetShaderArtifactExtension(Backend);
+            backend::GetShaderArtifactExtension(BackendName);
         const std::vector<uint8_t> Bytecode =
             LoadExtendedShaderArtifact(FileName.c_str());
         if (Bytecode.empty())
@@ -244,11 +244,11 @@ namespace
     arda::rhi::TArdaRHIResult<arda::rhi::FArdaRHIShaderRef>
     CreateExtendedComputeShader(
         arda::rhi::IArdaRHIDevice& Device,
-        arda::backend::EArdaBackendType Backend)
+        const char* BackendName)
     {
         return CreateExtendedShader(
             Device,
-            Backend,
+            BackendName,
             "ArdaShaderStructTest",
             "ShaderStructTestCS",
             arda::rhi::EArdaRHIShaderStage::Compute);
@@ -307,7 +307,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = EArdaBackendType::D3D12;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -423,7 +422,6 @@ namespace
     }
 
     void VerifyExtendedCommands(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -437,7 +435,6 @@ namespace
 
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -534,7 +531,7 @@ namespace
         auto Arguments = Device->CreateBuffer(ArgumentsDesc);
         ASSERT_TRUE(Arguments);
 
-        auto Shader = CreateExtendedComputeShader(*Device, Backend);
+        auto Shader = CreateExtendedComputeShader(*Device, BackendName);
         ASSERT_TRUE(Shader) << Shader.mStatus.mMessage.c_str();
         FArdaRHIBindingLayoutDesc LayoutDesc;
         LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
@@ -742,7 +739,6 @@ namespace
     }
 
     void VerifyResolveAndPlaneTracking(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -755,7 +751,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -895,7 +890,6 @@ namespace
     }
 
     void VerifyExplicitHeapAliasing(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -908,7 +902,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -1017,7 +1010,6 @@ namespace
     }
 
     void VerifyBindlessDescriptorTable(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName,
         bool bDirectHeapIndexing = false)
     {
@@ -1031,7 +1023,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -1085,7 +1076,7 @@ namespace
             ASSERT_TRUE(Device->WriteDescriptorTable(Table.mValue, Item));
         }
 
-        auto Shader = CreateExtendedComputeShader(*Device, Backend);
+        auto Shader = CreateExtendedComputeShader(*Device, BackendName);
         ASSERT_TRUE(Shader) << Shader.mStatus.mMessage.c_str();
         FArdaRHIComputePipelineDesc PipelineDesc;
         PipelineDesc.mComputeShader = Shader.mValue;
@@ -1139,7 +1130,6 @@ namespace
     }
 
     void VerifyDirectResourceAndSamplerHeapIndexing(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -1150,7 +1140,6 @@ namespace
         FExtendedDiagnosticCallback Diagnostics;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -1249,7 +1238,7 @@ namespace
             SamplerTable.mValue, SamplerBinding));
 
         auto Shader = CreateExtendedShader(
-            *Device, Backend, "ArdaDirectHeapSamplerTest",
+            *Device, BackendName, "ArdaDirectHeapSamplerTest",
             "DirectHeapSamplerTestCS", EArdaRHIShaderStage::Compute);
         ASSERT_TRUE(Shader) << Shader.mStatus.mMessage.c_str();
         FArdaRHIComputePipelineDesc PipelineDesc;
@@ -1290,7 +1279,6 @@ namespace
     }
 
     void VerifyShaderBundleExecution(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -1300,7 +1288,6 @@ namespace
         FExtendedDiagnosticCallback Diagnostics;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -1312,7 +1299,7 @@ namespace
         ASSERT_TRUE(Device);
         ASSERT_TRUE(Device->QueryShaderBundleSupport());
 
-        auto Shader = CreateExtendedComputeShader(*Device, Backend);
+        auto Shader = CreateExtendedComputeShader(*Device, BackendName);
         ASSERT_TRUE(Shader) << Shader.mStatus.mMessage.c_str();
         FArdaRHIBindingLayoutDesc LayoutDesc;
         LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
@@ -1410,7 +1397,6 @@ namespace
         FExtendedDiagnosticCallback Diagnostics;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = "native-d3d12";
-        Configuration.mBackend = EArdaBackendType::D3D12;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -1426,7 +1412,7 @@ namespace
         ASSERT_TRUE(Device->QueryWorkGraphSupport());
 
         auto Shader = CreateExtendedShader(
-            *Device, EArdaBackendType::D3D12,
+            *Device, "native-d3d12",
             "ArdaWorkGraphTest", "WorkGraphMain",
             EArdaRHIShaderStage::WorkGraph);
         ASSERT_TRUE(Shader) << Shader.mStatus.mMessage.c_str();
@@ -1488,7 +1474,6 @@ namespace
     }
 
     void VerifyMeshPipelineCapabilityAndExecution(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -1501,7 +1486,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -1514,13 +1498,13 @@ namespace
 
         auto MeshShader = CreateExtendedShader(
             *Device,
-            Backend,
+            BackendName,
             "ArdaMeshPipelineTestMS",
             "MeshPipelineTestMS",
             EArdaRHIShaderStage::Mesh);
         auto PixelShader = CreateExtendedShader(
             *Device,
-            Backend,
+            BackendName,
             "ArdaMeshPipelineTestPS",
             "MeshPipelineTestPS",
             EArdaRHIShaderStage::Pixel);
@@ -1643,7 +1627,6 @@ namespace
     }
 
     void VerifyQueueBreadth(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -1656,7 +1639,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -1669,12 +1651,6 @@ namespace
 
         const FArdaRHICapabilities& Capabilities =
             Device->GetCapabilities();
-        if (Backend == EArdaBackendType::D3D12)
-        {
-            EXPECT_TRUE(Capabilities.mQueues.mbCompute);
-            EXPECT_TRUE(Capabilities.mQueues.mbCopy);
-        }
-
         if (Capabilities.mQueues.mbCopy)
         {
             FArdaRHIBufferDesc BufferDesc;
@@ -1781,7 +1757,7 @@ namespace
             OutputDesc.mInitialState = EArdaRHIResourceState::Common;
             auto Output = Device->CreateBuffer(OutputDesc);
             ASSERT_TRUE(Output);
-            auto Shader = CreateExtendedComputeShader(*Device, Backend);
+        auto Shader = CreateExtendedComputeShader(*Device, BackendName);
             ASSERT_TRUE(Shader) << Shader.mStatus.mMessage.c_str();
             FArdaRHIBindingLayoutDesc LayoutDesc;
             LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
@@ -1849,7 +1825,6 @@ namespace
     }
 
     void VerifyRayTracingPipelineCapabilityAndExecution(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -1862,7 +1837,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -1875,7 +1849,7 @@ namespace
 
         auto RayGeneration = CreateExtendedShader(
             *Device,
-            Backend,
+            BackendName,
             "ArdaRayTracingTest",
             "RayGen",
             EArdaRHIShaderStage::RayGeneration);
@@ -1984,7 +1958,6 @@ namespace
     }
 
     void VerifyAccelerationStructureLifecycleAndStateParity(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -1997,7 +1970,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -2153,7 +2125,6 @@ namespace
     }
 
     void VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -2166,7 +2137,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -2185,13 +2155,13 @@ namespace
         }
 
         auto RayGeneration = CreateExtendedShader(
-            *Device, Backend, "ArdaRayTracingTest", "KnownSceneRayGen",
+            *Device, BackendName, "ArdaRayTracingTest", "KnownSceneRayGen",
             EArdaRHIShaderStage::RayGeneration);
         auto Miss = CreateExtendedShader(
-            *Device, Backend, "ArdaRayTracingTest", "KnownMiss",
+            *Device, BackendName, "ArdaRayTracingTest", "KnownMiss",
             EArdaRHIShaderStage::Miss);
         auto ClosestHit = CreateExtendedShader(
-            *Device, Backend, "ArdaRayTracingTest", "KnownClosestHit",
+            *Device, BackendName, "ArdaRayTracingTest", "KnownClosestHit",
             EArdaRHIShaderStage::ClosestHit);
         ASSERT_TRUE(RayGeneration)
             << RayGeneration.mStatus.mMessage.c_str();
@@ -2435,7 +2405,6 @@ namespace
         FExtendedDiagnosticCallback Diagnostics;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = "native-vulkan";
-        Configuration.mBackend = EArdaBackendType::Vulkan;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -2595,15 +2564,15 @@ namespace
         ASSERT_TRUE(Tlas) << Tlas.mStatus.mMessage.c_str();
 
         auto RayGeneration = CreateExtendedShader(
-            *Device, EArdaBackendType::Vulkan,
+            *Device, "native-vulkan",
             "ArdaRayTracingTest", "KnownSceneRayGen",
             EArdaRHIShaderStage::RayGeneration);
         auto Miss = CreateExtendedShader(
-            *Device, EArdaBackendType::Vulkan,
+            *Device, "native-vulkan",
             "ArdaRayTracingTest", "KnownMiss",
             EArdaRHIShaderStage::Miss);
         auto ClosestHit = CreateExtendedShader(
-            *Device, EArdaBackendType::Vulkan,
+            *Device, "native-vulkan",
             "ArdaRayTracingTest", "KnownClosestHit",
             EArdaRHIShaderStage::ClosestHit);
         ASSERT_TRUE(RayGeneration);
@@ -2739,7 +2708,6 @@ namespace
     }
 
     void VerifyExpandedDescriptorsAndResourceCollections(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -2751,7 +2719,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -2826,7 +2793,6 @@ namespace
     }
 
     void VerifySparseResidencyAndStreamingBudget(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -2838,7 +2804,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -3013,7 +2978,6 @@ namespace
     }
 
     void VerifyStreamingBudgetExecution(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -3024,7 +2988,6 @@ namespace
         FExtendedDiagnosticCallback Diagnostics;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -3048,7 +3011,6 @@ namespace
     }
 
     void VerifyQueryExecution(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -3059,7 +3021,6 @@ namespace
         FExtendedDiagnosticCallback Diagnostics;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -3101,7 +3062,6 @@ namespace
     }
 
     void VerifyShaderLibraryExecution(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName)
     {
         using namespace arda::backend;
@@ -3112,7 +3072,6 @@ namespace
         FExtendedDiagnosticCallback Diagnostics;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -3125,7 +3084,7 @@ namespace
         ASSERT_TRUE(Device);
         ASSERT_TRUE(Device->GetCapabilities().mbShaderLibraries);
         const eastl::string FileName = eastl::string("ArdaShaderStructTest") +
-            GetShaderArtifactExtension(Backend);
+            GetShaderArtifactExtension(BackendName);
         const std::vector<uint8_t> Bytecode =
             LoadExtendedShaderArtifact(FileName.c_str());
         ASSERT_FALSE(Bytecode.empty());
@@ -3162,7 +3121,6 @@ namespace
         FExtendedDiagnosticCallback Diagnostics;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = "native-d3d12";
-        Configuration.mBackend = EArdaBackendType::D3D12;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -3234,7 +3192,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = EArdaBackendType::D3D12;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -3306,7 +3263,6 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = EArdaBackendType::Vulkan;
         Configuration.mbEnableValidation = false;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -3397,8 +3353,6 @@ namespace
 
     struct FCapabilityConformanceCase
     {
-        arda::backend::EArdaBackendType mBackend =
-            arda::backend::EArdaBackendType::D3D12;
         const char* mBackendName = nullptr;
         const char* mBackendLabel = nullptr;
         FCapabilityDefinition mCapability;
@@ -3477,72 +3431,72 @@ namespace
         case ECapabilityProbe::Contract:
             return;
         case ECapabilityProbe::ExtendedCommands:
-            VerifyExtendedCommands(TestCase.mBackend, TestCase.mBackendName);
+            VerifyExtendedCommands(TestCase.mBackendName);
             return;
         case ECapabilityProbe::Resolve:
             VerifyResolveAndPlaneTracking(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::HeapAliasing:
             VerifyExplicitHeapAliasing(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::Bindless:
             VerifyBindlessDescriptorTable(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::DirectResourceHeap:
             VerifyBindlessDescriptorTable(
-                TestCase.mBackend, TestCase.mBackendName, true);
+                TestCase.mBackendName, true);
             return;
         case ECapabilityProbe::DirectResourceAndSamplerHeaps:
             VerifyDirectResourceAndSamplerHeapIndexing(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::ExpandedDescriptors:
             VerifyExpandedDescriptorsAndResourceCollections(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::QueueBreadth:
-            VerifyQueueBreadth(TestCase.mBackend, TestCase.mBackendName);
+            VerifyQueueBreadth(TestCase.mBackendName);
             return;
         case ECapabilityProbe::SparseResidency:
             VerifySparseResidencyAndStreamingBudget(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::StreamingBudget:
             VerifyStreamingBudgetExecution(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::ShaderBundle:
             VerifyShaderBundleExecution(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::WorkGraph:
-            ASSERT_EQ(TestCase.mBackend, EArdaBackendType::D3D12)
+            ASSERT_STREQ(TestCase.mBackendName, "native-d3d12")
                 << "A backend advertised work graphs without a native "
                    "conformance workload.";
             VerifyD3D12WorkGraphExecution();
             return;
         case ECapabilityProbe::MeshShader:
             VerifyMeshPipelineCapabilityAndExecution(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::RayTracingPipeline:
             VerifyRayTracingPipelineCapabilityAndExecution(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::AccelerationStructure:
             VerifyAccelerationStructureLifecycleAndStateParity(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::RayTracingScene:
             VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         case ECapabilityProbe::OpacityMicromap:
 #if defined(ARDA_TEST_NATIVE_VULKAN)
-            ASSERT_EQ(TestCase.mBackend, EArdaBackendType::Vulkan)
+            ASSERT_STREQ(TestCase.mBackendName, "native-vulkan")
                 << "A non-Vulkan provider advertised opacity micromaps "
                    "without a conformance implementation.";
             VerifyVulkanOpacityMicromapLifecycleAndStateParity();
@@ -3552,14 +3506,14 @@ namespace
 #endif
             return;
         case ECapabilityProbe::SamplerFeedback:
-            ASSERT_EQ(TestCase.mBackend, EArdaBackendType::D3D12)
+            ASSERT_STREQ(TestCase.mBackendName, "native-d3d12")
                 << "A non-D3D12 provider advertised sampler feedback without "
                    "a conformance implementation.";
             VerifySamplerFeedbackStateParity();
             return;
         case ECapabilityProbe::CustomPresent:
 #if defined(_WIN32)
-            if (TestCase.mBackend == EArdaBackendType::D3D12)
+            if (std::strcmp(TestCase.mBackendName, "native-d3d12") == 0)
             {
                 VerifyD3D12CustomPresentExecution();
                 return;
@@ -3573,11 +3527,11 @@ namespace
                       "conformance implementation.";
             return;
         case ECapabilityProbe::Queries:
-            VerifyQueryExecution(TestCase.mBackend, TestCase.mBackendName);
+            VerifyQueryExecution(TestCase.mBackendName);
             return;
         case ECapabilityProbe::ShaderLibrary:
             VerifyShaderLibraryExecution(
-                TestCase.mBackend, TestCase.mBackendName);
+                TestCase.mBackendName);
             return;
         }
         FAIL() << "Unknown RHI capability conformance probe.";
@@ -3774,21 +3728,18 @@ namespace
         {
             std::vector<FCapabilityConformanceCase> Result;
             const auto AddBackend = [&Result](
-                arda::backend::EArdaBackendType Backend,
                 const char* BackendName,
                 const char* BackendLabel)
             {
                 for (const FCapabilityDefinition& Definition : Definitions)
                     Result.push_back(
-                        {Backend, BackendName, BackendLabel, Definition});
+                        {BackendName, BackendLabel, Definition});
             };
 #if defined(_WIN32) && defined(ARDA_TEST_NATIVE_D3D12)
-            AddBackend(arda::backend::EArdaBackendType::D3D12,
-                "native-d3d12", "D3D12");
+            AddBackend("native-d3d12", "NativeD3D12Module");
 #endif
 #if defined(ARDA_TEST_NATIVE_VULKAN)
-            AddBackend(arda::backend::EArdaBackendType::Vulkan,
-                "native-vulkan", "Vulkan");
+            AddBackend("native-vulkan", "NativeVulkanModule");
 #endif
             return Result;
         }();
@@ -3813,7 +3764,6 @@ TEST_P(FArdaRHICapabilityConformanceTest, AdvertisedCapabilityConforms)
     FExtendedDiagnosticCallback Diagnostics;
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = TestCase.mBackendName;
-    Configuration.mBackend = TestCase.mBackend;
     Configuration.mbEnableValidation = true;
     Configuration.mMessageCallback = &Diagnostics;
     Configuration.mShaderCompilationMode =
@@ -3853,49 +3803,42 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(ArdaBackend, D3D12ExtendedCopyTransitionAndIndirectStateParity)
 {
     VerifyExtendedCommands(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
 TEST(ArdaBackend, D3D12ResolveAndFormatPlaneStateParity)
 {
     VerifyResolveAndPlaneTracking(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
 TEST(ArdaBackend, D3D12ExplicitHeapAliasingStateParity)
 {
     VerifyExplicitHeapAliasing(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
 TEST(ArdaBackend, D3D12BindlessDescriptorTableExecutes)
 {
     VerifyBindlessDescriptorTable(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
 TEST(ArdaBackend, D3D12DirectDescriptorHeapIndexingExecutes)
 {
     VerifyBindlessDescriptorTable(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12", true);
 }
 
 TEST(ArdaBackend, D3D12DirectResourceAndSamplerHeapIndexingExecutes)
 {
     VerifyDirectResourceAndSamplerHeapIndexing(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
 TEST(ArdaBackend, D3D12ShaderBundleExecutes)
 {
     VerifyShaderBundleExecution(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
@@ -3907,49 +3850,42 @@ TEST(ArdaBackend, D3D12WorkGraphExecutes)
 TEST(ArdaBackend, D3D12MeshPipelineCapabilityAndExecution)
 {
     VerifyMeshPipelineCapabilityAndExecution(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
 TEST(ArdaBackend, D3D12QueueBreadthExecutes)
 {
     VerifyQueueBreadth(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
 TEST(ArdaBackend, D3D12RayTracingPipelineCapabilityAndExecution)
 {
     VerifyRayTracingPipelineCapabilityAndExecution(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
 TEST(ArdaBackend, D3D12AccelerationStructureLifecycleAndStateParity)
 {
     VerifyAccelerationStructureLifecycleAndStateParity(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
 TEST(ArdaBackend, D3D12RaySceneHitGroupsLocalArgumentsAndIndirectReadback)
 {
     VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
 TEST(ArdaBackend, D3D12ExpandedDescriptorsAndResourceCollections)
 {
     VerifyExpandedDescriptorsAndResourceCollections(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
 TEST(ArdaBackend, D3D12SparseResidencyAndStreamingBudget)
 {
     VerifySparseResidencyAndStreamingBudget(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12");
 }
 
@@ -3973,14 +3909,12 @@ TEST(ArdaBackend, D3D12DeferredSubmissionLifetimeSurvivesImmediateRelease)
 TEST(ArdaBackend, VulkanExtendedCopyTransitionAndIndirectStateParity)
 {
     VerifyExtendedCommands(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
 TEST(ArdaBackend, VulkanResolveAndFormatPlaneStateParity)
 {
     VerifyResolveAndPlaneTracking(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
@@ -3988,7 +3922,6 @@ TEST(ArdaBackend, VulkanResolveAndFormatPlaneStateParity)
 TEST(ArdaBackend, VulkanExplicitHeapAliasingStateParity)
 {
     VerifyExplicitHeapAliasing(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
@@ -3996,28 +3929,24 @@ TEST(ArdaBackend, VulkanExplicitHeapAliasingStateParity)
 TEST(ArdaBackend, VulkanBindlessDescriptorTableExecutes)
 {
     VerifyBindlessDescriptorTable(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
 TEST(ArdaBackend, VulkanDirectDescriptorHeapIndexingExecutes)
 {
     VerifyBindlessDescriptorTable(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan", true);
 }
 
 TEST(ArdaBackend, VulkanDirectResourceAndSamplerHeapIndexingExecutes)
 {
     VerifyDirectResourceAndSamplerHeapIndexing(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
 TEST(ArdaBackend, VulkanShaderBundleExecutes)
 {
     VerifyShaderBundleExecution(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
@@ -4025,21 +3954,18 @@ TEST(ArdaBackend, VulkanShaderBundleExecutes)
 TEST(ArdaBackend, VulkanMeshPipelineCapabilityAndExecution)
 {
     VerifyMeshPipelineCapabilityAndExecution(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
 TEST(ArdaBackend, VulkanQueueBreadthExecutes)
 {
     VerifyQueueBreadth(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
 TEST(ArdaBackend, VulkanRayTracingPipelineCapabilityAndExecution)
 {
     VerifyRayTracingPipelineCapabilityAndExecution(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
@@ -4047,14 +3973,12 @@ TEST(ArdaBackend, VulkanRayTracingPipelineCapabilityAndExecution)
 TEST(ArdaBackend, VulkanAccelerationStructureLifecycleAndStateParity)
 {
     VerifyAccelerationStructureLifecycleAndStateParity(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
 TEST(ArdaBackend, VulkanRaySceneHitGroupsLocalArgumentsAndIndirectReadback)
 {
     VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
@@ -4067,14 +3991,12 @@ TEST(ArdaBackend, VulkanOpacityMicromapLifecycleAndStateParity)
 TEST(ArdaBackend, VulkanExpandedDescriptorsAndResourceCollections)
 {
     VerifyExpandedDescriptorsAndResourceCollections(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 
 TEST(ArdaBackend, VulkanSparseResidencyAndStreamingBudget)
 {
     VerifySparseResidencyAndStreamingBudget(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan");
 }
 

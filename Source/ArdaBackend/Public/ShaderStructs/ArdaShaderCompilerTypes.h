@@ -96,13 +96,11 @@ namespace arda::backend
         eastl::vector<FArdaShaderDefine> mDefines;
     };
 
-    /** Identifies one shader type, backend, and permutation for compilation policy. */
+    /** Identifies one shader type, backend module, and permutation for compilation policy. */
     struct FArdaShaderPermutationParameters
     {
         /** Registered shader type being considered, or null before publication. */
         const FArdaShaderType* mType = nullptr;
-        /** Target graphics backend. */
-        EArdaBackendType mBackend = DefaultBackend;
         /** Encoded permutation identifier. */
         uint32_t mPermutationId = 0;
         /** Stable backend module targeted by this permutation. */

@@ -2,6 +2,7 @@
 
 #include "ArdaTriangleRenderer.h"
 #include "ShaderStructs/ArdaShaderCompiler.h"
+#include "ShaderStructs/ArdaGlobalShaderMap.h"
 
 namespace arda::tests::rhi_test
 {
@@ -75,12 +76,12 @@ namespace arda::tests::rhi_test
             return false;
         }
 
-        const bool vulkan = backend::GetBackendConfiguration().mBackend ==
-            backend::EArdaBackendType::Vulkan;
+        const char* ArtifactExtension = backend::GetShaderArtifactExtension(
+            backend::GetBackendConfiguration().mBackendName.c_str());
         eastl::vector<uint8_t> vertexBinary;
         eastl::vector<uint8_t> pixelBinary;
-        if (!LoadBinary(shaderCache / (vulkan ? "TriangleVS.spv" : "TriangleVS.dxil"), vertexBinary, mError) ||
-            !LoadBinary(shaderCache / (vulkan ? "TrianglePS.spv" : "TrianglePS.dxil"), pixelBinary, mError))
+        if (!LoadBinary(shaderCache / (std::string("TriangleVS") + ArtifactExtension), vertexBinary, mError) ||
+            !LoadBinary(shaderCache / (std::string("TrianglePS") + ArtifactExtension), pixelBinary, mError))
         {
             return false;
         }

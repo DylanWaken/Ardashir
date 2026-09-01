@@ -115,7 +115,7 @@ namespace arda::backend
         return nullptr;
     }
 
-    IArdaBackendModule* FindDefaultBackendModule(EArdaBackendType BackendType) noexcept
+    IArdaBackendModule* FindDefaultBackendModule() noexcept
     {
         private_api::RegisterLinkedBackendModules();
         auto& Registry = GetBackendModuleRegistry();
@@ -126,8 +126,7 @@ namespace arda::backend
         {
             const FArdaBackendModuleDescriptor& Descriptor =
                 Entry.mModule->GetDescriptor();
-            if (Descriptor.mBackendType == BackendType &&
-                Descriptor.mPriority > BestPriority)
+            if (Descriptor.mPriority > BestPriority)
             {
                 BestModule = Entry.mModule;
                 BestPriority = Descriptor.mPriority;
@@ -147,7 +146,6 @@ namespace arda::backend
                 return false;
             const FArdaBackendModuleDescriptor& Descriptor = Module->GetDescriptor();
             OutTarget.mBackendName = Descriptor.mName;
-            OutTarget.mBackend = Descriptor.mBackendType;
             OutTarget.mBinaryFormat = Descriptor.mShaderBinaryFormat;
             OutTarget.mArtifactExtension = Descriptor.mShaderArtifactExtension;
             OutTarget.mCompilerIdentity = Descriptor.mShaderCompilerIdentity;
@@ -162,11 +160,9 @@ namespace arda::backend
         return CopyShaderTarget(FindBackendModule(BackendName), OutTarget);
     }
 
-    bool ResolveDefaultShaderTarget(
-        EArdaBackendType BackendType,
-        FArdaShaderTarget& OutTarget) noexcept
+    bool ResolveDefaultShaderTarget(FArdaShaderTarget& OutTarget) noexcept
     {
-        return CopyShaderTarget(FindDefaultBackendModule(BackendType), OutTarget);
+        return CopyShaderTarget(FindDefaultBackendModule(), OutTarget);
     }
 
     eastl::vector<FArdaBackendModuleDescriptor> EnumerateBackendModules()

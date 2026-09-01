@@ -106,10 +106,10 @@
           <p><strong>In Ardashir:</strong> Ardashir links native Vulkan and D3D12 modules today and can add a future engine-RHI module without changing renderer-facing code.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-backend">Backend</a></li><li><a href="#term-provider-contract">Provider contract</a></li><li><a href="#term-link-time-registration">Link-time registration</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-compatibility-class" data-glossary-entry data-category="Software architecture" data-search="Compatibility class Software architecture A coarse capability or data-format family used to find compatible implementations without identifying one concrete implementation. EArdaBackendType classifies D3D12, Vulkan, or Custom behavior; a module descriptor name identifies the actual implementation.">
-          <div class="glossary-entry__meta"><h3>Compatibility class</h3><span class="category">Software architecture</span></div>
-          <p>A coarse capability or data-format family used to find compatible implementations without identifying one concrete implementation.</p>
-          <p><strong>In Ardashir:</strong> <code>EArdaBackendType</code> classifies D3D12, Vulkan, or Custom behavior; a module descriptor name identifies the actual implementation.</p>
+        <article class="glossary-entry" id="term-module-identity" data-glossary-entry data-category="Software architecture" data-search="Module identity Software architecture A stable registry name that identifies one concrete backend implementation. FArdaBackendModuleDescriptor::mName is the only backend selection and routing identity.">
+          <div class="glossary-entry__meta"><h3>Module identity</h3><span class="category">Software architecture</span></div>
+          <p>A stable registry name that identifies one concrete backend implementation.</p>
+          <p><strong>In Ardashir:</strong> <code>FArdaBackendModuleDescriptor::mName</code> is the only backend selection and routing identity; capabilities describe optional behavior.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-backend-module">Backend module</a></li><li><a href="#term-backend">Backend</a></li><li><a href="#term-shader">Shader</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-engine-rhi" data-glossary-entry data-category="Graphics" data-search="Engine RHI Graphics A rendering hardware interface owned by a host engine rather than directly by an application library. An ArdaBackend module can adapt Unreal, Unity, Godot, or another host RHI by accepting named external objects and exposing Arda's backend-neutral device facade.">

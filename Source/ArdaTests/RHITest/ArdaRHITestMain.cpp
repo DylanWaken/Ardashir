@@ -17,7 +17,7 @@ namespace arda::tests::rhi_test
 
         struct FArdaOptions
         {
-            backend::EArdaBackendType mBackend = backend::DefaultBackend;
+            eastl::string mBackendName;
             uint32_t mFrameLimit = 0;
             bool mbHidden = false;
         };
@@ -108,11 +108,11 @@ namespace arda::tests::rhi_test
                     const eastl::string_view backendArgument(arguments[++index]);
                     if (backendArgument == "d3d12")
                     {
-                        options.mBackend = backend::EArdaBackendType::D3D12;
+                        options.mBackendName = "native-d3d12";
                     }
                     else if (backendArgument == "vulkan")
                     {
-                        options.mBackend = backend::EArdaBackendType::Vulkan;
+                        options.mBackendName = "native-vulkan";
                     }
                     else
                     {
@@ -167,14 +167,14 @@ namespace arda::tests::rhi_test
 
             FArdaMessageCallback messageCallback;
             backend::FArdaBackendConfiguration configuration;
-            configuration.mBackend = options.mBackend;
+            configuration.mBackendName = options.mBackendName;
             configuration.mbEnableValidation = true;
             configuration.mMessageCallback = &messageCallback;
             if (!backend::ConfigureBackend(configuration))
             {
                 const eastl::string backendError = backend::GetBackendError();
                 ARDA_LOG(LogRHITest, Error, "%s", backendError.c_str());
-                return options.mBackend == backend::EArdaBackendType::D3D12
+                return options.mBackendName == "native-d3d12"
                     ? SkippedExitCode
                     : EXIT_FAILURE;
             }

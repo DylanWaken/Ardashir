@@ -277,7 +277,6 @@
           <p>The example intentionally does not “retry forever.” Retry only after a state-changing event such as restored drawable size or successful recreation. Device loss, invalid native objects, and repeated native failures require controlled teardown or process-level recovery.</p>
           <h3>Initialization and shutdown envelope</h3>
           <pre><code>FArdaBackendConfiguration config;
-config.mBackend = DefaultBackend;
 config.mbEnableValidation = true;
 if (!ConfigureBackend(config))
     return false;

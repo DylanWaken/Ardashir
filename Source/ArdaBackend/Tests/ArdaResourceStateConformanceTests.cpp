@@ -42,7 +42,6 @@ namespace
     };
 
     void VerifyNativeResourceStateConformance(
-        arda::backend::EArdaBackendType Backend,
         const char* BackendName,
         arda::rhi::EArdaRHINativeResourceType TextureNativeType,
         arda::rhi::EArdaRHINativeResourceType BufferNativeType)
@@ -58,7 +57,6 @@ namespace
 
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mBackend = Backend;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
@@ -288,7 +286,6 @@ namespace
 TEST(ArdaBackend, D3D12ResourceStateMatchesFacadeAndNativeEncodingAtEveryStep)
 {
     VerifyNativeResourceStateConformance(
-        arda::backend::EArdaBackendType::D3D12,
         "native-d3d12",
         arda::rhi::EArdaRHINativeResourceType::D3D12Resource,
         arda::rhi::EArdaRHINativeResourceType::D3D12Resource);
@@ -299,7 +296,6 @@ TEST(ArdaBackend, D3D12ResourceStateMatchesFacadeAndNativeEncodingAtEveryStep)
 TEST(ArdaBackend, VulkanResourceStateMatchesFacadeAndNativeEncodingAtEveryStep)
 {
     VerifyNativeResourceStateConformance(
-        arda::backend::EArdaBackendType::Vulkan,
         "native-vulkan",
         arda::rhi::EArdaRHINativeResourceType::VulkanImage,
         arda::rhi::EArdaRHINativeResourceType::VulkanBuffer);

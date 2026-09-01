@@ -18,7 +18,7 @@ namespace arda::tests::cornell_box
 
         struct FArdaOptions
         {
-            backend::EArdaBackendType mBackend = backend::DefaultBackend;
+            eastl::string mBackendName;
             FArdaCornellBoxSettings mRenderer;
             uint32_t mFrameLimit = 0;
             uint32_t mWindowWidth = 1280;
@@ -126,9 +126,9 @@ namespace arda::tests::cornell_box
                 {
                     const eastl::string_view Value(Arguments[++Index]);
                     if (Value == "d3d12")
-                        Options.mBackend = backend::EArdaBackendType::D3D12;
+                        Options.mBackendName = "native-d3d12";
                     else if (Value == "vulkan")
-                        Options.mBackend = backend::EArdaBackendType::Vulkan;
+                        Options.mBackendName = "native-vulkan";
                     else
                     {
                         Error = "--backend must be d3d12 or vulkan.";
@@ -278,7 +278,7 @@ namespace arda::tests::cornell_box
 
             FArdaMessageCallback Messages;
             backend::FArdaBackendConfiguration Configuration;
-            Configuration.mBackend = Options.mBackend;
+            Configuration.mBackendName = Options.mBackendName;
             Configuration.mbEnableValidation = true;
             Configuration.mMessageCallback = &Messages;
             Configuration.mShaderCompilationMode = Options.mShaderMode;

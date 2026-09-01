@@ -1307,8 +1307,7 @@ namespace arda::backend
             std::error_code Error;
             const bool bExists = std::filesystem::exists(Path, Error);
             const bool bValid = bExists && pipeline_cache::ReadBlob(
-                Path, BackendName, EArdaBackendType::D3D12,
-                mPipelineCacheSource);
+                Path, BackendName, mPipelineCacheSource);
             HRESULT Result = Device1->CreatePipelineLibrary(
                 bValid && !mPipelineCacheSource.empty()
                     ? mPipelineCacheSource.data() : nullptr,
@@ -6462,7 +6461,7 @@ namespace arda::backend
                         !pipeline_cache::WriteBlob(
                             pipeline_cache::MakePath(
                                 mPipelineCacheDirectory, "native-d3d12"),
-                            "native-d3d12", EArdaBackendType::D3D12, Payload))
+                            "native-d3d12", Payload))
                     {
                         pipeline_cache::Message(mDiagnosticCallback,
                             EArdaDiagnosticSeverity::Warning,
@@ -6973,7 +6972,6 @@ namespace arda::backend
             {
                 mDescriptor.mName = "native-d3d12";
                 mDescriptor.mDisplayName = "Native Direct3D 12 (Agility SDK 1.619.5)";
-                mDescriptor.mBackendType = EArdaBackendType::D3D12;
                 mDescriptor.mShaderBinaryFormat = EArdaShaderBinaryFormat::Dxil;
                 mDescriptor.mShaderArtifactExtension = ".dxil";
                 mDescriptor.mbSupportsOwnedDevice = true;

@@ -85,13 +85,10 @@ namespace arda::backend
     public:
         /** Destroys the provider after the host has unregistered it. */
         virtual ~IArdaExternalDeviceProvider() = default;
-        /** @return The graphics backend represented by this provider. */
-        [[nodiscard]] virtual EArdaBackendType GetBackendType() const noexcept = 0;
         /**
-         * @return Required module name for module-specific devices, or null when
-         * any compatible module may consume the descriptor.
+         * @return Exact registered backend module that consumes the device.
          */
-        [[nodiscard]] virtual const char* GetBackendName() const noexcept { return nullptr; }
+        [[nodiscard]] virtual const char* GetBackendName() const noexcept = 0;
         /**
          * Copies a universal external-device descriptor when supported.
          * Backend modules should prefer this path for engine and custom RHI hosts.
@@ -141,13 +138,10 @@ namespace arda::backend
         virtual ~IArdaExternalResourceProvider() = default;
         /** @return Stable, non-empty registry name owned by the provider. */
         [[nodiscard]] virtual const char* GetName() const noexcept = 0;
-        /** @return Graphics backend required by the provider's native handles. */
-        [[nodiscard]] virtual EArdaBackendType GetBackendType() const noexcept = 0;
         /**
-         * @return Required module name for module-specific resources, or null
-         * when any compatible module may consume the descriptors.
+         * @return Exact registered backend module required by native handles.
          */
-        [[nodiscard]] virtual const char* GetBackendName() const noexcept { return nullptr; }
+        [[nodiscard]] virtual const char* GetBackendName() const noexcept = 0;
         /**
          * Resolves a stable texture identifier.
          * @param Id Provider-defined stable identifier.

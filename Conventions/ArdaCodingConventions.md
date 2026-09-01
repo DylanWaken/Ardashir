@@ -28,7 +28,7 @@ prefix with the `Arda` project stem:
 ```cpp
 class FArdaBackendDevice;
 struct FArdaBackendConfiguration;
-enum class EArdaBackendType;
+enum class EArdaShaderBinaryFormat;
 using FArdaDeviceHandle = arda::rhi::FArdaRHIDeviceRef;
 
 template <typename ElementType>
@@ -40,7 +40,7 @@ The category prefix comes first and `Arda` follows it immediately:
 ```cpp
 // Correct
 class FArdaRenderGraph;
-enum class EArdaBackendType;
+enum class EArdaShaderBinaryFormat;
 
 // Incorrect
 class ArdaRenderGraph;
@@ -115,7 +115,7 @@ public:
 - Boolean-returning functions must ask a clear question: `IsReady()`,
   `HasDevice()`, `ShouldRebuild()`.
 - Accessors should describe the returned value: `GetDevice()`,
-  `GetBackendType()`.
+  `GetBackendName()`.
 - Mark methods `const` when they do not modify observable object state.
 - Mark functions `noexcept` when failure cannot escape through an exception.
 - Apply `[[nodiscard]]` when ignoring a result is probably an error.

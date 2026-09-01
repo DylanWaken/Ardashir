@@ -63,17 +63,6 @@ namespace arda::backend
         template <typename T> [[nodiscard]] T As() const noexcept { return reinterpret_cast<T>(mValue); }
     };
 
-    /** Selects the graphics API used by the backend. */
-    enum class EArdaBackendType
-    {
-        /** Uses the Direct3D 12 backend. */
-        D3D12,
-        /** Uses the Vulkan backend. */
-        Vulkan,
-        /** Uses a module-defined API without a legacy graphics-API classification. */
-        Custom
-    };
-
     /**
      * Selects when registered shaders are compiled and loaded.
      *
@@ -109,14 +98,6 @@ namespace arda::backend
         /** Initialization failed for another reason. */
         Failure
     };
-
-#if defined(_WIN32)
-    /** The platform's preferred backend. */
-    inline constexpr EArdaBackendType DefaultBackend = EArdaBackendType::D3D12;
-#else
-    /** The platform's preferred backend. */
-    inline constexpr EArdaBackendType DefaultBackend = EArdaBackendType::Vulkan;
-#endif
 
     /** Desktop-GPU admission profile applied during backend initialization. */
     enum class EArdaRHIDeviceProfile : uint8_t
@@ -158,12 +139,10 @@ namespace arda::backend
     {
         /**
          * Authoritative backend module name. Empty selects the highest-priority
-         * module compatible with mBackend. Accepted configurations are normalized
-         * to a non-empty exact module name.
+         * registered module. Accepted configurations are normalized to a
+         * non-empty exact module name.
          */
         eastl::string mBackendName;
-        /** Fallback selector while mBackendName is empty; otherwise its derived API class. */
-        EArdaBackendType mBackend = DefaultBackend;
         /** The source from which the native graphics device is obtained. */
         EArdaDeviceSource mDeviceSource = EArdaDeviceSource::ArdaCreated;
         /** Whether graphics API validation layers are enabled. */
@@ -206,12 +185,6 @@ namespace arda::backend
      */
     [[nodiscard]] bool ConfigureBackend(const FArdaBackendConfiguration& configuration);
     /**
-     * Selects a backend using the remaining current configuration.
-     * @param backend The graphics API to select.
-     * @return True when the backend selection was accepted.
-     */
-    [[nodiscard]] bool ConfigureBackend(EArdaBackendType backend);
-    /**
      * Selects a registered backend module by stable name.
      * @param BackendName Name returned by EnumerateBackendModules.
      * @return True when the named module exists and configuration was accepted.
@@ -234,13 +207,6 @@ namespace arda::backend
 
     /** @return The most recent backend error message. */
     [[nodiscard]] eastl::string GetBackendError();
-    /**
-     * Returns a readable name for a backend type.
-     * @param backend The backend type to name.
-     * @return A stable null-terminated backend name.
-     */
-    [[nodiscard]] const char* ToString(EArdaBackendType backend) noexcept;
-
     /** @return The stable name of the backend module. */
     [[nodiscard]] const char* GetModuleName() noexcept;
 }

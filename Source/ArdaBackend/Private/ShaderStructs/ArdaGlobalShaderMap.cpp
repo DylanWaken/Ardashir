@@ -52,14 +52,6 @@ namespace arda::backend
         }
     }
 
-    const char* GetShaderArtifactExtension(EArdaBackendType Backend) noexcept
-    {
-        IArdaBackendModule* Module = FindDefaultBackendModule(Backend);
-        return Module
-            ? Module->GetDescriptor().mShaderArtifactExtension.c_str()
-            : "";
-    }
-
     const char* GetShaderArtifactExtension(const char* BackendName) noexcept
     {
         IArdaBackendModule* Module = FindBackendModule(BackendName);
@@ -173,7 +165,7 @@ namespace arda::backend
         }
         FArdaShaderTarget Target;
         const bool bResolvedTarget = Configuration.mBackendName.empty()
-            ? ResolveDefaultShaderTarget(Configuration.mBackend, Target)
+            ? ResolveDefaultShaderTarget(Target)
             : ResolveShaderTarget(Configuration.mBackendName.c_str(), Target);
         if (!bResolvedTarget)
         {

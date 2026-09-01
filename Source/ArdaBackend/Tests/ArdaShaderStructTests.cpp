@@ -25,7 +25,7 @@ namespace
         arda::backend::FArdaShaderTarget& OutTarget)
     {
         using namespace arda::backend;
-        if (ResolveDefaultShaderTarget(DefaultBackend, OutTarget))
+        if (ResolveDefaultShaderTarget(OutTarget))
             return true;
         const auto Modules = EnumerateBackendModules();
         return !Modules.empty() &&
@@ -170,9 +170,9 @@ namespace
             arda::backend::FArdaShaderCompileEnvironment& Environment)
         {
             Environment.SetDefine(
-                "BACKEND_IS_VULKAN",
-                Parameters.mBackend ==
-                    arda::backend::EArdaBackendType::Vulkan);
+                "BINARY_IS_SPIRV",
+                Parameters.mBinaryFormat ==
+                    arda::backend::EArdaShaderBinaryFormat::Spirv);
             Environment.SetDefine("CUSTOM_VALUE", uint64_t{ 17 });
         }
     };
@@ -330,9 +330,10 @@ TEST(ArdaShaderStructs, DetectsHooksDeclaredAfterGlobalShaderMacro)
 {
     using namespace arda::backend;
     FArdaShaderCompileEnvironment Environment;
-    const FArdaShaderPermutationParameters Parameters{
-        nullptr, EArdaBackendType::Vulkan, 1
-    };
+    FArdaShaderPermutationParameters Parameters;
+    Parameters.mPermutationId = 1;
+    Parameters.mBackendName = "test-module";
+    Parameters.mBinaryFormat = EArdaShaderBinaryFormat::Spirv;
     EXPECT_TRUE(
         detail::ShouldCompileShaderPermutation<FMacroStyleShader>(Parameters));
     detail::BuildShaderCompilationEnvironment<FMacroStyleShader>(
@@ -360,19 +361,27 @@ TEST(ArdaShaderStructs, RegistersOptionalPermutationPoliciesAndArtifactStems)
 
     ASSERT_TRUE(FArdaShaderTypeRegistration::CommitAll());
     const FArdaShaderType& Type = Registration.GetType();
+    FArdaShaderTarget DxilTarget;
+    DxilTarget.mBackendName = "test-dxil-module";
+    DxilTarget.mBinaryFormat = EArdaShaderBinaryFormat::Dxil;
+    DxilTarget.mArtifactExtension = ".dxil";
+    FArdaShaderTarget SpirvTarget;
+    SpirvTarget.mBackendName = "test-spirv-module";
+    SpirvTarget.mBinaryFormat = EArdaShaderBinaryFormat::Spirv;
+    SpirvTarget.mArtifactExtension = ".spv";
     EXPECT_EQ(Type.GetPermutationCount(), 6u);
-    EXPECT_TRUE(Type.ShouldCompilePermutation(EArdaBackendType::D3D12, 0));
-    EXPECT_FALSE(Type.ShouldCompilePermutation(EArdaBackendType::D3D12, 1));
-    EXPECT_FALSE(Type.ShouldCompilePermutation(EArdaBackendType::D3D12, 6));
+    EXPECT_TRUE(Type.ShouldCompilePermutation(DxilTarget, 0));
+    EXPECT_FALSE(Type.ShouldCompilePermutation(DxilTarget, 1));
+    EXPECT_FALSE(Type.ShouldCompilePermutation(DxilTarget, 6));
     EXPECT_EQ(Type.GetPermutationArtifactStem(0), "PermutationArtifact_P0");
     EXPECT_EQ(Type.GetPermutationArtifactStem(5), "PermutationArtifact_P5");
     EXPECT_TRUE(Type.GetPermutationArtifactStem(6).empty());
 
     const auto Environment =
-        Type.BuildCompilationEnvironment(EArdaBackendType::Vulkan, 4);
+        Type.BuildCompilationEnvironment(SpirvTarget, 4);
     const auto& Defines = Environment.GetDefines();
     ASSERT_EQ(Defines.size(), 4u);
-    EXPECT_EQ(Defines[0].mName, "BACKEND_IS_VULKAN");
+    EXPECT_EQ(Defines[0].mName, "BINARY_IS_SPIRV");
     EXPECT_EQ(Defines[0].mValue, "1");
     EXPECT_EQ(Defines[1].mName, "CUSTOM_VALUE");
     EXPECT_EQ(Defines[2].mName, "QUALITY_LEVEL");
@@ -632,10 +641,10 @@ TEST(ArdaShaderStructs, SelectsExtensionsAndReportsMissingBytecode)
 {
     using namespace arda::backend;
     EXPECT_STREQ(
-        GetShaderArtifactExtension(EArdaBackendType::D3D12),
+        GetShaderArtifactExtension("native-d3d12"),
         FindBackendModule("native-d3d12") ? ".dxil" : "");
     EXPECT_STREQ(
-        GetShaderArtifactExtension(EArdaBackendType::Vulkan),
+        GetShaderArtifactExtension("native-vulkan"),
         FindBackendModule("native-vulkan") ? ".spv" : "");
     const auto Missing = LoadShaderBytecode(
         std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR) / "does-not-exist.spv");
@@ -699,15 +708,14 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
     const bool bHasD3D12 = FindBackendModule("native-d3d12") != nullptr;
     const bool bHasVulkan = FindBackendModule("native-vulkan") != nullptr;
     ASSERT_TRUE(bHasD3D12 || bHasVulkan);
-    std::vector<EArdaBackendType> Backends;
+    eastl::vector<eastl::string> Backends;
     if (bHasD3D12)
-        Backends.push_back(EArdaBackendType::D3D12);
+        Backends.push_back("native-d3d12");
     if (bHasVulkan)
-        Backends.push_back(EArdaBackendType::Vulkan);
-    const EArdaBackendType PrimaryBackend = Backends.front();
-    const char* PrimaryExtension = PrimaryBackend == EArdaBackendType::D3D12
-        ? ".dxil"
-        : ".spv";
+        Backends.push_back("native-vulkan");
+    const char* PrimaryBackend = Backends.front().c_str();
+    const char* PrimaryExtension =
+        GetShaderArtifactExtension(Backends.front().c_str());
     const std::string PrimaryArtifactFilename =
         std::string("CompilerPolicyArtifact_P0") + PrimaryExtension;
     const size_t ExpectedJobCount = Backends.size() * 3u;
@@ -724,7 +732,7 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
     ASSERT_EQ(FirstJobs.mJobs[0].mEnvironment.GetDefines().size(), 4u);
     EXPECT_EQ(
         FirstJobs.mJobs[0].mEnvironment.GetDefines()[0].mName,
-        "BACKEND_IS_VULKAN");
+        "BINARY_IS_SPIRV");
     if (bHasVulkan)
     {
         const auto VulkanJob = std::find_if(
@@ -732,7 +740,7 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
             FirstJobs.mJobs.end(),
             [](const FArdaShaderCompileJob& Job)
             {
-                return Job.mBackend == EArdaBackendType::Vulkan;
+                return Job.mTarget.mBackendName == "native-vulkan";
             });
         ASSERT_NE(VulkanJob, FirstJobs.mJobs.end());
         EXPECT_EQ(VulkanJob->mTarget.mBackendName, "native-vulkan");
@@ -1118,7 +1126,6 @@ TEST(ArdaShaderStructs, StartupModePersistsAndReusesRegisteredShaderCache)
 
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = Target.mBackendName;
-    Configuration.mBackend = Target.mBackend;
     Configuration.mbEnableValidation = false;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::Startup;
     Configuration.mShaderCacheDirectory = Cache;
@@ -1180,7 +1187,6 @@ TEST(ArdaShaderStructs, StartupModePropagatesCompilerFailureBeforeDevice)
         "Main", Stage::Compute, nullptr);
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = Target.mBackendName;
-    Configuration.mBackend = Target.mBackend;
     Configuration.mbEnableValidation = false;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::Startup;
     Configuration.mShaderCacheDirectory = Directory / "Cache";
@@ -1203,7 +1209,6 @@ TEST(ArdaShaderStructs, GlobalMapIndexesOnlyCompiledPermutations)
     ShutdownBackend();
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = Target.mBackendName;
-    Configuration.mBackend = Target.mBackend;
     Configuration.mbEnableValidation = false;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
     ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -1285,7 +1290,6 @@ TEST(ArdaShaderStructs, OnDemandMapDefersMissingArtifactAndHonorsOverride)
 
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = Target.mBackendName;
-    Configuration.mBackend = Target.mBackend;
     Configuration.mbEnableValidation = false;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::OnDemand;
     Configuration.mShaderCacheDirectory = ConfiguredCache;
@@ -1361,7 +1365,6 @@ TEST(ArdaShaderStructs, LoadsGlobalMapIdempotentlyAndBuildsDirectBindings)
     ShutdownBackend();
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = Target.mBackendName;
-    Configuration.mBackend = Target.mBackend;
     Configuration.mbEnableValidation = false;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
     ASSERT_TRUE(ConfigureBackend(Configuration));

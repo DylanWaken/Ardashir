@@ -34,7 +34,7 @@ namespace arda::backend
 {
     namespace
     {
-        constexpr const char* CacheSchema = "ArdaShaderCompileKey-v3";
+        constexpr const char* CacheSchema = "ArdaShaderCompileKey-v4";
 
         std::mutex GConfigurationMutex;
         FArdaShaderCompilerConfiguration GConfiguration;
@@ -73,7 +73,7 @@ namespace arda::backend
         FArdaShaderCompileDiagnostic MakeDiagnostic(
             EArdaShaderCompileError Code,
             const FArdaShaderType* Type,
-            EArdaBackendType Backend,
+            const eastl::string& BackendName,
             uint32_t PermutationId,
             const std::filesystem::path& Source,
             const std::filesystem::path& Output,
@@ -82,7 +82,7 @@ namespace arda::backend
             FArdaShaderCompileDiagnostic Result;
             Result.mCode = Code;
             Result.mShaderType = Type != nullptr ? Type->GetName() : "";
-            Result.mBackend = Backend;
+            Result.mBackendName = BackendName;
             Result.mPermutationId = PermutationId;
             Result.mSourcePath = Source;
             Result.mOutputPath = Output;
@@ -558,9 +558,8 @@ namespace arda::backend
             FArdaShaderCompileJob& Job,
             FArdaShaderCompileDiagnostic& Diagnostic)
         {
-            const EArdaBackendType Backend = Target.mBackend;
+            const eastl::string& BackendName = Target.mBackendName;
             Job.mType = Type;
-            Job.mBackend = Backend;
             Job.mTarget = Target;
             Job.mCompilerExecutable = Compiler;
             Job.mPermutationId = PermutationId;
@@ -570,7 +569,7 @@ namespace arda::backend
             if (!IsContainedArtifactPath(OutputDirectory, Job.mOutputPath))
             {
                 Diagnostic = MakeDiagnostic(
-                    EArdaShaderCompileError::InvalidPermutation, &Type, Backend,
+                    EArdaShaderCompileError::InvalidPermutation, &Type, BackendName,
                     PermutationId, {}, Job.mOutputPath,
                     "Generated shader artifact path escapes its output directory.");
                 return false;
@@ -578,7 +577,7 @@ namespace arda::backend
             if (PermutationId >= Type.GetPermutationCount())
             {
                 Diagnostic = MakeDiagnostic(
-                    EArdaShaderCompileError::InvalidPermutation, &Type, Backend,
+                    EArdaShaderCompileError::InvalidPermutation, &Type, BackendName,
                     PermutationId, {}, Job.mOutputPath, "Invalid shader permutation identifier.");
                 return false;
             }
@@ -586,7 +585,7 @@ namespace arda::backend
             if (Job.mProfile.empty())
             {
                 Diagnostic = MakeDiagnostic(
-                    EArdaShaderCompileError::UnsupportedStage, &Type, Backend,
+                    EArdaShaderCompileError::UnsupportedStage, &Type, BackendName,
                     PermutationId, {}, Job.mOutputPath,
                     "Combined, empty, or unknown shader stages cannot map to one fallback compiler profile.");
                 return false;
@@ -594,7 +593,7 @@ namespace arda::backend
             if (!ResolveSource(Type, Configuration, Job.mSourcePath))
             {
                 Diagnostic = MakeDiagnostic(
-                    EArdaShaderCompileError::SourceResolutionFailed, &Type, Backend,
+                    EArdaShaderCompileError::SourceResolutionFailed, &Type, BackendName,
                     PermutationId, {}, Job.mOutputPath,
                     std::string("Unable to resolve registered shader source stem: ") +
                         Type.GetSourceStem());
@@ -627,7 +626,7 @@ namespace arda::backend
                 if (!IsValidDefineName(Name) || ContainsControl(Value))
                 {
                     Diagnostic = MakeDiagnostic(
-                        EArdaShaderCompileError::InvalidPermutation, &Type, Backend,
+                        EArdaShaderCompileError::InvalidPermutation, &Type, BackendName,
                         PermutationId, Job.mSourcePath, Job.mOutputPath,
                         "A shader define has an unsafe name or control character.");
                     return false;
@@ -662,7 +661,7 @@ namespace arda::backend
                 if (!Status)
                 {
                     Diagnostic = MakeDiagnostic(
-                        EArdaShaderCompileError::UnsupportedStage, &Type, Backend,
+                        EArdaShaderCompileError::UnsupportedStage, &Type, BackendName,
                         PermutationId, Job.mSourcePath, Job.mOutputPath,
                         ToStd(Status.mMessage));
                     return false;
@@ -675,7 +674,7 @@ namespace arda::backend
                 if (!IsContainedArtifactPath(OutputDirectory, Job.mOutputPath))
                 {
                     Diagnostic = MakeDiagnostic(
-                        EArdaShaderCompileError::InvalidPermutation, &Type, Backend,
+                        EArdaShaderCompileError::InvalidPermutation, &Type, BackendName,
                         PermutationId, Job.mSourcePath, Job.mOutputPath,
                         "The backend module selected an artifact outside the output directory.");
                     return false;
@@ -686,7 +685,7 @@ namespace arda::backend
                 if (ContainsControl(ToStd(Argument)))
                 {
                     Diagnostic = MakeDiagnostic(
-                        EArdaShaderCompileError::InvalidPermutation, &Type, Backend,
+                        EArdaShaderCompileError::InvalidPermutation, &Type, BackendName,
                         PermutationId, Job.mSourcePath, Job.mOutputPath,
                         "A custom compiler argument contains a control character.");
                     return false;
@@ -696,7 +695,6 @@ namespace arda::backend
             HashString(Hash, CacheSchema);
             HashString(Hash, Type.GetName());
             HashString(Hash, ToStd(Target.mBackendName));
-            HashUint32(Hash, static_cast<uint32_t>(Backend));
             HashUint32(Hash, static_cast<uint32_t>(Target.mBinaryFormat));
             HashUint32(Hash, PermutationId);
             HashString(Hash, ToStd(Job.mProfile));
@@ -707,7 +705,7 @@ namespace arda::backend
                 !HashFile(Hash, Job.mCompilerExecutable))
             {
                 Diagnostic = MakeDiagnostic(
-                    EArdaShaderCompileError::CompilerUnavailable, &Type, Backend,
+                    EArdaShaderCompileError::CompilerUnavailable, &Type, BackendName,
                     PermutationId, Job.mSourcePath, Job.mOutputPath,
                     "Unable to hash the configured compiler executable.");
                 return false;
@@ -717,7 +715,7 @@ namespace arda::backend
                 if (Target.mCompilerIdentity.empty())
                 {
                     Diagnostic = MakeDiagnostic(
-                        EArdaShaderCompileError::CompilerUnavailable, &Type, Backend,
+                    EArdaShaderCompileError::CompilerUnavailable, &Type, BackendName,
                         PermutationId, Job.mSourcePath, Job.mOutputPath,
                         "The backend module has neither a compiler executable nor a stable in-process compiler identity.");
                     return false;
@@ -730,7 +728,7 @@ namespace arda::backend
                 if (!HashFile(Hash, File.mPhysicalPath))
                 {
                     Diagnostic = MakeDiagnostic(
-                        EArdaShaderCompileError::SourceResolutionFailed, &Type, Backend,
+                    EArdaShaderCompileError::SourceResolutionFailed, &Type, BackendName,
                         PermutationId, Job.mSourcePath, Job.mOutputPath,
                         "Unable to hash a file in the frozen shader-source manifest.");
                     return false;
@@ -746,7 +744,7 @@ namespace arda::backend
                         Visiting, Hashed, DependencyError))
                 {
                     Diagnostic = MakeDiagnostic(
-                        EArdaShaderCompileError::SourceResolutionFailed, &Type, Backend,
+                    EArdaShaderCompileError::SourceResolutionFailed, &Type, BackendName,
                         PermutationId, Job.mSourcePath, Job.mOutputPath,
                         DependencyError);
                     return false;
@@ -757,7 +755,7 @@ namespace arda::backend
                         DependencyError))
                 {
                     Diagnostic = MakeDiagnostic(
-                        EArdaShaderCompileError::SourceResolutionFailed, &Type, Backend,
+                    EArdaShaderCompileError::SourceResolutionFailed, &Type, BackendName,
                         PermutationId, Job.mSourcePath, Job.mOutputPath,
                         DependencyError);
                     return false;
@@ -794,7 +792,7 @@ namespace arda::backend
                     {
                         Diagnostic = MakeDiagnostic(
                             EArdaShaderCompileError::SourceResolutionFailed, &Type,
-                            Backend, PermutationId, Job.mSourcePath,
+                            BackendName, PermutationId, Job.mSourcePath,
                             Job.mOutputPath, DependencyError);
                         return false;
                     }
@@ -818,7 +816,7 @@ namespace arda::backend
             {
                 Diagnostic = MakeDiagnostic(
                     EArdaShaderCompileError::DirectoryCreationFailed, &Job.mType,
-                    Job.mBackend, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
+                    Job.mTarget.mBackendName, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
                     "Unable to create the shader artifact directory.");
                 return false;
             }
@@ -854,7 +852,7 @@ namespace arda::backend
                     std::filesystem::remove(TemporarySidecar, CleanupError);
                     Diagnostic = MakeDiagnostic(
                         EArdaShaderCompileError::CacheWriteFailed, &Job.mType,
-                        Job.mBackend, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
+                        Job.mTarget.mBackendName, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
                         "Unable to prepare the shader cache-key sidecar.");
                     return false;
                 }
@@ -907,7 +905,7 @@ namespace arda::backend
                 std::filesystem::remove(TemporarySidecar, Error);
                 Diagnostic = MakeDiagnostic(
                     EArdaShaderCompileError::ProcessLaunchFailed, &Job.mType,
-                    Job.mBackend, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
+                    Job.mTarget.mBackendName, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
                     "Neither the backend module nor the configured fallback compiler launched the job.");
                 return false;
             }
@@ -919,7 +917,7 @@ namespace arda::backend
                 std::filesystem::remove(TemporarySidecar, Error);
                 Diagnostic = MakeDiagnostic(
                     EArdaShaderCompileError::CompilationFailed, &Job.mType,
-                    Job.mBackend, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
+                    Job.mTarget.mBackendName, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
                     "Shader compilation failed with exit code " + std::to_string(ExitCode) +
                         (CompilerOutput.empty() ? "." : ":\n" + CompilerOutput));
                 return false;
@@ -941,7 +939,7 @@ namespace arda::backend
                     AtomicReplace(BackupOutput, Job.mOutputPath);
                 Diagnostic = MakeDiagnostic(
                     EArdaShaderCompileError::CacheWriteFailed, &Job.mType,
-                    Job.mBackend, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
+                    Job.mTarget.mBackendName, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
                     "Unable to prepare rollback backups for shader publication.");
                 return false;
             }
@@ -958,7 +956,7 @@ namespace arda::backend
                 std::filesystem::remove(TemporarySidecar, Error);
                 Diagnostic = MakeDiagnostic(
                     EArdaShaderCompileError::CacheWriteFailed, &Job.mType,
-                    Job.mBackend, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
+                    Job.mTarget.mBackendName, Job.mPermutationId, Job.mSourcePath, Job.mOutputPath,
                     "Unable to publish artifact and sidecar together; previous files were restored.");
                 return false;
             }
@@ -1097,7 +1095,7 @@ namespace arda::backend
         if (!Registration)
         {
             Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::RegistrationFailed, nullptr, DefaultBackend,
+                EArdaShaderCompileError::RegistrationFailed, nullptr, {},
                 0, {}, {}, ToStd(Registration.mMessage)));
             return Result;
         }
@@ -1159,26 +1157,6 @@ namespace arda::backend
     }
 
     static bool ResolveShaderTargets(
-        const std::vector<EArdaBackendType>& Backends,
-        eastl::vector<FArdaShaderTarget>& OutTargets,
-        FArdaShaderCompileResult& OutResult)
-    {
-        for (const EArdaBackendType Backend : Backends)
-        {
-            FArdaShaderTarget Target;
-            if (!ResolveDefaultShaderTarget(Backend, Target))
-            {
-                OutResult.mDiagnostics.push_back(MakeDiagnostic(
-                    EArdaShaderCompileError::CompilerUnavailable, nullptr, Backend,
-                    0, {}, {}, "No registered backend module can compile the requested shader target."));
-                return false;
-            }
-            OutTargets.push_back(eastl::move(Target));
-        }
-        return true;
-    }
-
-    static bool ResolveShaderTargets(
         const eastl::vector<eastl::string>& BackendNames,
         eastl::vector<FArdaShaderTarget>& OutTargets,
         FArdaShaderCompileResult& OutResult)
@@ -1189,7 +1167,7 @@ namespace arda::backend
             if (!ResolveShaderTarget(BackendName.c_str(), Target))
             {
                 auto Diagnostic = MakeDiagnostic(
-                    EArdaShaderCompileError::CompilerUnavailable, nullptr, DefaultBackend,
+                    EArdaShaderCompileError::CompilerUnavailable, nullptr, {},
                     0, {}, {}, "The requested shader backend module is not registered.");
                 Diagnostic.mBackendName = BackendName;
                 OutResult.mDiagnostics.push_back(eastl::move(Diagnostic));
@@ -1198,21 +1176,6 @@ namespace arda::backend
             OutTargets.push_back(eastl::move(Target));
         }
         return true;
-    }
-
-    FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(
-        const std::filesystem::path& OutputDirectory,
-        const std::vector<EArdaBackendType>& Backends)
-    {
-        FArdaShaderCompileResult Result;
-        eastl::vector<FArdaShaderTarget> Targets;
-        if (!ResolveShaderTargets(Backends, Targets, Result))
-            return Result;
-        const FArdaShaderCompilerConfiguration Configuration =
-            GetShaderCompilerConfiguration();
-        const std::filesystem::path Compiler = ResolveCompiler(Configuration);
-        return BuildRegisteredShaderCompileJobsWithSnapshot(
-            OutputDirectory, Targets, Configuration, Compiler);
     }
 
     FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(
@@ -1249,7 +1212,7 @@ namespace arda::backend
         {
             Result.mDiagnostics.push_back(MakeDiagnostic(
                 EArdaShaderCompileError::DirectoryCreationFailed, nullptr,
-                DefaultBackend, 0, {}, StagingDirectory,
+                {}, 0, {}, StagingDirectory,
                 "Unable to create the shader cook staging directory."));
             return Result;
         }
@@ -1272,7 +1235,7 @@ namespace arda::backend
         {
             std::filesystem::remove_all(StagingDirectory, Error);
             Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::ManifestWriteFailed, nullptr, DefaultBackend,
+                EArdaShaderCompileError::ManifestWriteFailed, nullptr, {},
                 0, {}, OutputDirectory / "ArdaShaderManifest.json",
                 "Unable to write the staged deterministic shader cook manifest."));
             return Result;
@@ -1297,24 +1260,13 @@ namespace arda::backend
             std::filesystem::remove_all(StagingDirectory, Error);
             std::filesystem::remove_all(BackupDirectory, Error);
             Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::CacheWriteFailed, nullptr, DefaultBackend,
+                EArdaShaderCompileError::CacheWriteFailed, nullptr, {},
                 0, {}, OutputDirectory,
                 "Unable to publish the staged shader cook; previous outputs were restored."));
             return Result;
         }
         std::filesystem::remove_all(StagingDirectory, Error);
         return Result;
-    }
-
-    FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
-        const std::filesystem::path& OutputDirectory,
-        const std::vector<EArdaBackendType>& Backends)
-    {
-        FArdaShaderCompileResult Result;
-        eastl::vector<FArdaShaderTarget> Targets;
-        if (!ResolveShaderTargets(Backends, Targets, Result))
-            return Result;
-        return CompileRegisteredShaderArtifactsWithTargets(OutputDirectory, Targets);
     }
 
     FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
@@ -1326,15 +1278,6 @@ namespace arda::backend
         if (!ResolveShaderTargets(BackendNames, Targets, Result))
             return Result;
         return CompileRegisteredShaderArtifactsWithTargets(OutputDirectory, Targets);
-    }
-
-    FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
-        const std::filesystem::path& OutputDirectory,
-        EArdaBackendType Backend)
-    {
-        return CompileRegisteredShaderArtifacts(
-            OutputDirectory,
-            std::vector<EArdaBackendType>{ Backend });
     }
 
     FArdaShaderCompileResult CompileRegisteredShaderArtifacts(
@@ -1358,14 +1301,14 @@ namespace arda::backend
         const std::filesystem::path& OutputDirectory,
         const FArdaShaderTarget& Target)
     {
-        const EArdaBackendType Backend = Target.mBackend;
+        const eastl::string& BackendName = Target.mBackendName;
         FArdaShaderCompileResult Result;
         const FArdaShaderRegistrationStatus Registration =
             FArdaShaderTypeRegistration::CommitAll();
         if (!Registration)
         {
             Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::RegistrationFailed, nullptr, Backend,
+                EArdaShaderCompileError::RegistrationFailed, nullptr, BackendName,
                 0, {}, {}, ToStd(Registration.mMessage)));
             return Result;
         }
@@ -1403,22 +1346,6 @@ namespace arda::backend
 
     FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(
         const std::filesystem::path& OutputDirectory,
-        EArdaBackendType Backend)
-    {
-        FArdaShaderTarget Target;
-        if (!ResolveDefaultShaderTarget(Backend, Target))
-        {
-            FArdaShaderCompileResult Result;
-            Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::CompilerUnavailable, nullptr, Backend,
-                0, {}, {}, "No registered backend module can compile the requested shader target."));
-            return Result;
-        }
-        return EnsureRegisteredShaderArtifactsForTarget(OutputDirectory, Target);
-    }
-
-    FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(
-        const std::filesystem::path& OutputDirectory,
         const char* BackendName)
     {
         FArdaShaderTarget Target;
@@ -1426,7 +1353,7 @@ namespace arda::backend
         {
             FArdaShaderCompileResult Result;
             auto Diagnostic = MakeDiagnostic(
-                EArdaShaderCompileError::CompilerUnavailable, nullptr, DefaultBackend,
+                EArdaShaderCompileError::CompilerUnavailable, nullptr, {},
                 0, {}, {}, "The requested shader backend module is not registered.");
             Diagnostic.mBackendName = BackendName ? BackendName : "";
             Result.mDiagnostics.push_back(eastl::move(Diagnostic));
@@ -1443,14 +1370,14 @@ namespace arda::backend
         const FArdaShaderCompilerConfiguration& Configuration,
         const std::filesystem::path& Compiler)
     {
-        const EArdaBackendType Backend = Target.mBackend;
+        const eastl::string& BackendName = Target.mBackendName;
         FArdaShaderCompileResult Result;
         const FArdaShaderRegistrationStatus Registration =
             FArdaShaderTypeRegistration::CommitAll();
         if (!Registration)
         {
             Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::RegistrationFailed, &Type, Backend,
+                EArdaShaderCompileError::RegistrationFailed, &Type, BackendName,
                 PermutationId, {}, {}, ToStd(Registration.mMessage)));
             return Result;
         }
@@ -1458,7 +1385,7 @@ namespace arda::backend
             !Type.ShouldCompilePermutation(Target, PermutationId))
         {
             Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::InvalidPermutation, &Type, Backend,
+                EArdaShaderCompileError::InvalidPermutation, &Type, BackendName,
                 PermutationId, {}, {},
                 "The requested permutation is invalid or filtered by its registered compile policy."));
             return Result;
@@ -1469,7 +1396,7 @@ namespace arda::backend
         if (!IsContainedArtifactPath(OutputDirectory, Output))
         {
             Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::InvalidPermutation, &Type, Backend,
+                EArdaShaderCompileError::InvalidPermutation, &Type, BackendName,
                 PermutationId, {}, Output,
                 "Generated shader artifact path escapes its output directory."));
             return Result;
@@ -1496,7 +1423,7 @@ namespace arda::backend
         if (!Exists && !Configuration.mbCompileMissingArtifacts)
         {
             Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::ArtifactMissing, &Type, Backend,
+                EArdaShaderCompileError::ArtifactMissing, &Type, BackendName,
                 PermutationId, {}, Output,
                 "Shader artifact is missing and development auto compilation is disabled."));
             return Result;
@@ -1521,7 +1448,7 @@ namespace arda::backend
         if (Exists && !Configuration.mbCompileOutdatedArtifacts)
         {
             Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::ArtifactOutdated, &Type, Backend,
+                EArdaShaderCompileError::ArtifactOutdated, &Type, BackendName,
                 PermutationId, Job.mSourcePath, Output,
                 "Shader cache sidecar does not match current compiler/source/job inputs and rebuilding outdated artifacts is disabled."));
             return Result;
@@ -1541,29 +1468,6 @@ namespace arda::backend
 
     FArdaShaderCompileResult EnsureRegisteredShaderArtifact(
         const FArdaShaderType& Type,
-        EArdaBackendType Backend,
-        uint32_t PermutationId,
-        const std::filesystem::path& OutputDirectory)
-    {
-        FArdaShaderTarget Target;
-        if (!ResolveDefaultShaderTarget(Backend, Target))
-        {
-            FArdaShaderCompileResult Result;
-            Result.mDiagnostics.push_back(MakeDiagnostic(
-                EArdaShaderCompileError::CompilerUnavailable, &Type, Backend,
-                PermutationId, {}, {}, "No registered backend module can compile the requested shader target."));
-            return Result;
-        }
-        const FArdaShaderCompilerConfiguration Configuration =
-            GetShaderCompilerConfiguration();
-        const std::filesystem::path Compiler = ResolveCompiler(Configuration);
-        return EnsureRegisteredShaderArtifactWithSnapshot(
-            Type, Target, PermutationId, OutputDirectory,
-            Configuration, Compiler);
-    }
-
-    FArdaShaderCompileResult EnsureRegisteredShaderArtifact(
-        const FArdaShaderType& Type,
         const char* BackendName,
         uint32_t PermutationId,
         const std::filesystem::path& OutputDirectory)
@@ -1573,7 +1477,7 @@ namespace arda::backend
         {
             FArdaShaderCompileResult Result;
             auto Diagnostic = MakeDiagnostic(
-                EArdaShaderCompileError::CompilerUnavailable, &Type, DefaultBackend,
+                EArdaShaderCompileError::CompilerUnavailable, &Type, {},
                 PermutationId, {}, {}, "The requested shader backend module is not registered.");
             Diagnostic.mBackendName = BackendName ? BackendName : "";
             Result.mDiagnostics.push_back(eastl::move(Diagnostic));

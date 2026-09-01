@@ -76,7 +76,7 @@
           <p>After this chapter, you should be able to:</p>
           <ul>
             <li>separate renderer-facing Arda RHI contracts from the provider-facing implementation contract;</li>
-            <li>describe a module with a stable identity, compatibility class, device-source support, shader format, and priority;</li>
+            <li>describe a module with a stable identity, device-source support, shader format, and global priority;</li>
             <li>implement the module and runtime-device interfaces without exposing native types through Arda's public headers;</li>
             <li>wire a backend library into CMake so static-link elimination cannot discard registration;</li>
             <li>route host-owned devices and resources to exactly one compatible module; and</li>
@@ -97,7 +97,7 @@
             <img src="Assets/backend-provider-module-flow.svg" alt="Application selection enters the ArdaBackend registry, chooses one of several linked modules, creates its backend runtime and RHI provider, and exposes RHI, presentation, and shader services; an external host can provide devices and resources to the selected module.">
             <figcaption>Module identity is chosen at runtime from the implementations made available at link time. External objects cross only through copied, backend-routed descriptors.</figcaption>
           </figure>
-          <p>The distinction between identity and compatibility matters. <code>native-vulkan</code> and a future <code>unreal-vulkan-rhi</code> could both use the Vulkan <a class="term" data-term="compatibility-class" href="../glossary.html#term-compatibility-class">compatibility class</a>, but they are not interchangeable implementations and need not accept the same external payload.</p>
+          <p>Module identity is exact. <code>native-vulkan</code> and a future <code>unreal-vulkan-rhi</code> are independent registrations even if their devices advertise similar capabilities or consume the same shader format; they need not accept the same external payload.</p>
         </section>
 
         <section id="public-private-boundary">
@@ -110,16 +110,15 @@
         </section>
 
         <section id="descriptor">
-          <h2>The module descriptor is a compatibility declaration</h2>
+          <h2>The module descriptor is the registration declaration</h2>
           <p><a href="api-reference.html#api-arda-backend-fardabackendmoduledescriptor-76f21395"><code>FArdaBackendModuleDescriptor</code></a> is copied when the module is registered. Every field participates in selection or validation:</p>
           <dl>
             <dt><code>mInterfaceVersion</code></dt><dd>Must equal <code>ArdaBackendProviderInterfaceVersion</code>. It guards the C++ virtual contract, not native-driver compatibility.</dd>
             <dt><code>mName</code></dt><dd>Stable machine key used by configuration and external providers. Treat it as persistent configuration data.</dd>
             <dt><code>mDisplayName</code></dt><dd>Human-facing diagnostic label; it need not be stable.</dd>
-            <dt><code>mBackendType</code></dt><dd>D3D12, Vulkan, or Custom compatibility class used for legacy/API-based selection and shader permutations.</dd>
             <dt><code>mShaderBinaryFormat</code>, <code>mShaderArtifactExtension</code>, and <code>mShaderCompilerIdentity</code></dt><dd>State what the module consumes. DXIL and SPIR-V can use core's DXC-compatible fallback. An in-process or BackendDefined compiler supplies a stable identity and an operative module hook.</dd>
             <dt>Device-source flags</dt><dd><code>mbSupportsOwnedDevice</code> and <code>mbSupportsExternalDevice</code> must truthfully match what <code>CreateDevice</code> can construct.</dd>
-            <dt><code>mPriority</code></dt><dd>Breaks ties for compatibility-class selection. Stable-name selection ignores priority.</dd>
+            <dt><code>mPriority</code></dt><dd>Selects the default among all registered modules. Stable-name selection ignores priority.</dd>
           </dl>
           <p>The checked-in implementation publishes separate descriptors for <code>native-vulkan</code> and <code>native-d3d12</code>. They implement the public <code>rhi::provider</code> SPI, while the provider-neutral facade and shared pipeline-cache persistence live in the compiled <code>ArdaBackend</code> module. The providers remain independently registered and independently linkable.</p>
         </section>
@@ -136,7 +135,7 @@
           <ol>
             <li>Build-generated wiring calls each linked module's registration entry point.</li>
             <li><a href="api-reference.html#api-arda-backend-registerbackendmodule-4cba8a9b"><code>RegisterBackendModule</code></a> validates and copies the descriptor while borrowing the module object.</li>
-            <li>The application chooses an exact <code>mBackendName</code>, or leaves it empty and supplies an <code>EArdaBackendType</code> compatibility class.</li>
+            <li>The application chooses an exact <code>mBackendName</code>, or leaves it empty to select the globally highest-priority registered module.</li>
             <li>Initialization validates device-source support and external-provider compatibility before asking the module to allocate a device.</li>
             <li>After success, <code>GetBackendConfiguration().mBackendName</code> records the actual implementation and <code>GetActiveBackendModule</code> exposes a non-owning diagnostic view.</li>
           </ol>
@@ -282,8 +281,8 @@ bool RegisterMyEngineArdaBackend()
           <dl>
             <dt>“Configured backend module is not registered”</dt><dd>Confirm the library target is in <code>ARDASHIR_BACKEND_MODULE_TARGETS</code>, its entry point is in <code>ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS</code>, and the configured stable name exactly matches the descriptor.</dd>
             <dt>Registration rejects the module</dt><dd>Check interface version, non-empty unique name, shader format/extension, device-source flags, and collision with another live module object.</dd>
-            <dt>Compatibility selection chooses the wrong implementation</dt><dd>Set <code>mBackendName</code> for deterministic selection. Otherwise inspect every descriptor's backend type and priority.</dd>
-            <dt>External initialization reports a module mismatch</dt><dd>Align configuration, provider <code>GetBackendName</code>, descriptor <code>mBackendName</code>, and compatibility class. Do not erase the exact module name to bypass schema validation.</dd>
+            <dt>Priority selection chooses the wrong implementation</dt><dd>Set <code>mBackendName</code> for deterministic selection. Otherwise inspect every descriptor's global priority.</dd>
+            <dt>External initialization reports a module mismatch</dt><dd>Align configuration, provider <code>GetBackendName</code>, and descriptor <code>mName</code>. Do not erase the exact module name to bypass schema validation.</dd>
             <dt>External resource import fails</dt><dd>Check provider module routing, native type name, payload version, device identity, full resource description, initial state, and lifetime token.</dd>
             <dt>Shader compilation says the backend did not handle its format</dt><dd>A BackendDefined module returned NotHandled or produced no requested artifact. Implement the invocation hook or select DXIL/SPIR-V with a usable fallback compiler.</dd>
             <dt>Crash during shutdown or plugin unload</dt><dd>Search for copied RHI/device/resource references, swap chains, cached pipelines, callbacks, and in-flight host work. Registry removal is not a substitute for quiescence.</dd>
@@ -294,7 +293,7 @@ bool RegisterMyEngineArdaBackend()
           <h2>Summary and checkpoints</h2>
           <ul>
             <li>ArdaBackend core defines stable renderer-facing semantics; linkable modules make them operative.</li>
-            <li>A module name identifies an implementation; backend type is only a compatibility class.</li>
+            <li>A module name is the single identity for selecting and routing an implementation; capabilities describe optional behavior.</li>
             <li>The module/runtime split separates persistent registration identity from one initialized backend instance.</li>
             <li>Build-generated registration makes the linked module set explicit and safe for static archives.</li>
             <li>Generic external-device/resource descriptors are routed and interpreted by the selected module.</li>
@@ -302,7 +301,7 @@ bool RegisterMyEngineArdaBackend()
           </ul>
           <h3>Checkpoint questions</h3>
           <ol>
-            <li>Why can two modules share <code>EArdaBackendType::Vulkan</code> but require different external payloads?</li>
+            <li>Why can two modules advertise similar capabilities but require different external payloads?</li>
             <li>Which descriptor field rejects a provider compiled against an incompatible virtual interface?</li>
             <li>Why are a linked library and a registration function both required for a static backend module?</li>
             <li>Who owns a module, backend runtime, generic descriptor bytes, and external native device?</li>

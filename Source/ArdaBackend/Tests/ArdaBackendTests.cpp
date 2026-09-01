@@ -29,8 +29,7 @@ namespace
     arda::backend::IArdaBackendModule* FindLinkedTestBackendModule()
     {
         using namespace arda::backend;
-        if (IArdaBackendModule* Module =
-                FindDefaultBackendModule(DefaultBackend))
+        if (IArdaBackendModule* Module = FindDefaultBackendModule())
         {
             return Module;
         }
@@ -119,17 +118,16 @@ namespace
         : public arda::backend::IArdaExternalDeviceProvider
     {
     public:
-        arda::backend::EArdaBackendType mBackend =
-            arda::backend::DefaultBackend;
+        const char* mBackendName = "native-vulkan";
         eastl::shared_ptr<void> mToken;
 #if defined(_WIN32)
         arda::backend::FArdaExternalDeviceDesc mExternal;
         bool mbSupplyD3D12 = false;
 #endif
 
-        arda::backend::EArdaBackendType GetBackendType() const noexcept override
+        const char* GetBackendName() const noexcept override
         {
-            return mBackend;
+            return mBackendName;
         }
 #if defined(_WIN32)
         bool GetExternalDeviceDesc(
@@ -150,8 +148,7 @@ namespace
     {
     public:
         const char* mName = "test.resources";
-        arda::backend::EArdaBackendType mBackend =
-            arda::backend::DefaultBackend;
+        const char* mBackendName = "native-vulkan";
         arda::rhi::FArdaRHIStatus mTextureStatus =
             arda::rhi::FArdaRHIStatus::Success();
         arda::rhi::FArdaRHIStatus mBufferStatus =
@@ -162,9 +159,9 @@ namespace
         uint64_t mLastBufferId = 0;
 
         const char* GetName() const noexcept override { return mName; }
-        arda::backend::EArdaBackendType GetBackendType() const noexcept override
+        const char* GetBackendName() const noexcept override
         {
-            return mBackend;
+            return mBackendName;
         }
         arda::rhi::FArdaRHIStatus ResolveNativeTexture(
             uint64_t Id,
@@ -191,7 +188,6 @@ namespace
         {
             mDescriptor.mName = Name;
             mDescriptor.mDisplayName = "Test backend";
-            mDescriptor.mBackendType = arda::backend::EArdaBackendType::Custom;
             mDescriptor.mShaderBinaryFormat =
                 arda::backend::EArdaShaderBinaryFormat::BackendDefined;
             mDescriptor.mShaderArtifactExtension = ".testbin";
@@ -243,7 +239,7 @@ TEST(ArdaBackend, LinkableBackendRegistrySelectsStableNamedModules)
     EXPECT_TRUE(RegisterBackendModule(Module));
     EXPECT_FALSE(RegisterBackendModule(Collision));
     EXPECT_EQ(FindBackendModule("test-custom-rhi"), &Module);
-    EXPECT_EQ(FindDefaultBackendModule(EArdaBackendType::Custom), &Module);
+    EXPECT_EQ(FindBackendModule("test-custom-rhi"), &Module);
 
     const auto Modules = EnumerateBackendModules();
     const auto Position = eastl::find_if(
@@ -257,7 +253,6 @@ TEST(ArdaBackend, LinkableBackendRegistrySelectsStableNamedModules)
 
     ASSERT_TRUE(ConfigureBackend("test-custom-rhi"));
     EXPECT_EQ(GetBackendConfiguration().mBackendName, "test-custom-rhi");
-    EXPECT_EQ(GetBackendConfiguration().mBackend, EArdaBackendType::Custom);
 
     ASSERT_TRUE(ConfigureBackend(Original));
     EXPECT_TRUE(UnregisterBackendModule(Module));
@@ -270,7 +265,6 @@ TEST(ArdaBackend, NativeApisAreRegisteredAsSeparateBackendModules)
     IArdaBackendModule* Vulkan = FindBackendModule("native-vulkan");
 #if defined(ARDA_TEST_NATIVE_VULKAN)
     ASSERT_NE(Vulkan, nullptr);
-    EXPECT_EQ(Vulkan->GetDescriptor().mBackendType, EArdaBackendType::Vulkan);
     EXPECT_EQ(Vulkan->GetDescriptor().mShaderArtifactExtension, ".spv");
 #else
     EXPECT_EQ(Vulkan, nullptr);
@@ -280,7 +274,6 @@ TEST(ArdaBackend, NativeApisAreRegisteredAsSeparateBackendModules)
     ASSERT_NE(D3D12, nullptr);
     if (Vulkan)
         EXPECT_NE(D3D12, Vulkan);
-    EXPECT_EQ(D3D12->GetDescriptor().mBackendType, EArdaBackendType::D3D12);
     EXPECT_EQ(D3D12->GetDescriptor().mShaderArtifactExtension, ".dxil");
 #else
     EXPECT_EQ(D3D12, nullptr);
@@ -316,10 +309,8 @@ TEST(ArdaBackend, ExternalDeviceSourceReportsMissingAndMismatchedProviders)
     FExternalTestCleanup Cleanup;
     IArdaBackendModule* Module = FindLinkedTestBackendModule();
     ASSERT_NE(Module, nullptr);
-    const EArdaBackendType TestBackend = Module->GetDescriptor().mBackendType;
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = Module->GetDescriptor().mName;
-    Configuration.mBackend = TestBackend;
     Configuration.mDeviceSource = EArdaDeviceSource::ExternalProvider;
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -329,12 +320,10 @@ TEST(ArdaBackend, ExternalDeviceSourceReportsMissingAndMismatchedProviders)
     EXPECT_FALSE(InitializeBackend());
     EXPECT_NE(GetBackendError().find("registered provider"), eastl::string::npos);
 
-    Provider.mBackend = TestBackend == EArdaBackendType::D3D12
-        ? EArdaBackendType::Vulkan
-        : EArdaBackendType::D3D12;
+    Provider.mBackendName = "not-the-configured-module";
     ASSERT_TRUE(Cleanup.Register(Provider));
     EXPECT_FALSE(InitializeBackend());
-    EXPECT_NE(GetBackendError().find("does not match"), eastl::string::npos);
+    EXPECT_NE(GetBackendError().find("different backend module"), eastl::string::npos);
 }
 
 TEST(ArdaBackend, NamedExternalResourceProviderRegistryIsDeterministic)
@@ -383,23 +372,19 @@ TEST(ArdaBackend, NamedExternalResourceImportFailsCleanly)
 
     IArdaBackendModule* Module = FindLinkedTestBackendModule();
     ASSERT_NE(Module, nullptr);
-    const EArdaBackendType TestBackend = Module->GetDescriptor().mBackendType;
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = Module->GetDescriptor().mName;
-    Configuration.mBackend = TestBackend;
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureBackend(Configuration));
     if (!InitializeBackend())
         GTEST_SKIP() << GetBackendError().c_str();
 
-    Provider.mBackend = TestBackend == EArdaBackendType::D3D12
-        ? EArdaBackendType::Vulkan
-        : EArdaBackendType::D3D12;
+    Provider.mBackendName = "not-the-configured-module";
     auto WrongBackend = ImportExternalBuffer(Provider.mName, 13);
     EXPECT_FALSE(WrongBackend);
     EXPECT_EQ(WrongBackend.mStatus.mCode, rhi::EArdaRHIResult::WrongDevice);
 
-    Provider.mBackend = TestBackend;
+    Provider.mBackendName = Module->GetDescriptor().mName.c_str();
     Provider.mBufferStatus = rhi::FArdaRHIStatus::Error(
         rhi::EArdaRHIResult::BackendFailure,
         "provider-specific buffer failure");
@@ -432,13 +417,11 @@ TEST(ArdaBackend, ExposesSingleProcessWideConfigurationAndDevice)
     using namespace arda::backend;
 
     ShutdownBackend();
-    ASSERT_TRUE(ConfigureBackend(DefaultBackend));
+    ASSERT_TRUE(ConfigureBackend(FArdaBackendConfiguration{}));
 
-    EXPECT_EQ(GetBackendConfiguration().mBackend, DefaultBackend);
+    EXPECT_FALSE(GetBackendConfiguration().mBackendName.empty());
     EXPECT_FALSE(IsBackendInitialized());
     EXPECT_EQ(GetDevice(), nullptr);
-    EXPECT_STREQ(ToString(EArdaBackendType::D3D12), "D3D12");
-    EXPECT_STREQ(ToString(EArdaBackendType::Vulkan), "Vulkan");
     EXPECT_STREQ(GetModuleName(), "ArdaBackend");
 }
 
@@ -546,7 +529,7 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
     ASSERT_TRUE(GraphicsQueue);
 
     FTestDeviceProvider DeviceProvider;
-    DeviceProvider.mBackend = EArdaBackendType::D3D12;
+    DeviceProvider.mBackendName = "native-d3d12";
     DeviceProvider.mbSupplyD3D12 = true;
     DeviceProvider.mExternal.mNativeApi = "d3d12";
     DeviceProvider.mExternal.mDevice = FArdaNativeObject(NativeDevice.Get());
@@ -557,7 +540,7 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
     };
 
     FTestResourceProvider ResourceProvider;
-    ResourceProvider.mBackend = EArdaBackendType::D3D12;
+    ResourceProvider.mBackendName = "native-d3d12";
     FExternalTestCleanup Cleanup;
 
     auto Token = eastl::make_shared<int>(42);
@@ -626,13 +609,13 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
     ASSERT_TRUE(Cleanup.Register(DeviceProvider));
     ASSERT_TRUE(Cleanup.Register(ResourceProvider));
     FArdaBackendConfiguration Configuration;
-    Configuration.mBackend = EArdaBackendType::D3D12;
+    Configuration.mBackendName = "native-d3d12";
     Configuration.mDeviceSource = EArdaDeviceSource::ExternalProvider;
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureBackend(Configuration));
     ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
 
-    EXPECT_EQ(GetBackendConfiguration().mBackend, EArdaBackendType::D3D12);
+    EXPECT_EQ(GetBackendConfiguration().mBackendName, "native-d3d12");
     EXPECT_EQ(
         GetBackendConfiguration().mDeviceSource,
         EArdaDeviceSource::ExternalProvider);
@@ -705,14 +688,14 @@ TEST(ArdaBackend, InvalidExternalD3D12DescriptorsReportErrors)
 
     FTestDeviceProvider Provider;
     FExternalTestCleanup Cleanup;
-    Provider.mBackend = EArdaBackendType::D3D12;
+    Provider.mBackendName = "native-d3d12";
     Provider.mbSupplyD3D12 = true;
     Provider.mExternal.mNativeApi = "d3d12";
     Provider.mExternal.mDevice = FArdaNativeObject(NativeDevice.Get());
     ASSERT_TRUE(Cleanup.Register(Provider));
 
     FArdaBackendConfiguration Configuration;
-    Configuration.mBackend = EArdaBackendType::D3D12;
+    Configuration.mBackendName = "native-d3d12";
     Configuration.mDeviceSource = EArdaDeviceSource::ExternalProvider;
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -741,7 +724,7 @@ TEST(ArdaBackend, BorrowedD3D12TextureImportDeduplicatesAndReleases)
 
     ShutdownBackend();
     FArdaBackendConfiguration Configuration;
-    Configuration.mBackend = EArdaBackendType::D3D12;
+    Configuration.mBackendName = "native-d3d12";
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureBackend(Configuration));
     if (!InitializeBackend())
@@ -849,14 +832,14 @@ namespace
     arda::rhi::TArdaRHIResult<arda::rhi::FArdaRHIShaderRef>
     CreateArtifactShader(
         arda::rhi::IArdaRHIDevice& Device,
-        arda::backend::EArdaBackendType Backend,
+        const char* BackendName,
         const char* Artifact,
         const char* EntryPoint,
         arda::rhi::EArdaRHIShaderStage Stage)
     {
         using namespace arda;
         const eastl::string FileName = eastl::string(Artifact) +
-            backend::GetShaderArtifactExtension(Backend);
+            backend::GetShaderArtifactExtension(BackendName);
         const auto Bytecode = LoadTestBinary(FileName.c_str());
         if (Bytecode.empty())
         {
@@ -962,17 +945,20 @@ namespace
 
         if (Capabilities.mRayTracing.mbPipelineShaders)
         {
-            const bool bD3D12 =
-                arda::backend::GetBackendConfiguration().mBackend ==
-                arda::backend::EArdaBackendType::D3D12;
+            const arda::backend::IArdaBackendModule* ActiveModule =
+                arda::backend::GetActiveBackendModule();
+            ASSERT_NE(ActiveModule, nullptr);
+            const bool bLibraryBytecode =
+                ActiveModule->GetDescriptor().mShaderBinaryFormat ==
+                arda::backend::EArdaShaderBinaryFormat::Dxil;
             const auto Bytecode = LoadTestBinary(
-                bD3D12
+                bLibraryBytecode
                     ? "ArdaRayTracingTest.dxil"
                     : "ArdaRayTracingTest.spv");
             ASSERT_FALSE(Bytecode.empty());
 
             FArdaRHIShaderRef RayGenerationShader;
-            if (bD3D12)
+            if (bLibraryBytecode)
             {
                 auto Library = Device.CreateShaderLibrary(
                     Bytecode.data(),
@@ -1053,13 +1039,13 @@ namespace
     }
 
     void VerifyDeviceInitialization(
-        arda::backend::EArdaBackendType Backend,
+        const char* BackendName,
         bool bRequireComputeAndCopy)
     {
         using namespace arda::backend;
 
         ShutdownBackend();
-        ASSERT_TRUE(ConfigureBackend(Backend));
+        ASSERT_TRUE(ConfigureBackend(BackendName));
         if (!InitializeBackend())
         {
             GTEST_SKIP() << GetBackendError().c_str();
@@ -1067,7 +1053,7 @@ namespace
 
         EXPECT_TRUE(IsBackendInitialized());
         EXPECT_NE(GetDevice(), nullptr);
-        EXPECT_EQ(GetBackendConfiguration().mBackend, Backend);
+        EXPECT_EQ(GetBackendConfiguration().mBackendName, BackendName);
 
         arda::rhi::FArdaRHIDeviceRef Device = GetDevice();
         const auto& Capabilities = Device->GetCapabilities().mQueues;
@@ -1134,7 +1120,6 @@ TEST(ArdaBackend, D3D12ValidationInitializationAllowsDxgiDebugFallback)
     ASSERT_NE(Module, nullptr);
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = Module->GetDescriptor().mName;
-    Configuration.mBackend = EArdaBackendType::D3D12;
     Configuration.mbEnableValidation = true;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
     ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -1153,13 +1138,11 @@ TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
     size_t TestedBackends = 0;
     for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
     {
-        if (Module.mBackendType != EArdaBackendType::D3D12 &&
-            Module.mBackendType != EArdaBackendType::Vulkan)
+        if (!Module.mbSupportsOwnedDevice)
             continue;
         ShutdownBackend();
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module.mName;
-        Configuration.mBackend = Module.mBackendType;
         Configuration.mbEnableValidation = false;
         Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -1256,13 +1239,13 @@ TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
                 LibraryData, sizeof(LibraryData), "LifetimeLibrary");
             ASSERT_TRUE(Library);
             auto VertexShader = CreateArtifactShader(
-                *Device, Module.mBackendType, "ArdaPipelineStateTestVS",
+                *Device, Module.mName.c_str(), "ArdaPipelineStateTestVS",
                 "PipelineStateTestVS", EArdaRHIShaderStage::Vertex);
             auto PixelShader = CreateArtifactShader(
-                *Device, Module.mBackendType, "ArdaPipelineStateTestPS",
+                *Device, Module.mName.c_str(), "ArdaPipelineStateTestPS",
                 "PipelineStateTestPS", EArdaRHIShaderStage::Pixel);
             auto ComputeShader = CreateArtifactShader(
-                *Device, Module.mBackendType, "ArdaShaderStructTest",
+                *Device, Module.mName.c_str(), "ArdaShaderStructTest",
                 "ShaderStructTestCS", EArdaRHIShaderStage::Compute);
             ASSERT_TRUE(VertexShader);
             ASSERT_TRUE(PixelShader);
@@ -1318,7 +1301,7 @@ TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
             EXPECT_GT(During.GetLiveResourceCount(
                 EArdaRHIResourceType::BindingSet),
                 Baseline.GetLiveResourceCount(EArdaRHIResourceType::BindingSet));
-            if (Module.mBackendType == EArdaBackendType::D3D12)
+            if (During.mResourceDescriptors > Baseline.mResourceDescriptors)
             {
                 EXPECT_GT(During.mResourceDescriptors,
                     Baseline.mResourceDescriptors);
@@ -1361,9 +1344,7 @@ TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
             ResourceSetDesc.mItems.push_back({
                 0, 0, EArdaRHIBindingType::StructuredBufferUAV,
                 TArdaRHIRef<IArdaRHIResource>(Buffer.mValue.Get()), {} });
-            const uint32_t ResourceIterations =
-                Module.mBackendType == EArdaBackendType::D3D12
-                    ? 65568u : 8224u;
+            const uint32_t ResourceIterations = 8224u;
             for (uint32_t Index = 0; Index < ResourceIterations; ++Index)
             {
                 auto Set = Device->CreateBindingSet(ResourceSetDesc);
@@ -1416,13 +1397,11 @@ TEST(ArdaBackend, NativeHostDeviceCopiesSupportBlockingAndAsyncReadback)
     size_t TestedBackends = 0;
     for (const FArdaBackendModuleDescriptor& Module : EnumerateBackendModules())
     {
-        if (Module.mBackendType != EArdaBackendType::D3D12 &&
-            Module.mBackendType != EArdaBackendType::Vulkan)
+        if (!Module.mbSupportsOwnedDevice)
             continue;
         ShutdownBackend();
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module.mName;
-        Configuration.mBackend = Module.mBackendType;
         Configuration.mbEnableValidation = false;
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
@@ -1536,7 +1515,6 @@ TEST(ArdaBackend, VulkanMergesStageLayoutsThatShareARegisterSpace)
     ASSERT_NE(Module, nullptr);
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = Module->GetDescriptor().mName;
-    Configuration.mBackend = EArdaBackendType::Vulkan;
     Configuration.mbEnableValidation = true;
     Configuration.mMessageCallback = &Diagnostics;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
@@ -1549,10 +1527,10 @@ TEST(ArdaBackend, VulkanMergesStageLayoutsThatShareARegisterSpace)
 
     {
         auto VertexShader = CreateArtifactShader(
-            *Device, EArdaBackendType::Vulkan, "ArdaBindingSpaceVS",
+            *Device, Module->GetDescriptor().mName.c_str(), "ArdaBindingSpaceVS",
             "BindingSpaceVS", EArdaRHIShaderStage::Vertex);
         auto PixelShader = CreateArtifactShader(
-            *Device, EArdaBackendType::Vulkan, "ArdaBindingSpacePS",
+            *Device, Module->GetDescriptor().mName.c_str(), "ArdaBindingSpacePS",
             "BindingSpacePS", EArdaRHIShaderStage::Pixel);
         ASSERT_TRUE(VertexShader);
         ASSERT_TRUE(PixelShader);
@@ -1687,7 +1665,6 @@ TEST(ArdaBackend, VulkanPreservesPerMipLayoutsAcrossClearAndCompute)
     ASSERT_NE(Module, nullptr);
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = Module->GetDescriptor().mName;
-    Configuration.mBackend = EArdaBackendType::Vulkan;
     Configuration.mbEnableValidation = true;
     Configuration.mMessageCallback = &Diagnostics;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
@@ -1698,7 +1675,7 @@ TEST(ArdaBackend, VulkanPreservesPerMipLayoutsAcrossClearAndCompute)
 
     auto Shader = CreateArtifactShader(
         *Device,
-        EArdaBackendType::Vulkan,
+        Module->GetDescriptor().mName.c_str(),
         "ArdaVulkanLayoutTest",
         "VulkanLayoutTestCS",
         EArdaRHIShaderStage::Compute);
@@ -1773,11 +1750,11 @@ TEST(ArdaBackend, VulkanPreservesPerMipLayoutsAcrossClearAndCompute)
 #if defined(_WIN32) && defined(ARDA_TEST_NATIVE_D3D12)
 TEST(ArdaBackend, InitializesD3D12Device)
 {
-    VerifyDeviceInitialization(arda::backend::EArdaBackendType::D3D12, false);
+    VerifyDeviceInitialization("native-d3d12", false);
 }
 #endif
 
 TEST(ArdaBackend, InitializesVulkanDevice)
 {
-    VerifyDeviceInitialization(arda::backend::EArdaBackendType::Vulkan, false);
+    VerifyDeviceInitialization("native-vulkan", false);
 }
