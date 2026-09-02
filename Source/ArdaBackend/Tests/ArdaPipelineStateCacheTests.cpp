@@ -830,6 +830,174 @@ TEST(ArdaPipelineStateCache, CachesPrecachesBindsAndEvictsMeshletPipelines)
     ShutdownBackend();
 }
 
+TEST(ArdaPipelineStateCache, CachesRayTracingAndWorkGraphPipelines)
+{
+    using namespace arda;
+    using namespace backend;
+    using namespace rhi;
+
+    ShutdownBackend();
+    FArdaBackendConfiguration BackendConfiguration;
+    BackendConfiguration.mbEnableValidation = false;
+    ASSERT_TRUE(ConfigureBackend(BackendConfiguration));
+    if (!InitializeBackend())
+        GTEST_SKIP() << GetBackendError().c_str();
+
+    bool bTestedPipelineKind = false;
+    {
+        FArdaRHIDeviceRef Device = GetDevice();
+        ASSERT_TRUE(Device);
+        FArdaPipelineStateCacheConfiguration Configuration;
+        Configuration.mMaxRayTracingEntries = 1;
+        Configuration.mMaxWorkGraphEntries = 1;
+        FArdaPipelineStateCache Cache(Device, Configuration);
+        const char* BackendName =
+            GetBackendConfiguration().mBackendName.c_str();
+
+        if (Device->GetCapabilities().mRayTracing.mbPipelineShaders)
+        {
+            bTestedPipelineKind = true;
+            auto RayGeneration = CreateTestShader(
+                *Device, BackendName, "ArdaRayTracingTest", "RayGen",
+                EArdaRHIShaderStage::RayGeneration);
+            ASSERT_TRUE(RayGeneration)
+                << RayGeneration.mStatus.mMessage.c_str();
+            FArdaRHIBindingLayoutDesc LayoutDesc;
+            LayoutDesc.mVisibility = EArdaRHIShaderStage::AllRayTracing;
+            LayoutDesc.mItems.push_back(
+                {0, 1, EArdaRHIBindingType::StructuredBufferUAV});
+            auto Layout = Device->CreateBindingLayout(LayoutDesc);
+            ASSERT_TRUE(Layout) << Layout.mStatus.mMessage.c_str();
+            FArdaRayTracingPipelineStateInitializer Initializer;
+            Initializer.mDesc.mShaders.push_back(
+                {"RayGen", RayGeneration.mValue, {}});
+            Initializer.mDesc.mGlobalBindingLayouts.push_back(Layout.mValue);
+            Initializer.mDesc.mMaxPayloadSize = sizeof(uint32_t);
+            Initializer.mDesc.mMaxRecursionDepth = 1;
+            Initializer.mDesc.mDebugName = "Cached ray tracing";
+
+            const auto PrecacheStatus =
+                Cache.PrecacheRayTracing(Initializer);
+            ASSERT_TRUE(PrecacheStatus)
+                << PrecacheStatus.mMessage.c_str();
+            EXPECT_EQ(Cache.GetStats().mRayTracingEntries, 1u);
+            FArdaRHIRayTracingPipelineRef First;
+            const uint64_t HitsBefore = Cache.GetStats().mHits;
+            ASSERT_TRUE(Cache.GetOrCreateRayTracing(Initializer, First));
+            ASSERT_TRUE(First);
+            EXPECT_EQ(Cache.GetStats().mHits, HitsBefore + 1);
+            EXPECT_NE(First->GetDesc().mPersistentCacheKey, 0u);
+
+            auto Relabeled = Initializer;
+            Relabeled.mDesc.mDebugName = "Relabeled ray tracing";
+            FArdaRHIRayTracingPipelineRef Reused;
+            ASSERT_TRUE(Cache.GetOrCreateRayTracing(Relabeled, Reused));
+            EXPECT_EQ(Reused.Get(), First.Get());
+
+            Cache.Trim(128, 128, 128, 0, 128);
+            EXPECT_EQ(Cache.GetStats().mRayTracingEntries, 0u);
+            const uint64_t MissesBefore = Cache.GetStats().mMisses;
+            ASSERT_TRUE(Cache.GetOrCreateRayTracing(Initializer, Reused));
+            EXPECT_EQ(Cache.GetStats().mMisses, MissesBefore + 1);
+
+            FArdaRayTracingPipelineStateInitializer Invalid;
+            Invalid.mDesc.mDebugName = "Invalid cached ray tracing";
+            const auto InvalidStatus = Cache.PrecacheRayTracing(Invalid);
+            EXPECT_EQ(InvalidStatus.mCode, EArdaRHIResult::InvalidArgument);
+            ASSERT_FALSE(Cache.GetDiagnostics().empty());
+            EXPECT_EQ(Cache.GetDiagnostics().back().mKind,
+                EArdaPipelineStateKind::RayTracing);
+        }
+
+        if (Device->GetCapabilities().mWorkGraphTier !=
+            EArdaRHIWorkGraphTier::None)
+        {
+            bTestedPipelineKind = true;
+            auto WorkGraphShader = CreateTestShader(
+                *Device, BackendName, "ArdaWorkGraphTest",
+                "WorkGraphMain", EArdaRHIShaderStage::WorkGraph);
+            ASSERT_TRUE(WorkGraphShader)
+                << WorkGraphShader.mStatus.mMessage.c_str();
+            FArdaRHIBindingLayoutDesc LayoutDesc;
+            LayoutDesc.mVisibility = EArdaRHIShaderStage::WorkGraph;
+            LayoutDesc.mItems.push_back(
+                {0, 1, EArdaRHIBindingType::StructuredBufferUAV});
+            auto Layout = Device->CreateBindingLayout(LayoutDesc);
+            ASSERT_TRUE(Layout) << Layout.mStatus.mMessage.c_str();
+            FArdaWorkGraphPipelineStateInitializer Initializer;
+            Initializer.mDesc.mProgramName = "ArdaWorkGraphProgram";
+            Initializer.mDesc.mEntryPoint = "WorkGraphMain";
+            Initializer.mDesc.mShaders.push_back(WorkGraphShader.mValue);
+            Initializer.mDesc.mGlobalBindingLayouts.push_back(Layout.mValue);
+            Initializer.mDesc.mMaxInputRecords = 4;
+            Initializer.mDesc.mDebugName = "Cached work graph";
+
+            const auto PrecacheStatus = Cache.PrecacheWorkGraph(Initializer);
+            ASSERT_TRUE(PrecacheStatus)
+                << PrecacheStatus.mMessage.c_str();
+            EXPECT_EQ(Cache.GetStats().mWorkGraphEntries, 1u);
+            FArdaRHIWorkGraphPipelineRef First;
+            const uint64_t HitsBefore = Cache.GetStats().mHits;
+            ASSERT_TRUE(Cache.GetOrCreateWorkGraph(Initializer, First));
+            ASSERT_TRUE(First);
+            EXPECT_EQ(Cache.GetStats().mHits, HitsBefore + 1);
+            EXPECT_NE(First->GetDesc().mPersistentCacheKey, 0u);
+
+            auto Relabeled = Initializer;
+            Relabeled.mDesc.mDebugName = "Relabeled work graph";
+            FArdaRHIWorkGraphPipelineRef Reused;
+            ASSERT_TRUE(Cache.GetOrCreateWorkGraph(Relabeled, Reused));
+            EXPECT_EQ(Reused.Get(), First.Get());
+
+            Cache.Trim(128, 128, 128, 128, 0);
+            EXPECT_EQ(Cache.GetStats().mWorkGraphEntries, 0u);
+            const uint64_t MissesBefore = Cache.GetStats().mMisses;
+            ASSERT_TRUE(Cache.GetOrCreateWorkGraph(Initializer, Reused));
+            EXPECT_EQ(Cache.GetStats().mMisses, MissesBefore + 1);
+
+            FArdaWorkGraphPipelineStateInitializer Invalid;
+            Invalid.mDesc.mDebugName = "Invalid cached work graph";
+            const auto InvalidStatus = Cache.PrecacheWorkGraph(Invalid);
+            EXPECT_EQ(InvalidStatus.mCode, EArdaRHIResult::InvalidArgument);
+            ASSERT_FALSE(Cache.GetDiagnostics().empty());
+            EXPECT_EQ(Cache.GetDiagnostics().back().mKind,
+                EArdaPipelineStateKind::WorkGraph);
+        }
+
+        if (bTestedPipelineKind)
+        {
+            Cache.Clear();
+            const auto Stats = Cache.GetStats();
+            EXPECT_EQ(Stats.mRayTracingEntries, 0u);
+            EXPECT_EQ(Stats.mWorkGraphEntries, 0u);
+        }
+    }
+
+    ShutdownBackend();
+    if (!bTestedPipelineKind)
+        GTEST_SKIP() << "Ray tracing and work graphs are unavailable.";
+}
+
+TEST(ArdaPipelineStateCache, WorkGraphDescriptorUsesSemanticIdentity)
+{
+    using namespace arda::rhi;
+
+    FArdaRHIWorkGraphPipelineDesc First;
+    First.mProgramName = "Program";
+    First.mEntryPoint = "Entry";
+    First.mMaxInputRecords = 8;
+    First.mPersistentCacheKey = 11;
+    First.mDebugName = "First label";
+    auto Second = First;
+    Second.mPersistentCacheKey = 22;
+    Second.mDebugName = "Second label";
+    EXPECT_EQ(First, Second);
+    EXPECT_EQ(HashValue(First), HashValue(Second));
+    Second.mMaxInputRecords = 9;
+    EXPECT_FALSE(First == Second);
+    EXPECT_NE(HashValue(First), HashValue(Second));
+}
+
 TEST(ArdaPipelineStateCache, DeterministicLruKeepsMostRecentlyUsedEntry)
 {
     using namespace arda;

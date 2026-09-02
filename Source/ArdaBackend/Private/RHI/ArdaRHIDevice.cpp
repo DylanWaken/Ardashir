@@ -645,19 +645,23 @@ namespace arda::rhi::provider
             FArdaRHIDepthStencilState, EArdaRHIResourceType::DepthStencilState>;
 
         template <typename Interface, EArdaRHIResourceType Type>
-        class TSignal final : public FResource, public Interface
+        class TNativeSignal final : public FResource, public Interface
         {
         public:
-            TSignal(const char* Name, const void* Owner,
+            TNativeSignal(const char* Name, FArdaProviderObjectRef Native,
+                const void* Owner,
                 eastl::shared_ptr<FLifetimeTracker> LifetimeTracker)
-                : FResource(Type, Name, Owner, eastl::move(LifetimeTracker)) {}
-            std::atomic<bool> mbSignaled{ false };
-            std::atomic<bool> mbBegun{ false };
+                : FResource(Type, Name, Owner, eastl::move(LifetimeTracker))
+                , mNative(eastl::move(Native)) {}
+            FArdaProviderObjectRef mNative;
         };
 
-        using FEventQuery = TSignal<IArdaRHIEventQuery, EArdaRHIResourceType::EventQuery>;
-        using FTimerQuery = TSignal<IArdaRHITimerQuery, EArdaRHIResourceType::TimerQuery>;
-        using FGpuFence = TSignal<IArdaRHIGpuFence, EArdaRHIResourceType::GpuFence>;
+        using FEventQuery = TNativeSignal<IArdaRHIEventQuery,
+            EArdaRHIResourceType::EventQuery>;
+        using FTimerQuery = TNativeSignal<IArdaRHITimerQuery,
+            EArdaRHIResourceType::TimerQuery>;
+        using FGpuFence = TNativeSignal<IArdaRHIGpuFence,
+            EArdaRHIResourceType::GpuFence>;
 
         template <typename T>
         T* Cast(IArdaRHIResource* Resource) noexcept
@@ -2919,30 +2923,43 @@ namespace arda::rhi::provider
 
         TArdaRHIResult<FArdaRHIEventQueryRef> FArdaRHIDeviceImpl::CreateEventQuery()
         {
+            auto Native = mDevice->CreateEventQuery();
+            if (!Native)
+                return Failure<FArdaRHIEventQueryRef>(
+                    eastl::move(Native.mStatus));
             return { FArdaRHIEventQueryRef(new FEventQuery(
-                "EventQuery", this, mLifetimeTracker)), {} };
+                "EventQuery", eastl::move(Native.mValue),
+                this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHITimerQueryRef> FArdaRHIDeviceImpl::CreateTimerQuery()
         {
+            auto Native = mDevice->CreateTimerQuery();
+            if (!Native)
+                return Failure<FArdaRHITimerQueryRef>(
+                    eastl::move(Native.mStatus));
             return { FArdaRHITimerQueryRef(new FTimerQuery(
-                "TimerQuery", this, mLifetimeTracker)), {} };
+                "TimerQuery", eastl::move(Native.mValue),
+                this, mLifetimeTracker)), {} };
         }
 
         TArdaRHIResult<FArdaRHIGpuFenceRef> FArdaRHIDeviceImpl::CreateGpuFence()
         {
+            auto Native = mDevice->CreateGpuFence();
+            if (!Native)
+                return Failure<FArdaRHIGpuFenceRef>(
+                    eastl::move(Native.mStatus));
             return { FArdaRHIGpuFenceRef(new FGpuFence(
-                "GpuFence", this, mLifetimeTracker)), {} };
+                "GpuFence", eastl::move(Native.mValue),
+                this, mLifetimeTracker)), {} };
         }
 
         FArdaRHIStatus FArdaRHIDeviceImpl::SignalEventQuery(
-            const FArdaRHIEventQueryRef& Query, EArdaRHIQueueType)
+            const FArdaRHIEventQueryRef& Query, EArdaRHIQueueType Queue)
         {
             auto* Native = Cast<FEventQuery>(Query.Get());
             if (!Native || !Owns(Native)) return WrongDevice();
-            if (auto Status = mDevice->WaitForIdle(); !Status) return Status;
-            Native->mbSignaled.store(true, std::memory_order_release);
-            return {};
+            return mDevice->SignalEventQuery(Native->mNative, Queue);
         }
 
         TArdaRHIResult<bool> FArdaRHIDeviceImpl::PollEventQuery(
@@ -2950,22 +2967,21 @@ namespace arda::rhi::provider
         {
             auto* Native = Cast<FEventQuery>(Query.Get());
             if (!Native || !Owns(Native)) return Failure<bool>(WrongDevice());
-            return { Native->mbSignaled.load(std::memory_order_acquire), {} };
+            return mDevice->PollEventQuery(Native->mNative);
         }
 
         FArdaRHIStatus FArdaRHIDeviceImpl::WaitEventQuery(const FArdaRHIEventQueryRef& Query)
         {
-            auto Poll = PollEventQuery(Query);
-            if (!Poll) return Poll.mStatus;
-            return Poll.mValue ? FArdaRHIStatus{} : mDevice->WaitForIdle();
+            auto* Native = Cast<FEventQuery>(Query.Get());
+            if (!Native || !Owns(Native)) return WrongDevice();
+            return mDevice->WaitEventQuery(Native->mNative);
         }
 
         FArdaRHIStatus FArdaRHIDeviceImpl::ResetEventQuery(const FArdaRHIEventQueryRef& Query)
         {
             auto* Native = Cast<FEventQuery>(Query.Get());
             if (!Native || !Owns(Native)) return WrongDevice();
-            Native->mbSignaled.store(false, std::memory_order_release);
-            return {};
+            return mDevice->ResetEventQuery(Native->mNative);
         }
 
         TArdaRHIResult<bool> FArdaRHIDeviceImpl::PollTimerQuery(
@@ -2973,58 +2989,51 @@ namespace arda::rhi::provider
         {
             auto* Native = Cast<FTimerQuery>(Query.Get());
             if (!Native || !Owns(Native)) return Failure<bool>(WrongDevice());
-            return { Native->mbSignaled.load(std::memory_order_acquire), {} };
+            return mDevice->PollTimerQuery(Native->mNative);
         }
 
         TArdaRHIResult<float> FArdaRHIDeviceImpl::GetTimerQuerySeconds(
             const FArdaRHITimerQueryRef& Query)
         {
-            auto Poll = PollTimerQuery(Query);
-            if (!Poll) return Failure<float>(eastl::move(Poll.mStatus));
-            if (!Poll.mValue) return Failure<float>(FArdaRHIStatus::Error(
-                EArdaRHIResult::InvalidState, "Timer query has not completed."));
-            return { 0.f, {} };
+            auto* Native = Cast<FTimerQuery>(Query.Get());
+            if (!Native || !Owns(Native)) return Failure<float>(WrongDevice());
+            return mDevice->GetTimerQuerySeconds(Native->mNative);
         }
 
         FArdaRHIStatus FArdaRHIDeviceImpl::ResetTimerQuery(const FArdaRHITimerQueryRef& Query)
         {
             auto* Native = Cast<FTimerQuery>(Query.Get());
             if (!Native || !Owns(Native)) return WrongDevice();
-            Native->mbBegun.store(false, std::memory_order_release);
-            Native->mbSignaled.store(false, std::memory_order_release);
-            return {};
+            return mDevice->ResetTimerQuery(Native->mNative);
         }
 
         FArdaRHIStatus FArdaRHIDeviceImpl::SignalGpuFence(
-            const FArdaRHIGpuFenceRef& Fence, EArdaRHIQueueType)
+            const FArdaRHIGpuFenceRef& Fence, EArdaRHIQueueType Queue)
         {
             auto* Native = Cast<FGpuFence>(Fence.Get());
             if (!Native || !Owns(Native)) return WrongDevice();
-            if (auto Status = mDevice->WaitForIdle(); !Status) return Status;
-            Native->mbSignaled.store(true, std::memory_order_release);
-            return {};
+            return mDevice->SignalGpuFence(Native->mNative, Queue);
         }
 
         TArdaRHIResult<bool> FArdaRHIDeviceImpl::PollGpuFence(const FArdaRHIGpuFenceRef& Fence)
         {
             auto* Native = Cast<FGpuFence>(Fence.Get());
             if (!Native || !Owns(Native)) return Failure<bool>(WrongDevice());
-            return { Native->mbSignaled.load(std::memory_order_acquire), {} };
+            return mDevice->PollGpuFence(Native->mNative);
         }
 
         FArdaRHIStatus FArdaRHIDeviceImpl::WaitGpuFence(const FArdaRHIGpuFenceRef& Fence)
         {
-            auto Poll = PollGpuFence(Fence);
-            if (!Poll) return Poll.mStatus;
-            return Poll.mValue ? FArdaRHIStatus{} : mDevice->WaitForIdle();
+            auto* Native = Cast<FGpuFence>(Fence.Get());
+            if (!Native || !Owns(Native)) return WrongDevice();
+            return mDevice->WaitGpuFence(Native->mNative);
         }
 
         FArdaRHIStatus FArdaRHIDeviceImpl::ResetGpuFence(const FArdaRHIGpuFenceRef& Fence)
         {
             auto* Native = Cast<FGpuFence>(Fence.Get());
             if (!Native || !Owns(Native)) return WrongDevice();
-            Native->mbSignaled.store(false, std::memory_order_release);
-            return {};
+            return mDevice->ResetGpuFence(Native->mNative);
         }
 
         TArdaRHIResult<FArdaRHICommandListRef> FArdaRHIDeviceImpl::CreateCommandList(
@@ -4714,20 +4723,14 @@ namespace arda::rhi::provider
         {
             auto* Native = Cast<FTimerQuery>(&Query);
             if (!Native || !Owns(Native)) return WrongDevice();
-            Native->mbBegun.store(true, std::memory_order_release);
-            Native->mbSignaled.store(false, std::memory_order_release);
-            return {};
+            return mNative->BeginTimerQuery(Native->mNative);
         }
 
         FArdaRHIStatus FCommandList::EndTimerQuery(IArdaRHITimerQuery& Query)
         {
             auto* Native = Cast<FTimerQuery>(&Query);
             if (!Native || !Owns(Native)) return WrongDevice();
-            if (!Native->mbBegun.load(std::memory_order_acquire))
-                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
-                    "Timer query was not begun.");
-            Native->mbSignaled.store(true, std::memory_order_release);
-            return {};
+            return mNative->EndTimerQuery(Native->mNative);
         }
     }
 

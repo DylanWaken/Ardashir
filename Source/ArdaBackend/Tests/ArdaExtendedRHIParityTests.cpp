@@ -3032,32 +3032,66 @@ namespace
         ASSERT_TRUE(Device->GetCapabilities().mbQueries);
         auto Event = Device->CreateEventQuery();
         auto Timer = Device->CreateTimerQuery();
+        auto Fence = Device->CreateGpuFence();
         ASSERT_TRUE(Event) << Event.mStatus.mMessage.c_str();
         ASSERT_TRUE(Timer) << Timer.mStatus.mMessage.c_str();
+        ASSERT_TRUE(Fence) << Fence.mStatus.mMessage.c_str();
+
+        auto InitialEvent = Device->PollEventQuery(Event.mValue);
+        ASSERT_TRUE(InitialEvent) << InitialEvent.mStatus.mMessage.c_str();
+        EXPECT_FALSE(InitialEvent.mValue);
+        EXPECT_EQ(Device->WaitEventQuery(Event.mValue).mCode,
+            EArdaRHIResult::InvalidState);
 
         ASSERT_TRUE(Device->SignalEventQuery(
             Event.mValue, EArdaRHIQueueType::Graphics));
+        EXPECT_EQ(Device->SignalEventQuery(
+            Event.mValue, EArdaRHIQueueType::Graphics).mCode,
+            EArdaRHIResult::InvalidState);
         ASSERT_TRUE(Device->WaitEventQuery(Event.mValue));
         const auto EventComplete = Device->PollEventQuery(Event.mValue);
         ASSERT_TRUE(EventComplete) << EventComplete.mStatus.mMessage.c_str();
         EXPECT_TRUE(EventComplete.mValue);
         ASSERT_TRUE(Device->ResetEventQuery(Event.mValue));
+        EXPECT_FALSE(Device->PollEventQuery(Event.mValue).mValue);
+
+        EXPECT_EQ(Device->GetTimerQuerySeconds(Timer.mValue).mStatus.mCode,
+            EArdaRHIResult::InvalidState);
+        FArdaRHIBufferDesc TimedBufferDesc;
+        TimedBufferDesc.mByteSize = 1024 * 1024;
+        TimedBufferDesc.mInitialState = EArdaRHIResourceState::Common;
+        auto TimedBuffer = Device->CreateBuffer(TimedBufferDesc);
+        ASSERT_TRUE(TimedBuffer) << TimedBuffer.mStatus.mMessage.c_str();
+        std::vector<uint8_t> TimedData(
+            static_cast<size_t>(TimedBufferDesc.mByteSize), 0x5a);
 
         auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
         ASSERT_TRUE(Commands) << Commands.mStatus.mMessage.c_str();
         ASSERT_TRUE(Commands.mValue->Open());
         ASSERT_TRUE(Commands.mValue->BeginTimerQuery(*Timer.mValue));
+        ASSERT_TRUE(Commands.mValue->WriteBuffer(
+            *TimedBuffer.mValue, TimedData.data(), TimedData.size()));
         ASSERT_TRUE(Commands.mValue->EndTimerQuery(*Timer.mValue));
         ASSERT_TRUE(Commands.mValue->Close());
         ASSERT_TRUE(Device->ExecuteCommandList(Commands.mValue));
-        ASSERT_TRUE(Device->WaitForIdle());
+        ASSERT_TRUE(Device->SignalGpuFence(
+            Fence.mValue, EArdaRHIQueueType::Graphics));
+        EXPECT_EQ(Device->SignalGpuFence(
+            Fence.mValue, EArdaRHIQueueType::Graphics).mCode,
+            EArdaRHIResult::InvalidState);
+        ASSERT_TRUE(Device->WaitGpuFence(Fence.mValue));
+        EXPECT_TRUE(Device->PollGpuFence(Fence.mValue).mValue);
         const auto TimerComplete = Device->PollTimerQuery(Timer.mValue);
         ASSERT_TRUE(TimerComplete) << TimerComplete.mStatus.mMessage.c_str();
         EXPECT_TRUE(TimerComplete.mValue);
         const auto Seconds = Device->GetTimerQuerySeconds(Timer.mValue);
         ASSERT_TRUE(Seconds) << Seconds.mStatus.mMessage.c_str();
-        EXPECT_GE(Seconds.mValue, 0.0f);
+        EXPECT_TRUE(std::isfinite(Seconds.mValue));
+        EXPECT_GT(Seconds.mValue, 0.0f);
         ASSERT_TRUE(Device->ResetTimerQuery(Timer.mValue));
+        EXPECT_FALSE(Device->PollTimerQuery(Timer.mValue).mValue);
+        ASSERT_TRUE(Device->ResetGpuFence(Fence.mValue));
+        EXPECT_FALSE(Device->PollGpuFence(Fence.mValue).mValue);
         EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
     }
 

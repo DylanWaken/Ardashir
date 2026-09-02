@@ -1,5 +1,5 @@
 /** @file ArdaPipelineStateInitializer.h
- *  @brief Declares renderer-facing compute, graphics, and meshlet pipeline initializers.
+ *  @brief Declares renderer-facing pipeline state initializers.
  */
 #pragma once
 
@@ -101,5 +101,19 @@ namespace arda::backend
             const FArdaGlobalShaderInstance* AmplificationShader,
             const FArdaGlobalShaderInstance* PixelShader,
             const rhi::FArdaRHIMeshletPipelineDesc& FixedState = {});
+    };
+
+    /** Renderer-facing ray-tracing pipeline state description. */
+    struct FArdaRayTracingPipelineStateInitializer
+    {
+        /** RHI ray-tracing pipeline description to resolve. */
+        rhi::FArdaRHIRayTracingPipelineDesc mDesc;
+    };
+
+    /** Renderer-facing work-graph pipeline state description. */
+    struct FArdaWorkGraphPipelineStateInitializer
+    {
+        /** RHI work-graph pipeline description to resolve. */
+        rhi::FArdaRHIWorkGraphPipelineDesc mDesc;
     };
 }

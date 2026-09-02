@@ -236,6 +236,17 @@ namespace arda::rhi
         return H;
     }
 
+    size_t HashValue(const FArdaRHIWorkGraphPipelineDesc& V) noexcept
+    {
+        size_t H = 0;
+        CombineString(H, V.mProgramName);
+        CombineString(H, V.mEntryPoint);
+        CombineRefs(H, V.mShaders);
+        CombineRefs(H, V.mGlobalBindingLayouts);
+        Combine(H, V.mMaxInputRecords);
+        return H;
+    }
+
     FArdaRHIStatus Validate(const FArdaRHIViewDesc& V) noexcept
     {
         if (V.mTextureRange.mMipLevelCount == 0 ||

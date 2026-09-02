@@ -19,7 +19,9 @@ namespace arda::backend
     {
         Compute,
         Graphics,
-        Meshlet
+        Meshlet,
+        RayTracing,
+        WorkGraph
     };
 
     /** Configures pipeline cache capacities and diagnostic retention. */
@@ -33,6 +35,10 @@ namespace arda::backend
         size_t mMaxDiagnostics = 64;
         /** Maximum retained meshlet pipeline entries. */
         size_t mMaxMeshletEntries = 128;
+        /** Maximum retained ray-tracing pipeline entries. */
+        size_t mMaxRayTracingEntries = 64;
+        /** Maximum retained work-graph pipeline entries. */
+        size_t mMaxWorkGraphEntries = 64;
     };
 
     /** Snapshot of pipeline cache activity and occupancy. */
@@ -54,6 +60,10 @@ namespace arda::backend
         size_t mGraphicsEntries = 0;
         /** Number of retained meshlet entries. */
         size_t mMeshletEntries = 0;
+        /** Number of retained ray-tracing entries. */
+        size_t mRayTracingEntries = 0;
+        /** Number of retained work-graph entries. */
+        size_t mWorkGraphEntries = 0;
     };
 
     /** Describes one failed pipeline state creation. */
@@ -135,6 +145,16 @@ namespace arda::backend
             const rhi::FArdaRHIFramebufferRef& Framebuffer,
             rhi::FArdaRHIMeshletPipelineRef& OutPipeline,
             const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+        /** Resolves or creates a ray-tracing pipeline state. */
+        [[nodiscard]] rhi::FArdaRHIStatus GetOrCreateRayTracing(
+            const FArdaRayTracingPipelineStateInitializer& Initializer,
+            rhi::FArdaRHIRayTracingPipelineRef& OutPipeline,
+            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+        /** Resolves or creates a work-graph pipeline state. */
+        [[nodiscard]] rhi::FArdaRHIStatus GetOrCreateWorkGraph(
+            const FArdaWorkGraphPipelineStateInitializer& Initializer,
+            rhi::FArdaRHIWorkGraphPipelineRef& OutPipeline,
+            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
 
         /**
          * Creates and caches a compute pipeline without returning it.
@@ -166,6 +186,14 @@ namespace arda::backend
         [[nodiscard]] rhi::FArdaRHIStatus PrecacheMeshlet(
             const FArdaMeshletPipelineStateInitializer& Initializer,
             const rhi::FArdaRHIFramebufferRef& Framebuffer,
+            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+        /** Creates and caches a ray-tracing pipeline without returning it. */
+        [[nodiscard]] rhi::FArdaRHIStatus PrecacheRayTracing(
+            const FArdaRayTracingPipelineStateInitializer& Initializer,
+            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+        /** Creates and caches a work-graph pipeline without returning it. */
+        [[nodiscard]] rhi::FArdaRHIStatus PrecacheWorkGraph(
+            const FArdaWorkGraphPipelineStateInitializer& Initializer,
             const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
 
         /**
@@ -218,6 +246,13 @@ namespace arda::backend
             size_t MaxComputeEntries,
             size_t MaxGraphicsEntries,
             size_t MaxMeshletEntries);
+        /** Evicts all five pipeline kinds to the supplied capacities. */
+        void Trim(
+            size_t MaxComputeEntries,
+            size_t MaxGraphicsEntries,
+            size_t MaxMeshletEntries,
+            size_t MaxRayTracingEntries,
+            size_t MaxWorkGraphEntries);
         /** Removes all completed cached pipeline entries. */
         void Clear();
 

@@ -725,6 +725,185 @@ namespace arda::backend
             D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE mCallableRange{};
         };
 
+        enum class ED3D12TimerQueryState : uint8_t
+        {
+            Idle,
+            Recording,
+            Recorded,
+            Submitted,
+            Complete
+        };
+
+        class FD3D12QueueSignal final : public IArdaProviderObject
+        {
+        public:
+            ~FD3D12QueueSignal() override
+            {
+                if (mFence && mEvent && mbArmed &&
+                    mFence->GetCompletedValue() < mTargetValue &&
+                    SUCCEEDED(mFence->SetEventOnCompletion(
+                        mTargetValue, mEvent)))
+                    (void)WaitForSingleObject(mEvent, INFINITE);
+                if (mEvent) CloseHandle(mEvent);
+            }
+            const void* GetIdentity() const noexcept override
+            {
+                return mFence.Get();
+            }
+            ComPtr<ID3D12Fence> mFence;
+            HANDLE mEvent = nullptr;
+            std::mutex mMutex;
+            uint64_t mNextValue = 0;
+            uint64_t mTargetValue = 0;
+            bool mbArmed = false;
+        };
+
+        class FD3D12TimerQuery final : public IArdaProviderObject
+        {
+        public:
+            const void* GetIdentity() const noexcept override
+            {
+                return mQueryHeap.Get();
+            }
+
+            [[nodiscard]] FArdaRHIStatus Begin(
+                ID3D12GraphicsCommandList& CommandList,
+                const void* RecordingOwner)
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (mState != ED3D12TimerQueryState::Idle)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The D3D12 timer query must be reset before reuse.");
+                CommandList.EndQuery(
+                    mQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0);
+                mRecordingOwner = RecordingOwner;
+                mState = ED3D12TimerQueryState::Recording;
+                return {};
+            }
+
+            [[nodiscard]] FArdaRHIStatus End(
+                ID3D12GraphicsCommandList& CommandList,
+                const void* RecordingOwner)
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (mState != ED3D12TimerQueryState::Recording ||
+                    mRecordingOwner != RecordingOwner)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The D3D12 timer query was not begun.");
+                CommandList.EndQuery(
+                    mQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 1);
+                CommandList.ResolveQueryData(
+                    mQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP,
+                    0, 2, mReadback.Get(), 0);
+                mState = ED3D12TimerQueryState::Recorded;
+                return {};
+            }
+
+            [[nodiscard]] bool IsReadyForSubmission() const
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                return mState == ED3D12TimerQueryState::Recorded;
+            }
+
+            void MarkSubmitted(
+                ID3D12Fence* Fence, uint64_t Value, uint64_t Frequency)
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (mState != ED3D12TimerQueryState::Recorded) return;
+                mCompletionFence = Fence;
+                mCompletionValue = Value;
+                mTimestampFrequency = Frequency;
+                mRecordingOwner = nullptr;
+                mState = ED3D12TimerQueryState::Submitted;
+            }
+
+            void CancelRecording(const void* RecordingOwner)
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (mRecordingOwner == RecordingOwner &&
+                    (mState == ED3D12TimerQueryState::Recording ||
+                     mState == ED3D12TimerQueryState::Recorded))
+                {
+                    mState = ED3D12TimerQueryState::Idle;
+                    mRecordingOwner = nullptr;
+                }
+            }
+
+            [[nodiscard]] bool Poll()
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (mState == ED3D12TimerQueryState::Submitted &&
+                    mCompletionFence &&
+                    mCompletionFence->GetCompletedValue() >=
+                        mCompletionValue)
+                    mState = ED3D12TimerQueryState::Complete;
+                return mState == ED3D12TimerQueryState::Complete;
+            }
+
+            [[nodiscard]] TArdaRHIResult<float> GetSeconds()
+            {
+                if (!Poll())
+                    return {0.f, FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The D3D12 timer query has not completed.")};
+                uint64_t Frequency = 0;
+                {
+                    std::lock_guard<std::mutex> Lock(mMutex);
+                    Frequency = mTimestampFrequency;
+                }
+                if (!Frequency)
+                    return {0.f, FArdaRHIStatus::Error(
+                        EArdaRHIResult::BackendFailure,
+                        "The D3D12 timer query has no timestamp frequency.")};
+                void* Mapped = nullptr;
+                const D3D12_RANGE ReadRange{0, sizeof(uint64_t) * 2};
+                const HRESULT Result = mReadback->Map(
+                    0, &ReadRange, &Mapped);
+                if (FAILED(Result))
+                    return {0.f, D3D12Failure(
+                        "Failed to map the D3D12 timer query result.",
+                        Result)};
+                const auto* Timestamps = static_cast<const uint64_t*>(Mapped);
+                const uint64_t Elapsed = Timestamps[1] >= Timestamps[0]
+                    ? Timestamps[1] - Timestamps[0]
+                    : 0;
+                const D3D12_RANGE WrittenRange{0, 0};
+                mReadback->Unmap(0, &WrittenRange);
+                return {static_cast<float>(
+                    static_cast<double>(Elapsed) /
+                    static_cast<double>(Frequency)), {}};
+            }
+
+            [[nodiscard]] FArdaRHIStatus Reset()
+            {
+                (void)Poll();
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (mState == ED3D12TimerQueryState::Recording ||
+                    mState == ED3D12TimerQueryState::Recorded ||
+                    mState == ED3D12TimerQueryState::Submitted)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The D3D12 timer query is still in use.");
+                mCompletionFence.Reset();
+                mCompletionValue = 0;
+                mTimestampFrequency = 0;
+                mRecordingOwner = nullptr;
+                mState = ED3D12TimerQueryState::Idle;
+                return {};
+            }
+
+            ComPtr<ID3D12QueryHeap> mQueryHeap;
+            ComPtr<ID3D12Resource> mReadback;
+            ComPtr<ID3D12Fence> mCompletionFence;
+            mutable std::mutex mMutex;
+            uint64_t mCompletionValue = 0;
+            uint64_t mTimestampFrequency = 0;
+            const void* mRecordingOwner = nullptr;
+            ED3D12TimerQueryState mState = ED3D12TimerQueryState::Idle;
+        };
+
         struct FD3D12SubmissionLifetime
         {
             ComPtr<ID3D12CommandAllocator> mAllocator;
@@ -742,6 +921,10 @@ namespace arda::backend
             FArdaD3D12CommandList(
                 FArdaD3D12ProviderDevice& Device,
                 D3D12_COMMAND_LIST_TYPE Type);
+            ~FArdaD3D12CommandList() override
+            {
+                CancelTimerQueries();
+            }
             FArdaRHIStatus Initialize();
             FArdaRHIStatus Open() override;
             FArdaRHIStatus Close() override;
@@ -820,6 +1003,10 @@ namespace arda::backend
             FArdaRHIStatus CompactAccelStruct(
                 const FArdaProviderObjectRef&,
                 const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus BeginTimerQuery(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus EndTimerQuery(
+                const FArdaProviderObjectRef&) override;
             void BeginMarker(const char*) override {}
             void EndMarker() override {}
 
@@ -836,6 +1023,13 @@ namespace arda::backend
                 return Lifetime;
             }
             [[nodiscard]] FArdaRHIStatus ValidateTrackedStartStates() const;
+            [[nodiscard]] FArdaRHIStatus ValidateTimerQueries() const;
+            [[nodiscard]] bool HasTimerQueries() const noexcept
+            {
+                return !mTimerQueries.empty();
+            }
+            void MarkTimerQueriesSubmitted(
+                ID3D12Fence*, uint64_t, uint64_t);
             void CommitTrackedStates();
 
         private:
@@ -882,6 +1076,7 @@ namespace arda::backend
                 const FArdaProviderObjectRef&,
                 const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS&,
                 EArdaRHIAccelStructBuildFlags);
+            void CancelTimerQueries();
             FArdaD3D12ProviderDevice& mDevice;
             D3D12_COMMAND_LIST_TYPE mType = D3D12_COMMAND_LIST_TYPE_DIRECT;
             ComPtr<ID3D12CommandAllocator> mAllocator;
@@ -889,6 +1084,7 @@ namespace arda::backend
             eastl::vector<ComPtr<ID3D12Resource>> mUploadResources;
             eastl::vector<ComPtr<ID3D12CommandSignature>> mCommandSignatures;
             eastl::vector<FArdaProviderObjectRef> mRetainedObjects;
+            eastl::vector<FArdaProviderObjectRef> mTimerQueries;
             std::unordered_map<FD3D12Texture*, FTextureTracking>
                 mTextureStates;
             std::unordered_map<FD3D12Buffer*, FBufferTracking>
@@ -996,6 +1192,31 @@ namespace arda::backend
                 const FArdaProviderObjectRef&) override;
             FArdaRHIStatus SetShaderTableRayGeneration(const FArdaProviderObjectRef&, const char*, const FArdaProviderObjectRef&) override;
             FArdaRHIStatus AddShaderTableEntry(const FArdaProviderObjectRef&, const char*, const FArdaProviderObjectRef&, uint32_t) override;
+            FArdaProviderObjectResult CreateEventQuery() override;
+            FArdaProviderObjectResult CreateTimerQuery() override;
+            FArdaProviderObjectResult CreateGpuFence() override;
+            FArdaRHIStatus SignalEventQuery(
+                const FArdaProviderObjectRef&, EArdaRHIQueueType) override;
+            TArdaRHIResult<bool> PollEventQuery(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus WaitEventQuery(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus ResetEventQuery(
+                const FArdaProviderObjectRef&) override;
+            TArdaRHIResult<bool> PollTimerQuery(
+                const FArdaProviderObjectRef&) override;
+            TArdaRHIResult<float> GetTimerQuerySeconds(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus ResetTimerQuery(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus SignalGpuFence(
+                const FArdaProviderObjectRef&, EArdaRHIQueueType) override;
+            TArdaRHIResult<bool> PollGpuFence(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus WaitGpuFence(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus ResetGpuFence(
+                const FArdaProviderObjectRef&) override;
             TArdaRHIResult<eastl::unique_ptr<IArdaProviderCommandList>> CreateCommandList(EArdaRHIQueueType, bool) override;
             TArdaRHIResult<uint64_t> ExecuteCommandList(IArdaProviderCommandList&, EArdaRHIQueueType) override;
             FArdaRHIStatus QueueWait(
@@ -4272,9 +4493,11 @@ namespace arda::backend
             if (FAILED(Result)) return D3D12Failure("Failed to reset the D3D12 command allocator.", Result);
             Result = mCommandList->Reset(mAllocator.Get(), nullptr);
             if (FAILED(Result)) return D3D12Failure("Failed to reset the D3D12 command list.", Result);
+            CancelTimerQueries();
             mUploadResources.clear();
             mCommandSignatures.clear();
             mRetainedObjects.clear();
+            mTimerQueries.clear();
             mTextureStates.clear();
             mBufferStates.clear();
             mAccelStructStates.clear();
@@ -4398,6 +4621,36 @@ namespace arda::backend
                 Entry.first->mAbstractState = Entry.second.mAbstractState;
                 Entry.first->mBuildState = Entry.second.mBuildState;
             }
+        }
+
+        FArdaRHIStatus FArdaD3D12CommandList::ValidateTimerQueries() const
+        {
+            for (const auto& Object : mTimerQueries)
+            {
+                auto* Query = dynamic_cast<FD3D12TimerQuery*>(Object.get());
+                if (!Query || !Query->IsReadyForSubmission())
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "A D3D12 timer query was not ended before submission.");
+            }
+            return {};
+        }
+
+        void FArdaD3D12CommandList::MarkTimerQueriesSubmitted(
+            ID3D12Fence* Fence, uint64_t Value, uint64_t Frequency)
+        {
+            for (const auto& Object : mTimerQueries)
+                if (auto* Query =
+                        dynamic_cast<FD3D12TimerQuery*>(Object.get()))
+                    Query->MarkSubmitted(Fence, Value, Frequency);
+        }
+
+        void FArdaD3D12CommandList::CancelTimerQueries()
+        {
+            for (const auto& Object : mTimerQueries)
+                if (auto* Query =
+                        dynamic_cast<FD3D12TimerQuery*>(Object.get()))
+                    Query->CancelRecording(this);
         }
 
         FArdaRHIStatus FArdaD3D12CommandList::TransitionBuffer(
@@ -6286,6 +6539,258 @@ namespace arda::backend
             return QueryTextureState(Object, Feedback->mDesc, {});
         }
 
+        FArdaRHIStatus FArdaD3D12CommandList::BeginTimerQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            auto* Query = dynamic_cast<FD3D12TimerQuery*>(Object.get());
+            if (!Query)
+                return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                    "The timer query is not a D3D12 timer query.");
+            if (auto Status = Query->Begin(*mCommandList.Get(), this); !Status)
+                return Status;
+            Retain(Object);
+            if (eastl::find(mTimerQueries.begin(), mTimerQueries.end(),
+                    Object) == mTimerQueries.end())
+                mTimerQueries.push_back(Object);
+            return {};
+        }
+
+        FArdaRHIStatus FArdaD3D12CommandList::EndTimerQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            auto* Query = dynamic_cast<FD3D12TimerQuery*>(Object.get());
+            if (!Query)
+                return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                    "The timer query is not a D3D12 timer query.");
+            return Query->End(*mCommandList.Get(), this);
+        }
+
+        namespace
+        {
+            FArdaProviderObjectResult CreateD3D12QueueSignal(
+                ID3D12Device& Device)
+            {
+                auto Signal = eastl::make_shared<FD3D12QueueSignal>();
+                HRESULT Result = Device.CreateFence(
+                    0, D3D12_FENCE_FLAG_NONE,
+                    IID_PPV_ARGS(&Signal->mFence));
+                if (FAILED(Result))
+                    return Fail<FArdaProviderObjectRef>(D3D12Failure(
+                        "Failed to create a D3D12 queue signal fence.",
+                        Result));
+                Signal->mEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+                if (!Signal->mEvent)
+                    return Fail<FArdaProviderObjectRef>(D3D12Failure(
+                        "Failed to create a D3D12 queue signal event.",
+                        HRESULT_FROM_WIN32(GetLastError())));
+                return {Signal, {}};
+            }
+
+            FArdaRHIStatus SignalD3D12QueueObject(
+                const FArdaProviderObjectRef& Object,
+                ID3D12CommandQueue* Queue)
+            {
+                auto* Signal = dynamic_cast<FD3D12QueueSignal*>(Object.get());
+                if (!Signal || !Queue)
+                    return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                        "The D3D12 queue signal has an invalid object or queue.");
+                std::lock_guard<std::mutex> Lock(Signal->mMutex);
+                if (Signal->mbArmed)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The D3D12 queue signal must be reset before reuse.");
+                const uint64_t Value = ++Signal->mNextValue;
+                const HRESULT Result = Queue->Signal(
+                    Signal->mFence.Get(), Value);
+                if (FAILED(Result))
+                    return D3D12Failure(
+                        "Failed to insert a D3D12 queue signal.", Result);
+                Signal->mTargetValue = Value;
+                Signal->mbArmed = true;
+                return {};
+            }
+
+            TArdaRHIResult<bool> PollD3D12QueueObject(
+                const FArdaProviderObjectRef& Object)
+            {
+                auto* Signal = dynamic_cast<FD3D12QueueSignal*>(Object.get());
+                if (!Signal)
+                    return Fail<bool>(FArdaRHIStatus::Error(
+                        EArdaRHIResult::WrongDevice,
+                        "The queue signal is not a D3D12 fence."));
+                std::lock_guard<std::mutex> Lock(Signal->mMutex);
+                return {Signal->mbArmed &&
+                    Signal->mFence->GetCompletedValue() >=
+                        Signal->mTargetValue, {}};
+            }
+
+            FArdaRHIStatus WaitD3D12QueueObject(
+                const FArdaProviderObjectRef& Object)
+            {
+                auto* Signal = dynamic_cast<FD3D12QueueSignal*>(Object.get());
+                if (!Signal)
+                    return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                        "The queue signal is not a D3D12 fence.");
+                std::lock_guard<std::mutex> Lock(Signal->mMutex);
+                if (!Signal->mbArmed)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The D3D12 queue signal has not been inserted.");
+                if (Signal->mFence->GetCompletedValue() >=
+                    Signal->mTargetValue)
+                    return {};
+                const HRESULT Result = Signal->mFence->SetEventOnCompletion(
+                    Signal->mTargetValue, Signal->mEvent);
+                if (FAILED(Result))
+                    return D3D12Failure(
+                        "Failed to arm the D3D12 queue signal event.",
+                        Result);
+                const DWORD WaitResult = WaitForSingleObject(
+                    Signal->mEvent, INFINITE);
+                return WaitResult == WAIT_OBJECT_0
+                    ? FArdaRHIStatus{}
+                    : D3D12Failure(
+                        "Failed while waiting for the D3D12 queue signal.",
+                        HRESULT_FROM_WIN32(GetLastError()));
+            }
+
+            FArdaRHIStatus ResetD3D12QueueObject(
+                const FArdaProviderObjectRef& Object)
+            {
+                auto* Signal = dynamic_cast<FD3D12QueueSignal*>(Object.get());
+                if (!Signal)
+                    return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                        "The queue signal is not a D3D12 fence.");
+                std::lock_guard<std::mutex> Lock(Signal->mMutex);
+                if (Signal->mbArmed &&
+                    Signal->mFence->GetCompletedValue() <
+                        Signal->mTargetValue)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The D3D12 queue signal has not completed.");
+                Signal->mbArmed = false;
+                Signal->mTargetValue = 0;
+                return {};
+            }
+        }
+
+        FArdaProviderObjectResult
+        FArdaD3D12ProviderDevice::CreateEventQuery()
+        {
+            return CreateD3D12QueueSignal(*mD3DDevice.Get());
+        }
+
+        FArdaProviderObjectResult
+        FArdaD3D12ProviderDevice::CreateGpuFence()
+        {
+            return CreateD3D12QueueSignal(*mD3DDevice.Get());
+        }
+
+        FArdaProviderObjectResult
+        FArdaD3D12ProviderDevice::CreateTimerQuery()
+        {
+            auto Query = eastl::make_shared<FD3D12TimerQuery>();
+            D3D12_QUERY_HEAP_DESC Heap{};
+            Heap.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+            Heap.Count = 2;
+            HRESULT Result = mD3DDevice->CreateQueryHeap(
+                &Heap, IID_PPV_ARGS(&Query->mQueryHeap));
+            if (FAILED(Result))
+                return Fail<FArdaProviderObjectRef>(D3D12Failure(
+                    "Failed to create a D3D12 timestamp query heap.",
+                    Result));
+            auto Readback = CreateD3D12BufferResource(
+                mD3DDevice.Get(), sizeof(uint64_t) * 2,
+                D3D12_HEAP_TYPE_READBACK,
+                D3D12_RESOURCE_STATE_COPY_DEST);
+            if (!Readback)
+                return Fail<FArdaProviderObjectRef>(
+                    eastl::move(Readback.mStatus));
+            Query->mReadback = eastl::move(Readback.mValue);
+            return {Query, {}};
+        }
+
+        FArdaRHIStatus FArdaD3D12ProviderDevice::SignalEventQuery(
+            const FArdaProviderObjectRef& Object, EArdaRHIQueueType Queue)
+        {
+            return SignalD3D12QueueObject(Object, GetQueue(Queue));
+        }
+
+        TArdaRHIResult<bool> FArdaD3D12ProviderDevice::PollEventQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            return PollD3D12QueueObject(Object);
+        }
+
+        FArdaRHIStatus FArdaD3D12ProviderDevice::WaitEventQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            return WaitD3D12QueueObject(Object);
+        }
+
+        FArdaRHIStatus FArdaD3D12ProviderDevice::ResetEventQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            return ResetD3D12QueueObject(Object);
+        }
+
+        TArdaRHIResult<bool> FArdaD3D12ProviderDevice::PollTimerQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            auto* Query = dynamic_cast<FD3D12TimerQuery*>(Object.get());
+            if (!Query)
+                return Fail<bool>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::WrongDevice,
+                    "The timer query is not a D3D12 timer query."));
+            return {Query->Poll(), {}};
+        }
+
+        TArdaRHIResult<float>
+        FArdaD3D12ProviderDevice::GetTimerQuerySeconds(
+            const FArdaProviderObjectRef& Object)
+        {
+            auto* Query = dynamic_cast<FD3D12TimerQuery*>(Object.get());
+            if (!Query)
+                return Fail<float>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::WrongDevice,
+                    "The timer query is not a D3D12 timer query."));
+            return Query->GetSeconds();
+        }
+
+        FArdaRHIStatus FArdaD3D12ProviderDevice::ResetTimerQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            auto* Query = dynamic_cast<FD3D12TimerQuery*>(Object.get());
+            return Query
+                ? Query->Reset()
+                : FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                    "The timer query is not a D3D12 timer query.");
+        }
+
+        FArdaRHIStatus FArdaD3D12ProviderDevice::SignalGpuFence(
+            const FArdaProviderObjectRef& Object, EArdaRHIQueueType Queue)
+        {
+            return SignalD3D12QueueObject(Object, GetQueue(Queue));
+        }
+
+        TArdaRHIResult<bool> FArdaD3D12ProviderDevice::PollGpuFence(
+            const FArdaProviderObjectRef& Object)
+        {
+            return PollD3D12QueueObject(Object);
+        }
+
+        FArdaRHIStatus FArdaD3D12ProviderDevice::WaitGpuFence(
+            const FArdaProviderObjectRef& Object)
+        {
+            return WaitD3D12QueueObject(Object);
+        }
+
+        FArdaRHIStatus FArdaD3D12ProviderDevice::ResetGpuFence(
+            const FArdaProviderObjectRef& Object)
+        {
+            return ResetD3D12QueueObject(Object);
+        }
+
         TArdaRHIResult<eastl::unique_ptr<IArdaProviderCommandList>>
         FArdaD3D12ProviderDevice::CreateCommandList(EArdaRHIQueueType Queue, bool)
         {
@@ -6320,6 +6825,22 @@ namespace arda::backend
             {
                 return Fail<uint64_t>(Status);
             }
+            if (const FArdaRHIStatus Status =
+                    Native->ValidateTimerQueries();
+                !Status)
+            {
+                return Fail<uint64_t>(Status);
+            }
+            uint64_t TimestampFrequency = 0;
+            if (Native->HasTimerQueries())
+            {
+                const HRESULT FrequencyResult = Queue->GetTimestampFrequency(
+                    &TimestampFrequency);
+                if (FAILED(FrequencyResult) || !TimestampFrequency)
+                    return Fail<uint64_t>(D3D12Failure(
+                        "Failed to query the D3D12 queue timestamp frequency.",
+                        FrequencyResult));
+            }
             ID3D12CommandList* Lists[] = { Native->GetSubmitList() };
             Queue->ExecuteCommandLists(1, Lists);
             const size_t QueueIndex = GetArdaRHIQueueIndex(QueueType);
@@ -6329,6 +6850,9 @@ namespace arda::backend
                 mQueueFences[QueueIndex].Get(), QueueValue);
             if (FAILED(Result)) return Fail<uint64_t>(
                 D3D12Failure("Failed to signal the D3D12 submission fence.", Result));
+            Native->MarkTimerQueriesSubmitted(
+                mQueueFences[QueueIndex].Get(), QueueValue,
+                TimestampFrequency);
             Native->CommitTrackedStates();
             {
                 std::lock_guard<std::mutex> Lock(mSubmissionMutex);

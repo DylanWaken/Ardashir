@@ -126,7 +126,7 @@ namespace arda::rhi
     class IArdaRHIEventQuery : public virtual IArdaRHIResource {};
     /** Interface for timer query. */
     class IArdaRHITimerQuery : public virtual IArdaRHIResource {};
-    /** Queue fence facade backed by an event query; one signal is tracked at a time. */
+    /** Native queue fence facade; one signal is tracked at a time. */
     class IArdaRHIGpuFence : public virtual IArdaRHIResource {};
 
     /** Interface for shader resource view. */
@@ -833,6 +833,8 @@ namespace arda::rhi
         uint32_t mMaxRecursionDepth = 1;
         /** Stores the allow opacity micromaps. */
         bool mbAllowOpacityMicromaps = false;
+        /** Stable renderer-supplied semantic key for native cache integration. */
+        uint64_t mPersistentCacheKey = 0;
         /** Stores the debug name. */
         eastl::string mDebugName;
         /**
@@ -924,7 +926,17 @@ namespace arda::rhi
         eastl::vector<FArdaRHIShaderRef> mShaders;
         eastl::vector<FArdaRHIBindingLayoutRef> mGlobalBindingLayouts;
         uint32_t mMaxInputRecords = 1;
+        /** Stable renderer-supplied semantic key for native cache integration. */
+        uint64_t mPersistentCacheKey = 0;
         eastl::string mDebugName;
+        bool operator==(const FArdaRHIWorkGraphPipelineDesc& O) const noexcept
+        {
+            return mProgramName == O.mProgramName &&
+                mEntryPoint == O.mEntryPoint &&
+                mShaders == O.mShaders &&
+                mGlobalBindingLayouts == O.mGlobalBindingLayouts &&
+                mMaxInputRecords == O.mMaxInputRecords;
+        }
     };
 
     class IArdaRHIWorkGraphPipeline : public virtual IArdaRHIResource
@@ -1172,6 +1184,9 @@ namespace arda::rhi
      * @return The requested numeric value.
      */
     [[nodiscard]] size_t HashValue(const FArdaRHIRayTracingPipelineDesc& Value) noexcept;
+    /** Hashes the semantic work-graph pipeline descriptor. */
+    [[nodiscard]] size_t HashValue(
+        const FArdaRHIWorkGraphPipelineDesc& Value) noexcept;
     /**
      * Validates the descriptor.
      * @param Value The value.

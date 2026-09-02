@@ -182,6 +182,51 @@ namespace arda::backend
             return Hash.Finish();
         }
 
+        uint64_t PersistentKey(
+            const FArdaRHIRayTracingPipelineDesc& Desc) noexcept
+        {
+            FStablePipelineHasher Hash;
+            Hash.Add(0x52415954524143ull);
+            Hash.Add(Desc.mShaders.size());
+            for (const auto& Shader : Desc.mShaders)
+            {
+                Hash.AddString(Shader.mExportName);
+                HashShader(Hash, Shader.mShader);
+                HashBindingLayout(Hash, Shader.mLocalBindingLayout);
+            }
+            Hash.Add(Desc.mHitGroups.size());
+            for (const auto& Group : Desc.mHitGroups)
+            {
+                Hash.AddString(Group.mExportName);
+                HashShader(Hash, Group.mClosestHitShader);
+                HashShader(Hash, Group.mAnyHitShader);
+                HashShader(Hash, Group.mIntersectionShader);
+                HashBindingLayout(Hash, Group.mLocalBindingLayout);
+                Hash.Add(Group.mbProceduralPrimitive);
+            }
+            HashLayouts(Hash, Desc.mGlobalBindingLayouts);
+            Hash.Add(Desc.mMaxPayloadSize);
+            Hash.Add(Desc.mMaxAttributeSize);
+            Hash.Add(Desc.mMaxRecursionDepth);
+            Hash.Add(Desc.mbAllowOpacityMicromaps);
+            return Hash.Finish();
+        }
+
+        uint64_t PersistentKey(
+            const FArdaRHIWorkGraphPipelineDesc& Desc) noexcept
+        {
+            FStablePipelineHasher Hash;
+            Hash.Add(0x574F524B475241ull);
+            Hash.AddString(Desc.mProgramName);
+            Hash.AddString(Desc.mEntryPoint);
+            Hash.Add(Desc.mShaders.size());
+            for (const auto& Shader : Desc.mShaders)
+                HashShader(Hash, Shader);
+            HashLayouts(Hash, Desc.mGlobalBindingLayouts);
+            Hash.Add(Desc.mMaxInputRecords);
+            return Hash.Finish();
+        }
+
         auto CreatePipeline(
             IArdaRHIDevice& Device,
             const FArdaRHIComputePipelineDesc& Desc)
@@ -201,6 +246,20 @@ namespace arda::backend
             const FArdaRHIMeshletPipelineDesc& Desc)
         {
             return Device.CreateMeshletPipeline(Desc);
+        }
+
+        auto CreatePipeline(
+            IArdaRHIDevice& Device,
+            const FArdaRHIRayTracingPipelineDesc& Desc)
+        {
+            return Device.CreateRayTracingPipeline(Desc);
+        }
+
+        auto CreatePipeline(
+            IArdaRHIDevice& Device,
+            const FArdaRHIWorkGraphPipelineDesc& Desc)
+        {
+            return Device.CreateWorkGraphPipeline(Desc);
         }
 
         template <typename PipelineDesc>
@@ -294,6 +353,10 @@ namespace arda::backend
             rhi::FArdaRHIGraphicsPipelineRef>;
         using FMeshletEntry = TEntry<rhi::FArdaRHIMeshletPipelineDesc,
             rhi::FArdaRHIMeshletPipelineRef>;
+        using FRayTracingEntry = TEntry<rhi::FArdaRHIRayTracingPipelineDesc,
+            rhi::FArdaRHIRayTracingPipelineRef>;
+        using FWorkGraphEntry = TEntry<rhi::FArdaRHIWorkGraphPipelineDesc,
+            rhi::FArdaRHIWorkGraphPipelineRef>;
 
         explicit FImpl(
             rhi::FArdaRHIDeviceRef InDevice,
@@ -467,6 +530,8 @@ namespace arda::backend
         eastl::vector<FComputeEntry> mCompute;
         eastl::vector<FGraphicsEntry> mGraphics;
         eastl::vector<FMeshletEntry> mMeshlet;
+        eastl::vector<FRayTracingEntry> mRayTracing;
+        eastl::vector<FWorkGraphEntry> mWorkGraph;
         eastl::vector<FArdaPipelineStateDiagnostic> mDiagnostics;
         uint64_t mUseSerial = 0;
         uint64_t mHits = 0;
@@ -542,6 +607,36 @@ namespace arda::backend
             RequestingDevice);
     }
 
+    rhi::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateRayTracing(
+        const FArdaRayTracingPipelineStateInitializer& Initializer,
+        rhi::FArdaRHIRayTracingPipelineRef& OutPipeline,
+        const rhi::IArdaRHIDevice* RequestingDevice)
+    {
+        return mImpl->GetOrCreate(
+            mImpl->mRayTracing,
+            Initializer.mDesc,
+            rhi::FArdaRHIStatus::Success(),
+            EArdaPipelineStateKind::RayTracing,
+            mImpl->mConfiguration.mMaxRayTracingEntries,
+            OutPipeline,
+            RequestingDevice);
+    }
+
+    rhi::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateWorkGraph(
+        const FArdaWorkGraphPipelineStateInitializer& Initializer,
+        rhi::FArdaRHIWorkGraphPipelineRef& OutPipeline,
+        const rhi::IArdaRHIDevice* RequestingDevice)
+    {
+        return mImpl->GetOrCreate(
+            mImpl->mWorkGraph,
+            Initializer.mDesc,
+            rhi::FArdaRHIStatus::Success(),
+            EArdaPipelineStateKind::WorkGraph,
+            mImpl->mConfiguration.mMaxWorkGraphEntries,
+            OutPipeline,
+            RequestingDevice);
+    }
+
     rhi::FArdaRHIStatus FArdaPipelineStateCache::PrecacheCompute(
         const FArdaComputePipelineStateInitializer& Initializer,
         const rhi::IArdaRHIDevice* RequestingDevice)
@@ -568,6 +663,24 @@ namespace arda::backend
         rhi::FArdaRHIMeshletPipelineRef Pipeline;
         return GetOrCreateMeshlet(
             Initializer, Framebuffer, Pipeline, RequestingDevice);
+    }
+
+    rhi::FArdaRHIStatus FArdaPipelineStateCache::PrecacheRayTracing(
+        const FArdaRayTracingPipelineStateInitializer& Initializer,
+        const rhi::IArdaRHIDevice* RequestingDevice)
+    {
+        rhi::FArdaRHIRayTracingPipelineRef Pipeline;
+        return GetOrCreateRayTracing(
+            Initializer, Pipeline, RequestingDevice);
+    }
+
+    rhi::FArdaRHIStatus FArdaPipelineStateCache::PrecacheWorkGraph(
+        const FArdaWorkGraphPipelineStateInitializer& Initializer,
+        const rhi::IArdaRHIDevice* RequestingDevice)
+    {
+        rhi::FArdaRHIWorkGraphPipelineRef Pipeline;
+        return GetOrCreateWorkGraph(
+            Initializer, Pipeline, RequestingDevice);
     }
 
     rhi::FArdaRHIStatus FArdaPipelineStateCache::SetComputePipelineState(
@@ -624,6 +737,22 @@ namespace arda::backend
         FImpl::EvictTo(mImpl->mMeshlet, MaxMeshletEntries);
     }
 
+    void FArdaPipelineStateCache::Trim(
+        size_t MaxComputeEntries,
+        size_t MaxGraphicsEntries,
+        size_t MaxMeshletEntries,
+        size_t MaxRayTracingEntries,
+        size_t MaxWorkGraphEntries)
+    {
+        std::unique_lock<std::mutex> Lock(mImpl->mMutex);
+        mImpl->mChanged.wait(Lock, [this] { return mImpl->mInFlight == 0; });
+        FImpl::EvictTo(mImpl->mCompute, MaxComputeEntries);
+        FImpl::EvictTo(mImpl->mGraphics, MaxGraphicsEntries);
+        FImpl::EvictTo(mImpl->mMeshlet, MaxMeshletEntries);
+        FImpl::EvictTo(mImpl->mRayTracing, MaxRayTracingEntries);
+        FImpl::EvictTo(mImpl->mWorkGraph, MaxWorkGraphEntries);
+    }
+
     void FArdaPipelineStateCache::Clear()
     {
         std::unique_lock<std::mutex> Lock(mImpl->mMutex);
@@ -631,6 +760,8 @@ namespace arda::backend
         FImpl::EvictTo(mImpl->mCompute, 0);
         FImpl::EvictTo(mImpl->mGraphics, 0);
         FImpl::EvictTo(mImpl->mMeshlet, 0);
+        FImpl::EvictTo(mImpl->mRayTracing, 0);
+        FImpl::EvictTo(mImpl->mWorkGraph, 0);
     }
 
     FArdaPipelineStateCacheStats FArdaPipelineStateCache::GetStats() const
@@ -644,7 +775,9 @@ namespace arda::backend
             mImpl->mInFlight,
             mImpl->mCompute.size(),
             mImpl->mGraphics.size(),
-            mImpl->mMeshlet.size()
+            mImpl->mMeshlet.size(),
+            mImpl->mRayTracing.size(),
+            mImpl->mWorkGraph.size()
         };
     }
 

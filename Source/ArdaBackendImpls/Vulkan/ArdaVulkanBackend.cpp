@@ -1208,6 +1208,241 @@ namespace arda::backend
             vk::StridedDeviceAddressRegionKHR mCallable;
         };
 
+        enum class EVulkanTimerQueryState : uint8_t
+        {
+            Idle,
+            Recording,
+            Recorded,
+            Submitted,
+            Complete
+        };
+
+        class FVulkanQueueSignal final : public IArdaProviderObject
+        {
+        public:
+            ~FVulkanQueueSignal() override
+            {
+                if (!mContext || !mContext->mDevice || !mFence) return;
+                try
+                {
+                    std::lock_guard<std::mutex> Lock(mMutex);
+                    if (mbArmed)
+                        (void)mContext->mDevice.waitForFences(
+                            mFence, true, UINT64_MAX);
+                    mContext->mDevice.destroyFence(mFence);
+                }
+                catch (const vk::SystemError&)
+                {
+                }
+            }
+            const void* GetIdentity() const noexcept override
+            {
+                return reinterpret_cast<const void*>(
+                    static_cast<VkFence>(mFence));
+            }
+            eastl::shared_ptr<FArdaVulkanContext> mContext;
+            vk::Fence mFence;
+            std::mutex mMutex;
+            bool mbArmed = false;
+        };
+
+        class FVulkanTimerQuery final : public IArdaProviderObject
+        {
+        public:
+            ~FVulkanTimerQuery() override
+            {
+                if (mContext && mContext->mDevice && mQueryPool)
+                    mContext->mDevice.destroyQueryPool(mQueryPool);
+            }
+            const void* GetIdentity() const noexcept override
+            {
+                return reinterpret_cast<const void*>(
+                    static_cast<VkQueryPool>(mQueryPool));
+            }
+
+            [[nodiscard]] FArdaRHIStatus Begin(
+                vk::CommandBuffer CommandBuffer,
+                const void* RecordingOwner,
+                uint32_t TimestampValidBits)
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (mState != EVulkanTimerQueryState::Idle)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The Vulkan timer query must be reset before reuse.");
+                CommandBuffer.resetQueryPool(mQueryPool, 0, 2);
+                CommandBuffer.writeTimestamp2(
+                    vk::PipelineStageFlagBits2::eTopOfPipe,
+                    mQueryPool, 0);
+                mRecordingOwner = RecordingOwner;
+                mTimestampValidBits = TimestampValidBits;
+                mState = EVulkanTimerQueryState::Recording;
+                return {};
+            }
+
+            [[nodiscard]] FArdaRHIStatus End(
+                vk::CommandBuffer CommandBuffer,
+                const void* RecordingOwner)
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (mState != EVulkanTimerQueryState::Recording ||
+                    mRecordingOwner != RecordingOwner)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The Vulkan timer query was not begun on this command list.");
+                CommandBuffer.writeTimestamp2(
+                    vk::PipelineStageFlagBits2::eBottomOfPipe,
+                    mQueryPool, 1);
+                mState = EVulkanTimerQueryState::Recorded;
+                return {};
+            }
+
+            [[nodiscard]] bool IsReadyForSubmission() const
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                return mState == EVulkanTimerQueryState::Recorded;
+            }
+
+            void MarkSubmitted()
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (mState != EVulkanTimerQueryState::Recorded) return;
+                mRecordingOwner = nullptr;
+                mState = EVulkanTimerQueryState::Submitted;
+            }
+
+            void CancelRecording(const void* RecordingOwner)
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (mRecordingOwner != RecordingOwner ||
+                    (mState != EVulkanTimerQueryState::Recording &&
+                     mState != EVulkanTimerQueryState::Recorded))
+                    return;
+                try
+                {
+                    mContext->mDevice.resetQueryPool(mQueryPool, 0, 2);
+                }
+                catch (const vk::SystemError&)
+                {
+                }
+                mRecordingOwner = nullptr;
+                mState = EVulkanTimerQueryState::Idle;
+            }
+
+            struct FTimestampResult
+            {
+                uint64_t mTimestamp = 0;
+                uint64_t mAvailable = 0;
+            };
+
+            [[nodiscard]] TArdaRHIResult<bool> Poll()
+            {
+                {
+                    std::lock_guard<std::mutex> Lock(mMutex);
+                    if (mState == EVulkanTimerQueryState::Complete)
+                        return {true, {}};
+                    if (mState != EVulkanTimerQueryState::Submitted)
+                        return {false, {}};
+                }
+                FTimestampResult Results[2]{};
+                try
+                {
+                    const vk::Result Result =
+                        mContext->mDevice.getQueryPoolResults(
+                            mQueryPool, 0, 2, sizeof(Results), Results,
+                            sizeof(FTimestampResult),
+                            vk::QueryResultFlagBits::e64 |
+                                vk::QueryResultFlagBits::eWithAvailability);
+                    if (Result != vk::Result::eSuccess &&
+                        Result != vk::Result::eNotReady)
+                        return {false, VulkanFailure(
+                            "Failed to poll a Vulkan timer query.", Result)};
+                    const bool bComplete = Results[0].mAvailable != 0 &&
+                        Results[1].mAvailable != 0;
+                    if (bComplete)
+                    {
+                        std::lock_guard<std::mutex> Lock(mMutex);
+                        if (mState == EVulkanTimerQueryState::Submitted)
+                            mState = EVulkanTimerQueryState::Complete;
+                    }
+                    return {bComplete, {}};
+                }
+                catch (const vk::SystemError& Error)
+                {
+                    return {false, FArdaRHIStatus::Error(
+                        EArdaRHIResult::BackendFailure, Error.what())};
+                }
+            }
+
+            [[nodiscard]] TArdaRHIResult<float> GetSeconds()
+            {
+                auto Complete = Poll();
+                if (!Complete) return {0.f, Complete.mStatus};
+                if (!Complete.mValue)
+                    return {0.f, FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The Vulkan timer query has not completed.")};
+                uint64_t Timestamps[2]{};
+                try
+                {
+                    const vk::Result Result =
+                        mContext->mDevice.getQueryPoolResults(
+                            mQueryPool, 0, 2, sizeof(Timestamps), Timestamps,
+                            sizeof(uint64_t), vk::QueryResultFlagBits::e64);
+                    if (Result != vk::Result::eSuccess)
+                        return {0.f, VulkanFailure(
+                            "Failed to read a Vulkan timer query.", Result)};
+                    const uint64_t TimestampMask = mTimestampValidBits >= 64
+                        ? UINT64_MAX
+                        : (uint64_t{1} << mTimestampValidBits) - 1;
+                    const uint64_t Elapsed =
+                        (Timestamps[1] - Timestamps[0]) & TimestampMask;
+                    return {static_cast<float>(
+                        static_cast<double>(Elapsed) *
+                        static_cast<double>(mTimestampPeriodNanoseconds) *
+                        1.0e-9), {}};
+                }
+                catch (const vk::SystemError& Error)
+                {
+                    return {0.f, FArdaRHIStatus::Error(
+                        EArdaRHIResult::BackendFailure, Error.what())};
+                }
+            }
+
+            [[nodiscard]] FArdaRHIStatus Reset()
+            {
+                auto Complete = Poll();
+                if (!Complete) return Complete.mStatus;
+                std::lock_guard<std::mutex> Lock(mMutex);
+                if (mState == EVulkanTimerQueryState::Recording ||
+                    mState == EVulkanTimerQueryState::Recorded ||
+                    mState == EVulkanTimerQueryState::Submitted)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The Vulkan timer query is still in use.");
+                try
+                {
+                    mContext->mDevice.resetQueryPool(mQueryPool, 0, 2);
+                    mRecordingOwner = nullptr;
+                    mState = EVulkanTimerQueryState::Idle;
+                    return {};
+                }
+                catch (const vk::SystemError& Error)
+                {
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::BackendFailure, Error.what());
+                }
+            }
+
+            eastl::shared_ptr<FArdaVulkanContext> mContext;
+            vk::QueryPool mQueryPool;
+            float mTimestampPeriodNanoseconds = 0.f;
+            uint32_t mTimestampValidBits = 64;
+            mutable std::mutex mMutex;
+            const void* mRecordingOwner = nullptr;
+            EVulkanTimerQueryState mState = EVulkanTimerQueryState::Idle;
+        };
+
         struct FVulkanCommandRecording
         {
             ~FVulkanCommandRecording()
@@ -1306,6 +1541,10 @@ namespace arda::backend
             TArdaRHIResult<FArdaRHINativeResourceState>
                 QueryOpacityMicromapState(
                     const FArdaProviderObjectRef&) const override;
+            FArdaRHIStatus BeginTimerQuery(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus EndTimerQuery(
+                const FArdaProviderObjectRef&) override;
             void BeginMarker(const char*) override {}
             void EndMarker() override {}
             vk::CommandBuffer GetCommandBuffer() const noexcept
@@ -1317,6 +1556,8 @@ namespace arda::backend
                 return mRecording;
             }
             [[nodiscard]] FArdaRHIStatus ValidateTrackedStartStates() const;
+            [[nodiscard]] FArdaRHIStatus ValidateTimerQueries() const;
+            void MarkTimerQueriesSubmitted();
             void CommitTrackedStates();
 
         private:
@@ -1355,10 +1596,12 @@ namespace arda::backend
                 vk::AccelerationStructureBuildGeometryInfoKHR&,
                 const eastl::vector<vk::AccelerationStructureBuildRangeInfoKHR>&,
                 EArdaRHIAccelStructBuildFlags);
+            void CancelTimerQueries();
             FArdaVulkanProviderDevice& mDevice;
             EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics;
             eastl::shared_ptr<FVulkanCommandRecording> mRecording;
             vk::CommandBuffer mCommandBuffer;
+            eastl::vector<FArdaProviderObjectRef> mTimerQueries;
             FVulkanPipeline* mBoundGraphics = nullptr;
             FVulkanPipeline* mBoundCompute = nullptr;
             std::unordered_map<const void*, eastl::vector<vk::ImageLayout>>
@@ -1493,6 +1736,31 @@ namespace arda::backend
             FArdaRHIStatus AddShaderTableEntry(
                 const FArdaProviderObjectRef&, const char*,
                 const FArdaProviderObjectRef&, uint32_t) override;
+            FArdaProviderObjectResult CreateEventQuery() override;
+            FArdaProviderObjectResult CreateTimerQuery() override;
+            FArdaProviderObjectResult CreateGpuFence() override;
+            FArdaRHIStatus SignalEventQuery(
+                const FArdaProviderObjectRef&, EArdaRHIQueueType) override;
+            TArdaRHIResult<bool> PollEventQuery(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus WaitEventQuery(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus ResetEventQuery(
+                const FArdaProviderObjectRef&) override;
+            TArdaRHIResult<bool> PollTimerQuery(
+                const FArdaProviderObjectRef&) override;
+            TArdaRHIResult<float> GetTimerQuerySeconds(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus ResetTimerQuery(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus SignalGpuFence(
+                const FArdaProviderObjectRef&, EArdaRHIQueueType) override;
+            TArdaRHIResult<bool> PollGpuFence(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus WaitGpuFence(
+                const FArdaProviderObjectRef&) override;
+            FArdaRHIStatus ResetGpuFence(
+                const FArdaProviderObjectRef&) override;
             TArdaRHIResult<eastl::unique_ptr<IArdaProviderCommandList>> CreateCommandList(EArdaRHIQueueType, bool) override;
             TArdaRHIResult<uint64_t> ExecuteCommandList(IArdaProviderCommandList&, EArdaRHIQueueType) override;
             FArdaRHIStatus QueueWait(
@@ -4976,6 +5244,7 @@ namespace arda::backend
 
         FArdaVulkanCommandList::~FArdaVulkanCommandList()
         {
+            CancelTimerQueries();
         }
 
         void FArdaVulkanProviderDevice::FlushPipelineCache() noexcept
@@ -5102,6 +5371,8 @@ namespace arda::backend
                         mRecording->mCommandPool);
                     mRecording->mRetainedObjects.clear();
                 }
+                CancelTimerQueries();
+                mTimerQueries.clear();
                 mbOpen = false;
                 mBoundGraphics = nullptr;
                 mBoundCompute = nullptr;
@@ -5699,6 +5970,35 @@ namespace arda::backend
                 Entry.first->mAbstractState = Entry.second.mState;
                 Entry.first->mBuildState = Entry.second.mBuildState;
             }
+        }
+
+        FArdaRHIStatus FArdaVulkanCommandList::ValidateTimerQueries() const
+        {
+            for (const auto& Object : mTimerQueries)
+            {
+                auto* Query = dynamic_cast<FVulkanTimerQuery*>(Object.get());
+                if (!Query || !Query->IsReadyForSubmission())
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "A Vulkan timer query was not ended before submission.");
+            }
+            return {};
+        }
+
+        void FArdaVulkanCommandList::MarkTimerQueriesSubmitted()
+        {
+            for (const auto& Object : mTimerQueries)
+                if (auto* Query =
+                        dynamic_cast<FVulkanTimerQuery*>(Object.get()))
+                    Query->MarkSubmitted();
+        }
+
+        void FArdaVulkanCommandList::CancelTimerQueries()
+        {
+            for (const auto& Object : mTimerQueries)
+                if (auto* Query =
+                        dynamic_cast<FVulkanTimerQuery*>(Object.get()))
+                    Query->CancelRecording(this);
         }
 
         FArdaRHIStatus FArdaVulkanCommandList::TransitionTextureLayout(
@@ -7455,6 +7755,319 @@ namespace arda::backend
             return {};
         }
 
+        FArdaRHIStatus FArdaVulkanCommandList::BeginTimerQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            auto* Query = dynamic_cast<FVulkanTimerQuery*>(Object.get());
+            if (!Query)
+                return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                    "The timer query is not a Vulkan timer query.");
+            try
+            {
+                const auto QueueProperties = mDevice.GetContext()->
+                    mPhysicalDevice.getQueueFamilyProperties();
+                const uint32_t QueueFamily =
+                    mDevice.GetContext()->GetQueueFamily(mQueue);
+                if (QueueFamily >= QueueProperties.size() ||
+                    QueueProperties[QueueFamily].timestampValidBits == 0)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::Unsupported,
+                        "The Vulkan command queue does not support timestamps.");
+                if (auto Status = Query->Begin(
+                        mCommandBuffer, this,
+                        QueueProperties[QueueFamily].timestampValidBits);
+                    !Status)
+                    return Status;
+                Retain(Object);
+                if (eastl::find(mTimerQueries.begin(), mTimerQueries.end(),
+                        Object) == mTimerQueries.end())
+                    mTimerQueries.push_back(Object);
+                return {};
+            }
+            catch (const vk::SystemError& Error)
+            {
+                return FArdaRHIStatus::Error(
+                    EArdaRHIResult::BackendFailure, Error.what());
+            }
+        }
+
+        FArdaRHIStatus FArdaVulkanCommandList::EndTimerQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            auto* Query = dynamic_cast<FVulkanTimerQuery*>(Object.get());
+            if (!Query)
+                return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                    "The timer query is not a Vulkan timer query.");
+            try
+            {
+                return Query->End(mCommandBuffer, this);
+            }
+            catch (const vk::SystemError& Error)
+            {
+                return FArdaRHIStatus::Error(
+                    EArdaRHIResult::BackendFailure, Error.what());
+            }
+        }
+
+        namespace
+        {
+            FArdaProviderObjectResult CreateVulkanQueueSignal(
+                const eastl::shared_ptr<FArdaVulkanContext>& Context)
+            {
+                auto Signal = eastl::make_shared<FVulkanQueueSignal>();
+                Signal->mContext = Context;
+                try
+                {
+                    Signal->mFence = Context->mDevice.createFence({});
+                    return {Signal, {}};
+                }
+                catch (const vk::SystemError& Error)
+                {
+                    return Fail<FArdaProviderObjectRef>(
+                        FArdaRHIStatus::Error(
+                            EArdaRHIResult::BackendFailure, Error.what()));
+                }
+            }
+
+            FArdaRHIStatus SignalVulkanQueueObject(
+                const FArdaProviderObjectRef& Object,
+                const eastl::shared_ptr<FArdaVulkanContext>& Context,
+                EArdaRHIQueueType QueueType)
+            {
+                auto* Signal = dynamic_cast<FVulkanQueueSignal*>(Object.get());
+                const vk::Queue Queue = Context->GetQueue(QueueType);
+                if (!Signal || Signal->mContext != Context || !Queue)
+                    return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                        "The Vulkan queue signal has an invalid object or queue.");
+                std::lock_guard<std::mutex> Lock(Signal->mMutex);
+                if (Signal->mbArmed)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The Vulkan queue signal must be reset before reuse.");
+                try
+                {
+                    vk::SubmitInfo2 Submit;
+                    {
+                        std::lock_guard<std::mutex> QueueLock(
+                            Context->mQueueMutex);
+                        Queue.submit2(Submit, Signal->mFence);
+                    }
+                    Signal->mbArmed = true;
+                    return {};
+                }
+                catch (const vk::SystemError& Error)
+                {
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::BackendFailure, Error.what());
+                }
+            }
+
+            TArdaRHIResult<bool> PollVulkanQueueObject(
+                const FArdaProviderObjectRef& Object,
+                const eastl::shared_ptr<FArdaVulkanContext>& Context)
+            {
+                auto* Signal = dynamic_cast<FVulkanQueueSignal*>(Object.get());
+                if (!Signal || Signal->mContext != Context)
+                    return Fail<bool>(FArdaRHIStatus::Error(
+                        EArdaRHIResult::WrongDevice,
+                        "The queue signal is not a Vulkan fence."));
+                std::lock_guard<std::mutex> Lock(Signal->mMutex);
+                if (!Signal->mbArmed) return {false, {}};
+                try
+                {
+                    const vk::Result Result =
+                        Context->mDevice.getFenceStatus(Signal->mFence);
+                    if (Result == vk::Result::eSuccess) return {true, {}};
+                    if (Result == vk::Result::eNotReady) return {false, {}};
+                    return {false, VulkanFailure(
+                        "Failed to poll a Vulkan queue signal.", Result)};
+                }
+                catch (const vk::SystemError& Error)
+                {
+                    return {false, FArdaRHIStatus::Error(
+                        EArdaRHIResult::BackendFailure, Error.what())};
+                }
+            }
+
+            FArdaRHIStatus WaitVulkanQueueObject(
+                const FArdaProviderObjectRef& Object,
+                const eastl::shared_ptr<FArdaVulkanContext>& Context)
+            {
+                auto* Signal = dynamic_cast<FVulkanQueueSignal*>(Object.get());
+                if (!Signal || Signal->mContext != Context)
+                    return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                        "The queue signal is not a Vulkan fence.");
+                std::lock_guard<std::mutex> Lock(Signal->mMutex);
+                if (!Signal->mbArmed)
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "The Vulkan queue signal has not been inserted.");
+                try
+                {
+                    const vk::Result Result = Context->mDevice.waitForFences(
+                        Signal->mFence, true, UINT64_MAX);
+                    return Result == vk::Result::eSuccess
+                        ? FArdaRHIStatus{}
+                        : VulkanFailure(
+                            "Failed while waiting for a Vulkan queue signal.",
+                            Result);
+                }
+                catch (const vk::SystemError& Error)
+                {
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::BackendFailure, Error.what());
+                }
+            }
+
+            FArdaRHIStatus ResetVulkanQueueObject(
+                const FArdaProviderObjectRef& Object,
+                const eastl::shared_ptr<FArdaVulkanContext>& Context)
+            {
+                auto* Signal = dynamic_cast<FVulkanQueueSignal*>(Object.get());
+                if (!Signal || Signal->mContext != Context)
+                    return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                        "The queue signal is not a Vulkan fence.");
+                std::lock_guard<std::mutex> Lock(Signal->mMutex);
+                try
+                {
+                    if (Signal->mbArmed &&
+                        Context->mDevice.getFenceStatus(Signal->mFence) !=
+                            vk::Result::eSuccess)
+                        return FArdaRHIStatus::Error(
+                            EArdaRHIResult::InvalidState,
+                            "The Vulkan queue signal has not completed.");
+                    Context->mDevice.resetFences(Signal->mFence);
+                    Signal->mbArmed = false;
+                    return {};
+                }
+                catch (const vk::SystemError& Error)
+                {
+                    return FArdaRHIStatus::Error(
+                        EArdaRHIResult::BackendFailure, Error.what());
+                }
+            }
+        }
+
+        FArdaProviderObjectResult
+        FArdaVulkanProviderDevice::CreateEventQuery()
+        {
+            return CreateVulkanQueueSignal(mContext);
+        }
+
+        FArdaProviderObjectResult
+        FArdaVulkanProviderDevice::CreateGpuFence()
+        {
+            return CreateVulkanQueueSignal(mContext);
+        }
+
+        FArdaProviderObjectResult
+        FArdaVulkanProviderDevice::CreateTimerQuery()
+        {
+            auto Query = eastl::make_shared<FVulkanTimerQuery>();
+            Query->mContext = mContext;
+            Query->mTimestampPeriodNanoseconds =
+                mContext->mPhysicalDevice.getProperties().limits.
+                    timestampPeriod;
+            if (!(Query->mTimestampPeriodNanoseconds > 0.f))
+                return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::Unsupported,
+                    "The Vulkan device does not expose timestamp timing."));
+            try
+            {
+                vk::QueryPoolCreateInfo Info;
+                Info.queryType = vk::QueryType::eTimestamp;
+                Info.queryCount = 2;
+                Query->mQueryPool = mContext->mDevice.createQueryPool(Info);
+                return {Query, {}};
+            }
+            catch (const vk::SystemError& Error)
+            {
+                return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::BackendFailure, Error.what()));
+            }
+        }
+
+        FArdaRHIStatus FArdaVulkanProviderDevice::SignalEventQuery(
+            const FArdaProviderObjectRef& Object, EArdaRHIQueueType Queue)
+        {
+            return SignalVulkanQueueObject(Object, mContext, Queue);
+        }
+
+        TArdaRHIResult<bool> FArdaVulkanProviderDevice::PollEventQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            return PollVulkanQueueObject(Object, mContext);
+        }
+
+        FArdaRHIStatus FArdaVulkanProviderDevice::WaitEventQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            return WaitVulkanQueueObject(Object, mContext);
+        }
+
+        FArdaRHIStatus FArdaVulkanProviderDevice::ResetEventQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            return ResetVulkanQueueObject(Object, mContext);
+        }
+
+        TArdaRHIResult<bool> FArdaVulkanProviderDevice::PollTimerQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            auto* Query = dynamic_cast<FVulkanTimerQuery*>(Object.get());
+            if (!Query || Query->mContext != mContext)
+                return Fail<bool>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::WrongDevice,
+                    "The timer query is not a Vulkan timer query."));
+            return Query->Poll();
+        }
+
+        TArdaRHIResult<float>
+        FArdaVulkanProviderDevice::GetTimerQuerySeconds(
+            const FArdaProviderObjectRef& Object)
+        {
+            auto* Query = dynamic_cast<FVulkanTimerQuery*>(Object.get());
+            if (!Query || Query->mContext != mContext)
+                return Fail<float>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::WrongDevice,
+                    "The timer query is not a Vulkan timer query."));
+            return Query->GetSeconds();
+        }
+
+        FArdaRHIStatus FArdaVulkanProviderDevice::ResetTimerQuery(
+            const FArdaProviderObjectRef& Object)
+        {
+            auto* Query = dynamic_cast<FVulkanTimerQuery*>(Object.get());
+            return Query && Query->mContext == mContext
+                ? Query->Reset()
+                : FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                    "The timer query is not a Vulkan timer query.");
+        }
+
+        FArdaRHIStatus FArdaVulkanProviderDevice::SignalGpuFence(
+            const FArdaProviderObjectRef& Object, EArdaRHIQueueType Queue)
+        {
+            return SignalVulkanQueueObject(Object, mContext, Queue);
+        }
+
+        TArdaRHIResult<bool> FArdaVulkanProviderDevice::PollGpuFence(
+            const FArdaProviderObjectRef& Object)
+        {
+            return PollVulkanQueueObject(Object, mContext);
+        }
+
+        FArdaRHIStatus FArdaVulkanProviderDevice::WaitGpuFence(
+            const FArdaProviderObjectRef& Object)
+        {
+            return WaitVulkanQueueObject(Object, mContext);
+        }
+
+        FArdaRHIStatus FArdaVulkanProviderDevice::ResetGpuFence(
+            const FArdaProviderObjectRef& Object)
+        {
+            return ResetVulkanQueueObject(Object, mContext);
+        }
+
         TArdaRHIResult<eastl::unique_ptr<IArdaProviderCommandList>>
         FArdaVulkanProviderDevice::CreateCommandList(EArdaRHIQueueType Queue, bool)
         {
@@ -7477,6 +8090,12 @@ namespace arda::backend
                 EArdaRHIResult::WrongDevice, "Vulkan command list has the wrong implementation."));
             if (const FArdaRHIStatus Status =
                     Commands->ValidateTrackedStartStates();
+                !Status)
+            {
+                return Fail<uint64_t>(Status);
+            }
+            if (const FArdaRHIStatus Status =
+                    Commands->ValidateTimerQueries();
                 !Status)
             {
                 return Fail<uint64_t>(Status);
@@ -7511,6 +8130,7 @@ namespace arda::backend
                         Queue = mContext->mCopyQueue;
                     Queue.submit2(Submit, Fence);
                 }
+                Commands->MarkTimerQueriesSubmitted();
                 Commands->CommitTrackedStates();
                 {
                     std::lock_guard<std::mutex> Lock(mSubmissionMutex);

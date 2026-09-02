@@ -455,6 +455,20 @@ namespace arda::rhi::provider
             return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
                 "Opacity micromaps are unsupported by this backend provider.")};
         }
+        /** Records the start timestamp for a provider timer query. */
+        virtual FArdaRHIStatus BeginTimerQuery(
+            const FArdaProviderObjectRef&)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Timer queries are unsupported by this backend provider.");
+        }
+        /** Records the end timestamp and result resolve for a timer query. */
+        virtual FArdaRHIStatus EndTimerQuery(
+            const FArdaProviderObjectRef&)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Timer queries are unsupported by this backend provider.");
+        }
         virtual void BeginMarker(const char* Name) = 0;
         virtual void EndMarker() = 0;
     };
@@ -699,6 +713,101 @@ namespace arda::rhi::provider
             return FArdaRHIStatus::Error(
                 EArdaRHIResult::Unsupported,
                 "Shader tables are unsupported by this backend provider.");
+        }
+        /** Creates a native queue-completion event query. */
+        [[nodiscard]] virtual FArdaProviderObjectResult CreateEventQuery()
+        {
+            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Event queries are unsupported by this backend provider.")};
+        }
+        /** Creates a native timestamp query pair. */
+        [[nodiscard]] virtual FArdaProviderObjectResult CreateTimerQuery()
+        {
+            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Timer queries are unsupported by this backend provider.")};
+        }
+        /** Creates a native GPU queue fence. */
+        [[nodiscard]] virtual FArdaProviderObjectResult CreateGpuFence()
+        {
+            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "GPU fences are unsupported by this backend provider.")};
+        }
+        /** Inserts an event marker after all prior work on the queue. */
+        virtual FArdaRHIStatus SignalEventQuery(
+            const FArdaProviderObjectRef&, EArdaRHIQueueType)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Event queries are unsupported by this backend provider.");
+        }
+        /** Tests whether the native event marker has completed. */
+        [[nodiscard]] virtual TArdaRHIResult<bool> PollEventQuery(
+            const FArdaProviderObjectRef&)
+        {
+            return {false, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Event queries are unsupported by this backend provider.")};
+        }
+        /** Waits for the native event marker without idling unrelated queues. */
+        virtual FArdaRHIStatus WaitEventQuery(
+            const FArdaProviderObjectRef&)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Event queries are unsupported by this backend provider.");
+        }
+        /** Rearms a completed native event query. */
+        virtual FArdaRHIStatus ResetEventQuery(
+            const FArdaProviderObjectRef&)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Event queries are unsupported by this backend provider.");
+        }
+        /** Tests whether both native timer timestamps are available. */
+        [[nodiscard]] virtual TArdaRHIResult<bool> PollTimerQuery(
+            const FArdaProviderObjectRef&)
+        {
+            return {false, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Timer queries are unsupported by this backend provider.")};
+        }
+        /** Returns the elapsed native timestamp interval in seconds. */
+        [[nodiscard]] virtual TArdaRHIResult<float> GetTimerQuerySeconds(
+            const FArdaProviderObjectRef&)
+        {
+            return {0.f, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Timer queries are unsupported by this backend provider.")};
+        }
+        /** Rearms a completed native timer query. */
+        virtual FArdaRHIStatus ResetTimerQuery(
+            const FArdaProviderObjectRef&)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "Timer queries are unsupported by this backend provider.");
+        }
+        /** Inserts a native fence signal after all prior work on the queue. */
+        virtual FArdaRHIStatus SignalGpuFence(
+            const FArdaProviderObjectRef&, EArdaRHIQueueType)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "GPU fences are unsupported by this backend provider.");
+        }
+        /** Tests whether the native GPU fence has completed. */
+        [[nodiscard]] virtual TArdaRHIResult<bool> PollGpuFence(
+            const FArdaProviderObjectRef&)
+        {
+            return {false, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "GPU fences are unsupported by this backend provider.")};
+        }
+        /** Waits for the native GPU fence without idling unrelated queues. */
+        virtual FArdaRHIStatus WaitGpuFence(
+            const FArdaProviderObjectRef&)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "GPU fences are unsupported by this backend provider.");
+        }
+        /** Rearms a completed native GPU fence. */
+        virtual FArdaRHIStatus ResetGpuFence(
+            const FArdaProviderObjectRef&)
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                "GPU fences are unsupported by this backend provider.");
         }
         [[nodiscard]] virtual TArdaRHIResult<eastl::unique_ptr<IArdaProviderCommandList>>
             CreateCommandList(EArdaRHIQueueType Queue, bool bImmediate) = 0;
