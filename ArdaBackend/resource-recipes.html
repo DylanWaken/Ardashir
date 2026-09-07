@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Choose and use every public RHI resource kind, with allocation, ownership and CUDA representation guidance.">
+  <title>Resource recipes | ArdaBackend</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="backend-modules.html">Backend modules</a>
+        <a href="external-interop.html">External interop</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
+
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="capability-recipes.html">Capability recipes</a>
+        <a href="cuda-interop.html">CUDA and graphics</a>
+        <a href="validation.html">GPU validation setup</a>
+        <a href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content" tabindex="-1">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a>
+        <span aria-hidden="true">/</span>
+        ArdaBackend
+      </nav>
+      <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>Resource recipes</h1><p>Choose and use every public RHI resource kind, with allocation, ownership and CUDA representation guidance.</p></header>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#resource-device">Device: Factory and submission authority</a><a href="#resource-texture">Texture: Allocate shaped image storage</a><a href="#resource-texturereference">TextureReference: Keep a stable texture identity</a><a href="#resource-buffer">Buffer: Store linear and structured data</a><a href="#resource-uniformbuffer">UniformBuffer: Upload shader constants</a><a href="#resource-heap">Heap: Place resources in explicit memory</a><a href="#resource-stagingtexture">StagingTexture: Move image data between CPU and GPU</a><a href="#resource-eventquery">EventQuery: Observe a queue completion point</a><a href="#resource-timerquery">TimerQuery: Measure GPU elapsed time</a><a href="#resource-gpufence">GpuFence: Retire CPU-owned frame data</a><a href="#resource-shaderresourceview">ShaderResourceView: Read a selected resource interpretation</a><a href="#resource-unorderedaccessview">UnorderedAccessView: Expose writable shader storage</a><a href="#resource-sampler">Sampler: Select texture filtering and addressing</a><a href="#resource-shader">Shader: Create a shader from backend bytecode</a><a href="#resource-shaderlibrary">ShaderLibrary: Share a compiled shader library</a><a href="#resource-inputlayout">InputLayout: Describe vertex memory</a><a href="#resource-bindinglayout">BindingLayout: Declare shader-visible slots</a><a href="#resource-bindingset">BindingSet: Populate a declared layout</a><a href="#resource-descriptortable">DescriptorTable: Index an extensible descriptor collection</a><a href="#resource-resourcecollection">ResourceCollection: Maintain an indexed set of resources</a><a href="#resource-framebuffer">Framebuffer: Select raster attachments</a><a href="#resource-graphicspipeline">GraphicsPipeline: Combine raster shaders and fixed state</a><a href="#resource-computepipeline">ComputePipeline: Bind a compute shader interface</a><a href="#resource-meshletpipeline">MeshletPipeline: Generate raster geometry on the GPU</a><a href="#resource-accelstruct">AccelStruct: Build ray-tracing geometry and instances</a><a href="#resource-raytracingpipeline">RayTracingPipeline: Link ray stages and hit groups</a><a href="#resource-shadertable">ShaderTable: Connect rays to shader records</a><a href="#resource-workgraphpipeline">WorkGraphPipeline: Launch a native work graph</a><a href="#resource-shaderbundle">ShaderBundle: Batch shader dispatch records</a><a href="#resource-samplerfeedbacktexture">SamplerFeedbackTexture: Record texture streaming demand</a><a href="#resource-opacitymicromap">OpacityMicromap: Attach per-microtriangle opacity</a><a href="#resource-rasterstate">RasterState: Reuse rasterization policy</a><a href="#resource-blendstate">BlendState: Describe attachment blending</a><a href="#resource-depthstencilstate">DepthStencilState: Control depth and stencil tests</a><a href="#resource-commandlist">CommandList: Record and submit ordered work</a><a href="#summary">Checkpoints</a></nav>
+<section id="objectives"><h2>How to use these examples</h2>
+<p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
+<p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
+<figure><img src="Assets/rhi-data-and-queues.svg" alt="Resource recipes ownership and execution flow"><figcaption>Representations and references preserve access and lifetime; commands and fences establish order.</figcaption></figure>
+<p>Short snippets are literal excerpts from compiled GoogleTest workloads. They use ASSERT_TRUE/EXPECT_EQ to make failures visible. Adapt those checks to your application's status handling. Variables and helpers are initialized in each linked complete example; snippets are not separate standalone programs. The complete examples show allocation, binding, execution, readback assertions and cleanup.</p>
+<pre><code class="language-shell">cmake --build build --config Debug --target ArdaBackendTests
+ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
+<p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="resource-device"><h2>Device: Factory and submission authority</h2><p><a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a>: Obtain the device after ConfigureBackend and InitializeBackend succeed. It owns capability reporting, object creation and queue submission. Every resource used together must have this device identity.</p><pre><code class="language-cpp">FArdaRHIDeviceRef Device = GetDevice();
+ASSERT_TRUE(Device);
+const FArdaRHICapabilities&amp; Capabilities = Device-&gt;GetCapabilities();
+EXPECT_TRUE(Capabilities.mbStagingTextures);
+EXPECT_TRUE(Capabilities.mbTextureCopies);
+EXPECT_TRUE(Capabilities.mbTextureResolve);
+EXPECT_TRUE(Capabilities.mbExplicitTransitions);
+EXPECT_TRUE(Capabilities.mbSplitTransitions);
+EXPECT_TRUE(Capabilities.mbIndirectCommands);
+EXPECT_TRUE(Capabilities.mbAliasingBarriers);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyExtendedCommands">Complete example: VerifyExtendedCommands</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-texture"><h2>Texture: Allocate shaped image storage</h2><p><a href="api-reference.html#api-arda-rhi-iardarhitexture-a36c0ceb"><code>IArdaRHITexture</code></a>: Choose dimensions, format, mip count and all required usage bits before allocation. A render target that will later be sampled needs both usages. Views select subresources; they do not add missing allocation permissions.</p><pre><code class="language-cpp">{
+    FArdaRHITextureDesc TextureDesc;
+    TextureDesc.mDebugName = &quot;LifetimeTexture&quot;;
+    TextureDesc.mWidth = 8;
+    TextureDesc.mHeight = 8;
+    TextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+    TextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource |
+        EArdaRHITextureUsage::UnorderedAccess |
+        EArdaRHITextureUsage::RenderTarget;
+    auto Texture = Device-&gt;CreateTexture(TextureDesc);
+    ASSERT_TRUE(Texture);
+    auto TextureReference = Device-&gt;CreateTextureReference(Texture.mValue);
+    ASSERT_TRUE(TextureReference);</code></pre><p>Buffer/texture CUDA eligibility is per allocation. Opt in at creation and inspect GetCudaResourceInfo; see the CUDA chapter. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-texturereference"><h2>TextureReference: Keep a stable texture identity</h2><p><a href="api-reference.html#api-arda-rhi-iardarhitexturereference-818f5161"><code>IArdaRHITextureReference</code></a>: A texture reference is a retargetable reference to a texture. Use SetTextureReference when replacing streamed storage, then rebuild dependent bindings as needed; changing a reference does not rewrite an already recorded command list.</p><pre><code class="language-cpp">{
+    FArdaRHITextureDesc TextureDesc;
+    TextureDesc.mDebugName = &quot;LifetimeTexture&quot;;
+    TextureDesc.mWidth = 8;
+    TextureDesc.mHeight = 8;
+    TextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+    TextureDesc.mUsage = EArdaRHITextureUsage::ShaderResource |
+        EArdaRHITextureUsage::UnorderedAccess |
+        EArdaRHITextureUsage::RenderTarget;
+    auto Texture = Device-&gt;CreateTexture(TextureDesc);
+    ASSERT_TRUE(Texture);
+    auto TextureReference = Device-&gt;CreateTextureReference(Texture.mValue);
+    ASSERT_TRUE(TextureReference);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-buffer"><h2>Buffer: Store linear and structured data</h2><p><a href="api-reference.html#api-arda-rhi-iardarhibuffer-48e47285"><code>IArdaRHIBuffer</code></a>: mByteSize allocates bytes; mStructureStride describes structured elements. Set the shader, vertex, index, indirect or storage usages actually required. Upload through an open command list and order consumers after the copy.</p><pre><code class="language-cpp">FArdaRHIBufferDesc BufferDesc;
+BufferDesc.mDebugName = &quot;LifetimeBuffer&quot;;
+BufferDesc.mByteSize = 256;
+BufferDesc.mStructureStride = sizeof(uint32_t);
+BufferDesc.mUsage = EArdaRHIBufferUsage::Structured |
+    EArdaRHIBufferUsage::ShaderResource |
+    EArdaRHIBufferUsage::UnorderedAccess;
+auto Buffer = Device-&gt;CreateBuffer(BufferDesc);
+ASSERT_TRUE(Buffer);</code></pre><p>Buffer/texture CUDA eligibility is per allocation. Opt in at creation and inspect GetCudaResourceInfo; see the CUDA chapter. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-uniformbuffer"><h2>UniformBuffer: Upload shader constants</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiuniformbuffer-4b6a4cb9"><code>IArdaRHIUniformBuffer</code></a>: A uniform buffer carries constants rather than arbitrary UAV storage. Its byte layout must match the shader parameter layout. Use the uniform-buffer write path and preserve the version consumed by each in-flight submission.</p><pre><code class="language-cpp">FArdaRHIUniformBufferDesc UniformDesc;
+UniformDesc.mDebugName = &quot;LifetimeUniform&quot;;
+UniformDesc.mByteSize = 256;
+auto Uniform = Device-&gt;CreateUniformBuffer(UniformDesc, nullptr);
+ASSERT_TRUE(Uniform);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-heap"><h2>Heap: Place resources in explicit memory</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiheap-ed96c8f9"><code>IArdaRHIHeap</code></a>: Query each virtual resource's memory requirements, allocate a compatible heap, and bind at an aligned offset. Reusing an offset requires non-overlapping GPU lifetimes and an aliasing barrier; retaining two resource handles does not make overlapping use valid.</p><pre><code class="language-cpp">FArdaRHIHeapDesc HeapDesc;
+HeapDesc.mDebugName = &quot;Explicit overlapping buffer heap&quot;;
+HeapDesc.mCapacity = eastl::max(
+    FirstRequirements.mValue.mSize,
+    SecondRequirements.mValue.mSize);
+HeapDesc.mMemoryTypeBits =
+    FirstRequirements.mValue.mMemoryTypeBits &amp;
+    SecondRequirements.mValue.mMemoryTypeBits;
+ASSERT_NE(HeapDesc.mMemoryTypeBits, 0u);
+auto Heap = Device-&gt;CreateHeap(HeapDesc);
+ASSERT_TRUE(Heap) &lt;&lt; Heap.mStatus.mMessage.c_str();
+ASSERT_TRUE(Device-&gt;BindBufferMemory(First.mValue, Heap.mValue, 0));
+ASSERT_TRUE(Device-&gt;BindBufferMemory(Second.mValue, Heap.mValue, 0));
+const FArdaRHIStatus Rebind =
+    Device-&gt;BindBufferMemory(First.mValue, Heap.mValue, 0);
+EXPECT_FALSE(Rebind);
+EXPECT_EQ(Rebind.mCode, EArdaRHIResult::InvalidState);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyExplicitHeapAliasing">Complete example: VerifyExplicitHeapAliasing</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-stagingtexture"><h2>StagingTexture: Move image data between CPU and GPU</h2><p><a href="api-reference.html#api-arda-rhi-iardarhistagingtexture-11e7ba27"><code>IArdaRHIStagingTexture</code></a>: Staging storage has CPU access and native row/depth pitch. Copy to it, complete the GPU transfer, map it and walk rows using mRowPitch rather than width times pixel size. Unmap before reuse.</p><pre><code class="language-cpp">FArdaRHIStagingTextureDesc UploadDesc;
+UploadDesc.mDebugName = &quot;Extended upload staging&quot;;
+UploadDesc.mTexture = TextureDesc;
+UploadDesc.mCpuAccess = EArdaRHICpuAccess::Write;
+FArdaRHIStagingTextureDesc ReadbackDesc = UploadDesc;
+ReadbackDesc.mDebugName = &quot;Extended readback staging&quot;;
+ReadbackDesc.mCpuAccess = EArdaRHICpuAccess::Read;
+auto Upload = Device-&gt;CreateStagingTexture(UploadDesc);
+auto Readback = Device-&gt;CreateStagingTexture(ReadbackDesc);
+ASSERT_TRUE(Upload);
+ASSERT_TRUE(Readback);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyExtendedCommands">Complete example: VerifyExtendedCommands</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-eventquery"><h2>EventQuery: Observe a queue completion point</h2><p><a href="api-reference.html#api-arda-rhi-iardarhieventquery-fd02dadc"><code>IArdaRHIEventQuery</code></a>: Create, signal on the producer queue, then poll or wait. An unsignaled query cannot be waited on and a signaled query must be reset before reuse. Event queries report completion, not elapsed time.</p><pre><code class="language-cpp">ASSERT_TRUE(Device-&gt;SignalEventQuery(
+    Event.mValue, EArdaRHIQueueType::Graphics));
+EXPECT_EQ(Device-&gt;SignalEventQuery(
+    Event.mValue, EArdaRHIQueueType::Graphics).mCode,
+    EArdaRHIResult::InvalidState);
+ASSERT_TRUE(Device-&gt;WaitEventQuery(Event.mValue));
+const auto EventComplete = Device-&gt;PollEventQuery(Event.mValue);
+ASSERT_TRUE(EventComplete) &lt;&lt; EventComplete.mStatus.mMessage.c_str();
+EXPECT_TRUE(EventComplete.mValue);
+ASSERT_TRUE(Device-&gt;ResetEventQuery(Event.mValue));
+EXPECT_FALSE(Device-&gt;PollEventQuery(Event.mValue).mValue);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyQueryExecution">Complete example: VerifyQueryExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-timerquery"><h2>TimerQuery: Measure GPU elapsed time</h2><p><a href="api-reference.html#api-arda-rhi-iardarhitimerquery-59a69408"><code>IArdaRHITimerQuery</code></a>: Record BeginTimerQuery and EndTimerQuery around the workload on one list. After submission completes, GetTimerQuerySeconds returns GPU elapsed seconds. Reading before completion or before recording is a state error.</p><pre><code class="language-cpp">auto Commands = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+    ASSERT_TRUE(Commands) &lt;&lt; Commands.mStatus.mMessage.c_str();
+    ASSERT_TRUE(Commands.mValue-&gt;Open());
+    ASSERT_TRUE(Commands.mValue-&gt;BeginTimerQuery(*Timer.mValue));
+    ASSERT_TRUE(Commands.mValue-&gt;WriteBuffer(
+        *TimedBuffer.mValue, TimedData.data(), TimedData.size()));
+    ASSERT_TRUE(Commands.mValue-&gt;EndTimerQuery(*Timer.mValue));
+    ASSERT_TRUE(Commands.mValue-&gt;Close());
+    ASSERT_TRUE(Device-&gt;ExecuteCommandList(Commands.mValue));
+    ASSERT_TRUE(Device-&gt;SignalGpuFence(
+        Fence.mValue, EArdaRHIQueueType::Graphics));
+    EXPECT_EQ(Device-&gt;SignalGpuFence(
+        Fence.mValue, EArdaRHIQueueType::Graphics).mCode,
+        EArdaRHIResult::InvalidState);
+    ASSERT_TRUE(Device-&gt;WaitGpuFence(Fence.mValue));
+    EXPECT_TRUE(Device-&gt;PollGpuFence(Fence.mValue).mValue);
+    const auto TimerComplete = Device-&gt;PollTimerQuery(Timer.mValue);
+    ASSERT_TRUE(TimerComplete) &lt;&lt; TimerComplete.mStatus.mMessage.c_str();
+    EXPECT_TRUE(TimerComplete.mValue);
+    const auto Seconds = Device-&gt;GetTimerQuerySeconds(Timer.mValue);
+    ASSERT_TRUE(Seconds) &lt;&lt; Seconds.mStatus.mMessage.c_str();
+    EXPECT_TRUE(std::isfinite(Seconds.mValue));
+    EXPECT_GT(Seconds.mValue, 0.0f);
+    ASSERT_TRUE(Device-&gt;ResetTimerQuery(Timer.mValue));
+    EXPECT_FALSE(Device-&gt;PollTimerQuery(Timer.mValue).mValue);
+    ASSERT_TRUE(Device-&gt;ResetGpuFence(Fence.mValue));
+    EXPECT_FALSE(Device-&gt;PollGpuFence(Fence.mValue).mValue);
+    EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+}</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyQueryExecution">Complete example: VerifyQueryExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-gpufence"><h2>GpuFence: Retire CPU-owned frame data</h2><p><a href="api-reference.html#api-arda-rhi-iardarhigpufence-0a1559ef"><code>IArdaRHIGpuFence</code></a>: Signal the fence after producer work, then poll or wait before reusing its CPU-side allocation slot. Reset after completion. For GPU-to-GPU dependencies use QueueWait with a submission value instead of a CPU fence wait.</p><pre><code class="language-cpp">auto Commands = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+    ASSERT_TRUE(Commands) &lt;&lt; Commands.mStatus.mMessage.c_str();
+    ASSERT_TRUE(Commands.mValue-&gt;Open());
+    ASSERT_TRUE(Commands.mValue-&gt;BeginTimerQuery(*Timer.mValue));
+    ASSERT_TRUE(Commands.mValue-&gt;WriteBuffer(
+        *TimedBuffer.mValue, TimedData.data(), TimedData.size()));
+    ASSERT_TRUE(Commands.mValue-&gt;EndTimerQuery(*Timer.mValue));
+    ASSERT_TRUE(Commands.mValue-&gt;Close());
+    ASSERT_TRUE(Device-&gt;ExecuteCommandList(Commands.mValue));
+    ASSERT_TRUE(Device-&gt;SignalGpuFence(
+        Fence.mValue, EArdaRHIQueueType::Graphics));
+    EXPECT_EQ(Device-&gt;SignalGpuFence(
+        Fence.mValue, EArdaRHIQueueType::Graphics).mCode,
+        EArdaRHIResult::InvalidState);
+    ASSERT_TRUE(Device-&gt;WaitGpuFence(Fence.mValue));
+    EXPECT_TRUE(Device-&gt;PollGpuFence(Fence.mValue).mValue);
+    const auto TimerComplete = Device-&gt;PollTimerQuery(Timer.mValue);
+    ASSERT_TRUE(TimerComplete) &lt;&lt; TimerComplete.mStatus.mMessage.c_str();
+    EXPECT_TRUE(TimerComplete.mValue);
+    const auto Seconds = Device-&gt;GetTimerQuerySeconds(Timer.mValue);
+    ASSERT_TRUE(Seconds) &lt;&lt; Seconds.mStatus.mMessage.c_str();
+    EXPECT_TRUE(std::isfinite(Seconds.mValue));
+    EXPECT_GT(Seconds.mValue, 0.0f);
+    ASSERT_TRUE(Device-&gt;ResetTimerQuery(Timer.mValue));
+    EXPECT_FALSE(Device-&gt;PollTimerQuery(Timer.mValue).mValue);
+    ASSERT_TRUE(Device-&gt;ResetGpuFence(Fence.mValue));
+    EXPECT_FALSE(Device-&gt;PollGpuFence(Fence.mValue).mValue);
+    EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+}</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyQueryExecution">Complete example: VerifyQueryExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-shaderresourceview"><h2>ShaderResourceView: Read a selected resource interpretation</h2><p><a href="api-reference.html#api-arda-rhi-iardarhishaderresourceview-82123cb3"><code>IArdaRHIShaderResourceView</code></a>: An SRV retains its backing resource and selects a compatible range, mip or format. The backing allocation must include shader-resource usage. Transition it to ShaderResource before recording the consumer.</p><pre><code class="language-cpp">TArdaRHIRef&lt;IArdaRHIResource&gt; TextureResource(Texture.mValue.Get());
+TArdaRHIRef&lt;IArdaRHIResource&gt; BufferResource(Buffer.mValue.Get());
+auto TextureSrv = Device-&gt;CreateShaderResourceView(TextureResource, {});
+auto TextureUav = Device-&gt;CreateUnorderedAccessView(TextureResource, {});
+auto BufferSrv = Device-&gt;CreateShaderResourceView(BufferResource, {});
+auto BufferUav = Device-&gt;CreateUnorderedAccessView(BufferResource, {});
+ASSERT_TRUE(TextureSrv);
+ASSERT_TRUE(TextureUav);
+ASSERT_TRUE(BufferSrv);
+ASSERT_TRUE(BufferUav);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-unorderedaccessview"><h2>UnorderedAccessView: Expose writable shader storage</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiunorderedaccessview-3deb7c6f"><code>IArdaRHIUnorderedAccessView</code></a>: A UAV retains a buffer or texture with unordered-access usage. Its range and format must fit the allocation. Consecutive writes or read-after-write operations still require ordering; a view does not synchronize the resource.</p><pre><code class="language-cpp">TArdaRHIRef&lt;IArdaRHIResource&gt; TextureResource(Texture.mValue.Get());
+TArdaRHIRef&lt;IArdaRHIResource&gt; BufferResource(Buffer.mValue.Get());
+auto TextureSrv = Device-&gt;CreateShaderResourceView(TextureResource, {});
+auto TextureUav = Device-&gt;CreateUnorderedAccessView(TextureResource, {});
+auto BufferSrv = Device-&gt;CreateShaderResourceView(BufferResource, {});
+auto BufferUav = Device-&gt;CreateUnorderedAccessView(BufferResource, {});
+ASSERT_TRUE(TextureSrv);
+ASSERT_TRUE(TextureUav);
+ASSERT_TRUE(BufferSrv);
+ASSERT_TRUE(BufferUav);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-sampler"><h2>Sampler: Select texture filtering and addressing</h2><p><a href="api-reference.html#api-arda-rhi-iardarhisampler-4bbda1a7"><code>IArdaRHISampler</code></a>: Samplers contain filtering, addressing, comparison and reduction policy, not image storage. Bind them in a sampler slot alongside the texture SRV. Equivalent descriptions may reuse the device's bounded sampler cache.</p><pre><code class="language-cpp">auto Sampler = Device-&gt;CreateSampler({});
+ASSERT_TRUE(Sampler);
+FArdaRHIBindingLayoutDesc BindingLayoutDesc;
+BindingLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+BindingLayoutDesc.mItems.push_back(
+    { 0, 1, EArdaRHIBindingType::TextureUAV });
+BindingLayoutDesc.mItems.push_back(
+    { 1, 1, EArdaRHIBindingType::StructuredBufferUAV });
+BindingLayoutDesc.mItems.push_back(
+    { 0, 1, EArdaRHIBindingType::Sampler });
+auto BindingLayout = Device-&gt;CreateBindingLayout(BindingLayoutDesc);
+ASSERT_TRUE(BindingLayout);
+FArdaRHIBindingSetDesc BindingSetDesc;
+BindingSetDesc.mLayout = BindingLayout.mValue;
+BindingSetDesc.mItems.push_back(
+    { 0, 0, EArdaRHIBindingType::TextureUAV, TextureResource, {} });
+BindingSetDesc.mItems.push_back(
+    { 1, 0, EArdaRHIBindingType::StructuredBufferUAV, BufferResource, {} });
+BindingSetDesc.mItems.push_back({
+    0, 0, EArdaRHIBindingType::Sampler,
+    TArdaRHIRef&lt;IArdaRHIResource&gt;(Sampler.mValue.Get()), {} });
+auto BindingSet = Device-&gt;CreateBindingSet(BindingSetDesc);
+ASSERT_TRUE(BindingSet);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-shader"><h2>Shader: Create a shader from backend bytecode</h2><p><a href="api-reference.html#api-arda-rhi-iardarhishader-7cd993f7"><code>IArdaRHIShader</code></a>: The helper loads the artifact selected by the exact backend name and supplies stage and entry point. DXIL and SPIR-V are not interchangeable. Bytecode may be released after successful creation; the shader handle is retained by dependent pipelines.</p><pre><code class="language-cpp">arda::rhi::TArdaRHIResult&lt;arda::rhi::FArdaRHIShaderRef&gt;
+CreateExtendedShader(
+    arda::rhi::IArdaRHIDevice&amp; Device,
+    const char* BackendName,
+    const char* Artifact,
+    const char* EntryPoint,
+    arda::rhi::EArdaRHIShaderStage Stage)
+{
+    using namespace arda;
+    const eastl::string FileName = eastl::string(Artifact) +
+        backend::GetShaderArtifactExtension(BackendName);
+    const std::vector&lt;uint8_t&gt; Bytecode =
+        LoadExtendedShaderArtifact(FileName.c_str());
+    if (Bytecode.empty())
+    {
+        return {
+            {},
+            rhi::FArdaRHIStatus::Error(
+                rhi::EArdaRHIResult::InvalidState,
+                &quot;The indirect conformance shader artifact is missing.&quot;)
+        };
+    }
+    rhi::FArdaRHIShaderDesc Desc;
+    Desc.mStage = Stage;
+    Desc.mBytecode = Bytecode.data();
+    Desc.mBytecodeSize = Bytecode.size();
+    Desc.mEntryPoint = EntryPoint;
+    Desc.mDebugName = Artifact;
+    return Device.CreateShader(Desc);
+}</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#CreateExtendedShader">Complete example: CreateExtendedShader</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-shaderlibrary"><h2>ShaderLibrary: Share a compiled shader library</h2><p><a href="api-reference.html#api-arda-rhi-iardarhishaderlibrary-79af3185"><code>IArdaRHIShaderLibrary</code></a>: Create the library from real backend bytecode, then obtain a shader by entry point and stage. A library alone is not executable. The complete example creates a compute pipeline, dispatches it and checks its output.</p><pre><code class="language-cpp">auto Device = GetDevice();
+ASSERT_TRUE(Device);
+ASSERT_TRUE(Device-&gt;GetCapabilities().mbShaderLibraries);
+const eastl::string FileName = eastl::string(&quot;ArdaShaderStructTest&quot;) +
+    GetShaderArtifactExtension(BackendName);
+const std::vector&lt;uint8_t&gt; Bytecode =
+    LoadExtendedShaderArtifact(FileName.c_str());
+ASSERT_FALSE(Bytecode.empty());
+auto Library = Device-&gt;CreateShaderLibrary(
+    Bytecode.data(), Bytecode.size(), &quot;Capability shader library&quot;);
+ASSERT_TRUE(Library) &lt;&lt; Library.mStatus.mMessage.c_str();
+auto Shader = Device-&gt;GetShaderFromLibrary(
+    Library.mValue, &quot;ShaderStructTestCS&quot;,
+    EArdaRHIShaderStage::Compute,
+    &quot;Capability shader-library compute shader&quot;);
+ASSERT_TRUE(Shader) &lt;&lt; Shader.mStatus.mMessage.c_str();</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyShaderLibraryExecution">Complete example: VerifyShaderLibraryExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-inputlayout"><h2>InputLayout: Describe vertex memory</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiinputlayout-cdb7ccb7"><code>IArdaRHIInputLayout</code></a>: Describe each attribute's format, semantic, offset, buffer slot and element stride. The vertex buffer contents and vertex shader inputs must agree. Input layout identity is derived from attributes rather than the identity of a shader object.</p><pre><code class="language-cpp">const uint32_t LibraryData[] = { 1, 2, 3, 4 };
+auto Library = Device-&gt;CreateShaderLibrary(
+    LibraryData, sizeof(LibraryData), &quot;LifetimeLibrary&quot;);
+ASSERT_TRUE(Library);
+auto VertexShader = CreateArtifactShader(
+    *Device, Module.mName.c_str(), &quot;ArdaPipelineStateTestVS&quot;,
+    &quot;PipelineStateTestVS&quot;, EArdaRHIShaderStage::Vertex);
+auto PixelShader = CreateArtifactShader(
+    *Device, Module.mName.c_str(), &quot;ArdaPipelineStateTestPS&quot;,
+    &quot;PipelineStateTestPS&quot;, EArdaRHIShaderStage::Pixel);
+auto ComputeShader = CreateArtifactShader(
+    *Device, Module.mName.c_str(), &quot;ArdaShaderStructTest&quot;,
+    &quot;ShaderStructTestCS&quot;, EArdaRHIShaderStage::Compute);
+ASSERT_TRUE(VertexShader);
+ASSERT_TRUE(PixelShader);
+ASSERT_TRUE(ComputeShader);
+FArdaRHIVertexAttributeDesc Attribute;
+Attribute.mSemanticName = &quot;POSITION&quot;;
+Attribute.mFormat = EArdaRHIFormat::RG32Float;
+Attribute.mElementStride = 8;
+eastl::vector&lt;FArdaRHIVertexAttributeDesc&gt; Attributes;
+Attributes.push_back(Attribute);
+auto InputLayout = Device-&gt;CreateInputLayout(Attributes);
+ASSERT_TRUE(InputLayout);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-bindinglayout"><h2>BindingLayout: Declare shader-visible slots</h2><p><a href="api-reference.html#api-arda-rhi-iardarhibindinglayout-20f65570"><code>IArdaRHIBindingLayout</code></a>: A layout declares slot type, count, register space and stage visibility. Create the layout before the binding set and use it in the pipeline description. It specifies an interface; it does not allocate the resources to populate that interface.</p><pre><code class="language-cpp">auto Sampler = Device-&gt;CreateSampler({});
+ASSERT_TRUE(Sampler);
+FArdaRHIBindingLayoutDesc BindingLayoutDesc;
+BindingLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+BindingLayoutDesc.mItems.push_back(
+    { 0, 1, EArdaRHIBindingType::TextureUAV });
+BindingLayoutDesc.mItems.push_back(
+    { 1, 1, EArdaRHIBindingType::StructuredBufferUAV });
+BindingLayoutDesc.mItems.push_back(
+    { 0, 1, EArdaRHIBindingType::Sampler });
+auto BindingLayout = Device-&gt;CreateBindingLayout(BindingLayoutDesc);
+ASSERT_TRUE(BindingLayout);
+FArdaRHIBindingSetDesc BindingSetDesc;
+BindingSetDesc.mLayout = BindingLayout.mValue;
+BindingSetDesc.mItems.push_back(
+    { 0, 0, EArdaRHIBindingType::TextureUAV, TextureResource, {} });
+BindingSetDesc.mItems.push_back(
+    { 1, 0, EArdaRHIBindingType::StructuredBufferUAV, BufferResource, {} });
+BindingSetDesc.mItems.push_back({
+    0, 0, EArdaRHIBindingType::Sampler,
+    TArdaRHIRef&lt;IArdaRHIResource&gt;(Sampler.mValue.Get()), {} });
+auto BindingSet = Device-&gt;CreateBindingSet(BindingSetDesc);
+ASSERT_TRUE(BindingSet);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-bindingset"><h2>BindingSet: Populate a declared layout</h2><p><a href="api-reference.html#api-arda-rhi-iardarhibindingset-afbac72b"><code>IArdaRHIBindingSet</code></a>: Each binding item supplies a retained resource and optional view for a declared slot. Types and array indices must match the layout. Set the binding set on the graphics/compute/ray state used by the command list.</p><pre><code class="language-cpp">auto Sampler = Device-&gt;CreateSampler({});
+ASSERT_TRUE(Sampler);
+FArdaRHIBindingLayoutDesc BindingLayoutDesc;
+BindingLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+BindingLayoutDesc.mItems.push_back(
+    { 0, 1, EArdaRHIBindingType::TextureUAV });
+BindingLayoutDesc.mItems.push_back(
+    { 1, 1, EArdaRHIBindingType::StructuredBufferUAV });
+BindingLayoutDesc.mItems.push_back(
+    { 0, 1, EArdaRHIBindingType::Sampler });
+auto BindingLayout = Device-&gt;CreateBindingLayout(BindingLayoutDesc);
+ASSERT_TRUE(BindingLayout);
+FArdaRHIBindingSetDesc BindingSetDesc;
+BindingSetDesc.mLayout = BindingLayout.mValue;
+BindingSetDesc.mItems.push_back(
+    { 0, 0, EArdaRHIBindingType::TextureUAV, TextureResource, {} });
+BindingSetDesc.mItems.push_back(
+    { 1, 0, EArdaRHIBindingType::StructuredBufferUAV, BufferResource, {} });
+BindingSetDesc.mItems.push_back({
+    0, 0, EArdaRHIBindingType::Sampler,
+    TArdaRHIRef&lt;IArdaRHIResource&gt;(Sampler.mValue.Get()), {} });
+auto BindingSet = Device-&gt;CreateBindingSet(BindingSetDesc);
+ASSERT_TRUE(BindingSet);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-descriptortable"><h2>DescriptorTable: Index an extensible descriptor collection</h2><p><a href="api-reference.html#api-arda-rhi-iardarhidescriptortable-71f2c13a"><code>IArdaRHIDescriptorTable</code></a>: Create a bindless layout with its capacity and register-space policy, allocate a table, resize if required and write indexed descriptors. Check the precise indexing capabilities required by the shader; bindless support alone does not imply direct heap indexing.</p><pre><code class="language-cpp">FArdaRHIBindlessLayoutDesc LayoutDesc;
+LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+LayoutDesc.mMaxCapacity = 4;
+LayoutDesc.mLayoutType =
+    EArdaRHIBindlessLayoutType::MutableSrvUavCbv;
+LayoutDesc.mbDirectHeapIndexing = bDirectHeapIndexing;
+LayoutDesc.mbDescriptorBuffer = bDescriptorBuffer;
+LayoutDesc.mDebugName = &quot;Bounded bindless UAV table&quot;;
+LayoutDesc.mbAllowUnsafeDescriptorTableLifetime = true;
+LayoutDesc.mRegisterSpaces.push_back(
+    { 0, 1, EArdaRHIBindingType::StructuredBufferUAV });
+auto Layout = Device-&gt;CreateBindlessLayout(LayoutDesc);
+ASSERT_TRUE(Layout) &lt;&lt; Layout.mStatus.mMessage.c_str();
+auto Table = Device-&gt;CreateDescriptorTable(Layout.mValue);
+ASSERT_TRUE(Table) &lt;&lt; Table.mStatus.mMessage.c_str();
+EXPECT_EQ(Table.mValue-&gt;GetCapacity(), 4u);
+EXPECT_EQ(Table.mValue-&gt;GetFirstDescriptorIndexInHeap(), 0u);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyBindlessDescriptorTable">Complete example: VerifyBindlessDescriptorTable</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-resourcecollection"><h2>ResourceCollection: Maintain an indexed set of resources</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiresourcecollection"><code>IArdaRHIResourceCollection</code></a>: A collection retains typed items and exposes a descriptor table to the shader. UpdateResourceCollection replaces one indexed item; descriptor versioning preserves already recorded uses. The example dispatches before and after replacement and verifies both outputs.</p><pre><code class="language-cpp">FArdaRHIResourceCollectionItem ItemA;
+    ItemA.mType = EArdaRHIResourceCollectionItemType::Buffer;
+    ItemA.mBuffer = BufferA.mValue;
+    FArdaRHIResourceCollectionItem ItemB = ItemA;
+    ItemB.mBuffer = BufferB.mValue;
+    FArdaRHIResourceCollectionDesc CollectionDesc;
+    CollectionDesc.mItems = {ItemA, ItemB};
+    CollectionDesc.mbMutable = true;
+    CollectionDesc.mbDirectlyIndexed =
+        Caps.mDescriptors.mbDirectResourceHeapIndexing;
+    CollectionDesc.mDebugName = &quot;Mutable resource collection&quot;;
+    auto Collection = Device-&gt;CreateResourceCollection(CollectionDesc);
+    ASSERT_TRUE(Collection) &lt;&lt; Collection.mStatus.mMessage.c_str();
+    EXPECT_EQ(Collection.mValue-&gt;GetDesc().mItems.size(), 2u);
+    if (CollectionDesc.mbDirectlyIndexed)
+        EXPECT_NE(Collection.mValue-&gt;GetFirstDescriptorIndexInHeap(),
+            0xffffffffu);
+    if (CollectionDesc.mbDirectlyIndexed)
+    {
+        auto CollectionTable = Collection.mValue-&gt;GetDescriptorTable();
+        ASSERT_TRUE(CollectionTable);
+        FArdaRHIBufferDesc OutputDesc;
+        OutputDesc.mByteSize = 2 * sizeof(uint32_t);
+        OutputDesc.mStructureStride = sizeof(uint32_t);
+        OutputDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
+        auto Output = Device-&gt;CreateBuffer(OutputDesc);
+        ASSERT_TRUE(Output);
+        FArdaRHIBindlessLayoutDesc OutputLayoutDesc;
+        OutputLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+        OutputLayoutDesc.mRegisterSpace = 1;
+        OutputLayoutDesc.mMaxCapacity = 1;
+        OutputLayoutDesc.mbDirectHeapIndexing = true;
+        OutputLayoutDesc.mRegisterSpaces = {{0, 1, EArdaRHIBindingType::StructuredBufferUAV}};
+        auto OutputLayout = Device-&gt;CreateBindlessLayout(OutputLayoutDesc);
+        ASSERT_TRUE(OutputLayout);
+        auto OutputTable = Device-&gt;CreateDescriptorTable(OutputLayout.mValue);
+        ASSERT_TRUE(OutputTable);
+        FArdaRHIBindingItem OutputItem;
+        OutputItem.mType = EArdaRHIBindingType::StructuredBufferUAV;
+        OutputItem.mResource = FArdaRHIResourceRef(Output.mValue.Get());
+        ASSERT_TRUE(Device-&gt;WriteDescriptorTable(OutputTable.mValue, OutputItem));
+        auto Shader = CreateExtendedShader(*Device, BackendName,
+            &quot;ArdaResourceCollection&quot;, &quot;ResourceCollectionCS&quot;, EArdaRHIShaderStage::Compute);
+        ASSERT_TRUE(Shader);
+        FArdaRHIComputePipelineDesc PipelineDesc;
+        PipelineDesc.mComputeShader = Shader.mValue;
+        PipelineDesc.mBindingLayouts = {CollectionTable-&gt;GetDesc().mLayout, OutputLayout.mValue};
+        auto Pipeline = Device-&gt;CreateComputePipeline(PipelineDesc);
+        ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();
+        const uint32_t Values[] = {0x1234abcdu, 0x9876fedcu};
+        for (uint32_t Version = 0; Version &lt; 2; ++Version)
+        {
+            auto Commands = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+            ASSERT_TRUE(Commands);
+            ASSERT_TRUE(Commands.mValue-&gt;Open());
+            ASSERT_TRUE(Commands.mValue-&gt;WriteBuffer(*BufferA.mValue, &amp;Values[0], sizeof(uint32_t)));
+            ASSERT_TRUE(Commands.mValue-&gt;WriteBuffer(*BufferB.mValue, &amp;Values[1], sizeof(uint32_t)));
+            ASSERT_TRUE(Commands.mValue-&gt;SetBufferState(*BufferA.mValue, EArdaRHIResourceState::ShaderResource));
+            ASSERT_TRUE(Commands.mValue-&gt;SetBufferState(*BufferB.mValue, EArdaRHIResourceState::ShaderResource));
+            ASSERT_TRUE(Commands.mValue-&gt;SetBufferState(*Output.mValue, EArdaRHIResourceState::UnorderedAccess));
+            FArdaRHIComputeState State;
+            State.mPipeline = Pipeline.mValue;
+            State.mBindings = {CollectionTable, OutputTable.mValue};
+            ASSERT_TRUE(Commands.mValue-&gt;SetComputeState(State));
+            Commands.mValue-&gt;Dispatch(2, 1, 1);
+            eastl::vector&lt;uint8_t&gt; Readback;
+            ASSERT_TRUE(Commands.mValue-&gt;CopyBufferDeviceToHost(*Output.mValue, Readback, 0, OutputDesc.mByteSize));
+            ASSERT_TRUE(Commands.mValue-&gt;Close());
+            ASSERT_TRUE(Device-&gt;ExecuteCommandList(Commands.mValue));
+            uint32_t Actual[2]{};
+            ASSERT_EQ(Readback.size(), sizeof(Actual));
+            std::memcpy(Actual, Readback.data(), sizeof(Actual));
+            EXPECT_EQ(Actual[0], Values[Version]);
+            EXPECT_EQ(Actual[1], Values[1]);
+            if (Version == 0)
+            {
+                ASSERT_TRUE(Device-&gt;UpdateResourceCollection(Collection.mValue, 0, ItemB));
+                EXPECT_EQ(Collection.mValue-&gt;GetDesc().mItems[0].mBuffer, BufferB.mValue);
+            }
+        }
+    }
+    EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+}</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyExpandedDescriptorsAndResourceCollections">Complete example: VerifyExpandedDescriptorsAndResourceCollections</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-framebuffer"><h2>Framebuffer: Select raster attachments</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiframebuffer-6e605d1a"><code>IArdaRHIFramebuffer</code></a>: Attach texture subresources with render-target/depth usage. Their dimensions, samples and formats must match the graphics or mesh pipeline. The framebuffer retains its attachments; transition them before drawing.</p><pre><code class="language-cpp">FArdaRHIFramebufferDesc FramebufferDesc;
+FramebufferDesc.mColorAttachments.push_back({ Texture.mValue, {} });
+auto Framebuffer = Device-&gt;CreateFramebuffer(FramebufferDesc);
+ASSERT_TRUE(Framebuffer);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-graphicspipeline"><h2>GraphicsPipeline: Combine raster shaders and fixed state</h2><p><a href="api-reference.html#api-arda-rhi-iardarhigraphicspipeline-aa26b6e6"><code>IArdaRHIGraphicsPipeline</code></a>: Supply vertex/pixel shaders, vertex layout, attachment formats and fixed raster/depth/blend state. Bind the result through FArdaRHIGraphicsState with a compatible framebuffer. Immutable descriptions allow pipeline reuse.</p><pre><code class="language-cpp">FArdaRHIGraphicsPipelineDesc GraphicsDesc;
+GraphicsDesc.mVertexShader = VertexShader.mValue;
+GraphicsDesc.mPixelShader = PixelShader.mValue;
+GraphicsDesc.mInputLayout = InputLayout.mValue;
+GraphicsDesc.mColorFormats.push_back(EArdaRHIFormat::RGBA8UNorm);
+GraphicsDesc.mDepthStencilState.mbDepthTest = false;
+GraphicsDesc.mDepthStencilState.mbDepthWrite = false;
+auto GraphicsPipeline = Device-&gt;CreateGraphicsPipeline(GraphicsDesc);
+ASSERT_TRUE(GraphicsPipeline);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-computepipeline"><h2>ComputePipeline: Bind a compute shader interface</h2><p><a href="api-reference.html#api-arda-rhi-iardarhicomputepipeline-a6cb52a5"><code>IArdaRHIComputePipeline</code></a>: Supply a compute shader and its ordered binding layouts, then record SetComputeState followed by Dispatch. Grid dimensions count thread groups; the HLSL numthreads declaration determines threads per group. This path also implements CUDA operand alternatives.</p><pre><code class="language-cpp">FArdaRHIBindingLayoutDesc ComputeLayoutDesc;
+ComputeLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+ComputeLayoutDesc.mItems.push_back(
+    { 0, 1, EArdaRHIBindingType::StructuredBufferUAV });
+auto ComputeLayout = Device-&gt;CreateBindingLayout(ComputeLayoutDesc);
+ASSERT_TRUE(ComputeLayout);
+FArdaRHIComputePipelineDesc ComputeDesc;
+ComputeDesc.mComputeShader = ComputeShader.mValue;
+ComputeDesc.mBindingLayouts.push_back(ComputeLayout.mValue);
+auto ComputePipeline = Device-&gt;CreateComputePipeline(ComputeDesc);
+ASSERT_TRUE(ComputePipeline);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-meshletpipeline"><h2>MeshletPipeline: Generate raster geometry on the GPU</h2><p><a href="api-reference.html#api-arda-rhi-iardarhimeshletpipeline-150a3b91"><code>IArdaRHIMeshletPipeline</code></a>: Check mMeshShaderTier before creating a mesh/amplification pipeline. Match render-target formats, bind FArdaRHIMeshletState and dispatch mesh work. The complete example reads back rendered pixels rather than treating pipeline creation as proof of execution.</p><pre><code class="language-cpp">FArdaRHIMeshletPipelineDesc PipelineDesc;
+PipelineDesc.mDebugName = &quot;Mesh pipeline conformance&quot;;
+PipelineDesc.mMeshShader = MeshShader.mValue;
+PipelineDesc.mPixelShader = PixelShader.mValue;
+PipelineDesc.mColorFormats.push_back(EArdaRHIFormat::RGBA8UNorm);
+PipelineDesc.mRasterState.mCullMode = EArdaRHICullMode::None;
+PipelineDesc.mDepthStencilState.mbDepthTest = false;
+PipelineDesc.mDepthStencilState.mbDepthWrite = false;
+FArdaRHIDescriptorTableRef ColorTable;
+FArdaRHIBufferRef Colors;
+if (bBundle)
+{
+    FArdaRHIBindlessLayoutDesc LayoutDesc;
+    LayoutDesc.mVisibility = EArdaRHIShaderStage::Pixel;
+    LayoutDesc.mMaxCapacity = 1;
+    LayoutDesc.mRegisterSpaces.push_back({0, 1, EArdaRHIBindingType::StructuredBufferSRV});
+    auto Layout = Device-&gt;CreateBindlessLayout(LayoutDesc);
+    ASSERT_TRUE(Layout);
+    PipelineDesc.mBindingLayouts.push_back(Layout.mValue);
+    auto Table = Device-&gt;CreateDescriptorTable(Layout.mValue);
+    ASSERT_TRUE(Table);
+    ColorTable = Table.mValue;
+    FArdaRHIBufferDesc BufferDesc;
+    BufferDesc.mByteSize = sizeof(float) * 4;
+    BufferDesc.mStructureStride = sizeof(float) * 4;
+    BufferDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource;
+    auto Buffer = Device-&gt;CreateBuffer(BufferDesc);
+    ASSERT_TRUE(Buffer);
+    Colors = Buffer.mValue;
+    FArdaRHIBindingItem Item;
+    Item.mType = EArdaRHIBindingType::StructuredBufferSRV;
+    Item.mResource = FArdaRHIResourceRef(Colors.Get());
+    ASSERT_TRUE(Device-&gt;WriteDescriptorTable(ColorTable, Item));
+}
+auto Pipeline = Device-&gt;CreateMeshletPipeline(PipelineDesc);
+if (Device-&gt;GetCapabilities().mMeshShaderTier ==
+    EArdaRHIMeshShaderTier::None)
+{
+    EXPECT_FALSE(Pipeline);
+    EXPECT_EQ(Pipeline.mStatus.mCode, EArdaRHIResult::Unsupported);
+    return;
+}
+ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyMeshPipelineCapabilityAndExecution">Complete example: VerifyMeshPipelineCapabilityAndExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-accelstruct"><h2>AccelStruct: Build ray-tracing geometry and instances</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiaccelstruct-da60facd"><code>IArdaRHIAccelStruct</code></a>: BLAS geometry and TLAS instances require distinct descriptions and build ordering. Query build/storage sizes and preserve referenced geometry/BLAS lifetime through traversal. Update and compaction are separately gated. Graphics acceleration structures cannot be reinterpreted as CUDA/OptiX traversal objects.</p><pre><code class="language-cpp">FArdaRHIAccelStructDesc BlasDesc;
+BlasDesc.mBottomLevelGeometries.push_back(Geometry);
+BlasDesc.mBuildFlags =
+    EArdaRHIAccelStructBuildFlags::AllowUpdate |
+    EArdaRHIAccelStructBuildFlags::AllowCompaction |
+    EArdaRHIAccelStructBuildFlags::PreferFastTrace;
+BlasDesc.mDebugName = &quot;AS parity BLAS&quot;;
+const auto BlasRequirements =
+    Device-&gt;GetAccelStructBuildMemoryRequirements(BlasDesc);
+ASSERT_TRUE(BlasRequirements)
+    &lt;&lt; BlasRequirements.mStatus.mMessage.c_str();
+EXPECT_GT(BlasRequirements.mValue.mResultSize, 0u);
+EXPECT_GT(BlasRequirements.mValue.mBuildScratchSize, 0u);
+auto Blas = Device-&gt;CreateAccelStruct(BlasDesc);
+ASSERT_TRUE(Blas) &lt;&lt; Blas.mStatus.mMessage.c_str();
+EXPECT_NE(Blas.mValue-&gt;GetDeviceAddress(), 0u);
+EXPECT_EQ(Blas.mValue-&gt;GetBuildState(),
+    EArdaRHIAccelStructBuildState::Unbuilt);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity">Complete example: VerifyAccelerationStructureLifecycleAndStateParity</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-raytracingpipeline"><h2>RayTracingPipeline: Link ray stages and hit groups</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiraytracingpipeline-a506e94c"><code>IArdaRHIRayTracingPipeline</code></a>: Declare ray-generation, miss, hit-group and callable exports with payload/attribute sizes and recursion limits. Check the reported ray capabilities and limits. A matching shader table and binding state are required before DispatchRays.</p><pre><code class="language-cpp">FArdaRHIRayTracingPipelineDesc PipelineDesc;
+PipelineDesc.mDebugName = &quot;Ray-generation pipeline conformance&quot;;
+PipelineDesc.mShaders.push_back(
+    { &quot;RayGen&quot;, RayGeneration.mValue, bLocalDescriptors ? Layout.mValue : FArdaRHIBindingLayoutRef{} });
+if (!bLocalDescriptors) PipelineDesc.mGlobalBindingLayouts.push_back(Layout.mValue);
+PipelineDesc.mMaxPayloadSize = sizeof(uint32_t);
+PipelineDesc.mMaxRecursionDepth = 1;
+auto Pipeline = Device-&gt;CreateRayTracingPipeline(PipelineDesc);
+if (!Device-&gt;GetCapabilities().mRayTracing.mbPipelineShaders)
+{
+    EXPECT_FALSE(Pipeline);
+    EXPECT_EQ(Pipeline.mStatus.mCode, EArdaRHIResult::Unsupported);
+    return;
+}
+EXPECT_GT(
+    Device-&gt;GetCapabilities().mRayTracing.
+        mMaxRayDispatchInvocations,
+    0u);
+ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyRayTracingPipelineCapabilityAndExecution">Complete example: VerifyRayTracingPipelineCapabilityAndExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-shadertable"><h2>ShaderTable: Connect rays to shader records</h2><p><a href="api-reference.html#api-arda-rhi-iardarhishadertable-65d87242"><code>IArdaRHIShaderTable</code></a>: The table retains a ray-tracing pipeline and records its named exports and optional local arguments. Populate records and commit before dispatch. The scene example demonstrates distinct hit groups, local bindings and indirect dispatch, with output assertions.</p><pre><code class="language-cpp">FArdaRHIShaderTableDesc TableDesc;
+TableDesc.mMaxEntries = 3;
+TableDesc.mMaxLocalArgumentBytes = sizeof(uint32_t);
+TableDesc.mbPersistent = true;
+TableDesc.mDebugName =
+    &quot;Known-result ray-scene shader table&quot;;
+auto ShaderTable = Device-&gt;CreateShaderTable(
+    Pipeline.mValue, TableDesc);
+ASSERT_TRUE(ShaderTable)
+    &lt;&lt; ShaderTable.mStatus.mMessage.c_str();
+const auto WriteRecord = [&amp;Device, &amp;ShaderTable](
+    uint32_t Index,
+    EArdaRHIShaderTableRecordType Type,
+    const char* Export,
+    uint32_t LocalValue)
+{
+    FArdaRHIShaderTableRecordDesc Record;
+    Record.mRecordIndex = Index;
+    Record.mType = Type;
+    Record.mExportName = Export;
+    Record.mLocalArguments.resize(sizeof(LocalValue));
+    std::memcpy(
+        Record.mLocalArguments.data(),
+        &amp;LocalValue,
+        sizeof(LocalValue));
+    return Device-&gt;SetShaderTableRecord(
+        ShaderTable.mValue, Record);
+};
+ASSERT_TRUE(WriteRecord(
+    0, EArdaRHIShaderTableRecordType::RayGeneration,
+    &quot;KnownSceneRayGen&quot;, 0x11111111u));
+ASSERT_TRUE(WriteRecord(
+    1, EArdaRHIShaderTableRecordType::Miss,
+    &quot;KnownMiss&quot;, 0x22222222u));
+ASSERT_TRUE(WriteRecord(
+    2, EArdaRHIShaderTableRecordType::HitGroup,
+    &quot;KnownHitGroup&quot;, 0x33333333u));
+ASSERT_TRUE(Device-&gt;CommitShaderTable(ShaderTable.mValue));
+EXPECT_EQ(ShaderTable.mValue-&gt;GetEntryCount(), 3u);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">Complete example: VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-workgraphpipeline"><h2>WorkGraphPipeline: Launch a native work graph</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiworkgraphpipeline"><code>IArdaRHIWorkGraphPipeline</code></a>: QueryWorkGraphSupport and mWorkGraphTier gate this path. The checked-in implementation is D3D12-specific; Vulkan reports Unsupported. The library defines node records, and the caller supplies entry records and backing-memory requirements.</p><pre><code class="language-cpp">auto Shader = CreateExtendedShader(
+    *Device, &quot;native-d3d12&quot;,
+    &quot;ArdaWorkGraphTest&quot;, &quot;WorkGraphMain&quot;,
+    EArdaRHIShaderStage::WorkGraph);
+ASSERT_TRUE(Shader) &lt;&lt; Shader.mStatus.mMessage.c_str();
+FArdaRHIBindingLayoutDesc LayoutDesc;
+LayoutDesc.mVisibility = EArdaRHIShaderStage::WorkGraph;
+LayoutDesc.mItems.push_back(
+    {0, 1, EArdaRHIBindingType::StructuredBufferUAV});
+auto Layout = Device-&gt;CreateBindingLayout(LayoutDesc);
+ASSERT_TRUE(Layout) &lt;&lt; Layout.mStatus.mMessage.c_str();
+FArdaRHIWorkGraphPipelineDesc PipelineDesc;
+PipelineDesc.mProgramName = &quot;ArdaWorkGraphProgram&quot;;
+PipelineDesc.mEntryPoint = &quot;WorkGraphMain&quot;;
+PipelineDesc.mShaders.push_back(Shader.mValue);
+PipelineDesc.mGlobalBindingLayouts.push_back(Layout.mValue);
+PipelineDesc.mMaxInputRecords = 4;
+PipelineDesc.mDebugName = &quot;Native D3D12 work graph&quot;;
+auto Pipeline = Device-&gt;CreateWorkGraphPipeline(PipelineDesc);
+ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyD3D12WorkGraphExecution">Complete example: VerifyD3D12WorkGraphExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-shaderbundle"><h2>ShaderBundle: Batch shader dispatch records</h2><p><a href="api-reference.html#api-arda-rhi-iardarhishaderbundle"><code>IArdaRHIShaderBundle</code></a>: A bundle stores records for supported compute/mesh dispatch families. Record data and binding conventions must match the bundle's pipeline. It does not imply native work-graph support; query mbShaderBundleDispatch independently.</p><pre><code class="language-cpp">FArdaRHIShaderBundleDesc BundleDesc;
+BundleDesc.mMaxRecords = 2;
+BundleDesc.mbPersistent = true;
+BundleDesc.mDebugName = &quot;Persistent compute shader bundle&quot;;
+auto Bundle = Device-&gt;CreateShaderBundle(BundleDesc);
+ASSERT_TRUE(Bundle) &lt;&lt; Bundle.mStatus.mMessage.c_str();
+FArdaRHIShaderBundleRecord RecordA;
+RecordA.mComputePipeline = Pipeline.mValue;
+RecordA.mBindings.push_back(SetA.mValue);
+FArdaRHIShaderBundleRecord RecordB = RecordA;
+RecordB.mBindings = {SetB.mValue};
+ASSERT_TRUE(Device-&gt;SetShaderBundleRecords(
+    Bundle.mValue, {RecordA, RecordB}));
+EXPECT_EQ(Bundle.mValue-&gt;GetRecordCount(), 2u);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyShaderBundleExecution">Complete example: VerifyShaderBundleExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-samplerfeedbacktexture"><h2>SamplerFeedbackTexture: Record texture streaming demand</h2><p><a href="api-reference.html#api-arda-rhi-iardarhisamplerfeedbacktexture-b992f922"><code>IArdaRHISamplerFeedbackTexture</code></a>: Pair the feedback object with the sampled texture and an explicit mip-region layout. Clear, write feedback in the shader and decode before reading demand. This specialized object is capability-gated and has no CUDA surface representation.</p><pre><code class="language-cpp">FArdaRHISamplerFeedbackTextureDesc FeedbackDesc;
+FeedbackDesc.mDebugName = &quot;Native sampler feedback map&quot;;
+FeedbackDesc.mFormat = bMipRegionUsed
+    ? EArdaRHISamplerFeedbackFormat::MipRegionUsedOpaque
+    : EArdaRHISamplerFeedbackFormat::MinMipOpaque;
+FeedbackDesc.mMipRegionX = 64;
+FeedbackDesc.mMipRegionY = 64;
+FeedbackDesc.mMipRegionZ = 1;
+FeedbackDesc.mInitialState =
+    EArdaRHIResourceState::UnorderedAccess;
+auto Feedback = Device-&gt;CreateSamplerFeedbackTexture(
+    Paired.mValue, FeedbackDesc);
+ASSERT_TRUE(Feedback) &lt;&lt; Feedback.mStatus.mMessage.c_str();
+EXPECT_NE(Feedback.mValue-&gt;GetPhysicalIdentity(), nullptr);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifySamplerFeedbackStateParity">Complete example: VerifySamplerFeedbackStateParity</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-opacitymicromap"><h2>OpacityMicromap: Attach per-microtriangle opacity</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiopacitymicromap-8738052c"><code>IArdaRHIOpacityMicromap</code></a>: Build micromap data with matching triangle subdivision/format usage counts, then reference it in compatible BLAS geometry. The checked-in native path is Vulkan-only and separately capability-gated. Preserve both the micromap and its build inputs through GPU completion.</p><pre><code class="language-cpp">FArdaRHIOpacityMicromapDesc Desc;
+Desc.mCounts.push_back(
+    {1, 0, EArdaRHIOpacityMicromapFormat::TwoState});
+Desc.mInputBuffer = Input.mValue;
+Desc.mPerMicromapDescBuffer = Triangles.mValue;
+Desc.mFlags = EArdaRHIOpacityMicromapBuildFlags::FastTrace |
+    EArdaRHIOpacityMicromapBuildFlags::AllowCompaction;
+Desc.mDebugName = &quot;Native Vulkan opacity micromap&quot;;
+auto Micromap = Device-&gt;CreateOpacityMicromap(Desc);
+ASSERT_TRUE(Micromap) &lt;&lt; Micromap.mStatus.mMessage.c_str();
+EXPECT_NE(Micromap.mValue-&gt;GetPhysicalIdentity(), nullptr);
+EXPECT_NE(Micromap.mValue-&gt;GetDeviceAddress(), 0u);
+EXPECT_EQ(Micromap.mValue-&gt;GetBuildState(),
+    EArdaRHIAccelStructBuildState::Unbuilt);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyVulkanOpacityMicromapLifecycleAndStateParity">Complete example: VerifyVulkanOpacityMicromapLifecycleAndStateParity</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-rasterstate"><h2>RasterState: Reuse rasterization policy</h2><p><a href="api-reference.html#api-arda-rhi-iardarhirasterstate-9f34a9c1"><code>IArdaRHIRasterState</code></a>: Create a cached immutable raster-state value describing fill, cull and related raster options. GetDesc supplies the value used by FArdaRHIGraphicsPipelineDesc::mRasterState. Unsupported raster features must be rejected by capability checks before pipeline creation.</p><pre><code class="language-cpp">auto Raster = Device-&gt;CreateRasterState({});
+auto Blend = Device-&gt;CreateBlendState({});
+auto Depth = Device-&gt;CreateDepthStencilState({});
+auto Event = Device-&gt;CreateEventQuery();
+auto Timer = Device-&gt;CreateTimerQuery();
+auto Fence = Device-&gt;CreateGpuFence();
+auto Commands = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+ASSERT_TRUE(Raster);
+ASSERT_TRUE(Blend);
+ASSERT_TRUE(Depth);
+ASSERT_TRUE(Event);
+ASSERT_TRUE(Timer);
+ASSERT_TRUE(Fence);
+ASSERT_TRUE(Commands);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-blendstate"><h2>BlendState: Describe attachment blending</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiblendstate-24a8dbb9"><code>IArdaRHIBlendState</code></a>: The cached blend-state object stores per-target factors, operations and write masks. Copy GetDesc into a compatible pipeline's blend state. This object has no standalone command execution and no CUDA representation.</p><pre><code class="language-cpp">auto Raster = Device-&gt;CreateRasterState({});
+auto Blend = Device-&gt;CreateBlendState({});
+auto Depth = Device-&gt;CreateDepthStencilState({});
+auto Event = Device-&gt;CreateEventQuery();
+auto Timer = Device-&gt;CreateTimerQuery();
+auto Fence = Device-&gt;CreateGpuFence();
+auto Commands = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+ASSERT_TRUE(Raster);
+ASSERT_TRUE(Blend);
+ASSERT_TRUE(Depth);
+ASSERT_TRUE(Event);
+ASSERT_TRUE(Timer);
+ASSERT_TRUE(Fence);
+ASSERT_TRUE(Commands);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-depthstencilstate"><h2>DepthStencilState: Control depth and stencil tests</h2><p><a href="api-reference.html#api-arda-rhi-iardarhidepthstencilstate-9cf894af"><code>IArdaRHIDepthStencilState</code></a>: Choose depth read/write and comparison policy and compatible stencil operations. Copy GetDesc into the pipeline and supply an appropriate depth/stencil attachment. Disabling depth in the example permits a color-only framebuffer.</p><pre><code class="language-cpp">auto Raster = Device-&gt;CreateRasterState({});
+auto Blend = Device-&gt;CreateBlendState({});
+auto Depth = Device-&gt;CreateDepthStencilState({});
+auto Event = Device-&gt;CreateEventQuery();
+auto Timer = Device-&gt;CreateTimerQuery();
+auto Fence = Device-&gt;CreateGpuFence();
+auto Commands = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+ASSERT_TRUE(Raster);
+ASSERT_TRUE(Blend);
+ASSERT_TRUE(Depth);
+ASSERT_TRUE(Event);
+ASSERT_TRUE(Timer);
+ASSERT_TRUE(Fence);
+ASSERT_TRUE(Commands);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
+<section id="resource-commandlist"><h2>CommandList: Record and submit ordered work</h2><p><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-a83aba52"><code>IArdaRHICommandList</code></a>: Create the list for an available queue, Open it, record work, Close it and submit through the device. Recording is caller-serialized. Reset discards a previous recording; CUDA CiG captures additionally enforce single submission and capture order.</p><pre><code class="language-cpp">auto Commands = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+    ASSERT_TRUE(Commands) &lt;&lt; Commands.mStatus.mMessage.c_str();
+    ASSERT_TRUE(Commands.mValue-&gt;Open());
+    ASSERT_TRUE(Commands.mValue-&gt;BeginTimerQuery(*Timer.mValue));
+    ASSERT_TRUE(Commands.mValue-&gt;WriteBuffer(
+        *TimedBuffer.mValue, TimedData.data(), TimedData.size()));
+    ASSERT_TRUE(Commands.mValue-&gt;EndTimerQuery(*Timer.mValue));
+    ASSERT_TRUE(Commands.mValue-&gt;Close());
+    ASSERT_TRUE(Device-&gt;ExecuteCommandList(Commands.mValue));
+    ASSERT_TRUE(Device-&gt;SignalGpuFence(
+        Fence.mValue, EArdaRHIQueueType::Graphics));
+    EXPECT_EQ(Device-&gt;SignalGpuFence(
+        Fence.mValue, EArdaRHIQueueType::Graphics).mCode,
+        EArdaRHIResult::InvalidState);
+    ASSERT_TRUE(Device-&gt;WaitGpuFence(Fence.mValue));
+    EXPECT_TRUE(Device-&gt;PollGpuFence(Fence.mValue).mValue);
+    const auto TimerComplete = Device-&gt;PollTimerQuery(Timer.mValue);
+    ASSERT_TRUE(TimerComplete) &lt;&lt; TimerComplete.mStatus.mMessage.c_str();
+    EXPECT_TRUE(TimerComplete.mValue);
+    const auto Seconds = Device-&gt;GetTimerQuerySeconds(Timer.mValue);
+    ASSERT_TRUE(Seconds) &lt;&lt; Seconds.mStatus.mMessage.c_str();
+    EXPECT_TRUE(std::isfinite(Seconds.mValue));
+    EXPECT_GT(Seconds.mValue, 0.0f);
+    ASSERT_TRUE(Device-&gt;ResetTimerQuery(Timer.mValue));
+    EXPECT_FALSE(Device-&gt;PollTimerQuery(Timer.mValue).mValue);
+    ASSERT_TRUE(Device-&gt;ResetGpuFence(Fence.mValue));
+    EXPECT_FALSE(Device-&gt;PollGpuFence(Fence.mValue).mValue);
+    EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+}</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyQueryExecution">Complete example: VerifyQueryExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section><section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>
+</main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

@@ -35,15 +35,19 @@
         <a href="external-interop.html">External interop</a>
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
-        <a href="rhi.html">RHI types &amp; resources</a>
-        <a aria-current="page" href="rhi-feature-guide.html">RHI feature guide</a>
+        <a href="rhi.html">RHI types &amp; resources</a><a aria-current="page" href="rhi-feature-guide.html">RHI feature guide</a>
+
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="capability-recipes.html">Capability recipes</a>
+        <a href="cuda-interop.html">CUDA and graphics</a>
+        <a href="validation.html">GPU validation setup</a>
         <a href="commands.html">Commands</a>
         <a href="presentation.html">Presentation</a>
         <a href="diagnostics.html">Diagnostics</a>
         <a href="api-reference.html">API reference</a>
       </nav>
     </aside>
-    <main id="main-content">
+    <main id="main-content" tabindex="-1">
       <nav class="breadcrumbs" aria-label="Breadcrumb">
         <a href="../index.html">Docs</a> /
         <a href="index.html">ArdaBackend</a> /
@@ -95,6 +99,7 @@
         </section>
 
         <section id="reading-status">
+          <p>The <a href="capability-recipes.html">capability recipes</a> cover every predicate in the native conformance matrix, with exact admission checks and executable examples. The <a href="cuda-interop.html">CUDA chapter</a> covers the separate device, resource and operand-variant checks for mixed graphics/CUDA work.</p>
           <h2>How to read support status</h2>
           <p>Feature declarations are not treated as proof of native support. This guide uses the same strict labels as the Unreal parity audit:</p>
           <div class="card-grid">
@@ -394,7 +399,7 @@ device.WriteDescriptorTable(table.mValue, textureItem);</code></pre>
           <p>The parity suite validates behavior rather than interface presence. It compares RDG expectation, facade state, common-backend state, and exact native encoding. It covers transitions and planes; copy/resolve/staging; indirect work; heap aliasing; classic and direct descriptor indexing; mesh and ray dispatch; AS build/update/compaction; Vulkan opacity micromaps; sparse residency and budgets; dedicated queues, GPU waits, and ownership; sampler feedback; work graphs; shader bundles; custom present; RDG culling/recording/extraction; and transient placement.</p>
           <p>Known-result GPU tests include bindless/direct-heap compute, shader bundles, work graphs, mesh pixels, BLAS/TLAS hit and miss routing, local shader-table record packing, indirect rays, compacted opacity-micromap traversal, sparse-buffer commit/readback, and decoded sampler feedback. A D3D12 lifetime unit test immediately releases 256 submitted command lists and still reads the final GPU value; <code>ARDGExample.D3D12.MultiFrameLifetime</code> renders 120 hidden frames to catch frame-to-frame retirement regressions. Capability admission tests separately require every advanced desktop feature against empty and complete profiles so a missing tracker cannot silently admit a module.</p>
           <pre><code>ctest --test-dir build-state-parity --output-on-failure -j 1 -E "^(RHITest|ARDGExample)\."</code></pre>
-          <p>Validation requested by configuration is mandatory: missing D3D12 debug layers or Vulkan validation layers fail initialization. On Windows, <code>ARDA_D3D12_GPU_VALIDATION=1</code> additionally enables GPU-based D3D12 validation when validation is requested. Set <code>VK_LAYER_PATH</code> to a validation-layer installation matching the Vulkan headers when the default loader cannot find it. Staging mappings expose row and depth pitches; advance depth slices by the returned depth pitch, including format/block padding.</p>
+          <p>Validation requested by configuration is mandatory: missing or unloadable layers return ValidationUnavailable. Test builds attempt local provisioning first, then skip only validation-dependent tests when that result persists. Other initialization errors remain test failures; see <a href="validation.html">validation setup</a>. On Windows, <code>ARDA_D3D12_GPU_VALIDATION=1</code> additionally enables GPU-based D3D12 validation when validation is requested. Set <code>VK_LAYER_PATH</code> to a validation-layer installation matching the Vulkan headers when the default loader cannot find it. Staging mappings expose row and depth pitches; advance depth slices by the returned depth pitch, including format/block padding.</p>
           <p>The capability matrix checks every public capability field against the source header. A newly advertised feature without a native workload fails the suite. Arithmetic probes execute subgroup sums, native FP16 arithmetic, and packed signed/unsigned INT8 dot products. Descriptor updates, collection edits, shader-library execution, local descriptor records, sparse texture contents, and integer clears all check GPU output. Conservative rasterization and variable-rate shading currently have no portable execution controls and remain unavailable in both providers.</p>
           <p>Capability-dependent tests skip only when the selected adapter truthfully reports the feature unavailable. A supported feature must create native objects, execute native work, validate output or lifecycle evidence, and produce no D3D12 debug-layer or Vulkan validation error. Interactive windowed examples are excluded from the non-interactive suite.</p>
           <aside class="callout">

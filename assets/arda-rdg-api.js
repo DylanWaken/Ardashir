@@ -9913,8 +9913,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "bool mbMergeRasterPasses = true",
-    "summary": "Stores merge raster passes in this public render-graph value.",
-    "details": "Stores merge raster passes in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "Records adjacent compatible raster passes in one command list.",
+    "details": "Records adjacent compatible raster passes in one command list.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -9923,7 +9923,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGExecuteOptions"
-    ]
+    ],
+    "sourceLine": 69
   },
   {
     "id": "api-arda-render-graph-fardgexecutionresult-mmergedrasterpasscount-ffd395b5",
@@ -9933,8 +9934,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "uint32_t mMergedRasterPassCount = 0",
-    "summary": "Stores merged raster pass count in this public render-graph value.",
-    "details": "Stores merged raster pass count in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "Number of raster passes appended to an earlier compatible pass list.",
+    "details": "Number of raster passes appended to an earlier compatible pass list.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -9943,7 +9944,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGExecutionResult"
-    ]
+    ],
+    "sourceLine": 153
   },
   {
     "id": "api-arda-render-graph-fardgexecutionresult-mqueuedependencies-e02cd763",
@@ -9953,8 +9955,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "eastl::vector<FARDGQueueDependency> mQueueDependencies",
-    "summary": "Stores queue dependencies in this public render-graph value.",
-    "details": "Stores queue dependencies in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "Execution dependencies, including physical ownership and memory aliasing edges.",
+    "details": "Execution dependencies, including physical ownership and memory aliasing edges.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -9963,7 +9965,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGExecutionResult"
-    ]
+    ],
+    "sourceLine": 162
   },
   {
     "id": "api-arda-render-graph-fardgexecutionresult-mtransientheapbytes-ffae26c5",
@@ -9973,8 +9976,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "uint64_t mTransientHeapBytes = 0",
-    "summary": "Stores transient heap bytes in this public render-graph value.",
-    "details": "Stores transient heap bytes in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "Total capacity of the explicit transient heaps allocated for this execution.",
+    "details": "Total capacity of the explicit transient heaps allocated for this execution.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -9983,7 +9986,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGExecutionResult"
-    ]
+    ],
+    "sourceLine": 183
   },
   {
     "id": "api-arda-render-graph-fardgexecutionresult-mtransientaliasedbytes-f987e8d1",
@@ -9993,8 +9997,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "uint64_t mTransientAliasedBytes = 0",
-    "summary": "Stores transient aliased bytes in this public render-graph value.",
-    "details": "Stores transient aliased bytes in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "Heap bytes avoided by reusing expired transient placements.",
+    "details": "Heap bytes avoided by reusing expired transient placements.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -10003,7 +10007,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGExecutionResult"
-    ]
+    ],
+    "sourceLine": 186
   },
   {
     "id": "api-arda-render-graph-fardgexecutionresult-maliasingbarriercount-df7ebb85",
@@ -10013,8 +10018,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "uint32_t mAliasingBarrierCount = 0",
-    "summary": "Stores aliasing barrier count in this public render-graph value.",
-    "details": "Stores aliasing barrier count in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "Number of placed resources activated over a previously occupied range.",
+    "details": "Number of placed resources activated over a previously occupied range.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -10023,7 +10028,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGExecutionResult"
-    ]
+    ],
+    "sourceLine": 189
   },
   {
     "id": "api-arda-render-graph-fardgraydispatcharguments-2cfac7ec",
@@ -10033,8 +10039,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "struct FARDGRayDispatchArguments",
-    "summary": "Defines f a r d g ray dispatch arguments in the public render-graph contract.",
-    "details": "Defines f a r d g ray dispatch arguments in the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Defines direct hardware ray-dispatch dimensions.",
+    "details": "Defines direct hardware ray-dispatch dimensions.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -10043,7 +10049,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph"
-    ]
+    ],
+    "sourceLine": 222
   },
   {
     "id": "api-arda-render-graph-fardgraydispatcharguments-mwidth-b454adde",
@@ -10053,8 +10060,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "uint32_t mWidth = 1",
-    "summary": "Stores width in this public render-graph value.",
-    "details": "Stores width in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "Ray-generation launch width.",
+    "details": "Ray-generation launch width.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -10063,7 +10070,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGRayDispatchArguments"
-    ]
+    ],
+    "sourceLine": 225
   },
   {
     "id": "api-arda-render-graph-fardgraydispatcharguments-mheight-7b82e677",
@@ -10073,8 +10081,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "uint32_t mHeight = 1",
-    "summary": "Stores height in this public render-graph value.",
-    "details": "Stores height in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "Ray-generation launch height.",
+    "details": "Ray-generation launch height.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -10083,7 +10091,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGRayDispatchArguments"
-    ]
+    ],
+    "sourceLine": 228
   },
   {
     "id": "api-arda-render-graph-fardgraydispatcharguments-mdepth-b6d5b1cf",
@@ -10093,8 +10102,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "uint32_t mDepth = 1",
-    "summary": "Stores depth in this public render-graph value.",
-    "details": "Stores depth in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "Ray-generation launch depth.",
+    "details": "Ray-generation launch depth.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -10103,7 +10112,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGRayDispatchArguments"
-    ]
+    ],
+    "sourceLine": 231
   },
   {
     "id": "api-arda-render-graph-fardgaccelstructextraction-56a16946",
@@ -10113,8 +10123,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "struct FARDGAccelStructExtraction",
-    "summary": "Defines f a r d g accel struct extraction in the public render-graph contract.",
-    "details": "Defines f a r d g accel struct extraction in the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Describes an acceleration-structure handle requested from graph execution.",
+    "details": "Describes an acceleration-structure handle requested from graph execution.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -10123,7 +10133,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph"
-    ]
+    ],
+    "sourceLine": 261
   },
   {
     "id": "api-arda-render-graph-fardgaccelstructextraction-maccelstruct-0f073040",
@@ -10133,8 +10144,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "FARDGAccelStructRef mAccelStruct = nullptr",
-    "summary": "Stores accel struct in this public render-graph value.",
-    "details": "Stores accel struct in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "The logical acceleration structure to extract.",
+    "details": "The logical acceleration structure to extract.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -10143,7 +10154,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGAccelStructExtraction"
-    ]
+    ],
+    "sourceLine": 264
   },
   {
     "id": "api-arda-render-graph-fardgaccelstructextraction-moutput-9228da72",
@@ -10153,8 +10165,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "rhi::FArdaRHIAccelStructRef* mOutput = nullptr",
-    "summary": "Stores output in this public render-graph value.",
-    "details": "Stores output in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "Receives the physical handle after graph submission.",
+    "details": "Receives the physical handle after graph submission.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -10163,7 +10175,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGAccelStructExtraction"
-    ]
+    ],
+    "sourceLine": 267
   },
   {
     "id": "api-arda-render-graph-fardgaccelstructextraction-mfinalstate-96562f6d",
@@ -10173,8 +10186,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "rhi::EArdaRHIResourceState mFinalState = rhi::EArdaRHIResourceState::Unknown",
-    "summary": "Stores final state in this public render-graph value.",
-    "details": "Stores final state in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "The state required when graph execution completes.",
+    "details": "The state required when graph execution completes.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "",
@@ -10183,7 +10196,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGAccelStructExtraction"
-    ]
+    ],
+    "sourceLine": 270
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-operator-7df01789",
@@ -10203,7 +10217,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 313
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-operator-5b85364c",
@@ -10223,7 +10238,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 315
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-createsrv-4e4b5407",
@@ -10233,8 +10249,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] FARDGTextureSRVRef CreateSRV( eastl::string Name, FARDGTextureViewDesc Desc)",
-    "summary": "Performs create s r v through the public render-graph contract.",
-    "details": "Performs create s r v through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "UE-style alias for creating a texture SRV.",
+    "details": "UE-style alias for creating a texture SRV.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10243,7 +10259,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 379
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-createsrv-01f777d6",
@@ -10253,8 +10270,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] FARDGBufferSRVRef CreateSRV( eastl::string Name, FARDGBufferViewDesc Desc)",
-    "summary": "Performs create s r v through the public render-graph contract.",
-    "details": "Performs create s r v through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "UE-style alias for creating a buffer SRV.",
+    "details": "UE-style alias for creating a buffer SRV.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10263,7 +10280,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 387
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-createuav-0c8958e0",
@@ -10273,8 +10291,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] FARDGTextureUAVRef CreateUAV( eastl::string Name, FARDGTextureViewDesc Desc)",
-    "summary": "Performs create u a v through the public render-graph contract.",
-    "details": "Performs create u a v through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "UE-style alias for creating a texture UAV.",
+    "details": "UE-style alias for creating a texture UAV.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10283,7 +10301,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 395
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-createuav-a3bcdbdf",
@@ -10293,8 +10312,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] FARDGBufferUAVRef CreateUAV( eastl::string Name, FARDGBufferViewDesc Desc)",
-    "summary": "Performs create u a v through the public render-graph contract.",
-    "details": "Performs create u a v through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "UE-style alias for creating a buffer UAV.",
+    "details": "UE-style alias for creating a buffer UAV.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10303,7 +10322,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 403
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-queuetextureextraction-e4cc41d7",
@@ -10313,8 +10333,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "void QueueTextureExtraction( FARDGTextureRef Texture, rhi::FArdaRHITextureRef& Output, rhi::EArdaRHIResourceState FinalState)",
-    "summary": "Performs queue texture extraction through the public render-graph contract.",
-    "details": "Performs queue texture extraction through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Declares texture extraction using an RHI reference.",
+    "details": "Declares texture extraction using an RHI reference.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10323,7 +10343,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 484
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-queuebufferextraction-05107656",
@@ -10333,8 +10354,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "void QueueBufferExtraction( FARDGBufferRef Buffer, rhi::FArdaRHIBufferRef& Output, rhi::EArdaRHIResourceState FinalState)",
-    "summary": "Performs queue buffer extraction through the public render-graph contract.",
-    "details": "Performs queue buffer extraction through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Declares buffer extraction using an RHI reference.",
+    "details": "Declares buffer extraction using an RHI reference.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10343,7 +10364,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 499
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-queueaccelstructextraction-541dfffc",
@@ -10353,8 +10375,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "void QueueAccelStructExtraction( FARDGAccelStructRef AccelStruct, rhi::FArdaRHIAccelStructRef* Output, rhi::EArdaRHIResourceState FinalState)",
-    "summary": "Performs queue accel struct extraction through the public render-graph contract.",
-    "details": "Performs queue accel struct extraction through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Declares that a logical acceleration structure survives graph completion.",
+    "details": "Declares that a logical acceleration structure survives graph completion.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10363,7 +10385,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 508
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-queueaccelstructextraction-72f77d2a",
@@ -10373,8 +10396,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "void QueueAccelStructExtraction( FARDGAccelStructRef AccelStruct, rhi::FArdaRHIAccelStructRef& Output, rhi::EArdaRHIResourceState FinalState)",
-    "summary": "Performs queue accel struct extraction through the public render-graph contract.",
-    "details": "Performs queue accel struct extraction through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Declares acceleration-structure extraction using an RHI reference.",
+    "details": "Declares acceleration-structure extraction using an RHI reference.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10383,7 +10406,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 514
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-addhosttodevicecopypass-955504b3",
@@ -10393,8 +10417,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPass( FARDGBufferRef Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0, eastl::string Name = \"HostToDeviceCopy\")",
-    "summary": "Performs add host to device copy pass through the public render-graph contract.",
-    "details": "Performs add host to device copy pass through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Adds a blocking host-to-device buffer copy pass. SourceData is copied into graph-owned storage immediately, matching Unreal's QueueBufferUpload ownership behavior.",
+    "details": "Adds a blocking host-to-device buffer copy pass. SourceData is copied into graph-owned storage immediately, matching Unreal's QueueBufferUpload ownership behavior.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10403,7 +10427,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 528
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-addhosttodevicecopypassasync-2aae6f28",
@@ -10413,8 +10438,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPassAsync( FARDGBufferRef Destination, const void* SourceData, size_t Size, rhi::FArdaRHIHostToDeviceCopyCallback Completion, uint64_t DestinationOffset = 0, eastl::string Name = \"HostToDeviceCopyAsync\")",
-    "summary": "Performs add host to device copy pass async through the public render-graph contract.",
-    "details": "Performs add host to device copy pass async through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Adds a nonblocking host-to-device copy pass with a GPU callback.",
+    "details": "Adds a nonblocking host-to-device copy pass with a GPU callback.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10423,7 +10448,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 536
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-adddevicetohostcopypass-f760f42c",
@@ -10433,8 +10459,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPass( FARDGBufferRef Source, eastl::vector<uint8_t>& Output, uint64_t SourceOffset = 0, uint64_t Size = rhi::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopy\")",
-    "summary": "Performs add device to host copy pass through the public render-graph contract.",
-    "details": "Performs add device to host copy pass through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Adds a blocking device-to-host buffer readback pass.",
+    "details": "Adds a blocking device-to-host buffer readback pass.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10443,7 +10469,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 545
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-adddevicetohostcopypassasync-85e4adeb",
@@ -10453,8 +10480,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPassAsync( FARDGBufferRef Source, rhi::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = rhi::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopyAsync\")",
-    "summary": "Performs add device to host copy pass async through the public render-graph contract.",
-    "details": "Performs add device to host copy pass async through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Adds a nonblocking device-to-host readback pass with owned bytes.",
+    "details": "Adds a nonblocking device-to-host readback pass with owned bytes.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10463,7 +10490,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 553
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-queuebufferupload-38616f14",
@@ -10473,8 +10501,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] FARDGPassHandle QueueBufferUpload( FARDGBufferRef Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0, eastl::string Name = \"QueueBufferUpload\")",
-    "summary": "Performs queue buffer upload through the public render-graph contract.",
-    "details": "Performs queue buffer upload through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Unreal-style alias for a graph-owned host buffer upload.",
+    "details": "Unreal-style alias for a graph-owned host buffer upload.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10483,7 +10511,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 561
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-addenqueuecopypass-2c79bde8",
@@ -10493,8 +10522,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] FARDGPassHandle AddEnqueueCopyPass( FARDGBufferRef Source, rhi::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = rhi::ArdaRHIWholeBuffer, eastl::string Name = \"EnqueueBufferReadback\")",
-    "summary": "Performs add enqueue copy pass through the public render-graph contract.",
-    "details": "Performs add enqueue copy pass through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Unreal-style alias for an asynchronous GPU buffer readback pass.",
+    "details": "Unreal-style alias for an asynchronous GPU buffer readback pass.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10503,7 +10532,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 574
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-addraydispatchpass-537bf94c",
@@ -10513,8 +10543,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "template <typename ParameterType, typename ExecuteType> [[nodiscard]] FARDGPassHandle AddRayDispatchPass( eastl::string Name, const ParameterType* Parameters, FARDGRayDispatchArguments Dispatch, ExecuteType&& Setup, EARDGPassFlags Flags = EARDGPassFlags::Compute)",
-    "summary": "Performs add ray dispatch pass through the public render-graph contract.",
-    "details": "Performs add ray dispatch pass through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Registers a typed hardware ray-tracing pass that dispatches after setup.",
+    "details": "Registers a typed hardware ray-tracing pass that dispatches after setup.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10523,7 +10553,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 685
   },
   {
     "id": "api-arda-render-graph-fardgbuilder-getaccelstructextractions-97b1a7ba",
@@ -10533,8 +10564,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] const eastl::vector<FARDGAccelStructExtraction>& GetAccelStructExtractions() const noexcept",
-    "summary": "Performs get accel struct extractions through the public render-graph contract.",
-    "details": "Performs get accel struct extractions through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Returns acceleration-structure extraction declarations in registration order.",
+    "details": "Returns acceleration-structure extraction declarations in registration order.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10543,7 +10574,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGBuilder"
-    ]
+    ],
+    "sourceLine": 804
   },
   {
     "id": "api-arda-render-graph-fardgqueuepolicy-b1936ac6",
@@ -10553,8 +10585,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "struct FARDGQueuePolicy",
-    "summary": "Defines f a r d g queue policy in the public render-graph contract.",
-    "details": "Defines f a r d g queue policy in the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Restricts which device queues graph compilation may select.",
+    "details": "Restricts which device queues graph compilation may select.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h",
     "params": [],
     "returns": "",
@@ -10563,7 +10595,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph"
-    ]
+    ],
+    "sourceLine": 151
   },
   {
     "id": "api-arda-render-graph-fardgrendergraphcontext-mqueuepolicy-de6d9b38",
@@ -10573,8 +10606,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "FARDGQueuePolicy mQueuePolicy",
-    "summary": "Stores queue policy in this public render-graph value.",
-    "details": "Stores queue policy in this public render-graph value. The signature is generated from the current public header.",
+    "summary": "Per-graph queue policy, normally derived from the RHI device.",
+    "details": "Per-graph queue policy, normally derived from the RHI device.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h",
     "params": [],
     "returns": "",
@@ -10583,7 +10616,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGRenderGraphContext"
-    ]
+    ],
+    "sourceLine": 324
   },
   {
     "id": "api-arda-render-graph-fardgrasterbindingsignature-operator-7687ba58",
@@ -10593,8 +10627,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "friend bool operator==( const FARDGRasterBindingSignature& Left, const FARDGRasterBindingSignature& Right) noexcept",
-    "summary": "Performs operator== through the public render-graph contract.",
-    "details": "Performs operator== through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Returns whether both signatures bind the same logical attachments.",
+    "details": "Returns whether both signatures bind the same logical attachments.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10603,7 +10637,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGRasterBindingSignature"
-    ]
+    ],
+    "sourceLine": 132
   },
   {
     "id": "api-arda-render-graph-fardgrasterbindingsignature-operator-cbce490f",
@@ -10613,8 +10648,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "friend bool operator!=( const FARDGRasterBindingSignature& Left, const FARDGRasterBindingSignature& Right) noexcept",
-    "summary": "Performs operator!= through the public render-graph contract.",
-    "details": "Performs operator!= through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Returns whether two signatures bind different logical attachments.",
+    "details": "Returns whether two signatures bind different logical attachments.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10623,7 +10658,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGRasterBindingSignature"
-    ]
+    ],
+    "sourceLine": 143
   },
   {
     "id": "api-arda-render-graph-fardgpassexecutioncontext-operator-614a3d71",
@@ -10643,7 +10679,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGPassExecutionContext"
-    ]
+    ],
+    "sourceLine": 230
   },
   {
     "id": "api-arda-render-graph-fardgpassexecutioncontext-reportstatus-ba2ad5cc",
@@ -10653,8 +10690,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "void ReportStatus(rhi::FArdaRHIStatus Status)",
-    "summary": "Performs report status through the public render-graph contract.",
-    "details": "Performs report status through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Retains the first callback failure; failed graphs publish no extractions.",
+    "details": "Retains the first callback failure; failed graphs publish no extractions.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10663,7 +10700,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGPassExecutionContext"
-    ]
+    ],
+    "sourceLine": 314
   },
   {
     "id": "api-arda-render-graph-fardgpassexecutioncontext-getstatus-20fc8f6d",
@@ -10673,8 +10711,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "[[nodiscard]] const rhi::FArdaRHIStatus& GetStatus() const noexcept",
-    "summary": "Performs get status through the public render-graph contract.",
-    "details": "Performs get status through the public render-graph contract. The signature is generated from the current public header.",
+    "summary": "Returns the first reported callback failure, or success.",
+    "details": "Returns the first reported callback failure, or success.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -10683,7 +10721,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGPassExecutionContext"
-    ]
+    ],
+    "sourceLine": 321
   },
   {
     "id": "api-arda-render-graph-fardgpass-fardgpass-ff673a85",
@@ -10693,17 +10732,39 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "FARDGPass( FARDGPassHandle Handle, eastl::string Name, EARDGPassFlags Flags, const void* Parameters = nullptr, const FARDGParameterMetadata* ParameterMetadata = nullptr) : mHandle(Handle) , mName(eastl::move(Name)) , mFlags(Flags) , mParameters(Parameters) , mParameterMetadata(ParameterMetadata)",
-    "summary": "Constructs the render-graph value from the declared inputs.",
-    "details": "Constructs the render-graph value from the declared inputs. The signature is generated from the current public header.",
+    "summary": "Constructs a pass record without implementing execution dispatch.",
+    "details": "Constructs a pass record without implementing execution dispatch.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
-    "params": [],
+    "params": [
+      {
+        "name": "Handle",
+        "description": "The stable pass-registry handle."
+      },
+      {
+        "name": "Name",
+        "description": "The diagnostic pass name."
+      },
+      {
+        "name": "Flags",
+        "description": "The pass behavior and pipeline flags."
+      },
+      {
+        "name": "Parameters",
+        "description": "A non-owning pointer to immutable parameter storage."
+      },
+      {
+        "name": "ParameterMetadata",
+        "description": "Static metadata describing Parameters."
+      }
+    ],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGPass"
-    ]
+    ],
+    "sourceLine": 349
   },
   {
     "id": "api-arda-render-graph-fardglambdapass-fardglambdapass-66b09787",
@@ -10713,17 +10774,43 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "FARDGLambdaPass( FARDGPassHandle Handle, eastl::string Name, EARDGPassFlags Flags, const void* Parameters, const FARDGParameterMetadata* ParameterMetadata, FARDGPassExecuteFunction ExecuteFunction) : FARDGPass( Handle, eastl::move(Name), Flags, Parameters, ParameterMetadata) , mExecuteFunction(eastl::move(ExecuteFunction))",
-    "summary": "Constructs the render-graph value from the declared inputs.",
-    "details": "Constructs the render-graph value from the declared inputs. The signature is generated from the current public header.",
+    "summary": "Constructs a lambda pass.",
+    "details": "Constructs a lambda pass.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
-    "params": [],
+    "params": [
+      {
+        "name": "Handle",
+        "description": "The stable pass-registry handle."
+      },
+      {
+        "name": "Name",
+        "description": "The diagnostic pass name."
+      },
+      {
+        "name": "Flags",
+        "description": "The pass behavior and requested pipeline."
+      },
+      {
+        "name": "Parameters",
+        "description": "Immutable graph-arena parameter storage."
+      },
+      {
+        "name": "ParameterMetadata",
+        "description": "Static metadata describing Parameters."
+      },
+      {
+        "name": "ExecuteFunction",
+        "description": "The body invoked during command recording."
+      }
+    ],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGLambdaPass"
-    ]
+    ],
+    "sourceLine": 536
   },
   {
     "id": "api-arda-render-graph-fardgsentinelpass-fardgsentinelpass-e507edc5",
@@ -10733,8 +10820,8 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "component": "core",
     "page": "api-reference.html",
     "signature": "FARDGSentinelPass(FARDGPassHandle Handle, eastl::string Name) : FARDGPass( Handle, eastl::move(Name), EARDGPassFlags::NeverCull)",
-    "summary": "Constructs the render-graph value from the declared inputs.",
-    "details": "Constructs the render-graph value from the declared inputs. The signature is generated from the current public header.",
+    "summary": "Constructs a named synthetic boundary pass.",
+    "details": "Constructs a named synthetic boundary pass.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
     "params": [],
     "returns": "",
@@ -10743,10 +10830,16 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph::FARDGSentinelPass"
-    ]
+    ],
+    "sourceLine": 571
   }
 ];
   window.ArdaRDGApi.symbols.push(...generatedSymbols);
+  const sourceContracts = [];
+  for (const contract of sourceContracts) {
+    const symbol = window.ArdaRDGApi.symbols.find(item => item.id === contract.id);
+    if (symbol) Object.assign(symbol, contract);
+  }
 })();
 /* END GENERATED ARDA RDG API GAPS */
 

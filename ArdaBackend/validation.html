@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Provision debug layers locally, distinguish native layer failures and keep unavailable validation from failing unrelated tests.">
+  <title>GPU validation setup | ArdaBackend</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="backend-modules.html">Backend modules</a>
+        <a href="external-interop.html">External interop</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
+
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="capability-recipes.html">Capability recipes</a>
+        <a href="cuda-interop.html">CUDA and graphics</a>
+        <a href="validation.html">GPU validation setup</a>
+        <a href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content" tabindex="-1">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a>
+        <span aria-hidden="true">/</span>
+        ArdaBackend
+      </nav>
+      <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>GPU validation setup</h1><p>Provision debug layers locally, distinguish native layer failures and keep unavailable validation from failing unrelated tests.</p></header>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#provisioning">Automatic local provisioning</a><a href="#options">Choose a layer installation or offline build</a><a href="#discovery">Direct runs and CTest use the same discovery</a><a href="#results">Handle missing validation without hiding device failures</a><a href="#reproduce">Reproduce missing and broken installations</a><a href="#diagnosis">Find provisioning and native diagnostics</a><a href="#summary">Checkpoints</a></nav>
+<section id="objectives"><h2>How to use these examples</h2>
+<p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
+<p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
+<figure><img src="Assets/diagnostic-escalation.svg" alt="GPU validation setup ownership and execution flow"><figcaption>Start with the initialization result and native diagnostic; escalate to the validation layer and GPU tooling for successfully initialized workloads.</figcaption></figure>
+<p>Short snippets are literal excerpts from compiled GoogleTest workloads. They use ASSERT_TRUE/EXPECT_EQ to make failures visible. Adapt those checks to your application's status handling. Variables and helpers are initialized in each linked complete example; snippets are not separate standalone programs. The complete examples show allocation, binding, execution, readback assertions and cleanup.</p>
+<pre><code class="language-shell">cmake --build build --config Debug --target ArdaBackendTests
+ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
+<p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="provisioning"><h2>Automatic local provisioning</h2><p>With ARDASHIR_BUILD_TESTS enabled, test targets depend on ArdaValidationLayers. D3D12 deploys the matching debug DLL from the pinned Agility SDK NuGet dependency. Vulkan reuses an explicit layer directory, an earlier local install, SDK/environment paths or common Linux paths; otherwise it downloads pinned Khronos sources and builds their pinned dependencies under the build directory.</p><p>The optional Vulkan build needs Git, Python 3.10+, CMake 3.22.1+ and a suitable C++ compiler. It can take several minutes. Download/configure/build/install failures warn and leave the Ardashir build usable. Reconfigure to retry; incremental builds reuse the previous attempt. No system installation or registry modification is performed.</p></section>
+<section id="options"><h2>Choose a layer installation or offline build</h2><pre><code class="language-shell">cmake -S . -B build -DARDASHIR_PROVISION_VALIDATION=OFF
+# Or point at a loadable manifest/library installation:
+cmake -S . -B build -DARDASHIR_VULKAN_VALIDATION_DIR=&quot;C:/Vulkan/layers&quot;
+# Or build a local source checkout (upstream dependencies may need network):
+cmake -S . -B build -DARDASHIR_VULKAN_VALIDATION_SOURCE_DIR=&quot;C:/src/Vulkan-ValidationLayers&quot;</code></pre><p>An explicit layer directory suppresses downloads even if it is invalid. An installed layer still works with provisioning OFF. Agility core-runtime deployment remains required for D3D12. Automatic Vulkan source provisioning is skipped while cross-compiling.</p></section>
+<section id="discovery"><h2>Direct runs and CTest use the same discovery</h2><p>Test executables read the generated validation-layers/layer-path.txt before main and prepend it to VK_ADD_LAYER_PATH. Existing additional paths are retained. An explicit VK_LAYER_PATH remains authoritative, including deliberately empty layer directories. Native initialization probes whether the layer can actually load; a JSON manifest alone is insufficient.</p></section>
+<section id="results"><h2>Handle missing validation without hiding device failures</h2><p><a href="api-reference.html#api-arda-backend-eardainitializeresult-2bf6fe00"><code>EArdaInitializeResult</code></a> includes ValidationUnavailable. Headless callers read <a href="api-reference.html#api-arda-backend-getbackendinitializeresult-6543c06f"><code>GetBackendInitializeResult</code></a> after InitializeBackend returns false; presentation startup returns the enum directly. The shared ARDA_REQUIRE_BACKEND test assertion skips only that result and keeps other initialization assertion failures. Presentation smoke programs use the existing CTest skip code 77.</p><p>A failed layer load can emit error diagnostics before returning ValidationUnavailable. Fixture teardown excludes that specific initialization outcome from its zero-GPU-error assertion; successfully initialized workloads still require zero errors. Applications can report the reason or explicitly reconfigure validation policy before retrying.</p></section>
+<section id="reproduce"><h2>Reproduce missing and broken installations</h2><p>Copy a test executable and its D3D12/D3D12Core.dll into an isolated directory, omit d3d12SDKLayers.dll, and set VK_LAYER_PATH to an empty directory. To test broken Vulkan loading, copy only the manifest, leaving its referenced DLL absent. Neither procedure changes the machine’s installed layers.</p><p>Verified runs had zero failures with installed layers, both layers absent, and a stale Vulkan manifest. Backend/RDG tests that require validation skipped; CPU and validation-independent tests continued. All seven presentation smoke tests passed with layers installed, and missing-layer presentation runs returned 77.</p></section>
+<section id="diagnosis"><h2>Find provisioning and native diagnostics</h2><p>Read validation-layers/download.log, checkout.log, configure.log, build.log and install.log for the failed stage. Then inspect GetBackendError for the loader/device result. Missing validation is different from an unavailable graphics loader, unsupported GPU feature, malformed shader, or invalid descriptor. The latter errors are not converted into validation skips.</p><p>Further reading: <a href="https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/e4786f7ce8f1319215eff0d938f4be4651cbb85d/BUILD.md">Khronos build instructions</a>, <a href="https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderLayerInterface.md">loader discovery</a>, and <a href="https://devblogs.microsoft.com/directx/gettingstarted-dx12agility/">Microsoft Agility deployment</a>.</p></section><section id="summary"><h2>Checkpoints and further reading</h2><p>Provisioning is best effort; the native loader determines whether validation is usable. Preserve unrelated device and workload failures.</p><ol><li>Which result permits ARDA_REQUIRE_BACKEND to skip?</li><li>Why does an explicit VK_LAYER_PATH override an automatically installed layer?</li><li>Why is a manifest whose library cannot load insufficient?</li><li>Which shader, device and resource errors must remain failures?</li></ol><p>Use <a href="#discovery">discovery</a>, <a href="#results">result handling</a> and <a href="diagnostics.html">diagnostics</a> to check your answers.</p></section></article>
+</main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

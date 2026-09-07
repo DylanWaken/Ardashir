@@ -199,7 +199,14 @@
         position(visibleLink, visibleTooltip);
       }
     });
-    window.addEventListener("scroll", () => hide(), { passive: true });
+    window.addEventListener("scroll", () => {
+      // Keyboard focus may scroll the term into view after showing its tooltip.
+      if (visibleTooltip && visibleLink && doc.activeElement === visibleLink) {
+        position(visibleLink, visibleTooltip);
+      } else {
+        hide();
+      }
+    }, { passive: true });
   }
 
   function initializeGlossaryFilter() {

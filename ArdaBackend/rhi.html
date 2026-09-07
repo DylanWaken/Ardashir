@@ -36,13 +36,18 @@
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
         <a aria-current="page" href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
+
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="capability-recipes.html">Capability recipes</a>
+        <a href="cuda-interop.html">CUDA and graphics</a>
+        <a href="validation.html">GPU validation setup</a>
         <a href="commands.html">Commands</a>
         <a href="presentation.html">Presentation</a>
         <a href="diagnostics.html">Diagnostics</a>
         <a href="api-reference.html">API reference</a>
       </nav>
     </aside>
-    <main id="main-content">
+    <main id="main-content" tabindex="-1">
       <nav class="breadcrumbs" aria-label="Breadcrumb">
         <a href="../index.html">Docs</a> /
         <a href="index.html">ArdaBackend</a> /
@@ -194,7 +199,7 @@
           <ul>
             <li>CPU ownership prevents wrapper destruction; it does not by itself prove the GPU has finished.</li>
             <li>Descriptors containing references retain those objects. Views expose and retain their underlying resource through implementation ownership.</li>
-            <li>Mutable descriptor-table writes deliberately do not retain written resources. The caller must preserve them through every in-flight table use.</li>
+            <li>A successful descriptor-table write retains the resource in the current table version. Recording captures that version and its resources; later writes create a new version. Submission keeps the captured native dependencies alive until its queue completes, even when the caller releases the original handles. Retention protects lifetime, while barriers and queue waits still establish access order.</li>
             <li>All participating objects must come from the same device. Cross-device references return <code>WrongDevice</code> rather than being silently reinterpreted.</li>
           </ul>
           <h3>Borrowed native imports</h3>
@@ -254,6 +259,7 @@ if (caps.mbTiledTextures &amp;&amp; caps.mbHeaps)
         </section>
 
         <section id="worked-example">
+          <p>The <a href="resource-recipes.html">resource recipe chapter</a> covers every resource kind, including heaps, queries, all pipeline families, shader tables and native specialized resources. Each recipe links the complete compiled workload and its canonical API contract.</p>
           <h2>Worked example: offscreen color with mip-specific views</h2>
           <pre><code>using namespace arda;
 
@@ -306,7 +312,7 @@ if (!srv || !mipOneUav || !framebuffer)
             <li>Every view range resolves inside its resource, with compatible dimension and format.</li>
             <li>Framebuffer attachment formats and sample counts agree with each other and the pipeline.</li>
             <li>Every retained RHI object and command that combines it belongs to one device domain.</li>
-            <li>CPU reference lifetime covers GPU use; descriptor-table writes require explicit caller retention.</li>
+            <li>Descriptor tables retain written resources, and recorded/submitted versions preserve the dependencies of in-flight uses. Caller-owned native imports must additionally honor their declared external lifetime.</li>
             <li>Optional resource families are created only after their exact capability is established.</li>
           </ol>
         </section>
