@@ -333,7 +333,7 @@ namespace arda::rhi
 
     bool FArdaRHITextureDesc::operator==(const FArdaRHITextureDesc& O) const noexcept
     {
-        return mWidth == O.mWidth && mHeight == O.mHeight && mDepth == O.mDepth &&
+        return mbCudaInterop == O.mbCudaInterop && mWidth == O.mWidth && mHeight == O.mHeight && mDepth == O.mDepth &&
             mArraySize == O.mArraySize && mMipLevels == O.mMipLevels &&
             mSampleCount == O.mSampleCount && mFormat == O.mFormat &&
             mDimension == O.mDimension && mUsage == O.mUsage &&
@@ -345,7 +345,7 @@ namespace arda::rhi
 
     bool FArdaRHIBufferDesc::operator==(const FArdaRHIBufferDesc& O) const noexcept
     {
-        return mByteSize == O.mByteSize && mStructureStride == O.mStructureStride &&
+        return mbCudaInterop == O.mbCudaInterop && mByteSize == O.mByteSize && mStructureStride == O.mStructureStride &&
             mMaxVersions == O.mMaxVersions && mFormat == O.mFormat && mUsage == O.mUsage &&
             mCpuAccess == O.mCpuAccess && mInitialState == O.mInitialState &&
             mbKeepInitialState == O.mbKeepInitialState && mbVirtual == O.mbVirtual &&

@@ -191,7 +191,8 @@ namespace arda::tests::rhi_test
             {
                 const eastl::string backendError = backend::GetBackendError();
                 ARDA_LOG(LogRHITest, Error, "%s", backendError.c_str());
-                return result == backend::EArdaInitializeResult::Unavailable
+                return result == backend::EArdaInitializeResult::Unavailable ||
+                    result == backend::EArdaInitializeResult::ValidationUnavailable
                     ? SkippedExitCode
                     : EXIT_FAILURE;
             }

@@ -1,4 +1,5 @@
 #include "RHI/ArdaRHIProvider.h"
+#include "../Cuda/ArdaCudaInterop.h"
 #include "RHI/ArdaRHIProviderPipelineCache.h"
 #include "ArdaBackendProvider.h"
 #include "ArdaExternalInterop.h"
@@ -348,6 +349,7 @@ namespace arda::backend
                 Resource.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
             if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::UnorderedAccess))
                 Resource.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            if (Desc.mbCudaInterop) Resource.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
             return Resource;
         }
 
@@ -364,6 +366,7 @@ namespace arda::backend
             Resource.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
             if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::UnorderedAccess))
                 Resource.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            if (Desc.mbCudaInterop) Resource.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
             return Resource;
         }
 
@@ -438,7 +441,11 @@ namespace arda::backend
         {
         public:
             const void* GetIdentity() const noexcept override { return mResource.Get(); }
+            FArdaCudaResourceInfo GetCudaResourceInfo() const noexcept override
+            { return mCudaMapping ? FArdaCudaResourceInfo{EArdaCudaRepresentation::Surface,
+                EArdaResourceRepresentations::GraphicsAndCuda, true} : FArdaCudaResourceInfo{}; }
             ComPtr<ID3D12Resource> mResource;
+            eastl::shared_ptr<cuda::IMapping> mCudaMapping;
             FArdaRHITextureDesc mDesc;
             mutable std::mutex mStateMutex;
             eastl::vector<EArdaRHIResourceState> mAbstractStates;
@@ -464,7 +471,11 @@ namespace arda::backend
         {
         public:
             const void* GetIdentity() const noexcept override { return mResource.Get(); }
+            FArdaCudaResourceInfo GetCudaResourceInfo() const noexcept override
+            { return mCudaMapping ? FArdaCudaResourceInfo{EArdaCudaRepresentation::LinearBuffer,
+                EArdaResourceRepresentations::GraphicsAndCuda, true} : FArdaCudaResourceInfo{}; }
             ComPtr<ID3D12Resource> mResource;
+            eastl::shared_ptr<cuda::IMapping> mCudaMapping;
             FArdaRHIBufferDesc mDesc;
             mutable std::mutex mStateMutex;
             EArdaRHIResourceState mAbstractState = EArdaRHIResourceState::Unknown;
@@ -925,6 +936,10 @@ namespace arda::backend
         class FArdaD3D12CommandList final : public IArdaProviderCommandList
         {
         public:
+            bool IsOpen() const noexcept override { return mbOpen; }
+            FArdaRHIStatus DispatchCuda(const eastl::vector<FArdaProviderCudaBinding>&,
+                const eastl::vector<FArdaCudaKernel>&) override;
+            eastl::shared_ptr<cuda::IBatch> mCudaBatch;
             FArdaD3D12CommandList(
                 FArdaD3D12ProviderDevice& Device,
                 D3D12_COMMAND_LIST_TYPE Type);
@@ -1128,6 +1143,11 @@ namespace arda::backend
                 , mLifetimeToken(eastl::move(LifetimeToken)) {}
             ~FArdaD3D12ProviderDevice() override;
             FArdaRHIStatus Initialize();
+            FArdaCudaCapabilities GetCudaCapabilities() const override { return mCudaCapabilities; }
+            eastl::shared_ptr<cuda::IContext> mCudaContext;
+            FArdaCudaCapabilities mCudaCapabilities;
+            TArdaRHIResult<eastl::shared_ptr<cuda::IMapping>> MapCudaResource(
+                ID3D12Resource*, uint64_t, const FArdaRHITextureDesc*);
             const FArdaRHICapabilities& GetCapabilities() const noexcept override { return mCapabilities; }
             EArdaRHINativeResourceType GetTextureImportType() const noexcept override { return EArdaRHINativeResourceType::D3D12Resource; }
             EArdaRHINativeResourceType GetBufferImportType() const noexcept override { return EArdaRHINativeResourceType::D3D12Resource; }
@@ -1313,6 +1333,27 @@ namespace arda::backend
 
         FArdaRHIStatus FArdaD3D12ProviderDevice::Initialize()
         {
+            if (mD3DDevice->GetNodeCount() == 1)
+            {
+                const auto Luid = mD3DDevice->GetAdapterLuid();
+                auto Lifetime = eastl::make_shared<std::pair<ComPtr<ID3D12Device>, ComPtr<ID3D12CommandQueue>>>(mD3DDevice, mQueue);
+                auto Context = cuda::CreateD3D12Context(mQueue.Get(), &Luid, Lifetime);
+                if (Context)
+                {
+                    mCudaContext = Context.mValue;
+                    mCudaCapabilities = mCudaContext->GetCapabilities();
+                    // CiG support alone does not guarantee that this driver can map images.
+                    FArdaRHITextureDesc Probe;
+                    Probe.mbCudaInterop = true;
+                    Probe.mWidth = Probe.mHeight = 64;
+                    Probe.mFormat = EArdaRHIFormat::R32UInt;
+                    Probe.mUsage = EArdaRHITextureUsage::UnorderedAccess;
+                    const auto Image = CreateTexture(Probe);
+                    mCudaCapabilities.mbSurfaceAccess = bool(Image);
+                    mCudaCapabilities.mSurfaceUnavailableReason = Image ? eastl::string{} : Image.mStatus.mMessage;
+                }
+                else mCudaCapabilities.mUnavailableReason = Context.mStatus.mMessage;
+            }
             D3D12_DESCRIPTOR_HEAP_DESC HeapDesc{};
             HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
             HeapDesc.NumDescriptors = D3D12ResourceDescriptorHeapCapacity;
@@ -1809,13 +1850,19 @@ namespace arda::backend
             if (Desc.mbVirtual)
                 return { Texture, {} };
             HRESULT Result = mD3DDevice->CreateCommittedResource(
-                &Heap, D3D12_HEAP_FLAG_NONE, &Resource,
+                &Heap, Desc.mbCudaInterop ? D3D12_HEAP_FLAG_SHARED : D3D12_HEAP_FLAG_NONE, &Resource,
                 ToD3D12State(Desc.mInitialState), ClearPtr,
                 IID_PPV_ARGS(&Texture->mResource));
             if (FAILED(Result)) return Fail<FArdaProviderObjectRef>(
                 D3D12Failure("Failed to create a D3D12 texture.", Result));
             if (auto Status = CreateTextureViews(*Texture); !Status)
                 return Fail<FArdaProviderObjectRef>(eastl::move(Status));
+            if (Desc.mbCudaInterop)
+            {
+                auto Mapping = MapCudaResource(Texture->mResource.Get(), 0, &Desc);
+                if (!Mapping) return Fail<FArdaProviderObjectRef>(Mapping.mStatus);
+                Texture->mCudaMapping = eastl::move(Mapping.mValue);
+            }
             return { Texture, {} };
         }
 
@@ -1968,10 +2015,16 @@ namespace arda::backend
             if (Desc.mbVirtual)
                 return { Buffer, {} };
             HRESULT Result = mD3DDevice->CreateCommittedResource(
-                &Heap, D3D12_HEAP_FLAG_NONE, &Resource, State, nullptr,
+                &Heap, Desc.mbCudaInterop ? D3D12_HEAP_FLAG_SHARED : D3D12_HEAP_FLAG_NONE, &Resource, State, nullptr,
                 IID_PPV_ARGS(&Buffer->mResource));
             if (FAILED(Result)) return Fail<FArdaProviderObjectRef>(
                 D3D12Failure("Failed to create a D3D12 buffer.", Result));
+            if (Desc.mbCudaInterop)
+            {
+                auto Mapping = MapCudaResource(Buffer->mResource.Get(), Desc.mByteSize, nullptr);
+                if (!Mapping) return Fail<FArdaProviderObjectRef>(Mapping.mStatus);
+                Buffer->mCudaMapping = eastl::move(Mapping.mValue);
+            }
             return { Buffer, {} };
         }
 
@@ -4492,6 +4545,54 @@ namespace arda::backend
             return {};
         }
 
+        TArdaRHIResult<eastl::shared_ptr<cuda::IMapping>> FArdaD3D12ProviderDevice::MapCudaResource(
+            ID3D12Resource* Resource, uint64_t BufferSize, const FArdaRHITextureDesc* Texture)
+        {
+            if (!mCudaContext) return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, mCudaCapabilities.mUnavailableReason.c_str())};
+            HANDLE Handle = nullptr;
+            const auto Result = mD3DDevice->CreateSharedHandle(Resource, nullptr, GENERIC_ALL, nullptr, &Handle);
+            if (FAILED(Result)) return {{}, D3D12Failure("Export D3D12 CUDA allocation", Result)};
+            const auto Desc = Resource->GetDesc();
+            // External-memory import describes the native allocation, which can
+            // exceed the logical buffer size because of native alignment/padding.
+            const auto Allocation = mD3DDevice->GetResourceAllocationInfo(0, 1, &Desc);
+            auto Mapping = mCudaContext->ImportMemory(Handle, Allocation.SizeInBytes, BufferSize, Texture);
+            CloseHandle(Handle); // CUDA does not consume NT handle ownership.
+            return Mapping;
+        }
+
+        FArdaRHIStatus FArdaD3D12CommandList::DispatchCuda(
+            const eastl::vector<FArdaProviderCudaBinding>& Bindings, const eastl::vector<FArdaCudaKernel>& Kernels)
+        {
+            if (!mbOpen || mType != D3D12_COMMAND_LIST_TYPE_DIRECT)
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "CiG requires an open graphics command list on its context queue.");
+            if (!mDevice.mCudaContext)
+                return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "D3D12 CiG is unavailable.");
+            eastl::vector<uint64_t> Arguments;
+            for (const auto& B : Bindings)
+            {
+                auto* Buffer = dynamic_cast<FD3D12Buffer*>(B.mObject.get());
+                auto* Texture = dynamic_cast<FD3D12Texture*>(B.mObject.get());
+                const auto Mapping = Buffer ? Buffer->mCudaMapping : Texture ? Texture->mCudaMapping : nullptr;
+                if (!Mapping) return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Resource has no CUDA mapping.");
+                Arguments.push_back(Mapping->GetArgument(B.mMipLevel, B.mBufferRange.mByteOffset));
+                Retain(B.mObject);
+            }
+            if (!mCudaBatch) { mCudaBatch = mDevice.mCudaContext->CreateBatch(); Retain(mCudaBatch); }
+            CommitBarriers();
+            D3D12_RESOURCE_BARRIER Barrier{};
+            Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+            mCommandList->ResourceBarrier(1, &Barrier);
+            // Capture stays on this graphics queue. Barriers bracket access to the
+            // shared allocation; retaining the batch ties CUDA objects to fence retirement.
+            const auto Status = mCudaBatch->Record(mCommandList.Get(), Kernels, Arguments);
+            mCommandList->ResourceBarrier(1, &Barrier);
+            // CUDA can change native compute bindings; force the next RHI bind to restore them.
+            mBoundComputePipeline = nullptr;
+            mBoundGraphicsPipeline = nullptr;
+            return Status;
+        }
+
         FArdaRHIStatus FArdaD3D12CommandList::Open()
         {
             if (mbOpen) return FArdaRHIStatus::Error(
@@ -4504,6 +4605,7 @@ namespace arda::backend
             mUploadResources.clear();
             mCommandSignatures.clear();
             mRetainedObjects.clear();
+            mCudaBatch.reset();
             mTimerQueries.clear();
             mTextureStates.clear();
             mBufferStates.clear();
@@ -6992,8 +7094,11 @@ namespace arda::backend
                         "Failed to query the D3D12 queue timestamp frequency.",
                         FrequencyResult));
             }
+            if (Native->mCudaBatch)
+                if (auto Status = Native->mCudaBatch->ValidateSubmit(); !Status) return Fail<uint64_t>(Status);
             ID3D12CommandList* Lists[] = { Native->GetSubmitList() };
             Queue->ExecuteCommandLists(1, Lists);
+            if (Native->mCudaBatch) Native->mCudaBatch->MarkSubmitted();
             const size_t QueueIndex = GetArdaRHIQueueIndex(QueueType);
             const uint64_t QueueValue = mQueueFenceValues[QueueIndex].fetch_add(
                 1, std::memory_order_relaxed) + 1;
@@ -7494,7 +7599,7 @@ namespace arda::backend
                     if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&Debug))))
                     {
                         mError = "D3D12 validation was requested but the debug layer is unavailable.";
-                        return EArdaInitializeResult::Failure;
+                        return EArdaInitializeResult::ValidationUnavailable;
                     }
                     Debug->EnableDebugLayer();
                     char GpuValidation[2]{};
@@ -7505,7 +7610,7 @@ namespace arda::backend
                         if (FAILED(Debug.As(&Debug1)))
                         {
                             mError = "D3D12 GPU validation was requested but ID3D12Debug1 is unavailable.";
-                            return EArdaInitializeResult::Failure;
+                            return EArdaInitializeResult::ValidationUnavailable;
                         }
                         Debug1->SetEnableGPUBasedValidation(TRUE);
                     }

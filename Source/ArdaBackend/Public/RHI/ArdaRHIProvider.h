@@ -16,6 +16,7 @@ namespace arda::rhi::provider
     public:
         virtual ~IArdaProviderObject() = default;
         [[nodiscard]] virtual const void* GetIdentity() const noexcept = 0;
+        [[nodiscard]] virtual FArdaCudaResourceInfo GetCudaResourceInfo() const noexcept { return {}; }
         [[nodiscard]] virtual uint32_t GetDescriptorBaseIndex() const noexcept
         {
             return 0;
@@ -29,6 +30,15 @@ namespace arda::rhi::provider
 
     using FArdaProviderObjectRef = eastl::shared_ptr<IArdaProviderObject>;
     using FArdaProviderObjectResult = TArdaRHIResult<FArdaProviderObjectRef>;
+
+    struct FArdaProviderCudaBinding
+    {
+        FArdaProviderObjectRef mObject;
+        EArdaComputeAccess mAccess = EArdaComputeAccess::Read;
+        EArdaComputeBindingType mType = EArdaComputeBindingType::Buffer;
+        FArdaRHIBufferRange mBufferRange;
+        uint32_t mMipLevel = 0;
+    };
 
     struct FArdaProviderLifetimeStats
     {
@@ -202,6 +212,12 @@ namespace arda::rhi::provider
     class IArdaProviderCommandList
     {
     public:
+        virtual FArdaRHIStatus DispatchCuda(
+            const eastl::vector<FArdaProviderCudaBinding>&,
+            const eastl::vector<FArdaCudaKernel>&)
+        { return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Native CUDA recording is unavailable."); }
+        /** Native recording state, queried before CUDA transitions are emitted. */
+        [[nodiscard]] virtual bool IsOpen() const noexcept { return false; }
         virtual ~IArdaProviderCommandList() = default;
         virtual FArdaRHIStatus Open() = 0;
         virtual FArdaRHIStatus Close() = 0;
@@ -484,6 +500,7 @@ namespace arda::rhi::provider
     class IArdaRHIProviderDevice
     {
     public:
+        [[nodiscard]] virtual FArdaCudaCapabilities GetCudaCapabilities() const { return {}; }
         virtual ~IArdaRHIProviderDevice() = default;
         [[nodiscard]] virtual const FArdaRHICapabilities& GetCapabilities() const noexcept = 0;
         [[nodiscard]] virtual EArdaRHINativeResourceType GetTextureImportType() const noexcept = 0;

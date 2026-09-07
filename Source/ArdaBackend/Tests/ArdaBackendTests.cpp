@@ -1,3 +1,4 @@
+#include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
 #include "ArdaBackendProvider.h"
 #include "ArdaExternalInterop.h"
@@ -184,6 +185,9 @@ namespace
     class FTestBackendModule final : public arda::backend::IArdaBackendModule
     {
     public:
+        arda::backend::EArdaInitializeResult mCreateResult =
+            arda::backend::EArdaInitializeResult::Failure;
+
         explicit FTestBackendModule(const char* Name)
         {
             mDescriptor.mName = Name;
@@ -205,7 +209,10 @@ namespace
             arda::backend::IArdaWindowSurface*,
             const arda::backend::IArdaExternalDeviceProvider*) override
         {
-            return {};
+            arda::backend::FArdaBackendDeviceCreateResult Result;
+            Result.mResult = mCreateResult;
+            Result.mError = "Test device initialization result";
+            return Result;
         }
 
         arda::rhi::FArdaRHIStatus ConfigureShaderCompileInvocation(
@@ -257,6 +264,32 @@ TEST(ArdaBackend, LinkableBackendRegistrySelectsStableNamedModules)
     ASSERT_TRUE(ConfigureBackend(Original));
     EXPECT_TRUE(UnregisterBackendModule(Module));
     EXPECT_EQ(FindBackendModule("test-custom-rhi"), nullptr);
+}
+
+TEST(ArdaBackend, InitializationDistinguishesMissingValidationFromDeviceFailure)
+{
+    using namespace arda::backend;
+    ShutdownBackend();
+    const FArdaBackendConfiguration Original = GetBackendConfiguration();
+    FTestBackendModule Module("test-initialization-result");
+    ASSERT_TRUE(RegisterBackendModule(Module));
+    FArdaBackendConfiguration Configuration;
+    Configuration.mBackendName = Module.GetDescriptor().mName;
+    Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+    EXPECT_TRUE(ConfigureBackend(Configuration));
+
+    for (const auto Result : { EArdaInitializeResult::ValidationUnavailable,
+            EArdaInitializeResult::Failure, EArdaInitializeResult::Unavailable })
+    {
+        Module.mCreateResult = Result;
+        EXPECT_FALSE(InitializeBackend());
+        EXPECT_EQ(GetBackendInitializeResult(), Result);
+        EXPECT_STREQ(GetBackendError().c_str(), "Test device initialization result");
+        EXPECT_FALSE(GetDevice());
+    }
+
+    EXPECT_TRUE(ConfigureBackend(Original));
+    EXPECT_TRUE(UnregisterBackendModule(Module));
 }
 
 TEST(ArdaBackend, NativeApisAreRegisteredAsSeparateBackendModules)
@@ -613,7 +646,7 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
     Configuration.mDeviceSource = EArdaDeviceSource::ExternalProvider;
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureBackend(Configuration));
-    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 
     EXPECT_EQ(GetBackendConfiguration().mBackendName, "native-d3d12");
     EXPECT_EQ(
@@ -1123,7 +1156,7 @@ TEST(ArdaBackend, D3D12ValidationInitializationAllowsDxgiDebugFallback)
     Configuration.mbEnableValidation = true;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
     ASSERT_TRUE(ConfigureBackend(Configuration));
-    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
     ASSERT_TRUE(GetDevice());
 }
 #endif
@@ -1146,7 +1179,7 @@ TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
         Configuration.mbEnableValidation = false;
         Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend())
+        ARDA_REQUIRE_BACKEND()
             << Module.mName.c_str() << ": " << GetBackendError().c_str();
         ++TestedBackends;
 
@@ -1406,7 +1439,7 @@ TEST(ArdaBackend, NativeHostDeviceCopiesSupportBlockingAndAsyncReadback)
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend())
+        ARDA_REQUIRE_BACKEND()
             << Module.mName.c_str() << ": " << GetBackendError().c_str();
         ++TestedBackends;
 
@@ -1519,7 +1552,7 @@ TEST(ArdaBackend, VulkanMergesStageLayoutsThatShareARegisterSpace)
     Configuration.mMessageCallback = &Diagnostics;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
     ASSERT_TRUE(ConfigureBackend(Configuration));
-    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
     FArdaRHIDeviceRef Device = GetDevice();
     ASSERT_TRUE(Device);
     Device->TrimDescriptorCaches();
@@ -1669,7 +1702,7 @@ TEST(ArdaBackend, VulkanPreservesPerMipLayoutsAcrossClearAndCompute)
     Configuration.mMessageCallback = &Diagnostics;
     Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
     ASSERT_TRUE(ConfigureBackend(Configuration));
-    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
     FArdaRHIDeviceRef Device = GetDevice();
     ASSERT_TRUE(Device);
 

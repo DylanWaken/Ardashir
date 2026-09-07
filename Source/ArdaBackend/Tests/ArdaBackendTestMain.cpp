@@ -41,6 +41,10 @@ namespace
                 "ArdaBackendTestCompute", StructSource.c_str(),
                 "ArdaShaderStructTest", "ShaderStructTestCS",
                 Stage::Compute, nullptr);
+            const auto CudaFallbackSource = (SourceDirectory / "ArdaCudaFallback.hlsl").string();
+            FArdaShaderTypeRegistration CudaFallback(
+                "ArdaCudaFallback", CudaFallbackSource.c_str(), "ArdaCudaFallback",
+                "AddFallbackCS", Stage::Compute, nullptr);
             FArdaShaderTypeRegistration ResourceCollection(
                 "ArdaResourceCollection", StructSource.c_str(),
                 "ArdaResourceCollection", "ResourceCollectionCS", Stage::Compute, nullptr);

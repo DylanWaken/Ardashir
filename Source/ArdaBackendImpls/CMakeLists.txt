@@ -1,6 +1,19 @@
 set(ARDA_BACKEND_PUBLIC_DIR
     "${PROJECT_SOURCE_DIR}/Source/ArdaBackend/Public")
 
+add_library(ArdaBackendCuda STATIC Cuda/ArdaCudaInterop.cpp)
+target_compile_features(ArdaBackendCuda PUBLIC cxx_std_17)
+target_link_libraries(ArdaBackendCuda PRIVATE Ardashir::ArdaBackend)
+target_compile_definitions(ArdaBackendCuda PRIVATE $<$<BOOL:${WIN32}>:NOMINMAX> $<$<BOOL:${WIN32}>:WIN32_LEAN_AND_MEAN>)
+set_target_properties(ArdaBackendCuda PROPERTIES FOLDER "Ardashir/Backends")
+if(ARDASHIR_ENABLE_CUDA)
+    if(WIN32 AND NOT EXISTS "${ARDASHIR_CUDA_INCLUDE_DIR}/cuda.h")
+        message(FATAL_ERROR "Set ARDASHIR_CUDA_INCLUDE_DIR to the CUDA 13.3+ SDK include directory for CiG.")
+    endif()
+    target_include_directories(ArdaBackendCuda PRIVATE "${ARDASHIR_CUDA_INCLUDE_DIR}")
+    target_compile_definitions(ArdaBackendCuda PUBLIC ARDA_ENABLE_CUDA=1)
+endif()
+
 set(ARDA_NATIVE_LINKED_TARGETS ${ARDASHIR_BACKEND_MODULE_TARGETS})
 set(ARDA_NATIVE_LINKED_FUNCTIONS ${ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS})
 
@@ -12,7 +25,7 @@ if(ARDASHIR_BACKEND_VULKAN)
     target_include_directories(ArdaBackendVulkan PRIVATE
         "${ARDA_BACKEND_PUBLIC_DIR}")
     target_link_libraries(ArdaBackendVulkan
-        PRIVATE Ardashir::ArdaBackend ${CMAKE_DL_LIBS})
+        PRIVATE Ardashir::ArdaBackend ArdaBackendCuda ${CMAKE_DL_LIBS})
     if(TARGET Vulkan::Headers)
         target_link_libraries(ArdaBackendVulkan PRIVATE Vulkan::Headers)
     elseif(TARGET Vulkan-Headers)
@@ -37,7 +50,7 @@ if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         "${ARDASHIR_D3D12_AGILITY_INCLUDE_DIR}"
         "${ARDA_BACKEND_PUBLIC_DIR}")
     target_link_libraries(ArdaBackendD3D12
-        PRIVATE Ardashir::ArdaBackend d3d12 dxgi dxguid)
+        PRIVATE Ardashir::ArdaBackend ArdaBackendCuda d3d12 dxgi dxguid)
     set_target_properties(ArdaBackendD3D12 PROPERTIES
         FOLDER "Ardashir/Backends")
     list(APPEND ARDA_NATIVE_LINKED_TARGETS Ardashir::ArdaBackendD3D12)

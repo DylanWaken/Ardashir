@@ -1,0 +1,608 @@
+{
+  "resources": {
+    "Device": "resource-recipes.html#resource-device",
+    "Texture": "resource-recipes.html#resource-texture",
+    "TextureReference": "resource-recipes.html#resource-texturereference",
+    "Buffer": "resource-recipes.html#resource-buffer",
+    "UniformBuffer": "resource-recipes.html#resource-uniformbuffer",
+    "Heap": "resource-recipes.html#resource-heap",
+    "StagingTexture": "resource-recipes.html#resource-stagingtexture",
+    "EventQuery": "resource-recipes.html#resource-eventquery",
+    "TimerQuery": "resource-recipes.html#resource-timerquery",
+    "GpuFence": "resource-recipes.html#resource-gpufence",
+    "ShaderResourceView": "resource-recipes.html#resource-shaderresourceview",
+    "UnorderedAccessView": "resource-recipes.html#resource-unorderedaccessview",
+    "Sampler": "resource-recipes.html#resource-sampler",
+    "Shader": "resource-recipes.html#resource-shader",
+    "ShaderLibrary": "resource-recipes.html#resource-shaderlibrary",
+    "InputLayout": "resource-recipes.html#resource-inputlayout",
+    "BindingLayout": "resource-recipes.html#resource-bindinglayout",
+    "BindingSet": "resource-recipes.html#resource-bindingset",
+    "DescriptorTable": "resource-recipes.html#resource-descriptortable",
+    "ResourceCollection": "resource-recipes.html#resource-resourcecollection",
+    "Framebuffer": "resource-recipes.html#resource-framebuffer",
+    "GraphicsPipeline": "resource-recipes.html#resource-graphicspipeline",
+    "ComputePipeline": "resource-recipes.html#resource-computepipeline",
+    "MeshletPipeline": "resource-recipes.html#resource-meshletpipeline",
+    "AccelStruct": "resource-recipes.html#resource-accelstruct",
+    "RayTracingPipeline": "resource-recipes.html#resource-raytracingpipeline",
+    "ShaderTable": "resource-recipes.html#resource-shadertable",
+    "WorkGraphPipeline": "resource-recipes.html#resource-workgraphpipeline",
+    "ShaderBundle": "resource-recipes.html#resource-shaderbundle",
+    "SamplerFeedbackTexture": "resource-recipes.html#resource-samplerfeedbacktexture",
+    "OpacityMicromap": "resource-recipes.html#resource-opacitymicromap",
+    "RasterState": "resource-recipes.html#resource-rasterstate",
+    "BlendState": "resource-recipes.html#resource-blendstate",
+    "DepthStencilState": "resource-recipes.html#resource-depthstencilstate",
+    "CommandList": "resource-recipes.html#resource-commandlist"
+  },
+  "capabilities": {
+    "RayTracingInfrastructure": {
+      "name": "RayTracingInfrastructure",
+      "expression": "C.mRayTracing.mbInfrastructure",
+      "probe": "RayTracingPipeline",
+      "page": "capability-recipes.html#feature-raytracingpipeline",
+      "example": "gpu-examples.html#VerifyRayTracingPipelineCapabilityAndExecution"
+    },
+    "RayTracingPipelineShaders": {
+      "name": "RayTracingPipelineShaders",
+      "expression": "C.mRayTracing.mbPipelineShaders",
+      "probe": "RayTracingPipeline",
+      "page": "capability-recipes.html#feature-raytracingpipeline",
+      "example": "gpu-examples.html#VerifyRayTracingPipelineCapabilityAndExecution"
+    },
+    "RayShaderIdentifierSize": {
+      "name": "RayShaderIdentifierSize",
+      "expression": "C.mRayTracing.mShaderIdentifierSize > 0",
+      "probe": "RayTracingPipeline",
+      "page": "capability-recipes.html#feature-raytracingpipeline",
+      "example": "gpu-examples.html#VerifyRayTracingPipelineCapabilityAndExecution"
+    },
+    "RayShaderRecordAlignment": {
+      "name": "RayShaderRecordAlignment",
+      "expression": "C.mRayTracing.mShaderRecordAlignment > 0",
+      "probe": "RayTracingPipeline",
+      "page": "capability-recipes.html#feature-raytracingpipeline",
+      "example": "gpu-examples.html#VerifyRayTracingPipelineCapabilityAndExecution"
+    },
+    "RayShaderTableAlignment": {
+      "name": "RayShaderTableAlignment",
+      "expression": "C.mRayTracing.mShaderTableAlignment > 0",
+      "probe": "RayTracingPipeline",
+      "page": "capability-recipes.html#feature-raytracingpipeline",
+      "example": "gpu-examples.html#VerifyRayTracingPipelineCapabilityAndExecution"
+    },
+    "MaximumRayRecursionDepth": {
+      "name": "MaximumRayRecursionDepth",
+      "expression": "C.mRayTracing.mMaxRecursionDepth > 0",
+      "probe": "RayTracingPipeline",
+      "page": "capability-recipes.html#feature-raytracingpipeline",
+      "example": "gpu-examples.html#VerifyRayTracingPipelineCapabilityAndExecution"
+    },
+    "MaximumRayPayloadSize": {
+      "name": "MaximumRayPayloadSize",
+      "expression": "C.mRayTracing.mMaxRayPayloadSize > 0",
+      "probe": "RayTracingPipeline",
+      "page": "capability-recipes.html#feature-raytracingpipeline",
+      "example": "gpu-examples.html#VerifyRayTracingPipelineCapabilityAndExecution"
+    },
+    "MaximumRayDispatchInvocations": {
+      "name": "MaximumRayDispatchInvocations",
+      "expression": "C.mRayTracing.mMaxRayDispatchInvocations > 0",
+      "probe": "RayTracingPipeline",
+      "page": "capability-recipes.html#feature-raytracingpipeline",
+      "example": "gpu-examples.html#VerifyRayTracingPipelineCapabilityAndExecution"
+    },
+    "HardwareRayTracing": {
+      "name": "HardwareRayTracing",
+      "expression": "C.mRayTracing.mbHardwareAccelerated",
+      "probe": "AccelerationStructure",
+      "page": "capability-recipes.html#feature-accelerationstructure",
+      "example": "gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity"
+    },
+    "AccelerationStructures": {
+      "name": "AccelerationStructures",
+      "expression": "C.mRayTracing.mbAccelerationStructures",
+      "probe": "AccelerationStructure",
+      "page": "capability-recipes.html#feature-accelerationstructure",
+      "example": "gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity"
+    },
+    "BottomLevelAccelerationStructures": {
+      "name": "BottomLevelAccelerationStructures",
+      "expression": "C.mRayTracing.mbBottomLevel",
+      "probe": "AccelerationStructure",
+      "page": "capability-recipes.html#feature-accelerationstructure",
+      "example": "gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity"
+    },
+    "TopLevelAccelerationStructures": {
+      "name": "TopLevelAccelerationStructures",
+      "expression": "C.mRayTracing.mbTopLevel",
+      "probe": "AccelerationStructure",
+      "page": "capability-recipes.html#feature-accelerationstructure",
+      "example": "gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity"
+    },
+    "AccelerationStructureBuildUpdate": {
+      "name": "AccelerationStructureBuildUpdate",
+      "expression": "C.mRayTracing.mbBuildUpdate",
+      "probe": "AccelerationStructure",
+      "page": "capability-recipes.html#feature-accelerationstructure",
+      "example": "gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity"
+    },
+    "AccelerationStructureCompaction": {
+      "name": "AccelerationStructureCompaction",
+      "expression": "C.mRayTracing.mbCompaction",
+      "probe": "AccelerationStructure",
+      "page": "capability-recipes.html#feature-accelerationstructure",
+      "example": "gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity"
+    },
+    "IndirectTopLevelBuild": {
+      "name": "IndirectTopLevelBuild",
+      "expression": "C.mRayTracing.mbIndirectTopLevelBuild",
+      "probe": "AccelerationStructure",
+      "page": "capability-recipes.html#feature-accelerationstructure",
+      "example": "gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity"
+    },
+    "RayTracingTier": {
+      "name": "RayTracingTier",
+      "expression": "C.mRayTracing.GetTier() != arda::rhi::EArdaRHIRayTracingTier::None",
+      "probe": "AccelerationStructure",
+      "page": "capability-recipes.html#feature-accelerationstructure",
+      "example": "gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity"
+    },
+    "AccelerationStructureAlignment": {
+      "name": "AccelerationStructureAlignment",
+      "expression": "C.mRayTracing.mAccelerationStructureAlignment > 0",
+      "probe": "AccelerationStructure",
+      "page": "capability-recipes.html#feature-accelerationstructure",
+      "example": "gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity"
+    },
+    "InlineRayQueries": {
+      "name": "InlineRayQueries",
+      "expression": "C.mRayTracing.mbInlineRayQueries",
+      "probe": "InlineRayQuery",
+      "page": "capability-recipes.html#feature-inlinerayquery",
+      "example": "gpu-examples.html#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect"
+    },
+    "IndirectRayDispatch": {
+      "name": "IndirectRayDispatch",
+      "expression": "C.mRayTracing.mbIndirectDispatch",
+      "probe": "RayTracingScene",
+      "page": "capability-recipes.html#feature-raytracingscene",
+      "example": "gpu-examples.html#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect"
+    },
+    "LocalShaderTableArguments": {
+      "name": "LocalShaderTableArguments",
+      "expression": "C.mRayTracing.mbLocalShaderTableArguments",
+      "probe": "RayTracingScene",
+      "page": "capability-recipes.html#feature-raytracingscene",
+      "example": "gpu-examples.html#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect"
+    },
+    "PersistentShaderTables": {
+      "name": "PersistentShaderTables",
+      "expression": "C.mRayTracing.mbPersistentShaderTables",
+      "probe": "RayTracingScene",
+      "page": "capability-recipes.html#feature-raytracingscene",
+      "example": "gpu-examples.html#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect"
+    },
+    "OpacityMicromaps": {
+      "name": "OpacityMicromaps",
+      "expression": "C.mRayTracing.mbOpacityMicromaps",
+      "probe": "OpacityMicromap",
+      "page": "capability-recipes.html#feature-opacitymicromap",
+      "example": "gpu-examples.html#VerifyVulkanOpacityMicromapLifecycleAndStateParity"
+    },
+    "BindlessDescriptors": {
+      "name": "BindlessDescriptors",
+      "expression": "C.mDescriptors.mbBindless",
+      "probe": "Bindless",
+      "page": "capability-recipes.html#feature-bindless",
+      "example": "gpu-examples.html#VerifyBindlessDescriptorTable"
+    },
+    "DescriptorHeap": {
+      "name": "DescriptorHeap",
+      "expression": "C.mDescriptors.mbDescriptorHeap",
+      "probe": "Bindless",
+      "page": "capability-recipes.html#feature-bindless",
+      "example": "gpu-examples.html#VerifyBindlessDescriptorTable"
+    },
+    "MaximumResourceDescriptors": {
+      "name": "MaximumResourceDescriptors",
+      "expression": "C.mDescriptors.mMaxResourceDescriptors > 0",
+      "probe": "Bindless",
+      "page": "capability-recipes.html#feature-bindless",
+      "example": "gpu-examples.html#VerifyBindlessDescriptorTable"
+    },
+    "MaximumSamplerDescriptors": {
+      "name": "MaximumSamplerDescriptors",
+      "expression": "C.mDescriptors.mMaxSamplerDescriptors > 0",
+      "probe": "Bindless",
+      "page": "capability-recipes.html#feature-bindless",
+      "example": "gpu-examples.html#VerifyBindlessDescriptorTable"
+    },
+    "RuntimeDescriptorArrays": {
+      "name": "RuntimeDescriptorArrays",
+      "expression": "C.mDescriptors.mbRuntimeDescriptorArrays",
+      "probe": "RuntimeDescriptors",
+      "page": "capability-recipes.html#feature-runtimedescriptors",
+      "example": "gpu-examples.html#VerifyRuntimeDescriptorVersions"
+    },
+    "UnboundedDescriptorArrays": {
+      "name": "UnboundedDescriptorArrays",
+      "expression": "C.mDescriptors.mbUnboundedArrays",
+      "probe": "RuntimeDescriptors",
+      "page": "capability-recipes.html#feature-runtimedescriptors",
+      "example": "gpu-examples.html#VerifyRuntimeDescriptorVersions"
+    },
+    "PartiallyBoundDescriptors": {
+      "name": "PartiallyBoundDescriptors",
+      "expression": "C.mDescriptors.mbPartiallyBound",
+      "probe": "RuntimeDescriptors",
+      "page": "capability-recipes.html#feature-runtimedescriptors",
+      "example": "gpu-examples.html#VerifyRuntimeDescriptorVersions"
+    },
+    "DescriptorUpdateAfterBind": {
+      "name": "DescriptorUpdateAfterBind",
+      "expression": "C.mDescriptors.mbUpdateAfterBind",
+      "probe": "RuntimeDescriptors",
+      "page": "capability-recipes.html#feature-runtimedescriptors",
+      "example": "gpu-examples.html#VerifyRuntimeDescriptorVersions"
+    },
+    "UpdateUnusedDescriptorsWhilePending": {
+      "name": "UpdateUnusedDescriptorsWhilePending",
+      "expression": "C.mDescriptors.mbUpdateUnusedWhilePending",
+      "probe": "RuntimeDescriptors",
+      "page": "capability-recipes.html#feature-runtimedescriptors",
+      "example": "gpu-examples.html#VerifyRuntimeDescriptorVersions"
+    },
+    "VariableDescriptorCount": {
+      "name": "VariableDescriptorCount",
+      "expression": "C.mDescriptors.mbVariableDescriptorCount",
+      "probe": "ExpandedDescriptors",
+      "page": "capability-recipes.html#feature-expandeddescriptors",
+      "example": "gpu-examples.html#VerifyExpandedDescriptorsAndResourceCollections"
+    },
+    "ResourceCollections": {
+      "name": "ResourceCollections",
+      "expression": "C.mbResourceCollections",
+      "probe": "ExpandedDescriptors",
+      "page": "capability-recipes.html#feature-expandeddescriptors",
+      "example": "gpu-examples.html#VerifyExpandedDescriptorsAndResourceCollections"
+    },
+    "DirectResourceHeapIndexing": {
+      "name": "DirectResourceHeapIndexing",
+      "expression": "C.mDescriptors.mbDirectResourceHeapIndexing",
+      "probe": "DirectResourceHeap",
+      "page": "capability-recipes.html#feature-directresourceheap",
+      "example": "gpu-examples.html#VerifyBindlessDescriptorTable"
+    },
+    "DirectSamplerHeapIndexing": {
+      "name": "DirectSamplerHeapIndexing",
+      "expression": "C.mDescriptors.mbDirectSamplerHeapIndexing",
+      "probe": "DirectResourceAndSamplerHeaps",
+      "page": "capability-recipes.html#feature-directresourceandsamplerheaps",
+      "example": "gpu-examples.html#VerifyDirectResourceAndSamplerHeapIndexing"
+    },
+    "DescriptorBuffer": {
+      "name": "DescriptorBuffer",
+      "expression": "C.mDescriptors.mbDescriptorBuffer",
+      "probe": "DescriptorBuffer",
+      "page": "capability-recipes.html#feature-descriptorbuffer",
+      "example": "gpu-examples.html#VerifyBindlessDescriptorTable"
+    },
+    "GraphicsQueue": {
+      "name": "GraphicsQueue",
+      "expression": "C.mQueues.mbGraphics",
+      "probe": "QueueBreadth",
+      "page": "capability-recipes.html#feature-queuebreadth",
+      "example": "gpu-examples.html#VerifyQueueBreadth"
+    },
+    "ComputeQueue": {
+      "name": "ComputeQueue",
+      "expression": "C.mQueues.mbCompute",
+      "probe": "QueueBreadth",
+      "page": "capability-recipes.html#feature-queuebreadth",
+      "example": "gpu-examples.html#VerifyQueueBreadth"
+    },
+    "CopyQueue": {
+      "name": "CopyQueue",
+      "expression": "C.mQueues.mbCopy",
+      "probe": "QueueBreadth",
+      "page": "capability-recipes.html#feature-queuebreadth",
+      "example": "gpu-examples.html#VerifyQueueBreadth"
+    },
+    "DedicatedComputeQueueFamily": {
+      "name": "DedicatedComputeQueueFamily",
+      "expression": "C.mQueues.mbDedicatedComputeFamily",
+      "probe": "QueueBreadth",
+      "page": "capability-recipes.html#feature-queuebreadth",
+      "example": "gpu-examples.html#VerifyQueueBreadth"
+    },
+    "DedicatedCopyQueueFamily": {
+      "name": "DedicatedCopyQueueFamily",
+      "expression": "C.mQueues.mbDedicatedCopyFamily",
+      "probe": "QueueBreadth",
+      "page": "capability-recipes.html#feature-queuebreadth",
+      "example": "gpu-examples.html#VerifyQueueBreadth"
+    },
+    "GpuQueueWaits": {
+      "name": "GpuQueueWaits",
+      "expression": "C.mQueues.mbGpuWaits",
+      "probe": "QueueBreadth",
+      "page": "capability-recipes.html#feature-queuebreadth",
+      "example": "gpu-examples.html#VerifyQueueBreadth"
+    },
+    "TimelineSynchronization": {
+      "name": "TimelineSynchronization",
+      "expression": "C.mQueues.mbTimelineSynchronization",
+      "probe": "QueueBreadth",
+      "page": "capability-recipes.html#feature-queuebreadth",
+      "example": "gpu-examples.html#VerifyQueueBreadth"
+    },
+    "QueueFamilyOwnershipTransfer": {
+      "name": "QueueFamilyOwnershipTransfer",
+      "expression": "C.mQueues.mbQueueFamilyOwnershipTransfer",
+      "probe": "QueueBreadth",
+      "page": "capability-recipes.html#feature-queuebreadth",
+      "example": "gpu-examples.html#VerifyQueueBreadth"
+    },
+    "GraphicsQueueFamilyIndex": {
+      "name": "GraphicsQueueFamilyIndex",
+      "expression": "C.mQueues.mGraphicsFamily != arda::rhi::ArdaRHIInvalidQueueFamily",
+      "probe": "QueueBreadth",
+      "page": "capability-recipes.html#feature-queuebreadth",
+      "example": "gpu-examples.html#VerifyQueueBreadth"
+    },
+    "ComputeQueueFamilyIndex": {
+      "name": "ComputeQueueFamilyIndex",
+      "expression": "C.mQueues.mComputeFamily != arda::rhi::ArdaRHIInvalidQueueFamily",
+      "probe": "QueueBreadth",
+      "page": "capability-recipes.html#feature-queuebreadth",
+      "example": "gpu-examples.html#VerifyQueueBreadth"
+    },
+    "CopyQueueFamilyIndex": {
+      "name": "CopyQueueFamilyIndex",
+      "expression": "C.mQueues.mCopyFamily != arda::rhi::ArdaRHIInvalidQueueFamily",
+      "probe": "QueueBreadth",
+      "page": "capability-recipes.html#feature-queuebreadth",
+      "example": "gpu-examples.html#VerifyQueueBreadth"
+    },
+    "SparseBindingQueue": {
+      "name": "SparseBindingQueue",
+      "expression": "C.mQueues.mbSparseBindingQueue",
+      "probe": "SparseResidency",
+      "page": "capability-recipes.html#feature-sparseresidency",
+      "example": "gpu-examples.html#VerifySparseResidencyAndStreamingBudget"
+    },
+    "SparseBinding": {
+      "name": "SparseBinding",
+      "expression": "C.mResidency.mbSparseBinding",
+      "probe": "SparseResidency",
+      "page": "capability-recipes.html#feature-sparseresidency",
+      "example": "gpu-examples.html#VerifySparseResidencyAndStreamingBudget"
+    },
+    "ReservedBuffers": {
+      "name": "ReservedBuffers",
+      "expression": "C.mResidency.mbReservedBuffers",
+      "probe": "SparseResidency",
+      "page": "capability-recipes.html#feature-sparseresidency",
+      "example": "gpu-examples.html#VerifySparseResidencyAndStreamingBudget"
+    },
+    "ReservedTexture2D": {
+      "name": "ReservedTexture2D",
+      "expression": "C.mResidency.mbReservedTexture2D",
+      "probe": "SparseResidency",
+      "page": "capability-recipes.html#feature-sparseresidency",
+      "example": "gpu-examples.html#VerifySparseResidencyAndStreamingBudget"
+    },
+    "ReservedTexture3D": {
+      "name": "ReservedTexture3D",
+      "expression": "C.mResidency.mbReservedTexture3D",
+      "probe": "SparseResidency",
+      "page": "capability-recipes.html#feature-sparseresidency",
+      "example": "gpu-examples.html#VerifySparseResidencyAndStreamingBudget"
+    },
+    "AliasedSparseMappings": {
+      "name": "AliasedSparseMappings",
+      "expression": "C.mResidency.mbAliasedMappings",
+      "probe": "SparseResidency",
+      "page": "capability-recipes.html#feature-sparseresidency",
+      "example": "gpu-examples.html#VerifySparseResidencyAndStreamingBudget"
+    },
+    "SparseTileSize": {
+      "name": "SparseTileSize",
+      "expression": "C.mResidency.mTileSizeInBytes > 0",
+      "probe": "SparseResidency",
+      "page": "capability-recipes.html#feature-sparseresidency",
+      "example": "gpu-examples.html#VerifySparseResidencyAndStreamingBudget"
+    },
+    "StreamingBudget": {
+      "name": "StreamingBudget",
+      "expression": "C.mResidency.mbStreamingBudget",
+      "probe": "StreamingBudget",
+      "page": "capability-recipes.html#feature-streamingbudget",
+      "example": "gpu-examples.html#VerifyStreamingBudgetExecution"
+    },
+    "StreamingBudgetReservation": {
+      "name": "StreamingBudgetReservation",
+      "expression": "C.mResidency.mbBudgetReservation",
+      "probe": "StreamingBudget",
+      "page": "capability-recipes.html#feature-streamingbudget",
+      "example": "gpu-examples.html#VerifyStreamingBudgetExecution"
+    },
+    "SubgroupOperations": {
+      "name": "SubgroupOperations",
+      "expression": "C.mMachineLearning.mbSubgroupOperations",
+      "probe": "Subgroup",
+      "page": "capability-recipes.html#feature-subgroup",
+      "example": "gpu-examples.html#VerifyComputeArithmetic"
+    },
+    "MinimumSubgroupSize": {
+      "name": "MinimumSubgroupSize",
+      "expression": "C.mMachineLearning.mSubgroupMinSize > 0",
+      "probe": "Subgroup",
+      "page": "capability-recipes.html#feature-subgroup",
+      "example": "gpu-examples.html#VerifyComputeArithmetic"
+    },
+    "MaximumSubgroupSize": {
+      "name": "MaximumSubgroupSize",
+      "expression": "C.mMachineLearning.mSubgroupMaxSize > 0",
+      "probe": "Subgroup",
+      "page": "capability-recipes.html#feature-subgroup",
+      "example": "gpu-examples.html#VerifyComputeArithmetic"
+    },
+    "NativeFloat16": {
+      "name": "NativeFloat16",
+      "expression": "C.mMachineLearning.mbNativeFloat16",
+      "probe": "Float16",
+      "page": "capability-recipes.html#feature-float16",
+      "example": "gpu-examples.html#VerifyComputeArithmetic"
+    },
+    "NativeInt8": {
+      "name": "NativeInt8",
+      "expression": "C.mMachineLearning.mbNativeInt8",
+      "probe": "Int8",
+      "page": "capability-recipes.html#feature-int8",
+      "example": "gpu-examples.html#VerifyComputeArithmetic"
+    },
+    "BufferDeviceAddress": {
+      "name": "BufferDeviceAddress",
+      "expression": "C.mMachineLearning.mbBufferDeviceAddress",
+      "probe": "InstanceBuffer",
+      "page": "capability-recipes.html#feature-instancebuffer",
+      "example": "gpu-examples.html#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect"
+    },
+    "MeshShaders": {
+      "name": "MeshShaders",
+      "expression": "C.mMeshShaderTier != arda::rhi::EArdaRHIMeshShaderTier::None",
+      "probe": "MeshShader",
+      "page": "capability-recipes.html#feature-meshshader",
+      "example": "gpu-examples.html#VerifyMeshPipelineCapabilityAndExecution"
+    },
+    "WorkGraphs": {
+      "name": "WorkGraphs",
+      "expression": "C.mWorkGraphTier != arda::rhi::EArdaRHIWorkGraphTier::None",
+      "probe": "WorkGraph",
+      "page": "capability-recipes.html#feature-workgraph",
+      "example": "gpu-examples.html#VerifyD3D12WorkGraphExecution"
+    },
+    "SamplerFeedback": {
+      "name": "SamplerFeedback",
+      "expression": "C.mSamplerFeedbackTier != arda::rhi::EArdaRHISamplerFeedbackTier::None",
+      "probe": "SamplerFeedback",
+      "page": "capability-recipes.html#feature-samplerfeedback",
+      "example": "gpu-examples.html#VerifySamplerFeedbackStateParity"
+    },
+    "ShaderBundleDispatch": {
+      "name": "ShaderBundleDispatch",
+      "expression": "C.mbShaderBundleDispatch",
+      "probe": "ShaderBundle",
+      "page": "capability-recipes.html#feature-shaderbundle",
+      "example": "gpu-examples.html#VerifyShaderBundleExecution"
+    },
+    "CustomPresent": {
+      "name": "CustomPresent",
+      "expression": "C.mbCustomPresent",
+      "probe": "CustomPresent",
+      "page": "capability-recipes.html#feature-custompresent",
+      "example": "gpu-examples.html#VerifyD3D12CustomPresentExecution"
+    },
+    "ConservativeRasterization": {
+      "name": "ConservativeRasterization",
+      "expression": "C.mbConservativeRasterization",
+      "probe": "Contract",
+      "page": "capability-recipes.html#feature-contract",
+      "example": "gpu-examples.html#VerifyCapabilityInvariants"
+    },
+    "VariableRateShading": {
+      "name": "VariableRateShading",
+      "expression": "C.mbVariableRateShading",
+      "probe": "Contract",
+      "page": "capability-recipes.html#feature-contract",
+      "example": "gpu-examples.html#VerifyCapabilityInvariants"
+    },
+    "VirtualResources": {
+      "name": "VirtualResources",
+      "expression": "C.mbVirtualResources",
+      "probe": "HeapAliasing",
+      "page": "capability-recipes.html#feature-heapaliasing",
+      "example": "gpu-examples.html#VerifyExplicitHeapAliasing"
+    },
+    "ExplicitHeaps": {
+      "name": "ExplicitHeaps",
+      "expression": "C.mbHeaps",
+      "probe": "HeapAliasing",
+      "page": "capability-recipes.html#feature-heapaliasing",
+      "example": "gpu-examples.html#VerifyExplicitHeapAliasing"
+    },
+    "AliasingBarriers": {
+      "name": "AliasingBarriers",
+      "expression": "C.mbAliasingBarriers",
+      "probe": "HeapAliasing",
+      "page": "capability-recipes.html#feature-heapaliasing",
+      "example": "gpu-examples.html#VerifyExplicitHeapAliasing"
+    },
+    "StagingTextures": {
+      "name": "StagingTextures",
+      "expression": "C.mbStagingTextures",
+      "probe": "ExtendedCommands",
+      "page": "capability-recipes.html#feature-extendedcommands",
+      "example": "gpu-examples.html#VerifyExtendedCommands"
+    },
+    "TextureCopies": {
+      "name": "TextureCopies",
+      "expression": "C.mbTextureCopies",
+      "probe": "ExtendedCommands",
+      "page": "capability-recipes.html#feature-extendedcommands",
+      "example": "gpu-examples.html#VerifyExtendedCommands"
+    },
+    "ExplicitTransitions": {
+      "name": "ExplicitTransitions",
+      "expression": "C.mbExplicitTransitions",
+      "probe": "ExtendedCommands",
+      "page": "capability-recipes.html#feature-extendedcommands",
+      "example": "gpu-examples.html#VerifyExtendedCommands"
+    },
+    "SplitTransitions": {
+      "name": "SplitTransitions",
+      "expression": "C.mbSplitTransitions",
+      "probe": "ExtendedCommands",
+      "page": "capability-recipes.html#feature-extendedcommands",
+      "example": "gpu-examples.html#VerifyExtendedCommands"
+    },
+    "IndirectCommands": {
+      "name": "IndirectCommands",
+      "expression": "C.mbIndirectCommands",
+      "probe": "ExtendedCommands",
+      "page": "capability-recipes.html#feature-extendedcommands",
+      "example": "gpu-examples.html#VerifyExtendedCommands"
+    },
+    "TextureResolve": {
+      "name": "TextureResolve",
+      "expression": "C.mbTextureResolve",
+      "probe": "Resolve",
+      "page": "capability-recipes.html#feature-resolve",
+      "example": "gpu-examples.html#VerifyResolveAndPlaneTracking"
+    },
+    "Queries": {
+      "name": "Queries",
+      "expression": "C.mbQueries",
+      "probe": "Queries",
+      "page": "capability-recipes.html#feature-queries",
+      "example": "gpu-examples.html#VerifyQueryExecution"
+    },
+    "ShaderLibraries": {
+      "name": "ShaderLibraries",
+      "expression": "C.mbShaderLibraries",
+      "probe": "ShaderLibrary",
+      "page": "capability-recipes.html#feature-shaderlibrary",
+      "example": "gpu-examples.html#VerifyShaderLibraryExecution"
+    },
+    "PipelineCachePersistence": {
+      "name": "PipelineCachePersistence",
+      "expression": "C.mbPipelineCachePersistence",
+      "probe": "PipelineCache",
+      "page": "capability-recipes.html#feature-pipelinecache",
+      "example": "gpu-examples.html#VerifyShaderLibraryExecution"
+    }
+  }
+}

@@ -39,6 +39,7 @@ endif()
 set_target_properties(CornellBox PROPERTIES FOLDER "Ardashir/Tests/ARDG")
 
 if(ARDASHIR_BUILD_TESTS)
+    ardashir_test_validation(CornellBox)
     set(CORNELL_BOX_GPU_TESTS)
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         add_test(

@@ -372,7 +372,8 @@ namespace arda::tests::ardg_example
                     Error,
                     "%s",
                     backend::GetBackendError().c_str());
-                return result == backend::EArdaInitializeResult::Unavailable
+                return result == backend::EArdaInitializeResult::Unavailable ||
+                    result == backend::EArdaInitializeResult::ValidationUnavailable
                     ? SkippedExitCode
                     : EXIT_FAILURE;
             }

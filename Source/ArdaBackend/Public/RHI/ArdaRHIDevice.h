@@ -6,6 +6,7 @@
 
 #include "ArdaRHICapabilities.h"
 #include "ArdaRHIResources.h"
+#include "ArdaRHICuda.h"
 
 #include <EASTL/functional.h>
 
@@ -82,6 +83,15 @@ namespace arda::rhi
     class IArdaRHICommandList : public virtual IArdaRHIResource
     {
     public:
+        /**
+         * Records ordered CUDA launches on an open list; ExecuteCommandList submits the work.
+         * Bindings must belong to this device and already have qualified CUDA representations.
+         * Providers insert memory dependencies and retain bindings/modules until completion.
+         * D3D12 CiG accepts graphics lists; Vulkan accepts graphics/compute lists. Copy lists
+         * are rejected. Capture failures are not retried as graphics work.
+         */
+        virtual FArdaRHIStatus DispatchCuda(const FArdaCudaDispatch&)
+        { return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "CUDA recording is unavailable."); }
         /**
          * Opaque device that created this command list.
          * @return The requested object pointer.
@@ -569,6 +579,15 @@ namespace arda::rhi
     class IArdaRHIDevice : public virtual IArdaRHIResource
     {
     public:
+        /** Reads this device's qualified CUDA launch mode, architecture, limits and surface support.
+         * @return An owned snapshot. A false boolean conversion means no CUDA launch mode;
+         * mUnavailableReason explains why. Surface support and its diagnostic are independent.
+         * CUDA-disabled builds return an unavailable snapshot while graphics compute remains usable.
+         * @ownership The returned value owns its strings; it contains no CUDA handles or mapped memory.
+         * @threading Read-only after device initialization; keep the device alive during the call.
+         * @errors Unavailable CUDA is reported in the snapshot, not as FArdaRHIStatus or an exception.
+         */
+        [[nodiscard]] virtual FArdaCudaCapabilities GetCudaCapabilities() const { return {}; }
         /**
          * Returns the capabilities.
          * @return A reference to the requested value.
@@ -747,18 +766,32 @@ namespace arda::rhi
                 "Mutable resource collections are unsupported by this device.");
         }
         /**
-         * Performs the resize descriptor table operation.
-         * @param Table The table.
-         * @param NewSize The new size.
-         * @param bKeepContents The b keep contents.
-         * @return A status describing whether the operation succeeded.
+         * Publishes a resized table version without changing previously recorded versions.
+         * @param Table Bindless descriptor table created by this device.
+         * @param NewSize Nonzero logical capacity no larger than the layout's maximum.
+         * @param bKeepContents Preserve in-range entries when true; otherwise clear the new version.
+         * @return Success after replacement, InvalidArgument for size/descriptor errors,
+         * WrongDevice for invalid ownership, or a native allocation failure. Failure preserves the previous version.
+         * @ownership The new version retains its resources; recorded versions independently retain
+         * their previous dependencies through submission completion, including removed entries.
+         * @threading Table updates and recording snapshots are serialized by the table mutex.
+         * @errors A null, foreign-device or incompatible table is rejected with WrongDevice.
          */
         virtual FArdaRHIStatus ResizeDescriptorTable(const FArdaRHIDescriptorTableRef& Table, uint32_t NewSize, bool bKeepContents = true) = 0;
         /**
-         * Performs the write descriptor table operation.
-         * @param Table The table.
-         * @param Item The item.
-         * @return A status describing whether the operation succeeded.
+         * Replaces one descriptor by publishing a retained table version.
+         * @param Table Bindless descriptor table created by this device.
+         * @param Item Same-device native resource and a declared slot/type/array element in range.
+         * @return Success after replacement, WrongDevice for invalid ownership, InvalidArgument
+         * for an undeclared slot/type or invalid range, or a native allocation failure.
+         * Failure does not publish a partially changed table.
+         * @ownership A successful write retains Item.mResource immediately. Recorded versions keep
+         * their dependencies when subsequent writes replace entries; submission retains them until
+         * its own queue completes. No unsafe-lifetime opt-in is required.
+         * @threading Table writes and command-list snapshots are serialized by the table mutex;
+         * resource data still needs ordinary GPU barriers and queue ordering.
+         * @errors WrongDevice rejects null/foreign resources and incompatible tables;
+         * InvalidArgument rejects undeclared slots or out-of-range array elements.
          */
         virtual FArdaRHIStatus WriteDescriptorTable(const FArdaRHIDescriptorTableRef& Table, const FArdaRHIBindingItem& Item) = 0;
         /**

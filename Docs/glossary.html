@@ -160,6 +160,12 @@
           <p><strong>In Ardashir:</strong> ArdaBackend caches pipeline state and other derived objects by stable descriptors or hashes.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-lru">LRU</a></li><li><a href="#term-hash">Hash</a></li><li><a href="#term-pso">PSO</a></li></ul></div>
         </article>
+        <article class="glossary-entry" id="term-capability" data-glossary-entry data-category="Graphics" data-search="Capability Graphics A queried fact or limit that determines whether a device admits an operation. Arda separates graphics capability predicates, CUDA device support and per-allocation CUDA representations; none replaces state or lifetime validation.">
+          <div class="glossary-entry__meta"><h3>Capability</h3><span class="category">Graphics</span></div>
+          <p>A queried fact or limit that determines whether a device admits an operation.</p>
+          <p><strong>In Ardashir:</strong> Arda separates graphics capability predicates, CUDA device support and per-allocation CUDA representations; none replaces state or lifetime validation.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-device">Device</a></li><li><a href="#term-resource">Resource</a></li><li><a href="#term-queue">Queue</a></li></ul></div>
+        </article>
         <article class="glossary-entry" id="term-clobber" data-glossary-entry data-category="Project" data-search="Clobber Project A diagnostic overwrite with a conspicuous pattern used to expose code that relies on uninitialized or unexpectedly preserved data. With first-write clobbering enabled, ArdaRenderGraph clears safely supported non-external textures and buffers immediately before their first write; unsupported pass and resource cases are skipped.">
           <div class="glossary-entry__meta"><h3>Clobber</h3><span class="category">Project</span></div>
           <p>A diagnostic overwrite with a conspicuous pattern used to expose code that relies on uninitialized or unexpectedly preserved data.</p>
@@ -172,6 +178,12 @@
           <p><strong>In Ardashir:</strong> ArdaBackend records portable transitions, draws, dispatches, and copies that the active module implements on its command system.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-queue">Queue</a></li><li><a href="#term-barrier">Barrier</a></li><li><a href="#term-resource-state">Resource state</a></li></ul></div>
         </article>
+        <article class="glossary-entry" id="term-compute-operand" data-glossary-entry data-category="Project" data-search="Compute operand Project A reusable operation with one input/output contract and multiple executable implementations. Inherit FArdaComputeOperand, register CUDA and graphics variants, validate operation-specific parameters and select among eligible implementations.">
+          <div class="glossary-entry__meta"><h3>Compute operand</h3><span class="category">Project</span></div>
+          <p>A reusable operation with one input/output contract and multiple executable implementations.</p>
+          <p><strong>In Ardashir:</strong> Inherit FArdaComputeOperand, register CUDA and graphics variants, validate operation-specific parameters and select among eligible implementations.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-cuda">CUDA</a></li><li><a href="#term-capability">Capability</a></li><li><a href="#term-resource">Resource</a></li></ul></div>
+        </article>
         <article class="glossary-entry" id="term-constant-buffer" data-glossary-entry data-category="Graphics" data-search="Constant buffer Graphics A buffer that supplies small, read-only uniform values to shader invocations. ArdaBackend maps parameter data to constant-buffer bindings where push constants are unsuitable.">
           <div class="glossary-entry__meta"><h3>Constant buffer</h3><span class="category">Graphics</span></div>
           <p>A buffer that supplies small, read-only uniform values to shader invocations.</p>
@@ -183,6 +195,18 @@
           <p>An operation that reads or otherwise depends on a value produced by earlier work.</p>
           <p><strong>In Ardashir:</strong> ArdaRenderGraph uses consumer relationships to derive ordering, culling reachability, and cross-queue waits.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-producer">Producer</a></li><li><a href="#term-dependency-edge">Dependency edge</a></li><li><a href="#term-queue-dependency">Queue dependency</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-cuda" data-glossary-entry data-category="Graphics" data-search="CUDA Graphics NVIDIA&#x27;s parallel-compute platform and device instruction/launch model. Arda records CUDA kernels through D3D12 CiG or Vulkan native kernel launch when the device and allocation qualify.">
+          <div class="glossary-entry__meta"><h3>CUDA</h3><span class="category">Graphics</span></div>
+          <p>NVIDIA&#x27;s parallel-compute platform and device instruction/launch model.</p>
+          <p><strong>In Ardashir:</strong> Arda records CUDA kernels through D3D12 CiG or Vulkan native kernel launch when the device and allocation qualify.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-cig">CUDA in Graphics (CiG)</a></li><li><a href="#term-ptx">PTX</a></li><li><a href="#term-command-list">Command list</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-cig" data-glossary-entry data-category="Graphics" data-search="CUDA in Graphics (CiG) Graphics CUDA execution captured into a graphics API command stream. Arda&#x27;s D3D12 provider captures onto its graphics queue and retains mappings, streams and modules until the graphics fence completes.">
+          <div class="glossary-entry__meta"><h3>CUDA in Graphics (CiG)</h3><span class="category">Graphics</span></div>
+          <p>CUDA execution captured into a graphics API command stream.</p>
+          <p><strong>In Ardashir:</strong> Arda&#x27;s D3D12 provider captures onto its graphics queue and retains mappings, streams and modules until the graphics fence completes.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-cuda">CUDA</a></li><li><a href="#term-queue">Queue</a></li><li><a href="#term-lifetime">Lifetime</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-culling" data-glossary-entry data-category="Computer science" data-search="Culling Computer science Removing work proven unable to affect any required output. ArdaRenderGraph removes passes not reachable through data-producer edges from observable roots; synchronization-only edges do not preserve liveness, while immediate mode keeps every pass.">
           <div class="glossary-entry__meta"><h3>Culling</h3><span class="category">Computer science</span></div>
@@ -453,6 +477,12 @@
           <p>Pipeline state object: an immutable compiled bundle of shaders and fixed-function settings.</p>
           <p><strong>In Ardashir:</strong> ArdaBackend caches PSOs to avoid repeated expensive pipeline creation.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-pipeline">Pipeline</a></li><li><a href="#term-cache">Cache</a></li><li><a href="#term-immutable">Immutable</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-ptx" data-glossary-entry data-category="Graphics" data-search="PTX Graphics NVIDIA&#x27;s virtual instruction-set representation for device kernels. FArdaCudaKernel owns PTX text and ordered argument bytes; Arda does not compile CUDA C source at runtime.">
+          <div class="glossary-entry__meta"><h3>PTX</h3><span class="category">Graphics</span></div>
+          <p>NVIDIA&#x27;s virtual instruction-set representation for device kernels.</p>
+          <p><strong>In Ardashir:</strong> FArdaCudaKernel owns PTX text and ordered argument bytes; Arda does not compile CUDA C source at runtime.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-cuda">CUDA</a></li><li><a href="#term-shader">Shader</a></li><li><a href="#term-binding-layout">Binding layout</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-push-constants" data-glossary-entry data-category="Graphics" data-search="Push constants Graphics A small block of values written directly into command state without a separate buffer binding. ArdaBackend maps compact per-dispatch or per-draw values through the active module to its supported native mechanism.">
           <div class="glossary-entry__meta"><h3>Push constants</h3><span class="category">Graphics</span></div>

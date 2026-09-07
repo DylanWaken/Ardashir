@@ -488,11 +488,9 @@ class Validator:
             if fragment:
                 known = self.html.get(target, None)
                 ids = known.ids if known else self.xml_ids.get(target)
-                generated = (
-                    target_api is not None
-                    and fragment in target_api[1]
-                )
-                if ids is not None and fragment not in ids and not generated:
+                # Canonical contracts are pre-rendered. An inventory entry alone
+                # must not conceal a broken link for readers without JavaScript.
+                if ids is not None and fragment not in ids:
                     self.fail(link.source, "broken fragment %r in %s" % (
                         fragment, raw
                     ), link.line)
@@ -1094,7 +1092,7 @@ class Validator:
                 continue
             prefix = text[boundary:index]
             is_type_or_namespace = re.search(
-                r"\b(?:class|struct|union|enum|namespace)\b[^;{}]*$",
+                r"\b(?:class|struct|union|enum|namespace)\b[^;{}()]*$",
                 prefix,
             )
             if ")" not in prefix or is_type_or_namespace:
@@ -1188,6 +1186,10 @@ class Validator:
                 )
                 if is_public_macro and name not in undefined:
                     records.append((name, header, text.count("\n", 0, match.start()) + 1, "macro"))
+            # Opt-in extension headers expose protected registration/override hooks
+            # to application authors, while private implementation stays excluded.
+            if "@document-protected" in raw:
+                text = re.sub(r"\bprotected:", "public:   ", text)
             text = self.mask_cpp_implementation(text)
             for match in re.finditer(
                 r"\b(?:enum\s+class|enum|struct|class)\s+([A-Za-z_]\w*)"

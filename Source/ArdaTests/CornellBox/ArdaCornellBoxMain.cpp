@@ -320,8 +320,9 @@ namespace arda::tests::cornell_box
                 ARDA_LOG(
                     LogCornellBox, Error, "%s",
                     backend::GetBackendError().c_str());
-                return InitializeResult == backend::EArdaInitializeResult::Unavailable ?
-                    SkippedExitCode : EXIT_FAILURE;
+                return InitializeResult == backend::EArdaInitializeResult::Unavailable ||
+                    InitializeResult == backend::EArdaInitializeResult::ValidationUnavailable
+                    ? SkippedExitCode : EXIT_FAILURE;
             }
 
             FArdaCornellBoxRenderer Renderer;

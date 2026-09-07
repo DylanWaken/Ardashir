@@ -96,7 +96,9 @@ namespace arda::backend
         /** The requested backend is unavailable on this system. */
         Unavailable,
         /** Initialization failed for another reason. */
-        Failure
+        Failure,
+        /** Validation was required, but its native layer could not be enabled. */
+        ValidationUnavailable
     };
 
     /** Desktop-GPU admission profile applied during backend initialization. */
@@ -195,6 +197,8 @@ namespace arda::backend
 
     /** @return True when a headless backend was initialized successfully. */
     [[nodiscard]] bool InitializeBackend();
+    /** Outcome of the most recent headless initialization attempt. */
+    [[nodiscard]] EArdaInitializeResult GetBackendInitializeResult() noexcept;
 
     /** Releases the process-wide backend and its device resources. */
     void ShutdownBackend() noexcept;

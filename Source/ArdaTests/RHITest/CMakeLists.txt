@@ -33,6 +33,7 @@ endif()
 set_target_properties(RHITest PROPERTIES FOLDER "Ardashir/Tests/RHI")
 
 if(ARDASHIR_BUILD_TESTS)
+    ardashir_test_validation(RHITest)
     set(RHI_GPU_TESTS)
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         add_test(

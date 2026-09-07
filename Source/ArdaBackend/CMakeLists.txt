@@ -97,6 +97,7 @@ if(ARDASHIR_BUILD_TESTS)
     )
     list(FILTER ARDA_BACKEND_TEST_SOURCES EXCLUDE REGEX "ArdaRHITests\\.cpp$")
     add_executable(ArdaBackendTests ${ARDA_BACKEND_TEST_SOURCES})
+    ardashir_test_validation(ArdaBackendTests)
     target_compile_definitions(ArdaBackendTests PRIVATE
         ARDA_ENABLE_CHECKS
         ARDA_BACKEND_TEST_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/TestShaderCache"
@@ -126,6 +127,7 @@ if(ARDASHIR_BUILD_TESTS)
     gtest_discover_tests(ArdaBackendTests NO_PRETTY_VALUES)
 
     add_executable(ArdaRHITests Tests/ArdaRHITests.cpp)
+    ardashir_test_validation(ArdaRHITests)
     target_compile_definitions(ArdaRHITests PRIVATE ARDA_ENABLE_CHECKS)
     target_link_libraries(ArdaRHITests PRIVATE Ardashir::ArdaBackend GTest::gtest_main)
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)

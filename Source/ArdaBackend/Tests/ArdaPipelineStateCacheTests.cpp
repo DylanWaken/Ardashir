@@ -1,3 +1,4 @@
+#include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
 #include "PipelineStateCache/ArdaPipelineStateCache.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
@@ -303,7 +304,7 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
 
     Diagnostics.Clear();
     ASSERT_TRUE(ConfigureBackend(Configuration));
-    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
     uint64_t ReloadedComputeKey = 0;
     uint64_t ReloadedGraphicsKey = 0;
     uint64_t ReloadedMeshletKey = 0;
@@ -350,7 +351,7 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
         ASSERT_TRUE(InvalidHeader);
     }
     ASSERT_TRUE(ConfigureBackend(Configuration));
-    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
     uint64_t WrongBackendComputeKey = 0;
     uint64_t WrongBackendGraphicsKey = 0;
     const auto WrongBackendCreateStatus =
@@ -367,7 +368,7 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
         Corrupt << "not a pipeline cache";
     }
     ASSERT_TRUE(ConfigureBackend(Configuration));
-    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
     uint64_t CorruptComputeKey = 0;
     uint64_t CorruptGraphicsKey = 0;
     const auto CorruptCreateStatus =
@@ -433,7 +434,7 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
 
     Diagnostics.Clear();
     ASSERT_TRUE(ConfigureBackend(Configuration));
-    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
     EXPECT_TRUE(Diagnostics.Contains(
         "Vulkan persistent pipeline cache data was accepted"));
     uint64_t ReloadedComputeKey = 0;

@@ -65,6 +65,7 @@ namespace arda::backend
             rhi::FArdaRHIDeviceRef mDevice;
             IArdaExternalDeviceProvider* mExternalDeviceProvider = nullptr;
             eastl::string mError;
+            EArdaInitializeResult mInitializeResult = EArdaInitializeResult::Unavailable;
         };
 
         FArdaBackendState& GetState()
@@ -337,16 +338,21 @@ namespace arda::backend
     {
         auto& state = GetState();
         std::lock_guard<std::mutex> lock(state.mMutex);
+        // Clear a prior missing-layer outcome before any shader/configuration gate.
+        // Tests may skip absent validation, but a later unrelated failure must still fail.
+        state.mInitializeResult = EArdaInitializeResult::Failure;
         if (state.mBackendRuntime)
+        {
+            if (state.mDevice) state.mInitializeResult = EArdaInitializeResult::Success;
             return state.mDevice != nullptr;
+        }
 
         FArdaBackendConfiguration runtimeConfiguration = state.mConfiguration;
         IArdaBackendModule* Module = nullptr;
         if (!PrepareInitialization(state, runtimeConfiguration, Module))
             return false;
-        if (CreateConfiguredDevice(
-                state, runtimeConfiguration, *Module, nullptr) !=
-            EArdaInitializeResult::Success)
+        state.mInitializeResult = CreateConfiguredDevice(state, runtimeConfiguration, *Module, nullptr);
+        if (state.mInitializeResult != EArdaInitializeResult::Success)
         {
             private_api::CompleteShaderDirectoryRegistryUse(false);
             return false;
@@ -355,6 +361,13 @@ namespace arda::backend
         PublishInitializedDevice(state, *Module);
         private_api::CompleteShaderDirectoryRegistryUse(true);
         return true;
+    }
+
+    EArdaInitializeResult GetBackendInitializeResult() noexcept
+    {
+        auto& State = GetState();
+        std::lock_guard<std::mutex> Lock(State.mMutex);
+        return State.mInitializeResult;
     }
 
     EArdaInitializeResult InitializeBackendForPresentation(

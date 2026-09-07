@@ -164,9 +164,10 @@ if(WIN32 AND ARDASHIR_BACKEND_D3D12)
             COMMAND "${CMAKE_COMMAND}" -E copy_if_different
                 "${ARDASHIR_D3D12_AGILITY_RUNTIME_DIR}/D3D12Core.dll"
                 "$<TARGET_FILE_DIR:${Target}>/D3D12/D3D12Core.dll"
-            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                "${ARDASHIR_D3D12_AGILITY_RUNTIME_DIR}/d3d12SDKLayers.dll"
-                "$<TARGET_FILE_DIR:${Target}>/D3D12/d3d12SDKLayers.dll"
+            COMMAND "${CMAKE_COMMAND}"
+                "-DSOURCE=${ARDASHIR_D3D12_AGILITY_RUNTIME_DIR}/d3d12SDKLayers.dll"
+                "-DDESTINATION=$<TARGET_FILE_DIR:${Target}>/D3D12/d3d12SDKLayers.dll"
+                -P "${PROJECT_SOURCE_DIR}/Cmake/DeployDebugLayer.cmake"
             COMMENT "Deploying Direct3D 12 Agility SDK 1.619.5 for ${Target}"
             VERBATIM)
     endfunction()

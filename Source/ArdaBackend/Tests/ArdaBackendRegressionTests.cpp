@@ -1,3 +1,4 @@
+#include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
 #include "ArdaBackendProvider.h"
 #include "PipelineStateCache/ArdaPipelineStateCache.h"
@@ -45,7 +46,7 @@ namespace
             Configuration.mMessageCallback = &mDiagnostics;
             Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
             ASSERT_TRUE(ConfigureBackend(Configuration));
-            ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+            ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
             mDevice = GetDevice();
             ASSERT_TRUE(mDevice);
         }
@@ -58,7 +59,8 @@ namespace
             }
             mDevice = {};
             ShutdownBackend();
-            EXPECT_EQ(mDiagnostics.mErrors.load(), 0u);
+            if (GetBackendInitializeResult() != EArdaInitializeResult::ValidationUnavailable)
+                EXPECT_EQ(mDiagnostics.mErrors.load(), 0u);
         }
 
         FArdaRegressionDiagnostics mDiagnostics;

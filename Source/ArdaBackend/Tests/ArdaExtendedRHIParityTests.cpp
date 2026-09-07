@@ -1,3 +1,4 @@
+#include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
 #include "ArdaBackendProvider.h"
 #include "PipelineStateCache/ArdaPipelineStateCache.h"
@@ -68,6 +69,10 @@ namespace
         ~FExtendedBackendCleanup()
         {
             arda::backend::ShutdownBackend();
+            // Configuration borrows the diagnostic sink. Clear it before the
+            // enclosing scope destroys that sink or another test initializes.
+            static_cast<void>(arda::backend::ConfigureBackend(
+                arda::backend::FArdaBackendConfiguration{}));
         }
     };
 
@@ -304,8 +309,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule("native-d3d12");
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
@@ -315,7 +320,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
         if (Device->GetCapabilities().mSamplerFeedbackTier ==
@@ -529,8 +534,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule(BackendName);
         ASSERT_NE(Module, nullptr);
 
@@ -541,7 +546,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
@@ -845,8 +850,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule(BackendName);
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
@@ -856,7 +861,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
 
@@ -995,8 +1000,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule(BackendName);
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
@@ -1004,7 +1009,7 @@ namespace
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
         ASSERT_TRUE(Device->GetCapabilities().mbVirtualResources);
@@ -1112,15 +1117,15 @@ namespace
         using namespace arda::backend;
         using namespace arda::rhi;
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         const bool bSubgroup = std::strcmp(Entry, "SubgroupCS") == 0;
@@ -1201,15 +1206,15 @@ namespace
         using namespace arda::backend;
         using namespace arda::rhi;
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         const auto& Caps = Device->GetCapabilities().mDescriptors;
@@ -1306,8 +1311,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule(BackendName);
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
@@ -1317,7 +1322,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
         ASSERT_TRUE(Device->GetCapabilities().mDescriptors.mbBindless);
@@ -1425,8 +1430,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
         Configuration.mbEnableValidation = true;
@@ -1434,7 +1439,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         const auto& DescriptorCaps =
@@ -1575,8 +1580,8 @@ namespace
         using namespace arda::backend;
         using namespace arda::rhi;
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
         Configuration.mbEnableValidation = true;
@@ -1584,7 +1589,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         ASSERT_TRUE(Device->QueryShaderBundleSupport());
@@ -1683,8 +1688,8 @@ namespace
         using namespace arda::backend;
         using namespace arda::rhi;
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = "native-d3d12";
         Configuration.mbEnableValidation = true;
@@ -1692,7 +1697,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         if (Device->GetCapabilities().mWorkGraphTier ==
@@ -1769,8 +1774,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule(BackendName);
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
@@ -1780,7 +1785,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
 
@@ -1970,8 +1975,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule(BackendName);
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
@@ -1981,7 +1986,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
 
@@ -2167,8 +2172,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule(BackendName);
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
@@ -2178,7 +2183,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
 
@@ -2327,8 +2332,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule(BackendName);
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
@@ -2338,7 +2343,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
@@ -2493,8 +2498,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule(BackendName);
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
@@ -2504,7 +2509,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
         const auto& Ray = Device->GetCapabilities().mRayTracing;
@@ -2828,14 +2833,14 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = "native-vulkan";
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         if (!Device->GetCapabilities().mRayTracing.mbOpacityMicromaps)
@@ -3139,8 +3144,8 @@ namespace
         using namespace arda::backend;
         using namespace arda::rhi;
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule(BackendName);
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
@@ -3148,7 +3153,7 @@ namespace
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         const auto& Caps = Device->GetCapabilities();
@@ -3340,8 +3345,8 @@ namespace
         using namespace arda::backend;
         using namespace arda::rhi;
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         IArdaBackendModule* Module = FindBackendModule(BackendName);
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
@@ -3349,7 +3354,7 @@ namespace
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         const auto& Residency = Device->GetCapabilities().mResidency;
@@ -3540,14 +3545,14 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
@@ -3572,14 +3577,14 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
@@ -3656,8 +3661,8 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
         Configuration.mPipelineCacheDirectory = CacheDirectory;
@@ -3666,7 +3671,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
@@ -3742,14 +3747,14 @@ namespace
         using namespace arda::rhi;
 
         ShutdownBackend();
-        FExtendedBackendCleanup Cleanup;
         FExtendedDiagnosticCallback Diagnostics;
+        FExtendedBackendCleanup Cleanup;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = "native-d3d12";
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
 
@@ -3825,6 +3830,8 @@ namespace
         eastl::unique_ptr<IArdaSwapChain> SwapChain;
         const EArdaInitializeResult Result = InitializeBackendForPresentation(
             Surface, 16, 16, SwapChain);
+        if (Result == EArdaInitializeResult::ValidationUnavailable)
+            GTEST_SKIP() << GetBackendError().c_str();
         ASSERT_EQ(Result, EArdaInitializeResult::Success) << GetBackendError().c_str();
         ASSERT_TRUE(SwapChain);
         ASSERT_EQ(SwapChain->GetWidth(), 16u);
@@ -3895,6 +3902,8 @@ namespace
         eastl::unique_ptr<IArdaSwapChain> SwapChain;
         const EArdaInitializeResult Result = InitializeBackendForPresentation(
             Surface, 64, 64, SwapChain);
+        if (Result == EArdaInitializeResult::ValidationUnavailable)
+            GTEST_SKIP() << GetBackendError().c_str();
         ASSERT_EQ(Result, EArdaInitializeResult::Success) << GetBackendError().c_str();
         ASSERT_TRUE(SwapChain);
 
@@ -4452,8 +4461,8 @@ TEST_P(FArdaRHICapabilityConformanceTest, AdvertisedCapabilityConforms)
 
     const FCapabilityConformanceCase& TestCase = GetParam();
     ShutdownBackend();
-    FExtendedBackendCleanup Cleanup;
     FExtendedDiagnosticCallback Diagnostics;
+    FExtendedBackendCleanup Cleanup;
     FArdaBackendConfiguration Configuration;
     Configuration.mBackendName = TestCase.mBackendName;
     Configuration.mbEnableValidation = true;
@@ -4461,7 +4470,7 @@ TEST_P(FArdaRHICapabilityConformanceTest, AdvertisedCapabilityConforms)
     Configuration.mShaderCompilationMode =
         EArdaShaderCompilationMode::LoadOnly;
     ASSERT_TRUE(ConfigureBackend(Configuration));
-    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+    ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 
     arda::rhi::FArdaRHIDeviceRef Device = GetDevice();
     ASSERT_TRUE(Device);

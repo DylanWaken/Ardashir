@@ -36,13 +36,18 @@
         <a href="shaders.html">Shaders</a>
         <a href="pipelines.html">Pipeline states</a>
         <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
+
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="capability-recipes.html">Capability recipes</a>
+        <a href="cuda-interop.html">CUDA and graphics</a>
+        <a href="validation.html">GPU validation setup</a>
         <a href="commands.html">Commands</a>
         <a href="presentation.html">Presentation</a>
         <a href="diagnostics.html">Diagnostics</a>
         <a href="api-reference.html">API reference</a>
       </nav>
     </aside>
-    <main id="main-content">
+    <main id="main-content" tabindex="-1">
       <nav class="breadcrumbs" aria-label="Breadcrumb">
         <a href="../index.html">Docs</a> /
         <a href="index.html">ArdaBackend</a> /
@@ -723,7 +728,7 @@ bool Check(const arda::rhi::FArdaRHIStatus&amp; status, eastl::string&amp; error
             <li>Keep device-owned objects in a renderer lifetime and check every status/result.</li>
             <li>For direct presentation, acquire, record and close, prepare submission, execute on graphics, then present.</li>
             <li>Compute requires compatible bindings/state before dispatch; raster requires compatible framebuffer, pipeline, bindings, viewport/scissor, and geometry before draw.</li>
-            <li>Ray tracing is capability-gated and available as implemented/tested API components, but the complete dispatch recipe remains synthesized because no end-to-end RT sample is checked in.</li>
+            <li>Ray tracing is capability-gated. The <a href="capability-recipes.html#feature-raytracingscene">complete scene workload</a> verifies hit groups, local arguments and indirect dispatch; CornellBox provides a presentation application.</li>
             <li>Resize before the next acquire and recreate all application-owned size-dependent resources.</li>
             <li>Stop work, wait, release dependents, destroy any optional swap chain, release the device, and shut down the backend.</li>
           </ul>

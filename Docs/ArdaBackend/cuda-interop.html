@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Register reusable operands with CUDA kernels and compute-shader alternatives while preserving resource ownership and graphics submission ordering.">
+  <title>CUDA and graphics compute | ArdaBackend</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaBackend</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="getting-started.html">Get started</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaBackend pages">
+      <h2>ArdaBackend</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="backend-modules.html">Backend modules</a>
+        <a href="external-interop.html">External interop</a>
+        <a href="shaders.html">Shaders</a>
+        <a href="pipelines.html">Pipeline states</a>
+        <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
+
+        <a href="resource-recipes.html">Resource recipes</a>
+        <a href="capability-recipes.html">Capability recipes</a>
+        <a href="cuda-interop.html">CUDA and graphics</a>
+        <a href="validation.html">GPU validation setup</a>
+        <a href="commands.html">Commands</a>
+        <a href="presentation.html">Presentation</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content" tabindex="-1">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a>
+        <span aria-hidden="true">/</span>
+        ArdaBackend
+      </nav>
+      <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>CUDA and graphics compute</h1><p>Register reusable operands with CUDA kernels and compute-shader alternatives while preserving resource ownership and graphics submission ordering.</p></header>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#model">One allocation, ordered graphics and CUDA access</a><a href="#build">Enable CUDA or build without it</a><a href="#resources">Create buffers and qualify textures</a><a href="#packing">Understand surface addressing and tensor packing</a><a href="#operand">Register one or several kernels</a><a href="#dispatch">Record, submit and check results</a><a href="#fallback">Provide the compute-shader alternative</a><a href="#tuning">Select variants without mutating live inputs</a><a href="#native">Native execution and lifetime limits</a><a href="#qualification">Verified support and failure diagnosis</a><a href="#summary">Checkpoints</a></nav>
+<section id="objectives"><h2>How to use these examples</h2>
+<p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
+<p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
+<figure><img src="Assets/cuda-command-stream.svg" alt="CUDA and graphics compute ownership and execution flow"><figcaption>Representations and references preserve access and lifetime; commands and fences establish order.</figcaption></figure>
+<p>Short snippets are literal excerpts from compiled GoogleTest workloads. They use ASSERT_TRUE/EXPECT_EQ to make failures visible. Adapt those checks to your application's status handling. Variables and helpers are initialized in each linked complete example; snippets are not separate standalone programs. The complete examples show allocation, binding, execution, readback assertions and cleanup.</p>
+<pre><code class="language-shell">cmake --build build --config Debug --target ArdaBackendTests
+ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
+<p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="model"><h2>One allocation, ordered graphics and CUDA access</h2><p>A CUDA-compatible buffer or texture can have two API representations of the same allocation. Representation availability is an allocation fact. Read/write states and queue ordering are separate facts. All current CUDA work is recorded in the graphics API command stream; there is no CUDA-only queue owner to toggle.</p><p>Buffers supply a private linear device address, with view offset already applied. Textures supply a surface handle for one mip, including its array layers or depth. The public API deliberately supplies neither a general CUDA-runtime pointer conversion nor an OptiX handle conversion.</p><p>Start with <a href="api-reference.html#api-arda-rhi-fardacudacapabilities-720f24fa"><code>FArdaCudaCapabilities</code></a> and inspect <a href="api-reference.html#api-arda-rhi-fardacudaresourceinfo-13af3eca"><code>FArdaCudaResourceInfo</code></a> for each resource. CUDA device support does not imply that an ordinary graphics allocation was created for sharing.</p><pre><code class="language-cpp">const auto Cuda = Device-&gt;GetCudaCapabilities();
+const auto Representation = Buffer-&gt;GetCudaResourceInfo();
+if (!Cuda || !Representation.mbSharingEnabled) {
+    // Choose a registered graphics implementation or report Unsupported.
+}</code></pre></section>
+<section id="build"><h2>Enable CUDA or build without it</h2><p>The default build excludes the CUDA provider. To enable D3D12 CiG, supply CUDA 13.3 or newer headers. Driver loading remains dynamic; installing headers does not prove that the running adapter supports CiG. Vulkan native kernel launch uses Vulkan extension declarations, not a CUDA runtime library.</p><pre><code class="language-shell">cmake -S . -B build/cuda-on -DARDASHIR_ENABLE_CUDA=ON -DARDASHIR_CUDA_INCLUDE_DIR=&quot;C:/CUDA/include&quot;
+cmake --build build/cuda-on --config Debug --target ArdaBackendTests
+cmake -S . -B build/cuda-off -DARDASHIR_ENABLE_CUDA=OFF</code></pre><p>Use actual local SDK/build paths. Public RHI headers compile with either setting. An enabled build with missing/old required headers fails explicitly; an unavailable runtime device reports its reason through GetCudaCapabilities. A CUDA-only operand then returns Unsupported. Registered graphics alternatives remain usable in both builds.</p></section>
+<section id="resources"><h2>Create buffers and qualify textures</h2><p>Set mByteSize and usage before allocating a buffer, then set mbCudaInterop=true to request sharing. A request can fail: do not allocate an ordinary buffer and later change a flag. Both providers admit dedicated, nonempty device-local buffers. CPU-visible, sparse/tiled, virtual/placed, versioned and acceleration-structure storage buffers are rejected.</p><pre><code class="language-cpp">FArdaRHIBufferDesc Desc;
+Desc.mByteSize = 1024;
+Desc.mUsage = EArdaRHIBufferUsage::ShaderResource | EArdaRHIBufferUsage::UnorderedAccess;
+Desc.mbCudaInterop = true;
+auto Shared = Device-&gt;CreateBuffer(Desc);
+if (!Shared) {
+    // Inspect Shared.mStatus; choose a graphics allocation/alternative if appropriate.
+}</code></pre><p>Surfaces support raw R/RG/RGBA integer channels at 8/16/32 bits and floating-point channels at 16/32 bits: 24 formats. Qualified dimensions are 1D, 1D array, 2D, 2D array and 3D. Normalized/sRGB/BGRA/packed/compressed/depth, cubemap and multisample images are rejected. Native imports cannot request sharing without provider-owned export/mapping lifetime. All other <a href="resource-recipes.html">resource kinds</a>, including views, AS, micromaps, feedback objects, samplers and pipelines, remain non-CUDA objects.</p></section>
+<section id="packing"><h2>Understand surface addressing and tensor packing</h2><p>Surface instructions access typed storage; they do not sample/filter a texture and do not perform normalization, swizzling, sRGB conversion or tensor layout conversion. Use byte offsets in the surface x coordinate where the PTX instruction requires them. Mip dimensions, array layer indexing and 3D depth must match the selected binding.</p><p>A kernel expecting contiguous NCHW/NHWC tensors cannot consume an opaque tiled image as a flat pointer. Use an explicit surface-to-buffer packing operator and record it before the tensor operator. Keep format/layout conversion in that operator so the generic binding contract stays independent of the tensor library.</p><p>The source-backed surface example below writes a nonzero mip and checks it through graphics readback:</p><details><summary>Surface kernel, binding and readback example</summary><pre><code class="language-cpp">TEST_P(ArdaCudaGpu, SurfaceWritesReachGraphicsReadbackAtSelectedMip)
+    {
+        const auto C = mDevice-&gt;GetCudaCapabilities();
+        if (!C || !C.mbSurfaceAccess) GTEST_SKIP() &lt;&lt; C.mSurfaceUnavailableReason.c_str();
+        const char* Ptx = R&quot;ptx(.version 8.0
+.target sm_70
+.address_size 64
+.visible .entry fill_surface(.param .u64 surface, .param .u32 width, .param .u32 height)
+{
+ .reg .pred p; .reg .b32 r&lt;8&gt;; .reg .b64 s;
+ ld.param.u64 s,[surface]; ld.param.u32 r0,[width]; ld.param.u32 r1,[height];
+ mov.u32 r2,%ctaid.x; mov.u32 r3,%ntid.x; mov.u32 r4,%tid.x; mad.lo.u32 r2,r2,r3,r4;
+ mov.u32 r3,%ctaid.y; mov.u32 r4,%ntid.y; mov.u32 r5,%tid.y; mad.lo.u32 r3,r3,r4,r5;
+ setp.ge.u32 p,r2,r0; @p bra done; setp.ge.u32 p,r3,r1; @p bra done;
+ mad.lo.u32 r6,r3,r0,r2; add.u32 r6,r6,101; shl.b32 r7,r2,2;
+ sust.b.2d.b32.trap [s,{r7,r3}],r6;
+done: ret;
+})ptx&quot;;
+        FArdaRHITextureDesc D;
+        D.mbCudaInterop = true; D.mWidth = 54; D.mHeight = 38; D.mMipLevels = 2;
+        D.mFormat = EArdaRHIFormat::R32UInt;
+        D.mUsage = EArdaRHITextureUsage::ShaderResource | EArdaRHITextureUsage::UnorderedAccess;
+        auto Texture = mDevice-&gt;CreateTexture(D); ASSERT_TRUE(Texture) &lt;&lt; Texture.mStatus.mMessage.c_str();
+        EXPECT_EQ(Texture.mValue-&gt;GetCudaResourceInfo().mSupportedRepresentation, EArdaCudaRepresentation::Surface);
+        FArdaRHIStagingTextureDesc Staging;
+        Staging.mTexture = D; Staging.mTexture.mbCudaInterop = false; Staging.mCpuAccess = EArdaRHICpuAccess::Read;
+        auto Readback = mDevice-&gt;CreateStagingTexture(Staging); ASSERT_TRUE(Readback);
+        auto Cmd = mDevice-&gt;CreateCommandList(EArdaRHIQueueType::Graphics); ASSERT_TRUE(Cmd); ASSERT_TRUE(Cmd.mValue-&gt;Open());
+        FArdaCudaKernel K;
+        K.mPtx = Ptx; K.mEntryPoint = &quot;fill_surface&quot;;
+        K.mBlockSize[0] = K.mBlockSize[1] = 8;
+        K.mGridSize[0] = 4; K.mGridSize[1] = 3;
+        K.mArguments = {FArdaCudaArgument::Binding(0), FArdaCudaArgument::Value(27u), FArdaCudaArgument::Value(19u)};
+        FArdaCudaBinding B; B.mResource = Texture.mValue; B.mMipLevel = 1; B.mAccess = EArdaComputeAccess::Write;
+        const auto Dispatched = Cmd.mValue-&gt;DispatchCuda({{B}, {K}});
+        ASSERT_TRUE(Dispatched) &lt;&lt; Dispatched.mMessage.c_str();
+        FArdaRHITextureSlice Slice; Slice.mMipLevel = 1;
+        ASSERT_TRUE(Cmd.mValue-&gt;CopyTextureToStaging(*Readback.mValue, Slice, *Texture.mValue, Slice));
+        ASSERT_TRUE(Cmd.mValue-&gt;Close());
+        auto Submitted = mDevice-&gt;ExecuteCommandList(Cmd.mValue); ASSERT_TRUE(Submitted) &lt;&lt; Submitted.mStatus.mMessage.c_str();
+        // The submission must retain the native image, CUDA mapping and executable.
+        B.mResource.Reset();
+        Texture.mValue.Reset(); Cmd.mValue.Reset();
+        ASSERT_TRUE(mDevice-&gt;WaitForIdle());
+        auto Mapped = mDevice-&gt;MapStagingTexture(Readback.mValue, Slice, EArdaRHICpuAccess::Read); ASSERT_TRUE(Mapped);
+        for (uint32_t Y = 0; Y &lt; 19; ++Y)
+        {
+            const auto* Row = reinterpret_cast&lt;const uint32_t*&gt;(static_cast&lt;const uint8_t*&gt;(Mapped.mValue.mData) + Y * Mapped.mValue.mRowPitch);
+            for (uint32_t X = 0; X &lt; 27; ++X) EXPECT_EQ(Row[X], Y*27+X+101) &lt;&lt; X &lt;&lt; &quot;,&quot; &lt;&lt; Y;
+        }
+        mDevice-&gt;UnmapStagingTexture(Readback.mValue);
+    }</code></pre></details></section>
+<section id="operand"><h2>Register one or several kernels</h2><p>Inherit <a href="api-reference.html#api-arda-backend-fardacomputeoperand-68d2be21"><code>FArdaComputeOperand</code></a>. Declare ordered named ports once, including buffer/surface kind, access, minimum buffer size and offset alignment. Optional surface constraints select format/dimension. The base class applies the port access to a copy of each invocation, then validates it before calling either implementation.</p><p>The sample registers two ordered CUDA launches with <a href="api-reference.html#api-arda-backend-fardacomputeoperand-registercuda-0694f62f"><code>FArdaComputeOperand::RegisterCuda</code></a>. The first adds 7 to the input; the second adds 11 in place, so the result is input + 18. The builder owns PTX and copied argument bytes. Its SM bounds use major × 10 + minor; SM 12.0 is 120. Register preferred implementations first.</p><pre><code class="language-cpp">class FAddOperand final : public FArdaComputeOperand
+{
+public:
+    FAddOperand(FArdaComputeShaderDispatch Fallback = {}) : FArdaComputeOperand(&quot;sample.add_twice&quot;, {
+        {&quot;input&quot;, EArdaComputeBindingType::Buffer, EArdaComputeAccess::Read, 4, 4},
+        {&quot;output&quot;, EArdaComputeBindingType::Buffer, EArdaComputeAccess::ReadWrite, 4, 4}})
+    {
+        EXPECT_TRUE(RegisterCuda(&quot;cuda.sequence&quot;, 70, UINT32_MAX, [](const FArdaComputeInvocation&amp; I)
+            -&gt; TArdaRHIResult&lt;eastl::vector&lt;FArdaCudaKernel&gt;&gt;
+        {
+            FArdaCudaKernel K;
+            K.mPtx = AddPtx; K.mEntryPoint = &quot;add_values&quot;;
+            K.mBlockSize[0] = 128; K.mGridSize[0] = (I.mExtent[0] + 127) / 128;
+            K.mArguments = {FArdaCudaArgument::Binding(0), FArdaCudaArgument::Binding(1),
+                FArdaCudaArgument::Value(I.mExtent[0]), FArdaCudaArgument::Value(7u)};
+            auto Second = K;
+            Second.mArguments[0] = FArdaCudaArgument::Binding(1);
+            Second.mArguments[3] = FArdaCudaArgument::Value(11u);
+            return {{K, Second}, {}};
+        }));
+        if (Fallback) EXPECT_TRUE(RegisterGraphics(&quot;graphics.add&quot;, eastl::move(Fallback)));
+    }
+    FArdaRHIStatus ValidateInvocation(const FArdaComputeInvocation&amp; I) const override
+    {
+        for (const auto&amp; B : I.mBindings)
+            if (B.mBufferRange.Resolve(dynamic_cast&lt;IArdaRHIBuffer*&gt;(B.mResource.Get())-&gt;GetDesc()).mByteSize != uint64_t(I.mExtent[0]) * 4)
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Add expects one uint32 per element in each view.&quot;);
+        return {};
+    }
+};</code></pre><details><summary>PTX source used by the operand</summary><pre><code class="language-cpp">const char* AddPtx = R&quot;ptx(.version 8.0
+.target sm_70
+.address_size 64
+.visible .entry add_values(.param .u64 src, .param .u64 dst, .param .u32 count, .param .u32 bias)
+{
+ .reg .pred p; .reg .b32 r&lt;6&gt;; .reg .b64 a&lt;5&gt;;
+ ld.param.u64 a0,[src]; ld.param.u64 a1,[dst]; ld.param.u32 r0,[count]; ld.param.u32 r1,[bias];
+ mov.u32 r2,%ctaid.x; mov.u32 r3,%ntid.x; mov.u32 r4,%tid.x;
+ mad.lo.u32 r2,r2,r3,r4; setp.ge.u32 p,r2,r0; @p bra done;
+ mul.wide.u32 a2,r2,4; add.u64 a3,a0,a2; add.u64 a4,a1,a2;
+ ld.global.u32 r5,[a3]; add.u32 r5,r5,r1; st.global.u32 [a4],r5;
+done: ret;
+})ptx&quot;;</code></pre></details><p>The resource parameters are 64-bit binding values; scalar parameters must have exactly the PTX-declared size/layout. Value&lt;T&gt; copies trivially copyable bytes; it does not marshal strings, C++ objects or arbitrary library descriptors.</p></section>
+<section id="dispatch"><h2>Record, submit and check results</h2><p><a href="api-reference.html#api-arda-backend-fardacomputeinvocation-85a5f11e"><code>FArdaComputeInvocation</code></a> supplies one binding per port, logical extent and application-defined parameter byte arrays. Override ValidateInvocation for exact shape, dtype and parameter schema rules. Generic range checks cannot prove that arbitrary PTX stays inside a buffer.</p><p>Dispatch returns the selected variant name or a status. It records work on an open list; Close and ExecuteCommandList submit it. The example uses offset views, non-multiple work sizes and guard bytes, then checks each returned element:</p><pre><code class="language-cpp">TEST_P(ArdaCudaGpu, OrderedKernelsShareBufferAndPreserveGuardBytes)
+{
+    const auto C = mDevice-&gt;GetCudaCapabilities();
+    if (!C) GTEST_SKIP() &lt;&lt; C.mUnavailableReason.c_str();
+    constexpr uint32_t Count = 1027;
+    eastl::vector&lt;uint32_t&gt; Input(Count), Output(Count + 8, 0xdeadbeefu);
+    for (uint32_t I = 0; I &lt; Count; ++I) Input[I] = I * 3;
+    auto Src = mDevice-&gt;CreateBuffer(BufferDesc(Input.size() * 4));
+    auto Dst = mDevice-&gt;CreateBuffer(BufferDesc(Output.size() * 4));
+    ASSERT_TRUE(Src) &lt;&lt; Src.mStatus.mMessage.c_str(); ASSERT_TRUE(Dst) &lt;&lt; Dst.mStatus.mMessage.c_str();
+    EXPECT_EQ(Dst.mValue-&gt;GetCudaResourceInfo().mRepresentations, EArdaResourceRepresentations::GraphicsAndCuda);
+    auto Cmd = mDevice-&gt;CreateCommandList(EArdaRHIQueueType::Graphics); ASSERT_TRUE(Cmd);
+    ASSERT_TRUE(Cmd.mValue-&gt;Open());
+    ASSERT_TRUE(Cmd.mValue-&gt;WriteBuffer(*Src.mValue, Input.data(), Input.size()*4, 0));
+    ASSERT_TRUE(Cmd.mValue-&gt;WriteBuffer(*Dst.mValue, Output.data(), Output.size()*4, 0));
+    FArdaComputeInvocation I;
+    I.mExtent[0] = Count;
+    I.mBindings = {{Src.mValue}, {Dst.mValue}};
+    I.mBindings[1].mBufferRange = {16, Count * 4};
+    auto Dispatched = FAddOperand().Dispatch(*Cmd.mValue, I, EArdaComputePolicy::RequireCuda);
+    ASSERT_TRUE(Dispatched) &lt;&lt; Dispatched.mStatus.mMessage.c_str();
+    eastl::vector&lt;uint8_t&gt; Readback;
+    ASSERT_TRUE(Cmd.mValue-&gt;CopyBufferDeviceToHost(*Dst.mValue, Readback));
+    ASSERT_TRUE(Cmd.mValue-&gt;Close());
+    auto Submitted = mDevice-&gt;ExecuteCommandList(Cmd.mValue); ASSERT_TRUE(Submitted) &lt;&lt; Submitted.mStatus.mMessage.c_str();
+    ASSERT_TRUE(mDevice-&gt;WaitForIdle());
+    ASSERT_EQ(Readback.size(), Output.size()*4);
+    std::memcpy(Output.data(), Readback.data(), Readback.size());
+    for (uint32_t J = 0; J &lt; Count; ++J) ASSERT_EQ(Output[J+4], Input[J]+18) &lt;&lt; &quot;element &quot; &lt;&lt; J;
+    for (uint32_t J : {0u,1u,2u,3u,Count+4,Count+5,Count+6,Count+7}) EXPECT_EQ(Output[J], 0xdeadbeefu);
+    if (C.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG) EXPECT_FALSE(mDevice-&gt;ExecuteCommandList(Cmd.mValue));
+}</code></pre><details><summary>Fixture initialization and BufferDesc helper</summary><pre><code class="language-cpp">class FCudaDiagnostics : public IArdaDiagnosticCallback
+{
+public:
+    std::atomic&lt;uint32_t&gt; mErrors{0};
+    void Message(EArdaDiagnosticSeverity Severity, const char* Message) override
+    {
+        if (Severity == EArdaDiagnosticSeverity::Error || Severity == EArdaDiagnosticSeverity::Fatal)
+        { ++mErrors; std::fprintf(stderr, &quot;CUDA test validation: %s\n&quot;, Message); }
+    }
+};
+class ArdaCudaGpu : public testing::TestWithParam&lt;const char*&gt;
+{
+protected:
+    FCudaDiagnostics mDiagnostics;
+    FArdaRHIDeviceRef mDevice;
+    void SetUp() override
+    {
+        ShutdownBackend();
+        if (!FindBackendModule(GetParam())) GTEST_SKIP() &lt;&lt; &quot;Backend not built&quot;;
+        FArdaBackendConfiguration C;
+        C.mBackendName = GetParam();
+        C.mbEnableValidation = true;
+        C.mMessageCallback = &amp;mDiagnostics;
+        C.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+        ASSERT_TRUE(ConfigureBackend(C));
+        ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
+        mDevice = GetDevice();
+    }
+    void TearDown() override
+    {
+        if (mDevice) EXPECT_TRUE(mDevice-&gt;WaitForIdle());
+        mDevice.Reset(); ShutdownBackend();
+        if (GetBackendInitializeResult() != EArdaInitializeResult::ValidationUnavailable)
+            EXPECT_EQ(mDiagnostics.mErrors.load(), 0u);
+    }
+    FArdaRHIBufferDesc BufferDesc(uint64_t Size, bool Cuda = true)
+    {
+        FArdaRHIBufferDesc D;
+        D.mByteSize = Size; D.mbCudaInterop = Cuda;
+        D.mUsage = EArdaRHIBufferUsage::UnorderedAccess | EArdaRHIBufferUsage::ShaderResource;
+        return D;
+    }
+};</code></pre></details></section>
+<section id="fallback"><h2>Provide the compute-shader alternative</h2><p><a href="api-reference.html#api-arda-backend-fardacomputeoperand-registergraphics-8c79ed52"><code>FArdaComputeOperand::RegisterGraphics</code></a> stores a callback that creates its binding set, sets resource states, binds a compute pipeline and records Dispatch. The same validated ports/parameters reach the callback. It must implement the same operation semantics as the CUDA sequence.</p><p>Auto chooses the first eligible registration. RequireGraphics excludes CUDA; RequireCuda excludes graphics. Ordinary nonshared buffers exclude CUDA even on an enabled device. A pinned variant must still satisfy architecture, resource and queue checks. An error after selecting/recording an implementation is propagated: automatic retry could duplicate partially recorded writes.</p><details><summary>Complete graphics → CUDA/graphics → graphics example</summary><pre><code class="language-cpp">TEST_P(ArdaCudaGpu, GraphicsFallbackAndMixedShaderCudaSequence)
+{
+    const auto Path = std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR) /
+        (std::string(&quot;ArdaCudaFallback&quot;) + GetShaderArtifactExtension(GetParam()));
+    std::ifstream File(Path, std::ios::binary | std::ios::ate);
+    ASSERT_TRUE(File);
+    eastl::vector&lt;uint8_t&gt; Bytes(static_cast&lt;size_t&gt;(File.tellg()));
+    File.seekg(0); File.read(reinterpret_cast&lt;char*&gt;(Bytes.data()), Bytes.size());
+    FArdaRHIShaderDesc SD;
+    SD.mStage = EArdaRHIShaderStage::Compute; SD.mEntryPoint = &quot;AddFallbackCS&quot;;
+    SD.mBytecode = Bytes.data(); SD.mBytecodeSize = Bytes.size();
+    auto Shader = mDevice-&gt;CreateShader(SD); ASSERT_TRUE(Shader);
+    FArdaRHIBindingLayoutDesc LD;
+    LD.mVisibility = EArdaRHIShaderStage::Compute;
+    LD.mItems = {{0, 1, EArdaRHIBindingType::StructuredBufferSRV}, {0, 1, EArdaRHIBindingType::StructuredBufferUAV}};
+    auto Layout = mDevice-&gt;CreateBindingLayout(LD); ASSERT_TRUE(Layout);
+    FArdaRHIComputePipelineDesc PD;
+    PD.mComputeShader = Shader.mValue; PD.mBindingLayouts = {Layout.mValue};
+    auto Pipeline = mDevice-&gt;CreateComputePipeline(PD); ASSERT_TRUE(Pipeline);
+    FAddOperand Operand([&amp;](IArdaRHICommandList&amp; Commands, const FArdaComputeInvocation&amp; I)
+    {
+        FArdaRHIBindingSetDesc BD; BD.mLayout = Layout.mValue;
+        for (uint32_t J = 0; J &lt; 2; ++J)
+        {
+            auto* Buffer = dynamic_cast&lt;IArdaRHIBuffer*&gt;(I.mBindings[J].mResource.Get());
+            if (auto S = Commands.SetBufferState(*Buffer, J ? EArdaRHIResourceState::UnorderedAccess :
+                EArdaRHIResourceState::ShaderResource); !S) return S;
+            FArdaRHIBindingItem Item;
+            Item.mType = J ? EArdaRHIBindingType::StructuredBufferUAV : EArdaRHIBindingType::StructuredBufferSRV;
+            Item.mResource = I.mBindings[J].mResource;
+            Item.mView.mBufferRange = I.mBindings[J].mBufferRange;
+            BD.mItems.push_back(Item);
+        }
+        auto Set = mDevice-&gt;CreateBindingSet(BD); if (!Set) return Set.mStatus;
+        FArdaRHIComputeState State; State.mPipeline = Pipeline.mValue; State.mBindings = {Set.mValue};
+        if (auto S = Commands.SetComputeState(State); !S) return S;
+        Commands.Dispatch((I.mExtent[0] + 127) / 128, 1, 1);
+        return FArdaRHIStatus{};
+    });
+    for (bool Share : {false, true})
+    {
+        if (Share &amp;&amp; !mDevice-&gt;GetCudaCapabilities()) continue;
+        constexpr uint32_t Count = 259;
+        auto D = BufferDesc(Count * 4, Share);
+        D.mStructureStride = 4; D.mUsage |= EArdaRHIBufferUsage::Structured;
+        auto A = mDevice-&gt;CreateBuffer(D), B = mDevice-&gt;CreateBuffer(D); ASSERT_TRUE(A); ASSERT_TRUE(B);
+        eastl::vector&lt;uint32_t&gt; Values(Count);
+        for (uint32_t J = 0; J &lt; Count; ++J) Values[J] = J * 5;
+        auto Cmd = mDevice-&gt;CreateCommandList(EArdaRHIQueueType::Graphics); ASSERT_TRUE(Cmd); ASSERT_TRUE(Cmd.mValue-&gt;Open());
+        ASSERT_TRUE(Cmd.mValue-&gt;WriteBuffer(*A.mValue, Values.data(), D.mByteSize, 0));
+        FArdaComputeInvocation I; I.mExtent[0] = Count; I.mBindings = {{A.mValue}, {B.mValue}};
+        auto First = Operand.Dispatch(*Cmd.mValue, I, EArdaComputePolicy::RequireGraphics);
+        ASSERT_TRUE(First) &lt;&lt; First.mStatus.mMessage.c_str(); EXPECT_EQ(First.mValue, &quot;graphics.add&quot;);
+        I.mBindings = {{B.mValue}, {A.mValue}};
+        auto Middle = Operand.Dispatch(*Cmd.mValue, I);
+        ASSERT_TRUE(Middle) &lt;&lt; Middle.mStatus.mMessage.c_str();
+        EXPECT_EQ(Middle.mValue, Share ? &quot;cuda.sequence&quot; : &quot;graphics.add&quot;);
+        I.mBindings = {{A.mValue}, {B.mValue}};
+        ASSERT_TRUE(Operand.Dispatch(*Cmd.mValue, I, EArdaComputePolicy::RequireGraphics));
+        eastl::vector&lt;uint8_t&gt; Result;
+        ASSERT_TRUE(Cmd.mValue-&gt;CopyBufferDeviceToHost(*B.mValue, Result));
+        ASSERT_TRUE(Cmd.mValue-&gt;Close()); ASSERT_TRUE(mDevice-&gt;ExecuteCommandList(Cmd.mValue));
+        ASSERT_EQ(Result.size(), D.mByteSize);
+        for (uint32_t J = 0; J &lt; Count; ++J)
+        {
+            uint32_t Value; std::memcpy(&amp;Value, Result.data() + J*4, 4);
+            ASSERT_EQ(Value, Values[J] + 54) &lt;&lt; J;
+        }
+    }
+}</code></pre></details><p>The checked result is input + 54 after three +18 operations. The source HLSL alternative is:</p><pre><code class="language-hlsl">StructuredBuffer&lt;uint&gt; Input : register(t0);
+RWStructuredBuffer&lt;uint&gt; Output : register(u0);
+
+[numthreads(128, 1, 1)]
+void AddFallbackCS(uint3 Thread : SV_DispatchThreadID)
+{
+    uint Count, Stride;
+    Output.GetDimensions(Count, Stride);
+    if (Thread.x &lt; Count) Output[Thread.x] = Input[Thread.x] + 18;
+}
+</code></pre></section>
+<section id="tuning"><h2>Select variants without mutating live inputs</h2><p>Override <a href="api-reference.html#api-arda-backend-fardacomputeoperand-selectvariant-8f609299"><code>FArdaComputeOperand::SelectVariant</code></a> to choose an index from the supplied eligible list, using a device/workload tuning cache. The default preserves registration order. Out-of-set indices are rejected. Benchmark with scratch resources before normal dispatch; selection itself must not launch candidate kernels on live outputs.</p><p>Construct and register before publishing the operand. Concurrent Dispatch calls require independently synchronized command lists and thread-safe callbacks. The selection example deliberately rejects duplicate names and an invalid tuning result:</p><pre><code class="language-cpp">class FSelectionOperand final : public FArdaComputeOperand
+{
+public:
+    bool mbInvalidSelection = false;
+    FSelectionOperand() : FArdaComputeOperand(&quot;sample.selection&quot;, {})
+    {
+        const auto Graphics = [](IArdaRHICommandList&amp;, const FArdaComputeInvocation&amp;) { return FArdaRHIStatus{}; };
+        EXPECT_TRUE(RegisterGraphics(&quot;first&quot;, Graphics));
+        EXPECT_FALSE(RegisterGraphics(&quot;first&quot;, Graphics));
+        EXPECT_FALSE(RegisterGraphics(&quot;empty&quot;, {}));
+        EXPECT_TRUE(RegisterGraphics(&quot;tuned&quot;, Graphics));
+        EXPECT_TRUE(RegisterCuda(&quot;unsupported_architecture&quot;, UINT32_MAX, UINT32_MAX,
+            [](const FArdaComputeInvocation&amp;) -&gt; TArdaRHIResult&lt;eastl::vector&lt;FArdaCudaKernel&gt;&gt;
+            {
+                ADD_FAILURE() &lt;&lt; &quot;Architecture-ineligible builder must never run&quot;;
+                return {};
+            }));
+    }
+    size_t SelectVariant(const FArdaComputeInvocation&amp;, const FArdaCudaCapabilities&amp;,
+        const eastl::vector&lt;size_t&gt;&amp; Eligible) const override
+    { return mbInvalidSelection ? SIZE_MAX : Eligible.back(); }
+};</code></pre></section>
+<section id="native"><h2>Native execution and lifetime limits</h2><p><strong>D3D12:</strong> the provider matches the adapter LUID and CUDA device, creates a CiG context on the graphics queue, imports shared committed memory and captures kernels with cuStreamBeginCaptureToCig/cuStreamEndCaptureToCig. UAV barriers surround capture. Streams, mappings and executable modules are retained until graphics-fence retirement. Submit or discard a captured list before recording another on the same context; captured lists are single-use.</p><p><strong>Vulkan:</strong> VK_NV_cuda_kernel_launch records kernels directly on a graphics/compute command buffer. Buffer device addresses are used only by this native launch path; they are not advertised as arbitrary CUDA-runtime pointers. VK_NVX_image_view_handle supplies 64-bit storage-image surface handles. Memory barriers order kernels and graphics consumers, and existing submission retention owns resources/modules until completion. Copy queues are unsupported.</p><p>D3D12 checks kernel parameter metadata. This Vulkan path has no equivalent parameter-metadata query; custom PTX authors remain responsible for matching argument ABI. Both providers validate declared ranges, dimensions and launch limits.</p></section>
+<section id="qualification"><h2>Verified support and failure diagnosis</h2><p>Qualification used Windows, RTX PRO 6000 Blackwell (SM 120), driver 610.62 / CUDA driver 13.3 and CUDA 13.3.29 headers. Buffer kernels and mixed graphics/CUDA work passed on both APIs. Vulkan surface reads/writes passed all 24 formats × 5 dimensions, plus nonuniform 2D addressing and allocation variations.</p><p><strong>D3D12 CiG surfaces are unavailable on this tested driver:</strong> image import succeeds but mapping to a mipmapped array fails in a CiG context. The shipping provider probes this and disables surface admission with a reason; graphics texture alternatives remain usable. This is not claimed as a working D3D12 image path. Other OS/GPU/driver combinations and independent CUDA streams are not qualified by these results.</p><dl><dt>No eligible variant</dt><dd>Inspect policy/pinning, SM bounds, queue type and each allocation’s sharing state; register or choose an explicit alternative.</dd><dt>InvalidArgument before recording</dt><dd>Check port order, buffer ranges, offset alignment, extent, scalar ABI and launch dimensions.</dd><dt>Capture failure or replay rejection</dt><dd>Discard/reset the failed recording and obey CiG capture/submission order; do not retry inside the partially recorded list.</dd><dt>GPU test skipped</dt><dd>Distinguish missing validation from unavailable CUDA capability. See <a href="validation.html">validation setup</a>; a skip is not successful GPU execution.</dd></dl><p>Run <code>ArdaBackendTests --gtest_filter=*ArdaCudaGpu*</code> in CUDA-on and CUDA-off builds. RDG node registration and scheduling integration remains a separate next step.</p></section><section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>
+</main>
+  </div>
+  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
+</body>
+</html>

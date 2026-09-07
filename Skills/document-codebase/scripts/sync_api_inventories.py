@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import collections
 import hashlib
+import html
 import json
 import re
 import shutil
@@ -42,6 +43,9 @@ CONTRACT_HEADERS = (
 )
 
 COMPLETE_BACKEND_SOURCES = {
+    "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "Source/ArdaBackend/Public/RHI/ArdaRHIResource.h",
     "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
@@ -257,6 +261,36 @@ def backend_specs(repo: Path) -> List[Tuple[str, str, str]]:
     return specs
 
 
+def source_contract(raw: str, line: int) -> Dict[str, object]:
+    """Use the nearest declaration's Doxygen contract, preserving source as prose authority."""
+    prefix = "\n".join(raw.splitlines()[:line - 1])
+    comments = list(re.finditer(r"/\*\*(.*?)\*/", prefix, re.S))
+    if not comments:
+        return {}
+    comment = comments[-1]
+    # A completed earlier declaration means its comment belongs to another symbol.
+    if re.search(r"[;{}]", prefix[comment.end():]):
+        return {}
+    body = re.sub(r"(?m)^\s*\*\s?", "", comment.group(1)).strip()
+    if body.startswith("@file"):
+        return {}
+    prose = body.split("@", 1)[0].strip()
+    result: Dict[str, object] = {}
+    if prose:
+        result.update(summary=normalized(prose.split("\n\n", 1)[0]), details=normalized(prose))
+    params = re.findall(r"@param\s+(\w+)\s+([^@]+)", body)
+    if params:
+        result["params"] = [{"name": name, "description": normalized(value)} for name, value in params]
+    returns = re.search(r"@return\s+([^@]+)", body)
+    if returns:
+        result["returns"] = normalized(returns.group(1))
+    for field in ("ownership", "errors", "threading"):
+        value = re.search(r"@" + field + r"\s+([^@]+)", body)
+        if value:
+            result[field] = normalized(value.group(1))
+    return result
+
+
 def rdg_specs(repo: Path) -> List[Tuple[str, str, str]]:
     return [
         (header.relative_to(repo).as_posix(), "arda::render_graph", "core")
@@ -311,6 +345,8 @@ def make_symbols(
                     "related": ["::".join(item for item in (namespace, owner) if item)],
                 }
             )
+            symbols[-1].update(source_contract(raw, line))
+            symbols[-1]["sourceLine"] = line
     return symbols
 
 
@@ -419,12 +455,18 @@ def generated_block(
     global_name: str,
     begin: str,
     end: str,
+    contracts: Sequence[Dict[str, object]] = (),
 ) -> str:
     data = json.dumps(symbols, indent=2, ensure_ascii=True)
     return f"""{begin}
 (() => {{
   const generatedSymbols = {data};
   window.{global_name}.symbols.push(...generatedSymbols);
+  const sourceContracts = {json.dumps(contracts, indent=2, ensure_ascii=True)};
+  for (const contract of sourceContracts) {{
+    const symbol = window.{global_name}.symbols.find(item => item.id === contract.id);
+    if (symbol) Object.assign(symbol, contract);
+  }}
 }})();
 {end}
 """
@@ -459,6 +501,52 @@ def synchronize_block(asset: str, block: str, begin: str, end: str) -> str:
     return asset.rstrip() + "\n\n" + block
 
 
+def static_api_reference(template: str, asset: str, variable: str, module: str, marker: str) -> str:
+    """Render the canonical inventory before JavaScript progressively adds filtering."""
+    api = evaluate_api(asset, variable)
+    symbols = sorted(api["symbols"], key=lambda s: (s["component"], s["kind"], s["qualifiedName"]))
+    escape = lambda value: html.escape(str(value).replace("\r\n", "\n").replace("\r", "\n"), quote=True)
+    index = '<ul class="api-index-list">\n' + "\n".join(
+        f'<li><a href="#{escape(s["id"])}">{escape(s["qualifiedName"])} <span class="api-kind">{escape(s["kind"])}</span></a></li>'
+        for s in symbols) + "\n</ul>"
+    parts = []
+    components = collections.defaultdict(list)
+    for symbol in symbols:
+        components[symbol["component"]].append(symbol)
+    labels = {c["id"]: c["name"] for c in api["components"]}
+    for component, entries in components.items():
+        parts.append(f'<section class="api-group" id="api-component-{escape(component)}"><h3>{escape(labels.get(component, component))}</h3>')
+        kinds = collections.defaultdict(list)
+        for symbol in entries:
+            kinds[symbol["kind"]].append(symbol)
+        for kind, entries_by_kind in kinds.items():
+            parts.append(f'<section class="api-kind-group"><h4>{escape(kind)}</h4>')
+            for symbol in entries_by_kind:
+                parts.append(f'<section class="api-entry" id="{escape(symbol["id"])}" tabindex="-1"><h5>{escape(symbol["qualifiedName"])}</h5><pre><code>{escape(symbol["signature"])}</code></pre><p>{escape(symbol["summary"])}</p>')
+                if symbol.get("details") and symbol["details"] != symbol["summary"]:
+                    parts.append(f'<p>{escape(symbol["details"])}</p>')
+                parts.append('<dl>')
+                for parameter in symbol.get("params", []):
+                    if isinstance(parameter, dict):
+                        parts.append(f'<dt>{escape(parameter.get("name", "Parameter"))}</dt><dd>{escape(parameter.get("description", ""))}</dd>')
+                    else:
+                        parts.append(f'<dt>Parameter</dt><dd>{escape(parameter)}</dd>')
+                for field in ("returns", "ownership", "errors", "threading", "source"):
+                    if symbol.get(field):
+                        parts.append(f'<dt>{field.title()}</dt><dd>{escape(symbol[field])}</dd>')
+                parts.append('</dl></section>')
+            parts.append('</section>')
+        parts.append('</section>')
+    for name, selector, content in (("INDEX", f'data-api-index="{module}"', index), ("DETAILS", 'data-api-reference', "\n".join(parts))):
+        begin, end = f"<!-- BEGIN STATIC {marker} {name} -->", f"<!-- END STATIC {marker} {name} -->"
+        if begin not in template:
+            template = template.replace(f'<div {selector}></div>', f'<div {selector}>{begin}{end}</div>')
+        first, last = template.index(begin), template.index(end) + len(end)
+        template = template[:first] + begin + "\n" + content + "\n" + end + template[last:]
+    template = re.sub(r'<noscript>.*?</noscript>', '<noscript><p>The complete index and contracts below work without JavaScript. Use browser Find to search; JavaScript adds synchronized filters.</p></noscript>', template, flags=re.S)
+    return template
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
@@ -485,13 +573,32 @@ def main() -> int:
         evaluate_api(backend_base, "ArdaBackendApi"),
         COMPLETE_BACKEND_SOURCES,
     )
+    # Rich header contracts supersede older authored boilerplate while preserving
+    # canonical IDs and related links. Generic one-line comments do not replace prose.
+    authored = evaluate_api(backend_base, "ArdaBackendApi")["symbols"]
+    contracts = []
+    for declaration in backend_declarations:
+        if declaration["ownership"].startswith("Owning handles retain"):
+            continue
+        existing = next((s for s in authored if s["qualifiedName"] == declaration["qualifiedName"]
+            and normalized(s["signature"]) == normalized(declaration["signature"])), None)
+        if existing:
+            contracts.append({"id": existing["id"], **{field: declaration[field] for field in
+                ("summary", "details", "params", "returns", "ownership", "errors", "threading", "sourceLine")}})
     backend_block = generated_block(
-        backend_symbols, "ArdaBackendApi", BACKEND_BEGIN, BACKEND_END
+        backend_symbols, "ArdaBackendApi", BACKEND_BEGIN, BACKEND_END, contracts
     )
     header_count = len(list((repo / "Source/ArdaBackend/Public").rglob("*.h")))
     backend_updated = synchronize_backend(
         backend_current, backend_block, header_count
     )
+    provenance = [source for source, _namespace, _component in backend_specs(repo)]
+    backend_updated = re.sub(r'"headerProvenance": \[.*?\n  \]',
+        '"headerProvenance": ' + json.dumps(provenance, indent=2).replace("\n", "\n  "),
+        backend_updated, count=1, flags=re.S)
+    reference_path = repo / "Docs/ArdaBackend/api-reference.html"
+    reference_current = reference_path.read_text(encoding="utf-8")
+    reference_updated = static_api_reference(reference_current, backend_updated, "ArdaBackendApi", "ArdaBackend", "BACKEND")
 
     rdg_path = repo / "Docs/assets/arda-rdg-api.js"
     rdg_current = rdg_path.read_text(encoding="utf-8-sig")
@@ -508,14 +615,21 @@ def main() -> int:
     rdg_updated = synchronize_block(
         rdg_current, rdg_block, RDG_BEGIN, RDG_END
     )
+    rdg_reference_path = repo / "Docs/ArdaRDG/api-reference.html"
+    rdg_reference_current = rdg_reference_path.read_text(encoding="utf-8")
+    rdg_reference_updated = static_api_reference(rdg_reference_current, rdg_updated, "ArdaRDGApi", "ArdaRenderGraph", "RDG")
     if args.check:
         stale = []
         if glossary_current != glossary_updated:
             stale.append(glossary_path)
         if backend_current != backend_updated:
             stale.append(backend_path)
+        if reference_current != reference_updated:
+            stale.append(reference_path)
         if rdg_current != rdg_updated:
             stale.append(rdg_path)
+        if rdg_reference_current != rdg_reference_updated:
+            stale.append(rdg_reference_path)
         if stale:
             print(
                 "%s is stale; run %s"
@@ -529,7 +643,9 @@ def main() -> int:
         )
         return 0
     backend_path.write_text(backend_updated, encoding="utf-8", newline="\n")
+    reference_path.write_text(reference_updated, encoding="utf-8", newline="\n")
     rdg_path.write_text(rdg_updated, encoding="utf-8", newline="\n")
+    rdg_reference_path.write_text(rdg_reference_updated, encoding="utf-8", newline="\n")
     glossary_path.write_text(glossary_updated, encoding="utf-8", newline="\n")
     print(
         f"Updated API inventories with {len(backend_symbols)} backend additions "

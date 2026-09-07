@@ -16,6 +16,8 @@ option(ARDASHIR_BUILD_RHI_TEST "Build the dual-backend opaque RHI triangle appli
 option(ARDASHIR_BUILD_ARDG_EXAMPLE "Build the dual-backend render-graph terrain application" ON)
 option(ARDASHIR_BUILD_CORNELL_BOX "Build the RDG hardware path-traced Cornell Box application" ON)
 option(ARDASHIR_ENABLE_TRACE "Enable Ardashir CPU trace instrumentation" ON)
+option(ARDASHIR_ENABLE_CUDA "Enable native CUDA kernel launch providers (optional SDK and runtime driver)" OFF)
+set(ARDASHIR_CUDA_INCLUDE_DIR "" CACHE PATH "CUDA 13.3 or newer include directory; public RHI headers do not require it")
 option(ARDASHIR_BACKEND_VULKAN
     "Link the native Vulkan 1.4 ArdaBackend module" ON)
 option(ARDASHIR_BACKEND_D3D12
@@ -42,6 +44,7 @@ if(ARDASHIR_BUILD_TESTS)
     include(CTest)
     enable_testing()
     include(GoogleTest)
+    include(TestValidation)
     add_test(
         NAME ArdaRHISourceBoundary
         COMMAND "${CMAKE_COMMAND}"

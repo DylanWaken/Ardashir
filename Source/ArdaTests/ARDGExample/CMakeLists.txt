@@ -41,6 +41,7 @@ endif()
 set_target_properties(ARDGExample PROPERTIES FOLDER "Ardashir/Tests/ARDG")
 
 if(ARDASHIR_BUILD_TESTS)
+    ardashir_test_validation(ARDGExample)
     set(ARDG_EXAMPLE_GPU_TESTS)
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         add_test(

@@ -499,6 +499,8 @@ namespace arda::rhi
         bool mbUseClearValue = false;
         /** Stores the debug name. */
         eastl::string mDebugName;
+        /** Request CUDA-compatible native allocation; unsupported descriptors fail creation. */
+        bool mbCudaInterop = false;
         /**
          * Compares two values for equality.
          * @param O The o.
@@ -532,6 +534,8 @@ namespace arda::rhi
         bool mbTiled = false;
         /** Stores the debug name. */
         eastl::string mDebugName;
+        /** Request CUDA-compatible native allocation; not valid for transient placed storage. */
+        bool mbCudaInterop = false;
         /**
          * Compares two values for equality.
          * @param O The o.

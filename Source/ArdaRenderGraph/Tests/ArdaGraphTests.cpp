@@ -1,3 +1,4 @@
+#include "ArdaTestBackend.h"
 #include "ArdaRenderGraph.h"
 #include "ArdaRenderGraphAllocator.h"
 #include "ArdaRenderGraphRegistry.h"
@@ -2108,7 +2109,7 @@ TEST(ArdaRenderGraph, FrameTemporaryResourcesAndPassBindingsAreReleased)
         Configuration.mbEnableValidation = false;
         Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend())
+        ARDA_REQUIRE_BACKEND()
             << Module.mName.c_str() << ": " << GetBackendError().c_str();
         ++TestedBackends;
 
@@ -2236,7 +2237,7 @@ TEST(ArdaRenderGraph, ExecutesComplexGraphFormationOnEveryNativeBackend)
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend())
+        ARDA_REQUIRE_BACKEND()
             << Module.mName.c_str() << ": " << GetBackendError().c_str();
         ++TestedBackends;
 
@@ -2530,7 +2531,7 @@ TEST(ArdaRenderGraph, ConservativeBarrierCheckpointsMatchEveryNativeBackend)
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend())
+        ARDA_REQUIRE_BACKEND()
             << Module.mName.c_str() << ": " << GetBackendError().c_str();
         ++TestedBackends;
 
@@ -2622,7 +2623,7 @@ TEST(ArdaRenderGraph, HostDeviceCopyNodesExecuteBlockingAndAsyncOnEveryBackend)
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        ASSERT_TRUE(InitializeBackend())
+        ARDA_REQUIRE_BACKEND()
             << Module.mName.c_str() << ": " << GetBackendError().c_str();
         ++TestedBackends;
 
@@ -3208,7 +3209,7 @@ namespace
             Configuration.mMessageCallback = &mDiagnostics;
             Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
             ASSERT_TRUE(ConfigureBackend(Configuration)) << GetBackendError().c_str();
-            ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+            ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
             mDevice = GetDevice();
         }
 
@@ -3221,7 +3222,9 @@ namespace
                 mDevice = nullptr;
             }
             arda::backend::ShutdownBackend();
-            EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
+            if (arda::backend::GetBackendInitializeResult() !=
+                arda::backend::EArdaInitializeResult::ValidationUnavailable)
+                EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
         }
 
         FARDGCollectingDiagnosticCallback mDiagnostics;

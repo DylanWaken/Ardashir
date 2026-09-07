@@ -150,6 +150,8 @@ namespace arda::rhi::provider
             }
 
             const Desc& GetDesc() const noexcept override { return mDesc; }
+            FArdaCudaResourceInfo GetCudaResourceInfo() const noexcept override
+            { return mNative ? mNative->GetCudaResourceInfo() : FArdaCudaResourceInfo{}; }
             const void* GetPhysicalIdentity() const noexcept
             {
                 return mNative ? mNative->GetIdentity() : nullptr;
@@ -936,6 +938,7 @@ namespace arda::rhi::provider
         class FCommandList final : public FResource, public IArdaRHICommandList
         {
         public:
+            FArdaRHIStatus DispatchCuda(const FArdaCudaDispatch&) override;
             FCommandList(FArdaRHIDeviceImpl* Device,
                 EArdaRHIQueueType Queue,
                 eastl::unique_ptr<IArdaProviderCommandList> Native,
@@ -1100,6 +1103,7 @@ namespace arda::rhi::provider
         class FArdaRHIDeviceImpl final : public FResource, public IArdaRHIDevice
         {
         public:
+            FArdaCudaCapabilities GetCudaCapabilities() const override { return mDevice->GetCudaCapabilities(); }
             explicit FArdaRHIDeviceImpl(eastl::shared_ptr<IArdaRHIProviderDevice> Device)
                 : FResource(EArdaRHIResourceType::Device, "RHIDevice", this)
                 , mLifetimeTracker(eastl::make_shared<FLifetimeTracker>())
@@ -1301,6 +1305,13 @@ namespace arda::rhi::provider
         TArdaRHIResult<FArdaRHITextureRef> FArdaRHIDeviceImpl::CreateTexture(
             const FArdaRHITextureDesc& Desc)
         {
+            if (Desc.mbCudaInterop)
+            {
+                if (!GetCudaCapabilities()) return UnsupportedResult<FArdaRHITextureRef>(GetCudaCapabilities().mUnavailableReason.c_str());
+                if (!GetCudaCapabilities().mbSurfaceAccess)
+                    return UnsupportedResult<FArdaRHITextureRef>(GetCudaCapabilities().mSurfaceUnavailableReason.c_str());
+                if (auto Status = ValidateArdaCudaTexture(Desc); !Status) return Failure<FArdaRHITextureRef>(Status);
+            }
             if (auto Status = Validate(Desc); !Status)
                 return Failure<FArdaRHITextureRef>(eastl::move(Status));
             if (Desc.mbTiled &&
@@ -1336,6 +1347,11 @@ namespace arda::rhi::provider
         TArdaRHIResult<FArdaRHIBufferRef> FArdaRHIDeviceImpl::CreateBuffer(
             const FArdaRHIBufferDesc& Desc)
         {
+            if (Desc.mbCudaInterop)
+            {
+                if (!GetCudaCapabilities()) return UnsupportedResult<FArdaRHIBufferRef>(GetCudaCapabilities().mUnavailableReason.c_str());
+                if (auto Status = ValidateArdaCudaBuffer(Desc); !Status) return Failure<FArdaRHIBufferRef>(Status);
+            }
             if (auto Status = Validate(Desc); !Status)
                 return Failure<FArdaRHIBufferRef>(eastl::move(Status));
             if (Desc.mbTiled &&
@@ -1620,6 +1636,8 @@ namespace arda::rhi::provider
         TArdaRHIResult<FArdaRHITextureRef> FArdaRHIDeviceImpl::ImportNativeTexture(
             const FArdaRHINativeTextureImportDesc& Desc)
         {
+            if (Desc.mTexture.mbCudaInterop)
+                return UnsupportedResult<FArdaRHITextureRef>("CUDA sharing requires a backend-created allocation.");
             if (!Desc.mNativeObject)
                 return Failure<FArdaRHITextureRef>(Invalid("Native texture object is null."));
             if (Desc.mOwnership == EArdaRHINativeOwnership::Transferred)
@@ -1647,6 +1665,8 @@ namespace arda::rhi::provider
         TArdaRHIResult<FArdaRHIBufferRef> FArdaRHIDeviceImpl::ImportNativeBuffer(
             const FArdaRHINativeBufferImportDesc& Desc)
         {
+            if (Desc.mBuffer.mbCudaInterop)
+                return UnsupportedResult<FArdaRHIBufferRef>("CUDA sharing requires a backend-created allocation.");
             if (!Desc.mNativeObject)
                 return Failure<FArdaRHIBufferRef>(Invalid("Native buffer object is null."));
             if (Desc.mOwnership == EArdaRHINativeOwnership::Transferred)
@@ -3775,6 +3795,68 @@ namespace arda::rhi::provider
             auto* Native = Cast<FTexture>(&Texture);
             if (!Native || !RetainOwned(Native)) return WrongDevice();
             return mNative->ClearTexture(Native->mNative, Native->mDesc, Range, Color);
+        }
+
+        FArdaRHIStatus FCommandList::DispatchCuda(const FArdaCudaDispatch& Dispatch)
+        {
+            if (mQueue == EArdaRHIQueueType::Copy)
+                return Invalid("CUDA kernels cannot be recorded on a copy command list.");
+            if (auto Status = ValidateArdaCudaKernels(Dispatch.mKernels,
+                    Dispatch.mBindings.size(), mDevice->GetCudaCapabilities()); !Status) return Status;
+            if (!mNative->IsOpen())
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "CUDA requires an open command list.");
+            if (mDevice->GetCudaCapabilities().mLaunchMode == EArdaCudaLaunchMode::D3D12CiG &&
+                mQueue != EArdaRHIQueueType::Graphics)
+                return Unsupported("D3D12 CiG requires its graphics context queue.");
+            eastl::vector<FArdaProviderCudaBinding> Bindings;
+            for (const auto& B : Dispatch.mBindings)
+            {
+                if (!B.mResource) return Invalid("CUDA binding has no resource.");
+                if (B.mAccess > EArdaComputeAccess::ReadWrite) return Invalid("Invalid CUDA resource access.");
+                if (!B.mResource->GetCudaResourceInfo().mbSharingEnabled)
+                    return Unsupported("Resource was not created for CUDA access; acceleration structures have no generic CUDA representation.");
+                FArdaProviderCudaBinding Native;
+                Native.mAccess = B.mAccess;
+                if (auto* Buffer = Cast<FBuffer>(B.mResource.Get()))
+                {
+                    if (!RetainOwned(Buffer)) return WrongDevice();
+                    const auto& R = B.mBufferRange;
+                    if (R.mByteOffset >= Buffer->mDesc.mByteSize ||
+                        (R.mByteSize != ArdaRHIWholeBuffer &&
+                            (!R.mByteSize || R.mByteSize > Buffer->mDesc.mByteSize - R.mByteOffset)))
+                        return Invalid("CUDA buffer range is out of bounds.");
+                    Native.mObject = Buffer->mNative;
+                    Native.mBufferRange = R.Resolve(Buffer->mDesc);
+                }
+                else if (auto* Texture = Cast<FTexture>(B.mResource.Get()))
+                {
+                    if (!RetainOwned(Texture)) return WrongDevice();
+                    if (B.mMipLevel >= Texture->mDesc.mMipLevels) return Invalid("CUDA texture mip is out of bounds.");
+                    Native.mType = EArdaComputeBindingType::Surface;
+                    Native.mObject = Texture->mNative;
+                    Native.mMipLevel = B.mMipLevel;
+                }
+                else return Unsupported("CUDA accepts buffer or surface bindings only.");
+                Bindings.push_back(eastl::move(Native));
+            }
+            // Both launch modes participate in ordinary graphics state tracking. Native
+            // recording emits the CUDA-specific barriers in addition to these transitions.
+            for (const auto& B : Dispatch.mBindings)
+            {
+                FArdaRHIStatus Status;
+                if (auto* Buffer = Cast<FBuffer>(B.mResource.Get()))
+                    Status = SetBufferState(*Buffer, EArdaRHIResourceState::UnorderedAccess);
+                else
+                {
+                    FArdaRHITextureSubresourceRange Range;
+                    Range.mBaseMipLevel = B.mMipLevel;
+                    Range.mMipLevelCount = 1;
+                    Status = SetTextureState(*Cast<FTexture>(B.mResource.Get()), Range,
+                        EArdaRHIResourceState::UnorderedAccess);
+                }
+                if (!Status) return Status;
+            }
+            return mNative->DispatchCuda(Bindings, Dispatch.mKernels);
         }
 
         FArdaRHIStatus FCommandList::SetTextureState(

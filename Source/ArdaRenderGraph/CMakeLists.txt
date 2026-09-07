@@ -26,6 +26,7 @@ if(ARDASHIR_BUILD_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.cpp"
     )
     add_executable(ArdaGraphTests ${ARDA_RENDER_GRAPH_TEST_SOURCES})
+    ardashir_test_validation(ArdaGraphTests)
     target_include_directories(ArdaGraphTests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
     target_compile_definitions(ArdaGraphTests PRIVATE
         ARDA_ENABLE_CHECKS
