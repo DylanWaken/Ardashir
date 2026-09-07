@@ -30,7 +30,8 @@ if(ARDASHIR_BUILD_TESTS)
     target_compile_definitions(ArdaGraphTests PRIVATE
         ARDA_ENABLE_CHECKS
         ARDA_BACKEND_TEST_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/TestShaderCache"
-        ARDA_BACKEND_TEST_SHADER_SOURCE_DIR="${CMAKE_SOURCE_DIR}/Source/ArdaBackend/Tests")
+        ARDA_BACKEND_TEST_SHADER_SOURCE_DIR="${CMAKE_SOURCE_DIR}/Source/ArdaBackend/Tests"
+        ARDA_RDG_TEST_SHADER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/Tests")
     target_link_libraries(ArdaGraphTests PRIVATE
         Ardashir::ArdaRenderGraph
         Ardashir::ArdaBackend

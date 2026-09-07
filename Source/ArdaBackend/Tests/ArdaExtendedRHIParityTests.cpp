@@ -1,5 +1,6 @@
 #include "ArdaBackend.h"
 #include "ArdaBackendProvider.h"
+#include "PipelineStateCache/ArdaPipelineStateCache.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 
 #include <gtest/gtest.h>
@@ -9,6 +10,8 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <filesystem>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -295,7 +298,7 @@ namespace
         EXPECT_EQ(Snapshot.mValue.mNative.mState, Expected);
     }
 
-    void VerifySamplerFeedbackStateParity()
+    void VerifySamplerFeedbackStateParity(bool bMipRegionUsed = false)
     {
         using namespace arda::backend;
         using namespace arda::rhi;
@@ -312,8 +315,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
         if (Device->GetCapabilities().mSamplerFeedbackTier ==
@@ -325,21 +327,20 @@ namespace
         PairedDesc.mWidth = 512;
         PairedDesc.mHeight = 512;
         PairedDesc.mMipLevels = 10;
-        PairedDesc.mFormat = EArdaRHIFormat::BC7UNorm;
+        PairedDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
         PairedDesc.mUsage = EArdaRHITextureUsage::ShaderResource;
-        PairedDesc.mbTiled = true;
+        PairedDesc.mbTiled = false;
         PairedDesc.mInitialState = EArdaRHIResourceState::Common;
         auto Paired = Device->CreateTexture(PairedDesc);
         ASSERT_TRUE(Paired) << Paired.mStatus.mMessage.c_str();
-        auto Tiling = Device->GetTextureTiling(Paired.mValue);
-        ASSERT_TRUE(Tiling) << Tiling.mStatus.mMessage.c_str();
 
         FArdaRHISamplerFeedbackTextureDesc FeedbackDesc;
         FeedbackDesc.mDebugName = "Native sampler feedback map";
-        FeedbackDesc.mMipRegionX =
-            Tiling.mValue.mTileShape.mWidthInTexels;
-        FeedbackDesc.mMipRegionY =
-            Tiling.mValue.mTileShape.mHeightInTexels;
+        FeedbackDesc.mFormat = bMipRegionUsed
+            ? EArdaRHISamplerFeedbackFormat::MipRegionUsedOpaque
+            : EArdaRHISamplerFeedbackFormat::MinMipOpaque;
+        FeedbackDesc.mMipRegionX = 64;
+        FeedbackDesc.mMipRegionY = 64;
         FeedbackDesc.mMipRegionZ = 1;
         FeedbackDesc.mInitialState =
             EArdaRHIResourceState::UnorderedAccess;
@@ -356,6 +357,15 @@ namespace
         DecodedDesc.mHeight = (PairedDesc.mHeight +
             FeedbackDesc.mMipRegionY - 1u) /
             FeedbackDesc.mMipRegionY;
+        const uint32_t ReadbackWidth = bMipRegionUsed ? DecodedDesc.mWidth >> 2 : DecodedDesc.mWidth;
+        const uint32_t ReadbackHeight = bMipRegionUsed ? DecodedDesc.mHeight >> 2 : DecodedDesc.mHeight;
+        if (bMipRegionUsed)
+        {
+            // Preserve the paired mip count; unused right/bottom padding is allowed.
+            DecodedDesc.mWidth = PairedDesc.mWidth;
+            DecodedDesc.mHeight = PairedDesc.mHeight;
+            DecodedDesc.mMipLevels = PairedDesc.mMipLevels;
+        }
         DecodedDesc.mFormat = EArdaRHIFormat::R8UInt;
         DecodedDesc.mInitialState = EArdaRHIResourceState::Common;
         auto Decoded = Device->CreateTexture(DecodedDesc);
@@ -379,6 +389,78 @@ namespace
         ExpectSamplerFeedbackState(
             *Commands.mValue, *Feedback.mValue,
             EArdaRHIResourceState::UnorderedAccess);
+        FArdaRHIStagingTextureDesc UploadDesc;
+        UploadDesc.mTexture = PairedDesc;
+        UploadDesc.mCpuAccess = EArdaRHICpuAccess::Write;
+        auto Upload = Device->CreateStagingTexture(UploadDesc);
+        ASSERT_TRUE(Upload);
+        for (uint32_t Mip = 0; Mip < PairedDesc.mMipLevels; ++Mip)
+        {
+            FArdaRHITextureSlice Region;
+            Region.mMipLevel = Mip;
+            Region.mWidth = eastl::max(1u, PairedDesc.mWidth >> Mip);
+            Region.mHeight = eastl::max(1u, PairedDesc.mHeight >> Mip);
+            Region.mDepth = 1;
+            auto Mapping = Device->MapStagingTexture(Upload.mValue, Region, EArdaRHICpuAccess::Write);
+            ASSERT_TRUE(Mapping);
+            const uint32_t Color = 0xff000000u | (Mip + 1u);
+            for (uint32_t Y = 0; Y < Region.mHeight; ++Y)
+            {
+                auto* Row = static_cast<uint8_t*>(Mapping.mValue.mData) + Y * Mapping.mValue.mRowPitch;
+                for (uint32_t X = 0; X < Region.mWidth; ++X)
+                    std::memcpy(Row + X * sizeof(Color), &Color, sizeof(Color));
+            }
+            ASSERT_TRUE(Device->UnmapStagingTexture(Upload.mValue));
+            ASSERT_TRUE(Commands.mValue->CopyTextureFromStaging(*Paired.mValue, Region, *Upload.mValue, Region));
+        }
+        auto Shader = CreateExtendedShader(*Device, "native-d3d12",
+            bMipRegionUsed ? "ArdaSamplerFeedbackRegion" : "ArdaSamplerFeedback",
+            bMipRegionUsed ? "SamplerFeedbackRegionCS" : "SamplerFeedbackCS",
+            EArdaRHIShaderStage::Compute);
+        ASSERT_TRUE(Shader);
+        FArdaRHIBindingLayoutDesc LayoutDesc;
+        LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+        LayoutDesc.mItems = {{0, 1, EArdaRHIBindingType::TextureSRV},
+            {0, 1, EArdaRHIBindingType::Sampler},
+            {bMipRegionUsed ? 2u : 0u, 1, EArdaRHIBindingType::SamplerFeedbackTextureUAV},
+            {1, 1, EArdaRHIBindingType::StructuredBufferUAV}};
+        auto Layout = Device->CreateBindingLayout(LayoutDesc);
+        ASSERT_TRUE(Layout);
+        FArdaRHISamplerDesc SamplerDesc;
+        SamplerDesc.mbMinFilter = true;
+        SamplerDesc.mbMagFilter = true;
+        SamplerDesc.mbMipFilter = true;
+        auto Sampler = Device->CreateSampler(SamplerDesc);
+        ASSERT_TRUE(Sampler);
+        FArdaRHIBufferDesc MetadataDesc;
+        MetadataDesc.mByteSize = 5 * sizeof(uint32_t);
+        MetadataDesc.mStructureStride = sizeof(uint32_t);
+        MetadataDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
+        auto Metadata = Device->CreateBuffer(MetadataDesc);
+        ASSERT_TRUE(Metadata);
+        const uint32_t MetadataValues[] = {2, 0, 0, 0, 0};
+        ASSERT_TRUE(Commands.mValue->WriteBuffer(*Metadata.mValue, MetadataValues, sizeof(MetadataValues)));
+        ASSERT_TRUE(Commands.mValue->SetBufferState(*Metadata.mValue, EArdaRHIResourceState::UnorderedAccess));
+        FArdaRHIBindingSetDesc SetDesc;
+        SetDesc.mLayout = Layout.mValue;
+        SetDesc.mItems = {{0, 0, EArdaRHIBindingType::TextureSRV, FArdaRHIResourceRef(Paired.mValue.Get()), {}},
+            {0, 0, EArdaRHIBindingType::Sampler, FArdaRHIResourceRef(Sampler.mValue.Get()), {}},
+            {bMipRegionUsed ? 2u : 0u, 0, EArdaRHIBindingType::SamplerFeedbackTextureUAV, FArdaRHIResourceRef(Feedback.mValue.Get()), {}},
+            {1, 0, EArdaRHIBindingType::StructuredBufferUAV, FArdaRHIResourceRef(Metadata.mValue.Get()), {}}};
+        auto Set = Device->CreateBindingSet(SetDesc);
+        ASSERT_TRUE(Set);
+        FArdaRHIComputePipelineDesc PipelineDesc;
+        PipelineDesc.mComputeShader = Shader.mValue;
+        PipelineDesc.mBindingLayouts = {Layout.mValue};
+        auto Pipeline = Device->CreateComputePipeline(PipelineDesc);
+        ASSERT_TRUE(Pipeline) << Pipeline.mStatus.mMessage.c_str();
+        ASSERT_TRUE(Commands.mValue->SetTextureState(*Paired.mValue, {}, EArdaRHIResourceState::ShaderResource));
+        FArdaRHIComputeState State;
+        State.mPipeline = Pipeline.mValue;
+        State.mBindings = {Set.mValue};
+        ASSERT_TRUE(Commands.mValue->SetComputeState(State));
+        Commands.mValue->Dispatch(1, 1, 1);
+        eastl::vector<uint8_t> MetadataReadback;
         ASSERT_TRUE(Commands.mValue->DecodeSamplerFeedbackTexture(
             *Decoded.mValue, *Feedback.mValue,
             EArdaRHIFormat::R8UInt));
@@ -399,24 +481,43 @@ namespace
             *Commands.mValue, *Decoded.mValue, {},
             EArdaRHIResourceState::CopySource);
         FArdaRHITextureSlice Slice;
-        Slice.mWidth = DecodedDesc.mWidth;
-        Slice.mHeight = DecodedDesc.mHeight;
+        Slice.mMipLevel = bMipRegionUsed ? 2u : 0u;
+        Slice.mWidth = ReadbackWidth;
+        Slice.mHeight = ReadbackHeight;
         Slice.mDepth = 1;
         ASSERT_TRUE(Commands.mValue->CopyTextureToStaging(
             *Readback.mValue, Slice, *Decoded.mValue, Slice));
+        ASSERT_TRUE(Commands.mValue->CopyBufferDeviceToHost(*Metadata.mValue,
+            MetadataReadback, 0, MetadataDesc.mByteSize));
         ASSERT_TRUE(Commands.mValue->Close());
         ASSERT_TRUE(Device->ExecuteCommandList(Commands.mValue));
         ASSERT_TRUE(Device->WaitForIdle());
+        uint32_t ActualMetadata[5]{};
+        ASSERT_EQ(MetadataReadback.size(), sizeof(ActualMetadata));
+        std::memcpy(ActualMetadata, MetadataReadback.data(), sizeof(ActualMetadata));
+        EXPECT_EQ(ActualMetadata[0], 2u);
+        EXPECT_EQ(ActualMetadata[4], 3u);
+        EXPECT_EQ(ActualMetadata[1], PairedDesc.mWidth);
+        EXPECT_EQ(ActualMetadata[2], PairedDesc.mHeight);
+        EXPECT_EQ(ActualMetadata[3], PairedDesc.mMipLevels);
         auto Mapping = Device->MapStagingTexture(
             Readback.mValue, Slice, EArdaRHICpuAccess::Read);
         ASSERT_TRUE(Mapping) << Mapping.mStatus.mMessage.c_str();
-        for (uint32_t Y = 0; Y < DecodedDesc.mHeight; ++Y)
+        uint32_t WrittenRegions = 0;
+        for (uint32_t Y = 0; Y < ReadbackHeight; ++Y)
         {
             const auto* Row = static_cast<const uint8_t*>(
                 Mapping.mValue.mData) + Y * Mapping.mValue.mRowPitch;
-            for (uint32_t X = 0; X < DecodedDesc.mWidth; ++X)
-                EXPECT_EQ(Row[X], 0xffu);
+            for (uint32_t X = 0; X < ReadbackWidth; ++X)
+            {
+                const uint8_t WrittenValue = bMipRegionUsed ? 0xffu : 2u;
+                const uint8_t ClearValue = bMipRegionUsed ? 0u : 0xffu;
+                EXPECT_TRUE(Row[X] == WrittenValue || Row[X] == ClearValue)
+                    << unsigned(Row[X]) << " at " << X << "," << Y;
+                WrittenRegions += Row[X] == WrittenValue ? 1u : 0u;
+            }
         }
+        EXPECT_GT(WrittenRegions, 0u);
         ASSERT_TRUE(Device->UnmapStagingTexture(Readback.mValue));
         EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
     }
@@ -440,8 +541,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
 
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
@@ -756,8 +856,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
 
@@ -905,8 +1004,7 @@ namespace
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
         ASSERT_TRUE(Device->GetCapabilities().mbVirtualResources);
@@ -1009,9 +1107,200 @@ namespace
         EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
     }
 
+    void VerifyComputeArithmetic(const char* BackendName, const char* Artifact, const char* Entry)
+    {
+        using namespace arda::backend;
+        using namespace arda::rhi;
+        ShutdownBackend();
+        FExtendedBackendCleanup Cleanup;
+        FExtendedDiagnosticCallback Diagnostics;
+        FArdaBackendConfiguration Configuration;
+        Configuration.mBackendName = BackendName;
+        Configuration.mbEnableValidation = true;
+        Configuration.mMessageCallback = &Diagnostics;
+        Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+        ASSERT_TRUE(ConfigureBackend(Configuration));
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        auto Device = GetDevice();
+        ASSERT_TRUE(Device);
+        const bool bSubgroup = std::strcmp(Entry, "SubgroupCS") == 0;
+        const bool bFloat16 = std::strcmp(Entry, "Float16CS") == 0;
+        auto Shader = CreateExtendedShader(*Device, BackendName, Artifact, Entry, EArdaRHIShaderStage::Compute);
+        ASSERT_TRUE(Shader);
+        FArdaRHIBufferDesc Desc;
+        Desc.mByteSize = bSubgroup ? 128 * sizeof(uint32_t) : 4 * sizeof(uint32_t);
+        Desc.mStructureStride = sizeof(uint32_t);
+        Desc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
+        auto Output = Device->CreateBuffer(Desc);
+        ASSERT_TRUE(Output);
+        FArdaRHIBindingLayoutDesc LayoutDesc;
+        LayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+        LayoutDesc.mItems.push_back({0, 1, EArdaRHIBindingType::StructuredBufferUAV});
+        auto Layout = Device->CreateBindingLayout(LayoutDesc);
+        ASSERT_TRUE(Layout);
+        FArdaRHIBindingSetDesc Bindings;
+        Bindings.mLayout = Layout.mValue;
+        FArdaRHIBindingItem Item;
+        Item.mType = EArdaRHIBindingType::StructuredBufferUAV;
+        Item.mResource = FArdaRHIResourceRef(Output.mValue.Get());
+        Bindings.mItems.push_back(Item);
+        auto Set = Device->CreateBindingSet(Bindings);
+        ASSERT_TRUE(Set);
+        FArdaRHIComputePipelineDesc PipelineDesc;
+        PipelineDesc.mComputeShader = Shader.mValue;
+        PipelineDesc.mBindingLayouts = {Layout.mValue};
+        auto Pipeline = Device->CreateComputePipeline(PipelineDesc);
+        ASSERT_TRUE(Pipeline) << Pipeline.mStatus.mMessage.c_str();
+        auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Compute);
+        ASSERT_TRUE(Commands);
+        ASSERT_TRUE(Commands.mValue->Open());
+        const uint32_t Data[] = {bFloat16 ? 0x3fc00000u : 0xff030201u,
+            bFloat16 ? 0x40200000u : 0x04030201u, 0, 0};
+        ASSERT_TRUE(Commands.mValue->WriteBuffer(*Output.mValue, Data, sizeof(Data)));
+        ASSERT_TRUE(Commands.mValue->SetBufferState(*Output.mValue, EArdaRHIResourceState::UnorderedAccess));
+        FArdaRHIComputeState State;
+        State.mPipeline = Pipeline.mValue;
+        State.mBindings = {Set.mValue};
+        ASSERT_TRUE(Commands.mValue->SetComputeState(State));
+        Commands.mValue->Dispatch(1, 1, 1);
+        eastl::vector<uint8_t> Bytes;
+        ASSERT_TRUE(Commands.mValue->CopyBufferDeviceToHost(*Output.mValue, Bytes, 0, Desc.mByteSize));
+        ASSERT_TRUE(Commands.mValue->Close());
+        ASSERT_TRUE(Device->ExecuteCommandList(Commands.mValue));
+        ASSERT_TRUE(Device->WaitForIdle());
+        eastl::vector<uint32_t> Values(Desc.mByteSize / sizeof(uint32_t));
+        ASSERT_EQ(Bytes.size(), Desc.mByteSize);
+        std::memcpy(Values.data(), Bytes.data(), Bytes.size());
+        if (bSubgroup)
+        {
+            const auto& Caps = Device->GetCapabilities().mMachineLearning;
+            for (uint32_t Thread = 0; Thread < 64; ++Thread)
+            {
+                const uint32_t Width = Values[Thread * 2 + 1];
+                ASSERT_GE(Width, Caps.mSubgroupMinSize);
+                ASSERT_LE(Width, Caps.mSubgroupMaxSize);
+                const uint32_t First = (Thread / Width) * Width;
+                const uint32_t Count = eastl::min(Width, 64u - First);
+                EXPECT_EQ(Values[Thread * 2], Count * (2 * First + Count + 1) / 2);
+            }
+        }
+        else if (bFloat16)
+        {
+            EXPECT_EQ(Values[2], 0x40700000u); // native half 1.5 * 2.5 = 3.75
+        }
+        else
+        {
+            EXPECT_EQ(Values[2], 1041u); // unsigned [1,2,3,255] . [1,2,3,4] + 7
+            EXPECT_EQ(Values[3], 7u); // signed [1,2,3,-1] . [1,2,3,4] - 3
+        }
+        EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+    }
+
+    void VerifyRuntimeDescriptorVersions(const char* BackendName)
+    {
+        using namespace arda::backend;
+        using namespace arda::rhi;
+        ShutdownBackend();
+        FExtendedBackendCleanup Cleanup;
+        FExtendedDiagnosticCallback Diagnostics;
+        FArdaBackendConfiguration Configuration;
+        Configuration.mBackendName = BackendName;
+        Configuration.mbEnableValidation = true;
+        Configuration.mMessageCallback = &Diagnostics;
+        Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+        ASSERT_TRUE(ConfigureBackend(Configuration));
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+        auto Device = GetDevice();
+        ASSERT_TRUE(Device);
+        const auto& Caps = Device->GetCapabilities().mDescriptors;
+        FArdaRHIBindlessLayoutDesc Desc;
+        Desc.mVisibility = EArdaRHIShaderStage::Compute;
+        Desc.mMaxCapacity = 4;
+        Desc.mbUnbounded = Caps.mbUnboundedArrays;
+        Desc.mbUpdateAfterBind = Caps.mbUpdateAfterBind;
+        Desc.mbVariableDescriptorCount = Caps.mbVariableDescriptorCount;
+        Desc.mRegisterSpaces.push_back({0, 1, EArdaRHIBindingType::StructuredBufferUAV});
+        auto Layout = Device->CreateBindlessLayout(Desc);
+        ASSERT_TRUE(Layout);
+        auto Table = Device->CreateDescriptorTable(Layout.mValue);
+        ASSERT_TRUE(Table);
+        FArdaRHIBufferDesc OutputDesc;
+        OutputDesc.mByteSize = sizeof(uint32_t);
+        OutputDesc.mStructureStride = sizeof(uint32_t);
+        OutputDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
+        eastl::vector<FArdaRHIBufferRef> Outputs;
+        for (uint32_t Index = 0; Index < 3; ++Index)
+        {
+            auto Output = Device->CreateBuffer(OutputDesc);
+            ASSERT_TRUE(Output);
+            Outputs.push_back(Output.mValue);
+        }
+        const auto Write = [&](uint32_t Slot, uint32_t Output)
+        {
+            FArdaRHIBindingItem Item;
+            Item.mType = EArdaRHIBindingType::StructuredBufferUAV;
+            Item.mArrayElement = Slot;
+            Item.mResource = FArdaRHIResourceRef(Outputs[Output].Get());
+            return Device->WriteDescriptorTable(Table.mValue, Item);
+        };
+        ASSERT_TRUE(Write(0, 0));
+        ASSERT_TRUE(Write(2, 1)); // slots 1 and 3 deliberately remain unbound
+        auto Shader = CreateExtendedShader(*Device, BackendName,
+            "ArdaRuntimeDescriptors", "RuntimeDescriptorsCS", EArdaRHIShaderStage::Compute);
+        ASSERT_TRUE(Shader);
+        FArdaRHIComputePipelineDesc PipelineDesc;
+        PipelineDesc.mComputeShader = Shader.mValue;
+        PipelineDesc.mBindingLayouts = {Layout.mValue};
+        auto Pipeline = Device->CreateComputePipeline(PipelineDesc);
+        ASSERT_TRUE(Pipeline) << Pipeline.mStatus.mMessage.c_str();
+        auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(Commands);
+        ASSERT_TRUE(Commands.mValue->Open());
+        for (const auto& Output : Outputs)
+        {
+            ASSERT_TRUE(Commands.mValue->ClearBufferUInt(*Output, 0));
+            ASSERT_TRUE(Commands.mValue->SetBufferState(*Output, EArdaRHIResourceState::UnorderedAccess));
+        }
+        FArdaRHIComputeState State;
+        State.mPipeline = Pipeline.mValue;
+        State.mBindings = {FArdaRHIBindingSetRef(Table.mValue.Get())};
+        ASSERT_TRUE(Commands.mValue->SetComputeState(State));
+        Commands.mValue->Dispatch(2, 1, 1);
+        ASSERT_TRUE(Commands.mValue->Close());
+        auto Submission = Device->ExecuteCommandList(Commands.mValue);
+        ASSERT_TRUE(Submission);
+        // No CPU/GPU wait precedes mutation: the submitted version must remain alive.
+        ASSERT_TRUE(Write(3, 2)); // update an unused slot while submission may be pending
+        ASSERT_TRUE(Write(2, 2));
+        ASSERT_TRUE(Device->ResizeDescriptorTable(Table.mValue, 3, true));
+        ASSERT_EQ(Table.mValue->GetCapacity(), 3u);
+        auto Read = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(Read);
+        ASSERT_TRUE(Read.mValue->Open());
+        eastl::vector<uint8_t> Before;
+        ASSERT_TRUE(Read.mValue->CopyBufferDeviceToHost(*Outputs[1], Before, 0, sizeof(uint32_t)));
+        ASSERT_TRUE(Read.mValue->SetComputeState(State));
+        Read.mValue->Dispatch(2, 1, 1);
+        eastl::vector<uint8_t> After;
+        ASSERT_TRUE(Read.mValue->CopyBufferDeviceToHost(*Outputs[2], After, 0, sizeof(uint32_t)));
+        ASSERT_TRUE(Read.mValue->Close());
+        ASSERT_TRUE(Device->ExecuteCommandList(Read.mValue));
+        ASSERT_TRUE(Device->WaitForIdle());
+        ASSERT_EQ(Before.size(), sizeof(uint32_t));
+        ASSERT_EQ(After.size(), sizeof(uint32_t));
+        uint32_t First = 0;
+        uint32_t Second = 0;
+        std::memcpy(&First, Before.data(), sizeof(First));
+        std::memcpy(&Second, After.data(), sizeof(Second));
+        EXPECT_EQ(First, 0xA2DBu);
+        EXPECT_EQ(Second, 0xA2DBu);
+        EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+    }
+
     void VerifyBindlessDescriptorTable(
         const char* BackendName,
-        bool bDirectHeapIndexing = false)
+        bool bDirectHeapIndexing = false,
+        bool bDescriptorBuffer = false)
     {
         using namespace arda::backend;
         using namespace arda::rhi;
@@ -1028,8 +1317,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
         ASSERT_TRUE(Device->GetCapabilities().mDescriptors.mbBindless);
@@ -1054,6 +1342,7 @@ namespace
         LayoutDesc.mLayoutType =
             EArdaRHIBindlessLayoutType::MutableSrvUavCbv;
         LayoutDesc.mbDirectHeapIndexing = bDirectHeapIndexing;
+        LayoutDesc.mbDescriptorBuffer = bDescriptorBuffer;
         LayoutDesc.mDebugName = "Bounded bindless UAV table";
         LayoutDesc.mbAllowUnsafeDescriptorTableLifetime = true;
         LayoutDesc.mRegisterSpaces.push_back(
@@ -1130,7 +1419,7 @@ namespace
     }
 
     void VerifyDirectResourceAndSamplerHeapIndexing(
-        const char* BackendName)
+        const char* BackendName, bool bDescriptorBuffer = false)
     {
         using namespace arda::backend;
         using namespace arda::rhi;
@@ -1145,14 +1434,14 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         const auto& DescriptorCaps =
             Device->GetCapabilities().mDescriptors;
-        if (!DescriptorCaps.mbDirectResourceHeapIndexing ||
-            !DescriptorCaps.mbDirectSamplerHeapIndexing)
+        if (bDescriptorBuffer ? !DescriptorCaps.mbDescriptorBuffer :
+            (!DescriptorCaps.mbDirectResourceHeapIndexing ||
+             !DescriptorCaps.mbDirectSamplerHeapIndexing))
             GTEST_SKIP() << "Direct resource and sampler heaps are unavailable.";
 
         FArdaRHITextureDesc TextureDesc;
@@ -1186,7 +1475,8 @@ namespace
         ResourceLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
         ResourceLayoutDesc.mRegisterSpace = 0;
         ResourceLayoutDesc.mMaxCapacity = 1;
-        ResourceLayoutDesc.mbDirectHeapIndexing = true;
+        ResourceLayoutDesc.mbDirectHeapIndexing = !bDescriptorBuffer;
+        ResourceLayoutDesc.mbDescriptorBuffer = bDescriptorBuffer;
         ResourceLayoutDesc.mLayoutType =
             EArdaRHIBindlessLayoutType::MutableSrvUavCbv;
         ResourceLayoutDesc.mRegisterSpaces.push_back(
@@ -1217,7 +1507,8 @@ namespace
         SamplerLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
         SamplerLayoutDesc.mRegisterSpace = 1;
         SamplerLayoutDesc.mMaxCapacity = 1;
-        SamplerLayoutDesc.mbDirectHeapIndexing = true;
+        SamplerLayoutDesc.mbDirectHeapIndexing = !bDescriptorBuffer;
+        SamplerLayoutDesc.mbDescriptorBuffer = bDescriptorBuffer;
         SamplerLayoutDesc.mLayoutType =
             EArdaRHIBindlessLayoutType::MutableSampler;
         SamplerLayoutDesc.mRegisterSpaces.push_back(
@@ -1293,8 +1584,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         ASSERT_TRUE(Device->QueryShaderBundleSupport());
@@ -1402,8 +1692,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         if (Device->GetCapabilities().mWorkGraphTier ==
@@ -1474,7 +1763,7 @@ namespace
     }
 
     void VerifyMeshPipelineCapabilityAndExecution(
-        const char* BackendName)
+        const char* BackendName, bool bBundle = false)
     {
         using namespace arda::backend;
         using namespace arda::rhi;
@@ -1491,8 +1780,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
 
@@ -1505,8 +1793,8 @@ namespace
         auto PixelShader = CreateExtendedShader(
             *Device,
             BackendName,
-            "ArdaMeshPipelineTestPS",
-            "MeshPipelineTestPS",
+            bBundle ? "ArdaMeshTablePS" : "ArdaMeshPipelineTestPS",
+            bBundle ? "MeshTablePS" : "MeshPipelineTestPS",
             EArdaRHIShaderStage::Pixel);
         ASSERT_TRUE(MeshShader) << MeshShader.mStatus.mMessage.c_str();
         ASSERT_TRUE(PixelShader) << PixelShader.mStatus.mMessage.c_str();
@@ -1519,6 +1807,32 @@ namespace
         PipelineDesc.mRasterState.mCullMode = EArdaRHICullMode::None;
         PipelineDesc.mDepthStencilState.mbDepthTest = false;
         PipelineDesc.mDepthStencilState.mbDepthWrite = false;
+        FArdaRHIDescriptorTableRef ColorTable;
+        FArdaRHIBufferRef Colors;
+        if (bBundle)
+        {
+            FArdaRHIBindlessLayoutDesc LayoutDesc;
+            LayoutDesc.mVisibility = EArdaRHIShaderStage::Pixel;
+            LayoutDesc.mMaxCapacity = 1;
+            LayoutDesc.mRegisterSpaces.push_back({0, 1, EArdaRHIBindingType::StructuredBufferSRV});
+            auto Layout = Device->CreateBindlessLayout(LayoutDesc);
+            ASSERT_TRUE(Layout);
+            PipelineDesc.mBindingLayouts.push_back(Layout.mValue);
+            auto Table = Device->CreateDescriptorTable(Layout.mValue);
+            ASSERT_TRUE(Table);
+            ColorTable = Table.mValue;
+            FArdaRHIBufferDesc BufferDesc;
+            BufferDesc.mByteSize = sizeof(float) * 4;
+            BufferDesc.mStructureStride = sizeof(float) * 4;
+            BufferDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource;
+            auto Buffer = Device->CreateBuffer(BufferDesc);
+            ASSERT_TRUE(Buffer);
+            Colors = Buffer.mValue;
+            FArdaRHIBindingItem Item;
+            Item.mType = EArdaRHIBindingType::StructuredBufferSRV;
+            Item.mResource = FArdaRHIResourceRef(Colors.Get());
+            ASSERT_TRUE(Device->WriteDescriptorTable(ColorTable, Item));
+        }
         auto Pipeline = Device->CreateMeshletPipeline(PipelineDesc);
         if (Device->GetCapabilities().mMeshShaderTier ==
             EArdaRHIMeshShaderTier::None)
@@ -1576,8 +1890,31 @@ namespace
         State.mFramebuffer = Framebuffer.mValue;
         State.mViewports.push_back({ 0.f, 4.f, 0.f, 4.f, 0.f, 1.f });
         State.mScissors.push_back({ 0, 4, 0, 4 });
+        if (bBundle)
+        {
+            const float Color[] = {0, 1, 0, 1};
+            ASSERT_TRUE(Commands.mValue->WriteBuffer(*Colors, Color, sizeof(Color)));
+            ASSERT_TRUE(Commands.mValue->SetBufferState(*Colors, EArdaRHIResourceState::ShaderResource));
+            State.mBindings = {FArdaRHIBindingSetRef(ColorTable.Get())};
+        }
         ASSERT_TRUE(Commands.mValue->SetMeshletState(State));
-        ASSERT_TRUE(Commands.mValue->DispatchMesh(1, 1, 1));
+        if (bBundle)
+        {
+            FArdaRHIShaderBundleDesc Desc;
+            Desc.mMaxRecords = 1;
+            Desc.mbMeshRecords = true;
+            auto Bundle = Device->CreateShaderBundle(Desc);
+            ASSERT_TRUE(Bundle);
+            FArdaRHIShaderBundleRecord Record;
+            Record.mMeshPipeline = Pipeline.mValue;
+            Record.mBindings = State.mBindings;
+            ASSERT_TRUE(Device->SetShaderBundleRecords(Bundle.mValue, {Record}));
+            ASSERT_TRUE(Commands.mValue->DispatchShaderBundle(*Bundle.mValue));
+        }
+        else
+        {
+            ASSERT_TRUE(Commands.mValue->DispatchMesh(1, 1, 1));
+        }
         ExpectTextureState(
             *Commands.mValue,
             *Target.mValue,
@@ -1644,8 +1981,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
 
@@ -1825,7 +2161,7 @@ namespace
     }
 
     void VerifyRayTracingPipelineCapabilityAndExecution(
-        const char* BackendName)
+        const char* BackendName, bool bLocalDescriptors = false)
     {
         using namespace arda::backend;
         using namespace arda::rhi;
@@ -1842,8 +2178,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
 
@@ -1859,14 +2194,31 @@ namespace
         LayoutDesc.mVisibility = EArdaRHIShaderStage::AllRayTracing;
         LayoutDesc.mItems.push_back(
             { 0, 1, EArdaRHIBindingType::StructuredBufferUAV });
-        auto Layout = Device->CreateBindingLayout(LayoutDesc);
+        TArdaRHIResult<FArdaRHIBindingLayoutRef> Layout;
+        if (bLocalDescriptors)
+        {
+            if (!Device->GetCapabilities().mDescriptors.mbDirectResourceHeapIndexing)
+            {
+                GTEST_SKIP() << "Local direct-heap descriptors are unavailable.";
+            }
+            FArdaRHIBindlessLayoutDesc Bindless;
+            Bindless.mVisibility = LayoutDesc.mVisibility;
+            Bindless.mMaxCapacity = 1;
+            Bindless.mbDirectHeapIndexing = true;
+            Bindless.mRegisterSpaces = LayoutDesc.mItems;
+            Layout = Device->CreateBindlessLayout(Bindless);
+        }
+        else
+        {
+            Layout = Device->CreateBindingLayout(LayoutDesc);
+        }
         ASSERT_TRUE(Layout) << Layout.mStatus.mMessage.c_str();
 
         FArdaRHIRayTracingPipelineDesc PipelineDesc;
         PipelineDesc.mDebugName = "Ray-generation pipeline conformance";
         PipelineDesc.mShaders.push_back(
-            { "RayGen", RayGeneration.mValue, {} });
-        PipelineDesc.mGlobalBindingLayouts.push_back(Layout.mValue);
+            { "RayGen", RayGeneration.mValue, bLocalDescriptors ? Layout.mValue : FArdaRHIBindingLayoutRef{} });
+        if (!bLocalDescriptors) PipelineDesc.mGlobalBindingLayouts.push_back(Layout.mValue);
         PipelineDesc.mMaxPayloadSize = sizeof(uint32_t);
         PipelineDesc.mMaxRecursionDepth = 1;
         auto Pipeline = Device->CreateRayTracingPipeline(PipelineDesc);
@@ -1899,7 +2251,18 @@ namespace
         Item.mResource =
             TArdaRHIRef<IArdaRHIResource>(Output.mValue.Get());
         SetDesc.mItems.push_back(Item);
-        auto BindingSet = Device->CreateBindingSet(SetDesc);
+        TArdaRHIResult<FArdaRHIBindingSetRef> BindingSet;
+        if (bLocalDescriptors)
+        {
+            auto Table = Device->CreateDescriptorTable(Layout.mValue);
+            ASSERT_TRUE(Table);
+            ASSERT_TRUE(Device->WriteDescriptorTable(Table.mValue, Item));
+            BindingSet.mValue = Table.mValue;
+        }
+        else
+        {
+            BindingSet = Device->CreateBindingSet(SetDesc);
+        }
         ASSERT_TRUE(BindingSet) << BindingSet.mStatus.mMessage.c_str();
 
         FArdaRHIShaderTableDesc TableDesc;
@@ -1909,7 +2272,7 @@ namespace
             Pipeline.mValue, TableDesc);
         ASSERT_TRUE(ShaderTable) << ShaderTable.mStatus.mMessage.c_str();
         ASSERT_TRUE(Device->SetShaderTableRayGeneration(
-            ShaderTable.mValue, "RayGen"));
+            ShaderTable.mValue, "RayGen", bLocalDescriptors ? BindingSet.mValue : FArdaRHIBindingSetRef{}));
         EXPECT_EQ(ShaderTable.mValue->GetEntryCount(), 1u);
 
         auto Commands = Device->CreateCommandList(
@@ -1925,7 +2288,7 @@ namespace
             EArdaRHIResourceState::UnorderedAccess);
         FArdaRHIRayTracingState State;
         State.mShaderTable = ShaderTable.mValue;
-        State.mBindings.push_back(BindingSet.mValue);
+        if (!bLocalDescriptors) State.mBindings.push_back(BindingSet.mValue);
         ASSERT_TRUE(Commands.mValue->SetRayTracingState(State));
         const FArdaRHIStatus OversizedDispatch =
             Commands.mValue->DispatchRays(UINT32_MAX, 2, 1);
@@ -1975,8 +2338,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
 
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
@@ -2125,7 +2487,7 @@ namespace
     }
 
     void VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(
-        const char* BackendName)
+        const char* BackendName, bool bInlineQuery = false, bool bInstanceBuffer = false)
     {
         using namespace arda::backend;
         using namespace arda::rhi;
@@ -2142,8 +2504,7 @@ namespace
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         FArdaRHIDeviceRef Device = GetDevice();
         ASSERT_TRUE(Device);
         const auto& Ray = Device->GetCapabilities().mRayTracing;
@@ -2155,13 +2516,13 @@ namespace
         }
 
         auto RayGeneration = CreateExtendedShader(
-            *Device, BackendName, "ArdaRayTracingTest", "KnownSceneRayGen",
+            *Device, BackendName, "ArdaLocalRayTracingTest", "KnownSceneRayGen",
             EArdaRHIShaderStage::RayGeneration);
         auto Miss = CreateExtendedShader(
-            *Device, BackendName, "ArdaRayTracingTest", "KnownMiss",
+            *Device, BackendName, "ArdaLocalRayTracingTest", "KnownMiss",
             EArdaRHIShaderStage::Miss);
         auto ClosestHit = CreateExtendedShader(
-            *Device, BackendName, "ArdaRayTracingTest", "KnownClosestHit",
+            *Device, BackendName, "ArdaLocalRayTracingTest", "KnownClosestHit",
             EArdaRHIShaderStage::ClosestHit);
         ASSERT_TRUE(RayGeneration)
             << RayGeneration.mStatus.mMessage.c_str();
@@ -2211,25 +2572,36 @@ namespace
         ASSERT_TRUE(Tlas) << Tlas.mStatus.mMessage.c_str();
 
         FArdaRHIBindingLayoutDesc LayoutDesc;
-        LayoutDesc.mVisibility = EArdaRHIShaderStage::AllRayTracing;
+        LayoutDesc.mVisibility = EArdaRHIShaderStage::AllRayTracing | EArdaRHIShaderStage::Compute;
         LayoutDesc.mItems.push_back(
             {0, 1, EArdaRHIBindingType::RayTracingAccelStruct});
         LayoutDesc.mItems.push_back(
             {0, 1, EArdaRHIBindingType::StructuredBufferUAV});
         LayoutDesc.mDebugName = "Known-result ray-scene globals";
-        auto Layout = Device->CreateBindingLayout(LayoutDesc);
+        FArdaRHIBindlessLayoutDesc BindlessDesc;
+        BindlessDesc.mVisibility = LayoutDesc.mVisibility;
+        BindlessDesc.mMaxCapacity = 1;
+        BindlessDesc.mRegisterSpaces = LayoutDesc.mItems;
+        auto Layout = Device->CreateBindlessLayout(BindlessDesc);
         ASSERT_TRUE(Layout) << Layout.mStatus.mMessage.c_str();
 
+        FArdaRHIBindingLayoutDesc LocalDesc;
+        LocalDesc.mVisibility = EArdaRHIShaderStage::AllRayTracing;
+        LocalDesc.mRegisterSpace = 1;
+        LocalDesc.mItems.push_back({0, sizeof(uint32_t), EArdaRHIBindingType::PushConstants});
+        auto LocalLayout = Device->CreateBindingLayout(LocalDesc);
+        ASSERT_TRUE(LocalLayout);
         FArdaRHIRayTracingPipelineDesc PipelineDesc;
         PipelineDesc.mDebugName =
             "Known-result hit/miss ray tracing pipeline";
         PipelineDesc.mShaders.push_back(
-            {"KnownSceneRayGen", RayGeneration.mValue, {}});
+            {"KnownSceneRayGen", RayGeneration.mValue, LocalLayout.mValue});
         PipelineDesc.mShaders.push_back(
-            {"KnownMiss", Miss.mValue, {}});
+            {"KnownMiss", Miss.mValue, LocalLayout.mValue});
         FArdaRHIRayTracingHitGroupDesc HitGroup;
         HitGroup.mExportName = "KnownHitGroup";
         HitGroup.mClosestHitShader = ClosestHit.mValue;
+        HitGroup.mLocalBindingLayout = LocalLayout.mValue;
         PipelineDesc.mHitGroups.push_back(HitGroup);
         PipelineDesc.mGlobalBindingLayouts.push_back(Layout.mValue);
         PipelineDesc.mMaxPayloadSize = sizeof(uint32_t);
@@ -2260,7 +2632,14 @@ namespace
         OutputItem.mResource =
             TArdaRHIRef<IArdaRHIResource>(Output.mValue.Get());
         SetDesc.mItems.push_back(OutputItem);
-        auto BindingSet = Device->CreateBindingSet(SetDesc);
+        auto DescriptorTable = Device->CreateDescriptorTable(Layout.mValue);
+        ASSERT_TRUE(DescriptorTable);
+        for (const auto& Item : SetDesc.mItems)
+        {
+            ASSERT_TRUE(Device->WriteDescriptorTable(DescriptorTable.mValue, Item));
+        }
+        TArdaRHIResult<FArdaRHIBindingSetRef> BindingSet{
+            FArdaRHIBindingSetRef(DescriptorTable.mValue.Get()), {}};
         ASSERT_TRUE(BindingSet)
             << BindingSet.mStatus.mMessage.c_str();
 
@@ -2333,8 +2712,38 @@ namespace
             *Blas.mValue, {Geometry}, BlasDesc.mBuildFlags));
         FArdaRHIRayTracingInstanceDesc Instance;
         Instance.mBottomLevelAccelStruct = Blas.mValue;
-        ASSERT_TRUE(Commands.mValue->BuildTopLevelAccelStruct(
-            *Tlas.mValue, {Instance}, TlasDesc.mBuildFlags));
+        if (bInstanceBuffer)
+        {
+            // D3D12 and Vulkan both consume a 3x4 transform, two packed words,
+            // and a 64-bit BLAS address in each native instance record.
+            struct FArdaNativeInstance
+            {
+                float mTransform[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
+                uint32_t mIdAndMask = 0xff000000;
+                uint32_t mContributionAndFlags = 0;
+                uint64_t mBlasAddress = 0;
+            } Native;
+            static_assert(sizeof(Native) == 64);
+            Native.mBlasAddress = Blas.mValue->GetDeviceAddress();
+            ASSERT_NE(Native.mBlasAddress, 0u);
+            FArdaRHIBufferDesc InstancesDesc;
+            InstancesDesc.mByteSize = sizeof(Native);
+            InstancesDesc.mUsage = EArdaRHIBufferUsage::AccelStructBuildInput;
+            auto Instances = Device->CreateBuffer(InstancesDesc);
+            ASSERT_TRUE(Instances);
+            ASSERT_TRUE(Commands.mValue->WriteBuffer(*Instances.mValue, &Native, sizeof(Native)));
+            ASSERT_TRUE(Commands.mValue->SetBufferState(*Instances.mValue, EArdaRHIResourceState::AccelStructBuildInput));
+            ASSERT_TRUE(Commands.mValue->BuildTopLevelAccelStructFromBuffer(
+                *Tlas.mValue, *Instances.mValue, 0, 1, TlasDesc.mBuildFlags));
+            EXPECT_EQ(Commands.mValue->BuildTopLevelAccelStructFromBuffer(
+                *Tlas.mValue, *Instances.mValue, 16, 1, TlasDesc.mBuildFlags).mCode,
+                EArdaRHIResult::InvalidArgument);
+        }
+        else
+        {
+            ASSERT_TRUE(Commands.mValue->BuildTopLevelAccelStruct(
+                *Tlas.mValue, {Instance}, TlasDesc.mBuildFlags));
+        }
         const auto BlasState =
             Commands.mValue->QueryAccelStructState(*Blas.mValue);
         const auto TlasState =
@@ -2365,9 +2774,27 @@ namespace
         FArdaRHIRayTracingState State;
         State.mShaderTable = ShaderTable.mValue;
         State.mBindings.push_back(BindingSet.mValue);
-        ASSERT_TRUE(Commands.mValue->SetRayTracingState(State));
-        ASSERT_TRUE(Commands.mValue->DispatchRaysIndirect(
-            *Indirect.mValue));
+        if (bInlineQuery)
+        {
+            auto Shader = CreateExtendedShader(*Device, BackendName,
+                "ArdaInlineRayQuery", "InlineRayQueryCS", EArdaRHIShaderStage::Compute);
+            ASSERT_TRUE(Shader);
+            FArdaRHIComputePipelineDesc ComputeDesc;
+            ComputeDesc.mComputeShader = Shader.mValue;
+            ComputeDesc.mBindingLayouts = {Layout.mValue};
+            auto Compute = Device->CreateComputePipeline(ComputeDesc);
+            ASSERT_TRUE(Compute) << Compute.mStatus.mMessage.c_str();
+            FArdaRHIComputeState ComputeState;
+            ComputeState.mPipeline = Compute.mValue;
+            ComputeState.mBindings = {BindingSet.mValue};
+            ASSERT_TRUE(Commands.mValue->SetComputeState(ComputeState));
+            Commands.mValue->Dispatch(2, 1, 1);
+        }
+        else
+        {
+            ASSERT_TRUE(Commands.mValue->SetRayTracingState(State));
+            ASSERT_TRUE(Commands.mValue->DispatchRaysIndirect(*Indirect.mValue));
+        }
         ExpectBufferState(
             *Commands.mValue,
             *Indirect.mValue,
@@ -2408,8 +2835,7 @@ namespace
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         if (!Device->GetCapabilities().mRayTracing.mbOpacityMicromaps)
@@ -2722,8 +3148,7 @@ namespace
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         const auto& Caps = Device->GetCapabilities();
@@ -2783,13 +3208,130 @@ namespace
         if (CollectionDesc.mbDirectlyIndexed)
             EXPECT_NE(Collection.mValue->GetFirstDescriptorIndexInHeap(),
                 0xffffffffu);
-        FArdaRHIResourceCollectionItem Replacement = ItemA;
-        Replacement.mBuffer = BufferB.mValue;
-        ASSERT_TRUE(Device->UpdateResourceCollection(
-            Collection.mValue, 0, Replacement));
-        EXPECT_EQ(Collection.mValue->GetDesc().mItems[0].mBuffer,
-            BufferB.mValue);
+        if (CollectionDesc.mbDirectlyIndexed)
+        {
+            auto CollectionTable = Collection.mValue->GetDescriptorTable();
+            ASSERT_TRUE(CollectionTable);
+            FArdaRHIBufferDesc OutputDesc;
+            OutputDesc.mByteSize = 2 * sizeof(uint32_t);
+            OutputDesc.mStructureStride = sizeof(uint32_t);
+            OutputDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
+            auto Output = Device->CreateBuffer(OutputDesc);
+            ASSERT_TRUE(Output);
+            FArdaRHIBindlessLayoutDesc OutputLayoutDesc;
+            OutputLayoutDesc.mVisibility = EArdaRHIShaderStage::Compute;
+            OutputLayoutDesc.mRegisterSpace = 1;
+            OutputLayoutDesc.mMaxCapacity = 1;
+            OutputLayoutDesc.mbDirectHeapIndexing = true;
+            OutputLayoutDesc.mRegisterSpaces = {{0, 1, EArdaRHIBindingType::StructuredBufferUAV}};
+            auto OutputLayout = Device->CreateBindlessLayout(OutputLayoutDesc);
+            ASSERT_TRUE(OutputLayout);
+            auto OutputTable = Device->CreateDescriptorTable(OutputLayout.mValue);
+            ASSERT_TRUE(OutputTable);
+            FArdaRHIBindingItem OutputItem;
+            OutputItem.mType = EArdaRHIBindingType::StructuredBufferUAV;
+            OutputItem.mResource = FArdaRHIResourceRef(Output.mValue.Get());
+            ASSERT_TRUE(Device->WriteDescriptorTable(OutputTable.mValue, OutputItem));
+            auto Shader = CreateExtendedShader(*Device, BackendName,
+                "ArdaResourceCollection", "ResourceCollectionCS", EArdaRHIShaderStage::Compute);
+            ASSERT_TRUE(Shader);
+            FArdaRHIComputePipelineDesc PipelineDesc;
+            PipelineDesc.mComputeShader = Shader.mValue;
+            PipelineDesc.mBindingLayouts = {CollectionTable->GetDesc().mLayout, OutputLayout.mValue};
+            auto Pipeline = Device->CreateComputePipeline(PipelineDesc);
+            ASSERT_TRUE(Pipeline) << Pipeline.mStatus.mMessage.c_str();
+            const uint32_t Values[] = {0x1234abcdu, 0x9876fedcu};
+            for (uint32_t Version = 0; Version < 2; ++Version)
+            {
+                auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+                ASSERT_TRUE(Commands);
+                ASSERT_TRUE(Commands.mValue->Open());
+                ASSERT_TRUE(Commands.mValue->WriteBuffer(*BufferA.mValue, &Values[0], sizeof(uint32_t)));
+                ASSERT_TRUE(Commands.mValue->WriteBuffer(*BufferB.mValue, &Values[1], sizeof(uint32_t)));
+                ASSERT_TRUE(Commands.mValue->SetBufferState(*BufferA.mValue, EArdaRHIResourceState::ShaderResource));
+                ASSERT_TRUE(Commands.mValue->SetBufferState(*BufferB.mValue, EArdaRHIResourceState::ShaderResource));
+                ASSERT_TRUE(Commands.mValue->SetBufferState(*Output.mValue, EArdaRHIResourceState::UnorderedAccess));
+                FArdaRHIComputeState State;
+                State.mPipeline = Pipeline.mValue;
+                State.mBindings = {CollectionTable, OutputTable.mValue};
+                ASSERT_TRUE(Commands.mValue->SetComputeState(State));
+                Commands.mValue->Dispatch(2, 1, 1);
+                eastl::vector<uint8_t> Readback;
+                ASSERT_TRUE(Commands.mValue->CopyBufferDeviceToHost(*Output.mValue, Readback, 0, OutputDesc.mByteSize));
+                ASSERT_TRUE(Commands.mValue->Close());
+                ASSERT_TRUE(Device->ExecuteCommandList(Commands.mValue));
+                uint32_t Actual[2]{};
+                ASSERT_EQ(Readback.size(), sizeof(Actual));
+                std::memcpy(Actual, Readback.data(), sizeof(Actual));
+                EXPECT_EQ(Actual[0], Values[Version]);
+                EXPECT_EQ(Actual[1], Values[1]);
+                if (Version == 0)
+                {
+                    ASSERT_TRUE(Device->UpdateResourceCollection(Collection.mValue, 0, ItemB));
+                    EXPECT_EQ(Collection.mValue->GetDesc().mItems[0].mBuffer, BufferB.mValue);
+                }
+            }
+        }
         EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+    }
+
+    void VerifyMappedTextureContents(arda::rhi::IArdaRHIDevice& Device,
+        const arda::rhi::FArdaRHITextureRef& Texture)
+    {
+        using namespace arda::rhi;
+        FArdaRHIStagingTextureDesc StagingDesc;
+        StagingDesc.mTexture = Texture->GetDesc();
+        StagingDesc.mTexture.mbTiled = false;
+        StagingDesc.mTexture.mWidth = 4;
+        StagingDesc.mTexture.mHeight = 4;
+        StagingDesc.mTexture.mDepth = eastl::min(4u, Texture->GetDesc().mDepth);
+        StagingDesc.mCpuAccess = EArdaRHICpuAccess::Write;
+        auto Upload = Device.CreateStagingTexture(StagingDesc);
+        ASSERT_TRUE(Upload) << Upload.mStatus.mMessage.c_str();
+        StagingDesc.mCpuAccess = EArdaRHICpuAccess::Read;
+        auto Readback = Device.CreateStagingTexture(StagingDesc);
+        ASSERT_TRUE(Readback) << Readback.mStatus.mMessage.c_str();
+        FArdaRHITextureSlice Region;
+        Region.mWidth = StagingDesc.mTexture.mWidth;
+        Region.mHeight = StagingDesc.mTexture.mHeight;
+        Region.mDepth = StagingDesc.mTexture.mDepth;
+        auto Write = Device.MapStagingTexture(Upload.mValue, Region, EArdaRHICpuAccess::Write);
+        ASSERT_TRUE(Write);
+        for (uint32_t Z = 0; Z < Region.mDepth; ++Z)
+        {
+            for (uint32_t Y = 0; Y < Region.mHeight; ++Y)
+            {
+                auto* Row = static_cast<uint8_t*>(Write.mValue.mData) +
+                    Z * Write.mValue.mDepthPitch + Y * Write.mValue.mRowPitch;
+                std::memset(Row, 17 + Z * Region.mHeight + Y, Region.mWidth * 4);
+            }
+        }
+        ASSERT_TRUE(Device.UnmapStagingTexture(Upload.mValue));
+        auto Commands = Device.CreateCommandList(EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(Commands);
+        ASSERT_TRUE(Commands.mValue->Open());
+        ASSERT_TRUE(Commands.mValue->CopyTextureFromStaging(
+            *Texture, Region, *Upload.mValue, Region));
+        ASSERT_TRUE(Commands.mValue->CopyTextureToStaging(
+            *Readback.mValue, Region, *Texture, Region));
+        ASSERT_TRUE(Commands.mValue->Close());
+        ASSERT_TRUE(Device.ExecuteCommandList(Commands.mValue));
+        ASSERT_TRUE(Device.WaitForIdle());
+        auto Read = Device.MapStagingTexture(Readback.mValue, Region, EArdaRHICpuAccess::Read);
+        ASSERT_TRUE(Read);
+        for (uint32_t Z = 0; Z < Region.mDepth; ++Z)
+        {
+            for (uint32_t Y = 0; Y < Region.mHeight; ++Y)
+            {
+                const auto* Row = static_cast<const uint8_t*>(Read.mValue.mData) +
+                    Z * Read.mValue.mDepthPitch + Y * Read.mValue.mRowPitch;
+                for (uint32_t X = 0; X < Region.mWidth * 4; ++X)
+                {
+                    EXPECT_EQ(Row[X], 17 + Z * Region.mHeight + Y);
+                }
+            }
+        }
+        ASSERT_TRUE(Device.UnmapStagingTexture(Readback.mValue));
     }
 
     void VerifySparseResidencyAndStreamingBudget(
@@ -2807,8 +3349,7 @@ namespace
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
         const auto& Residency = Device->GetCapabilities().mResidency;
@@ -2907,6 +3448,7 @@ namespace
             Texture.mValue, {TextureMapping},
             EArdaRHIQueueType::Graphics);
         ASSERT_TRUE(TextureMapStatus) << TextureMapStatus.mMessage.c_str();
+        VerifyMappedTextureContents(*Device, Texture.mValue);
         TextureMapping.mHeap = {};
         ASSERT_TRUE(Device->UpdateTextureTileMappings(
             Texture.mValue, {TextureMapping},
@@ -2934,6 +3476,7 @@ namespace
             ASSERT_TRUE(Device->UpdateTextureTileMappings(
                 Volume.mValue, {VolumeMapping},
                 EArdaRHIQueueType::Graphics));
+            VerifyMappedTextureContents(*Device, Volume.mValue);
             VolumeMapping.mHeap = {};
             ASSERT_TRUE(Device->UpdateTextureTileMappings(
                 Volume.mValue, {VolumeMapping},
@@ -2954,6 +3497,19 @@ namespace
             ASSERT_TRUE(Device->UpdateBufferTileMappings(
                 Alias.mValue, {AliasedMapping},
                 EArdaRHIQueueType::Graphics));
+            auto AliasCommands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+            ASSERT_TRUE(AliasCommands);
+            ASSERT_TRUE(AliasCommands.mValue->Open());
+            ASSERT_TRUE(AliasCommands.mValue->WriteBuffer(*Buffer.mValue, &SparseExpected, sizeof(SparseExpected)));
+            ASSERT_TRUE(AliasCommands.mValue->AliasingBarrier(Buffer.mValue.Get(), Alias.mValue.Get()));
+            eastl::vector<uint8_t> AliasReadback;
+            ASSERT_TRUE(AliasCommands.mValue->CopyBufferDeviceToHost(*Alias.mValue, AliasReadback, 0, sizeof(SparseExpected)));
+            ASSERT_TRUE(AliasCommands.mValue->Close());
+            ASSERT_TRUE(Device->ExecuteCommandList(AliasCommands.mValue));
+            ASSERT_EQ(AliasReadback.size(), sizeof(SparseExpected));
+            uint32_t AliasValue = 0;
+            std::memcpy(&AliasValue, AliasReadback.data(), sizeof(AliasValue));
+            EXPECT_EQ(AliasValue, SparseExpected);
             AliasedMapping.mbCommit = false;
             AliasedMapping.mHeap = {};
             ASSERT_TRUE(Device->UpdateBufferTileMappings(
@@ -2991,8 +3547,7 @@ namespace
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
 
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
@@ -3024,8 +3579,7 @@ namespace
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
 
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
@@ -3096,7 +3650,7 @@ namespace
     }
 
     void VerifyShaderLibraryExecution(
-        const char* BackendName)
+        const char* BackendName, const std::filesystem::path& CacheDirectory = {})
     {
         using namespace arda::backend;
         using namespace arda::rhi;
@@ -3106,13 +3660,13 @@ namespace
         FExtendedDiagnosticCallback Diagnostics;
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = BackendName;
+        Configuration.mPipelineCacheDirectory = CacheDirectory;
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
 
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
@@ -3140,7 +3694,44 @@ namespace
         FArdaRHIComputePipelineDesc PipelineDesc;
         PipelineDesc.mComputeShader = Shader.mValue;
         PipelineDesc.mBindingLayouts.push_back(Layout.mValue);
-        ASSERT_TRUE(Device->CreateComputePipeline(PipelineDesc));
+        FArdaPipelineStateCache Cache(Device);
+        FArdaComputePipelineStateInitializer Initializer;
+        Initializer.mDesc = PipelineDesc;
+        FArdaRHIComputePipelineRef Pipeline;
+        const auto PipelineStatus = Cache.GetOrCreateCompute(Initializer, Pipeline);
+        ASSERT_TRUE(PipelineStatus) << PipelineStatus.mMessage.c_str();
+        FArdaRHIBufferDesc OutputDesc;
+        OutputDesc.mByteSize = sizeof(uint32_t);
+        OutputDesc.mStructureStride = sizeof(uint32_t);
+        OutputDesc.mUsage = EArdaRHIBufferUsage::Structured |
+            EArdaRHIBufferUsage::UnorderedAccess;
+        auto Output = Device->CreateBuffer(OutputDesc);
+        ASSERT_TRUE(Output);
+        FArdaRHIBindingSetDesc SetDesc;
+        SetDesc.mLayout = Layout.mValue;
+        SetDesc.mItems = {{0, 0, EArdaRHIBindingType::StructuredBufferUAV,
+            FArdaRHIResourceRef(Output.mValue.Get()), {}}};
+        auto Set = Device->CreateBindingSet(SetDesc);
+        ASSERT_TRUE(Set);
+        auto Commands = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(Commands);
+        ASSERT_TRUE(Commands.mValue->Open());
+        ASSERT_TRUE(Commands.mValue->SetBufferState(
+            *Output.mValue, EArdaRHIResourceState::UnorderedAccess));
+        FArdaRHIComputeState State;
+        State.mPipeline = Pipeline;
+        State.mBindings = {Set.mValue};
+        ASSERT_TRUE(Commands.mValue->SetComputeState(State));
+        Commands.mValue->Dispatch(1, 1, 1);
+        eastl::vector<uint8_t> Readback;
+        ASSERT_TRUE(Commands.mValue->CopyBufferDeviceToHost(
+            *Output.mValue, Readback, 0, OutputDesc.mByteSize));
+        ASSERT_TRUE(Commands.mValue->Close());
+        ASSERT_TRUE(Device->ExecuteCommandList(Commands.mValue));
+        ASSERT_EQ(Readback.size(), sizeof(uint32_t));
+        uint32_t Value = 0;
+        std::memcpy(&Value, Readback.data(), sizeof(Value));
+        EXPECT_EQ(Value, 0xA2DAu);
         EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
     }
 
@@ -3158,8 +3749,7 @@ namespace
         Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         ASSERT_TRUE(ConfigureBackend(Configuration));
-        if (!InitializeBackend())
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
         auto Device = GetDevice();
         ASSERT_TRUE(Device);
 
@@ -3235,8 +3825,7 @@ namespace
         eastl::unique_ptr<IArdaSwapChain> SwapChain;
         const EArdaInitializeResult Result = InitializeBackendForPresentation(
             Surface, 16, 16, SwapChain);
-        if (Result != EArdaInitializeResult::Success)
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_EQ(Result, EArdaInitializeResult::Success) << GetBackendError().c_str();
         ASSERT_TRUE(SwapChain);
         ASSERT_EQ(SwapChain->GetWidth(), 16u);
         ASSERT_EQ(SwapChain->GetHeight(), 16u);
@@ -3297,7 +3886,7 @@ namespace
         ASSERT_NE(Module, nullptr);
         FArdaBackendConfiguration Configuration;
         Configuration.mBackendName = Module->GetDescriptor().mName;
-        Configuration.mbEnableValidation = false;
+        Configuration.mbEnableValidation = true;
         Configuration.mMessageCallback = &Diagnostics;
         Configuration.mShaderCompilationMode =
             EArdaShaderCompilationMode::LoadOnly;
@@ -3306,8 +3895,7 @@ namespace
         eastl::unique_ptr<IArdaSwapChain> SwapChain;
         const EArdaInitializeResult Result = InitializeBackendForPresentation(
             Surface, 64, 64, SwapChain);
-        if (Result != EArdaInitializeResult::Success)
-            GTEST_SKIP() << GetBackendError().c_str();
+        ASSERT_EQ(Result, EArdaInitializeResult::Success) << GetBackendError().c_str();
         ASSERT_TRUE(SwapChain);
 
         FArdaRHIDeviceRef Device = GetDevice();
@@ -3352,14 +3940,20 @@ namespace
     enum class ECapabilityProbe : uint8_t
     {
         Contract,
+        PipelineCache,
         ExtendedCommands,
         Resolve,
         HeapAliasing,
         Bindless,
+        DescriptorBuffer,
+        RuntimeDescriptors,
         DirectResourceHeap,
         DirectResourceAndSamplerHeaps,
         ExpandedDescriptors,
         QueueBreadth,
+        Subgroup,
+        Float16,
+        Int8,
         SparseResidency,
         StreamingBudget,
         ShaderBundle,
@@ -3368,6 +3962,8 @@ namespace
         RayTracingPipeline,
         AccelerationStructure,
         RayTracingScene,
+        InlineRayQuery,
+        InstanceBuffer,
         OpacityMicromap,
         SamplerFeedback,
         CustomPresent,
@@ -3383,6 +3979,7 @@ namespace
         const char* mName = nullptr;
         FCapabilityPredicate mIsAdvertised = nullptr;
         ECapabilityProbe mProbe = ECapabilityProbe::Contract;
+        const char* mExpression = nullptr;
     };
 
     struct FCapabilityConformanceCase
@@ -3463,7 +4060,20 @@ namespace
         switch (TestCase.mCapability.mProbe)
         {
         case ECapabilityProbe::Contract:
+            FAIL() << "An advertised capability has no native conformance workload.";
             return;
+        case ECapabilityProbe::PipelineCache:
+        {
+            const std::filesystem::path Directory =
+                std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR) /
+                "CapabilityPipelineCache" / TestCase.mBackendName;
+            VerifyShaderLibraryExecution(TestCase.mBackendName, Directory);
+            const auto File = Directory / (std::string(TestCase.mBackendName) + ".pso-cache");
+            ASSERT_TRUE(std::filesystem::is_regular_file(File));
+            EXPECT_GT(std::filesystem::file_size(File), 24u);
+            VerifyShaderLibraryExecution(TestCase.mBackendName, Directory);
+            return;
+        }
         case ECapabilityProbe::ExtendedCommands:
             VerifyExtendedCommands(TestCase.mBackendName);
             return;
@@ -3479,6 +4089,13 @@ namespace
             VerifyBindlessDescriptorTable(
                 TestCase.mBackendName);
             return;
+        case ECapabilityProbe::RuntimeDescriptors:
+            VerifyRuntimeDescriptorVersions(TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::DescriptorBuffer:
+            VerifyBindlessDescriptorTable(TestCase.mBackendName, false, true);
+            VerifyDirectResourceAndSamplerHeapIndexing(TestCase.mBackendName, true);
+            return;
         case ECapabilityProbe::DirectResourceHeap:
             VerifyBindlessDescriptorTable(
                 TestCase.mBackendName, true);
@@ -3490,6 +4107,15 @@ namespace
         case ECapabilityProbe::ExpandedDescriptors:
             VerifyExpandedDescriptorsAndResourceCollections(
                 TestCase.mBackendName);
+            return;
+        case ECapabilityProbe::Subgroup:
+            VerifyComputeArithmetic(TestCase.mBackendName, "ArdaSubgroup", "SubgroupCS");
+            return;
+        case ECapabilityProbe::Float16:
+            VerifyComputeArithmetic(TestCase.mBackendName, "ArdaFloat16", "Float16CS");
+            return;
+        case ECapabilityProbe::Int8:
+            VerifyComputeArithmetic(TestCase.mBackendName, "ArdaInt8", "Int8CS");
             return;
         case ECapabilityProbe::QueueBreadth:
             VerifyQueueBreadth(TestCase.mBackendName);
@@ -3524,6 +4150,12 @@ namespace
             VerifyAccelerationStructureLifecycleAndStateParity(
                 TestCase.mBackendName);
             return;
+        case ECapabilityProbe::InlineRayQuery:
+            VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(TestCase.mBackendName, true);
+            return;
+        case ECapabilityProbe::InstanceBuffer:
+            VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(TestCase.mBackendName, false, true);
+            return;
         case ECapabilityProbe::RayTracingScene:
             VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(
                 TestCase.mBackendName);
@@ -3544,6 +4176,7 @@ namespace
                 << "A non-D3D12 provider advertised sampler feedback without "
                    "a conformance implementation.";
             VerifySamplerFeedbackStateParity();
+            VerifySamplerFeedbackStateParity(true);
             return;
         case ECapabilityProbe::CustomPresent:
 #if defined(_WIN32)
@@ -3573,7 +4206,7 @@ namespace
 
 #define ARDA_CAPABILITY(Name, Expression, Probe) \
     { Name, +[](const arda::rhi::FArdaRHICapabilities& C) \
-        { return static_cast<bool>(Expression); }, ECapabilityProbe::Probe }
+        { return static_cast<bool>(Expression); }, ECapabilityProbe::Probe, #Expression }
 
     const std::vector<FCapabilityConformanceCase>&
     GetCapabilityConformanceCases()
@@ -3586,7 +4219,7 @@ namespace
             ARDA_CAPABILITY("RayTracingPipelineShaders",
                 C.mRayTracing.mbPipelineShaders, RayTracingPipeline),
             ARDA_CAPABILITY("InlineRayQueries",
-                C.mRayTracing.mbInlineRayQueries, AccelerationStructure),
+                C.mRayTracing.mbInlineRayQueries, InlineRayQuery),
             ARDA_CAPABILITY("AccelerationStructures",
                 C.mRayTracing.mbAccelerationStructures, AccelerationStructure),
             ARDA_CAPABILITY("BottomLevelAccelerationStructures",
@@ -3631,15 +4264,15 @@ namespace
             ARDA_CAPABILITY("BindlessDescriptors",
                 C.mDescriptors.mbBindless, Bindless),
             ARDA_CAPABILITY("RuntimeDescriptorArrays",
-                C.mDescriptors.mbRuntimeDescriptorArrays, Bindless),
+                C.mDescriptors.mbRuntimeDescriptorArrays, RuntimeDescriptors),
             ARDA_CAPABILITY("UnboundedDescriptorArrays",
-                C.mDescriptors.mbUnboundedArrays, ExpandedDescriptors),
+                C.mDescriptors.mbUnboundedArrays, RuntimeDescriptors),
             ARDA_CAPABILITY("PartiallyBoundDescriptors",
-                C.mDescriptors.mbPartiallyBound, Bindless),
+                C.mDescriptors.mbPartiallyBound, RuntimeDescriptors),
             ARDA_CAPABILITY("DescriptorUpdateAfterBind",
-                C.mDescriptors.mbUpdateAfterBind, ExpandedDescriptors),
+                C.mDescriptors.mbUpdateAfterBind, RuntimeDescriptors),
             ARDA_CAPABILITY("UpdateUnusedDescriptorsWhilePending",
-                C.mDescriptors.mbUpdateUnusedWhilePending, Bindless),
+                C.mDescriptors.mbUpdateUnusedWhilePending, RuntimeDescriptors),
             ARDA_CAPABILITY("VariableDescriptorCount",
                 C.mDescriptors.mbVariableDescriptorCount,
                 ExpandedDescriptors),
@@ -3650,7 +4283,7 @@ namespace
                 C.mDescriptors.mbDirectSamplerHeapIndexing,
                 DirectResourceAndSamplerHeaps),
             ARDA_CAPABILITY("DescriptorBuffer",
-                C.mDescriptors.mbDescriptorBuffer, Bindless),
+                C.mDescriptors.mbDescriptorBuffer, DescriptorBuffer),
             ARDA_CAPABILITY("DescriptorHeap",
                 C.mDescriptors.mbDescriptorHeap, Bindless),
             ARDA_CAPABILITY("MaximumResourceDescriptors",
@@ -3703,17 +4336,17 @@ namespace
                 C.mResidency.mTileSizeInBytes > 0, SparseResidency),
 
             ARDA_CAPABILITY("SubgroupOperations",
-                C.mMachineLearning.mbSubgroupOperations, QueueBreadth),
+                C.mMachineLearning.mbSubgroupOperations, Subgroup),
             ARDA_CAPABILITY("NativeFloat16",
-                C.mMachineLearning.mbNativeFloat16, QueueBreadth),
+                C.mMachineLearning.mbNativeFloat16, Float16),
             ARDA_CAPABILITY("NativeInt8",
-                C.mMachineLearning.mbNativeInt8, QueueBreadth),
+                C.mMachineLearning.mbNativeInt8, Int8),
             ARDA_CAPABILITY("BufferDeviceAddress",
-                C.mMachineLearning.mbBufferDeviceAddress, QueueBreadth),
+                C.mMachineLearning.mbBufferDeviceAddress, InstanceBuffer),
             ARDA_CAPABILITY("MinimumSubgroupSize",
-                C.mMachineLearning.mSubgroupMinSize > 0, QueueBreadth),
+                C.mMachineLearning.mSubgroupMinSize > 0, Subgroup),
             ARDA_CAPABILITY("MaximumSubgroupSize",
-                C.mMachineLearning.mSubgroupMaxSize > 0, QueueBreadth),
+                C.mMachineLearning.mSubgroupMaxSize > 0, Subgroup),
 
             ARDA_CAPABILITY("MeshShaders",
                 C.mMeshShaderTier != arda::rhi::EArdaRHIMeshShaderTier::None,
@@ -3755,7 +4388,7 @@ namespace
             ARDA_CAPABILITY("ShaderLibraries", C.mbShaderLibraries,
                 ShaderLibrary),
             ARDA_CAPABILITY("PipelineCachePersistence",
-                C.mbPipelineCachePersistence, Contract)
+                C.mbPipelineCachePersistence, PipelineCache)
         };
 
         static const std::vector<FCapabilityConformanceCase> Cases = []
@@ -3788,6 +4421,31 @@ namespace
     };
 }
 
+TEST(ArdaBackend, CapabilityMatrixCoversEveryPublicField)
+{
+    std::ifstream Header(ARDA_BACKEND_TEST_SHADER_SOURCE_DIR
+        "/../Public/RHI/ArdaRHICapabilities.h");
+    ASSERT_TRUE(Header);
+    const std::string Source((std::istreambuf_iterator<char>(Header)), {});
+    const std::regex Field(R"(\b(?:bool|uint32_t|uint64_t|EArdaRHI\w+Tier)\s+(m\w+)\s*=)");
+    std::string Expressions;
+    for (const auto& TestCase : GetCapabilityConformanceCases())
+    {
+        Expressions += TestCase.mCapability.mExpression;
+        Expressions += '\n';
+    }
+    for (std::sregex_iterator It(Source.begin(), Source.end(), Field), End; It != End; ++It)
+    {
+        const std::string Name = (*It)[1];
+        if (Name.find("mbRequire") == 0)
+        {
+            continue;
+        }
+        EXPECT_TRUE(std::regex_search(Expressions, std::regex("\\." + Name + "\\b")))
+            << "Public capability " << Name << " has no conformance case.";
+    }
+}
+
 TEST_P(FArdaRHICapabilityConformanceTest, AdvertisedCapabilityConforms)
 {
     using namespace arda::backend;
@@ -3803,8 +4461,7 @@ TEST_P(FArdaRHICapabilityConformanceTest, AdvertisedCapabilityConforms)
     Configuration.mShaderCompilationMode =
         EArdaShaderCompilationMode::LoadOnly;
     ASSERT_TRUE(ConfigureBackend(Configuration));
-    if (!InitializeBackend())
-        GTEST_SKIP() << GetBackendError().c_str();
+    ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
 
     arda::rhi::FArdaRHIDeviceRef Device = GetDevice();
     ASSERT_TRUE(Device);
@@ -3921,6 +4578,11 @@ TEST(ArdaBackend, D3D12SparseResidencyAndStreamingBudget)
 {
     VerifySparseResidencyAndStreamingBudget(
         "native-d3d12");
+}
+
+TEST(ArdaBackend, D3D12SamplerFeedbackMipRegionWrites)
+{
+    VerifySamplerFeedbackStateParity(true);
 }
 
 TEST(ArdaBackend, D3D12SamplerFeedbackStateParity)
@@ -4040,4 +4702,31 @@ TEST(ArdaBackend, VulkanCustomPresentExecutes)
     VerifyVulkanCustomPresentExecution();
 }
 #endif
+#endif
+
+#if defined(ARDA_TEST_NATIVE_D3D12)
+TEST(ArdaBackend, D3D12MeshBundleRendersPixels)
+{
+    VerifyMeshPipelineCapabilityAndExecution("native-d3d12", true);
+}
+#endif
+#if defined(ARDA_TEST_NATIVE_VULKAN)
+TEST(ArdaBackend, VulkanMeshBundleRendersPixels)
+{
+    VerifyMeshPipelineCapabilityAndExecution("native-vulkan", true);
+}
+#endif
+
+#if defined(ARDA_TEST_NATIVE_D3D12)
+TEST(ArdaBackend, D3D12LocalShaderTableDescriptorsExecute)
+{
+    VerifyRayTracingPipelineCapabilityAndExecution("native-d3d12", true);
+}
+#endif
+
+#if defined(ARDA_TEST_NATIVE_VULKAN)
+TEST(ArdaBackend, VulkanLocalShaderTableDescriptorsExecute)
+{
+    VerifyRayTracingPipelineCapabilityAndExecution("native-vulkan", true);
+}
 #endif

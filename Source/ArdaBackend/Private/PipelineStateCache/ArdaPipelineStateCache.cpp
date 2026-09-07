@@ -69,6 +69,17 @@ namespace arda::backend
             }
             Hash.Add(1);
             const auto& Desc = Layout->GetDesc();
+            const auto* Bindless = Layout->GetBindlessDesc();
+            Hash.Add(Bindless != nullptr);
+            if (Bindless)
+            {
+                Hash.AddEnum(Bindless->mLayoutType);
+                Hash.Add(Bindless->mbUnbounded);
+                Hash.Add(Bindless->mbUpdateAfterBind);
+                Hash.Add(Bindless->mbVariableDescriptorCount);
+                Hash.Add(Bindless->mbDirectHeapIndexing);
+                Hash.Add(Bindless->mbDescriptorBuffer);
+            }
             Hash.AddEnum(Desc.mVisibility);
             Hash.Add(Desc.mRegisterSpace);
             Hash.Add(Desc.mbRegisterSpaceIsDescriptorSet);

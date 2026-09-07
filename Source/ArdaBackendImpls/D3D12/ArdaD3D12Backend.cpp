@@ -42,7 +42,10 @@ namespace arda::backend
         using namespace rhi::provider;
 
         constexpr uint32_t D3D12ResourceDescriptorHeapCapacity = 65536;
-        constexpr uint32_t D3D12SamplerDescriptorHeapCapacity = 2048;
+        // A 2048-entry heap corrupts sampler-feedback LOD writes on NVIDIA
+        // 610.62, including in a standalone native D3D12 reproduction. Keep
+        // the working heap size; public limits derive from this allocation.
+        constexpr uint32_t D3D12SamplerDescriptorHeapCapacity = 1024;
 
         template <typename T, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE Type>
         struct alignas(void*) TD3D12PipelineSubobject
@@ -440,8 +443,15 @@ namespace arda::backend
             mutable std::mutex mStateMutex;
             eastl::vector<EArdaRHIResourceState> mAbstractStates;
             eastl::vector<D3D12_RESOURCE_STATES> mNativeStates;
-            ComPtr<ID3D12DescriptorHeap> mRtvHeap;
-            ComPtr<ID3D12DescriptorHeap> mDsvHeap;
+            struct FAttachmentView
+            {
+                FArdaRHITextureSubresourceRange mRange;
+                bool mbDepth = false;
+                ComPtr<ID3D12DescriptorHeap> mHeap;
+                D3D12_CPU_DESCRIPTOR_HANDLE mHandle{};
+            };
+            eastl::vector<FAttachmentView> mAttachmentViews;
+            std::mutex mAttachmentMutex;
             D3D12_CPU_DESCRIPTOR_HANDLE mRtv{};
             D3D12_CPU_DESCRIPTOR_HANDLE mDsv{};
             FArdaProviderObjectRef mHeap;
@@ -633,6 +643,7 @@ namespace arda::backend
             eastl::vector<FArdaProviderObjectRef> mRetainedObjects;
             eastl::shared_ptr<FD3D12DescriptorAllocator> mAllocator;
             eastl::vector<FD3D12DescriptorAllocation> mAllocations;
+            ComPtr<ID3D12DescriptorHeap> mClearCpuHeap;
         };
 
         class FD3D12Framebuffer final : public IArdaProviderObject
@@ -714,10 +725,6 @@ namespace arda::backend
             uint32_t mMaxEntries = 0;
             uint32_t mMaxLocalArgumentBytes = 0;
             eastl::vector<FRecord> mRecords;
-            eastl::string mRayGeneration;
-            eastl::vector<eastl::string> mMiss;
-            eastl::vector<eastl::string> mHitGroups;
-            eastl::vector<eastl::string> mCallable;
             ComPtr<ID3D12Resource> mBuffer;
             D3D12_GPU_VIRTUAL_ADDRESS_RANGE mRayGenerationRange{};
             D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE mMissRange{};
@@ -936,6 +943,8 @@ namespace arda::backend
             FArdaRHIStatus CopyTextureToStaging(const FArdaProviderObjectRef&, const FArdaRHIStagingTextureDesc&, const FArdaRHITextureSlice&, const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaRHITextureSlice&) override;
             FArdaRHIStatus CopyTextureFromStaging(const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaRHITextureSlice&, const FArdaProviderObjectRef&, const FArdaRHIStagingTextureDesc&, const FArdaRHITextureSlice&) override;
             FArdaRHIStatus ClearTexture(const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaRHITextureSubresourceRange&, const FArdaRHIColor&) override;
+            FArdaRHIStatus ClearTextureUInt(const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaRHITextureSubresourceRange&, uint32_t) override;
+            FArdaRHIStatus ClearBufferUInt(const FArdaProviderObjectRef&, const FArdaRHIBufferDesc&, uint32_t) override;
             FArdaRHIStatus ClearDepthStencilTexture(const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaRHITextureSubresourceRange&, bool, float, bool, uint8_t) override;
             FArdaRHIStatus SetTextureState(const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaRHITextureSubresourceRange&, EArdaRHIResourceState) override;
             FArdaRHIStatus SetBufferState(const FArdaProviderObjectRef&, const FArdaRHIBufferDesc&, EArdaRHIResourceState) override;
@@ -1077,6 +1086,7 @@ namespace arda::backend
                 const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS&,
                 EArdaRHIAccelStructBuildFlags);
             void CancelTimerQueries();
+            FArdaRHIStatus ClearUInt(ID3D12Resource*, const D3D12_UNORDERED_ACCESS_VIEW_DESC&, uint32_t);
             FArdaD3D12ProviderDevice& mDevice;
             D3D12_COMMAND_LIST_TYPE mType = D3D12_COMMAND_LIST_TYPE_DIRECT;
             ComPtr<ID3D12CommandAllocator> mAllocator;
@@ -1241,6 +1251,10 @@ namespace arda::backend
             ID3D12Device& GetDevice() const noexcept { return *mD3DDevice.Get(); }
             ID3D12DescriptorHeap* GetResourceHeap() const noexcept { return mResourceHeap.Get(); }
             ID3D12DescriptorHeap* GetSamplerHeap() const noexcept { return mSamplerHeap.Get(); }
+            TArdaRHIResult<eastl::shared_ptr<FD3D12BindingSet>> CreateClearView(
+                ID3D12Resource*, const D3D12_UNORDERED_ACCESS_VIEW_DESC&);
+            TArdaRHIResult<D3D12_CPU_DESCRIPTOR_HANDLE> GetAttachmentView(
+                FD3D12Texture&, FArdaRHITextureSubresourceRange, bool bDepth);
 
         private:
             TArdaRHIResult<FD3D12DescriptorAllocation> AllocateDescriptors(
@@ -1404,7 +1418,7 @@ namespace arda::backend
             mCapabilities.mDescriptors.mMaxResourceDescriptors =
                 mResourceHeap->GetDesc().NumDescriptors / 2;
             mCapabilities.mDescriptors.mMaxSamplerDescriptors =
-                mSamplerHeap->GetDesc().NumDescriptors;
+                mSamplerHeap->GetDesc().NumDescriptors / 2;
             mCapabilities.mDescriptors.mbRuntimeDescriptorArrays = true;
             mCapabilities.mDescriptors.mbUnboundedArrays = true;
             mCapabilities.mDescriptors.mbPartiallyBound = true;
@@ -1413,9 +1427,11 @@ namespace arda::backend
             mCapabilities.mDescriptors.mbVariableDescriptorCount = true;
             D3D12_FEATURE_DATA_SHADER_MODEL ShaderModel{
                 D3D_SHADER_MODEL_6_6};
-            if (SUCCEEDED(mD3DDevice->CheckFeatureSupport(
-                    D3D12_FEATURE_SHADER_MODEL, &ShaderModel,
-                    sizeof(ShaderModel))))
+            const bool bShaderModelKnown = SUCCEEDED(mD3DDevice->CheckFeatureSupport(
+                D3D12_FEATURE_SHADER_MODEL, &ShaderModel, sizeof(ShaderModel)));
+            mCapabilities.mMachineLearning.mbNativeInt8 = bShaderModelKnown &&
+                ShaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_4;
+            if (bShaderModelKnown && ShaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_6)
             {
                 mCapabilities.mDescriptors.mbDirectResourceHeapIndexing = true;
                 mCapabilities.mDescriptors.mbDirectSamplerHeapIndexing = true;
@@ -1640,29 +1656,95 @@ namespace arda::backend
             Active = Allocation.mCount <= Active ? Active - Allocation.mCount : 0;
         }
 
+        TArdaRHIResult<D3D12_CPU_DESCRIPTOR_HANDLE> FArdaD3D12ProviderDevice::GetAttachmentView(
+            FD3D12Texture& Texture, FArdaRHITextureSubresourceRange Range, bool bDepth)
+        {
+            Range = Range.Resolve(Texture.mDesc);
+            Range.mMipLevelCount = 1;
+            std::lock_guard<std::mutex> Lock(Texture.mAttachmentMutex);
+            for (const auto& View : Texture.mAttachmentViews)
+                if (View.mRange == Range && View.mbDepth == bDepth)
+                    return {View.mHandle, {}};
+
+            const auto Native = Texture.mResource->GetDesc();
+            if (bDepth && Native.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+                return Fail<D3D12_CPU_DESCRIPTOR_HANDLE>(FArdaRHIStatus::Error(
+                    EArdaRHIResult::InvalidArgument, "A 3D texture cannot be a depth attachment."));
+            FD3D12Texture::FAttachmentView View;
+            View.mRange = Range;
+            View.mbDepth = bDepth;
+            D3D12_DESCRIPTOR_HEAP_DESC HeapDesc{};
+            HeapDesc.Type = bDepth ? D3D12_DESCRIPTOR_HEAP_TYPE_DSV : D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+            HeapDesc.NumDescriptors = 1;
+            const HRESULT Result = mD3DDevice->CreateDescriptorHeap(&HeapDesc, IID_PPV_ARGS(&View.mHeap));
+            if (FAILED(Result))
+                return Fail<D3D12_CPU_DESCRIPTOR_HANDLE>(D3D12Failure("Failed to create a D3D12 attachment view heap.", Result));
+            View.mHandle = View.mHeap->GetCPUDescriptorHandleForHeapStart();
+            const UINT Mip = Range.mBaseMipLevel;
+            const UINT Slice = Range.mBaseArraySlice;
+            const UINT Count = Range.mArraySliceCount;
+            if (bDepth)
+            {
+                D3D12_DEPTH_STENCIL_VIEW_DESC Desc{};
+                Desc.Format = ToDxgi(Texture.mDesc.mFormat);
+                if (Native.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D)
+                {
+                    Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
+                    Desc.Texture1DArray = {Mip, Slice, Count};
+                }
+                else if (Native.SampleDesc.Count > 1)
+                {
+                    Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY;
+                    Desc.Texture2DMSArray = {Slice, Count};
+                }
+                else
+                {
+                    Desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+                    Desc.Texture2DArray = {Mip, Slice, Count};
+                }
+                mD3DDevice->CreateDepthStencilView(Texture.mResource.Get(), &Desc, View.mHandle);
+            }
+            else
+            {
+                D3D12_RENDER_TARGET_VIEW_DESC Desc{};
+                Desc.Format = ToDxgi(Texture.mDesc.mFormat);
+                if (Native.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+                {
+                    Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+                    Desc.Texture3D = {Mip, 0, eastl::max(1u, Texture.mDesc.mDepth >> Mip)};
+                }
+                else if (Native.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D)
+                {
+                    Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+                    Desc.Texture1DArray = {Mip, Slice, Count};
+                }
+                else if (Native.SampleDesc.Count > 1)
+                {
+                    Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+                    Desc.Texture2DMSArray = {Slice, Count};
+                }
+                else
+                {
+                    Desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                    Desc.Texture2DArray = {Mip, Slice, Count, 0};
+                }
+                mD3DDevice->CreateRenderTargetView(Texture.mResource.Get(), &Desc, View.mHandle);
+            }
+            const auto Handle = View.mHandle;
+            Texture.mAttachmentViews.push_back(eastl::move(View));
+            return {Handle, {}};
+        }
+
         FArdaRHIStatus FArdaD3D12ProviderDevice::CreateTextureViews(FD3D12Texture& Texture)
         {
-            if (HasAnyFlags(Texture.mDesc.mUsage, EArdaRHITextureUsage::RenderTarget))
+            for (bool bDepth : {false, true})
             {
-                D3D12_DESCRIPTOR_HEAP_DESC HeapDesc{};
-                HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-                HeapDesc.NumDescriptors = 1;
-                HRESULT Result = mD3DDevice->CreateDescriptorHeap(
-                    &HeapDesc, IID_PPV_ARGS(&Texture.mRtvHeap));
-                if (FAILED(Result)) return D3D12Failure("Failed to create a D3D12 RTV heap.", Result);
-                Texture.mRtv = Texture.mRtvHeap->GetCPUDescriptorHandleForHeapStart();
-                mD3DDevice->CreateRenderTargetView(Texture.mResource.Get(), nullptr, Texture.mRtv);
-            }
-            if (HasAnyFlags(Texture.mDesc.mUsage, EArdaRHITextureUsage::DepthStencil))
-            {
-                D3D12_DESCRIPTOR_HEAP_DESC HeapDesc{};
-                HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-                HeapDesc.NumDescriptors = 1;
-                HRESULT Result = mD3DDevice->CreateDescriptorHeap(
-                    &HeapDesc, IID_PPV_ARGS(&Texture.mDsvHeap));
-                if (FAILED(Result)) return D3D12Failure("Failed to create a D3D12 DSV heap.", Result);
-                Texture.mDsv = Texture.mDsvHeap->GetCPUDescriptorHandleForHeapStart();
-                mD3DDevice->CreateDepthStencilView(Texture.mResource.Get(), nullptr, Texture.mDsv);
+                if (!HasAnyFlags(Texture.mDesc.mUsage, bDepth
+                    ? EArdaRHITextureUsage::DepthStencil : EArdaRHITextureUsage::RenderTarget))
+                    continue;
+                const auto View = GetAttachmentView(Texture, {}, bDepth);
+                if (!View) return View.mStatus;
+                (bDepth ? Texture.mDsv : Texture.mRtv) = View.mValue;
             }
             return {};
         }
@@ -1826,39 +1908,15 @@ namespace arda::backend
                     Result));
             Feedback->mCpuDescriptor = Feedback->mCpuDescriptorHeap->
                 GetCPUDescriptorHandleForHeapStart();
-            ComPtr<ID3D12Device15> Device15;
-            if (SUCCEEDED(mD3DDevice.As(&Device15)))
-            {
-                Result = Device15->TryCreateSamplerFeedbackUnorderedAccessView(
-                    nullptr, Feedback->mResource.Get(),
-                    Feedback->mCpuDescriptor);
-                if (FAILED(Result))
-                    return Fail<FArdaProviderObjectRef>(D3D12Failure(
-                        "The D3D12 sampler-feedback resource cannot form a null feedback UAV.",
-                        Result));
-                Result = Device15->TryCreateSamplerFeedbackUnorderedAccessView(
-                    Paired->mResource.Get(), Feedback->mResource.Get(),
-                    Feedback->mCpuDescriptor);
-                if (FAILED(Result))
-                    return Fail<FArdaProviderObjectRef>(D3D12FailureWithInfo(
-                        mD3DDevice.Get(),
-                        "Failed to create the D3D12 sampler-feedback UAV.",
-                        Result));
-            }
-            else
-            {
-                Device8->CreateSamplerFeedbackUnorderedAccessView(
-                    Paired->mResource.Get(), Feedback->mResource.Get(),
-                    Feedback->mCpuDescriptor);
-                Result = mD3DDevice->GetDeviceRemovedReason();
-                if (FAILED(Result))
-                    return Fail<FArdaProviderObjectRef>(D3D12Failure(
-                        "D3D12 rejected the sampler-feedback UAV.", Result));
-            }
-            mD3DDevice->CopyDescriptorsSimple(
-                1, Feedback->mDescriptor.mCpu,
-                Feedback->mCpuDescriptor,
-                D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            Device8->CreateSamplerFeedbackUnorderedAccessView(
+                Paired->mResource.Get(), Feedback->mResource.Get(),
+                Feedback->mCpuDescriptor);
+            Result = mD3DDevice->GetDeviceRemovedReason();
+            if (FAILED(Result))
+                return Fail<FArdaProviderObjectRef>(D3D12Failure(
+                    "D3D12 rejected the sampler-feedback UAV.", Result));
+            mD3DDevice->CopyDescriptorsSimple(1, Feedback->mDescriptor.mCpu,
+                Feedback->mCpuDescriptor, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
             Feedback->mAbstractStates.assign(
                 Feedback->mDesc.mMipLevels *
                     Feedback->mDesc.mArraySize,
@@ -2711,6 +2769,7 @@ namespace arda::backend
             FArdaRHIStagingTextureMapping Mapping;
             Mapping.mData = static_cast<uint8_t*>(Data) + Footprint.Offset;
             Mapping.mRowPitch = Footprint.Footprint.RowPitch;
+            Mapping.mDepthPitch = Mapping.mRowPitch * Texture->mRowCounts[Subresource];
             return { Mapping, {} };
         }
 
@@ -3143,9 +3202,8 @@ namespace arda::backend
                                 FArdaRHIStatus::Error(
                                     EArdaRHIResult::InvalidArgument,
                                     "D3D12 sampler-feedback UAV has the wrong resource type."));
-                        mD3DDevice->CopyDescriptorsSimple(
-                            1, Destination, Feedback->mCpuDescriptor,
-                            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+                        mD3DDevice->CopyDescriptorsSimple(1, Destination,
+                            Feedback->mCpuDescriptor, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
                         break;
                     }
                     case EArdaRHIBindingType::ConstantBuffer:
@@ -4133,17 +4191,8 @@ namespace arda::backend
             if (RayRecords.size() > 1)
                 return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
                     "A D3D12 shader table may contain one ray-generation record.");
-            const bool bStructured = !RayRecords.empty() ||
-                !MissRecords.empty() || !HitRecords.empty() ||
-                !CallableRecords.empty();
-            const uint32_t EntryCount = bStructured
-                ? static_cast<uint32_t>(RayRecords.size() +
-                    MissRecords.size() + HitRecords.size() +
-                    CallableRecords.size())
-                : (Table.mRayGeneration.empty() ? 0u : 1u) +
-                    static_cast<uint32_t>(Table.mMiss.size()) +
-                    static_cast<uint32_t>(Table.mHitGroups.size()) +
-                    static_cast<uint32_t>(Table.mCallable.size());
+            const uint32_t EntryCount = static_cast<uint32_t>(RayRecords.size() +
+                MissRecords.size() + HitRecords.size() + CallableRecords.size());
             if (EntryCount > Table.mMaxEntries)
                 return FArdaRHIStatus::Error(
                     EArdaRHIResult::InvalidArgument,
@@ -4162,34 +4211,26 @@ namespace arda::backend
                 return (Value + Alignment - 1u) & ~(Alignment - 1u);
             };
             uint64_t MaxPayload = 0;
-            if (bStructured)
+            for (const auto& Record : Table.mRecords)
             {
-                for (const auto& Record : Table.mRecords)
-                {
-                    if (!Record.mbWritten) continue;
-                    uint64_t Size = Record.mLocalArguments.size();
-                    if (auto* Bindings = dynamic_cast<FD3D12BindingSet*>(
-                            Record.mBindings.get()))
-                        Size += Bindings->mTables.size() * sizeof(uint64_t);
-                    if (Record.mGeometry) Size += sizeof(uint64_t);
-                    if (Record.mUserData || Record.mGeometrySegment)
-                        Size += sizeof(uint32_t) * 2u;
-                    MaxPayload = eastl::max(MaxPayload, Size);
-                }
+                if (!Record.mbWritten) continue;
+                uint64_t Size = Record.mLocalArguments.size();
+                if (auto* Bindings = dynamic_cast<FD3D12BindingSet*>(
+                        Record.mBindings.get()))
+                    Size += Bindings->mTables.size() * sizeof(uint64_t);
+                if (Record.mGeometry) Size += sizeof(uint64_t);
+                if (Record.mUserData || Record.mGeometrySegment)
+                    Size += sizeof(uint32_t) * 2u;
+                MaxPayload = eastl::max(MaxPayload, Size);
             }
             const uint64_t RecordStride = Align(
                 IdentifierSize + MaxPayload,
                 D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
             uint64_t Cursor = 0;
-            const uint64_t RayCount = bStructured
-                ? RayRecords.size()
-                : (Table.mRayGeneration.empty() ? 0u : 1u);
-            const uint64_t MissCount = bStructured
-                ? MissRecords.size() : Table.mMiss.size();
-            const uint64_t HitCount = bStructured
-                ? HitRecords.size() : Table.mHitGroups.size();
-            const uint64_t CallableCount = bStructured
-                ? CallableRecords.size() : Table.mCallable.size();
+            const uint64_t RayCount = RayRecords.size();
+            const uint64_t MissCount = MissRecords.size();
+            const uint64_t HitCount = HitRecords.size();
+            const uint64_t CallableCount = CallableRecords.size();
             const uint64_t RayOffset = !RayCount
                 ? 0 : Align(Cursor,
                     D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT);
@@ -4296,23 +4337,9 @@ namespace arda::backend
                 return {};
             };
             FArdaRHIStatus Status;
-            if (bStructured && !RayRecords.empty())
+            if (!RayRecords.empty())
                 Status = WriteRecord(RayRecords.front()->mExportName,
                     RayOffset, RayRecords.front());
-            else if (!Table.mRayGeneration.empty())
-                Status = WriteRecord(Table.mRayGeneration, RayOffset, nullptr);
-            const auto WriteSection = [&](
-                const eastl::vector<eastl::string>& Names,
-                uint64_t Offset) -> FArdaRHIStatus
-            {
-                for (size_t Index = 0; Index < Names.size(); ++Index)
-                    if (auto ItemStatus = WriteRecord(
-                            Names[Index], Offset + Index * RecordStride,
-                            nullptr);
-                        !ItemStatus)
-                        return ItemStatus;
-                return {};
-            };
             const auto WriteStructuredSection = [&WriteRecord, RecordStride](
                 const eastl::vector<const FD3D12ShaderTable::FRecord*>& Records,
                 uint64_t Offset) -> FArdaRHIStatus
@@ -4325,21 +4352,9 @@ namespace arda::backend
                         return ItemStatus;
                 return {};
             };
-            if (bStructured)
-            {
-                if (Status) Status = WriteStructuredSection(
-                    MissRecords, MissOffset);
-                if (Status) Status = WriteStructuredSection(
-                    HitRecords, HitOffset);
-                if (Status) Status = WriteStructuredSection(
-                    CallableRecords, CallableOffset);
-            }
-            else
-            {
-                if (Status) Status = WriteSection(Table.mMiss, MissOffset);
-                if (Status) Status = WriteSection(Table.mHitGroups, HitOffset);
-                if (Status) Status = WriteSection(Table.mCallable, CallableOffset);
-            }
+            if (Status) Status = WriteStructuredSection(MissRecords, MissOffset);
+            if (Status) Status = WriteStructuredSection(HitRecords, HitOffset);
+            if (Status) Status = WriteStructuredSection(CallableRecords, CallableOffset);
             Table.mBuffer->Unmap(0, nullptr);
             if (!Status)
             {
@@ -4416,20 +4431,14 @@ namespace arda::backend
             const char* ExportName,
             const FArdaProviderObjectRef& LocalBindings)
         {
-            auto* Table = dynamic_cast<FD3D12ShaderTable*>(TableObject.get());
-            if (!Table)
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::WrongDevice,
-                    "The D3D12 shader table has the wrong implementation.");
-            if (LocalBindings)
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::Unsupported,
-                    "Local D3D12 shader-table bindings are not implemented yet.");
-            const eastl::string Previous = Table->mRayGeneration;
-            Table->mRayGeneration = ExportName;
-            const FArdaRHIStatus Status = RebuildShaderTable(*Table);
-            if (!Status) Table->mRayGeneration = Previous;
-            return Status;
+            FArdaRHIShaderTableRecordDesc Record;
+            Record.mType = EArdaRHIShaderTableRecordType::RayGeneration;
+            Record.mRecordIndex = 0;
+            Record.mExportName = ExportName;
+            if (auto Status = SetShaderTableRecord(
+                    TableObject, Record, LocalBindings, {}); !Status)
+                return Status;
+            return CommitShaderTable(TableObject);
         }
 
         FArdaRHIStatus FArdaD3D12ProviderDevice::AddShaderTableEntry(
@@ -4439,29 +4448,27 @@ namespace arda::backend
             uint32_t Category)
         {
             auto* Table = dynamic_cast<FD3D12ShaderTable*>(TableObject.get());
-            if (!Table)
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::WrongDevice,
-                    "The D3D12 shader table has the wrong implementation.");
-            if (LocalBindings)
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::Unsupported,
-                    "Local D3D12 shader-table bindings are not implemented yet.");
-            eastl::vector<eastl::string>* Entries = nullptr;
-            switch (Category)
-            {
-            case 0: Entries = &Table->mMiss; break;
-            case 1: Entries = &Table->mHitGroups; break;
-            case 2: Entries = &Table->mCallable; break;
-            default:
-                return FArdaRHIStatus::Error(
-                    EArdaRHIResult::InvalidArgument,
-                    "The shader-table entry category is invalid.");
-            }
-            Entries->push_back(ExportName);
-            const FArdaRHIStatus Status = RebuildShaderTable(*Table);
-            if (!Status) Entries->pop_back();
-            return Status;
+            if (!Table || Category > 2)
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+                    "The D3D12 shader-table entry is invalid.");
+            uint32_t Index = 0;
+            while (Index < Table->mRecords.size() &&
+                Table->mRecords[Index].mbWritten) ++Index;
+            if (Index >= Table->mRecords.size())
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+                    "The D3D12 shader table is at capacity.");
+            FArdaRHIShaderTableRecordDesc Record;
+            Record.mRecordIndex = Index;
+            Record.mExportName = ExportName;
+            Record.mType = Category == 0
+                ? EArdaRHIShaderTableRecordType::Miss
+                : Category == 1
+                    ? EArdaRHIShaderTableRecordType::HitGroup
+                    : EArdaRHIShaderTableRecordType::Callable;
+            if (auto Status = SetShaderTableRecord(
+                    TableObject, Record, LocalBindings, {}); !Status)
+                return Status;
+            return CommitShaderTable(TableObject);
         }
 
         FArdaD3D12CommandList::FArdaD3D12CommandList(
@@ -5163,23 +5170,162 @@ namespace arda::backend
             return {};
         }
 
+        TArdaRHIResult<eastl::shared_ptr<FD3D12BindingSet>>
+        FArdaD3D12ProviderDevice::CreateClearView(
+            ID3D12Resource* Resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& View)
+        {
+            auto Set = eastl::make_shared<FD3D12BindingSet>();
+            Set->mAllocator = mDescriptorAllocator;
+            auto Allocation = AllocateDescriptors(false, 1);
+            if (!Allocation)
+            {
+                return { {}, eastl::move(Allocation.mStatus) };
+            }
+            Set->mAllocations.push_back(Allocation.mValue);
+            D3D12_DESCRIPTOR_HEAP_DESC HeapDesc{};
+            HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            HeapDesc.NumDescriptors = 1;
+            const HRESULT Result = mD3DDevice->CreateDescriptorHeap(
+                &HeapDesc, IID_PPV_ARGS(&Set->mClearCpuHeap));
+            if (FAILED(Result))
+            {
+                return { {}, D3D12Failure("Failed to create a CPU clear descriptor.", Result) };
+            }
+            const auto Cpu = Set->mClearCpuHeap->GetCPUDescriptorHandleForHeapStart();
+            mD3DDevice->CreateUnorderedAccessView(Resource, nullptr, &View, Cpu);
+            mD3DDevice->CopyDescriptorsSimple(1, Allocation.mValue.mCpu, Cpu,
+                D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            return { eastl::move(Set), {} };
+        }
+
+        FArdaRHIStatus FArdaD3D12CommandList::ClearUInt(
+            ID3D12Resource* Resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& View,
+            uint32_t Value)
+        {
+            auto Descriptors = mDevice.CreateClearView(Resource, View);
+            if (!Descriptors)
+            {
+                return Descriptors.mStatus;
+            }
+            ID3D12DescriptorHeap* Heaps[] = {
+                mDevice.GetResourceHeap(), mDevice.GetSamplerHeap() };
+            mCommandList->SetDescriptorHeaps(2, Heaps);
+            const UINT Values[] = { Value, Value, Value, Value };
+            mCommandList->ClearUnorderedAccessViewUint(
+                Descriptors.mValue->mAllocations.front().mGpu,
+                Descriptors.mValue->mClearCpuHeap->GetCPUDescriptorHandleForHeapStart(),
+                Resource, Values, 0, nullptr);
+            Retain(Descriptors.mValue);
+            return {};
+        }
+
+        FArdaRHIStatus FArdaD3D12CommandList::ClearBufferUInt(
+            const FArdaProviderObjectRef& Object, const FArdaRHIBufferDesc& Desc,
+            uint32_t Value)
+        {
+            auto* Buffer = dynamic_cast<FD3D12Buffer*>(Object.get());
+            if (!Buffer)
+            {
+                return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                    "D3D12 integer clear requires a buffer.");
+            }
+            const auto Previous = GetBufferTracking(*Buffer).mAbstractState;
+            if (auto Status = TransitionBuffer(Object, EArdaRHIResourceState::UnorderedAccess); !Status)
+            {
+                return Status;
+            }
+            D3D12_UNORDERED_ACCESS_VIEW_DESC View{};
+            View.Format = DXGI_FORMAT_R32_UINT;
+            View.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+            View.Buffer.NumElements = static_cast<UINT>(Desc.mByteSize / sizeof(uint32_t));
+            const auto Status = ClearUInt(Buffer->mResource.Get(), View, Value);
+            const auto Restore = TransitionBuffer(Object, Previous);
+            return Status ? Restore : Status;
+        }
+
+        FArdaRHIStatus FArdaD3D12CommandList::ClearTextureUInt(
+            const FArdaProviderObjectRef& Object, const FArdaRHITextureDesc& Desc,
+            const FArdaRHITextureSubresourceRange& InputRange, uint32_t Value)
+        {
+            auto* Texture = dynamic_cast<FD3D12Texture*>(Object.get());
+            if (!Texture)
+            {
+                return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                    "D3D12 integer clear requires a texture.");
+            }
+            const auto Range = InputRange.Resolve(Desc);
+            for (uint32_t Slice = Range.mBaseArraySlice;
+                 Slice < Range.mBaseArraySlice + Range.mArraySliceCount; ++Slice)
+            {
+                for (uint32_t Mip = Range.mBaseMipLevel;
+                     Mip < Range.mBaseMipLevel + Range.mMipLevelCount; ++Mip)
+                {
+                    const auto Previous = GetTextureTracking(*Texture).mAbstractStates[
+                        Mip + Slice * Desc.mMipLevels];
+                    const FArdaRHITextureSubresourceRange Subresource{ Mip, 1, Slice, 1 };
+                    if (auto Status = TransitionTexture(Object, Desc, Subresource,
+                            EArdaRHIResourceState::UnorderedAccess); !Status)
+                    {
+                        return Status;
+                    }
+                    D3D12_UNORDERED_ACCESS_VIEW_DESC View{};
+                    View.Format = ToDxgi(Desc.mFormat);
+                    if (Desc.mDimension == EArdaRHITextureDimension::Texture3D)
+                    {
+                        View.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+                        View.Texture3D.MipSlice = Mip;
+                        View.Texture3D.WSize = GetArdaRHITextureMipExtent(Desc.mDepth, Mip);
+                    }
+                    else if (Desc.mDimension == EArdaRHITextureDimension::Texture1D ||
+                             Desc.mDimension == EArdaRHITextureDimension::Texture1DArray)
+                    {
+                        View.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
+                        View.Texture1DArray.MipSlice = Mip;
+                        View.Texture1DArray.FirstArraySlice = Slice;
+                        View.Texture1DArray.ArraySize = 1;
+                    }
+                    else
+                    {
+                        View.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                        View.Texture2DArray.MipSlice = Mip;
+                        View.Texture2DArray.FirstArraySlice = Slice;
+                        View.Texture2DArray.ArraySize = 1;
+                    }
+                    const auto Status = ClearUInt(Texture->mResource.Get(), View, Value);
+                    const auto Restore = TransitionTexture(Object, Desc, Subresource, Previous);
+                    if (!Status || !Restore)
+                    {
+                        return Status ? Restore : Status;
+                    }
+                }
+            }
+            return {};
+        }
+
         FArdaRHIStatus FArdaD3D12CommandList::ClearTexture(
-            const FArdaProviderObjectRef& Object, const FArdaRHITextureDesc&,
-            const FArdaRHITextureSubresourceRange&, const FArdaRHIColor& Color)
+            const FArdaProviderObjectRef& Object, const FArdaRHITextureDesc& Desc,
+            const FArdaRHITextureSubresourceRange& InputRange, const FArdaRHIColor& Color)
         {
             auto* Texture = dynamic_cast<FD3D12Texture*>(Object.get());
             if (!Texture || !Texture->mRtv.ptr) return FArdaRHIStatus::Error(
                 EArdaRHIResult::InvalidArgument,
                 "D3D12 texture clear requires a render-target texture.");
             Retain(Object);
-            const float Values[] = { Color.mR, Color.mG, Color.mB, Color.mA };
-            mCommandList->ClearRenderTargetView(Texture->mRtv, Values, 0, nullptr);
+            const float Values[] = {Color.mR, Color.mG, Color.mB, Color.mA};
+            const auto Range = InputRange.Resolve(Desc);
+            for (uint32_t Mip = Range.mBaseMipLevel; Mip < Range.mBaseMipLevel + Range.mMipLevelCount; ++Mip)
+            {
+                const auto View = mDevice.GetAttachmentView(*Texture,
+                    {Mip, 1, Range.mBaseArraySlice, Range.mArraySliceCount}, false);
+                if (!View) return View.mStatus;
+                mCommandList->ClearRenderTargetView(View.mValue, Values, 0, nullptr);
+            }
             return {};
         }
 
         FArdaRHIStatus FArdaD3D12CommandList::ClearDepthStencilTexture(
-            const FArdaProviderObjectRef& Object, const FArdaRHITextureDesc&,
-            const FArdaRHITextureSubresourceRange&, bool bClearDepth,
+            const FArdaProviderObjectRef& Object, const FArdaRHITextureDesc& Desc,
+            const FArdaRHITextureSubresourceRange& InputRange, bool bClearDepth,
             float Depth, bool bClearStencil, uint8_t Stencil)
         {
             auto* Texture = dynamic_cast<FD3D12Texture*>(Object.get());
@@ -5190,7 +5336,15 @@ namespace arda::backend
             D3D12_CLEAR_FLAGS Flags = static_cast<D3D12_CLEAR_FLAGS>(0);
             if (bClearDepth) Flags |= D3D12_CLEAR_FLAG_DEPTH;
             if (bClearStencil) Flags |= D3D12_CLEAR_FLAG_STENCIL;
-            mCommandList->ClearDepthStencilView(Texture->mDsv, Flags, Depth, Stencil, 0, nullptr);
+            if (!Flags) return {};
+            const auto Range = InputRange.Resolve(Desc);
+            for (uint32_t Mip = Range.mBaseMipLevel; Mip < Range.mBaseMipLevel + Range.mMipLevelCount; ++Mip)
+            {
+                const auto View = mDevice.GetAttachmentView(*Texture,
+                    {Mip, 1, Range.mBaseArraySlice, Range.mArraySliceCount}, true);
+                if (!View) return View.mStatus;
+                mCommandList->ClearDepthStencilView(View.mValue, Flags, Depth, Stencil, 0, nullptr);
+            }
             return {};
         }
 
@@ -6461,8 +6615,7 @@ namespace arda::backend
                 Feedback->mDescriptor.mGpu,
                 Feedback->mCpuDescriptor,
                 Feedback->mResource.Get(), Values, 0, nullptr);
-            Retain(Object);
-            return {};
+            return SetUAVBarriersForTexture(Object, true);
         }
 
         FArdaRHIStatus
@@ -6498,11 +6651,9 @@ namespace arda::backend
                     "The D3D12 command list cannot decode sampler feedback.",
                     Result);
             Commands1->ResolveSubresourceRegion(
-                Destination->mResource.Get(), 0, 0, 0,
+                Destination->mResource.Get(), UINT_MAX, 0, 0,
                 Feedback->mResource.Get(),
-                Feedback->mFeedbackDesc.mFormat ==
-                        EArdaRHISamplerFeedbackFormat::MinMipOpaque
-                    ? UINT_MAX : 0u,
+                UINT_MAX,
                 nullptr,
                 DXGI_FORMAT_R8_UINT,
                 D3D12_RESOLVE_MODE_DECODE_SAMPLER_FEEDBACK);
@@ -7340,8 +7491,24 @@ namespace arda::backend
                 if (Configuration.mbEnableValidation)
                 {
                     ComPtr<ID3D12Debug> Debug;
-                    if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&Debug))))
-                        Debug->EnableDebugLayer();
+                    if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&Debug))))
+                    {
+                        mError = "D3D12 validation was requested but the debug layer is unavailable.";
+                        return EArdaInitializeResult::Failure;
+                    }
+                    Debug->EnableDebugLayer();
+                    char GpuValidation[2]{};
+                    if (GetEnvironmentVariableA("ARDA_D3D12_GPU_VALIDATION", GpuValidation, 2) == 1 &&
+                        GpuValidation[0] == '1')
+                    {
+                        ComPtr<ID3D12Debug1> Debug1;
+                        if (FAILED(Debug.As(&Debug1)))
+                        {
+                            mError = "D3D12 GPU validation was requested but ID3D12Debug1 is unavailable.";
+                            return EArdaInitializeResult::Failure;
+                        }
+                        Debug1->SetEnableGPUBasedValidation(TRUE);
+                    }
                 }
                 UINT FactoryFlags = Configuration.mbEnableValidation
                     ? DXGI_CREATE_FACTORY_DEBUG : 0;

@@ -60,9 +60,8 @@ namespace arda::render_graph
          * live intervals; memory can be recycled only when an earlier
          * request's last use is strictly before the next request's first use.
          *
-         * @todo Physical placed-resource aliasing is currently disabled. Wire
-         * this layout into execution only after the RHI provides portable aliasing
-         * barriers and heap-compatibility queries.
+         * The executor binds these placements in compatible explicit heaps and
+         * orders overlapping reuse with GPU queue waits and aliasing barriers.
          *
          * @param Requests Resource sizes, alignments, and inclusive lifetimes.
          * @param bAllowAliasing Whether expired ranges may be reused.

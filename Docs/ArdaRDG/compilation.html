@@ -153,7 +153,7 @@
             </li>
             <li>
               <h3>Assign pipelines</h3>
-              <p>Every pass starts from a deterministic graphics fallback. Outside <a class="term" data-term="immediate-mode" href="../glossary.html#term-immediate-mode">immediate mode</a>, a non-sentinel pass requesting <code>Copy</code> uses the copy pipeline only if a copy queue exists and every texture and buffer declaration is a nonzero subset of <code>CopySource | CopyDest</code>; any acceleration-structure declaration rejects copy compatibility. Otherwise, a pass requesting <code>AsyncCompute</code> uses async compute only if a compute queue exists and all states are compute-compatible. Graphics-only states—render target, depth read/write, and present—reject async. A pixel-shader read is accepted only when the non-pixel read bit is also present, after which the pixel bit is removed for async execution. Every failed eligibility test falls back to graphics rather than failing compilation.</p>
+              <p>Every pass starts from a deterministic graphics fallback. Outside <a class="term" data-term="immediate-mode" href="../glossary.html#term-immediate-mode">immediate mode</a>, a non-sentinel pass requesting <code>Copy</code> uses the copy pipeline only if a copy queue exists and every texture and buffer declaration is a nonzero subset of <code>CopySource | CopyDest</code>; any acceleration-structure declaration rejects copy compatibility. Otherwise, a pass requesting <code>AsyncCompute</code> uses async compute only if a compute queue exists and all states are compute-compatible. Graphics-only states—render target, depth read/write, and present—reject async. A pixel-shader read is accepted only when the non-pixel read bit is also present, after which the pixel bit is removed for async execution. CPU-visible buffers and depth/stencil texture transfers also stay on graphics: fixed host-buffer states cannot use the Common-state queue handoff, and portable depth/stencil copies require a graphics-capable queue. Every failed eligibility test falls back to graphics rather than failing compilation.</p>
               <p>The possible results are defined by <a href="api-reference.html#api-arda-rdg-eardgpipeline-188e6387"><code>EARDGPipeline</code></a>; availability comes from <a href="api-reference.html#api-arda-rdg-fardgqueuecapabilities-6104362a"><code>FARDGQueueCapabilities</code></a>.</p>
             </li>
             <li>
@@ -191,7 +191,7 @@
             </li>
             <li>
               <h3>Compile raster groups</h3>
-              <p>A maximal adjacent run of graphics raster passes receives a dense group index when every pass is groupable and has an identical logical attachment signature. A non-raster pass, an async or copy pass, <code>SkipRenderPass</code>, or different bindings breaks the run. <a href="api-reference.html#api-arda-rdg-fardgpassstate-mrastergroup-50d75543"><code>mRasterGroup</code></a> and the group count are metadata only: compilation does not merge command lists, callbacks, or native render passes.</p>
+              <p>A maximal adjacent run of graphics raster passes receives a dense group index when every pass is groupable and has an identical logical attachment signature. A non-raster pass, an async or copy pass, <code>SkipRenderPass</code>, or different bindings breaks the run. <a href="api-reference.html#api-arda-rdg-fardgpassstate-mrastergroup-50d75543"><code>mRasterGroup</code></a> and the group count describe compatibility. Execution consumes these candidates, merging command lists when physical barriers and queue dependencies permit.</p>
             </li>
             <li>
               <h3>Publish compiled state</h3>
@@ -276,7 +276,7 @@
           <p>Async fork/join fields summarize the nearest reachable graphics boundaries around async work. They are useful for inspection, scheduling visualization, and future optimization. The current synchronization authority is the explicit queue-dependency list. Treating fork or join as an implied barrier would duplicate or invent behavior not present in the compiler.</p>
 
           <h3>Raster groups are compatibility labels</h3>
-          <p>A raster group says that adjacent live graphics raster passes have identical logical attachments and are candidates for coordinated handling. It does not promise a native subpass, render-pass merge, callback fusion, or one command list. A later execution strategy may use the label, but correctness cannot depend on such a merge occurring.</p>
+          <p>A raster group says that adjacent live graphics raster passes have identical logical attachments and are candidates for coordinated handling. The executor can record adjacent compatible raster callbacks in one command list. It splits at required transitions, UAV or forced barriers, new resource initialization, queue handoffs, incoming queue dependencies, buffer/acceleration-structure declarations in the next pass, and NeverParallel boundaries. Immediate mode disables merging. Vulkan can continue its active rendering scope across matching framebuffer attachments; barriers or commands that end rendering still split that native scope.</p>
         </section>
 
         <section id="worked-example">
@@ -331,7 +331,7 @@
           <p>If a second live pass accessed <code>Grid</code> again as UAV without changing state, its equal-state record would carry the UAV ordering flag. The before-state eventually recorded against a reused pooled buffer may be corrected at execution after the physical allocation is selected.</p>
 
           <h3>Prediction 5: raster groups</h3>
-          <p>After culling, Shadow, GBuffer, Lighting, and Tonemap are adjacent raster passes. Shadow's attachment signature differs, so it starts group 0. GBuffer starts group 1 and Lighting joins group 1 because signature A is identical. Tonemap starts group 2 because signature B differs. The result reports three groups, but no callbacks or native render passes have been merged.</p>
+          <p>After culling, Shadow, GBuffer, Lighting, and Tonemap are adjacent raster passes. Shadow's attachment signature differs, so it starts group 0. GBuffer starts group 1 and Lighting joins group 1 because signature A is identical. Tonemap starts group 2 because signature B differs. The result reports three candidate groups. Execution may record GBuffer and Lighting together if their physical transitions and queue waits allow it; each callback and marker remains distinct.</p>
         </section>
 
         <section id="performance">
@@ -409,7 +409,7 @@
             <dt>Logical transition starts from the “wrong” pooled state at runtime</dt>
             <dd>Compiler metadata describes logical continuity. Execution must correct the before-state using the actual reused physical object.</dd>
             <dt>Raster passes share a group but remain separate</dt>
-            <dd>That is the current contract. Groups are compatibility metadata, not a merge promise.</dd>
+            <dd>Inspect physical transitions, incoming queue dependencies, and debug options. A compatible attachment signature is necessary but does not remove required barriers or guarantee one native render pass.</dd>
           </dl>
         </section>
 
@@ -437,7 +437,7 @@
               <li>State equality says nothing about ordering and visibility of unordered writes.</li>
               <li>It is async-incompatible and falls back to graphics.</li>
               <li>Explicit <code>FARDGQueueDependency</code> records.</li>
-              <li>No. The group is metadata only.</li>
+              <li>No. Execution merges only where physical barriers and queue dependencies allow; callback commands can still end a native rendering scope.</li>
             </ol>
           </details>
         </section>

@@ -310,7 +310,21 @@ namespace arda::render_graph
         /** The command pipeline selected by graph compilation. */
         EARDGPipeline mPipeline = EARDGPipeline::Graphics;
 
+        /** Retains the first callback failure; failed graphs publish no extractions. */
+        void ReportStatus(rhi::FArdaRHIStatus Status)
+        {
+            if (mStatus && !Status)
+                mStatus = eastl::move(Status);
+        }
+
+        /** Returns the first reported callback failure, or success. */
+        [[nodiscard]] const rhi::FArdaRHIStatus& GetStatus() const noexcept
+        {
+            return mStatus;
+        }
+
     private:
+        rhi::FArdaRHIStatus mStatus;
         FARDGBuilder& mGraph;
         FARDGPassHandle mPass;
         bool mbAccessGateOpen = false;

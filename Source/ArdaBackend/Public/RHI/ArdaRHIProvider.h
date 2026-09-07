@@ -251,6 +251,14 @@ namespace arda::rhi::provider
             const FArdaRHITextureDesc& Desc,
             const FArdaRHITextureSubresourceRange& Range,
             const FArdaRHIColor& Color) = 0;
+        virtual FArdaRHIStatus ClearTextureUInt(
+            const FArdaProviderObjectRef& Texture,
+            const FArdaRHITextureDesc& Desc,
+            const FArdaRHITextureSubresourceRange& Range,
+            uint32_t Value) = 0;
+        virtual FArdaRHIStatus ClearBufferUInt(
+            const FArdaProviderObjectRef& Buffer,
+            const FArdaRHIBufferDesc& Desc, uint32_t Value) = 0;
         virtual FArdaRHIStatus ClearDepthStencilTexture(
             const FArdaProviderObjectRef& Texture,
             const FArdaRHITextureDesc& Desc,

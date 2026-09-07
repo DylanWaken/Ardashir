@@ -223,7 +223,7 @@ Both create ray pipelines with library exports, hit groups, payload/attribute
 limits, recursion depth, global layouts, local export associations, shader-table
 records, inline local bytes, and direct/indirect trace dispatch.
 
-BLAS/TLAS creation, build/update, indirect instance-buffer build, native
+BLAS/TLAS creation, build/update, GPU instance-buffer build with a CPU-supplied count, native
 compacted-size query, compact destination creation, and compact copy execute on
 both APIs. State tests validate the facade/common/native lifecycle before and
 after submission.
@@ -254,7 +254,7 @@ before-state is a shader-only UAV state.
 
 ### Sampler feedback — D3D12 implemented, Vulkan unsupported
 
-D3D12 creates a native sampler-feedback map paired with a tiled texture, clears
+D3D12 creates a native sampler-feedback map paired with a committed or tiled texture, clears
 it, resolves/decodes it to an ordinary texture, and tracks facade/common/native
 states. Vulkan intentionally reports no native sampler feedback facility.
 
@@ -354,8 +354,9 @@ known-result native execution:
   BLAS, builds a TLAS, traces the compacted result, and validates deterministic
   hit/miss output. This supplements size, identity, state, and lifecycle
   assertions.
-- D3D12 sampler-feedback clear/decode ends in a mapped `R8UInt` staging
-  readback whose texels must all equal `0xFF`.
+- D3D12 sampler-feedback shaders request mip 2 and verify its known sampled color.
+  Decoded `R8UInt` readback contains mip 2 for minimum-mip feedback or `0xFF` at
+  mip 2 for a used region. Unwritten regions retain `0xFF` or zero respectively.
 - D3D12 and Vulkan sparse-buffer prefix commit writes and reads back
   `0x51A25EED` before decommit, in addition to tile-map and budget assertions.
 - Empty and complete capability profiles exercise every RT/ML desktop

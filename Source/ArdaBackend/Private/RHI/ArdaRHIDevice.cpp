@@ -9,6 +9,7 @@
 #include <atomic>
 #include <cstring>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <unordered_map>
 
@@ -197,6 +198,10 @@ namespace arda::rhi::provider
         {
         public:
             using FBindingLayoutBase::FBindingLayoutBase;
+            const FArdaRHIBindlessLayoutDesc* GetBindlessDesc() const noexcept override
+            {
+                return mbBindless ? &mBindlessDesc : nullptr;
+            }
             bool mbBindless = false;
             FArdaRHIBindlessLayoutDesc mBindlessDesc;
         };
@@ -244,6 +249,18 @@ namespace arda::rhi::provider
             uint32_t mMaxCapacity = 0;
             mutable std::mutex mMutex;
         };
+        FArdaProviderObjectRef CaptureNativeBindings(const FResource* Resource)
+        {
+            if (const auto* Set = dynamic_cast<const FBindingSet*>(Resource))
+                return Set->mNative;
+            if (const auto* Table = dynamic_cast<const FDescriptorTable*>(Resource))
+            {
+                std::lock_guard<std::mutex> Lock(Table->mMutex);
+                return Table->mNative;
+            }
+            return {};
+        }
+
         class FResourceCollection final : public FResource,
             public IArdaRHIResourceCollection
         {
@@ -270,6 +287,12 @@ namespace arda::rhi::provider
                 return mDescriptorTable
                     ? mDescriptorTable->GetFirstDescriptorIndexInHeap()
                     : 0xffffffffu;
+            }
+
+            FArdaRHIDescriptorTableRef GetDescriptorTable() const override
+            {
+                std::lock_guard<std::mutex> Lock(mMutex);
+                return mDescriptorTable;
             }
 
             FArdaRHIResourceCollectionDesc mDesc;
@@ -408,7 +431,7 @@ namespace arda::rhi::provider
                 , mDesc(eastl::move(Desc))
                 , mPipeline(eastl::move(Pipeline))
                 , mNative(eastl::move(Native))
-                , mWrittenRecords(mDesc.mMaxEntries, false)
+                , mRecordTypes(mDesc.mMaxEntries)
             {
             }
             const FArdaRHIShaderTableDesc& GetDesc() const noexcept override
@@ -418,16 +441,24 @@ namespace arda::rhi::provider
             uint32_t GetEntryCount() const noexcept override
             {
                 std::lock_guard<std::mutex> Lock(mMutex);
-                return mEntryCount;
+                return CountEntries();
+            }
+            uint32_t CountEntries() const noexcept
+            {
+                return static_cast<uint32_t>(eastl::count_if(mRecordTypes.begin(), mRecordTypes.end(),
+                    [](const auto& Type) { return Type.has_value(); }));
+            }
+            bool HasRayGeneration() const noexcept
+            {
+                return eastl::find(mRecordTypes.begin(), mRecordTypes.end(),
+                    EArdaRHIShaderTableRecordType::RayGeneration) != mRecordTypes.end();
             }
 
             FArdaRHIShaderTableDesc mDesc;
             FArdaRHIRayTracingPipelineRef mPipeline;
             FArdaProviderObjectRef mNative;
             mutable std::mutex mMutex;
-            uint32_t mEntryCount = 0;
-            bool mbHasRayGeneration = false;
-            eastl::vector<bool> mWrittenRecords;
+            eastl::vector<std::optional<EArdaRHIShaderTableRecordType>> mRecordTypes;
         };
 
         class FShaderBundle final : public FResource,
@@ -1024,12 +1055,18 @@ namespace arda::rhi::provider
             }
 
         private:
-            bool Owns(const FResource* Resource) const noexcept;
+            bool RetainOwned(const FResource* Resource) const;
+            FArdaRHIStatus ResolveBindings(
+                const eastl::vector<FArdaRHIBindingSetRef>& Bindings,
+                eastl::vector<FArdaProviderObjectRef>& OutBindings) const;
             eastl::vector<EArdaRHIResourceState>& GetFacadeTextureStates(
                 FTexture& Texture) const;
             FArdaRHIDeviceImpl* mDevice = nullptr;
             EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics;
             eastl::unique_ptr<IArdaProviderCommandList> mNative;
+            FArdaRHIMeshletState mMeshletState;
+            // State maps use facade identities until submission commits them.
+            mutable std::unordered_map<const FResource*, FArdaRHIResourceRef> mRetainedResources;
             eastl::vector<FPendingBufferCopyCompletion> mCopyCompletions;
             mutable std::unordered_map<
                 FTexture*, eastl::vector<EArdaRHIResourceState>>
@@ -1812,9 +1849,39 @@ namespace arda::rhi::provider
                 return UnsupportedResult<FArdaRHIBindingLayoutRef>(
                     "Direct descriptor-heap indexing is unsupported by this device.");
             FArdaRHIBindlessLayoutDesc ResolvedDesc = Desc;
+            const bool bSamplers = Desc.mRegisterSpaces.front().mType ==
+                EArdaRHIBindingType::Sampler;
+            for (const auto& Item : Desc.mRegisterSpaces)
+            {
+                if ((Item.mType == EArdaRHIBindingType::Sampler) != bSamplers)
+                {
+                    return Failure<FArdaRHIBindingLayoutRef>(Invalid(
+                        "Sampler and resource descriptors require separate bindless layouts."));
+                }
+            }
+            const uint32_t CapacityLimit = bSamplers ?
+                Capabilities.mMaxSamplerDescriptors : Capabilities.mMaxResourceDescriptors;
             if (!ResolvedDesc.mMaxCapacity)
-                ResolvedDesc.mMaxCapacity =
-                    eastl::max(1u, Capabilities.mMaxResourceDescriptors);
+            {
+                ResolvedDesc.mMaxCapacity = CapacityLimit;
+            }
+            if (!CapacityLimit || ResolvedDesc.mMaxCapacity > CapacityLimit)
+            {
+                return Failure<FArdaRHIBindingLayoutRef>(Invalid(
+                    "Bindless capacity exceeds the device's descriptor limit."));
+            }
+            if (Desc.mbDirectHeapIndexing && bSamplers &&
+                !Capabilities.mbDirectSamplerHeapIndexing)
+            {
+                return UnsupportedResult<FArdaRHIBindingLayoutRef>(
+                    "Direct sampler-heap indexing is unsupported by this device.");
+            }
+            if (Desc.mbDescriptorBuffer &&
+                (!Capabilities.mbDescriptorBuffer || Desc.mbDirectHeapIndexing))
+            {
+                return UnsupportedResult<FArdaRHIBindingLayoutRef>(
+                    "Descriptor buffers require native support and cannot use direct heap indexing.");
+            }
             FArdaRHIBindingLayoutDesc NativeDesc;
             NativeDesc.mVisibility = ResolvedDesc.mVisibility;
             NativeDesc.mRegisterSpace = ResolvedDesc.mRegisterSpace;
@@ -2359,6 +2426,15 @@ namespace arda::rhi::provider
             Desc.mMipRegionX = Desc.mMipRegionX ? Desc.mMipRegionX : 4u;
             Desc.mMipRegionY = Desc.mMipRegionY ? Desc.mMipRegionY : 4u;
             Desc.mMipRegionZ = Desc.mMipRegionZ ? Desc.mMipRegionZ : 1u;
+            const auto ValidRegion = [](uint32_t Size, uint32_t Extent)
+            {
+                return Size >= 4 && (Size & (Size - 1)) == 0 && Size <= Extent / 2;
+            };
+            if (!ValidRegion(Desc.mMipRegionX, PairedTexture->mDesc.mWidth) ||
+                !ValidRegion(Desc.mMipRegionY, PairedTexture->mDesc.mHeight) ||
+                Desc.mMipRegionZ != 1)
+                return Failure<FArdaRHISamplerFeedbackTextureRef>(Invalid(
+                    "Feedback regions must be powers of two from four to half the paired extent; depth must be one."));
             Desc.mInitialState = Desc.mInitialState ==
                     EArdaRHIResourceState::Unknown
                 ? EArdaRHIResourceState::UnorderedAccess
@@ -2771,25 +2847,22 @@ namespace arda::rhi::provider
                 Table->mDesc.mMaxLocalArgumentBytes)
                 return Invalid(
                     "Shader-table local arguments exceed the declared maximum.");
-            auto* Bindings = Cast<FBindingSet>(Record.mBindings.Get());
+            auto* Bindings = Cast<FResource>(Record.mBindings.Get());
             if (Record.mBindings && (!Bindings || !Owns(Bindings)))
                 return WrongDevice();
+            auto NativeBindings = CaptureNativeBindings(Bindings);
+            if (Record.mBindings && !NativeBindings)
+                return Invalid("Local shader-table bindings require a populated binding set or descriptor table.");
             auto* Geometry = Cast<FAccelStruct>(Record.mGeometry.Get());
             if (Record.mGeometry && (!Geometry || !Owns(Geometry)))
                 return WrongDevice();
             std::lock_guard<std::mutex> Lock(Table->mMutex);
             const FArdaRHIStatus Status = mDevice->SetShaderTableRecord(
                 Table->mNative, Record,
-                Bindings ? Bindings->mNative : FArdaProviderObjectRef{},
+                NativeBindings,
                 Geometry ? Geometry->mNative : FArdaProviderObjectRef{});
-            if (Status && !Table->mWrittenRecords[Record.mRecordIndex])
-            {
-                Table->mWrittenRecords[Record.mRecordIndex] = true;
-                ++Table->mEntryCount;
-            }
-            if (Status && Record.mType ==
-                EArdaRHIShaderTableRecordType::RayGeneration)
-                Table->mbHasRayGeneration = true;
+            if (Status)
+                Table->mRecordTypes[Record.mRecordIndex] = Record.mType;
             return Status;
         }
 
@@ -2799,7 +2872,7 @@ namespace arda::rhi::provider
             auto* Table = Cast<FShaderTable>(TableRef.Get());
             if (!Table || !Owns(Table)) return WrongDevice();
             std::lock_guard<std::mutex> Lock(Table->mMutex);
-            if (!Table->mbHasRayGeneration)
+            if (!Table->HasRayGeneration())
                 return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
                     "A shader table requires a ray-generation record before commit.");
             return mDevice->CommitShaderTable(Table->mNative);
@@ -2811,22 +2884,22 @@ namespace arda::rhi::provider
             const FArdaRHIBindingSetRef& LocalBindings)
         {
             auto* Table = Cast<FShaderTable>(TableRef.Get());
-            auto* Set = Cast<FBindingSet>(LocalBindings.Get());
+            auto* Set = Cast<FResource>(LocalBindings.Get());
             if (!Table || !Owns(Table) ||
                 (LocalBindings && (!Set || !Owns(Set))))
                 return WrongDevice();
             if (!ExportName || !*ExportName)
                 return Invalid("A ray-generation export name is required.");
+            auto NativeBindings = CaptureNativeBindings(Set);
+            if (LocalBindings && !NativeBindings)
+                return Invalid("Local shader-table bindings require a populated binding set or descriptor table.");
             std::lock_guard<std::mutex> Lock(Table->mMutex);
             const auto Status = mDevice->SetShaderTableRayGeneration(
                 Table->mNative,
                 ExportName,
-                Set ? Set->mNative : FArdaProviderObjectRef{});
-            if (Status && !Table->mbHasRayGeneration)
-            {
-                Table->mbHasRayGeneration = true;
-                ++Table->mEntryCount;
-            }
+                NativeBindings);
+            if (Status)
+                Table->mRecordTypes[0] = EArdaRHIShaderTableRecordType::RayGeneration;
             return Status;
         }
 
@@ -2840,24 +2913,34 @@ namespace arda::rhi::provider
                 uint32_t Category)
             {
                 auto* Table = Cast<FShaderTable>(TableRef.Get());
-                auto* Set = Cast<FBindingSet>(LocalBindings.Get());
+                auto* Set = Cast<FResource>(LocalBindings.Get());
                 if (!Table || !Device.Owns(Table) ||
                     (LocalBindings && (!Set || !Device.Owns(Set))))
                     return Failure<int>(WrongDevice());
                 if (!ExportName || !*ExportName)
                     return Failure<int>(Invalid(
                         "A shader-table export name is required."));
+                auto NativeBindings = CaptureNativeBindings(Set);
+                if (LocalBindings && !NativeBindings)
+                    return Failure<int>(Invalid(
+                        "Local shader-table bindings require a populated binding set or descriptor table."));
                 std::lock_guard<std::mutex> Lock(Table->mMutex);
-                if (Table->mEntryCount >= Table->mDesc.mMaxEntries)
+                if (Table->CountEntries() >= Table->mDesc.mMaxEntries)
                     return Failure<int>(Invalid(
                         "The shader table is at capacity."));
                 const auto Status = Device.GetProviderDevice().AddShaderTableEntry(
                     Table->mNative,
                     ExportName,
-                    Set ? Set->mNative : FArdaProviderObjectRef{},
+                    NativeBindings,
                     Category);
                 if (!Status) return Failure<int>(Status);
-                return { static_cast<int>(Table->mEntryCount++), {} };
+                const auto Unused = eastl::find(Table->mRecordTypes.begin(),
+                    Table->mRecordTypes.end(), std::nullopt);
+                const int Index = static_cast<int>(Unused - Table->mRecordTypes.begin());
+                *Unused = Category == 0 ? EArdaRHIShaderTableRecordType::Miss
+                    : Category == 1 ? EArdaRHIShaderTableRecordType::HitGroup
+                    : EArdaRHIShaderTableRecordType::Callable;
+                return {Index, {}};
             }
         }
 
@@ -3261,13 +3344,20 @@ namespace arda::rhi::provider
 
         IArdaRHIDevice* FCommandList::GetDevice() const noexcept { return mDevice; }
 
-        bool FCommandList::Owns(const FResource* Resource) const noexcept
+        bool FCommandList::RetainOwned(const FResource* Resource) const
         {
-            return Resource && Resource->GetOwner() == mDevice;
+            if (!Resource || Resource->GetOwner() != mDevice)
+            {
+                return false;
+            }
+            mRetainedResources.try_emplace(Resource, const_cast<FResource*>(Resource));
+            return true;
         }
 
         FArdaRHIStatus FCommandList::Open()
         {
+            mRetainedResources.clear();
+            mMeshletState = {};
             mCopyCompletions.clear();
             mFacadeTextureStates.clear();
             mFacadeBufferStates.clear();
@@ -3406,6 +3496,8 @@ namespace arda::rhi::provider
 
         FArdaRHIStatus FCommandList::Reset()
         {
+            mRetainedResources.clear();
+            mMeshletState = {};
             mCopyCompletions.clear();
             mFacadeTextureStates.clear();
             mFacadeBufferStates.clear();
@@ -3423,7 +3515,7 @@ namespace arda::rhi::provider
             IArdaRHIBuffer& Buffer, const void* Data, size_t Size, uint64_t Offset)
         {
             auto* Native = Cast<FBuffer>(&Buffer);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             if (!Data || Size == 0 || Offset > Native->mDesc.mByteSize ||
                 Size > Native->mDesc.mByteSize - Offset)
                 return Invalid("Buffer write range is invalid.");
@@ -3473,7 +3565,7 @@ namespace arda::rhi::provider
             uint64_t Size)
         {
             auto* Native = Cast<FBuffer>(&Source);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             if (SourceOffset > Native->mDesc.mByteSize)
                 return Invalid("Buffer readback offset is invalid.");
             const uint64_t ResolvedSize = Size == ArdaRHIWholeBuffer
@@ -3520,7 +3612,7 @@ namespace arda::rhi::provider
                 return Invalid(
                     "An asynchronous device-to-host copy requires a callback.");
             auto* Native = Cast<FBuffer>(&Source);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             if (SourceOffset > Native->mDesc.mByteSize)
                 return Invalid("Buffer readback offset is invalid.");
             const uint64_t ResolvedSize = Size == ArdaRHIWholeBuffer
@@ -3562,7 +3654,7 @@ namespace arda::rhi::provider
         {
             auto* Dst = Cast<FBuffer>(&Destination);
             auto* Src = Cast<FBuffer>(&Source);
-            if (!Dst || !Src || !Owns(Dst) || !Owns(Src)) return WrongDevice();
+            if (!Dst || !Src || !RetainOwned(Dst) || !RetainOwned(Src)) return WrongDevice();
             if (Size == 0 || DestinationOffset > Dst->mDesc.mByteSize ||
                 Size > Dst->mDesc.mByteSize - DestinationOffset ||
                 SourceOffset > Src->mDesc.mByteSize ||
@@ -3580,7 +3672,7 @@ namespace arda::rhi::provider
         {
             auto* Dst = Cast<FTexture>(&Destination);
             auto* Src = Cast<FTexture>(&Source);
-            if (!Dst || !Src || !Owns(Dst) || !Owns(Src))
+            if (!Dst || !Src || !RetainOwned(Dst) || !RetainOwned(Src))
                 return WrongDevice();
             FArdaRHITextureCopyExtent Extent;
             if (auto Status = ResolveArdaRHITextureCopyExtent(
@@ -3609,7 +3701,7 @@ namespace arda::rhi::provider
         {
             auto* Dst = Cast<FTexture>(&Destination);
             auto* Src = Cast<FTexture>(&Source);
-            if (!Dst || !Src || !Owns(Dst) || !Owns(Src))
+            if (!Dst || !Src || !RetainOwned(Dst) || !RetainOwned(Src))
                 return WrongDevice();
             FArdaRHITextureCopyExtent Extent;
             if (auto Status = ValidateArdaRHITextureResolve(
@@ -3629,7 +3721,7 @@ namespace arda::rhi::provider
         {
             auto* Dst = Cast<FStagingTexture>(&Destination);
             auto* Src = Cast<FTexture>(&Source);
-            if (!Dst || !Src || !Owns(Dst) || !Owns(Src))
+            if (!Dst || !Src || !RetainOwned(Dst) || !RetainOwned(Src))
                 return WrongDevice();
             if (Dst->mDesc.mCpuAccess != EArdaRHICpuAccess::Read)
                 return Invalid("A texture readback requires a read staging texture.");
@@ -3656,7 +3748,7 @@ namespace arda::rhi::provider
         {
             auto* Dst = Cast<FTexture>(&Destination);
             auto* Src = Cast<FStagingTexture>(&Source);
-            if (!Dst || !Src || !Owns(Dst) || !Owns(Src))
+            if (!Dst || !Src || !RetainOwned(Dst) || !RetainOwned(Src))
                 return WrongDevice();
             if (Src->mDesc.mCpuAccess != EArdaRHICpuAccess::Write)
                 return Invalid("A texture upload requires a write staging texture.");
@@ -3681,7 +3773,7 @@ namespace arda::rhi::provider
             const FArdaRHIColor& Color)
         {
             auto* Native = Cast<FTexture>(&Texture);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             return mNative->ClearTexture(Native->mNative, Native->mDesc, Range, Color);
         }
 
@@ -3691,7 +3783,7 @@ namespace arda::rhi::provider
             EArdaRHIResourceState State)
         {
             auto* Native = Cast<FTexture>(&Texture);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             const FArdaRHIStatus Status = mNative->SetTextureState(
                 Native->mNative, Native->mDesc, Range, State);
             if (Status)
@@ -3709,7 +3801,7 @@ namespace arda::rhi::provider
             IArdaRHIBuffer& Buffer, EArdaRHIResourceState State)
         {
             auto* Native = Cast<FBuffer>(&Buffer);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             const FArdaRHIStatus Status = mNative->SetBufferState(
                 Native->mNative, Native->mDesc, State);
             if (Status)
@@ -3722,7 +3814,7 @@ namespace arda::rhi::provider
             const FArdaRHITextureTransitionDesc& Transition)
         {
             auto* Native = Cast<FTexture>(&Texture);
-            if (!Native || !Owns(Native))
+            if (!Native || !RetainOwned(Native))
                 return WrongDevice();
             const auto Current = LoadFacadeTextureState(
                 GetFacadeTextureStates(*Native),
@@ -3763,7 +3855,7 @@ namespace arda::rhi::provider
             const FArdaRHIBufferTransitionDesc& Transition)
         {
             auto* Native = Cast<FBuffer>(&Buffer);
-            if (!Native || !Owns(Native))
+            if (!Native || !RetainOwned(Native))
                 return WrongDevice();
             auto Existing = mFacadeBufferStates.find(Native);
             EArdaRHIResourceState Current = Native->mDesc.mInitialState;
@@ -3805,7 +3897,7 @@ namespace arda::rhi::provider
             IArdaRHIAccelStruct& Resource, EArdaRHIResourceState State)
         {
             auto* AccelStruct = Cast<FAccelStruct>(&Resource);
-            if (!AccelStruct || !Owns(AccelStruct)) return WrongDevice();
+            if (!AccelStruct || !RetainOwned(AccelStruct)) return WrongDevice();
             if (!HasAnyFlags(State, EArdaRHIResourceState::AccelStructRead) &&
                 !HasAnyFlags(State, EArdaRHIResourceState::AccelStructWrite))
                 return Invalid(
@@ -3833,7 +3925,7 @@ namespace arda::rhi::provider
             IArdaRHIAccelStruct& Resource) const
         {
             auto* AccelStruct = Cast<FAccelStruct>(&Resource);
-            if (!AccelStruct || !Owns(AccelStruct))
+            if (!AccelStruct || !RetainOwned(AccelStruct))
                 return {{}, WrongDevice()};
             FAccelStructTracking Tracking;
             const auto Existing = mFacadeAccelStructStates.find(AccelStruct);
@@ -3863,7 +3955,7 @@ namespace arda::rhi::provider
             EArdaRHIResourceState State)
         {
             auto* Native = Cast<FTexture>(&Texture);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             const FArdaRHIStatus Status = mNative->BeginTrackingTextureState(
                 Native->mNative, Native->mDesc, Range, State);
             if (Status)
@@ -3892,7 +3984,7 @@ namespace arda::rhi::provider
             IArdaRHIBuffer& Buffer, EArdaRHIResourceState State)
         {
             auto* Native = Cast<FBuffer>(&Buffer);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             const FArdaRHIStatus Status = mNative->BeginTrackingBufferState(
                 Native->mNative, Native->mDesc, State);
             if (Status)
@@ -3909,7 +4001,7 @@ namespace arda::rhi::provider
                 const FArdaRHITextureSubresourceRange& Range) const
         {
             auto* Native = Cast<FTexture>(&Texture);
-            if (!Native || !Owns(Native))
+            if (!Native || !RetainOwned(Native))
                 return { {}, WrongDevice() };
             auto Facade = LoadFacadeTextureState(
                 GetFacadeTextureStates(*Native), Native->mDesc, Range);
@@ -3944,7 +4036,7 @@ namespace arda::rhi::provider
             FCommandList::QueryBufferState(IArdaRHIBuffer& Buffer) const
         {
             auto* Native = Cast<FBuffer>(&Buffer);
-            if (!Native || !Owns(Native))
+            if (!Native || !RetainOwned(Native))
                 return { {}, WrongDevice() };
             FArdaRHIResourceStateSnapshot Snapshot;
             Snapshot.mQueue = mQueue;
@@ -3988,7 +4080,7 @@ namespace arda::rhi::provider
                 IArdaRHISamplerFeedbackTexture& Texture) const
         {
             auto* Native = Cast<FSamplerFeedbackTexture>(&Texture);
-            if (!Native || !Owns(Native))
+            if (!Native || !RetainOwned(Native))
                 return {{}, WrongDevice()};
             auto Existing = mFacadeSamplerFeedbackStates.find(Native);
             if (Existing == mFacadeSamplerFeedbackStates.end())
@@ -4018,7 +4110,7 @@ namespace arda::rhi::provider
             IArdaRHITexture& Texture, bool bEnabled)
         {
             auto* Native = Cast<FTexture>(&Texture);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             return mNative->SetUAVBarriersForTexture(Native->mNative, bEnabled);
         }
 
@@ -4026,7 +4118,7 @@ namespace arda::rhi::provider
             IArdaRHIBuffer& Buffer, bool bEnabled)
         {
             auto* Native = Cast<FBuffer>(&Buffer);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             return mNative->SetUAVBarriersForBuffer(Native->mNative, bEnabled);
         }
 
@@ -4036,7 +4128,7 @@ namespace arda::rhi::provider
         {
             auto* Before = Cast<FResource>(ResourceBefore);
             auto* After = Cast<FResource>(ResourceAfter);
-            if ((Before && !Owns(Before)) || (After && !Owns(After)))
+            if ((Before && !RetainOwned(Before)) || (After && !RetainOwned(After)))
                 return WrongDevice();
             if (!Before && !After)
                 return Invalid("An aliasing barrier requires at least one resource.");
@@ -4046,9 +4138,26 @@ namespace arda::rhi::provider
         }
 
         FArdaRHIStatus FCommandList::ClearTextureUInt(
-            IArdaRHITexture&, const FArdaRHITextureSubresourceRange&, uint32_t)
+            IArdaRHITexture& Texture, const FArdaRHITextureSubresourceRange& Range,
+            uint32_t Value)
         {
-            return Unsupported("Integer texture clears are not implemented by the backend providers.");
+            auto* Native = Cast<FTexture>(&Texture);
+            if (!Native || !RetainOwned(Native))
+            {
+                return WrongDevice();
+            }
+            if (!GetArdaRHIFormatInfo(Native->mDesc.mFormat).mbInteger ||
+                Native->mDesc.mSampleCount != 1 ||
+                !HasAnyFlags(Native->mDesc.mUsage, EArdaRHITextureUsage::UnorderedAccess))
+            {
+                return Invalid("Integer texture clears require a single-sample integer UAV texture.");
+            }
+            const auto Resolved = Range.Resolve(Native->mDesc);
+            if (!Resolved.mMipLevelCount || !Resolved.mArraySliceCount || !Resolved.mPlaneCount)
+            {
+                return Invalid("The integer texture clear range is empty.");
+            }
+            return mNative->ClearTextureUInt(Native->mNative, Native->mDesc, Range, Value);
         }
 
         FArdaRHIStatus FCommandList::ClearDepthStencilTexture(
@@ -4057,22 +4166,48 @@ namespace arda::rhi::provider
             bool bClearDepth, float Depth, bool bClearStencil, uint8_t Stencil)
         {
             auto* Native = Cast<FTexture>(&Texture);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             return mNative->ClearDepthStencilTexture(
                 Native->mNative, Native->mDesc, Range,
                 bClearDepth, Depth, bClearStencil, Stencil);
         }
 
-        FArdaRHIStatus FCommandList::ClearBufferUInt(IArdaRHIBuffer&, uint32_t)
+        FArdaRHIStatus FCommandList::ClearBufferUInt(IArdaRHIBuffer& Buffer, uint32_t Value)
         {
-            return Unsupported("Integer buffer clears are not implemented by the backend providers.");
+            auto* Native = Cast<FBuffer>(&Buffer);
+            if (!Native || !RetainOwned(Native))
+            {
+                return WrongDevice();
+            }
+            if (Native->mDesc.mByteSize % sizeof(uint32_t) != 0 ||
+                !HasAnyFlags(Native->mDesc.mUsage, EArdaRHIBufferUsage::UnorderedAccess))
+            {
+                return Invalid("Integer buffer clears require a UAV buffer with a multiple-of-four byte size.");
+            }
+            return mNative->ClearBufferUInt(Native->mNative, Native->mDesc, Value);
+        }
+
+        FArdaRHIStatus FCommandList::ResolveBindings(
+            const eastl::vector<FArdaRHIBindingSetRef>& Bindings,
+            eastl::vector<FArdaProviderObjectRef>& OutBindings) const
+        {
+            OutBindings.reserve(Bindings.size());
+            for (const auto& Binding : Bindings)
+            {
+                auto* Resource = Cast<FResource>(Binding.Get());
+                if (!RetainOwned(Resource)) return WrongDevice();
+                auto Native = CaptureNativeBindings(Resource);
+                if (!Native) return WrongDevice();
+                OutBindings.push_back(eastl::move(Native));
+            }
+            return {};
         }
 
         FArdaRHIStatus FCommandList::SetGraphicsState(const FArdaRHIGraphicsState& State)
         {
             auto* Pipeline = Cast<FGraphicsPipeline>(State.mPipeline.Get());
             auto* Framebuffer = Cast<FFramebuffer>(State.mFramebuffer.Get());
-            if (!Pipeline || !Framebuffer || !Owns(Pipeline) || !Owns(Framebuffer))
+            if (!Pipeline || !Framebuffer || !RetainOwned(Pipeline) || !RetainOwned(Framebuffer))
                 return WrongDevice();
             FArdaProviderGraphicsState Native;
             Native.mPipeline = Pipeline->mNative;
@@ -4081,28 +4216,14 @@ namespace arda::rhi::provider
             Native.mIndexOffset = State.mIndexOffset;
             Native.mViewports = State.mViewports;
             Native.mScissors = State.mScissors;
-            for (const auto& Binding : State.mBindings)
+            if (auto Status = ResolveBindings(State.mBindings, Native.mBindings); !Status)
             {
-                if (auto* Set = Cast<FBindingSet>(Binding.Get()))
-                {
-                    if (!Owns(Set)) return WrongDevice();
-                    Native.mBindings.push_back(Set->mNative);
-                }
-                else if (auto* Table = Cast<FDescriptorTable>(Binding.Get()))
-                {
-                    if (!Owns(Table)) return WrongDevice();
-                    std::lock_guard<std::mutex> Lock(Table->mMutex);
-                    Native.mBindings.push_back(Table->mNative);
-                }
-                else
-                {
-                    return WrongDevice();
-                }
+                return Status;
             }
             for (const auto& Binding : State.mVertexBuffers)
             {
                 auto* Buffer = Cast<FBuffer>(Binding.mBuffer.Get());
-                if (!Buffer || !Owns(Buffer)) return WrongDevice();
+                if (!Buffer || !RetainOwned(Buffer)) return WrongDevice();
                 uint32_t Stride = 0;
                 if (Pipeline->mDesc.mInputLayout)
                 {
@@ -4117,7 +4238,7 @@ namespace arda::rhi::provider
             if (State.mIndexBuffer)
             {
                 auto* Buffer = Cast<FBuffer>(State.mIndexBuffer.Get());
-                if (!Buffer || !Owns(Buffer)) return WrongDevice();
+                if (!Buffer || !RetainOwned(Buffer)) return WrongDevice();
                 Native.mIndexBuffer = Buffer->mNative;
             }
             return mNative->SetGraphicsState(Native);
@@ -4126,26 +4247,12 @@ namespace arda::rhi::provider
         FArdaRHIStatus FCommandList::SetComputeState(const FArdaRHIComputeState& State)
         {
             auto* Pipeline = Cast<FComputePipeline>(State.mPipeline.Get());
-            if (!Pipeline || !Owns(Pipeline)) return WrongDevice();
+            if (!Pipeline || !RetainOwned(Pipeline)) return WrongDevice();
             FArdaProviderComputeState Native;
             Native.mPipeline = Pipeline->mNative;
-            for (const auto& Binding : State.mBindings)
+            if (auto Status = ResolveBindings(State.mBindings, Native.mBindings); !Status)
             {
-                if (auto* Set = Cast<FBindingSet>(Binding.Get()))
-                {
-                    if (!Owns(Set)) return WrongDevice();
-                    Native.mBindings.push_back(Set->mNative);
-                }
-                else if (auto* Table = Cast<FDescriptorTable>(Binding.Get()))
-                {
-                    if (!Owns(Table)) return WrongDevice();
-                    std::lock_guard<std::mutex> Lock(Table->mMutex);
-                    Native.mBindings.push_back(Table->mNative);
-                }
-                else
-                {
-                    return WrongDevice();
-                }
+                return Status;
             }
             return mNative->SetComputeState(Native);
         }
@@ -4159,7 +4266,7 @@ namespace arda::rhi::provider
             auto* Buffer = Cast<FBuffer>(&Arguments);
             constexpr uint32_t ArgumentSize = 4u * sizeof(uint32_t);
             const uint32_t ResolvedStride = Stride ? Stride : ArgumentSize;
-            if (!Buffer || !Owns(Buffer))
+            if (!Buffer || !RetainOwned(Buffer))
                 return WrongDevice();
             if (!HasAnyFlags(
                     Buffer->mDesc.mUsage,
@@ -4196,7 +4303,7 @@ namespace arda::rhi::provider
             auto* Buffer = Cast<FBuffer>(&Arguments);
             constexpr uint32_t ArgumentSize = 5u * sizeof(uint32_t);
             const uint32_t ResolvedStride = Stride ? Stride : ArgumentSize;
-            if (!Buffer || !Owns(Buffer))
+            if (!Buffer || !RetainOwned(Buffer))
                 return WrongDevice();
             if (!HasAnyFlags(
                     Buffer->mDesc.mUsage,
@@ -4230,7 +4337,7 @@ namespace arda::rhi::provider
         {
             auto* Buffer = Cast<FBuffer>(&Arguments);
             constexpr uint64_t ArgumentSize = 3u * sizeof(uint32_t);
-            if (!Buffer || !Owns(Buffer))
+            if (!Buffer || !RetainOwned(Buffer))
                 return WrongDevice();
             if (!HasAnyFlags(
                     Buffer->mDesc.mUsage,
@@ -4263,7 +4370,7 @@ namespace arda::rhi::provider
             auto* Pipeline = Cast<FMeshletPipeline>(State.mPipeline.Get());
             auto* Framebuffer = Cast<FFramebuffer>(State.mFramebuffer.Get());
             if (!Pipeline || !Framebuffer ||
-                !Owns(Pipeline) || !Owns(Framebuffer))
+                !RetainOwned(Pipeline) || !RetainOwned(Framebuffer))
             {
                 return WrongDevice();
             }
@@ -4272,13 +4379,16 @@ namespace arda::rhi::provider
             Native.mFramebuffer = Framebuffer->mNative;
             Native.mViewports = State.mViewports;
             Native.mScissors = State.mScissors;
-            for (const auto& Binding : State.mBindings)
+            if (auto Status = ResolveBindings(State.mBindings, Native.mBindings); !Status)
             {
-                auto* Set = Cast<FBindingSet>(Binding.Get());
-                if (!Set || !Owns(Set)) return WrongDevice();
-                Native.mBindings.push_back(Set->mNative);
+                return Status;
             }
-            return mNative->SetMeshletState(Native);
+            const auto Status = mNative->SetMeshletState(Native);
+            if (Status)
+            {
+                mMeshletState = State;
+            }
+            return Status;
         }
 
         FArdaRHIStatus FCommandList::DispatchMesh(
@@ -4300,21 +4410,19 @@ namespace arda::rhi::provider
             if (!mDevice->GetCapabilities().mRayTracing.mbPipelineShaders)
                 return Unsupported("Ray tracing is unsupported by this device.");
             auto* Table = Cast<FShaderTable>(State.mShaderTable.Get());
-            if (!Table || !Owns(Table)) return WrongDevice();
+            if (!Table || !RetainOwned(Table)) return WrongDevice();
             FArdaProviderRayTracingState Native;
             {
                 std::lock_guard<std::mutex> Lock(Table->mMutex);
-                if (!Table->mbHasRayGeneration)
+                if (!Table->HasRayGeneration())
                     return FArdaRHIStatus::Error(
                         EArdaRHIResult::InvalidState,
                         "The shader table has no ray-generation record.");
                 Native.mShaderTable = Table->mNative;
             }
-            for (const auto& Binding : State.mBindings)
+            if (auto Status = ResolveBindings(State.mBindings, Native.mBindings); !Status)
             {
-                auto* Set = Cast<FBindingSet>(Binding.Get());
-                if (!Set || !Owns(Set)) return WrongDevice();
-                Native.mBindings.push_back(Set->mNative);
+                return Status;
             }
             return mNative->SetRayTracingState(Native);
         }
@@ -4345,7 +4453,7 @@ namespace arda::rhi::provider
                 return Unsupported(
                     "Indirect ray dispatch is unsupported by this device.");
             auto* Buffer = Cast<FBuffer>(&Arguments);
-            if (!Buffer || !Owns(Buffer)) return WrongDevice();
+            if (!Buffer || !RetainOwned(Buffer)) return WrongDevice();
             if (!HasAnyFlags(Buffer->mDesc.mUsage,
                     EArdaRHIBufferUsage::Indirect) ||
                 Offset > Buffer->mDesc.mByteSize ||
@@ -4371,7 +4479,7 @@ namespace arda::rhi::provider
             EArdaRHIAccelStructBuildFlags Flags)
         {
             auto* AccelStruct = Cast<FAccelStruct>(&Resource);
-            if (!AccelStruct || !Owns(AccelStruct)) return WrongDevice();
+            if (!AccelStruct || !RetainOwned(AccelStruct)) return WrongDevice();
             if (AccelStruct->mDesc.mbTopLevel || Geometries.empty())
                 return Invalid("A BLAS build requires BLAS geometry.");
             if (HasAnyFlags(Flags,
@@ -4404,7 +4512,7 @@ namespace arda::rhi::provider
             EArdaRHIAccelStructBuildFlags Flags)
         {
             auto* AccelStruct = Cast<FAccelStruct>(&Resource);
-            if (!AccelStruct || !Owns(AccelStruct)) return WrongDevice();
+            if (!AccelStruct || !RetainOwned(AccelStruct)) return WrongDevice();
             if (!AccelStruct->mDesc.mbTopLevel ||
                 Instances.size() > AccelStruct->mDesc.mTopLevelMaxInstances)
                 return Invalid("TLAS instance count exceeds its capacity.");
@@ -4423,7 +4531,7 @@ namespace arda::rhi::provider
             {
                 auto* BottomLevel = Cast<FAccelStruct>(
                     Instance.mBottomLevelAccelStruct.Get());
-                if (!BottomLevel || !Owns(BottomLevel) ||
+                if (!BottomLevel || !RetainOwned(BottomLevel) ||
                     BottomLevel->mDesc.mbTopLevel)
                     return WrongDevice();
                 FArdaProviderRayTracingInstance Native;
@@ -4461,12 +4569,16 @@ namespace arda::rhi::provider
         {
             auto* AccelStruct = Cast<FAccelStruct>(&Resource);
             auto* Buffer = Cast<FBuffer>(&Instances);
-            if (!AccelStruct || !Buffer || !Owns(AccelStruct) ||
-                !Owns(Buffer)) return WrongDevice();
+            if (!AccelStruct || !Buffer || !RetainOwned(AccelStruct) ||
+                !RetainOwned(Buffer)) return WrongDevice();
             if (!AccelStruct->mDesc.mbTopLevel ||
                 InstanceCount > AccelStruct->mDesc.mTopLevelMaxInstances ||
-                Offset > Buffer->mDesc.mByteSize)
-                return Invalid("Indirect TLAS build arguments are invalid.");
+                Offset % 16 != 0 || Offset > Buffer->mDesc.mByteSize ||
+                InstanceCount > (Buffer->mDesc.mByteSize - Offset) / 64 ||
+                !HasAnyFlags(Buffer->mDesc.mUsage, EArdaRHIBufferUsage::AccelStructBuildInput))
+            {
+                return Invalid("TLAS instance-buffer range, alignment or usage is invalid.");
+            }
             const FArdaRHIStatus Status =
                 mNative->BuildTopLevelAccelStructFromBuffer(
                     AccelStruct->mNative, Buffer->mNative, Offset,
@@ -4489,8 +4601,8 @@ namespace arda::rhi::provider
         {
             auto* Destination = Cast<FAccelStruct>(&DestinationResource);
             auto* Source = Cast<FAccelStruct>(&SourceResource);
-            if (!Destination || !Source || !Owns(Destination) ||
-                !Owns(Source)) return WrongDevice();
+            if (!Destination || !Source || !RetainOwned(Destination) ||
+                !RetainOwned(Source)) return WrongDevice();
             if (Destination == Source ||
                 Destination->mDesc.mbTopLevel != Source->mDesc.mbTopLevel ||
                 !HasAnyFlags(Source->mDesc.mBuildFlags,
@@ -4513,7 +4625,7 @@ namespace arda::rhi::provider
             IArdaRHIOpacityMicromap& Resource)
         {
             auto* Micromap = Cast<FOpacityMicromap>(&Resource);
-            if (!Micromap || !Owns(Micromap)) return WrongDevice();
+            if (!Micromap || !RetainOwned(Micromap)) return WrongDevice();
             if (!mDevice->GetCapabilities().mRayTracing.mbOpacityMicromaps)
                 return Unsupported(
                     "Opacity micromaps are unsupported by this device.");
@@ -4534,8 +4646,8 @@ namespace arda::rhi::provider
         {
             auto* Destination = Cast<FOpacityMicromap>(&DestinationResource);
             auto* Source = Cast<FOpacityMicromap>(&SourceResource);
-            if (!Destination || !Source || !Owns(Destination) ||
-                !Owns(Source)) return WrongDevice();
+            if (!Destination || !Source || !RetainOwned(Destination) ||
+                !RetainOwned(Source)) return WrongDevice();
             if (Destination == Source ||
                 !HasAnyFlags(Source->mDesc.mFlags,
                     EArdaRHIOpacityMicromapBuildFlags::AllowCompaction) ||
@@ -4558,7 +4670,7 @@ namespace arda::rhi::provider
             IArdaRHIOpacityMicromap& Resource) const
         {
             auto* Micromap = Cast<FOpacityMicromap>(&Resource);
-            if (!Micromap || !Owns(Micromap))
+            if (!Micromap || !RetainOwned(Micromap))
                 return {{}, WrongDevice()};
             FAccelStructTracking Tracking;
             const auto Existing =
@@ -4587,7 +4699,7 @@ namespace arda::rhi::provider
             IArdaRHIShaderBundle& Resource)
         {
             auto* Bundle = Cast<FShaderBundle>(&Resource);
-            if (!Bundle || !Owns(Bundle)) return WrongDevice();
+            if (!Bundle || !RetainOwned(Bundle)) return WrongDevice();
             if (!mDevice->GetCapabilities().mbShaderBundleDispatch)
                 return Unsupported(
                     "Shader bundles are unsupported by this device.");
@@ -4604,7 +4716,12 @@ namespace arda::rhi::provider
                 }
                 else
                 {
-                    FArdaRHIMeshletState State;
+                    if (!mMeshletState.mFramebuffer)
+                    {
+                        return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+                            "Mesh bundles require an active mesh framebuffer and raster state.");
+                    }
+                    FArdaRHIMeshletState State = mMeshletState;
                     State.mPipeline = Record.mMeshPipeline;
                     State.mBindings = Record.mBindings;
                     Status = SetMeshletState(State);
@@ -4634,7 +4751,7 @@ namespace arda::rhi::provider
             const eastl::vector<FArdaRHIBindingSetRef>& BindingRefs)
         {
             auto* Pipeline = Cast<FWorkGraphPipeline>(&Resource);
-            if (!Pipeline || !Owns(Pipeline)) return WrongDevice();
+            if (!Pipeline || !RetainOwned(Pipeline)) return WrongDevice();
             if (mDevice->GetCapabilities().mWorkGraphTier ==
                 EArdaRHIWorkGraphTier::None)
                 return Unsupported(
@@ -4644,15 +4761,9 @@ namespace arda::rhi::provider
                 return Invalid(
                     "Work-graph CPU input records are invalid or exceed capacity.");
             eastl::vector<FArdaProviderObjectRef> Bindings;
-            Bindings.reserve(BindingRefs.size());
-            for (const auto& BindingRef : BindingRefs)
+            if (auto Status = ResolveBindings(BindingRefs, Bindings); !Status)
             {
-                auto* Binding = Cast<FResource>(BindingRef.Get());
-                FArdaProviderObjectRef Native = GetNativeObject(
-                    BindingRef.Get());
-                if (!Binding || !Owns(Binding) || !Native)
-                    return WrongDevice();
-                Bindings.push_back(eastl::move(Native));
+                return Status;
             }
             return mNative->DispatchWorkGraph(
                 Pipeline->mNative, Records, RecordCount,
@@ -4663,7 +4774,7 @@ namespace arda::rhi::provider
             IArdaRHISamplerFeedbackTexture& Resource)
         {
             auto* Feedback = Cast<FSamplerFeedbackTexture>(&Resource);
-            if (!Feedback || !Owns(Feedback)) return WrongDevice();
+            if (!Feedback || !RetainOwned(Feedback)) return WrongDevice();
             if (mDevice->GetCapabilities().mSamplerFeedbackTier ==
                 EArdaRHISamplerFeedbackTier::None)
                 return Unsupported(
@@ -4684,12 +4795,23 @@ namespace arda::rhi::provider
             auto* Destination = Cast<FTexture>(&DestinationResource);
             auto* Feedback = Cast<FSamplerFeedbackTexture>(
                 &FeedbackResource);
-            if (!Destination || !Feedback || !Owns(Destination) ||
-                !Owns(Feedback)) return WrongDevice();
+            if (!Destination || !Feedback || !RetainOwned(Destination) ||
+                !RetainOwned(Feedback)) return WrongDevice();
             if (Format != EArdaRHIFormat::R8UInt ||
                 Destination->mDesc.mFormat != Format)
                 return Invalid(
                     "Decoded sampler feedback requires an R8UInt destination texture.");
+            const auto& Paired = Feedback->mPairedTexture->GetDesc();
+            const auto& Desc = Destination->mDesc;
+            const auto& Region = Feedback->mDesc;
+            const uint32_t MipCount = Region.mFormat == EArdaRHISamplerFeedbackFormat::MinMipOpaque
+                ? 1u : Paired.mMipLevels;
+            if (Desc.mDimension != EArdaRHITextureDimension::Texture2D ||
+                Desc.mSampleCount != 1 || Desc.mArraySize != Paired.mArraySize ||
+                Desc.mMipLevels != MipCount ||
+                Desc.mWidth < (uint64_t(Paired.mWidth) + Region.mMipRegionX - 1) / Region.mMipRegionX ||
+                Desc.mHeight < (uint64_t(Paired.mHeight) + Region.mMipRegionY - 1) / Region.mMipRegionY)
+                return Invalid("The decoded texture must contain every feedback region, mip and array slice.");
             const FArdaRHIStatus Status =
                 mNative->DecodeSamplerFeedbackTexture(
                     Destination->mNative, Destination->mDesc,
@@ -4710,7 +4832,7 @@ namespace arda::rhi::provider
             EArdaRHIResourceState State)
         {
             auto* Feedback = Cast<FSamplerFeedbackTexture>(&Resource);
-            if (!Feedback || !Owns(Feedback)) return WrongDevice();
+            if (!Feedback || !RetainOwned(Feedback)) return WrongDevice();
             const FArdaRHIStatus Status =
                 mNative->SetSamplerFeedbackTextureState(
                     Feedback->mNative, State);
@@ -4722,14 +4844,14 @@ namespace arda::rhi::provider
         FArdaRHIStatus FCommandList::BeginTimerQuery(IArdaRHITimerQuery& Query)
         {
             auto* Native = Cast<FTimerQuery>(&Query);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             return mNative->BeginTimerQuery(Native->mNative);
         }
 
         FArdaRHIStatus FCommandList::EndTimerQuery(IArdaRHITimerQuery& Query)
         {
             auto* Native = Cast<FTimerQuery>(&Query);
-            if (!Native || !Owns(Native)) return WrongDevice();
+            if (!Native || !RetainOwned(Native)) return WrongDevice();
             return mNative->EndTimerQuery(Native->mNative);
         }
     }

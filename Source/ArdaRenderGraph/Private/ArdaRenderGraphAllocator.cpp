@@ -42,9 +42,8 @@ namespace arda::render_graph
      * resources; the executor can evaluate the result independently of the
      * backend policy it ultimately uses.
      *
-     * TODO(ArdaRenderGraph): Physical placed-resource aliasing is currently
-     * disabled. Apply this layout only after the RHI exposes portable aliasing
-     * barriers and heap-compatibility queries.
+     * The executor applies this layout to compatible explicit heaps and
+     * synchronizes each overlapping reuse before the new resource is activated.
      */
     FARDGTransientHeapLayout FARDGTransientHeapAllocator::Allocate(
         const eastl::vector<FARDGTransientAllocationRequest>& Requests,

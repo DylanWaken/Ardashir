@@ -64,6 +64,9 @@ namespace arda::render_graph
 
         /** Captures and validates RHI/native state at every graph checkpoint. */
         bool mbValidateResourceStates = true;
+
+        /** Records adjacent compatible raster passes in one command list. */
+        bool mbMergeRasterPasses = true;
     };
 
     /** Identifies when a render-graph resource-state snapshot was captured. */
@@ -137,7 +140,7 @@ namespace arda::render_graph
         }
     };
 
-    /** Reports the completed CPU submission phase of graph execution. */
+    /** Reports one graph execution attempt, including failures and accepted submissions. */
     struct FARDGExecutionResult
     {
         /** Overall recording, conformance-validation, and submission status. */
@@ -146,11 +149,17 @@ namespace arda::render_graph
         /** Number of pass and boundary-barrier command lists submitted. */
         uint32_t mSubmittedCommandListCount = 0;
 
+        /** Number of raster passes appended to an earlier compatible pass list. */
+        uint32_t mMergedRasterPassCount = 0;
+
         /** Number of command lists rejected by the RHI during submission. */
         uint32_t mSubmissionFailureCount = 0;
 
         /** Number of explicit waits inserted between different queues. */
         uint32_t mQueueWaitCount = 0;
+
+        /** Execution dependencies, including physical ownership and memory aliasing edges. */
+        eastl::vector<FARDGQueueDependency> mQueueDependencies;
 
         /** Number of logical textures served by a reusable descriptor match. */
         uint32_t mTexturePoolReuseCount = 0;
@@ -169,6 +178,15 @@ namespace arda::render_graph
 
         /** Whether transient candidates used committed-resource fallback. */
         bool mbUsedTransientFallback = false;
+
+        /** Total capacity of the explicit transient heaps allocated for this execution. */
+        uint64_t mTransientHeapBytes = 0;
+
+        /** Heap bytes avoided by reusing expired transient placements. */
+        uint64_t mTransientAliasedBytes = 0;
+
+        /** Number of placed resources activated over a previously occupied range. */
+        uint32_t mAliasingBarrierCount = 0;
 
         /** Whether immediate-mode serial execution was selected. */
         bool mbUsedImmediateMode = false;
@@ -654,10 +672,11 @@ namespace arda::render_graph
                         Function,
                         Context,
                         FrozenParameters);
-                    Context.mUnsafeRawCommandList.Dispatch(
-                        Dispatch.mGroupCountX,
-                        Dispatch.mGroupCountY,
-                        Dispatch.mGroupCountZ);
+                    if (Context.GetStatus())
+                        Context.mUnsafeRawCommandList.Dispatch(
+                            Dispatch.mGroupCountX,
+                            Dispatch.mGroupCountY,
+                            Dispatch.mGroupCountZ);
                 });
         }
 
@@ -682,10 +701,11 @@ namespace arda::render_graph
                     const ParameterType& FrozenParameters) mutable
                 {
                     InvokePassLambda(Function, Context, FrozenParameters);
-                    Context.mUnsafeRawCommandList.DispatchRays(
-                        Dispatch.mWidth,
-                        Dispatch.mHeight,
-                        Dispatch.mDepth);
+                    if (Context.GetStatus())
+                        Context.ReportStatus(Context.mUnsafeRawCommandList.DispatchRays(
+                            Dispatch.mWidth,
+                            Dispatch.mHeight,
+                            Dispatch.mDepth));
                 });
         }
 
@@ -701,11 +721,15 @@ namespace arda::render_graph
          * Submission is asynchronous with respect to GPU completion. RHI
          * retains command-list resources, and device garbage collection runs
          * once at this graph-submission boundary.
+         *
+         * Inspect mStatus before consuming extractions. Callback failures prevent
+         * graph submission; later submission failures can leave earlier work in
+         * flight. Failed executions cannot be retried on the same builder.
          */
         [[nodiscard]] const FARDGExecutionResult& Execute(
             const FARDGExecuteOptions& Options = {});
 
-        /** Returns the latest execution report, or null before Execute. */
+        /** Returns the builder-owned report, including failure, or null before Execute. */
         [[nodiscard]] const FARDGExecutionResult*
         GetLastExecutionResult() const noexcept;
 
@@ -847,6 +871,20 @@ namespace arda::render_graph
             const backend::FArdaShaderParameterMetadata* ShaderParameters,
             rhi::IArdaRHIBindingLayout* BindingLayout) const;
 
+        /** Propagates optional status returns without changing void callback support. */
+        template <typename ExecuteType, typename... ArgumentTypes>
+        static void InvokeCallback(
+            FARDGPassExecutionContext& Context,
+            ExecuteType& Execute,
+            ArgumentTypes&&... Arguments)
+        {
+            if constexpr (eastl::is_same_v<eastl::invoke_result_t<ExecuteType&, ArgumentTypes...>,
+                rhi::FArdaRHIStatus>)
+                Context.ReportStatus(Execute(eastl::forward<ArgumentTypes>(Arguments)...));
+            else
+                Execute(eastl::forward<ArgumentTypes>(Arguments)...);
+        }
+
         template <typename ExecuteType, typename ParameterType>
         static void InvokePassLambda(
             ExecuteType& Execute,
@@ -858,48 +896,48 @@ namespace arda::render_graph
                               FARDGPassExecutionContext&,
                               const ParameterType&>)
             {
-                Execute(Context, Parameters);
+                InvokeCallback(Context, Execute, Context, Parameters);
             }
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    const ParameterType&,
                                    FARDGPassExecutionContext&>)
             {
-                Execute(Parameters, Context);
+                InvokeCallback(Context, Execute, Parameters, Context);
             }
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    rhi::IArdaRHICommandList&,
                                    const ParameterType&>)
             {
-                Execute(Context.mUnsafeRawCommandList, Parameters);
+                InvokeCallback(Context, Execute, Context.mUnsafeRawCommandList, Parameters);
             }
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    const ParameterType&,
                                    rhi::IArdaRHICommandList&>)
             {
-                Execute(Parameters, Context.mUnsafeRawCommandList);
+                InvokeCallback(Context, Execute, Parameters, Context.mUnsafeRawCommandList);
             }
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    FARDGPassExecutionContext&>)
             {
-                Execute(Context);
+                InvokeCallback(Context, Execute, Context);
             }
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    rhi::IArdaRHICommandList&>)
             {
-                Execute(Context.mUnsafeRawCommandList);
+                InvokeCallback(Context, Execute, Context.mUnsafeRawCommandList);
             }
             else if constexpr (eastl::is_invocable_v<ExecuteType&, const ParameterType&>)
             {
-                Execute(Parameters);
+                InvokeCallback(Context, Execute, Parameters);
             }
             else if constexpr (eastl::is_invocable_v<ExecuteType&>)
             {
-                Execute();
+                InvokeCallback(Context, Execute);
             }
             else
             {
@@ -916,15 +954,15 @@ namespace arda::render_graph
         {
             if constexpr (eastl::is_invocable_v<ExecuteType&, FARDGPassExecutionContext&>)
             {
-                Execute(Context);
+                InvokeCallback(Context, Execute, Context);
             }
             else if constexpr (eastl::is_invocable_v<ExecuteType&, rhi::IArdaRHICommandList&>)
             {
-                Execute(Context.mUnsafeRawCommandList);
+                InvokeCallback(Context, Execute, Context.mUnsafeRawCommandList);
             }
             else if constexpr (eastl::is_invocable_v<ExecuteType&>)
             {
-                Execute();
+                InvokeCallback(Context, Execute);
             }
             else
             {

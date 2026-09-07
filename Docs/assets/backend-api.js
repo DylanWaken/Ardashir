@@ -5404,7 +5404,7 @@ window.ArdaBackendApi = {
       "page": "api-reference.html",
       "signature": "virtual FArdaRHIStatus BuildTopLevelAccelStructFromBuffer(IArdaRHIAccelStruct& AccelStruct, IArdaRHIBuffer& InstanceBuffer, uint64_t Offset, size_t InstanceCount, EArdaRHIAccelStructBuildFlags Flags) = 0",
       "summary": "Performs the build top level accel struct from buffer operation.",
-      "details": "Performs the build top level accel struct from buffer operation.  This records an advanced GPU build operation; the device capability, descriptor inputs, scratch/storage resources, and resource states must be valid. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects.",
+      "details": "Builds a TLAS from native 64-byte instance records stored in InstanceBuffer. Offset must be 16-byte aligned and the range must contain InstanceCount records. InstanceCount is supplied by the CPU; this API does not provide an indirect GPU count. The buffer requires acceleration-structure build-input usage and stays retained through command submission.",
       "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
       "params": [
         "IArdaRHIAccelStruct& AccelStruct",
@@ -5664,17 +5664,17 @@ window.ArdaBackendApi = {
       "kind": "method",
       "component": "rhi-device",
       "page": "api-reference.html",
-      "signature": "virtual FArdaRHIStatus DecodeSamplerFeedbackTexture(IArdaRHIBuffer& Destination, IArdaRHISamplerFeedbackTexture& Texture, EArdaRHIFormat Format) = 0",
+      "signature": "virtual FArdaRHIStatus DecodeSamplerFeedbackTexture(IArdaRHITexture& Destination, IArdaRHISamplerFeedbackTexture& Texture, EArdaRHIFormat Format) = 0",
       "summary": "Performs the decode sampler feedback texture operation.",
-      "details": "Performs the decode sampler feedback texture operation.  Command-list operations act on the creating device and are ordered within the selected queue. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects.",
+      "details": "Decodes all feedback subresources into an R8UInt Texture2D. The destination array size matches the paired texture; minimum-mip feedback needs one mip, and mip-region-used feedback needs the paired mip count. Width and height must each be at least ceil(paired extent / mip-region extent), with padding sufficient to allocate the required mip chain. The command transitions feedback to ResolveSource and destination to ResolveDest. Clear values decode to 0xFF for minimum-mip and zero for mip-region-used; a used region decodes to 0xFF.",
       "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
       "params": [
-        "IArdaRHIBuffer& Destination",
+        "IArdaRHITexture& Destination",
         "IArdaRHISamplerFeedbackTexture& Texture",
         "EArdaRHIFormat Format"
       ],
       "returns": "A status describing whether the operation succeeded.",
-      "ownership": "Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.",
+      "ownership": "The command list retains the destination and feedback map, including the paired texture, through submission.",
       "errors": "Failure is returned as EArdaRHIResult and diagnostic text; callers must inspect the status.",
       "threading": "A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.",
       "related": [
@@ -33748,70 +33748,1340 @@ window.ArdaBackendApi = {
         "arda::rhi"
       ]
     },
-    {"id":"api-arda-backend-fardashadertarget","name":"FArdaShaderTarget","qualifiedName":"arda::backend::FArdaShaderTarget","kind":"struct","component":"backend-modules","page":"api-reference.html","signature":"struct FArdaShaderTarget","summary":"Immutable shader-facing identity copied from one registered backend module.","details":"Immutable shader-facing identity copied from one registered backend module.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-fardashadertarget-mbackendname","name":"mBackendName","qualifiedName":"arda::backend::FArdaShaderTarget::mBackendName","kind":"member variable","component":"backend-modules","page":"api-reference.html","signature":"eastl::string mBackendName","summary":"Stable module registry name.","details":"Stable module registry name.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-fardashadertarget-mbinaryformat","name":"mBinaryFormat","qualifiedName":"arda::backend::FArdaShaderTarget::mBinaryFormat","kind":"member variable","component":"backend-modules","page":"api-reference.html","signature":"EArdaShaderBinaryFormat mBinaryFormat = EArdaShaderBinaryFormat::BackendDefined","summary":"Module-declared shader artifact format.","details":"Module-declared shader artifact format.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-fardashadertarget-martifactextension","name":"mArtifactExtension","qualifiedName":"arda::backend::FArdaShaderTarget::mArtifactExtension","kind":"member variable","component":"backend-modules","page":"api-reference.html","signature":"eastl::string mArtifactExtension","summary":"Module-declared artifact suffix.","details":"Module-declared artifact suffix.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-fardashadertarget-mcompileridentity","name":"mCompilerIdentity","qualifiedName":"arda::backend::FArdaShaderTarget::mCompilerIdentity","kind":"member variable","component":"backend-modules","page":"api-reference.html","signature":"eastl::string mCompilerIdentity","summary":"Stable cache identity for a compiler that does not use an executable file.","details":"Stable cache identity for a compiler that does not use an executable file.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-fardashadertarget-operator-bool","name":"operator bool","qualifiedName":"arda::backend::FArdaShaderTarget::operator bool","kind":"conversion operator","component":"backend-modules","page":"api-reference.html","signature":"[[nodiscard]] explicit operator bool() const noexcept","summary":"Reports whether the resolved target has a module name and artifact extension.","details":"Reports whether the resolved target has a module name and artifact extension.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-resolveshadertarget","name":"ResolveShaderTarget","qualifiedName":"arda::backend::ResolveShaderTarget","kind":"function","component":"backend-modules","page":"api-reference.html","signature":"[[nodiscard]] bool ResolveShaderTarget(const char* BackendName, FArdaShaderTarget\u0026 OutTarget) noexcept","summary":"Resolves an exact registered module into an immutable shader target.","details":"Resolves an exact registered module into an immutable shader target.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-finddefaultbackendmodule-4efff03e","name":"FindDefaultBackendModule","qualifiedName":"arda::backend::FindDefaultBackendModule","kind":"function","component":"backend-modules","page":"api-reference.html","signature":"[[nodiscard]] IArdaBackendModule* FindDefaultBackendModule() noexcept","summary":"Returns the globally highest-priority registered backend module.","details":"Returns the globally highest-priority registered backend module, or null when no module is registered.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"The selected registered module, or null.","ownership":"The registry retains ownership of the returned module.","errors":"Returns null when no backend module is registered.","threading":"Registry access is synchronized; returned module lifetime follows registration and backend-lifecycle rules.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-resolvedefaultshadertarget","name":"ResolveDefaultShaderTarget","qualifiedName":"arda::backend::ResolveDefaultShaderTarget","kind":"function","component":"backend-modules","page":"api-reference.html","signature":"[[nodiscard]] bool ResolveDefaultShaderTarget(FArdaShaderTarget\u0026 OutTarget) noexcept","summary":"Resolves the globally highest-priority module into an immutable shader target.","details":"Resolves the globally highest-priority registered module and copies its exact identity and shader metadata.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"True when a registered module was resolved.","ownership":"The resolved target owns copied module identity and shader metadata.","errors":"Returns false when no backend module is registered.","threading":"Registry access is synchronized; the copied target does not retain registry references.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-module-descriptor-compiler-identity","name":"mShaderCompilerIdentity","qualifiedName":"arda::backend::FArdaBackendModuleDescriptor::mShaderCompilerIdentity","kind":"member variable","component":"backend-modules","page":"api-reference.html","signature":"eastl::string mShaderCompilerIdentity","summary":"Stable cache identity for an engine-owned or in-process shader compiler.","details":"Stable cache identity for an engine-owned or in-process shader compiler.","source":"Source/ArdaBackend/Public/ArdaBackendProvider.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-external-device-property","name":"FArdaExternalDeviceProperty","qualifiedName":"arda::backend::FArdaExternalDeviceProperty","kind":"struct","component":"external-interop","page":"api-reference.html","signature":"struct FArdaExternalDeviceProperty","summary":"Copied module-defined property for a host-owned device.","details":"Copied module-defined property for a host-owned device.","source":"Source/ArdaBackend/Public/ArdaExternalInterop.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-external-device-property-name","name":"mName","qualifiedName":"arda::backend::FArdaExternalDeviceProperty::mName","kind":"member variable","component":"external-interop","page":"api-reference.html","signature":"eastl::string mName","summary":"Stable property name documented by the consuming module.","details":"Stable property name documented by the consuming module.","source":"Source/ArdaBackend/Public/ArdaExternalInterop.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-external-device-property-value","name":"mValue","qualifiedName":"arda::backend::FArdaExternalDeviceProperty::mValue","kind":"member variable","component":"external-interop","page":"api-reference.html","signature":"eastl::string mValue","summary":"Copied property value.","details":"Copied property value.","source":"Source/ArdaBackend/Public/ArdaExternalInterop.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-external-device-desc-properties","name":"mProperties","qualifiedName":"arda::backend::FArdaExternalDeviceDesc::mProperties","kind":"member variable","component":"external-interop","page":"api-reference.html","signature":"eastl::vector\u003cFArdaExternalDeviceProperty\u003e mProperties","summary":"Backend-specific named values; repeated names are permitted.","details":"Backend-specific named values; repeated names are permitted.","source":"Source/ArdaBackend/Public/ArdaExternalInterop.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-shader-module-arguments","name":"FArdaShaderCompilerModuleArguments","qualifiedName":"arda::backend::FArdaShaderCompilerModuleArguments","kind":"struct","component":"shaders","page":"api-reference.html","signature":"struct FArdaShaderCompilerModuleArguments","summary":"Additional deterministic compiler arguments for one exact module.","details":"Additional deterministic compiler arguments for one exact module.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-shader-module-arguments-name","name":"mBackendName","qualifiedName":"arda::backend::FArdaShaderCompilerModuleArguments::mBackendName","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"eastl::string mBackendName","summary":"Stable module name receiving the arguments.","details":"Stable module name receiving the arguments.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-shader-module-arguments-values","name":"mArguments","qualifiedName":"arda::backend::FArdaShaderCompilerModuleArguments::mArguments","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"eastl::vector\u003ceastl::string\u003e mArguments","summary":"Arguments appended before the module configure hook.","details":"Arguments appended before the module configure hook.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-shader-config-module-arguments","name":"mModuleArguments","qualifiedName":"arda::backend::FArdaShaderCompilerConfiguration::mModuleArguments","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"eastl::vector\u003cFArdaShaderCompilerModuleArguments\u003e mModuleArguments","summary":"Per-module compiler arguments keyed by stable backend name.","details":"Per-module compiler arguments keyed by stable backend name.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-shader-job-target","name":"mTarget","qualifiedName":"arda::backend::FArdaShaderCompileJob::mTarget","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"FArdaShaderTarget mTarget","summary":"Exact immutable module target selected for the job.","details":"Exact immutable module target selected for the job.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-shader-diagnostic-backend-name","name":"mBackendName","qualifiedName":"arda::backend::FArdaShaderCompileDiagnostic::mBackendName","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"eastl::string mBackendName","summary":"Stable module name associated with a diagnostic.","details":"Stable module name associated with a diagnostic.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-shader-permutation-backend-name","name":"mBackendName","qualifiedName":"arda::backend::FArdaShaderPermutationParameters::mBackendName","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"eastl::string mBackendName","summary":"Stable module name available to compile policy.","details":"Stable module name available to compile policy.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-shader-permutation-binary-format","name":"mBinaryFormat","qualifiedName":"arda::backend::FArdaShaderPermutationParameters::mBinaryFormat","kind":"member variable","component":"shaders","page":"api-reference.html","signature":"EArdaShaderBinaryFormat mBinaryFormat = EArdaShaderBinaryFormat::BackendDefined","summary":"Module-declared binary format available to compile policy.","details":"Module-declared binary format available to compile policy.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-build-shader-jobs-by-name","name":"BuildRegisteredShaderCompileJobs","qualifiedName":"arda::backend::BuildRegisteredShaderCompileJobs","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(const std::filesystem::path\u0026 OutputDirectory, const eastl::vector\u003ceastl::string\u003e\u0026 BackendNames)","summary":"Builds jobs for exact registered module names.","details":"Builds jobs for exact registered module names.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-compile-shaders-by-names","name":"CompileRegisteredShaderArtifacts","qualifiedName":"arda::backend::CompileRegisteredShaderArtifacts","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path\u0026 OutputDirectory, const eastl::vector\u003ceastl::string\u003e\u0026 BackendNames)","summary":"Cooks artifacts for exact registered module names.","details":"Cooks artifacts for exact registered module names.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-compile-shaders-by-name","name":"CompileRegisteredShaderArtifacts","qualifiedName":"arda::backend::CompileRegisteredShaderArtifacts","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path\u0026 OutputDirectory, const char* BackendName)","summary":"Cooks artifacts for one exact registered module.","details":"Cooks artifacts for one exact registered module.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-ensure-shaders-by-name","name":"EnsureRegisteredShaderArtifacts","qualifiedName":"arda::backend::EnsureRegisteredShaderArtifacts","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(const std::filesystem::path\u0026 OutputDirectory, const char* BackendName)","summary":"Ensures all selected artifacts for one exact module.","details":"Ensures all selected artifacts for one exact module.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-ensure-shader-by-name","name":"EnsureRegisteredShaderArtifact","qualifiedName":"arda::backend::EnsureRegisteredShaderArtifact","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifact(const FArdaShaderType\u0026 Type, const char* BackendName, uint32_t PermutationId, const std::filesystem::path\u0026 OutputDirectory)","summary":"Ensures one artifact for an exact registered module.","details":"Ensures one artifact for an exact registered module.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-shader-extension-by-name","name":"GetShaderArtifactExtension","qualifiedName":"arda::backend::GetShaderArtifactExtension","kind":"function","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] const char* GetShaderArtifactExtension(const char* BackendName) noexcept","summary":"Returns the artifact extension declared by an exact module.","details":"Returns the artifact extension declared by an exact module.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-shader-type-should-compile-target","name":"ShouldCompilePermutation","qualifiedName":"arda::backend::FArdaShaderType::ShouldCompilePermutation","kind":"method","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] bool ShouldCompilePermutation(const FArdaShaderTarget\u0026 Target, uint32_t PermutationId) const","summary":"Evaluates compile policy with exact module identity and binary format.","details":"Evaluates compile policy with exact module identity and binary format.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]},
-    {"id":"api-arda-backend-shader-type-build-environment-target","name":"BuildCompilationEnvironment","qualifiedName":"arda::backend::FArdaShaderType::BuildCompilationEnvironment","kind":"method","component":"shaders","page":"api-reference.html","signature":"[[nodiscard]] FArdaShaderCompileEnvironment BuildCompilationEnvironment(const FArdaShaderTarget\u0026 Target, uint32_t PermutationId) const","summary":"Builds deterministic definitions for an exact module target.","details":"Builds deterministic definitions for an exact module target.","source":"Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h","params":[],"returns":"Not applicable.","ownership":"Values are copied unless the declaration explicitly carries a non-owning native handle.","errors":"Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.","threading":"Registry access is synchronized; compilation and device lifetime rules follow the containing API.","related":["arda::backend::IArdaBackendModule","arda::backend::FArdaBackendModuleDescriptor"]}
-  ,
-    {"id":"api-arda-rhi-fardarhicapabilities-mbtexturecopies","name":"mbTextureCopies","qualifiedName":"arda::rhi::FArdaRHICapabilities::mbTextureCopies","kind":"member variable","component":"rhi-device","page":"api-reference.html","signature":"bool mbTextureCopies = false","summary":"Direct texture-region copy and staging-transfer support.","details":"Direct texture-region copy and staging-transfer support.","source":"Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::FArdaRHICapabilities"]},
-    {"id":"api-arda-rhi-fardarhicapabilities-mbtextureresolve","name":"mbTextureResolve","qualifiedName":"arda::rhi::FArdaRHICapabilities::mbTextureResolve","kind":"member variable","component":"rhi-device","page":"api-reference.html","signature":"bool mbTextureResolve = false","summary":"Multisample texture resolve support.","details":"Multisample texture resolve support.","source":"Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::FArdaRHICapabilities"]},
-    {"id":"api-arda-rhi-fardarhicapabilities-mbexplicittransitions","name":"mbExplicitTransitions","qualifiedName":"arda::rhi::FArdaRHICapabilities::mbExplicitTransitions","kind":"member variable","component":"rhi-device","page":"api-reference.html","signature":"bool mbExplicitTransitions = false","summary":"Explicit before/after transition support.","details":"Explicit before/after transition support.","source":"Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::FArdaRHICapabilities"]},
-    {"id":"api-arda-rhi-fardarhicapabilities-mbsplittransitions","name":"mbSplitTransitions","qualifiedName":"arda::rhi::FArdaRHICapabilities::mbSplitTransitions","kind":"member variable","component":"rhi-device","page":"api-reference.html","signature":"bool mbSplitTransitions = false","summary":"Begin-only/end-only split-transition support.","details":"Begin-only/end-only split-transition support.","source":"Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::FArdaRHICapabilities"]},
-    {"id":"api-arda-rhi-fardarhicapabilities-mbindirectcommands","name":"mbIndirectCommands","qualifiedName":"arda::rhi::FArdaRHICapabilities::mbIndirectCommands","kind":"member variable","component":"rhi-device","page":"api-reference.html","signature":"bool mbIndirectCommands = false","summary":"Indirect draw and dispatch support.","details":"Indirect draw and dispatch support.","source":"Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::FArdaRHICapabilities"]},
-    {"id":"api-arda-rhi-fardarhicapabilities-mbaliasingbarriers","name":"mbAliasingBarriers","qualifiedName":"arda::rhi::FArdaRHICapabilities::mbAliasingBarriers","kind":"member variable","component":"rhi-device","page":"api-reference.html","signature":"bool mbAliasingBarriers = false","summary":"Explicit aliasing-barrier support.","details":"Explicit aliasing-barrier support.","source":"Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::FArdaRHICapabilities"]},
-    {"id":"api-arda-rhi-eardarhipipeline","name":"EArdaRHIPipeline","qualifiedName":"arda::rhi::EArdaRHIPipeline","kind":"enum","component":"rhi-types","page":"api-reference.html","signature":"enum class EArdaRHIPipeline : uint8_t { None = 0, Graphics = 1u << 0, AsyncCompute = 1u << 1, Copy = 1u << 2, All = 0x07 }","summary":"Pipeline domains participating in a resource transition.","details":"Pipeline domains participating in a resource transition.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi"]},
-    {"id":"api-arda-rhi-eardarhitransitionflags","name":"EArdaRHITransitionFlags","qualifiedName":"arda::rhi::EArdaRHITransitionFlags","kind":"enum","component":"rhi-types","page":"api-reference.html","signature":"enum class EArdaRHITransitionFlags : uint8_t { None = 0, BeginOnly = 1u << 0, EndOnly = 1u << 1, Discard = 1u << 2 }","summary":"Split, discard, and default transition semantics.","details":"Split, discard, and default transition semantics.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi"]},
-    {"id":"api-arda-rhi-eardarhiresourcestate-cpuread","name":"CpuRead","qualifiedName":"arda::rhi::EArdaRHIResourceState::CpuRead","kind":"enum value","component":"rhi-types","page":"api-reference.html","signature":"CpuRead = 1u << 20","summary":"Resource is available to a CPU readback path.","details":"Resource is available to a CPU readback path.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::EArdaRHIResourceState"]},
-    {"id":"api-arda-rhi-eardarhiresourcestate-discard","name":"Discard","qualifiedName":"arda::rhi::EArdaRHIResourceState::Discard","kind":"enum value","component":"rhi-types","page":"api-reference.html","signature":"Discard = 1u << 23","summary":"Previous resource contents are not preserved.","details":"Previous resource contents are not preserved.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::EArdaRHIResourceState"]},
-    {"id":"api-arda-rhi-eardarhiresourcestate-shadingratesource","name":"ShadingRateSource","qualifiedName":"arda::rhi::EArdaRHIResourceState::ShadingRateSource","kind":"enum value","component":"rhi-types","page":"api-reference.html","signature":"ShadingRateSource = 1u << 24","summary":"Texture is used as a shading-rate source.","details":"Texture is used as a shading-rate source.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::EArdaRHIResourceState"]},
-    {"id":"api-arda-rhi-fardarhinativeresourcestate","name":"FArdaRHINativeResourceState","qualifiedName":"arda::rhi::FArdaRHINativeResourceState","kind":"struct","component":"rhi-types","page":"api-reference.html","signature":"struct FArdaRHINativeResourceState { EArdaRHIResourceState mState; EArdaRHINativeResourceType mNativeType; uint64_t mPrimaryState; uint64_t mPipelineStageMask; uint64_t mAccessMask; bool mbKnown; bool mbNativeCompatible; }","summary":"Independent backend state plus exact D3D12 state bits or Vulkan layout, stage, and access masks.","details":"Independent backend state plus exact D3D12 state bits or Vulkan layout, stage, and access masks.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi"]},
-    {"id":"api-arda-rhi-fardarhiresourcestatesnapshot","name":"FArdaRHIResourceStateSnapshot","qualifiedName":"arda::rhi::FArdaRHIResourceStateSnapshot","kind":"struct","component":"rhi-types","page":"api-reference.html","signature":"struct FArdaRHIResourceStateSnapshot { EArdaRHIResourceState mFacadeState; EArdaRHIQueueType mQueue; FArdaRHINativeResourceState mNative; bool mbFacadeKnown; }","summary":"Independently observed facade, backend, and native resource state.","details":"Independently observed facade, backend, and native resource state.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi"]},
-    {"id":"api-arda-rhi-fardarhiresourcestatesnapshot-isconsistent","name":"IsConsistent","qualifiedName":"arda::rhi::FArdaRHIResourceStateSnapshot::IsConsistent","kind":"method","component":"rhi-types","page":"api-reference.html","signature":"[[nodiscard]] bool IsConsistent() const noexcept","summary":"Returns true when facade state, backend state, and native encoding are known and agree.","details":"Returns true when facade state, backend state, and native encoding are known and agree.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"bool","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::FArdaRHIResourceStateSnapshot"]},
-    {"id":"api-arda-rhi-fardarhitexturetransitiondesc","name":"FArdaRHITextureTransitionDesc","qualifiedName":"arda::rhi::FArdaRHITextureTransitionDesc","kind":"struct","component":"rhi-types","page":"api-reference.html","signature":"struct FArdaRHITextureTransitionDesc { FArdaRHITextureSubresourceRange mSubresources; EArdaRHIResourceState mStateBefore; EArdaRHIResourceState mStateAfter; EArdaRHIPipeline mSourcePipelines; EArdaRHIPipeline mDestinationPipelines; EArdaRHITransitionFlags mFlags; }","summary":"Explicit texture transition over a mip, array, and plane range.","details":"Explicit texture transition over a mip, array, and plane range.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi"]},
-    {"id":"api-arda-rhi-fardarhibuffertransitiondesc","name":"FArdaRHIBufferTransitionDesc","qualifiedName":"arda::rhi::FArdaRHIBufferTransitionDesc","kind":"struct","component":"rhi-types","page":"api-reference.html","signature":"struct FArdaRHIBufferTransitionDesc { EArdaRHIResourceState mStateBefore; EArdaRHIResourceState mStateAfter; EArdaRHIPipeline mSourcePipelines; EArdaRHIPipeline mDestinationPipelines; EArdaRHITransitionFlags mFlags; }","summary":"Explicit whole-buffer transition with pipeline and split semantics.","details":"Explicit whole-buffer transition with pipeline and split semantics.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi"]},
-    {"id":"api-arda-rhi-fardarhitexturesubresourcerange-mbaseplane","name":"mBasePlane","qualifiedName":"arda::rhi::FArdaRHITextureSubresourceRange::mBasePlane","kind":"member variable","component":"rhi-types","page":"api-reference.html","signature":"uint32_t mBasePlane = 0","summary":"First format plane; depth is zero and stencil is one.","details":"First format plane; depth is zero and stencil is one.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::FArdaRHITextureSubresourceRange"]},
-    {"id":"api-arda-rhi-fardarhitexturesubresourcerange-mplanecount","name":"mPlaneCount","qualifiedName":"arda::rhi::FArdaRHITextureSubresourceRange::mPlaneCount","kind":"member variable","component":"rhi-types","page":"api-reference.html","signature":"uint32_t mPlaneCount = ArdaRHIAllSubresources","summary":"Number of format planes.","details":"Number of format planes.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::FArdaRHITextureSubresourceRange"]},
-    {"id":"api-arda-rhi-fardarhitextureslice-mplane","name":"mPlane","qualifiedName":"arda::rhi::FArdaRHITextureSlice::mPlane","kind":"member variable","component":"rhi-types","page":"api-reference.html","signature":"uint32_t mPlane = 0","summary":"Format plane containing the texture region.","details":"Format plane containing the texture region.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::FArdaRHITextureSlice"]},
-    {"id":"api-arda-rhi-fardarhimemoryrequirements-mmemorytypebits","name":"mMemoryTypeBits","qualifiedName":"arda::rhi::FArdaRHIMemoryRequirements::mMemoryTypeBits","kind":"member variable","component":"rhi-types","page":"api-reference.html","signature":"uint32_t mMemoryTypeBits = 0xffffffffu","summary":"Backend memory-type compatibility mask.","details":"Backend memory-type compatibility mask.","source":"Source/ArdaBackend/Public/RHI/ArdaRHITypes.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::FArdaRHIMemoryRequirements"]},
-    {"id":"api-arda-rhi-fardarhiheapdesc-mmemorytypebits","name":"mMemoryTypeBits","qualifiedName":"arda::rhi::FArdaRHIHeapDesc::mMemoryTypeBits","kind":"member variable","component":"rhi-resources","page":"api-reference.html","signature":"uint32_t mMemoryTypeBits = 0xffffffffu","summary":"Memory types accepted by resources bound into the heap.","details":"Memory types accepted by resources bound into the heap.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIResources.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::rhi::FArdaRHIHeapDesc"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-copytexture","name":"CopyTexture","qualifiedName":"arda::rhi::IArdaRHICommandList::CopyTexture","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"virtual FArdaRHIStatus CopyTexture(IArdaRHITexture& Destination, const FArdaRHITextureSlice& DestinationSlice, IArdaRHITexture& Source, const FArdaRHITextureSlice& SourceSlice) = 0","summary":"Copies a region between compatible texture subresources.","details":"Copies a region between compatible texture subresources.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHITexture& Destination","const FArdaRHITextureSlice& DestinationSlice","IArdaRHITexture& Source","const FArdaRHITextureSlice& SourceSlice"],"returns":"FArdaRHIStatus","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-resolvetexture","name":"ResolveTexture","qualifiedName":"arda::rhi::IArdaRHICommandList::ResolveTexture","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"virtual FArdaRHIStatus ResolveTexture(IArdaRHITexture& Destination, const FArdaRHITextureSlice& DestinationSlice, IArdaRHITexture& Source, const FArdaRHITextureSlice& SourceSlice) = 0","summary":"Resolves a multisampled subresource into a single-sample destination.","details":"Resolves a multisampled subresource into a single-sample destination.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHITexture& Destination","const FArdaRHITextureSlice& DestinationSlice","IArdaRHITexture& Source","const FArdaRHITextureSlice& SourceSlice"],"returns":"FArdaRHIStatus","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-transitiontexture","name":"TransitionTexture","qualifiedName":"arda::rhi::IArdaRHICommandList::TransitionTexture","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"virtual FArdaRHIStatus TransitionTexture(IArdaRHITexture& Texture, const FArdaRHITextureTransitionDesc& Transition) = 0","summary":"Records an explicit texture transition.","details":"Records an explicit texture transition.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHITexture& Texture","const FArdaRHITextureTransitionDesc& Transition"],"returns":"FArdaRHIStatus","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-transitionbuffer","name":"TransitionBuffer","qualifiedName":"arda::rhi::IArdaRHICommandList::TransitionBuffer","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"virtual FArdaRHIStatus TransitionBuffer(IArdaRHIBuffer& Buffer, const FArdaRHIBufferTransitionDesc& Transition) = 0","summary":"Records an explicit whole-buffer transition.","details":"Records an explicit whole-buffer transition.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHIBuffer& Buffer","const FArdaRHIBufferTransitionDesc& Transition"],"returns":"FArdaRHIStatus","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-querytexturestate","name":"QueryTextureState","qualifiedName":"arda::rhi::IArdaRHICommandList::QueryTextureState","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"[[nodiscard]] virtual TArdaRHIResult<FArdaRHIResourceStateSnapshot> QueryTextureState(IArdaRHITexture& Texture, const FArdaRHITextureSubresourceRange& Range) const = 0","summary":"Observes facade, backend, and native texture state for a uniform range.","details":"Observes facade, backend, and native texture state for a uniform range.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHITexture& Texture","const FArdaRHITextureSubresourceRange& Range"],"returns":"TArdaRHIResult<FArdaRHIResourceStateSnapshot>","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-querybufferstate","name":"QueryBufferState","qualifiedName":"arda::rhi::IArdaRHICommandList::QueryBufferState","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"[[nodiscard]] virtual TArdaRHIResult<FArdaRHIResourceStateSnapshot> QueryBufferState(IArdaRHIBuffer& Buffer) const = 0","summary":"Observes facade, backend, and native buffer state.","details":"Observes facade, backend, and native buffer state.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHIBuffer& Buffer"],"returns":"TArdaRHIResult<FArdaRHIResourceStateSnapshot>","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-asserttexturestate","name":"AssertTextureState","qualifiedName":"arda::rhi::IArdaRHICommandList::AssertTextureState","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"[[nodiscard]] FArdaRHIStatus AssertTextureState(IArdaRHITexture& Texture, const FArdaRHITextureSubresourceRange& Range, EArdaRHIResourceState ExpectedState) const","summary":"Requires every tracked texture-state layer to match the expected state.","details":"Requires every tracked texture-state layer to match the expected state.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHITexture& Texture","const FArdaRHITextureSubresourceRange& Range","EArdaRHIResourceState ExpectedState"],"returns":"FArdaRHIStatus","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-assertbufferstate","name":"AssertBufferState","qualifiedName":"arda::rhi::IArdaRHICommandList::AssertBufferState","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"[[nodiscard]] FArdaRHIStatus AssertBufferState(IArdaRHIBuffer& Buffer, EArdaRHIResourceState ExpectedState) const","summary":"Requires every tracked buffer-state layer to match the expected state.","details":"Requires every tracked buffer-state layer to match the expected state.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHIBuffer& Buffer","EArdaRHIResourceState ExpectedState"],"returns":"FArdaRHIStatus","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-aliasingbarrier","name":"AliasingBarrier","qualifiedName":"arda::rhi::IArdaRHICommandList::AliasingBarrier","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"virtual FArdaRHIStatus AliasingBarrier(IArdaRHIResource* ResourceBefore, IArdaRHIResource* ResourceAfter) = 0","summary":"Transfers physical memory identity between aliased resources.","details":"Transfers physical memory identity between aliased resources.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHIResource* ResourceBefore","IArdaRHIResource* ResourceAfter"],"returns":"FArdaRHIStatus","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-drawindirect","name":"DrawIndirect","qualifiedName":"arda::rhi::IArdaRHICommandList::DrawIndirect","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"virtual FArdaRHIStatus DrawIndirect(IArdaRHIBuffer& Arguments, uint64_t Offset = 0, uint32_t DrawCount = 1, uint32_t Stride = 0) = 0","summary":"Executes non-indexed draw arguments from a GPU buffer.","details":"Executes non-indexed draw arguments from a GPU buffer.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHIBuffer& Arguments","uint64_t Offset = 0","uint32_t DrawCount = 1","uint32_t Stride = 0"],"returns":"FArdaRHIStatus","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-drawindexedindirect","name":"DrawIndexedIndirect","qualifiedName":"arda::rhi::IArdaRHICommandList::DrawIndexedIndirect","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"virtual FArdaRHIStatus DrawIndexedIndirect(IArdaRHIBuffer& Arguments, uint64_t Offset = 0, uint32_t DrawCount = 1, uint32_t Stride = 0) = 0","summary":"Executes indexed draw arguments from a GPU buffer.","details":"Executes indexed draw arguments from a GPU buffer.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHIBuffer& Arguments","uint64_t Offset = 0","uint32_t DrawCount = 1","uint32_t Stride = 0"],"returns":"FArdaRHIStatus","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]},
-    {"id":"api-arda-rhi-iardarhicommandlist-dispatchindirect","name":"DispatchIndirect","qualifiedName":"arda::rhi::IArdaRHICommandList::DispatchIndirect","kind":"method","component":"rhi-device","page":"api-reference.html","signature":"virtual FArdaRHIStatus DispatchIndirect(IArdaRHIBuffer& Arguments, uint64_t Offset = 0) = 0","summary":"Executes compute dispatch dimensions from a GPU buffer.","details":"Executes compute dispatch dimensions from a GPU buffer.","source":"Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h","params":["IArdaRHIBuffer& Arguments","uint64_t Offset = 0"],"returns":"FArdaRHIStatus","ownership":"Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.","errors":"Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.","threading":"Command-list recording is externally synchronized; queue submission establishes GPU ordering.","related":["arda::rhi::IArdaRHICommandList"]}
+    {
+      "id": "api-arda-backend-fardashadertarget",
+      "name": "FArdaShaderTarget",
+      "qualifiedName": "arda::backend::FArdaShaderTarget",
+      "kind": "struct",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "struct FArdaShaderTarget",
+      "summary": "Immutable shader-facing identity copied from one registered backend module.",
+      "details": "Immutable shader-facing identity copied from one registered backend module.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertarget-mbackendname",
+      "name": "mBackendName",
+      "qualifiedName": "arda::backend::FArdaShaderTarget::mBackendName",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "eastl::string mBackendName",
+      "summary": "Stable module registry name.",
+      "details": "Stable module registry name.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertarget-mbinaryformat",
+      "name": "mBinaryFormat",
+      "qualifiedName": "arda::backend::FArdaShaderTarget::mBinaryFormat",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "EArdaShaderBinaryFormat mBinaryFormat = EArdaShaderBinaryFormat::BackendDefined",
+      "summary": "Module-declared shader artifact format.",
+      "details": "Module-declared shader artifact format.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertarget-martifactextension",
+      "name": "mArtifactExtension",
+      "qualifiedName": "arda::backend::FArdaShaderTarget::mArtifactExtension",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "eastl::string mArtifactExtension",
+      "summary": "Module-declared artifact suffix.",
+      "details": "Module-declared artifact suffix.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertarget-mcompileridentity",
+      "name": "mCompilerIdentity",
+      "qualifiedName": "arda::backend::FArdaShaderTarget::mCompilerIdentity",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "eastl::string mCompilerIdentity",
+      "summary": "Stable cache identity for a compiler that does not use an executable file.",
+      "details": "Stable cache identity for a compiler that does not use an executable file.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-fardashadertarget-operator-bool",
+      "name": "operator bool",
+      "qualifiedName": "arda::backend::FArdaShaderTarget::operator bool",
+      "kind": "conversion operator",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] explicit operator bool() const noexcept",
+      "summary": "Reports whether the resolved target has a module name and artifact extension.",
+      "details": "Reports whether the resolved target has a module name and artifact extension.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-resolveshadertarget",
+      "name": "ResolveShaderTarget",
+      "qualifiedName": "arda::backend::ResolveShaderTarget",
+      "kind": "function",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool ResolveShaderTarget(const char* BackendName, FArdaShaderTarget& OutTarget) noexcept",
+      "summary": "Resolves an exact registered module into an immutable shader target.",
+      "details": "Resolves an exact registered module into an immutable shader target.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-finddefaultbackendmodule-4efff03e",
+      "name": "FindDefaultBackendModule",
+      "qualifiedName": "arda::backend::FindDefaultBackendModule",
+      "kind": "function",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] IArdaBackendModule* FindDefaultBackendModule() noexcept",
+      "summary": "Returns the globally highest-priority registered backend module.",
+      "details": "Returns the globally highest-priority registered backend module, or null when no module is registered.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "The selected registered module, or null.",
+      "ownership": "The registry retains ownership of the returned module.",
+      "errors": "Returns null when no backend module is registered.",
+      "threading": "Registry access is synchronized; returned module lifetime follows registration and backend-lifecycle rules.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-resolvedefaultshadertarget",
+      "name": "ResolveDefaultShaderTarget",
+      "qualifiedName": "arda::backend::ResolveDefaultShaderTarget",
+      "kind": "function",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool ResolveDefaultShaderTarget(FArdaShaderTarget& OutTarget) noexcept",
+      "summary": "Resolves the globally highest-priority module into an immutable shader target.",
+      "details": "Resolves the globally highest-priority registered module and copies its exact identity and shader metadata.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "True when a registered module was resolved.",
+      "ownership": "The resolved target owns copied module identity and shader metadata.",
+      "errors": "Returns false when no backend module is registered.",
+      "threading": "Registry access is synchronized; the copied target does not retain registry references.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-module-descriptor-compiler-identity",
+      "name": "mShaderCompilerIdentity",
+      "qualifiedName": "arda::backend::FArdaBackendModuleDescriptor::mShaderCompilerIdentity",
+      "kind": "member variable",
+      "component": "backend-modules",
+      "page": "api-reference.html",
+      "signature": "eastl::string mShaderCompilerIdentity",
+      "summary": "Stable cache identity for an engine-owned or in-process shader compiler.",
+      "details": "Stable cache identity for an engine-owned or in-process shader compiler.",
+      "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-external-device-property",
+      "name": "FArdaExternalDeviceProperty",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceProperty",
+      "kind": "struct",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "struct FArdaExternalDeviceProperty",
+      "summary": "Copied module-defined property for a host-owned device.",
+      "details": "Copied module-defined property for a host-owned device.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-external-device-property-name",
+      "name": "mName",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceProperty::mName",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::string mName",
+      "summary": "Stable property name documented by the consuming module.",
+      "details": "Stable property name documented by the consuming module.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-external-device-property-value",
+      "name": "mValue",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceProperty::mValue",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::string mValue",
+      "summary": "Copied property value.",
+      "details": "Copied property value.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-external-device-desc-properties",
+      "name": "mProperties",
+      "qualifiedName": "arda::backend::FArdaExternalDeviceDesc::mProperties",
+      "kind": "member variable",
+      "component": "external-interop",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaExternalDeviceProperty> mProperties",
+      "summary": "Backend-specific named values; repeated names are permitted.",
+      "details": "Backend-specific named values; repeated names are permitted.",
+      "source": "Source/ArdaBackend/Public/ArdaExternalInterop.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-shader-module-arguments",
+      "name": "FArdaShaderCompilerModuleArguments",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerModuleArguments",
+      "kind": "struct",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "struct FArdaShaderCompilerModuleArguments",
+      "summary": "Additional deterministic compiler arguments for one exact module.",
+      "details": "Additional deterministic compiler arguments for one exact module.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-shader-module-arguments-name",
+      "name": "mBackendName",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerModuleArguments::mBackendName",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::string mBackendName",
+      "summary": "Stable module name receiving the arguments.",
+      "details": "Stable module name receiving the arguments.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-shader-module-arguments-values",
+      "name": "mArguments",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerModuleArguments::mArguments",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<eastl::string> mArguments",
+      "summary": "Arguments appended before the module configure hook.",
+      "details": "Arguments appended before the module configure hook.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-shader-config-module-arguments",
+      "name": "mModuleArguments",
+      "qualifiedName": "arda::backend::FArdaShaderCompilerConfiguration::mModuleArguments",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::vector<FArdaShaderCompilerModuleArguments> mModuleArguments",
+      "summary": "Per-module compiler arguments keyed by stable backend name.",
+      "details": "Per-module compiler arguments keyed by stable backend name.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-shader-job-target",
+      "name": "mTarget",
+      "qualifiedName": "arda::backend::FArdaShaderCompileJob::mTarget",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "FArdaShaderTarget mTarget",
+      "summary": "Exact immutable module target selected for the job.",
+      "details": "Exact immutable module target selected for the job.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-shader-diagnostic-backend-name",
+      "name": "mBackendName",
+      "qualifiedName": "arda::backend::FArdaShaderCompileDiagnostic::mBackendName",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::string mBackendName",
+      "summary": "Stable module name associated with a diagnostic.",
+      "details": "Stable module name associated with a diagnostic.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-shader-permutation-backend-name",
+      "name": "mBackendName",
+      "qualifiedName": "arda::backend::FArdaShaderPermutationParameters::mBackendName",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "eastl::string mBackendName",
+      "summary": "Stable module name available to compile policy.",
+      "details": "Stable module name available to compile policy.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-shader-permutation-binary-format",
+      "name": "mBinaryFormat",
+      "qualifiedName": "arda::backend::FArdaShaderPermutationParameters::mBinaryFormat",
+      "kind": "member variable",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "EArdaShaderBinaryFormat mBinaryFormat = EArdaShaderBinaryFormat::BackendDefined",
+      "summary": "Module-declared binary format available to compile policy.",
+      "details": "Module-declared binary format available to compile policy.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompilerTypes.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-build-shader-jobs-by-name",
+      "name": "BuildRegisteredShaderCompileJobs",
+      "qualifiedName": "arda::backend::BuildRegisteredShaderCompileJobs",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileResult BuildRegisteredShaderCompileJobs(const std::filesystem::path& OutputDirectory, const eastl::vector<eastl::string>& BackendNames)",
+      "summary": "Builds jobs for exact registered module names.",
+      "details": "Builds jobs for exact registered module names.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-compile-shaders-by-names",
+      "name": "CompileRegisteredShaderArtifacts",
+      "qualifiedName": "arda::backend::CompileRegisteredShaderArtifacts",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, const eastl::vector<eastl::string>& BackendNames)",
+      "summary": "Cooks artifacts for exact registered module names.",
+      "details": "Cooks artifacts for exact registered module names.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-compile-shaders-by-name",
+      "name": "CompileRegisteredShaderArtifacts",
+      "qualifiedName": "arda::backend::CompileRegisteredShaderArtifacts",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileResult CompileRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, const char* BackendName)",
+      "summary": "Cooks artifacts for one exact registered module.",
+      "details": "Cooks artifacts for one exact registered module.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-ensure-shaders-by-name",
+      "name": "EnsureRegisteredShaderArtifacts",
+      "qualifiedName": "arda::backend::EnsureRegisteredShaderArtifacts",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifacts(const std::filesystem::path& OutputDirectory, const char* BackendName)",
+      "summary": "Ensures all selected artifacts for one exact module.",
+      "details": "Ensures all selected artifacts for one exact module.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-ensure-shader-by-name",
+      "name": "EnsureRegisteredShaderArtifact",
+      "qualifiedName": "arda::backend::EnsureRegisteredShaderArtifact",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileResult EnsureRegisteredShaderArtifact(const FArdaShaderType& Type, const char* BackendName, uint32_t PermutationId, const std::filesystem::path& OutputDirectory)",
+      "summary": "Ensures one artifact for an exact registered module.",
+      "details": "Ensures one artifact for an exact registered module.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderCompiler.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-shader-extension-by-name",
+      "name": "GetShaderArtifactExtension",
+      "qualifiedName": "arda::backend::GetShaderArtifactExtension",
+      "kind": "function",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] const char* GetShaderArtifactExtension(const char* BackendName) noexcept",
+      "summary": "Returns the artifact extension declared by an exact module.",
+      "details": "Returns the artifact extension declared by an exact module.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaGlobalShaderMap.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-shader-type-should-compile-target",
+      "name": "ShouldCompilePermutation",
+      "qualifiedName": "arda::backend::FArdaShaderType::ShouldCompilePermutation",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool ShouldCompilePermutation(const FArdaShaderTarget& Target, uint32_t PermutationId) const",
+      "summary": "Evaluates compile policy with exact module identity and binary format.",
+      "details": "Evaluates compile policy with exact module identity and binary format.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-backend-shader-type-build-environment-target",
+      "name": "BuildCompilationEnvironment",
+      "qualifiedName": "arda::backend::FArdaShaderType::BuildCompilationEnvironment",
+      "kind": "method",
+      "component": "shaders",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaShaderCompileEnvironment BuildCompilationEnvironment(const FArdaShaderTarget& Target, uint32_t PermutationId) const",
+      "summary": "Builds deterministic definitions for an exact module target.",
+      "details": "Builds deterministic definitions for an exact module target.",
+      "source": "Source/ArdaBackend/Public/ShaderStructs/ArdaShaderType.h",
+      "params": [],
+      "returns": "Not applicable.",
+      "ownership": "Values are copied unless the declaration explicitly carries a non-owning native handle.",
+      "errors": "Invalid module names, unsupported compiler contracts, and malformed provider data are reported through the declared result or status.",
+      "threading": "Registry access is synchronized; compilation and device lifetime rules follow the containing API.",
+      "related": [
+        "arda::backend::IArdaBackendModule",
+        "arda::backend::FArdaBackendModuleDescriptor"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhicapabilities-mbtexturecopies",
+      "name": "mbTextureCopies",
+      "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbTextureCopies",
+      "kind": "member variable",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "bool mbTextureCopies = false",
+      "summary": "Direct texture-region copy and staging-transfer support.",
+      "details": "Direct texture-region copy and staging-transfer support.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHICapabilities"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhicapabilities-mbtextureresolve",
+      "name": "mbTextureResolve",
+      "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbTextureResolve",
+      "kind": "member variable",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "bool mbTextureResolve = false",
+      "summary": "Multisample texture resolve support.",
+      "details": "Multisample texture resolve support.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHICapabilities"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhicapabilities-mbexplicittransitions",
+      "name": "mbExplicitTransitions",
+      "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbExplicitTransitions",
+      "kind": "member variable",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "bool mbExplicitTransitions = false",
+      "summary": "Explicit before/after transition support.",
+      "details": "Explicit before/after transition support.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHICapabilities"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhicapabilities-mbsplittransitions",
+      "name": "mbSplitTransitions",
+      "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbSplitTransitions",
+      "kind": "member variable",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "bool mbSplitTransitions = false",
+      "summary": "Begin-only/end-only split-transition support.",
+      "details": "Begin-only/end-only split-transition support.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHICapabilities"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhicapabilities-mbindirectcommands",
+      "name": "mbIndirectCommands",
+      "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbIndirectCommands",
+      "kind": "member variable",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "bool mbIndirectCommands = false",
+      "summary": "Indirect draw and dispatch support.",
+      "details": "Indirect draw and dispatch support.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHICapabilities"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhicapabilities-mbaliasingbarriers",
+      "name": "mbAliasingBarriers",
+      "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbAliasingBarriers",
+      "kind": "member variable",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "bool mbAliasingBarriers = false",
+      "summary": "Explicit aliasing-barrier support.",
+      "details": "Explicit aliasing-barrier support.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHICapabilities"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-eardarhipipeline",
+      "name": "EArdaRHIPipeline",
+      "qualifiedName": "arda::rhi::EArdaRHIPipeline",
+      "kind": "enum",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaRHIPipeline : uint8_t { None = 0, Graphics = 1u << 0, AsyncCompute = 1u << 1, Copy = 1u << 2, All = 0x07 }",
+      "summary": "Pipeline domains participating in a resource transition.",
+      "details": "Pipeline domains participating in a resource transition.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-eardarhitransitionflags",
+      "name": "EArdaRHITransitionFlags",
+      "qualifiedName": "arda::rhi::EArdaRHITransitionFlags",
+      "kind": "enum",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "enum class EArdaRHITransitionFlags : uint8_t { None = 0, BeginOnly = 1u << 0, EndOnly = 1u << 1, Discard = 1u << 2 }",
+      "summary": "Split, discard, and default transition semantics.",
+      "details": "Split, discard, and default transition semantics.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-eardarhiresourcestate-cpuread",
+      "name": "CpuRead",
+      "qualifiedName": "arda::rhi::EArdaRHIResourceState::CpuRead",
+      "kind": "enum value",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "CpuRead = 1u << 20",
+      "summary": "Resource is available to a CPU readback path.",
+      "details": "Resource is available to a CPU readback path.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::EArdaRHIResourceState"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-eardarhiresourcestate-discard",
+      "name": "Discard",
+      "qualifiedName": "arda::rhi::EArdaRHIResourceState::Discard",
+      "kind": "enum value",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "Discard = 1u << 23",
+      "summary": "Previous resource contents are not preserved.",
+      "details": "Previous resource contents are not preserved.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::EArdaRHIResourceState"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-eardarhiresourcestate-shadingratesource",
+      "name": "ShadingRateSource",
+      "qualifiedName": "arda::rhi::EArdaRHIResourceState::ShadingRateSource",
+      "kind": "enum value",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "ShadingRateSource = 1u << 24",
+      "summary": "Texture is used as a shading-rate source.",
+      "details": "Texture is used as a shading-rate source.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::EArdaRHIResourceState"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhinativeresourcestate",
+      "name": "FArdaRHINativeResourceState",
+      "qualifiedName": "arda::rhi::FArdaRHINativeResourceState",
+      "kind": "struct",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "struct FArdaRHINativeResourceState { EArdaRHIResourceState mState; EArdaRHINativeResourceType mNativeType; uint64_t mPrimaryState; uint64_t mPipelineStageMask; uint64_t mAccessMask; bool mbKnown; bool mbNativeCompatible; }",
+      "summary": "Independent backend state plus exact D3D12 state bits or Vulkan layout, stage, and access masks.",
+      "details": "Independent backend state plus exact D3D12 state bits or Vulkan layout, stage, and access masks.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhiresourcestatesnapshot",
+      "name": "FArdaRHIResourceStateSnapshot",
+      "qualifiedName": "arda::rhi::FArdaRHIResourceStateSnapshot",
+      "kind": "struct",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "struct FArdaRHIResourceStateSnapshot { EArdaRHIResourceState mFacadeState; EArdaRHIQueueType mQueue; FArdaRHINativeResourceState mNative; bool mbFacadeKnown; }",
+      "summary": "Independently observed facade, backend, and native resource state.",
+      "details": "Independently observed facade, backend, and native resource state.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhiresourcestatesnapshot-isconsistent",
+      "name": "IsConsistent",
+      "qualifiedName": "arda::rhi::FArdaRHIResourceStateSnapshot::IsConsistent",
+      "kind": "method",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] bool IsConsistent() const noexcept",
+      "summary": "Returns true when facade state, backend state, and native encoding are known and agree.",
+      "details": "Returns true when facade state, backend state, and native encoding are known and agree.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "bool",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::FArdaRHIResourceStateSnapshot"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhitexturetransitiondesc",
+      "name": "FArdaRHITextureTransitionDesc",
+      "qualifiedName": "arda::rhi::FArdaRHITextureTransitionDesc",
+      "kind": "struct",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "struct FArdaRHITextureTransitionDesc { FArdaRHITextureSubresourceRange mSubresources; EArdaRHIResourceState mStateBefore; EArdaRHIResourceState mStateAfter; EArdaRHIPipeline mSourcePipelines; EArdaRHIPipeline mDestinationPipelines; EArdaRHITransitionFlags mFlags; }",
+      "summary": "Explicit texture transition over a mip, array, and plane range.",
+      "details": "Explicit texture transition over a mip, array, and plane range.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhibuffertransitiondesc",
+      "name": "FArdaRHIBufferTransitionDesc",
+      "qualifiedName": "arda::rhi::FArdaRHIBufferTransitionDesc",
+      "kind": "struct",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "struct FArdaRHIBufferTransitionDesc { EArdaRHIResourceState mStateBefore; EArdaRHIResourceState mStateAfter; EArdaRHIPipeline mSourcePipelines; EArdaRHIPipeline mDestinationPipelines; EArdaRHITransitionFlags mFlags; }",
+      "summary": "Explicit whole-buffer transition with pipeline and split semantics.",
+      "details": "Explicit whole-buffer transition with pipeline and split semantics.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhitexturesubresourcerange-mbaseplane",
+      "name": "mBasePlane",
+      "qualifiedName": "arda::rhi::FArdaRHITextureSubresourceRange::mBasePlane",
+      "kind": "member variable",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "uint32_t mBasePlane = 0",
+      "summary": "First format plane; depth is zero and stencil is one.",
+      "details": "First format plane; depth is zero and stencil is one.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHITextureSubresourceRange"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhitexturesubresourcerange-mplanecount",
+      "name": "mPlaneCount",
+      "qualifiedName": "arda::rhi::FArdaRHITextureSubresourceRange::mPlaneCount",
+      "kind": "member variable",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "uint32_t mPlaneCount = ArdaRHIAllSubresources",
+      "summary": "Number of format planes.",
+      "details": "Number of format planes.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHITextureSubresourceRange"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhitextureslice-mplane",
+      "name": "mPlane",
+      "qualifiedName": "arda::rhi::FArdaRHITextureSlice::mPlane",
+      "kind": "member variable",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "uint32_t mPlane = 0",
+      "summary": "Format plane containing the texture region.",
+      "details": "Format plane containing the texture region.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHITextureSlice"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhimemoryrequirements-mmemorytypebits",
+      "name": "mMemoryTypeBits",
+      "qualifiedName": "arda::rhi::FArdaRHIMemoryRequirements::mMemoryTypeBits",
+      "kind": "member variable",
+      "component": "rhi-types",
+      "page": "api-reference.html",
+      "signature": "uint32_t mMemoryTypeBits = 0xffffffffu",
+      "summary": "Backend memory-type compatibility mask.",
+      "details": "Backend memory-type compatibility mask.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHIMemoryRequirements"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-fardarhiheapdesc-mmemorytypebits",
+      "name": "mMemoryTypeBits",
+      "qualifiedName": "arda::rhi::FArdaRHIHeapDesc::mMemoryTypeBits",
+      "kind": "member variable",
+      "component": "rhi-resources",
+      "page": "api-reference.html",
+      "signature": "uint32_t mMemoryTypeBits = 0xffffffffu",
+      "summary": "Memory types accepted by resources bound into the heap.",
+      "details": "Memory types accepted by resources bound into the heap.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+      "params": [],
+      "returns": "",
+      "ownership": "The containing value owns this state.",
+      "errors": "",
+      "threading": "",
+      "related": [
+        "arda::rhi::FArdaRHIHeapDesc"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-copytexture",
+      "name": "CopyTexture",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::CopyTexture",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus CopyTexture(IArdaRHITexture& Destination, const FArdaRHITextureSlice& DestinationSlice, IArdaRHITexture& Source, const FArdaRHITextureSlice& SourceSlice) = 0",
+      "summary": "Copies a region between compatible texture subresources.",
+      "details": "Copies a region between compatible texture subresources.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHITexture& Destination",
+        "const FArdaRHITextureSlice& DestinationSlice",
+        "IArdaRHITexture& Source",
+        "const FArdaRHITextureSlice& SourceSlice"
+      ],
+      "returns": "FArdaRHIStatus",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-resolvetexture",
+      "name": "ResolveTexture",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::ResolveTexture",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus ResolveTexture(IArdaRHITexture& Destination, const FArdaRHITextureSlice& DestinationSlice, IArdaRHITexture& Source, const FArdaRHITextureSlice& SourceSlice) = 0",
+      "summary": "Resolves a multisampled subresource into a single-sample destination.",
+      "details": "Resolves a multisampled subresource into a single-sample destination.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHITexture& Destination",
+        "const FArdaRHITextureSlice& DestinationSlice",
+        "IArdaRHITexture& Source",
+        "const FArdaRHITextureSlice& SourceSlice"
+      ],
+      "returns": "FArdaRHIStatus",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-transitiontexture",
+      "name": "TransitionTexture",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::TransitionTexture",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus TransitionTexture(IArdaRHITexture& Texture, const FArdaRHITextureTransitionDesc& Transition) = 0",
+      "summary": "Records an explicit texture transition.",
+      "details": "Records an explicit texture transition.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHITexture& Texture",
+        "const FArdaRHITextureTransitionDesc& Transition"
+      ],
+      "returns": "FArdaRHIStatus",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-transitionbuffer",
+      "name": "TransitionBuffer",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::TransitionBuffer",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus TransitionBuffer(IArdaRHIBuffer& Buffer, const FArdaRHIBufferTransitionDesc& Transition) = 0",
+      "summary": "Records an explicit whole-buffer transition.",
+      "details": "Records an explicit whole-buffer transition.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHIBuffer& Buffer",
+        "const FArdaRHIBufferTransitionDesc& Transition"
+      ],
+      "returns": "FArdaRHIStatus",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-querytexturestate",
+      "name": "QueryTextureState",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::QueryTextureState",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHIResourceStateSnapshot> QueryTextureState(IArdaRHITexture& Texture, const FArdaRHITextureSubresourceRange& Range) const = 0",
+      "summary": "Observes facade, backend, and native texture state for a uniform range.",
+      "details": "Observes facade, backend, and native texture state for a uniform range.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHITexture& Texture",
+        "const FArdaRHITextureSubresourceRange& Range"
+      ],
+      "returns": "TArdaRHIResult<FArdaRHIResourceStateSnapshot>",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-querybufferstate",
+      "name": "QueryBufferState",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::QueryBufferState",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHIResourceStateSnapshot> QueryBufferState(IArdaRHIBuffer& Buffer) const = 0",
+      "summary": "Observes facade, backend, and native buffer state.",
+      "details": "Observes facade, backend, and native buffer state.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHIBuffer& Buffer"
+      ],
+      "returns": "TArdaRHIResult<FArdaRHIResourceStateSnapshot>",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-asserttexturestate",
+      "name": "AssertTextureState",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::AssertTextureState",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus AssertTextureState(IArdaRHITexture& Texture, const FArdaRHITextureSubresourceRange& Range, EArdaRHIResourceState ExpectedState) const",
+      "summary": "Requires every tracked texture-state layer to match the expected state.",
+      "details": "Requires every tracked texture-state layer to match the expected state.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHITexture& Texture",
+        "const FArdaRHITextureSubresourceRange& Range",
+        "EArdaRHIResourceState ExpectedState"
+      ],
+      "returns": "FArdaRHIStatus",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-assertbufferstate",
+      "name": "AssertBufferState",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::AssertBufferState",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "[[nodiscard]] FArdaRHIStatus AssertBufferState(IArdaRHIBuffer& Buffer, EArdaRHIResourceState ExpectedState) const",
+      "summary": "Requires every tracked buffer-state layer to match the expected state.",
+      "details": "Requires every tracked buffer-state layer to match the expected state.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHIBuffer& Buffer",
+        "EArdaRHIResourceState ExpectedState"
+      ],
+      "returns": "FArdaRHIStatus",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-aliasingbarrier",
+      "name": "AliasingBarrier",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::AliasingBarrier",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus AliasingBarrier(IArdaRHIResource* ResourceBefore, IArdaRHIResource* ResourceAfter) = 0",
+      "summary": "Transfers physical memory identity between aliased resources.",
+      "details": "Transfers physical memory identity between aliased resources.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHIResource* ResourceBefore",
+        "IArdaRHIResource* ResourceAfter"
+      ],
+      "returns": "FArdaRHIStatus",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-drawindirect",
+      "name": "DrawIndirect",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::DrawIndirect",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus DrawIndirect(IArdaRHIBuffer& Arguments, uint64_t Offset = 0, uint32_t DrawCount = 1, uint32_t Stride = 0) = 0",
+      "summary": "Executes non-indexed draw arguments from a GPU buffer.",
+      "details": "Executes non-indexed draw arguments from a GPU buffer.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHIBuffer& Arguments",
+        "uint64_t Offset = 0",
+        "uint32_t DrawCount = 1",
+        "uint32_t Stride = 0"
+      ],
+      "returns": "FArdaRHIStatus",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-drawindexedindirect",
+      "name": "DrawIndexedIndirect",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::DrawIndexedIndirect",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus DrawIndexedIndirect(IArdaRHIBuffer& Arguments, uint64_t Offset = 0, uint32_t DrawCount = 1, uint32_t Stride = 0) = 0",
+      "summary": "Executes indexed draw arguments from a GPU buffer.",
+      "details": "Executes indexed draw arguments from a GPU buffer.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHIBuffer& Arguments",
+        "uint64_t Offset = 0",
+        "uint32_t DrawCount = 1",
+        "uint32_t Stride = 0"
+      ],
+      "returns": "FArdaRHIStatus",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    },
+    {
+      "id": "api-arda-rhi-iardarhicommandlist-dispatchindirect",
+      "name": "DispatchIndirect",
+      "qualifiedName": "arda::rhi::IArdaRHICommandList::DispatchIndirect",
+      "kind": "method",
+      "component": "rhi-device",
+      "page": "api-reference.html",
+      "signature": "virtual FArdaRHIStatus DispatchIndirect(IArdaRHIBuffer& Arguments, uint64_t Offset = 0) = 0",
+      "summary": "Executes compute dispatch dimensions from a GPU buffer.",
+      "details": "Executes compute dispatch dimensions from a GPU buffer.",
+      "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+      "params": [
+        "IArdaRHIBuffer& Arguments",
+        "uint64_t Offset = 0"
+      ],
+      "returns": "FArdaRHIStatus",
+      "ownership": "Reference and pointer arguments are borrowed while the command list retains resources required for deferred native execution.",
+      "errors": "Invalid arguments, wrong-device objects, unsupported capability, or incompatible state are reported through the declared status or result.",
+      "threading": "Command-list recording is externally synchronized; queue submission establishes GPU ordering.",
+      "related": [
+        "arda::rhi::IArdaRHICommandList"
+      ]
+    }
   ]
 };
 
@@ -33907,7 +35177,7 @@ window.ArdaBackendApi = {
       ["mbAccelerationStructures", "bool mbAccelerationStructures = false;", "Native acceleration structures."], ["mbBottomLevel", "bool mbBottomLevel = false;", "BLAS support."],
       ["mbTopLevel", "bool mbTopLevel = false;", "TLAS support."], ["mbBuildUpdate", "bool mbBuildUpdate = false;", "AS update builds."],
       ["mbCompaction", "bool mbCompaction = false;", "AS compacted-size query and copy."], ["mbIndirectDispatch", "bool mbIndirectDispatch = false;", "Indirect ray dispatch."],
-      ["mbIndirectTopLevelBuild", "bool mbIndirectTopLevelBuild = false;", "TLAS instance-buffer build."], ["mbLocalShaderTableArguments", "bool mbLocalShaderTableArguments = false;", "Local SBT bytes/layouts."],
+      ["mbIndirectTopLevelBuild", "bool mbIndirectTopLevelBuild = false;", "GPU-indirect instance-count TLAS builds; distinct from CPU-count instance-buffer builds."], ["mbLocalShaderTableArguments", "bool mbLocalShaderTableArguments = false;", "Local SBT bytes/layouts."],
       ["mbPersistentShaderTables", "bool mbPersistentShaderTables = false;", "Persistent mutable shader tables."], ["mbOpacityMicromaps", "bool mbOpacityMicromaps = false;", "Native opacity micromaps."],
       ["mShaderIdentifierSize", "uint32_t mShaderIdentifierSize = 0;", "Native shader identifier size."], ["mShaderRecordAlignment", "uint32_t mShaderRecordAlignment = 0;", "SBT record alignment."],
       ["mShaderTableAlignment", "uint32_t mShaderTableAlignment = 0;", "SBT table alignment."], ["mAccelerationStructureAlignment", "uint32_t mAccelerationStructureAlignment = 0;", "AS storage alignment."],
@@ -34359,15 +35629,15 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-backend-fardapipelinestatecacheconfiguration-mmaxcomputeentries-84c4a670",
-    "name": "mMaxComputeEntries",
-    "qualifiedName": "arda::backend::FArdaPipelineStateCacheConfiguration::mMaxComputeEntries",
-    "kind": "member variable",
+    "id": "api-arda-backend-eardapipelinestatekind-raytracing-6b48d7c0",
+    "name": "RayTracing",
+    "qualifiedName": "arda::backend::EArdaPipelineStateKind::RayTracing",
+    "kind": "enumerator",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "size_t mMaxComputeEntries = 128",
-    "summary": "Stores max compute entries in this public backend and RHI value.",
-    "details": "Stores max compute entries in this public backend and RHI value. The signature is generated from the current public header.",
+    "signature": "RayTracing",
+    "summary": "Selects the ray tracing backend and RHI value.",
+    "details": "Selects the ray tracing backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "params": [],
     "returns": "",
@@ -34375,19 +35645,19 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::backend::FArdaPipelineStateCacheConfiguration"
+      "arda::backend::EArdaPipelineStateKind"
     ]
   },
   {
-    "id": "api-arda-backend-fardapipelinestatecacheconfiguration-mmaxgraphicsentries-7ba8889e",
-    "name": "mMaxGraphicsEntries",
-    "qualifiedName": "arda::backend::FArdaPipelineStateCacheConfiguration::mMaxGraphicsEntries",
-    "kind": "member variable",
+    "id": "api-arda-backend-eardapipelinestatekind-workgraph-b761a7af",
+    "name": "WorkGraph",
+    "qualifiedName": "arda::backend::EArdaPipelineStateKind::WorkGraph",
+    "kind": "enumerator",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "size_t mMaxGraphicsEntries = 128",
-    "summary": "Stores max graphics entries in this public backend and RHI value.",
-    "details": "Stores max graphics entries in this public backend and RHI value. The signature is generated from the current public header.",
+    "signature": "WorkGraph",
+    "summary": "Selects the work graph backend and RHI value.",
+    "details": "Selects the work graph backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "params": [],
     "returns": "",
@@ -34395,27 +35665,7 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::backend::FArdaPipelineStateCacheConfiguration"
-    ]
-  },
-  {
-    "id": "api-arda-backend-fardapipelinestatecacheconfiguration-mmaxdiagnostics-64ab9d4c",
-    "name": "mMaxDiagnostics",
-    "qualifiedName": "arda::backend::FArdaPipelineStateCacheConfiguration::mMaxDiagnostics",
-    "kind": "member variable",
-    "component": "pipelines",
-    "page": "api-reference.html",
-    "signature": "size_t mMaxDiagnostics = 64",
-    "summary": "Stores max diagnostics in this public backend and RHI value.",
-    "details": "Stores max diagnostics in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::backend::FArdaPipelineStateCacheConfiguration"
+      "arda::backend::EArdaPipelineStateKind"
     ]
   },
   {
@@ -34439,15 +35689,15 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-backend-fardapipelinestatecachestats-mhits-deeada24",
-    "name": "mHits",
-    "qualifiedName": "arda::backend::FArdaPipelineStateCacheStats::mHits",
+    "id": "api-arda-backend-fardapipelinestatecacheconfiguration-mmaxraytracingentries-5b359122",
+    "name": "mMaxRayTracingEntries",
+    "qualifiedName": "arda::backend::FArdaPipelineStateCacheConfiguration::mMaxRayTracingEntries",
     "kind": "member variable",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "uint64_t mHits = 0",
-    "summary": "Stores hits in this public backend and RHI value.",
-    "details": "Stores hits in this public backend and RHI value. The signature is generated from the current public header.",
+    "signature": "size_t mMaxRayTracingEntries = 64",
+    "summary": "Stores max ray tracing entries in this public backend and RHI value.",
+    "details": "Stores max ray tracing entries in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "params": [],
     "returns": "",
@@ -34455,19 +35705,19 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::backend::FArdaPipelineStateCacheStats"
+      "arda::backend::FArdaPipelineStateCacheConfiguration"
     ]
   },
   {
-    "id": "api-arda-backend-fardapipelinestatecachestats-mmisses-fc8b84da",
-    "name": "mMisses",
-    "qualifiedName": "arda::backend::FArdaPipelineStateCacheStats::mMisses",
+    "id": "api-arda-backend-fardapipelinestatecacheconfiguration-mmaxworkgraphentries-68c02710",
+    "name": "mMaxWorkGraphEntries",
+    "qualifiedName": "arda::backend::FArdaPipelineStateCacheConfiguration::mMaxWorkGraphEntries",
     "kind": "member variable",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "uint64_t mMisses = 0",
-    "summary": "Stores misses in this public backend and RHI value.",
-    "details": "Stores misses in this public backend and RHI value. The signature is generated from the current public header.",
+    "signature": "size_t mMaxWorkGraphEntries = 64",
+    "summary": "Stores max work graph entries in this public backend and RHI value.",
+    "details": "Stores max work graph entries in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "params": [],
     "returns": "",
@@ -34475,107 +35725,7 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::backend::FArdaPipelineStateCacheStats"
-    ]
-  },
-  {
-    "id": "api-arda-backend-fardapipelinestatecachestats-mwaits-396773c0",
-    "name": "mWaits",
-    "qualifiedName": "arda::backend::FArdaPipelineStateCacheStats::mWaits",
-    "kind": "member variable",
-    "component": "pipelines",
-    "page": "api-reference.html",
-    "signature": "uint64_t mWaits = 0",
-    "summary": "Stores waits in this public backend and RHI value.",
-    "details": "Stores waits in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::backend::FArdaPipelineStateCacheStats"
-    ]
-  },
-  {
-    "id": "api-arda-backend-fardapipelinestatecachestats-mcreatefailures-edd23344",
-    "name": "mCreateFailures",
-    "qualifiedName": "arda::backend::FArdaPipelineStateCacheStats::mCreateFailures",
-    "kind": "member variable",
-    "component": "pipelines",
-    "page": "api-reference.html",
-    "signature": "uint64_t mCreateFailures = 0",
-    "summary": "Stores create failures in this public backend and RHI value.",
-    "details": "Stores create failures in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::backend::FArdaPipelineStateCacheStats"
-    ]
-  },
-  {
-    "id": "api-arda-backend-fardapipelinestatecachestats-minflight-b3aa808a",
-    "name": "mInFlight",
-    "qualifiedName": "arda::backend::FArdaPipelineStateCacheStats::mInFlight",
-    "kind": "member variable",
-    "component": "pipelines",
-    "page": "api-reference.html",
-    "signature": "size_t mInFlight = 0",
-    "summary": "Stores in flight in this public backend and RHI value.",
-    "details": "Stores in flight in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::backend::FArdaPipelineStateCacheStats"
-    ]
-  },
-  {
-    "id": "api-arda-backend-fardapipelinestatecachestats-mcomputeentries-f1970393",
-    "name": "mComputeEntries",
-    "qualifiedName": "arda::backend::FArdaPipelineStateCacheStats::mComputeEntries",
-    "kind": "member variable",
-    "component": "pipelines",
-    "page": "api-reference.html",
-    "signature": "size_t mComputeEntries = 0",
-    "summary": "Stores compute entries in this public backend and RHI value.",
-    "details": "Stores compute entries in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::backend::FArdaPipelineStateCacheStats"
-    ]
-  },
-  {
-    "id": "api-arda-backend-fardapipelinestatecachestats-mgraphicsentries-1d1bbb89",
-    "name": "mGraphicsEntries",
-    "qualifiedName": "arda::backend::FArdaPipelineStateCacheStats::mGraphicsEntries",
-    "kind": "member variable",
-    "component": "pipelines",
-    "page": "api-reference.html",
-    "signature": "size_t mGraphicsEntries = 0",
-    "summary": "Stores graphics entries in this public backend and RHI value.",
-    "details": "Stores graphics entries in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::backend::FArdaPipelineStateCacheStats"
+      "arda::backend::FArdaPipelineStateCacheConfiguration"
     ]
   },
   {
@@ -34599,15 +35749,15 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-backend-fardapipelinestatediagnostic-mkind-20a60170",
-    "name": "mKind",
-    "qualifiedName": "arda::backend::FArdaPipelineStateDiagnostic::mKind",
+    "id": "api-arda-backend-fardapipelinestatecachestats-mraytracingentries-870ddbb2",
+    "name": "mRayTracingEntries",
+    "qualifiedName": "arda::backend::FArdaPipelineStateCacheStats::mRayTracingEntries",
     "kind": "member variable",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "EArdaPipelineStateKind mKind = EArdaPipelineStateKind::Compute",
-    "summary": "Stores kind in this public backend and RHI value.",
-    "details": "Stores kind in this public backend and RHI value. The signature is generated from the current public header.",
+    "signature": "size_t mRayTracingEntries = 0",
+    "summary": "Stores ray tracing entries in this public backend and RHI value.",
+    "details": "Stores ray tracing entries in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "params": [],
     "returns": "",
@@ -34615,19 +35765,19 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::backend::FArdaPipelineStateDiagnostic"
+      "arda::backend::FArdaPipelineStateCacheStats"
     ]
   },
   {
-    "id": "api-arda-backend-fardapipelinestatediagnostic-mcode-a013086f",
-    "name": "mCode",
-    "qualifiedName": "arda::backend::FArdaPipelineStateDiagnostic::mCode",
+    "id": "api-arda-backend-fardapipelinestatecachestats-mworkgraphentries-c0364cd8",
+    "name": "mWorkGraphEntries",
+    "qualifiedName": "arda::backend::FArdaPipelineStateCacheStats::mWorkGraphEntries",
     "kind": "member variable",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "rhi::EArdaRHIResult mCode = rhi::EArdaRHIResult::Success",
-    "summary": "Stores code in this public backend and RHI value.",
-    "details": "Stores code in this public backend and RHI value. The signature is generated from the current public header.",
+    "signature": "size_t mWorkGraphEntries = 0",
+    "summary": "Stores work graph entries in this public backend and RHI value.",
+    "details": "Stores work graph entries in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "params": [],
     "returns": "",
@@ -34635,67 +35785,7 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::backend::FArdaPipelineStateDiagnostic"
-    ]
-  },
-  {
-    "id": "api-arda-backend-fardapipelinestatediagnostic-mdescriptorhash-46d54058",
-    "name": "mDescriptorHash",
-    "qualifiedName": "arda::backend::FArdaPipelineStateDiagnostic::mDescriptorHash",
-    "kind": "member variable",
-    "component": "pipelines",
-    "page": "api-reference.html",
-    "signature": "size_t mDescriptorHash = 0",
-    "summary": "Stores descriptor hash in this public backend and RHI value.",
-    "details": "Stores descriptor hash in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::backend::FArdaPipelineStateDiagnostic"
-    ]
-  },
-  {
-    "id": "api-arda-backend-fardapipelinestatediagnostic-mdebugname-d452bbab",
-    "name": "mDebugName",
-    "qualifiedName": "arda::backend::FArdaPipelineStateDiagnostic::mDebugName",
-    "kind": "member variable",
-    "component": "pipelines",
-    "page": "api-reference.html",
-    "signature": "eastl::string mDebugName",
-    "summary": "Stores debug name in this public backend and RHI value.",
-    "details": "Stores debug name in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::backend::FArdaPipelineStateDiagnostic"
-    ]
-  },
-  {
-    "id": "api-arda-backend-fardapipelinestatediagnostic-mmessage-bbf4fa4f",
-    "name": "mMessage",
-    "qualifiedName": "arda::backend::FArdaPipelineStateDiagnostic::mMessage",
-    "kind": "member variable",
-    "component": "pipelines",
-    "page": "api-reference.html",
-    "signature": "eastl::string mMessage",
-    "summary": "Stores message in this public backend and RHI value.",
-    "details": "Stores message in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::backend::FArdaPipelineStateDiagnostic"
+      "arda::backend::FArdaPipelineStateCacheStats"
     ]
   },
   {
@@ -34759,6 +35849,46 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-backend-fardapipelinestatecache-getorcreateraytracing-05c00f50",
+    "name": "GetOrCreateRayTracing",
+    "qualifiedName": "arda::backend::FArdaPipelineStateCache::GetOrCreateRayTracing",
+    "kind": "method",
+    "component": "pipelines",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] rhi::FArdaRHIStatus GetOrCreateRayTracing( const FArdaRayTracingPipelineStateInitializer& Initializer, rhi::FArdaRHIRayTracingPipelineRef& OutPipeline, const rhi::IArdaRHIDevice* RequestingDevice = nullptr)",
+    "summary": "Performs get or create ray tracing through the public backend and RHI contract.",
+    "details": "Performs get or create ray tracing through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::backend::FArdaPipelineStateCache"
+    ]
+  },
+  {
+    "id": "api-arda-backend-fardapipelinestatecache-getorcreateworkgraph-6e3fc17f",
+    "name": "GetOrCreateWorkGraph",
+    "qualifiedName": "arda::backend::FArdaPipelineStateCache::GetOrCreateWorkGraph",
+    "kind": "method",
+    "component": "pipelines",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] rhi::FArdaRHIStatus GetOrCreateWorkGraph( const FArdaWorkGraphPipelineStateInitializer& Initializer, rhi::FArdaRHIWorkGraphPipelineRef& OutPipeline, const rhi::IArdaRHIDevice* RequestingDevice = nullptr)",
+    "summary": "Performs get or create work graph through the public backend and RHI contract.",
+    "details": "Performs get or create work graph through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::backend::FArdaPipelineStateCache"
+    ]
+  },
+  {
     "id": "api-arda-backend-fardapipelinestatecache-precachemeshlet-cdca514f",
     "name": "PrecacheMeshlet",
     "qualifiedName": "arda::backend::FArdaPipelineStateCache::PrecacheMeshlet",
@@ -34768,6 +35898,46 @@ window.ArdaBackendApi = {
     "signature": "[[nodiscard]] rhi::FArdaRHIStatus PrecacheMeshlet( const FArdaMeshletPipelineStateInitializer& Initializer, const rhi::FArdaRHIFramebufferRef& Framebuffer, const rhi::IArdaRHIDevice* RequestingDevice = nullptr)",
     "summary": "Performs precache meshlet through the public backend and RHI contract.",
     "details": "Performs precache meshlet through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::backend::FArdaPipelineStateCache"
+    ]
+  },
+  {
+    "id": "api-arda-backend-fardapipelinestatecache-precacheraytracing-ec1c0074",
+    "name": "PrecacheRayTracing",
+    "qualifiedName": "arda::backend::FArdaPipelineStateCache::PrecacheRayTracing",
+    "kind": "method",
+    "component": "pipelines",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] rhi::FArdaRHIStatus PrecacheRayTracing( const FArdaRayTracingPipelineStateInitializer& Initializer, const rhi::IArdaRHIDevice* RequestingDevice = nullptr)",
+    "summary": "Performs precache ray tracing through the public backend and RHI contract.",
+    "details": "Performs precache ray tracing through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::backend::FArdaPipelineStateCache"
+    ]
+  },
+  {
+    "id": "api-arda-backend-fardapipelinestatecache-precacheworkgraph-d211c66c",
+    "name": "PrecacheWorkGraph",
+    "qualifiedName": "arda::backend::FArdaPipelineStateCache::PrecacheWorkGraph",
+    "kind": "method",
+    "component": "pipelines",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] rhi::FArdaRHIStatus PrecacheWorkGraph( const FArdaWorkGraphPipelineStateInitializer& Initializer, const rhi::IArdaRHIDevice* RequestingDevice = nullptr)",
+    "summary": "Performs precache work graph through the public backend and RHI contract.",
+    "details": "Performs precache work graph through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -34819,23 +35989,23 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-backend-fardacomputepipelinestateinitializer-mdesc-fc0f053f",
-    "name": "mDesc",
-    "qualifiedName": "arda::backend::FArdaComputePipelineStateInitializer::mDesc",
-    "kind": "member variable",
+    "id": "api-arda-backend-fardapipelinestatecache-trim-532d636f",
+    "name": "Trim",
+    "qualifiedName": "arda::backend::FArdaPipelineStateCache::Trim",
+    "kind": "method",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "rhi::FArdaRHIComputePipelineDesc mDesc",
-    "summary": "Stores desc in this public backend and RHI value.",
-    "details": "Stores desc in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
+    "signature": "void Trim( size_t MaxComputeEntries, size_t MaxGraphicsEntries, size_t MaxMeshletEntries, size_t MaxRayTracingEntries, size_t MaxWorkGraphEntries)",
+    "summary": "Performs trim through the public backend and RHI contract.",
+    "details": "Performs trim through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "params": [],
-    "returns": "",
+    "returns": "See the declared result and status contract.",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::backend::FArdaComputePipelineStateInitializer"
+      "arda::backend::FArdaPipelineStateCache"
     ]
   },
   {
@@ -34848,26 +36018,6 @@ window.ArdaBackendApi = {
     "signature": "FArdaGraphicsPipelineStateInitializer()",
     "summary": "Constructs the backend and RHI value from the declared inputs.",
     "details": "Constructs the backend and RHI value from the declared inputs. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::backend::FArdaGraphicsPipelineStateInitializer"
-    ]
-  },
-  {
-    "id": "api-arda-backend-fardagraphicspipelinestateinitializer-mdesc-e2fbbd88",
-    "name": "mDesc",
-    "qualifiedName": "arda::backend::FArdaGraphicsPipelineStateInitializer::mDesc",
-    "kind": "member variable",
-    "component": "pipelines",
-    "page": "api-reference.html",
-    "signature": "rhi::FArdaRHIGraphicsPipelineDesc mDesc",
-    "summary": "Stores desc in this public backend and RHI value.",
-    "details": "Stores desc in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
     "params": [],
     "returns": "",
@@ -34979,23 +36129,83 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-ardarhiinvalidqueuefamily-f377e07b",
-    "name": "ArdaRHIInvalidQueueFamily",
-    "qualifiedName": "arda::rhi::ArdaRHIInvalidQueueFamily",
-    "kind": "constant",
-    "component": "rhi-types",
+    "id": "api-arda-backend-fardaraytracingpipelinestateinitializer-680abdc4",
+    "name": "FArdaRayTracingPipelineStateInitializer",
+    "qualifiedName": "arda::backend::FArdaRayTracingPipelineStateInitializer",
+    "kind": "struct",
+    "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "inline constexpr uint32_t ArdaRHIInvalidQueueFamily = 0xffffffffu",
-    "summary": "Defines arda r h i invalid queue family in the public backend and RHI contract.",
-    "details": "Defines arda r h i invalid queue family in the public backend and RHI contract. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "signature": "struct FArdaRayTracingPipelineStateInitializer",
+    "summary": "Defines f arda ray tracing pipeline state initializer in the public backend and RHI contract.",
+    "details": "Defines f arda ray tracing pipeline state initializer in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
     "params": [],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::rhi"
+      "arda::backend"
+    ]
+  },
+  {
+    "id": "api-arda-backend-fardaraytracingpipelinestateinitializer-mdesc-a8367636",
+    "name": "mDesc",
+    "qualifiedName": "arda::backend::FArdaRayTracingPipelineStateInitializer::mDesc",
+    "kind": "member variable",
+    "component": "pipelines",
+    "page": "api-reference.html",
+    "signature": "rhi::FArdaRHIRayTracingPipelineDesc mDesc",
+    "summary": "Stores desc in this public backend and RHI value.",
+    "details": "Stores desc in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::backend::FArdaRayTracingPipelineStateInitializer"
+    ]
+  },
+  {
+    "id": "api-arda-backend-fardaworkgraphpipelinestateinitializer-86cc6741",
+    "name": "FArdaWorkGraphPipelineStateInitializer",
+    "qualifiedName": "arda::backend::FArdaWorkGraphPipelineStateInitializer",
+    "kind": "struct",
+    "component": "pipelines",
+    "page": "api-reference.html",
+    "signature": "struct FArdaWorkGraphPipelineStateInitializer",
+    "summary": "Defines f arda work graph pipeline state initializer in the public backend and RHI contract.",
+    "details": "Defines f arda work graph pipeline state initializer in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::backend"
+    ]
+  },
+  {
+    "id": "api-arda-backend-fardaworkgraphpipelinestateinitializer-mdesc-144d1970",
+    "name": "mDesc",
+    "qualifiedName": "arda::backend::FArdaWorkGraphPipelineStateInitializer::mDesc",
+    "kind": "member variable",
+    "component": "pipelines",
+    "page": "api-reference.html",
+    "signature": "rhi::FArdaRHIWorkGraphPipelineDesc mDesc",
+    "summary": "Stores desc in this public backend and RHI value.",
+    "details": "Stores desc in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::backend::FArdaWorkGraphPipelineStateInitializer"
     ]
   },
   {
@@ -35259,406 +36469,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbinfrastructure-b1c26dcc",
-    "name": "mbInfrastructure",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbInfrastructure",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbInfrastructure = false",
-    "summary": "Stores infrastructure in this public backend and RHI value.",
-    "details": "Stores infrastructure in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbhardwareaccelerated-60f0a7ac",
-    "name": "mbHardwareAccelerated",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbHardwareAccelerated",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbHardwareAccelerated = false",
-    "summary": "Stores hardware accelerated in this public backend and RHI value.",
-    "details": "Stores hardware accelerated in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbpipelineshaders-b0636e81",
-    "name": "mbPipelineShaders",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbPipelineShaders",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbPipelineShaders = false",
-    "summary": "Stores pipeline shaders in this public backend and RHI value.",
-    "details": "Stores pipeline shaders in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbinlinerayqueries-5dca59d2",
-    "name": "mbInlineRayQueries",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbInlineRayQueries",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbInlineRayQueries = false",
-    "summary": "Stores inline ray queries in this public backend and RHI value.",
-    "details": "Stores inline ray queries in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbaccelerationstructures-29cba172",
-    "name": "mbAccelerationStructures",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbAccelerationStructures",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbAccelerationStructures = false",
-    "summary": "Stores acceleration structures in this public backend and RHI value.",
-    "details": "Stores acceleration structures in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbbottomlevel-48915600",
-    "name": "mbBottomLevel",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbBottomLevel",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbBottomLevel = false",
-    "summary": "Stores bottom level in this public backend and RHI value.",
-    "details": "Stores bottom level in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbtoplevel-b32807a6",
-    "name": "mbTopLevel",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbTopLevel",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbTopLevel = false",
-    "summary": "Stores top level in this public backend and RHI value.",
-    "details": "Stores top level in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbbuildupdate-80e1086b",
-    "name": "mbBuildUpdate",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbBuildUpdate",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbBuildUpdate = false",
-    "summary": "Stores build update in this public backend and RHI value.",
-    "details": "Stores build update in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbcompaction-b7b24b2c",
-    "name": "mbCompaction",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbCompaction",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbCompaction = false",
-    "summary": "Stores compaction in this public backend and RHI value.",
-    "details": "Stores compaction in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbindirectdispatch-d0451949",
-    "name": "mbIndirectDispatch",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbIndirectDispatch",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbIndirectDispatch = false",
-    "summary": "Stores indirect dispatch in this public backend and RHI value.",
-    "details": "Stores indirect dispatch in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbindirecttoplevelbuild-bab3bc57",
-    "name": "mbIndirectTopLevelBuild",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbIndirectTopLevelBuild",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbIndirectTopLevelBuild = false",
-    "summary": "Stores indirect top level build in this public backend and RHI value.",
-    "details": "Stores indirect top level build in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mblocalshadertablearguments-e9f2894a",
-    "name": "mbLocalShaderTableArguments",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbLocalShaderTableArguments",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbLocalShaderTableArguments = false",
-    "summary": "Stores local shader table arguments in this public backend and RHI value.",
-    "details": "Stores local shader table arguments in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbpersistentshadertables-bc466b1f",
-    "name": "mbPersistentShaderTables",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbPersistentShaderTables",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbPersistentShaderTables = false",
-    "summary": "Stores persistent shader tables in this public backend and RHI value.",
-    "details": "Stores persistent shader tables in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mbopacitymicromaps-f28be420",
-    "name": "mbOpacityMicromaps",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mbOpacityMicromaps",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbOpacityMicromaps = false",
-    "summary": "Stores opacity micromaps in this public backend and RHI value.",
-    "details": "Stores opacity micromaps in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mshaderidentifiersize-b282ebe5",
-    "name": "mShaderIdentifierSize",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mShaderIdentifierSize",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mShaderIdentifierSize = 0",
-    "summary": "Stores shader identifier size in this public backend and RHI value.",
-    "details": "Stores shader identifier size in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mshaderrecordalignment-af7206db",
-    "name": "mShaderRecordAlignment",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mShaderRecordAlignment",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mShaderRecordAlignment = 0",
-    "summary": "Stores shader record alignment in this public backend and RHI value.",
-    "details": "Stores shader record alignment in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mshadertablealignment-e56e3270",
-    "name": "mShaderTableAlignment",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mShaderTableAlignment",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mShaderTableAlignment = 0",
-    "summary": "Stores shader table alignment in this public backend and RHI value.",
-    "details": "Stores shader table alignment in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-maccelerationstructurealignment-5c57a6c3",
-    "name": "mAccelerationStructureAlignment",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mAccelerationStructureAlignment",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mAccelerationStructureAlignment = 0",
-    "summary": "Stores acceleration structure alignment in this public backend and RHI value.",
-    "details": "Stores acceleration structure alignment in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mmaxrecursiondepth-41216957",
-    "name": "mMaxRecursionDepth",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mMaxRecursionDepth",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mMaxRecursionDepth = 0",
-    "summary": "Stores max recursion depth in this public backend and RHI value.",
-    "details": "Stores max recursion depth in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiraytracingcapabilities-mmaxraypayloadsize-135cc6ae",
-    "name": "mMaxRayPayloadSize",
-    "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mMaxRayPayloadSize",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mMaxRayPayloadSize = 0",
-    "summary": "Stores max ray payload size in this public backend and RHI value.",
-    "details": "Stores max ray payload size in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhiraytracingcapabilities-mmaxraydispatchinvocations-1123cccb",
     "name": "mMaxRayDispatchInvocations",
     "qualifiedName": "arda::rhi::FArdaRHIRayTracingCapabilities::mMaxRayDispatchInvocations",
@@ -35696,506 +36506,6 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::FArdaRHIRayTracingCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mbbindless-b4370da7",
-    "name": "mbBindless",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mbBindless",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbBindless = false",
-    "summary": "Stores bindless in this public backend and RHI value.",
-    "details": "Stores bindless in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mbruntimedescriptorarrays-397800bf",
-    "name": "mbRuntimeDescriptorArrays",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mbRuntimeDescriptorArrays",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRuntimeDescriptorArrays = false",
-    "summary": "Stores runtime descriptor arrays in this public backend and RHI value.",
-    "details": "Stores runtime descriptor arrays in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mbunboundedarrays-0a16610e",
-    "name": "mbUnboundedArrays",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mbUnboundedArrays",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbUnboundedArrays = false",
-    "summary": "Stores unbounded arrays in this public backend and RHI value.",
-    "details": "Stores unbounded arrays in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mbpartiallybound-43548b02",
-    "name": "mbPartiallyBound",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mbPartiallyBound",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbPartiallyBound = false",
-    "summary": "Stores partially bound in this public backend and RHI value.",
-    "details": "Stores partially bound in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mbupdateafterbind-613d26c0",
-    "name": "mbUpdateAfterBind",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mbUpdateAfterBind",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbUpdateAfterBind = false",
-    "summary": "Stores update after bind in this public backend and RHI value.",
-    "details": "Stores update after bind in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mbupdateunusedwhilepending-676ff602",
-    "name": "mbUpdateUnusedWhilePending",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mbUpdateUnusedWhilePending",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbUpdateUnusedWhilePending = false",
-    "summary": "Stores update unused while pending in this public backend and RHI value.",
-    "details": "Stores update unused while pending in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mbvariabledescriptorcount-99297964",
-    "name": "mbVariableDescriptorCount",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mbVariableDescriptorCount",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbVariableDescriptorCount = false",
-    "summary": "Stores variable descriptor count in this public backend and RHI value.",
-    "details": "Stores variable descriptor count in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mbdirectresourceheapindexing-7b680ad8",
-    "name": "mbDirectResourceHeapIndexing",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mbDirectResourceHeapIndexing",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbDirectResourceHeapIndexing = false",
-    "summary": "Stores direct resource heap indexing in this public backend and RHI value.",
-    "details": "Stores direct resource heap indexing in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mbdirectsamplerheapindexing-18ac52c4",
-    "name": "mbDirectSamplerHeapIndexing",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mbDirectSamplerHeapIndexing",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbDirectSamplerHeapIndexing = false",
-    "summary": "Stores direct sampler heap indexing in this public backend and RHI value.",
-    "details": "Stores direct sampler heap indexing in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mbdescriptorbuffer-62376942",
-    "name": "mbDescriptorBuffer",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mbDescriptorBuffer",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbDescriptorBuffer = false",
-    "summary": "Stores descriptor buffer in this public backend and RHI value.",
-    "details": "Stores descriptor buffer in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mbdescriptorheap-29641e6a",
-    "name": "mbDescriptorHeap",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mbDescriptorHeap",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbDescriptorHeap = false",
-    "summary": "Stores descriptor heap in this public backend and RHI value.",
-    "details": "Stores descriptor heap in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mmaxresourcedescriptors-75333788",
-    "name": "mMaxResourceDescriptors",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mMaxResourceDescriptors",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mMaxResourceDescriptors = 0",
-    "summary": "Stores max resource descriptors in this public backend and RHI value.",
-    "details": "Stores max resource descriptors in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidescriptorcapabilities-mmaxsamplerdescriptors-4899a615",
-    "name": "mMaxSamplerDescriptors",
-    "qualifiedName": "arda::rhi::FArdaRHIDescriptorCapabilities::mMaxSamplerDescriptors",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mMaxSamplerDescriptors = 0",
-    "summary": "Stores max sampler descriptors in this public backend and RHI value.",
-    "details": "Stores max sampler descriptors in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDescriptorCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mbgraphics-829a0997",
-    "name": "mbGraphics",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mbGraphics",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbGraphics = true",
-    "summary": "Stores graphics in this public backend and RHI value.",
-    "details": "Stores graphics in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mbcompute-882e4b66",
-    "name": "mbCompute",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mbCompute",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbCompute = false",
-    "summary": "Stores compute in this public backend and RHI value.",
-    "details": "Stores compute in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mbcopy-44b4944a",
-    "name": "mbCopy",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mbCopy",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbCopy = false",
-    "summary": "Stores copy in this public backend and RHI value.",
-    "details": "Stores copy in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mbdedicatedcomputefamily-8a727320",
-    "name": "mbDedicatedComputeFamily",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mbDedicatedComputeFamily",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbDedicatedComputeFamily = false",
-    "summary": "Stores dedicated compute family in this public backend and RHI value.",
-    "details": "Stores dedicated compute family in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mbdedicatedcopyfamily-f20b1fb1",
-    "name": "mbDedicatedCopyFamily",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mbDedicatedCopyFamily",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbDedicatedCopyFamily = false",
-    "summary": "Stores dedicated copy family in this public backend and RHI value.",
-    "details": "Stores dedicated copy family in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mbgpuwaits-d040c560",
-    "name": "mbGpuWaits",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mbGpuWaits",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbGpuWaits = false",
-    "summary": "Stores gpu waits in this public backend and RHI value.",
-    "details": "Stores gpu waits in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mbtimelinesynchronization-73c80399",
-    "name": "mbTimelineSynchronization",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mbTimelineSynchronization",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbTimelineSynchronization = false",
-    "summary": "Stores timeline synchronization in this public backend and RHI value.",
-    "details": "Stores timeline synchronization in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mbqueuefamilyownershiptransfer-1d5b9b37",
-    "name": "mbQueueFamilyOwnershipTransfer",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mbQueueFamilyOwnershipTransfer",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbQueueFamilyOwnershipTransfer = false",
-    "summary": "Stores queue family ownership transfer in this public backend and RHI value.",
-    "details": "Stores queue family ownership transfer in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mbsparsebindingqueue-3817ad5f",
-    "name": "mbSparseBindingQueue",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mbSparseBindingQueue",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbSparseBindingQueue = false",
-    "summary": "Stores sparse binding queue in this public backend and RHI value.",
-    "details": "Stores sparse binding queue in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mgraphicsfamily-20fde1e8",
-    "name": "mGraphicsFamily",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mGraphicsFamily",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mGraphicsFamily = ArdaRHIInvalidQueueFamily",
-    "summary": "Stores graphics family in this public backend and RHI value.",
-    "details": "Stores graphics family in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mcomputefamily-e4bb7dfd",
-    "name": "mComputeFamily",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mComputeFamily",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mComputeFamily = ArdaRHIInvalidQueueFamily",
-    "summary": "Stores compute family in this public backend and RHI value.",
-    "details": "Stores compute family in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiqueuecapabilities-mcopyfamily-2af98567",
-    "name": "mCopyFamily",
-    "qualifiedName": "arda::rhi::FArdaRHIQueueCapabilities::mCopyFamily",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mCopyFamily = ArdaRHIInvalidQueueFamily",
-    "summary": "Stores copy family in this public backend and RHI value.",
-    "details": "Stores copy family in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIQueueCapabilities"
     ]
   },
   {
@@ -36239,1106 +36549,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhiresidencycapabilities-mbsparsebinding-8566e895",
-    "name": "mbSparseBinding",
-    "qualifiedName": "arda::rhi::FArdaRHIResidencyCapabilities::mbSparseBinding",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbSparseBinding = false",
-    "summary": "Stores sparse binding in this public backend and RHI value.",
-    "details": "Stores sparse binding in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIResidencyCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiresidencycapabilities-mbreservedbuffers-9e7552a3",
-    "name": "mbReservedBuffers",
-    "qualifiedName": "arda::rhi::FArdaRHIResidencyCapabilities::mbReservedBuffers",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbReservedBuffers = false",
-    "summary": "Stores reserved buffers in this public backend and RHI value.",
-    "details": "Stores reserved buffers in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIResidencyCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiresidencycapabilities-mbreservedtexture2d-2dedf3ed",
-    "name": "mbReservedTexture2D",
-    "qualifiedName": "arda::rhi::FArdaRHIResidencyCapabilities::mbReservedTexture2D",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbReservedTexture2D = false",
-    "summary": "Stores reserved texture2 d in this public backend and RHI value.",
-    "details": "Stores reserved texture2 d in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIResidencyCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiresidencycapabilities-mbreservedtexture3d-9054b5b8",
-    "name": "mbReservedTexture3D",
-    "qualifiedName": "arda::rhi::FArdaRHIResidencyCapabilities::mbReservedTexture3D",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbReservedTexture3D = false",
-    "summary": "Stores reserved texture3 d in this public backend and RHI value.",
-    "details": "Stores reserved texture3 d in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIResidencyCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiresidencycapabilities-mbaliasedmappings-3487a0b3",
-    "name": "mbAliasedMappings",
-    "qualifiedName": "arda::rhi::FArdaRHIResidencyCapabilities::mbAliasedMappings",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbAliasedMappings = false",
-    "summary": "Stores aliased mappings in this public backend and RHI value.",
-    "details": "Stores aliased mappings in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIResidencyCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiresidencycapabilities-mbstreamingbudget-4b575465",
-    "name": "mbStreamingBudget",
-    "qualifiedName": "arda::rhi::FArdaRHIResidencyCapabilities::mbStreamingBudget",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbStreamingBudget = false",
-    "summary": "Stores streaming budget in this public backend and RHI value.",
-    "details": "Stores streaming budget in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIResidencyCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiresidencycapabilities-mbbudgetreservation-5a806be8",
-    "name": "mbBudgetReservation",
-    "qualifiedName": "arda::rhi::FArdaRHIResidencyCapabilities::mbBudgetReservation",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbBudgetReservation = false",
-    "summary": "Stores budget reservation in this public backend and RHI value.",
-    "details": "Stores budget reservation in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIResidencyCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiresidencycapabilities-mtilesizeinbytes-b1048929",
-    "name": "mTileSizeInBytes",
-    "qualifiedName": "arda::rhi::FArdaRHIResidencyCapabilities::mTileSizeInBytes",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint64_t mTileSizeInBytes = 0",
-    "summary": "Stores tile size in bytes in this public backend and RHI value.",
-    "details": "Stores tile size in bytes in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIResidencyCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhimachinelearningcapabilities-mbsubgroupoperations-27f5c21c",
-    "name": "mbSubgroupOperations",
-    "qualifiedName": "arda::rhi::FArdaRHIMachineLearningCapabilities::mbSubgroupOperations",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbSubgroupOperations = false",
-    "summary": "Stores subgroup operations in this public backend and RHI value.",
-    "details": "Stores subgroup operations in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIMachineLearningCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhimachinelearningcapabilities-mbnativefloat16-c7f58f73",
-    "name": "mbNativeFloat16",
-    "qualifiedName": "arda::rhi::FArdaRHIMachineLearningCapabilities::mbNativeFloat16",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbNativeFloat16 = false",
-    "summary": "Stores native float16 in this public backend and RHI value.",
-    "details": "Stores native float16 in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIMachineLearningCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhimachinelearningcapabilities-mbnativeint8-28f68324",
-    "name": "mbNativeInt8",
-    "qualifiedName": "arda::rhi::FArdaRHIMachineLearningCapabilities::mbNativeInt8",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbNativeInt8 = false",
-    "summary": "Stores native int8 in this public backend and RHI value.",
-    "details": "Stores native int8 in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIMachineLearningCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhimachinelearningcapabilities-mbbufferdeviceaddress-04532b44",
-    "name": "mbBufferDeviceAddress",
-    "qualifiedName": "arda::rhi::FArdaRHIMachineLearningCapabilities::mbBufferDeviceAddress",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbBufferDeviceAddress = false",
-    "summary": "Stores buffer device address in this public backend and RHI value.",
-    "details": "Stores buffer device address in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIMachineLearningCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhimachinelearningcapabilities-msubgroupminsize-119145bc",
-    "name": "mSubgroupMinSize",
-    "qualifiedName": "arda::rhi::FArdaRHIMachineLearningCapabilities::mSubgroupMinSize",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mSubgroupMinSize = 0",
-    "summary": "Stores subgroup min size in this public backend and RHI value.",
-    "details": "Stores subgroup min size in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIMachineLearningCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhimachinelearningcapabilities-msubgroupmaxsize-e87397b9",
-    "name": "mSubgroupMaxSize",
-    "qualifiedName": "arda::rhi::FArdaRHIMachineLearningCapabilities::mSubgroupMaxSize",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mSubgroupMaxSize = 0",
-    "summary": "Stores subgroup max size in this public backend and RHI value.",
-    "details": "Stores subgroup max size in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIMachineLearningCapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequireraytracinginfrastructure-1c0ca1d6",
-    "name": "mbRequireRayTracingInfrastructure",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireRayTracingInfrastructure",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireRayTracingInfrastructure = false",
-    "summary": "Stores require ray tracing infrastructure in this public backend and RHI value.",
-    "details": "Stores require ray tracing infrastructure in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequirehardwareraytracing-d51f3e52",
-    "name": "mbRequireHardwareRayTracing",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireHardwareRayTracing",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireHardwareRayTracing = false",
-    "summary": "Stores require hardware ray tracing in this public backend and RHI value.",
-    "details": "Stores require hardware ray tracing in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequireraytracingpipelines-539a0047",
-    "name": "mbRequireRayTracingPipelines",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireRayTracingPipelines",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireRayTracingPipelines = false",
-    "summary": "Stores require ray tracing pipelines in this public backend and RHI value.",
-    "details": "Stores require ray tracing pipelines in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequireaccelerationstructures-b29245ec",
-    "name": "mbRequireAccelerationStructures",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireAccelerationStructures",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireAccelerationStructures = false",
-    "summary": "Stores require acceleration structures in this public backend and RHI value.",
-    "details": "Stores require acceleration structures in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequireaccelerationstructureupdate-bfa30bfe",
-    "name": "mbRequireAccelerationStructureUpdate",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireAccelerationStructureUpdate",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireAccelerationStructureUpdate = false",
-    "summary": "Stores require acceleration structure update in this public backend and RHI value.",
-    "details": "Stores require acceleration structure update in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequireaccelerationstructurecompaction-e81e8e01",
-    "name": "mbRequireAccelerationStructureCompaction",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireAccelerationStructureCompaction",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireAccelerationStructureCompaction = false",
-    "summary": "Stores require acceleration structure compaction in this public backend and RHI value.",
-    "details": "Stores require acceleration structure compaction in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequireindirectraydispatch-8410918a",
-    "name": "mbRequireIndirectRayDispatch",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireIndirectRayDispatch",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireIndirectRayDispatch = false",
-    "summary": "Stores require indirect ray dispatch in this public backend and RHI value.",
-    "details": "Stores require indirect ray dispatch in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequirelocalshadertablearguments-2ac8820e",
-    "name": "mbRequireLocalShaderTableArguments",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireLocalShaderTableArguments",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireLocalShaderTableArguments = false",
-    "summary": "Stores require local shader table arguments in this public backend and RHI value.",
-    "details": "Stores require local shader table arguments in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequireopacitymicromaps-f2969a23",
-    "name": "mbRequireOpacityMicromaps",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireOpacityMicromaps",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireOpacityMicromaps = false",
-    "summary": "Stores require opacity micromaps in this public backend and RHI value.",
-    "details": "Stores require opacity micromaps in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequiremeshshaders-93182c76",
-    "name": "mbRequireMeshShaders",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireMeshShaders",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireMeshShaders = false",
-    "summary": "Stores require mesh shaders in this public backend and RHI value.",
-    "details": "Stores require mesh shaders in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequireunboundeddescriptors-48ffbf16",
-    "name": "mbRequireUnboundedDescriptors",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireUnboundedDescriptors",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireUnboundedDescriptors = false",
-    "summary": "Stores require unbounded descriptors in this public backend and RHI value.",
-    "details": "Stores require unbounded descriptors in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequireupdateafterbind-1483243a",
-    "name": "mbRequireUpdateAfterBind",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireUpdateAfterBind",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireUpdateAfterBind = false",
-    "summary": "Stores require update after bind in this public backend and RHI value.",
-    "details": "Stores require update after bind in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequiredirectdescriptorindexing-01c787f3",
-    "name": "mbRequireDirectDescriptorIndexing",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireDirectDescriptorIndexing",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireDirectDescriptorIndexing = false",
-    "summary": "Stores require direct descriptor indexing in this public backend and RHI value.",
-    "details": "Stores require direct descriptor indexing in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequirededicatedcomputequeue-3415cd4c",
-    "name": "mbRequireDedicatedComputeQueue",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireDedicatedComputeQueue",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireDedicatedComputeQueue = false",
-    "summary": "Stores require dedicated compute queue in this public backend and RHI value.",
-    "details": "Stores require dedicated compute queue in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequirededicatedcopyqueue-1f69fe04",
-    "name": "mbRequireDedicatedCopyQueue",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireDedicatedCopyQueue",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireDedicatedCopyQueue = false",
-    "summary": "Stores require dedicated copy queue in this public backend and RHI value.",
-    "details": "Stores require dedicated copy queue in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequiregpuqueuewaits-35a27fbd",
-    "name": "mbRequireGpuQueueWaits",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireGpuQueueWaits",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireGpuQueueWaits = false",
-    "summary": "Stores require gpu queue waits in this public backend and RHI value.",
-    "details": "Stores require gpu queue waits in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequiresparseresidency-c0e35120",
-    "name": "mbRequireSparseResidency",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireSparseResidency",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireSparseResidency = false",
-    "summary": "Stores require sparse residency in this public backend and RHI value.",
-    "details": "Stores require sparse residency in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequirestreamingbudget-e5c966f0",
-    "name": "mbRequireStreamingBudget",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireStreamingBudget",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireStreamingBudget = false",
-    "summary": "Stores require streaming budget in this public backend and RHI value.",
-    "details": "Stores require streaming budget in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequiresamplerfeedback-26b41370",
-    "name": "mbRequireSamplerFeedback",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireSamplerFeedback",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireSamplerFeedback = false",
-    "summary": "Stores require sampler feedback in this public backend and RHI value.",
-    "details": "Stores require sampler feedback in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequireworkgraphs-3f2131b7",
-    "name": "mbRequireWorkGraphs",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireWorkGraphs",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireWorkGraphs = false",
-    "summary": "Stores require work graphs in this public backend and RHI value.",
-    "details": "Stores require work graphs in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequireshaderbundles-f77f144f",
-    "name": "mbRequireShaderBundles",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireShaderBundles",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireShaderBundles = false",
-    "summary": "Stores require shader bundles in this public backend and RHI value.",
-    "details": "Stores require shader bundles in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequirecustompresent-73aeb5c3",
-    "name": "mbRequireCustomPresent",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireCustomPresent",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireCustomPresent = false",
-    "summary": "Stores require custom present in this public backend and RHI value.",
-    "details": "Stores require custom present in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequirenativefloat16-45c9f48d",
-    "name": "mbRequireNativeFloat16",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireNativeFloat16",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireNativeFloat16 = false",
-    "summary": "Stores require native float16 in this public backend and RHI value.",
-    "details": "Stores require native float16 in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturerequirements-mbrequirenativeint8-b56b90ee",
-    "name": "mbRequireNativeInt8",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureRequirements::mbRequireNativeInt8",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRequireNativeInt8 = false",
-    "summary": "Stores require native int8 in this public backend and RHI value.",
-    "details": "Stores require native int8 in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhifeaturesupportreport-mmissingabilities-70b08d6d",
-    "name": "mMissingAbilities",
-    "qualifiedName": "arda::rhi::FArdaRHIFeatureSupportReport::mMissingAbilities",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::vector<eastl::string> mMissingAbilities",
-    "summary": "Stores missing abilities in this public backend and RHI value.",
-    "details": "Stores missing abilities in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFeatureSupportReport"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mraytracing-74d09e9d",
-    "name": "mRayTracing",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mRayTracing",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHIRayTracingCapabilities mRayTracing",
-    "summary": "Stores ray tracing in this public backend and RHI value.",
-    "details": "Stores ray tracing in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mdescriptors-acd5cb87",
-    "name": "mDescriptors",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mDescriptors",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHIDescriptorCapabilities mDescriptors",
-    "summary": "Stores descriptors in this public backend and RHI value.",
-    "details": "Stores descriptors in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mqueues-d6281e08",
-    "name": "mQueues",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mQueues",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHIQueueCapabilities mQueues",
-    "summary": "Stores queues in this public backend and RHI value.",
-    "details": "Stores queues in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mresidency-0e5fb6da",
-    "name": "mResidency",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mResidency",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHIResidencyCapabilities mResidency",
-    "summary": "Stores residency in this public backend and RHI value.",
-    "details": "Stores residency in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mmachinelearning-151ab4e9",
-    "name": "mMachineLearning",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mMachineLearning",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHIMachineLearningCapabilities mMachineLearning",
-    "summary": "Stores machine learning in this public backend and RHI value.",
-    "details": "Stores machine learning in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mmeshshadertier-cf6864e6",
-    "name": "mMeshShaderTier",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mMeshShaderTier",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIMeshShaderTier mMeshShaderTier = EArdaRHIMeshShaderTier::None",
-    "summary": "Stores mesh shader tier in this public backend and RHI value.",
-    "details": "Stores mesh shader tier in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mworkgraphtier-07f6ac83",
-    "name": "mWorkGraphTier",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mWorkGraphTier",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIWorkGraphTier mWorkGraphTier = EArdaRHIWorkGraphTier::None",
-    "summary": "Stores work graph tier in this public backend and RHI value.",
-    "details": "Stores work graph tier in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-msamplerfeedbacktier-42ea1131",
-    "name": "mSamplerFeedbackTier",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mSamplerFeedbackTier",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHISamplerFeedbackTier mSamplerFeedbackTier = EArdaRHISamplerFeedbackTier::None",
-    "summary": "Stores sampler feedback tier in this public backend and RHI value.",
-    "details": "Stores sampler feedback tier in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mbshaderbundledispatch-5ce90d2c",
-    "name": "mbShaderBundleDispatch",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbShaderBundleDispatch",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbShaderBundleDispatch = false",
-    "summary": "Stores shader bundle dispatch in this public backend and RHI value.",
-    "details": "Stores shader bundle dispatch in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mbcustompresent-4591f9e6",
-    "name": "mbCustomPresent",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbCustomPresent",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbCustomPresent = false",
-    "summary": "Stores custom present in this public backend and RHI value.",
-    "details": "Stores custom present in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mbresourcecollections-a33d7f42",
-    "name": "mbResourceCollections",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbResourceCollections",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbResourceCollections = false",
-    "summary": "Stores resource collections in this public backend and RHI value.",
-    "details": "Stores resource collections in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mbconservativerasterization-e2843f09",
-    "name": "mbConservativeRasterization",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbConservativeRasterization",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbConservativeRasterization = false",
-    "summary": "Stores conservative rasterization in this public backend and RHI value.",
-    "details": "Stores conservative rasterization in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mbvariablerateshading-6411364e",
-    "name": "mbVariableRateShading",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbVariableRateShading",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbVariableRateShading = false",
-    "summary": "Stores variable rate shading in this public backend and RHI value.",
-    "details": "Stores variable rate shading in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mbvirtualresources-1c79f421",
-    "name": "mbVirtualResources",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbVirtualResources",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbVirtualResources = false",
-    "summary": "Stores virtual resources in this public backend and RHI value.",
-    "details": "Stores virtual resources in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mbheaps-825ae6c6",
-    "name": "mbHeaps",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbHeaps",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbHeaps = false",
-    "summary": "Stores heaps in this public backend and RHI value.",
-    "details": "Stores heaps in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mbstagingtextures-6d8b6dd2",
-    "name": "mbStagingTextures",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbStagingTextures",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbStagingTextures = false",
-    "summary": "Stores staging textures in this public backend and RHI value.",
-    "details": "Stores staging textures in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhicapabilities-mbqueries-e4874184",
     "name": "mbQueries",
     "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbQueries",
@@ -37368,26 +36578,6 @@ window.ArdaBackendApi = {
     "signature": "bool mbShaderLibraries = false",
     "summary": "Stores shader libraries in this public backend and RHI value.",
     "details": "Stores shader libraries in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHICapabilities"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicapabilities-mbpipelinecachepersistence-cac64b2a",
-    "name": "mbPipelineCachePersistence",
-    "qualifiedName": "arda::rhi::FArdaRHICapabilities::mbPipelineCachePersistence",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbPipelineCachePersistence = false",
-    "summary": "Stores pipeline cache persistence in this public backend and RHI value.",
-    "details": "Stores pipeline cache persistence in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
     "params": [],
     "returns": "",
@@ -37496,6 +36686,26 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhistagingtexturemapping-mdepthpitch-6057c2ba",
+    "name": "mDepthPitch",
+    "qualifiedName": "arda::rhi::FArdaRHIStagingTextureMapping::mDepthPitch",
+    "kind": "member variable",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "size_t mDepthPitch = 0",
+    "summary": "Stores depth pitch in this public backend and RHI value.",
+    "details": "Stores depth pitch in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIStagingTextureMapping"
     ]
   },
   {
@@ -40279,6 +39489,46 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-provider-iardaprovidercommandlist-cleartextureuint-fc91ef83",
+    "name": "ClearTextureUInt",
+    "qualifiedName": "arda::rhi::provider::IArdaProviderCommandList::ClearTextureUInt",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus ClearTextureUInt( const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureSubresourceRange& Range, uint32_t Value) = 0",
+    "summary": "Performs clear texture u int through the public backend and RHI contract.",
+    "details": "Performs clear texture u int through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaProviderCommandList"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardaprovidercommandlist-clearbufferuint-90e8ac5b",
+    "name": "ClearBufferUInt",
+    "qualifiedName": "arda::rhi::provider::IArdaProviderCommandList::ClearBufferUInt",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus ClearBufferUInt( const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, uint32_t Value) = 0",
+    "summary": "Performs clear buffer u int through the public backend and RHI contract.",
+    "details": "Performs clear buffer u int through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaProviderCommandList"
+    ]
+  },
+  {
     "id": "api-arda-rhi-provider-iardaprovidercommandlist-cleardepthstenciltexture-2e7bd8cc",
     "name": "ClearDepthStencilTexture",
     "qualifiedName": "arda::rhi::provider::IArdaProviderCommandList::ClearDepthStencilTexture",
@@ -41108,6 +40358,46 @@ window.ArdaBackendApi = {
     "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHINativeResourceState> QueryOpacityMicromapState(const FArdaProviderObjectRef&) const",
     "summary": "Performs query opacity micromap state through the public backend and RHI contract.",
     "details": "Performs query opacity micromap state through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaProviderCommandList"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardaprovidercommandlist-begintimerquery-08200cbe",
+    "name": "BeginTimerQuery",
+    "qualifiedName": "arda::rhi::provider::IArdaProviderCommandList::BeginTimerQuery",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus BeginTimerQuery( const FArdaProviderObjectRef&)",
+    "summary": "Performs begin timer query through the public backend and RHI contract.",
+    "details": "Performs begin timer query through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaProviderCommandList"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardaprovidercommandlist-endtimerquery-53cb56ea",
+    "name": "EndTimerQuery",
+    "qualifiedName": "arda::rhi::provider::IArdaProviderCommandList::EndTimerQuery",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus EndTimerQuery( const FArdaProviderObjectRef&)",
+    "summary": "Performs end timer query through the public backend and RHI contract.",
+    "details": "Performs end timer query through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -42139,6 +41429,286 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-createeventquery-dfa73af5",
+    "name": "CreateEventQuery",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::CreateEventQuery",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateEventQuery()",
+    "summary": "Performs create event query through the public backend and RHI contract.",
+    "details": "Performs create event query through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-createtimerquery-0362d4b6",
+    "name": "CreateTimerQuery",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::CreateTimerQuery",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateTimerQuery()",
+    "summary": "Performs create timer query through the public backend and RHI contract.",
+    "details": "Performs create timer query through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-creategpufence-2b56432d",
+    "name": "CreateGpuFence",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::CreateGpuFence",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateGpuFence()",
+    "summary": "Performs create gpu fence through the public backend and RHI contract.",
+    "details": "Performs create gpu fence through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-signaleventquery-63bb8290",
+    "name": "SignalEventQuery",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::SignalEventQuery",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus SignalEventQuery( const FArdaProviderObjectRef&, EArdaRHIQueueType)",
+    "summary": "Performs signal event query through the public backend and RHI contract.",
+    "details": "Performs signal event query through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-polleventquery-9c03e4c7",
+    "name": "PollEventQuery",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::PollEventQuery",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<bool> PollEventQuery( const FArdaProviderObjectRef&)",
+    "summary": "Performs poll event query through the public backend and RHI contract.",
+    "details": "Performs poll event query through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-waiteventquery-37d9cbbe",
+    "name": "WaitEventQuery",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::WaitEventQuery",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus WaitEventQuery( const FArdaProviderObjectRef&)",
+    "summary": "Performs wait event query through the public backend and RHI contract.",
+    "details": "Performs wait event query through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-reseteventquery-37c2d6a8",
+    "name": "ResetEventQuery",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::ResetEventQuery",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus ResetEventQuery( const FArdaProviderObjectRef&)",
+    "summary": "Performs reset event query through the public backend and RHI contract.",
+    "details": "Performs reset event query through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-polltimerquery-ec45b109",
+    "name": "PollTimerQuery",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::PollTimerQuery",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<bool> PollTimerQuery( const FArdaProviderObjectRef&)",
+    "summary": "Performs poll timer query through the public backend and RHI contract.",
+    "details": "Performs poll timer query through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-gettimerqueryseconds-8d13db5c",
+    "name": "GetTimerQuerySeconds",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::GetTimerQuerySeconds",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<float> GetTimerQuerySeconds( const FArdaProviderObjectRef&)",
+    "summary": "Performs get timer query seconds through the public backend and RHI contract.",
+    "details": "Performs get timer query seconds through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-resettimerquery-442a597c",
+    "name": "ResetTimerQuery",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::ResetTimerQuery",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus ResetTimerQuery( const FArdaProviderObjectRef&)",
+    "summary": "Performs reset timer query through the public backend and RHI contract.",
+    "details": "Performs reset timer query through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-signalgpufence-a5c490bf",
+    "name": "SignalGpuFence",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::SignalGpuFence",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus SignalGpuFence( const FArdaProviderObjectRef&, EArdaRHIQueueType)",
+    "summary": "Performs signal gpu fence through the public backend and RHI contract.",
+    "details": "Performs signal gpu fence through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-pollgpufence-e2ff8ae1",
+    "name": "PollGpuFence",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::PollGpuFence",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<bool> PollGpuFence( const FArdaProviderObjectRef&)",
+    "summary": "Performs poll gpu fence through the public backend and RHI contract.",
+    "details": "Performs poll gpu fence through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-waitgpufence-f3c2d5d0",
+    "name": "WaitGpuFence",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::WaitGpuFence",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus WaitGpuFence( const FArdaProviderObjectRef&)",
+    "summary": "Performs wait gpu fence through the public backend and RHI contract.",
+    "details": "Performs wait gpu fence through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-provider-iardarhiproviderdevice-resetgpufence-847beec3",
+    "name": "ResetGpuFence",
+    "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::ResetGpuFence",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus ResetGpuFence( const FArdaProviderObjectRef&)",
+    "summary": "Performs reset gpu fence through the public backend and RHI contract.",
+    "details": "Performs reset gpu fence through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::provider::IArdaRHIProviderDevice"
+    ]
+  },
+  {
     "id": "api-arda-rhi-provider-iardarhiproviderdevice-createcommandlist-9bb6515d",
     "name": "CreateCommandList",
     "qualifiedName": "arda::rhi::provider::IArdaRHIProviderDevice::CreateCommandList",
@@ -42459,6 +42029,26 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-iardarhibindinglayout-getbindlessdesc-ada14697",
+    "name": "GetBindlessDesc",
+    "qualifiedName": "arda::rhi::IArdaRHIBindingLayout::GetBindlessDesc",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual const FArdaRHIBindlessLayoutDesc* GetBindlessDesc() const noexcept",
+    "summary": "Performs get bindless desc through the public backend and RHI contract.",
+    "details": "Performs get bindless desc through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::IArdaRHIBindingLayout"
+    ]
+  },
+  {
     "id": "api-arda-rhi-fardarhibindingsetdesc-mvariabledescriptorcount-d0322baa",
     "name": "mVariableDescriptorCount",
     "qualifiedName": "arda::rhi::FArdaRHIBindingSetDesc::mVariableDescriptorCount",
@@ -42499,6 +42089,46 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-fardarhibindlesslayoutdesc-mbupdateafterbind-a437927b",
+    "name": "mbUpdateAfterBind",
+    "qualifiedName": "arda::rhi::FArdaRHIBindlessLayoutDesc::mbUpdateAfterBind",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbUpdateAfterBind = false",
+    "summary": "Stores update after bind in this public backend and RHI value.",
+    "details": "Stores update after bind in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIBindlessLayoutDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhibindlesslayoutdesc-mbvariabledescriptorcount-7271afae",
+    "name": "mbVariableDescriptorCount",
+    "qualifiedName": "arda::rhi::FArdaRHIBindlessLayoutDesc::mbVariableDescriptorCount",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbVariableDescriptorCount = false",
+    "summary": "Stores variable descriptor count in this public backend and RHI value.",
+    "details": "Stores variable descriptor count in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIBindlessLayoutDesc"
+    ]
+  },
+  {
     "id": "api-arda-rhi-fardarhibindlesslayoutdesc-mbdirectheapindexing-32fb6eb7",
     "name": "mbDirectHeapIndexing",
     "qualifiedName": "arda::rhi::FArdaRHIBindlessLayoutDesc::mbDirectHeapIndexing",
@@ -42519,6 +42149,206 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-fardarhibindlesslayoutdesc-mbdescriptorbuffer-fdc4de82",
+    "name": "mbDescriptorBuffer",
+    "qualifiedName": "arda::rhi::FArdaRHIBindlessLayoutDesc::mbDescriptorBuffer",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbDescriptorBuffer = false",
+    "summary": "Stores descriptor buffer in this public backend and RHI value.",
+    "details": "Stores descriptor buffer in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIBindlessLayoutDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-eardarhiresourcecollectionitemtype-texture-ace10206",
+    "name": "Texture",
+    "qualifiedName": "arda::rhi::EArdaRHIResourceCollectionItemType::Texture",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "Texture",
+    "summary": "Selects the texture backend and RHI value.",
+    "details": "Selects the texture backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::EArdaRHIResourceCollectionItemType"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-eardarhiresourcecollectionitemtype-texturereference-3cf9ad40",
+    "name": "TextureReference",
+    "qualifiedName": "arda::rhi::EArdaRHIResourceCollectionItemType::TextureReference",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "TextureReference",
+    "summary": "Selects the texture reference backend and RHI value.",
+    "details": "Selects the texture reference backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::EArdaRHIResourceCollectionItemType"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-eardarhiresourcecollectionitemtype-buffer-2425b01a",
+    "name": "Buffer",
+    "qualifiedName": "arda::rhi::EArdaRHIResourceCollectionItemType::Buffer",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "Buffer",
+    "summary": "Selects the buffer backend and RHI value.",
+    "details": "Selects the buffer backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::EArdaRHIResourceCollectionItemType"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-eardarhiresourcecollectionitemtype-shaderresourceview-3989fb99",
+    "name": "ShaderResourceView",
+    "qualifiedName": "arda::rhi::EArdaRHIResourceCollectionItemType::ShaderResourceView",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "ShaderResourceView",
+    "summary": "Selects the shader resource view backend and RHI value.",
+    "details": "Selects the shader resource view backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::EArdaRHIResourceCollectionItemType"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-eardarhiresourcecollectionitemtype-unorderedaccessview-37f619fe",
+    "name": "UnorderedAccessView",
+    "qualifiedName": "arda::rhi::EArdaRHIResourceCollectionItemType::UnorderedAccessView",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "UnorderedAccessView",
+    "summary": "Selects the unordered access view backend and RHI value.",
+    "details": "Selects the unordered access view backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::EArdaRHIResourceCollectionItemType"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-eardarhiresourcecollectionitemtype-accelerationstructure-8626cd4d",
+    "name": "AccelerationStructure",
+    "qualifiedName": "arda::rhi::EArdaRHIResourceCollectionItemType::AccelerationStructure",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "AccelerationStructure",
+    "summary": "Selects the acceleration structure backend and RHI value.",
+    "details": "Selects the acceleration structure backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::EArdaRHIResourceCollectionItemType"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-eardarhiresourcecollectionitemtype-sampler-04513649",
+    "name": "Sampler",
+    "qualifiedName": "arda::rhi::EArdaRHIResourceCollectionItemType::Sampler",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "Sampler",
+    "summary": "Selects the sampler backend and RHI value.",
+    "details": "Selects the sampler backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::EArdaRHIResourceCollectionItemType"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiresourcecollectionitem-mtype-62046d6c",
+    "name": "mType",
+    "qualifiedName": "arda::rhi::FArdaRHIResourceCollectionItem::mType",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "EArdaRHIResourceCollectionItemType mType = EArdaRHIResourceCollectionItemType::Texture",
+    "summary": "Stores type in this public backend and RHI value.",
+    "details": "Stores type in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIResourceCollectionItem"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiresourcecollectionitem-mtexture-598a3cb5",
+    "name": "mTexture",
+    "qualifiedName": "arda::rhi::FArdaRHIResourceCollectionItem::mTexture",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "FArdaRHITextureRef mTexture",
+    "summary": "Stores texture in this public backend and RHI value.",
+    "details": "Stores texture in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIResourceCollectionItem"
+    ]
+  },
+  {
     "id": "api-arda-rhi-fardarhiresourcecollectionitem-mtexturereference-1f32b839",
     "name": "mTextureReference",
     "qualifiedName": "arda::rhi::FArdaRHIResourceCollectionItem::mTextureReference",
@@ -42528,6 +42358,26 @@ window.ArdaBackendApi = {
     "signature": "FArdaRHITextureReferenceRef mTextureReference",
     "summary": "Stores texture reference in this public backend and RHI value.",
     "details": "Stores texture reference in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIResourceCollectionItem"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiresourcecollectionitem-mbuffer-8880a62d",
+    "name": "mBuffer",
+    "qualifiedName": "arda::rhi::FArdaRHIResourceCollectionItem::mBuffer",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIBufferRef mBuffer",
+    "summary": "Stores buffer in this public backend and RHI value.",
+    "details": "Stores buffer in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
     "params": [],
     "returns": "",
@@ -42619,6 +42469,26 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-fardarhiresourcecollectiondesc-mitems-3896b816",
+    "name": "mItems",
+    "qualifiedName": "arda::rhi::FArdaRHIResourceCollectionDesc::mItems",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FArdaRHIResourceCollectionItem> mItems",
+    "summary": "Stores items in this public backend and RHI value.",
+    "details": "Stores items in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIResourceCollectionDesc"
+    ]
+  },
+  {
     "id": "api-arda-rhi-fardarhiresourcecollectiondesc-mbmutable-c7d5c7ca",
     "name": "mbMutable",
     "qualifiedName": "arda::rhi::FArdaRHIResourceCollectionDesc::mbMutable",
@@ -42648,6 +42518,26 @@ window.ArdaBackendApi = {
     "signature": "bool mbDirectlyIndexed = false",
     "summary": "Stores directly indexed in this public backend and RHI value.",
     "details": "Stores directly indexed in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIResourceCollectionDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiresourcecollectiondesc-mdebugname-495d0343",
+    "name": "mDebugName",
+    "qualifiedName": "arda::rhi::FArdaRHIResourceCollectionDesc::mDebugName",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mDebugName",
+    "summary": "Stores debug name in this public backend and RHI value.",
+    "details": "Stores debug name in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
     "params": [],
     "returns": "",
@@ -42696,6 +42586,106 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::IArdaRHIResourceCollection"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-iardarhiresourcecollection-getdescriptortable-e88cd946",
+    "name": "GetDescriptorTable",
+    "qualifiedName": "arda::rhi::IArdaRHIResourceCollection::GetDescriptorTable",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual FArdaRHIDescriptorTableRef GetDescriptorTable() const = 0",
+    "summary": "Performs get descriptor table through the public backend and RHI contract.",
+    "details": "Performs get descriptor table through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::IArdaRHIResourceCollection"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhigraphicspipelinedesc-operator-e3923e9a",
+    "name": "operator==",
+    "qualifiedName": "arda::rhi::FArdaRHIGraphicsPipelineDesc::operator==",
+    "kind": "conversion operator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool operator==(const FArdaRHIGraphicsPipelineDesc& O) const noexcept",
+    "summary": "Performs operator== through the public backend and RHI contract.",
+    "details": "Performs operator== through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIGraphicsPipelineDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhicomputepipelinedesc-operator-868ce84c",
+    "name": "operator==",
+    "qualifiedName": "arda::rhi::FArdaRHIComputePipelineDesc::operator==",
+    "kind": "conversion operator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool operator==(const FArdaRHIComputePipelineDesc& O) const noexcept",
+    "summary": "Performs operator== through the public backend and RHI contract.",
+    "details": "Performs operator== through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIComputePipelineDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhimeshletpipelinedesc-mpersistentcachekey-17696d76",
+    "name": "mPersistentCacheKey",
+    "qualifiedName": "arda::rhi::FArdaRHIMeshletPipelineDesc::mPersistentCacheKey",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mPersistentCacheKey = 0",
+    "summary": "Stores persistent cache key in this public backend and RHI value.",
+    "details": "Stores persistent cache key in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIMeshletPipelineDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhimeshletpipelinedesc-operator-3d5c8f80",
+    "name": "operator==",
+    "qualifiedName": "arda::rhi::FArdaRHIMeshletPipelineDesc::operator==",
+    "kind": "conversion operator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool operator==(const FArdaRHIMeshletPipelineDesc& O) const noexcept",
+    "summary": "Performs operator== through the public backend and RHI contract.",
+    "details": "Performs operator== through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIMeshletPipelineDesc"
     ]
   },
   {
@@ -42839,6 +42829,26 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-fardarhiaccelstructdesc-mresultsizeoverride-6b6722d5",
+    "name": "mResultSizeOverride",
+    "qualifiedName": "arda::rhi::FArdaRHIAccelStructDesc::mResultSizeOverride",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mResultSizeOverride = 0",
+    "summary": "Stores result size override in this public backend and RHI value.",
+    "details": "Stores result size override in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIAccelStructDesc"
+    ]
+  },
+  {
     "id": "api-arda-rhi-fardarhiaccelstructmemoryrequirements-mresultsize-e2e459b7",
     "name": "mResultSize",
     "qualifiedName": "arda::rhi::FArdaRHIAccelStructMemoryRequirements::mResultSize",
@@ -42959,6 +42969,86 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-fardarhiraytracingpipelineshaderdesc-operator-c2888692",
+    "name": "operator==",
+    "qualifiedName": "arda::rhi::FArdaRHIRayTracingPipelineShaderDesc::operator==",
+    "kind": "conversion operator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool operator==(const FArdaRHIRayTracingPipelineShaderDesc& O) const noexcept",
+    "summary": "Performs operator== through the public backend and RHI contract.",
+    "details": "Performs operator== through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIRayTracingPipelineShaderDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiraytracinghitgroupdesc-operator-c9a17898",
+    "name": "operator==",
+    "qualifiedName": "arda::rhi::FArdaRHIRayTracingHitGroupDesc::operator==",
+    "kind": "conversion operator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool operator==(const FArdaRHIRayTracingHitGroupDesc& O) const noexcept",
+    "summary": "Performs operator== through the public backend and RHI contract.",
+    "details": "Performs operator== through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIRayTracingHitGroupDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiraytracingpipelinedesc-mpersistentcachekey-2392b56e",
+    "name": "mPersistentCacheKey",
+    "qualifiedName": "arda::rhi::FArdaRHIRayTracingPipelineDesc::mPersistentCacheKey",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mPersistentCacheKey = 0",
+    "summary": "Stores persistent cache key in this public backend and RHI value.",
+    "details": "Stores persistent cache key in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIRayTracingPipelineDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiraytracingpipelinedesc-operator-f5485dd5",
+    "name": "operator==",
+    "qualifiedName": "arda::rhi::FArdaRHIRayTracingPipelineDesc::operator==",
+    "kind": "conversion operator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool operator==(const FArdaRHIRayTracingPipelineDesc& O) const noexcept",
+    "summary": "Performs operator== through the public backend and RHI contract.",
+    "details": "Performs operator== through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIRayTracingPipelineDesc"
+    ]
+  },
+  {
     "id": "api-arda-rhi-fardarhishadertabledesc-mmaxlocalargumentbytes-fb96232a",
     "name": "mMaxLocalArgumentBytes",
     "qualifiedName": "arda::rhi::FArdaRHIShaderTableDesc::mMaxLocalArgumentBytes",
@@ -42999,6 +43089,46 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-eardarhishadertablerecordtype-raygeneration-c9023567",
+    "name": "RayGeneration",
+    "qualifiedName": "arda::rhi::EArdaRHIShaderTableRecordType::RayGeneration",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "RayGeneration",
+    "summary": "Selects the ray generation backend and RHI value.",
+    "details": "Selects the ray generation backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::EArdaRHIShaderTableRecordType"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-eardarhishadertablerecordtype-miss-471fe63d",
+    "name": "Miss",
+    "qualifiedName": "arda::rhi::EArdaRHIShaderTableRecordType::Miss",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "Miss",
+    "summary": "Selects the miss backend and RHI value.",
+    "details": "Selects the miss backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::EArdaRHIShaderTableRecordType"
+    ]
+  },
+  {
     "id": "api-arda-rhi-eardarhishadertablerecordtype-hitgroup-c5c88ed9",
     "name": "HitGroup",
     "qualifiedName": "arda::rhi::EArdaRHIShaderTableRecordType::HitGroup",
@@ -43019,6 +43149,46 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-eardarhishadertablerecordtype-callable-5ce17a5c",
+    "name": "Callable",
+    "qualifiedName": "arda::rhi::EArdaRHIShaderTableRecordType::Callable",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "Callable",
+    "summary": "Selects the callable backend and RHI value.",
+    "details": "Selects the callable backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::EArdaRHIShaderTableRecordType"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhishadertablerecorddesc-mtype-76adf6d3",
+    "name": "mType",
+    "qualifiedName": "arda::rhi::FArdaRHIShaderTableRecordDesc::mType",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "EArdaRHIShaderTableRecordType mType = EArdaRHIShaderTableRecordType::RayGeneration",
+    "summary": "Stores type in this public backend and RHI value.",
+    "details": "Stores type in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIShaderTableRecordDesc"
+    ]
+  },
+  {
     "id": "api-arda-rhi-fardarhishadertablerecorddesc-mrecordindex-8606a9b9",
     "name": "mRecordIndex",
     "qualifiedName": "arda::rhi::FArdaRHIShaderTableRecordDesc::mRecordIndex",
@@ -43028,6 +43198,46 @@ window.ArdaBackendApi = {
     "signature": "uint32_t mRecordIndex = 0",
     "summary": "Stores record index in this public backend and RHI value.",
     "details": "Stores record index in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIShaderTableRecordDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhishadertablerecorddesc-mexportname-0bf51318",
+    "name": "mExportName",
+    "qualifiedName": "arda::rhi::FArdaRHIShaderTableRecordDesc::mExportName",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mExportName",
+    "summary": "Stores export name in this public backend and RHI value.",
+    "details": "Stores export name in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIShaderTableRecordDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhishadertablerecorddesc-mbindings-471b3c03",
+    "name": "mBindings",
+    "qualifiedName": "arda::rhi::FArdaRHIShaderTableRecordDesc::mBindings",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIBindingSetRef mBindings",
+    "summary": "Stores bindings in this public backend and RHI value.",
+    "details": "Stores bindings in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
     "params": [],
     "returns": "",
@@ -43139,6 +43349,66 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-fardarhiworkgraphpipelinedesc-mentrypoint-957796f4",
+    "name": "mEntryPoint",
+    "qualifiedName": "arda::rhi::FArdaRHIWorkGraphPipelineDesc::mEntryPoint",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mEntryPoint",
+    "summary": "Stores entry point in this public backend and RHI value.",
+    "details": "Stores entry point in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIWorkGraphPipelineDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiworkgraphpipelinedesc-mshaders-94593835",
+    "name": "mShaders",
+    "qualifiedName": "arda::rhi::FArdaRHIWorkGraphPipelineDesc::mShaders",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FArdaRHIShaderRef> mShaders",
+    "summary": "Stores shaders in this public backend and RHI value.",
+    "details": "Stores shaders in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIWorkGraphPipelineDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiworkgraphpipelinedesc-mglobalbindinglayouts-c34b7a60",
+    "name": "mGlobalBindingLayouts",
+    "qualifiedName": "arda::rhi::FArdaRHIWorkGraphPipelineDesc::mGlobalBindingLayouts",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FArdaRHIBindingLayoutRef> mGlobalBindingLayouts",
+    "summary": "Stores global binding layouts in this public backend and RHI value.",
+    "details": "Stores global binding layouts in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIWorkGraphPipelineDesc"
+    ]
+  },
+  {
     "id": "api-arda-rhi-fardarhiworkgraphpipelinedesc-mmaxinputrecords-c52dfe00",
     "name": "mMaxInputRecords",
     "qualifiedName": "arda::rhi::FArdaRHIWorkGraphPipelineDesc::mMaxInputRecords",
@@ -43151,6 +43421,66 @@ window.ArdaBackendApi = {
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
     "params": [],
     "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIWorkGraphPipelineDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiworkgraphpipelinedesc-mpersistentcachekey-96a93c0d",
+    "name": "mPersistentCacheKey",
+    "qualifiedName": "arda::rhi::FArdaRHIWorkGraphPipelineDesc::mPersistentCacheKey",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mPersistentCacheKey = 0",
+    "summary": "Stores persistent cache key in this public backend and RHI value.",
+    "details": "Stores persistent cache key in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIWorkGraphPipelineDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiworkgraphpipelinedesc-mdebugname-9593f622",
+    "name": "mDebugName",
+    "qualifiedName": "arda::rhi::FArdaRHIWorkGraphPipelineDesc::mDebugName",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mDebugName",
+    "summary": "Stores debug name in this public backend and RHI value.",
+    "details": "Stores debug name in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIWorkGraphPipelineDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhiworkgraphpipelinedesc-operator-8bbaec87",
+    "name": "operator==",
+    "qualifiedName": "arda::rhi::FArdaRHIWorkGraphPipelineDesc::operator==",
+    "kind": "conversion operator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool operator==(const FArdaRHIWorkGraphPipelineDesc& O) const noexcept",
+    "summary": "Performs operator== through the public backend and RHI contract.",
+    "details": "Performs operator== through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
@@ -43228,6 +43558,46 @@ window.ArdaBackendApi = {
     "signature": "FArdaRHIMeshletPipelineRef mMeshPipeline",
     "summary": "Stores mesh pipeline in this public backend and RHI value.",
     "details": "Stores mesh pipeline in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIShaderBundleRecord"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhishaderbundlerecord-mbindings-9cdc39f5",
+    "name": "mBindings",
+    "qualifiedName": "arda::rhi::FArdaRHIShaderBundleRecord::mBindings",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FArdaRHIBindingSetRef> mBindings",
+    "summary": "Stores bindings in this public backend and RHI value.",
+    "details": "Stores bindings in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIShaderBundleRecord"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhishaderbundlerecord-mlocalarguments-1a326502",
+    "name": "mLocalArguments",
+    "qualifiedName": "arda::rhi::FArdaRHIShaderBundleRecord::mLocalArguments",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<uint8_t> mLocalArguments",
+    "summary": "Stores local arguments in this public backend and RHI value.",
+    "details": "Stores local arguments in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
     "params": [],
     "returns": "",
@@ -43339,6 +43709,46 @@ window.ArdaBackendApi = {
     ]
   },
   {
+    "id": "api-arda-rhi-fardarhishaderbundledesc-mbpersistent-1894a189",
+    "name": "mbPersistent",
+    "qualifiedName": "arda::rhi::FArdaRHIShaderBundleDesc::mbPersistent",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbPersistent = false",
+    "summary": "Stores persistent in this public backend and RHI value.",
+    "details": "Stores persistent in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIShaderBundleDesc"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhishaderbundledesc-mdebugname-386fcf0d",
+    "name": "mDebugName",
+    "qualifiedName": "arda::rhi::FArdaRHIShaderBundleDesc::mDebugName",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mDebugName",
+    "summary": "Stores debug name in this public backend and RHI value.",
+    "details": "Stores debug name in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIShaderBundleDesc"
+    ]
+  },
+  {
     "id": "api-arda-rhi-iardarhishaderbundle-getdesc-5d05202b",
     "name": "GetDesc",
     "qualifiedName": "arda::rhi::IArdaRHIShaderBundle::GetDesc",
@@ -43396,6 +43806,106 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::IArdaRHISamplerFeedbackTexture"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhibuffertilemapping-mbufferoffset-7b494bee",
+    "name": "mBufferOffset",
+    "qualifiedName": "arda::rhi::FArdaRHIBufferTileMapping::mBufferOffset",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mBufferOffset = 0",
+    "summary": "Stores buffer offset in this public backend and RHI value.",
+    "details": "Stores buffer offset in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIBufferTileMapping"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhibuffertilemapping-mbytesize-99496ab4",
+    "name": "mByteSize",
+    "qualifiedName": "arda::rhi::FArdaRHIBufferTileMapping::mByteSize",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mByteSize = 0",
+    "summary": "Stores byte size in this public backend and RHI value.",
+    "details": "Stores byte size in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIBufferTileMapping"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhibuffertilemapping-mheapoffset-6670fb12",
+    "name": "mHeapOffset",
+    "qualifiedName": "arda::rhi::FArdaRHIBufferTileMapping::mHeapOffset",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mHeapOffset = 0",
+    "summary": "Stores heap offset in this public backend and RHI value.",
+    "details": "Stores heap offset in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIBufferTileMapping"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhibuffertilemapping-mheap-6e356f6f",
+    "name": "mHeap",
+    "qualifiedName": "arda::rhi::FArdaRHIBufferTileMapping::mHeap",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIHeapRef mHeap",
+    "summary": "Stores heap in this public backend and RHI value.",
+    "details": "Stores heap in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIBufferTileMapping"
+    ]
+  },
+  {
+    "id": "api-arda-rhi-fardarhibuffertilemapping-mbcommit-73ef28fc",
+    "name": "mbCommit",
+    "qualifiedName": "arda::rhi::FArdaRHIBufferTileMapping::mbCommit",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbCommit = true",
+    "summary": "Stores commit in this public backend and RHI value.",
+    "details": "Stores commit in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::rhi::FArdaRHIBufferTileMapping"
     ]
   },
   {
@@ -43499,58 +44009,18 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-ardarhiallsubresources-0c8c5c7d",
-    "name": "ArdaRHIAllSubresources",
-    "qualifiedName": "arda::rhi::ArdaRHIAllSubresources",
-    "kind": "constant",
-    "component": "rhi-types",
+    "id": "api-arda-rhi-hashvalue-d98b6bf5",
+    "name": "HashValue",
+    "qualifiedName": "arda::rhi::HashValue",
+    "kind": "function",
+    "component": "rhi-resources",
     "page": "api-reference.html",
-    "signature": "inline constexpr uint32_t ArdaRHIAllSubresources = std::numeric_limits<uint32_t>::max()",
-    "summary": "Defines arda r h i all subresources in the public backend and RHI contract.",
-    "details": "Defines arda r h i all subresources in the public backend and RHI contract. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "signature": "[[nodiscard]] size_t HashValue( const FArdaRHIWorkGraphPipelineDesc& Value) noexcept",
+    "summary": "Performs hash value through the public backend and RHI contract.",
+    "details": "Performs hash value through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
     "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-ardarhiwholebuffer-c7178fea",
-    "name": "ArdaRHIWholeBuffer",
-    "qualifiedName": "arda::rhi::ArdaRHIWholeBuffer",
-    "kind": "constant",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "inline constexpr uint64_t ArdaRHIWholeBuffer = std::numeric_limits<uint64_t>::max()",
-    "summary": "Defines arda r h i whole buffer in the public backend and RHI contract.",
-    "details": "Defines arda r h i whole buffer in the public backend and RHI contract. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-ardarhimaxrendertargets-3d1ddadb",
-    "name": "ArdaRHIMaxRenderTargets",
-    "qualifiedName": "arda::rhi::ArdaRHIMaxRenderTargets",
-    "kind": "constant",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "inline constexpr uint32_t ArdaRHIMaxRenderTargets = 8",
-    "summary": "Defines arda r h i max render targets in the public backend and RHI contract.",
-    "details": "Defines arda r h i max render targets in the public backend and RHI contract. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
+    "returns": "See the declared result and status contract.",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
@@ -43576,46 +44046,6 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhistatus-mcode-3a659653",
-    "name": "mCode",
-    "qualifiedName": "arda::rhi::FArdaRHIStatus::mCode",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIResult mCode = EArdaRHIResult::Success",
-    "summary": "Stores code in this public backend and RHI value.",
-    "details": "Stores code in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIStatus"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhistatus-mmessage-3bee0eb8",
-    "name": "mMessage",
-    "qualifiedName": "arda::rhi::FArdaRHIStatus::mMessage",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::string mMessage",
-    "summary": "Stores message in this public backend and RHI value.",
-    "details": "Stores message in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIStatus"
     ]
   },
   {
@@ -43696,46 +44126,6 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::FArdaRHIStatus"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-tardarhiresult-mvalue-35f68de0",
-    "name": "mValue",
-    "qualifiedName": "arda::rhi::TArdaRHIResult::mValue",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "T mValue{}",
-    "summary": "Stores value in this public backend and RHI value.",
-    "details": "Stores value in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::TArdaRHIResult"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-tardarhiresult-mstatus-dbb50f96",
-    "name": "mStatus",
-    "qualifiedName": "arda::rhi::TArdaRHIResult::mStatus",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHIStatus mStatus",
-    "summary": "Stores status in this public backend and RHI value.",
-    "details": "Stores status in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::TArdaRHIResult"
     ]
   },
   {
@@ -45199,86 +45589,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhicolor-mr-ef420e7b",
-    "name": "mR",
-    "qualifiedName": "arda::rhi::FArdaRHIColor::mR",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mR = 0.f",
-    "summary": "Stores r in this public backend and RHI value.",
-    "details": "Stores r in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIColor"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicolor-mg-bfa8bcf9",
-    "name": "mG",
-    "qualifiedName": "arda::rhi::FArdaRHIColor::mG",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mG = 0.f",
-    "summary": "Stores g in this public backend and RHI value.",
-    "details": "Stores g in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIColor"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicolor-mb-ae73cd54",
-    "name": "mB",
-    "qualifiedName": "arda::rhi::FArdaRHIColor::mB",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mB = 0.f",
-    "summary": "Stores b in this public backend and RHI value.",
-    "details": "Stores b in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIColor"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhicolor-ma-fecd04f0",
-    "name": "mA",
-    "qualifiedName": "arda::rhi::FArdaRHIColor::mA",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mA = 0.f",
-    "summary": "Stores a in this public backend and RHI value.",
-    "details": "Stores a in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIColor"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhicolor-operator-4bf1880a",
     "name": "operator==",
     "qualifiedName": "arda::rhi::FArdaRHIColor::operator==",
@@ -45296,86 +45606,6 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::FArdaRHIColor"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturesubresourcerange-mbasemiplevel-ce2333b7",
-    "name": "mBaseMipLevel",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSubresourceRange::mBaseMipLevel",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mBaseMipLevel = 0",
-    "summary": "Stores base mip level in this public backend and RHI value.",
-    "details": "Stores base mip level in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSubresourceRange"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturesubresourcerange-mmiplevelcount-b8cd7890",
-    "name": "mMipLevelCount",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSubresourceRange::mMipLevelCount",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mMipLevelCount = ArdaRHIAllSubresources",
-    "summary": "Stores mip level count in this public backend and RHI value.",
-    "details": "Stores mip level count in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSubresourceRange"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturesubresourcerange-mbasearrayslice-b47d7091",
-    "name": "mBaseArraySlice",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSubresourceRange::mBaseArraySlice",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mBaseArraySlice = 0",
-    "summary": "Stores base array slice in this public backend and RHI value.",
-    "details": "Stores base array slice in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSubresourceRange"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturesubresourcerange-marrayslicecount-96291bdf",
-    "name": "mArraySliceCount",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSubresourceRange::mArraySliceCount",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mArraySliceCount = ArdaRHIAllSubresources",
-    "summary": "Stores array slice count in this public backend and RHI value.",
-    "details": "Stores array slice count in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSubresourceRange"
     ]
   },
   {
@@ -45399,46 +45629,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhibufferrange-mbyteoffset-4c4c9a12",
-    "name": "mByteOffset",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferRange::mByteOffset",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint64_t mByteOffset = 0",
-    "summary": "Stores byte offset in this public backend and RHI value.",
-    "details": "Stores byte offset in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferRange"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibufferrange-mbytesize-46bbf575",
-    "name": "mByteSize",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferRange::mByteSize",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint64_t mByteSize = ArdaRHIWholeBuffer",
-    "summary": "Stores byte size in this public backend and RHI value.",
-    "details": "Stores byte size in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferRange"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhibufferrange-operator-ae3ed2cd",
     "name": "operator==",
     "qualifiedName": "arda::rhi::FArdaRHIBufferRange::operator==",
@@ -45456,326 +45646,6 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::FArdaRHIBufferRange"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mwidth-782b9220",
-    "name": "mWidth",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mWidth",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mWidth = 1",
-    "summary": "Stores width in this public backend and RHI value.",
-    "details": "Stores width in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mheight-b22052c1",
-    "name": "mHeight",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mHeight",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mHeight = 1",
-    "summary": "Stores height in this public backend and RHI value.",
-    "details": "Stores height in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mdepth-463d0a78",
-    "name": "mDepth",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mDepth",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mDepth = 1",
-    "summary": "Stores depth in this public backend and RHI value.",
-    "details": "Stores depth in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-marraysize-1f379464",
-    "name": "mArraySize",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mArraySize",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mArraySize = 1",
-    "summary": "Stores array size in this public backend and RHI value.",
-    "details": "Stores array size in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mmiplevels-76d923fc",
-    "name": "mMipLevels",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mMipLevels",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mMipLevels = 1",
-    "summary": "Stores mip levels in this public backend and RHI value.",
-    "details": "Stores mip levels in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-msamplecount-b94260a3",
-    "name": "mSampleCount",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mSampleCount",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mSampleCount = 1",
-    "summary": "Stores sample count in this public backend and RHI value.",
-    "details": "Stores sample count in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mformat-affc2903",
-    "name": "mFormat",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mFormat",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown",
-    "summary": "Stores format in this public backend and RHI value.",
-    "details": "Stores format in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mdimension-9cadb6c7",
-    "name": "mDimension",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mDimension",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHITextureDimension mDimension = EArdaRHITextureDimension::Texture2D",
-    "summary": "Stores dimension in this public backend and RHI value.",
-    "details": "Stores dimension in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-musage-21a161bd",
-    "name": "mUsage",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mUsage",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHITextureUsage mUsage = EArdaRHITextureUsage::ShaderResource",
-    "summary": "Stores usage in this public backend and RHI value.",
-    "details": "Stores usage in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-minitialstate-99472390",
-    "name": "mInitialState",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mInitialState",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Unknown",
-    "summary": "Stores initial state in this public backend and RHI value.",
-    "details": "Stores initial state in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mbkeepinitialstate-540585b3",
-    "name": "mbKeepInitialState",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mbKeepInitialState",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbKeepInitialState = false",
-    "summary": "Stores keep initial state in this public backend and RHI value.",
-    "details": "Stores keep initial state in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mbvirtual-1dad10e1",
-    "name": "mbVirtual",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mbVirtual",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbVirtual = false",
-    "summary": "Stores virtual in this public backend and RHI value.",
-    "details": "Stores virtual in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mbtiled-b99f0c5f",
-    "name": "mbTiled",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mbTiled",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbTiled = false",
-    "summary": "Stores tiled in this public backend and RHI value.",
-    "details": "Stores tiled in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mclearvalue-ef789d3c",
-    "name": "mClearValue",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mClearValue",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHIColor mClearValue",
-    "summary": "Stores clear value in this public backend and RHI value.",
-    "details": "Stores clear value in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mbuseclearvalue-5395a502",
-    "name": "mbUseClearValue",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mbUseClearValue",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbUseClearValue = false",
-    "summary": "Stores use clear value in this public backend and RHI value.",
-    "details": "Stores use clear value in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitexturedesc-mdebugname-98b3a2ce",
-    "name": "mDebugName",
-    "qualifiedName": "arda::rhi::FArdaRHITextureDesc::mDebugName",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::string mDebugName",
-    "summary": "Stores debug name in this public backend and RHI value.",
-    "details": "Stores debug name in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureDesc"
     ]
   },
   {
@@ -45799,186 +45669,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhibufferdesc-mbytesize-f1529fbd",
-    "name": "mByteSize",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferDesc::mByteSize",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint64_t mByteSize = 0",
-    "summary": "Stores byte size in this public backend and RHI value.",
-    "details": "Stores byte size in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibufferdesc-mstructurestride-c6246a27",
-    "name": "mStructureStride",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferDesc::mStructureStride",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mStructureStride = 0",
-    "summary": "Stores structure stride in this public backend and RHI value.",
-    "details": "Stores structure stride in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibufferdesc-mmaxversions-bb5538c9",
-    "name": "mMaxVersions",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferDesc::mMaxVersions",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mMaxVersions = 0",
-    "summary": "Stores max versions in this public backend and RHI value.",
-    "details": "Stores max versions in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibufferdesc-mformat-007bf918",
-    "name": "mFormat",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferDesc::mFormat",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown",
-    "summary": "Stores format in this public backend and RHI value.",
-    "details": "Stores format in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibufferdesc-musage-53c57afe",
-    "name": "mUsage",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferDesc::mUsage",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIBufferUsage mUsage = EArdaRHIBufferUsage::None",
-    "summary": "Stores usage in this public backend and RHI value.",
-    "details": "Stores usage in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibufferdesc-mcpuaccess-79d05358",
-    "name": "mCpuAccess",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferDesc::mCpuAccess",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHICpuAccess mCpuAccess = EArdaRHICpuAccess::None",
-    "summary": "Stores cpu access in this public backend and RHI value.",
-    "details": "Stores cpu access in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibufferdesc-minitialstate-ec4cc7a4",
-    "name": "mInitialState",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferDesc::mInitialState",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Common",
-    "summary": "Stores initial state in this public backend and RHI value.",
-    "details": "Stores initial state in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibufferdesc-mbkeepinitialstate-65b4c075",
-    "name": "mbKeepInitialState",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferDesc::mbKeepInitialState",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbKeepInitialState = false",
-    "summary": "Stores keep initial state in this public backend and RHI value.",
-    "details": "Stores keep initial state in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibufferdesc-mbvirtual-2954386c",
-    "name": "mbVirtual",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferDesc::mbVirtual",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbVirtual = false",
-    "summary": "Stores virtual in this public backend and RHI value.",
-    "details": "Stores virtual in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferDesc"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhibufferdesc-mbtiled-11828d24",
     "name": "mbTiled",
     "qualifiedName": "arda::rhi::FArdaRHIBufferDesc::mbTiled",
@@ -45988,26 +45678,6 @@ window.ArdaBackendApi = {
     "signature": "bool mbTiled = false",
     "summary": "Stores tiled in this public backend and RHI value.",
     "details": "Stores tiled in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBufferDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibufferdesc-mdebugname-6bbed3e9",
-    "name": "mDebugName",
-    "qualifiedName": "arda::rhi::FArdaRHIBufferDesc::mDebugName",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::string mDebugName",
-    "summary": "Stores debug name in this public backend and RHI value.",
-    "details": "Stores debug name in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
     "params": [],
     "returns": "",
@@ -46039,86 +45709,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhiviewdesc-mformat-71ebac18",
-    "name": "mFormat",
-    "qualifiedName": "arda::rhi::FArdaRHIViewDesc::mFormat",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown",
-    "summary": "Stores format in this public backend and RHI value.",
-    "details": "Stores format in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIViewDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiviewdesc-mdimension-e6e6cff7",
-    "name": "mDimension",
-    "qualifiedName": "arda::rhi::FArdaRHIViewDesc::mDimension",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHITextureDimension mDimension = EArdaRHITextureDimension::Unknown",
-    "summary": "Stores dimension in this public backend and RHI value.",
-    "details": "Stores dimension in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIViewDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiviewdesc-mtexturerange-e6fd9a8f",
-    "name": "mTextureRange",
-    "qualifiedName": "arda::rhi::FArdaRHIViewDesc::mTextureRange",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHITextureSubresourceRange mTextureRange",
-    "summary": "Stores texture range in this public backend and RHI value.",
-    "details": "Stores texture range in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIViewDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiviewdesc-mbufferrange-25d73b44",
-    "name": "mBufferRange",
-    "qualifiedName": "arda::rhi::FArdaRHIViewDesc::mBufferRange",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHIBufferRange mBufferRange",
-    "summary": "Stores buffer range in this public backend and RHI value.",
-    "details": "Stores buffer range in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIViewDesc"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhiviewdesc-operator-4b55725a",
     "name": "operator==",
     "qualifiedName": "arda::rhi::FArdaRHIViewDesc::operator==",
@@ -46139,26 +45729,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhinativetextureimportdesc-mnativeobject-be139171",
-    "name": "mNativeObject",
-    "qualifiedName": "arda::rhi::FArdaRHINativeTextureImportDesc::mNativeObject",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uintptr_t mNativeObject = 0",
-    "summary": "Stores native object in this public backend and RHI value.",
-    "details": "Stores native object in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHINativeTextureImportDesc"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhinativetextureimportdesc-mnativetype-b855ec78",
     "name": "mNativeType",
     "qualifiedName": "arda::rhi::FArdaRHINativeTextureImportDesc::mNativeType",
@@ -46168,86 +45738,6 @@ window.ArdaBackendApi = {
     "signature": "EArdaRHINativeResourceType mNativeType = EArdaRHINativeResourceType::BackendDefined",
     "summary": "Stores native type in this public backend and RHI value.",
     "details": "Stores native type in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHINativeTextureImportDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhinativetextureimportdesc-mownership-38e2fb5c",
-    "name": "mOwnership",
-    "qualifiedName": "arda::rhi::FArdaRHINativeTextureImportDesc::mOwnership",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHINativeOwnership mOwnership = EArdaRHINativeOwnership::Borrowed",
-    "summary": "Stores ownership in this public backend and RHI value.",
-    "details": "Stores ownership in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHINativeTextureImportDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhinativetextureimportdesc-mtexture-74026b1e",
-    "name": "mTexture",
-    "qualifiedName": "arda::rhi::FArdaRHINativeTextureImportDesc::mTexture",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHITextureDesc mTexture",
-    "summary": "Stores texture in this public backend and RHI value.",
-    "details": "Stores texture in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHINativeTextureImportDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhinativetextureimportdesc-minitialstate-793e1248",
-    "name": "mInitialState",
-    "qualifiedName": "arda::rhi::FArdaRHINativeTextureImportDesc::mInitialState",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Unknown",
-    "summary": "Stores initial state in this public backend and RHI value.",
-    "details": "Stores initial state in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHINativeTextureImportDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhinativetextureimportdesc-mlifetimetoken-1f57383b",
-    "name": "mLifetimeToken",
-    "qualifiedName": "arda::rhi::FArdaRHINativeTextureImportDesc::mLifetimeToken",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::shared_ptr<void> mLifetimeToken",
-    "summary": "Stores lifetime token in this public backend and RHI value.",
-    "details": "Stores lifetime token in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
     "params": [],
     "returns": "",
@@ -46279,26 +45769,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhinativebufferimportdesc-mnativeobject-7b19d958",
-    "name": "mNativeObject",
-    "qualifiedName": "arda::rhi::FArdaRHINativeBufferImportDesc::mNativeObject",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uintptr_t mNativeObject = 0",
-    "summary": "Stores native object in this public backend and RHI value.",
-    "details": "Stores native object in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHINativeBufferImportDesc"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhinativebufferimportdesc-mnativetype-5afdf360",
     "name": "mNativeType",
     "qualifiedName": "arda::rhi::FArdaRHINativeBufferImportDesc::mNativeType",
@@ -46308,86 +45778,6 @@ window.ArdaBackendApi = {
     "signature": "EArdaRHINativeResourceType mNativeType = EArdaRHINativeResourceType::BackendDefined",
     "summary": "Stores native type in this public backend and RHI value.",
     "details": "Stores native type in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHINativeBufferImportDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhinativebufferimportdesc-mownership-a06354ba",
-    "name": "mOwnership",
-    "qualifiedName": "arda::rhi::FArdaRHINativeBufferImportDesc::mOwnership",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHINativeOwnership mOwnership = EArdaRHINativeOwnership::Borrowed",
-    "summary": "Stores ownership in this public backend and RHI value.",
-    "details": "Stores ownership in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHINativeBufferImportDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhinativebufferimportdesc-mbuffer-bd47a30d",
-    "name": "mBuffer",
-    "qualifiedName": "arda::rhi::FArdaRHINativeBufferImportDesc::mBuffer",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHIBufferDesc mBuffer",
-    "summary": "Stores buffer in this public backend and RHI value.",
-    "details": "Stores buffer in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHINativeBufferImportDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhinativebufferimportdesc-minitialstate-b9e0a000",
-    "name": "mInitialState",
-    "qualifiedName": "arda::rhi::FArdaRHINativeBufferImportDesc::mInitialState",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIResourceState mInitialState = EArdaRHIResourceState::Unknown",
-    "summary": "Stores initial state in this public backend and RHI value.",
-    "details": "Stores initial state in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHINativeBufferImportDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhinativebufferimportdesc-mlifetimetoken-15d69f9a",
-    "name": "mLifetimeToken",
-    "qualifiedName": "arda::rhi::FArdaRHINativeBufferImportDesc::mLifetimeToken",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::shared_ptr<void> mLifetimeToken",
-    "summary": "Stores lifetime token in this public backend and RHI value.",
-    "details": "Stores lifetime token in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
     "params": [],
     "returns": "",
@@ -46416,166 +45806,6 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::FArdaRHINativeBufferImportDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitextureslice-mx-ece84a6e",
-    "name": "mX",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSlice::mX",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mX = 0",
-    "summary": "Stores x in this public backend and RHI value.",
-    "details": "Stores x in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSlice"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitextureslice-my-28da66f0",
-    "name": "mY",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSlice::mY",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mY = 0",
-    "summary": "Stores y in this public backend and RHI value.",
-    "details": "Stores y in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSlice"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitextureslice-mz-1b72883f",
-    "name": "mZ",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSlice::mZ",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mZ = 0",
-    "summary": "Stores z in this public backend and RHI value.",
-    "details": "Stores z in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSlice"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitextureslice-mwidth-bb2daf58",
-    "name": "mWidth",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSlice::mWidth",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mWidth = ArdaRHIAllSubresources",
-    "summary": "Stores width in this public backend and RHI value.",
-    "details": "Stores width in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSlice"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitextureslice-mheight-74aafab7",
-    "name": "mHeight",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSlice::mHeight",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mHeight = ArdaRHIAllSubresources",
-    "summary": "Stores height in this public backend and RHI value.",
-    "details": "Stores height in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSlice"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitextureslice-mdepth-4749521b",
-    "name": "mDepth",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSlice::mDepth",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mDepth = ArdaRHIAllSubresources",
-    "summary": "Stores depth in this public backend and RHI value.",
-    "details": "Stores depth in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSlice"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitextureslice-mmiplevel-18e34ee0",
-    "name": "mMipLevel",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSlice::mMipLevel",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mMipLevel = 0",
-    "summary": "Stores mip level in this public backend and RHI value.",
-    "details": "Stores mip level in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSlice"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitextureslice-marrayslice-36284d8b",
-    "name": "mArraySlice",
-    "qualifiedName": "arda::rhi::FArdaRHITextureSlice::mArraySlice",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mArraySlice = 0",
-    "summary": "Stores array slice in this public backend and RHI value.",
-    "details": "Stores array slice in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITextureSlice"
     ]
   },
   {
@@ -47039,626 +46269,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhitiledtexturecoordinate-mmiplevel-f25e0103",
-    "name": "mMipLevel",
-    "qualifiedName": "arda::rhi::FArdaRHITiledTextureCoordinate::mMipLevel",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint16_t mMipLevel = 0",
-    "summary": "Stores mip level in this public backend and RHI value.",
-    "details": "Stores mip level in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITiledTextureCoordinate"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitiledtexturecoordinate-marraylevel-84318a5d",
-    "name": "mArrayLevel",
-    "qualifiedName": "arda::rhi::FArdaRHITiledTextureCoordinate::mArrayLevel",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint16_t mArrayLevel = 0",
-    "summary": "Stores array level in this public backend and RHI value.",
-    "details": "Stores array level in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITiledTextureCoordinate"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitiledtexturecoordinate-mx-60d1e77e",
-    "name": "mX",
-    "qualifiedName": "arda::rhi::FArdaRHITiledTextureCoordinate::mX",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mX = 0",
-    "summary": "Stores x in this public backend and RHI value.",
-    "details": "Stores x in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITiledTextureCoordinate"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitiledtexturecoordinate-my-308dabd2",
-    "name": "mY",
-    "qualifiedName": "arda::rhi::FArdaRHITiledTextureCoordinate::mY",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mY = 0",
-    "summary": "Stores y in this public backend and RHI value.",
-    "details": "Stores y in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITiledTextureCoordinate"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitiledtexturecoordinate-mz-d41ead17",
-    "name": "mZ",
-    "qualifiedName": "arda::rhi::FArdaRHITiledTextureCoordinate::mZ",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mZ = 0",
-    "summary": "Stores z in this public backend and RHI value.",
-    "details": "Stores z in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITiledTextureCoordinate"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitiledtextureregion-mtilecount-7b2a4048",
-    "name": "mTileCount",
-    "qualifiedName": "arda::rhi::FArdaRHITiledTextureRegion::mTileCount",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mTileCount = 0",
-    "summary": "Stores tile count in this public backend and RHI value.",
-    "details": "Stores tile count in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITiledTextureRegion"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitiledtextureregion-mwidth-1d493a0e",
-    "name": "mWidth",
-    "qualifiedName": "arda::rhi::FArdaRHITiledTextureRegion::mWidth",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mWidth = 0",
-    "summary": "Stores width in this public backend and RHI value.",
-    "details": "Stores width in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITiledTextureRegion"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitiledtextureregion-mheight-dc323455",
-    "name": "mHeight",
-    "qualifiedName": "arda::rhi::FArdaRHITiledTextureRegion::mHeight",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mHeight = 0",
-    "summary": "Stores height in this public backend and RHI value.",
-    "details": "Stores height in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITiledTextureRegion"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitiledtextureregion-mdepth-09c536b5",
-    "name": "mDepth",
-    "qualifiedName": "arda::rhi::FArdaRHITiledTextureRegion::mDepth",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mDepth = 0",
-    "summary": "Stores depth in this public backend and RHI value.",
-    "details": "Stores depth in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITiledTextureRegion"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhipackedmipdesc-mstandardmipcount-7d8ec6fc",
-    "name": "mStandardMipCount",
-    "qualifiedName": "arda::rhi::FArdaRHIPackedMipDesc::mStandardMipCount",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mStandardMipCount = 0",
-    "summary": "Stores standard mip count in this public backend and RHI value.",
-    "details": "Stores standard mip count in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIPackedMipDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhipackedmipdesc-mpackedmipcount-f86fb681",
-    "name": "mPackedMipCount",
-    "qualifiedName": "arda::rhi::FArdaRHIPackedMipDesc::mPackedMipCount",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mPackedMipCount = 0",
-    "summary": "Stores packed mip count in this public backend and RHI value.",
-    "details": "Stores packed mip count in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIPackedMipDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhipackedmipdesc-mpackedmiptilecount-e9ef3281",
-    "name": "mPackedMipTileCount",
-    "qualifiedName": "arda::rhi::FArdaRHIPackedMipDesc::mPackedMipTileCount",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mPackedMipTileCount = 0",
-    "summary": "Stores packed mip tile count in this public backend and RHI value.",
-    "details": "Stores packed mip tile count in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIPackedMipDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhipackedmipdesc-mstarttileindex-c76369a8",
-    "name": "mStartTileIndex",
-    "qualifiedName": "arda::rhi::FArdaRHIPackedMipDesc::mStartTileIndex",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mStartTileIndex = 0",
-    "summary": "Stores start tile index in this public backend and RHI value.",
-    "details": "Stores start tile index in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIPackedMipDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitileshape-mwidthintexels-491b7039",
-    "name": "mWidthInTexels",
-    "qualifiedName": "arda::rhi::FArdaRHITileShape::mWidthInTexels",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mWidthInTexels = 0",
-    "summary": "Stores width in texels in this public backend and RHI value.",
-    "details": "Stores width in texels in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITileShape"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitileshape-mheightintexels-98352106",
-    "name": "mHeightInTexels",
-    "qualifiedName": "arda::rhi::FArdaRHITileShape::mHeightInTexels",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mHeightInTexels = 0",
-    "summary": "Stores height in texels in this public backend and RHI value.",
-    "details": "Stores height in texels in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITileShape"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhitileshape-mdepthintexels-044be629",
-    "name": "mDepthInTexels",
-    "qualifiedName": "arda::rhi::FArdaRHITileShape::mDepthInTexels",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mDepthInTexels = 0",
-    "summary": "Stores depth in texels in this public backend and RHI value.",
-    "details": "Stores depth in texels in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHITileShape"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisubresourcetiling-mwidthintiles-568503ca",
-    "name": "mWidthInTiles",
-    "qualifiedName": "arda::rhi::FArdaRHISubresourceTiling::mWidthInTiles",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mWidthInTiles = 0",
-    "summary": "Stores width in tiles in this public backend and RHI value.",
-    "details": "Stores width in tiles in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISubresourceTiling"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisubresourcetiling-mheightintiles-14c97308",
-    "name": "mHeightInTiles",
-    "qualifiedName": "arda::rhi::FArdaRHISubresourceTiling::mHeightInTiles",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mHeightInTiles = 0",
-    "summary": "Stores height in tiles in this public backend and RHI value.",
-    "details": "Stores height in tiles in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISubresourceTiling"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisubresourcetiling-mdepthintiles-15581c79",
-    "name": "mDepthInTiles",
-    "qualifiedName": "arda::rhi::FArdaRHISubresourceTiling::mDepthInTiles",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mDepthInTiles = 0",
-    "summary": "Stores depth in tiles in this public backend and RHI value.",
-    "details": "Stores depth in tiles in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISubresourceTiling"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisubresourcetiling-mstarttileindex-c0afa1a5",
-    "name": "mStartTileIndex",
-    "qualifiedName": "arda::rhi::FArdaRHISubresourceTiling::mStartTileIndex",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mStartTileIndex = 0",
-    "summary": "Stores start tile index in this public backend and RHI value.",
-    "details": "Stores start tile index in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISubresourceTiling"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisamplerdesc-mbordercolor-0544b0b4",
-    "name": "mBorderColor",
-    "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::mBorderColor",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHIColor mBorderColor{ 1.f, 1.f, 1.f, 1.f }",
-    "summary": "Stores border color in this public backend and RHI value.",
-    "details": "Stores border color in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisamplerdesc-mmaxanisotropy-e07ae15d",
-    "name": "mMaxAnisotropy",
-    "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::mMaxAnisotropy",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mMaxAnisotropy = 1.f",
-    "summary": "Stores max anisotropy in this public backend and RHI value.",
-    "details": "Stores max anisotropy in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisamplerdesc-mmipbias-6793abb7",
-    "name": "mMipBias",
-    "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::mMipBias",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mMipBias = 0.f",
-    "summary": "Stores mip bias in this public backend and RHI value.",
-    "details": "Stores mip bias in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisamplerdesc-mbminfilter-3466817d",
-    "name": "mbMinFilter",
-    "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::mbMinFilter",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbMinFilter = true",
-    "summary": "Stores min filter in this public backend and RHI value.",
-    "details": "Stores min filter in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisamplerdesc-mbmagfilter-d6e649d5",
-    "name": "mbMagFilter",
-    "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::mbMagFilter",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbMagFilter = true",
-    "summary": "Stores mag filter in this public backend and RHI value.",
-    "details": "Stores mag filter in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisamplerdesc-mbmipfilter-b0e006ce",
-    "name": "mbMipFilter",
-    "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::mbMipFilter",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbMipFilter = true",
-    "summary": "Stores mip filter in this public backend and RHI value.",
-    "details": "Stores mip filter in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisamplerdesc-maddressu-b6442781",
-    "name": "mAddressU",
-    "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::mAddressU",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHISamplerAddressMode mAddressU = EArdaRHISamplerAddressMode::Clamp",
-    "summary": "Stores address u in this public backend and RHI value.",
-    "details": "Stores address u in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisamplerdesc-maddressv-044f301f",
-    "name": "mAddressV",
-    "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::mAddressV",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHISamplerAddressMode mAddressV = EArdaRHISamplerAddressMode::Clamp",
-    "summary": "Stores address v in this public backend and RHI value.",
-    "details": "Stores address v in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisamplerdesc-maddressw-e77cc248",
-    "name": "mAddressW",
-    "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::mAddressW",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHISamplerAddressMode mAddressW = EArdaRHISamplerAddressMode::Clamp",
-    "summary": "Stores address w in this public backend and RHI value.",
-    "details": "Stores address w in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisamplerdesc-mreduction-d0f3d312",
-    "name": "mReduction",
-    "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::mReduction",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHISamplerReduction mReduction = EArdaRHISamplerReduction::Standard",
-    "summary": "Stores reduction in this public backend and RHI value.",
-    "details": "Stores reduction in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhisamplerdesc-mdebugname-f8341d03",
-    "name": "mDebugName",
-    "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::mDebugName",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::string mDebugName",
-    "summary": "Stores debug name in this public backend and RHI value.",
-    "details": "Stores debug name in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhisamplerdesc-operator-5ce8f945",
     "name": "operator==",
     "qualifiedName": "arda::rhi::FArdaRHISamplerDesc::operator==",
@@ -47676,246 +46286,6 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::FArdaRHISamplerDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhishaderdesc-mstage-47e7005a",
-    "name": "mStage",
-    "qualifiedName": "arda::rhi::FArdaRHIShaderDesc::mStage",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIShaderStage mStage = EArdaRHIShaderStage::None",
-    "summary": "Stores stage in this public backend and RHI value.",
-    "details": "Stores stage in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIShaderDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhishaderdesc-mbytecode-44d27e76",
-    "name": "mBytecode",
-    "qualifiedName": "arda::rhi::FArdaRHIShaderDesc::mBytecode",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "const void* mBytecode = nullptr",
-    "summary": "Stores bytecode in this public backend and RHI value.",
-    "details": "Stores bytecode in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIShaderDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhishaderdesc-mbytecodesize-a7e1c20f",
-    "name": "mBytecodeSize",
-    "qualifiedName": "arda::rhi::FArdaRHIShaderDesc::mBytecodeSize",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "size_t mBytecodeSize = 0",
-    "summary": "Stores bytecode size in this public backend and RHI value.",
-    "details": "Stores bytecode size in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIShaderDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhishaderdesc-mentrypoint-bf162c3e",
-    "name": "mEntryPoint",
-    "qualifiedName": "arda::rhi::FArdaRHIShaderDesc::mEntryPoint",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::string mEntryPoint = \"main\"",
-    "summary": "Stores entry point in this public backend and RHI value.",
-    "details": "Stores entry point in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIShaderDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhishaderdesc-mdebugname-f405b8d1",
-    "name": "mDebugName",
-    "qualifiedName": "arda::rhi::FArdaRHIShaderDesc::mDebugName",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::string mDebugName",
-    "summary": "Stores debug name in this public backend and RHI value.",
-    "details": "Stores debug name in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIShaderDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhivertexattributedesc-msemanticname-625820db",
-    "name": "mSemanticName",
-    "qualifiedName": "arda::rhi::FArdaRHIVertexAttributeDesc::mSemanticName",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::string mSemanticName",
-    "summary": "Stores semantic name in this public backend and RHI value.",
-    "details": "Stores semantic name in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIVertexAttributeDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhivertexattributedesc-mformat-73caf9dc",
-    "name": "mFormat",
-    "qualifiedName": "arda::rhi::FArdaRHIVertexAttributeDesc::mFormat",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown",
-    "summary": "Stores format in this public backend and RHI value.",
-    "details": "Stores format in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIVertexAttributeDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhivertexattributedesc-marraysize-d5eda41a",
-    "name": "mArraySize",
-    "qualifiedName": "arda::rhi::FArdaRHIVertexAttributeDesc::mArraySize",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mArraySize = 1",
-    "summary": "Stores array size in this public backend and RHI value.",
-    "details": "Stores array size in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIVertexAttributeDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhivertexattributedesc-mbufferindex-0e8ae0a1",
-    "name": "mBufferIndex",
-    "qualifiedName": "arda::rhi::FArdaRHIVertexAttributeDesc::mBufferIndex",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mBufferIndex = 0",
-    "summary": "Stores buffer index in this public backend and RHI value.",
-    "details": "Stores buffer index in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIVertexAttributeDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhivertexattributedesc-moffset-76bf54b1",
-    "name": "mOffset",
-    "qualifiedName": "arda::rhi::FArdaRHIVertexAttributeDesc::mOffset",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mOffset = 0",
-    "summary": "Stores offset in this public backend and RHI value.",
-    "details": "Stores offset in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIVertexAttributeDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhivertexattributedesc-melementstride-7a5830eb",
-    "name": "mElementStride",
-    "qualifiedName": "arda::rhi::FArdaRHIVertexAttributeDesc::mElementStride",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mElementStride = 0",
-    "summary": "Stores element stride in this public backend and RHI value.",
-    "details": "Stores element stride in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIVertexAttributeDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhivertexattributedesc-mbinstanced-8b88ad71",
-    "name": "mbInstanced",
-    "qualifiedName": "arda::rhi::FArdaRHIVertexAttributeDesc::mbInstanced",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbInstanced = false",
-    "summary": "Stores instanced in this public backend and RHI value.",
-    "details": "Stores instanced in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIVertexAttributeDesc"
     ]
   },
   {
@@ -47939,66 +46309,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhibindinglayoutitem-mslot-7e28a28f",
-    "name": "mSlot",
-    "qualifiedName": "arda::rhi::FArdaRHIBindingLayoutItem::mSlot",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mSlot = 0",
-    "summary": "Stores slot in this public backend and RHI value.",
-    "details": "Stores slot in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBindingLayoutItem"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibindinglayoutitem-marraysize-0c91fc9c",
-    "name": "mArraySize",
-    "qualifiedName": "arda::rhi::FArdaRHIBindingLayoutItem::mArraySize",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mArraySize = 1",
-    "summary": "Stores array size in this public backend and RHI value.",
-    "details": "Stores array size in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBindingLayoutItem"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibindinglayoutitem-mtype-d1f7279b",
-    "name": "mType",
-    "qualifiedName": "arda::rhi::FArdaRHIBindingLayoutItem::mType",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIBindingType mType = EArdaRHIBindingType::TextureSRV",
-    "summary": "Stores type in this public backend and RHI value.",
-    "details": "Stores type in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBindingLayoutItem"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhibindinglayoutitem-operator-b6133e45",
     "name": "operator==",
     "qualifiedName": "arda::rhi::FArdaRHIBindingLayoutItem::operator==",
@@ -48016,106 +46326,6 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::FArdaRHIBindingLayoutItem"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibindinglayoutdesc-mvisibility-f3c06b36",
-    "name": "mVisibility",
-    "qualifiedName": "arda::rhi::FArdaRHIBindingLayoutDesc::mVisibility",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIShaderStage mVisibility = EArdaRHIShaderStage::None",
-    "summary": "Stores visibility in this public backend and RHI value.",
-    "details": "Stores visibility in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBindingLayoutDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibindinglayoutdesc-mregisterspace-c04224ec",
-    "name": "mRegisterSpace",
-    "qualifiedName": "arda::rhi::FArdaRHIBindingLayoutDesc::mRegisterSpace",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mRegisterSpace = 0",
-    "summary": "Stores register space in this public backend and RHI value.",
-    "details": "Stores register space in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBindingLayoutDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibindinglayoutdesc-mbregisterspaceisdescriptorset-d9a0d7ba",
-    "name": "mbRegisterSpaceIsDescriptorSet",
-    "qualifiedName": "arda::rhi::FArdaRHIBindingLayoutDesc::mbRegisterSpaceIsDescriptorSet",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbRegisterSpaceIsDescriptorSet = false",
-    "summary": "Stores register space is descriptor set in this public backend and RHI value.",
-    "details": "Stores register space is descriptor set in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBindingLayoutDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibindinglayoutdesc-mitems-6f8f0aa6",
-    "name": "mItems",
-    "qualifiedName": "arda::rhi::FArdaRHIBindingLayoutDesc::mItems",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::vector<FArdaRHIBindingLayoutItem> mItems",
-    "summary": "Stores items in this public backend and RHI value.",
-    "details": "Stores items in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBindingLayoutDesc"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhibindinglayoutdesc-mdebugname-8d8621f2",
-    "name": "mDebugName",
-    "qualifiedName": "arda::rhi::FArdaRHIBindingLayoutDesc::mDebugName",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "eastl::string mDebugName",
-    "summary": "Stores debug name in this public backend and RHI value.",
-    "details": "Stores debug name in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBindingLayoutDesc"
     ]
   },
   {
@@ -48139,166 +46349,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhiframebufferattachment-msubresources-f4e43e5a",
-    "name": "mSubresources",
-    "qualifiedName": "arda::rhi::FArdaRHIFramebufferAttachment::mSubresources",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHITextureSubresourceRange mSubresources",
-    "summary": "Stores subresources in this public backend and RHI value.",
-    "details": "Stores subresources in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFramebufferAttachment"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiframebufferattachment-mformat-9c597d75",
-    "name": "mFormat",
-    "qualifiedName": "arda::rhi::FArdaRHIFramebufferAttachment::mFormat",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown",
-    "summary": "Stores format in this public backend and RHI value.",
-    "details": "Stores format in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFramebufferAttachment"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiframebufferattachment-mbreadonly-8256c184",
-    "name": "mbReadOnly",
-    "qualifiedName": "arda::rhi::FArdaRHIFramebufferAttachment::mbReadOnly",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbReadOnly = false",
-    "summary": "Stores read only in this public backend and RHI value.",
-    "details": "Stores read only in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFramebufferAttachment"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhirasterstate-mfillmode-d3d65034",
-    "name": "mFillMode",
-    "qualifiedName": "arda::rhi::FArdaRHIRasterState::mFillMode",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIFillMode mFillMode = EArdaRHIFillMode::Solid",
-    "summary": "Stores fill mode in this public backend and RHI value.",
-    "details": "Stores fill mode in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRasterState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhirasterstate-mcullmode-222c1ed4",
-    "name": "mCullMode",
-    "qualifiedName": "arda::rhi::FArdaRHIRasterState::mCullMode",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHICullMode mCullMode = EArdaRHICullMode::Back",
-    "summary": "Stores cull mode in this public backend and RHI value.",
-    "details": "Stores cull mode in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRasterState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhirasterstate-mbfrontcounterclockwise-49ab4e32",
-    "name": "mbFrontCounterClockwise",
-    "qualifiedName": "arda::rhi::FArdaRHIRasterState::mbFrontCounterClockwise",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbFrontCounterClockwise = false",
-    "summary": "Stores front counter clockwise in this public backend and RHI value.",
-    "details": "Stores front counter clockwise in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRasterState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhirasterstate-mbdepthclip-54ba02f3",
-    "name": "mbDepthClip",
-    "qualifiedName": "arda::rhi::FArdaRHIRasterState::mbDepthClip",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbDepthClip = true",
-    "summary": "Stores depth clip in this public backend and RHI value.",
-    "details": "Stores depth clip in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRasterState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhirasterstate-mbscissor-17fcf06d",
-    "name": "mbScissor",
-    "qualifiedName": "arda::rhi::FArdaRHIRasterState::mbScissor",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbScissor = false",
-    "summary": "Stores scissor in this public backend and RHI value.",
-    "details": "Stores scissor in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRasterState"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhirasterstate-operator-478c3875",
     "name": "operator==",
     "qualifiedName": "arda::rhi::FArdaRHIRasterState::operator==",
@@ -48316,66 +46366,6 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::FArdaRHIRasterState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidepthstencilstate-mbdepthtest-cd38bbb0",
-    "name": "mbDepthTest",
-    "qualifiedName": "arda::rhi::FArdaRHIDepthStencilState::mbDepthTest",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbDepthTest = true",
-    "summary": "Stores depth test in this public backend and RHI value.",
-    "details": "Stores depth test in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDepthStencilState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidepthstencilstate-mbdepthwrite-49d649ad",
-    "name": "mbDepthWrite",
-    "qualifiedName": "arda::rhi::FArdaRHIDepthStencilState::mbDepthWrite",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbDepthWrite = true",
-    "summary": "Stores depth write in this public backend and RHI value.",
-    "details": "Stores depth write in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDepthStencilState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidepthstencilstate-mdepthfunc-664680ca",
-    "name": "mDepthFunc",
-    "qualifiedName": "arda::rhi::FArdaRHIDepthStencilState::mDepthFunc",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIComparisonFunc mDepthFunc = EArdaRHIComparisonFunc::Less",
-    "summary": "Stores depth func in this public backend and RHI value.",
-    "details": "Stores depth func in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDepthStencilState"
     ]
   },
   {
@@ -48399,106 +46389,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhiblendtargetstate-mbenable-bc321d52",
-    "name": "mbEnable",
-    "qualifiedName": "arda::rhi::FArdaRHIBlendTargetState::mbEnable",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbEnable = false",
-    "summary": "Stores enable in this public backend and RHI value.",
-    "details": "Stores enable in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBlendTargetState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiblendtargetstate-msourcecolor-72fdc8ae",
-    "name": "mSourceColor",
-    "qualifiedName": "arda::rhi::FArdaRHIBlendTargetState::mSourceColor",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIBlendFactor mSourceColor = EArdaRHIBlendFactor::One",
-    "summary": "Stores source color in this public backend and RHI value.",
-    "details": "Stores source color in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBlendTargetState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiblendtargetstate-mdestinationcolor-c1279b85",
-    "name": "mDestinationColor",
-    "qualifiedName": "arda::rhi::FArdaRHIBlendTargetState::mDestinationColor",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIBlendFactor mDestinationColor = EArdaRHIBlendFactor::Zero",
-    "summary": "Stores destination color in this public backend and RHI value.",
-    "details": "Stores destination color in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBlendTargetState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiblendtargetstate-msourcealpha-bb3bfb03",
-    "name": "mSourceAlpha",
-    "qualifiedName": "arda::rhi::FArdaRHIBlendTargetState::mSourceAlpha",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIBlendFactor mSourceAlpha = EArdaRHIBlendFactor::One",
-    "summary": "Stores source alpha in this public backend and RHI value.",
-    "details": "Stores source alpha in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBlendTargetState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiblendtargetstate-mdestinationalpha-4605ab82",
-    "name": "mDestinationAlpha",
-    "qualifiedName": "arda::rhi::FArdaRHIBlendTargetState::mDestinationAlpha",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "EArdaRHIBlendFactor mDestinationAlpha = EArdaRHIBlendFactor::Zero",
-    "summary": "Stores destination alpha in this public backend and RHI value.",
-    "details": "Stores destination alpha in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBlendTargetState"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhiblendtargetstate-operator-71c3520e",
     "name": "operator==",
     "qualifiedName": "arda::rhi::FArdaRHIBlendTargetState::operator==",
@@ -48519,46 +46409,6 @@ window.ArdaBackendApi = {
     ]
   },
   {
-    "id": "api-arda-rhi-fardarhiblendstate-mtargets-4cf60dfd",
-    "name": "mTargets",
-    "qualifiedName": "arda::rhi::FArdaRHIBlendState::mTargets",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "FArdaRHIBlendTargetState mTargets[ArdaRHIMaxRenderTargets]{}",
-    "summary": "Stores targets in this public backend and RHI value.",
-    "details": "Stores targets in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBlendState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiblendstate-mbalphatocoverage-ba6324ab",
-    "name": "mbAlphaToCoverage",
-    "qualifiedName": "arda::rhi::FArdaRHIBlendState::mbAlphaToCoverage",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbAlphaToCoverage = false",
-    "summary": "Stores alpha to coverage in this public backend and RHI value.",
-    "details": "Stores alpha to coverage in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIBlendState"
-    ]
-  },
-  {
     "id": "api-arda-rhi-fardarhiblendstate-operator-1ae5b57d",
     "name": "operator==",
     "qualifiedName": "arda::rhi::FArdaRHIBlendState::operator==",
@@ -48576,366 +46426,6 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::FArdaRHIBlendState"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiviewport-mminx-ef982336",
-    "name": "mMinX",
-    "qualifiedName": "arda::rhi::FArdaRHIViewport::mMinX",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mMinX = 0.f",
-    "summary": "Stores min x in this public backend and RHI value.",
-    "details": "Stores min x in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIViewport"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiviewport-mmaxx-e163ab36",
-    "name": "mMaxX",
-    "qualifiedName": "arda::rhi::FArdaRHIViewport::mMaxX",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mMaxX = 0.f",
-    "summary": "Stores max x in this public backend and RHI value.",
-    "details": "Stores max x in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIViewport"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiviewport-mminy-db844d7a",
-    "name": "mMinY",
-    "qualifiedName": "arda::rhi::FArdaRHIViewport::mMinY",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mMinY = 0.f",
-    "summary": "Stores min y in this public backend and RHI value.",
-    "details": "Stores min y in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIViewport"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiviewport-mmaxy-2327d124",
-    "name": "mMaxY",
-    "qualifiedName": "arda::rhi::FArdaRHIViewport::mMaxY",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mMaxY = 0.f",
-    "summary": "Stores max y in this public backend and RHI value.",
-    "details": "Stores max y in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIViewport"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiviewport-mminz-5e903e29",
-    "name": "mMinZ",
-    "qualifiedName": "arda::rhi::FArdaRHIViewport::mMinZ",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mMinZ = 0.f",
-    "summary": "Stores min z in this public backend and RHI value.",
-    "details": "Stores min z in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIViewport"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiviewport-mmaxz-5fa01c00",
-    "name": "mMaxZ",
-    "qualifiedName": "arda::rhi::FArdaRHIViewport::mMaxZ",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "float mMaxZ = 1.f",
-    "summary": "Stores max z in this public backend and RHI value.",
-    "details": "Stores max z in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIViewport"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhirect-mminx-3096969a",
-    "name": "mMinX",
-    "qualifiedName": "arda::rhi::FArdaRHIRect::mMinX",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "int32_t mMinX = 0",
-    "summary": "Stores min x in this public backend and RHI value.",
-    "details": "Stores min x in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRect"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhirect-mmaxx-d5c0cde3",
-    "name": "mMaxX",
-    "qualifiedName": "arda::rhi::FArdaRHIRect::mMaxX",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "int32_t mMaxX = 0",
-    "summary": "Stores max x in this public backend and RHI value.",
-    "details": "Stores max x in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRect"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhirect-mminy-9fe08a83",
-    "name": "mMinY",
-    "qualifiedName": "arda::rhi::FArdaRHIRect::mMinY",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "int32_t mMinY = 0",
-    "summary": "Stores min y in this public backend and RHI value.",
-    "details": "Stores min y in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRect"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhirect-mmaxy-4c87bbf6",
-    "name": "mMaxY",
-    "qualifiedName": "arda::rhi::FArdaRHIRect::mMaxY",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "int32_t mMaxY = 0",
-    "summary": "Stores max y in this public backend and RHI value.",
-    "details": "Stores max y in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIRect"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidrawarguments-mvertexcount-93002634",
-    "name": "mVertexCount",
-    "qualifiedName": "arda::rhi::FArdaRHIDrawArguments::mVertexCount",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mVertexCount = 0",
-    "summary": "Stores vertex count in this public backend and RHI value.",
-    "details": "Stores vertex count in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDrawArguments"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidrawarguments-minstancecount-22b5c304",
-    "name": "mInstanceCount",
-    "qualifiedName": "arda::rhi::FArdaRHIDrawArguments::mInstanceCount",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mInstanceCount = 1",
-    "summary": "Stores instance count in this public backend and RHI value.",
-    "details": "Stores instance count in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDrawArguments"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidrawarguments-mstartindex-bbe9276f",
-    "name": "mStartIndex",
-    "qualifiedName": "arda::rhi::FArdaRHIDrawArguments::mStartIndex",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mStartIndex = 0",
-    "summary": "Stores start index in this public backend and RHI value.",
-    "details": "Stores start index in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDrawArguments"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidrawarguments-mstartvertex-44235d5b",
-    "name": "mStartVertex",
-    "qualifiedName": "arda::rhi::FArdaRHIDrawArguments::mStartVertex",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mStartVertex = 0",
-    "summary": "Stores start vertex in this public backend and RHI value.",
-    "details": "Stores start vertex in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDrawArguments"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhidrawarguments-mstartinstance-2c1dbc6c",
-    "name": "mStartInstance",
-    "qualifiedName": "arda::rhi::FArdaRHIDrawArguments::mStartInstance",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint32_t mStartInstance = 0",
-    "summary": "Stores start instance in this public backend and RHI value.",
-    "details": "Stores start instance in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIDrawArguments"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiformatinfo-mbdepth-8a700aa5",
-    "name": "mbDepth",
-    "qualifiedName": "arda::rhi::FArdaRHIFormatInfo::mbDepth",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbDepth = false",
-    "summary": "Stores depth in this public backend and RHI value.",
-    "details": "Stores depth in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFormatInfo"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiformatinfo-mbstencil-91556a9f",
-    "name": "mbStencil",
-    "qualifiedName": "arda::rhi::FArdaRHIFormatInfo::mbStencil",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbStencil = false",
-    "summary": "Stores stencil in this public backend and RHI value.",
-    "details": "Stores stencil in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFormatInfo"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhiformatinfo-mbinteger-58090c46",
-    "name": "mbInteger",
-    "qualifiedName": "arda::rhi::FArdaRHIFormatInfo::mbInteger",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "bool mbInteger = false",
-    "summary": "Stores integer in this public backend and RHI value.",
-    "details": "Stores integer in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIFormatInfo"
     ]
   },
   {
@@ -48996,46 +46486,6 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::rhi::FArdaRHIFormatInfo"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhimemoryrequirements-msize-5bb54c40",
-    "name": "mSize",
-    "qualifiedName": "arda::rhi::FArdaRHIMemoryRequirements::mSize",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint64_t mSize = 0",
-    "summary": "Stores size in this public backend and RHI value.",
-    "details": "Stores size in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIMemoryRequirements"
-    ]
-  },
-  {
-    "id": "api-arda-rhi-fardarhimemoryrequirements-malignment-5a8433ee",
-    "name": "mAlignment",
-    "qualifiedName": "arda::rhi::FArdaRHIMemoryRequirements::mAlignment",
-    "kind": "member variable",
-    "component": "rhi-types",
-    "page": "api-reference.html",
-    "signature": "uint64_t mAlignment = 0",
-    "summary": "Stores alignment in this public backend and RHI value.",
-    "details": "Stores alignment in this public backend and RHI value. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::rhi::FArdaRHIMemoryRequirements"
     ]
   },
   {
@@ -49142,3 +46592,18 @@ window.ArdaBackendApi = {
   window.ArdaBackendApi.symbols.push(...generatedSymbols);
 })();
 /* END GENERATED BACKEND PROVIDER API */
+
+/* Behavioral contracts for the native conformance additions. */
+(() => {
+  const contracts = {
+    "arda::rhi::FArdaRHIBindlessLayoutDesc::mbDescriptorBuffer": "Selects VK_EXT_descriptor_buffer storage. Query mDescriptors.mbDescriptorBuffer first. Every pipeline layout must select this mode, register spaces must be distinct, and native sampler/resource binding limits apply. Mutually exclusive with mbDirectHeapIndexing; unsupported providers reject the request.",
+    "arda::rhi::IArdaRHIResourceCollection::GetDescriptorTable": "Returns an owning reference to the collection's existing descriptor table, or an empty reference for a host-only collection. Bind it through the ordinary pipeline-state mBindings array with the matching collection layout. UpdateResourceCollection updates this same table; recorded commands retain the version captured when their state was set. Retrieval is internally synchronized.",
+    "arda::rhi::IArdaRHIBindingLayout::GetBindlessDesc": "Returns a borrowed pointer to immutable bindless-layout semantics, valid for the layout lifetime; fixed layouts return null. Pipeline cache keys use these semantics to distinguish native descriptor ABIs.",
+    "arda::rhi::FArdaRHIStagingTextureMapping::mDepthPitch": "Byte distance between depth slices of the mapped mip, including native row and format-block padding. Address a texel using mData + z*mDepthPitch + y*mRowPitch plus its byte offset within the row. Valid only while the staging texture is mapped.",
+    "arda::rhi::FArdaRHIShaderTableRecordDesc::mBindings": "Optional local binding set or descriptor table. Its layout must match the export's local layout and resources must belong to the same device. Vulkan local descriptors require VK_EXT_descriptor_heap and direct-heap layouts; classic global sets cannot be mixed with local heap descriptors. The captured native table version retains its resources.",
+    "arda::rhi::FArdaRHIShaderTableRecordDesc::mLocalArguments": "Application local argument bytes validated against mMaxLocalArgumentBytes. With Vulkan local descriptor bindings, Arda prefixes these bytes with a 32-bit table base index; without local descriptor bindings there is no prefix. Explicit shader-record declarations combining bindings and arguments must account for the prefix. D3D12 places local descriptor handles before application arguments. Native shader identifiers are separate from these application bytes."
+  };
+  for (const symbol of window.ArdaBackendApi.symbols) {
+    if (contracts[symbol.qualifiedName]) symbol.details = contracts[symbol.qualifiedName];
+  }
+})();

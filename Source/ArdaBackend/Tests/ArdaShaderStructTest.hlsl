@@ -1,5 +1,14 @@
 RWStructuredBuffer<uint> Output : register(u0);
 
+ByteAddressBuffer CollectionInputs[2] : register(t0);
+RWStructuredBuffer<uint> CollectionOutput : register(u0, space1);
+
+[numthreads(1, 1, 1)]
+void ResourceCollectionCS(uint3 Thread : SV_DispatchThreadID)
+{
+    CollectionOutput[Thread.x] = CollectionInputs[Thread.x].Load(0);
+}
+
 [numthreads(1, 1, 1)]
 void ShaderStructTestCS(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -84,6 +93,13 @@ void MeshPipelineTestMS(
 float4 MeshPipelineTestPS() : SV_Target
 {
     return float4(0.0, 1.0, 0.0, 1.0);
+}
+
+StructuredBuffer<float4> MeshTableColors : register(t0);
+
+float4 MeshTablePS() : SV_Target
+{
+    return MeshTableColors[0];
 }
 
 cbuffer BindingSpaceConstants : register(b0)

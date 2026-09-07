@@ -83,7 +83,7 @@
             <li>Choose among texture, buffer, acceleration-structure, uniform-buffer, and view records.</li>
             <li>State the ownership contracts for creation, external registration, and extraction.</li>
             <li>Declare required states and ranges without overstating current dependency precision.</li>
-            <li>Explain inclusive lifetimes, committed-resource reuse, and the current placed-aliasing limitation.</li>
+            <li>Explain inclusive lifetimes, committed-resource reuse, and synchronized placed-memory aliasing.</li>
           </ul>
         </section>
 
@@ -179,8 +179,8 @@
           <h2>Transient lifetime and current committed pooling</h2>
           <p>A live <a class="term" data-term="transient-resource" href="../glossary.html#term-transient-resource">transient resource</a> has an inclusive interval: the first and last execution-order indices that use it. Culling runs before intervals are rebuilt, so dead passes do not extend storage lifetime. External and extracted resources extend through the epilogue. Only graph-created, non-external, non-extracted textures and buffers marked <code>Transient</code> are reuse candidates.</p>
           <figure>
-            <img src="Assets/rdg-resource-materialization.svg" alt="Logical resource lifetimes feed an ideal transient layout analysis, but the current execution path uses exact-descriptor committed-resource pooling and repairs physical state after reuse.">
-            <figcaption>Current execution computes ideal virtual-heap metrics when supported but deliberately bypasses that layout and uses committed resources.</figcaption>
+            <img src="Assets/rdg-resource-materialization.svg" alt="Logical lifetimes select heap offsets; queue waits and aliasing barriers order reuse; unsupported allocations use committed pooling.">
+            <figcaption>The executor binds real heap placements and synchronizes overlapping reuse across GPU queues.</figcaption>
           </figure>
           <p>Committed reuse requires all of the following:</p>
           <ul>
@@ -189,7 +189,7 @@
             <li>all uses of each logical resource remain in the same queue domain;</li>
             <li>reuse occurs within this one execution-local pool.</li>
           </ul>
-          <p><strong>Current limitation:</strong> virtual resources may be probed and an ideal heap packing may be calculated, but the result is diagnostic only. Portable aliasing barriers and heap-compatibility queries are not yet available through the RHI surface, so placed-resource aliasing is not applied. Execution reports committed fallback and cannot claim virtual heaps or physical transient aliasing.</p>
+          <p>Live transient resources use explicit heaps when the device supports virtual resources, heaps, and aliasing barriers. The executor groups resources by kind and compatible memory types, packs inclusive lifetimes, and binds the selected offsets. Buffers and optimal textures use separate heaps. Before a range is reused, its new first-use pass waits for prior uses on other queues and emits an aliasing barrier. Unsupported candidates or failed heap groups fall back to committed resources independently.</p>
           <p>Because committed pooling can bind logical B to the object previously used by logical A, runtime transition rebuilding tracks actual physical identity. B starts from the state A left behind, not blindly from B’s descriptor initial state.</p>
         </section>
 
@@ -253,11 +253,13 @@ clear.BackBuffer = {
     [](FARDGPassExecutionContext&amp; context,
        const FClearOutputsParameters&amp; parameters)
     {
-        (void)context.mUnsafeRawCommandList.ClearTexture(
+        const auto status = context.mUnsafeRawCommandList.ClearTexture(
             *context.GetTexture(parameters.Lighting.mTexture),
             parameters.Lighting.mSubresources,
             {0.02f, 0.03f, 0.05f, 1.0f});
-        (void)context.mUnsafeRawCommandList.ClearTexture(
+        if (!status)
+            return status;
+        return context.mUnsafeRawCommandList.ClearTexture(
             *context.GetTexture(parameters.BackBuffer.mTexture),
             parameters.BackBuffer.mSubresources,
             {0.0f, 0.0f, 0.0f, 1.0f});
@@ -269,16 +271,19 @@ graph.QueueTextureExtraction(
     extractedLighting,
     rhi::EArdaRHIResourceState::ShaderResource);
 
-// Execute materializes Lighting, records transitions, submits, and only then
+// Successful Execute materializes Lighting, records transitions, submits, then
 // assigns extractedLighting. GPU completion still requires an RHI fence/query.
-const FARDGExecutionResult&amp; result = graph.Execute();</code></pre>
+const FARDGExecutionResult&amp; result = graph.Execute();
+if (!result.mStatus)
+    return FailAndRetire(result.mStatus);</code></pre>
+          <p><code>FailAndRetire</code> is the application completion/device-loss recovery boundary described in the <a href="execution.html#worked-example">execution example</a>; failed submission must not permit frame reuse while earlier work remains in flight.</p>
           <ol>
             <li><code>lighting</code> is initially logical only; its descriptor supplies the later allocation contract.</li>
             <li><code>backBuffer</code> already has physical storage and remains externally owned.</li>
             <li>The pass declares both writes before recording. Setup creates whole-resource hazard history while preserving the selected texture ranges for barriers.</li>
             <li>Extraction makes <code>lighting</code> an observable output, keeps <code>ClearOutputs</code> live, and prevents transient reuse.</li>
             <li>Execution materializes live records before the callback, rebuilds physical transitions, submits work, and publishes <code>extractedLighting</code>.</li>
-            <li>The returned execution result proves CPU submission, not GPU completion.</li>
+            <li>A successful execution status proves CPU submission, not GPU completion.</li>
           </ol>
         </section>
 
@@ -317,7 +322,7 @@ const FARDGExecutionResult&amp; result = graph.Execute();</code></pre>
             <dt>Whole-resource edges versus graph size</dt>
             <dd>Whole-resource hazard history is conservative and simple. It can over-order disjoint subresources; per-subresource edge discovery would improve concurrency at substantial bookkeeping cost.</dd>
             <dt>Committed pooling versus placed aliasing</dt>
-            <dd>Committed reuse is portable and state-repairable but retains full objects and only reuses exact descriptors. Placed aliasing could pack unlike resources more tightly, but requires portable compatibility and aliasing synchronization guarantees not currently exposed.</dd>
+            <dd>Committed reuse requires exact descriptors and one queue domain. Placed aliasing can share bytes between different descriptors within a compatible heap group. Cross-queue reuse saves memory at the cost of explicit waits; retained or extracted resources cannot donate their memory before graph exit.</dd>
             <dt>Extraction versus transience</dt>
             <dd>Extraction bridges graph output to later work, but extends lifetime through the epilogue and removes the resource from transient reuse.</dd>
           </dl>
@@ -333,16 +338,16 @@ const FARDGExecutionResult&amp; result = graph.Execute();</code></pre>
               <tr><td>External registration conflicts</td><td>The same physical identity was imported with different initial states.</td><td>Establish one truthful graph-entry state before registration.</td></tr>
               <tr><td>Extraction check or missing producer</td><td>Null/duplicate output, unknown final state, or a graph-created output was never written.</td><td>Use one durable output location, declare a final state, and produce the resource.</td></tr>
               <tr><td>Pass requests unavailable physical storage</td><td>The callback used an undeclared record, wrong view identity, wrong graph, or accessed outside its active context.</td><td>Declare it in parameters and resolve it through <code>FARDGPassExecutionContext</code>.</td></tr>
-              <tr><td>Expected transient reuse does not occur</td><td>Descriptors differ, lifetimes overlap, resource is external/extracted, or uses span queues.</td><td>Inspect compiled lifetimes and execution reuse counters; do not assume approximate descriptor matches.</td></tr>
+              <tr><td>Expected committed-object pool reuse does not occur</td><td>Descriptors differ, lifetimes overlap, resource is external/extracted, or uses span queues.</td><td>Inspect compiled lifetimes and committed-pool reuse counters. Placed aliasing has separate heap-compatibility and synchronization requirements.</td></tr>
               <tr><td>State corruption after pool reuse</td><td>Code bypassed graph transitions or assumed each logical descriptor’s initial state was the physical state.</td><td>Keep graph-owned transitions authoritative and avoid undeclared raw RHI access.</td></tr>
-              <tr><td>Memory remains higher than ideal heap estimate</td><td>The current implementation computes but does not apply placed-resource aliasing.</td><td>Treat ideal layout as diagnostic; budget for committed fallback.</td></tr>
+              <tr><td>Transient memory remains high</td><td>Lifetimes overlap, compatibility splits heaps, or some candidates require committed fallback.</td><td>Inspect allocated heap bytes and saved bytes; shorten lifetimes and compare extended-lifetime debug mode.</td></tr>
             </tbody>
           </table>
         </section>
 
         <section id="summary">
           <h2>Summary</h2>
-          <p>ArdaRenderGraph records logical identity, descriptors, ownership, states, and use intervals before physical storage exists. Created resources are materialized for live work; imports retain caller-owned RHI objects; extractions publish durable outputs after submission. Texture ranges drive subresource barriers, but dependency edges remain whole-resource and buffer state remains whole-buffer. Current transient optimization reuses exact committed resources within one execution and one queue domain; placed heap aliasing is explicitly not yet applied.</p>
+          <p>ArdaRenderGraph records logical identity, descriptors, ownership, states, and use intervals before physical storage exists. Created resources are materialized for live work; imports retain caller-owned RHI objects; extractions publish durable outputs after submission. Texture ranges drive subresource barriers, but dependency edges remain whole-resource and buffer state remains whole-buffer. Transient optimization places compatible resources in explicit heaps and synchronizes reused ranges. Committed fallback can reuse exact resource objects within one execution and one queue domain.</p>
         </section>
 
         <section id="checkpoints">

@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from glossary_html import synchronize_glossary_page
 
 
 EXTERNAL_SCHEMES = {
@@ -618,6 +619,13 @@ class Validator:
             glossary_ids: Set[str] = set()
         else:
             glossary_ids = glossary_page.ids
+            current = glossary_page.path.read_text(encoding="utf-8-sig")
+            try:
+                if current != synchronize_glossary_page(current, glossary):
+                    self.fail(glossary_page.path,
+                              "static glossary differs from glossary-data.js; run sync_api_inventories.py")
+            except (ValueError, KeyError, TypeError) as error:
+                self.fail(glossary_page.path, "cannot synchronize glossary: %s" % error)
         slugs = set(glossary)
         for slug, item in glossary.items():
             if not isinstance(item, dict):

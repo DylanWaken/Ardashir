@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Synchronize generated additions in the backend and RDG API inventories."""
+"""Synchronize backend/RDG API inventories and the static glossary."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Tuple
 
 from validate_docs import Validator
+from glossary_html import synchronize_glossary_page
 
 
 BACKEND_BEGIN = "/* BEGIN GENERATED BACKEND PROVIDER API */"
@@ -44,6 +45,7 @@ COMPLETE_BACKEND_SOURCES = {
     "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
@@ -60,7 +62,7 @@ CALLABLE_KINDS = {
 
 
 def normalized(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip()
+    return re.sub(r"\s+", " ", text).strip().rstrip(";")
 
 
 def humanize(name: str) -> str:
@@ -463,6 +465,13 @@ def main() -> int:
     parser.add_argument("--repo-root", type=Path)
     args = parser.parse_args()
     repo = (args.repo_root or Path(__file__).resolve().parents[3]).resolve()
+    glossary_path = repo / "Docs/glossary.html"
+    glossary_current = glossary_path.read_text(encoding="utf-8")
+    glossary = evaluate_api(
+        (repo / "Docs/assets/glossary-data.js").read_text(encoding="utf-8"),
+        "ArdaGlossary",
+    )
+    glossary_updated = synchronize_glossary_page(glossary_current, glossary)
     backend_path = repo / "Docs/assets/backend-api.js"
     backend_current = backend_path.read_text(encoding="utf-8-sig")
     backend_base = without_generated_block(
@@ -489,7 +498,9 @@ def main() -> int:
     rdg_base = without_generated_block(rdg_current, RDG_BEGIN, RDG_END)
     rdg_declarations = make_symbols(repo, rdg_specs(repo), "render-graph")
     rdg_symbols = select_missing(
-        rdg_declarations, evaluate_api(rdg_base, "ArdaRDGApi")
+        rdg_declarations, evaluate_api(rdg_base, "ArdaRDGApi"),
+        {"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+         "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h"},
     )
     rdg_block = generated_block(
         rdg_symbols, "ArdaRDGApi", RDG_BEGIN, RDG_END
@@ -499,6 +510,8 @@ def main() -> int:
     )
     if args.check:
         stale = []
+        if glossary_current != glossary_updated:
+            stale.append(glossary_path)
         if backend_current != backend_updated:
             stale.append(backend_path)
         if rdg_current != rdg_updated:
@@ -517,6 +530,7 @@ def main() -> int:
         return 0
     backend_path.write_text(backend_updated, encoding="utf-8", newline="\n")
     rdg_path.write_text(rdg_updated, encoding="utf-8", newline="\n")
+    glossary_path.write_text(glossary_updated, encoding="utf-8", newline="\n")
     print(
         f"Updated API inventories with {len(backend_symbols)} backend additions "
         f"and {len(rdg_symbols)} RDG additions."

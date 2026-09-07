@@ -1,4 +1,5 @@
 #include "ArdaRenderGraphPch.h"
+#include "ArdaRenderGraphState.h"
 
 #include "ArdaRenderGraphBuilderInternal.h"
 #include "ArdaRenderGraphCompiler.h"
@@ -31,24 +32,6 @@ namespace arda::render_graph
         [[nodiscard]] std::string ToStdString(const eastl::string& Value)
         {
             return std::string(Value.data(), Value.size());
-        }
-
-        /**
-         * Classifies a declared pass state during graph setup.
-         *
-         * Any contained write bit makes the whole declaration a write for
-         * dependency-history purposes; finer legality checks happen at compile time.
-         */
-        [[nodiscard]] bool IsWriteState(rhi::EArdaRHIResourceState State) noexcept
-        {
-            constexpr uint32_t WriteMask =
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::UnorderedAccess) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::RenderTarget) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::DepthWrite) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::CopyDest) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::ResolveDest) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::AccelStructWrite);
-            return (static_cast<uint32_t>(State) & WriteMask) != 0;
         }
 
         /** Identifies the shader register namespace used by a parameter binding. */
@@ -2323,7 +2306,7 @@ namespace arda::render_graph
     const FARDGExecutionResult*
     FARDGBuilder::GetLastExecutionResult() const noexcept
     {
-        return mImpl->mbExecuted ? &mImpl->mExecutionResult : nullptr;
+        return mImpl->mbExecutionStarted ? &mImpl->mExecutionResult : nullptr;
     }
 
     /** Reports whether all device-independent compiler stages completed successfully. */

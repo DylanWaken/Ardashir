@@ -774,7 +774,7 @@ select {
   scroll-margin-top: calc(var(--header-height) + 1rem);
 }
 
-.api-entry h3 {
+.api-entry :is(h3, h4, h5, h6) {
   overflow-wrap: anywhere;
 }
 
@@ -948,8 +948,8 @@ select {
     max-width: 100%;
   }
 
-  .site-layout :where(p, h1, h2, h3, h4, li, dt, dd, figcaption),
-  .page-layout :where(p, h1, h2, h3, h4, li, dt, dd, figcaption) {
+  .site-layout :where(p, h1, h2, h3, h4, h5, h6, li, dt, dd, figcaption),
+  .page-layout :where(p, h1, h2, h3, h4, h5, h6, li, dt, dd, figcaption) {
     max-width: 100%;
     overflow-wrap: anywhere;
   }

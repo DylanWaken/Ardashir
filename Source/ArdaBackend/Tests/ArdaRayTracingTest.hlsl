@@ -6,6 +6,21 @@ struct FKnownRayPayload
     uint Value;
 };
 
+#ifdef ARDA_LOCAL_RECORDS
+struct FArdaLocalRecord
+{
+    uint Value;
+};
+#ifdef __spirv__
+[[vk::shader_record_ext]] ConstantBuffer<FArdaLocalRecord> LocalRecord;
+#else
+ConstantBuffer<FArdaLocalRecord> LocalRecord : register(b0, space1);
+#endif
+#define ARDA_RECORD_VALUE(Expected) LocalRecord.Value
+#else
+#define ARDA_RECORD_VALUE(Expected) Expected
+#endif
+
 [shader("raygeneration")]
 void RayGen()
 {
@@ -15,7 +30,7 @@ void RayGen()
 [shader("miss")]
 void KnownMiss(inout FKnownRayPayload payload)
 {
-    payload.Value = 0xB055u;
+    payload.Value = 0xB055u ^ (ARDA_RECORD_VALUE(0x22222222u) ^ 0x22222222u);
 }
 
 [shader("closesthit")]
@@ -23,7 +38,7 @@ void KnownClosestHit(
     inout FKnownRayPayload payload,
     BuiltInTriangleIntersectionAttributes attributes)
 {
-    payload.Value = 0xC105E57u +
+    payload.Value = (0xC105E57u ^ (ARDA_RECORD_VALUE(0x33333333u) ^ 0x33333333u)) +
         (attributes.barycentrics.x >= 0.0 ? 0u : 1u);
 }
 
@@ -47,5 +62,5 @@ void KnownSceneRayGen()
         0,
         ray,
         payload);
-    RayOutput[index] = payload.Value;
+    RayOutput[index] = payload.Value ^ (ARDA_RECORD_VALUE(0x11111111u) ^ 0x11111111u);
 }

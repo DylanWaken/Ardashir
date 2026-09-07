@@ -49,7 +49,7 @@
         <header class="page-header">
           <p class="eyebrow">Materialize, record, submit</p>
           <h1>Execution and submission</h1>
-          <p><a class="term" data-term="arda-render-graph" href="../glossary.html#term-arda-render-graph">ArdaRenderGraph</a> execution turns a compiled logical schedule into physical resources and one <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command list</a> per live pass with work. Recording may finish out of order; submission never does.</p>
+          <p><a class="term" data-term="arda-render-graph" href="../glossary.html#term-arda-render-graph">ArdaRenderGraph</a> execution turns a compiled logical schedule into physical resources and one <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command list</a> per recording batch. Compatible raster callbacks can share a batch. Recording may finish out of order; submission never does.</p>
         </header>
 
         <nav class="toc" aria-label="On this page">
@@ -66,6 +66,7 @@
           <a href="#extraction">Extraction, GC, and completion</a>
           <a href="#telemetry">Execution telemetry</a>
           <a href="#terrain">ARDGExample terrain walkthrough</a>
+          <a href="#raster-and-failures">Raster batching and failure publication</a>
           <a href="#worked-example">Worked integration example</a>
           <a href="#failures">Failure analysis</a>
           <a href="#summary">Summary</a>
@@ -79,7 +80,7 @@
           <ul>
             <li>restate every execution stage from E0 through E10 in its actual order;</li>
             <li>distinguish logical creation, external import, physical materialization, and extraction;</li>
-            <li>explain why the ideal transient heap layout is computed but not consumed;</li>
+            <li>explain how transient heap placements become synchronized physical allocations;</li>
             <li>predict committed-resource reuse, runtime state correction, recording waves, and queue waits;</li>
             <li>interpret <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-55e456b3"><code>FARDGExecutionResult</code></a> without treating submission as completion; and</li>
             <li>apply the model to the ARDGExample terrain graph.</li>
@@ -93,7 +94,7 @@
           <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-execute-462d7837"><code>FARDGBuilder::Execute</code></a> is one-shot. It compiles if necessary, then materializes, records, and submits. A second call, execution after a sticky failure, or execution without a device is a fatal programming-contract violation.</p>
           <aside class="callout warning">
             <h3>CPU submission is not GPU completion</h3>
-            <p>A returned result proves that CPU compilation, recording, queue waits, and submissions were issued. It does not prove that any <a class="term" data-term="queue" href="../glossary.html#term-queue">queue</a> finished. No device-idle wait or <a class="term" data-term="fence" href="../glossary.html#term-fence">fence</a> poll occurs inside graph execution.</p>
+            <p>A successful result means the graph reached CPU submission. A failed result may contain zero submissions or a partially submitted graph; inspect its status and queue instances. It does not prove that any <a class="term" data-term="queue" href="../glossary.html#term-queue">queue</a> finished. Ordinary execution does not wait for whole-device completion. Explicit blocking readback nodes wait for the work needed by their CPU result.</p>
           </aside>
           <p>A failure guard becomes active once execution starts. It is disarmed only after all submissions and extraction publication succeed. An exception or interrupted stage makes the builder permanently failed so partially submitted work cannot masquerade as a reusable graph.</p>
         </section>
@@ -104,13 +105,13 @@
           <ol start="0">
             <li><strong>E0 — Guard and compile.</strong> Reject repeated, failed, or device-less execution; call <a href="api-reference.html#api-arda-rdg-fardgbuilder-compile-97614587"><code>Compile</code></a>; mark execution started; arm the sticky-failure guard.</li>
             <li><strong>E1 — Reset the report.</strong> Zero the builder-owned execution result and copy the selected immediate-mode bit into telemetry.</li>
-            <li><strong>E2 — Materialize resources.</strong> Evaluate transient heap requirements, retain imported handles, bind created textures and buffers from execution-local committed pools, create acceleration structures, and allocate dedicated uniform buffers.</li>
-            <li><strong>E3 — Correct physical transitions.</strong> Replay compiled transitions by physical identity so committed-resource reuse inherits the state actually left by the previous logical occupant; also plan supported first-write clobbers.</li>
+            <li><strong>E2 — Materialize resources.</strong> Place compatible transients into explicit heaps, use execution-local committed fallback where required, retain imported handles, create acceleration structures, and allocate dedicated uniform buffers.</li>
+            <li><strong>E3 — Correct physical transitions.</strong> Replay compiled transitions by physical identity so committed-resource reuse inherits the state actually left by the previous logical occupant; also plan aliasing dependencies, required placed-attachment initialization, and supported first-write clobbers.</li>
             <li><strong>E4 — Build recording levels.</strong> For each live pass, compute <code>level = max(producer level + 1)</code> across both data producers and synchronization producers.</li>
-            <li><strong>E5 — Record pass command lists.</strong> Process levels in ascending order. Eligible passes record concurrently in thread-capped batches; immediate-mode and <code>NeverParallel</code> work records serially. Each pass owns a distinct list.</li>
+            <li><strong>E5 — Record pass command lists.</strong> Process levels in ascending order. Eligible passes record concurrently in thread-capped batches; immediate-mode and <code>NeverParallel</code> work records serially. Eligible adjacent raster callbacks share a list; other passes own separate lists. Callback failures stop the graph before submission.</li>
             <li><strong>E6 — Upload uniforms.</strong> If uniform buffers exist, write all frozen bytes on one graphics command list, transition them to constant-buffer state, and submit that upload list.</li>
-            <li><strong>E7 — Submit passes deterministically.</strong> Walk compiled registration-based execution order, insert the first uniform-upload wait per non-graphics queue and each compiled cross-queue dependency wait, then submit each recorded list and retain its queue instance.</li>
-            <li><strong>E8 — Publish extractions.</strong> After all CPU submissions, assign requested physical texture and buffer references to caller-owned output locations.</li>
+            <li><strong>E7 — Submit passes deterministically.</strong> Walk compiled registration-based execution order, insert the first uniform-upload wait per non-graphics queue and the execution plan’s physical cross-queue waits, then submit each recorded list and retain its queue instance.</li>
+            <li><strong>E8 — Publish extractions.</strong> Only after all submissions succeed, assign requested physical texture, buffer, and acceleration-structure references to caller-owned output locations.</li>
             <li><strong>E9 — Run device garbage collection.</strong> Invoke the RHI collection boundary once; this schedules or performs backend-safe retirement but is not a GPU wait.</li>
             <li><strong>E10 — Commit success and telemetry.</strong> Mark the graph executed, disarm the guard, emit submitted-list, queue-wait, and clobber trace counters, then return the report.</li>
           </ol>
@@ -132,13 +133,13 @@
             <dd><a href="api-reference.html#api-arda-rdg-fardgbuilder-queuetextureextraction-920af16d"><code>QueueTextureExtraction</code></a> or <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuebufferextraction-2454eb04"><code>QueueBufferExtraction</code></a> keeps the resource live through the epilogue, requests a final state, and publishes its physical reference only at E8.</dd>
           </dl>
           <figure>
-            <img src="Assets/rdg-resource-materialization.svg" alt="Logical resources flow through ideal transient layout analysis to committed allocation, descriptor pool reuse, and physical-state correction.">
+            <img src="Assets/rdg-resource-materialization.svg" alt="Logical resources flow through compatible heap placement or committed fallback, followed by alias ordering and physical-state correction.">
             <figcaption>Materialization resolves physical identity before pass callbacks can request physical resources.</figcaption>
           </figure>
 
-          <h3>The ideal transient heap layout is currently unused</h3>
-          <p>If the device advertises virtual resources, E2 creates virtual probes, queries memory size and alignment, and packs non-overlapping transient lifetimes into an ideal layout. The current executor then discards that layout. The RHI does not yet provide portable heap-compatibility queries and aliasing barriers, so placed-resource aliasing would be unsafe on at least one supported backend.</p>
-          <p>Consequently, <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedvirtualheaps-498e5cb3"><code>mbUsedVirtualHeaps</code></a> and <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedtransientaliasing-531524ee"><code>mbUsedTransientAliasing</code></a> remain false on this path, while <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedtransientfallback-21a39c91"><code>mbUsedTransientFallback</code></a> reports committed fallback for transient candidates.</p>
+          <h3>Transient heap placement and queue ordering</h3>
+          <p>Live transient resources use explicit heaps when the device supports virtual resources, heaps, and aliasing barriers. The executor groups resources by kind and compatible memory types, packs inclusive lifetimes, and binds the selected offsets. Buffers and optimal textures use separate heaps. Before a range is reused, its new first-use pass waits for prior uses on other queues and emits an aliasing barrier. Unsupported candidates or failed heap groups fall back to committed resources independently.</p>
+          <p><a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedvirtualheaps-498e5cb3"><code>mbUsedVirtualHeaps</code></a> reports successful placement; <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedtransientaliasing-531524ee"><code>mbUsedTransientAliasing</code></a> means bytes were reused. <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedtransientfallback-21a39c91"><code>mbUsedTransientFallback</code></a> may also be true when some candidates fall back. Measure capacity with <a href="api-reference.html#api-arda-render-graph-fardgexecutionresult-mtransientheapbytes-ffae26c5"><code>mTransientHeapBytes</code></a> and savings with <a href="api-reference.html#api-arda-render-graph-fardgexecutionresult-mtransientaliasedbytes-f987e8d1"><code>mTransientAliasedBytes</code></a>. Placed color/depth attachments receive their required first-use initialization before drawing.</p>
 
           <h3>Committed descriptor-pool reuse</h3>
           <p>The execution-local texture and buffer pools can reuse a committed object when all of these conditions hold:</p>
@@ -163,7 +164,7 @@
 
         <section id="clobber">
           <h2>First-write clobbering</h2>
-          <p>When <code>mbClobberFirstWrites</code> is enabled, E3 tracks production separately from transition state. External resources begin produced; graph-created resources become produced at their first declared write. Texture production is per subresource, while buffer production is whole-resource.</p>
+          <p>When <code>mbClobberFirstWrites</code> is enabled, E3 tracks production separately from transition state. External resources begin produced; graph-created resources become produced at their first declared write. Debug clobber eligibility uses per-subresource texture bits and a whole-buffer first-write bit. This is separate from compile-time production validation, which rejects reads of unwritten buffer byte intervals.</p>
           <p>Immediately before a supported first write, E5 writes a conspicuous pattern:</p>
           <ul>
             <li>floating-point color textures: magenta <code>(1, 0, 1, 1)</code>;</li>
@@ -177,22 +178,22 @@
           <h2>Dependency-level parallel recording waves</h2>
           <p><a href="api-reference.html#api-arda-rdg-fardgexecuteoptions-94bea5d2"><code>FARDGExecuteOptions</code></a> controls CPU recording. <a href="api-reference.html#api-arda-rdg-fardgexecuteoptions-mbparallelrecording-5cb996d7"><code>mbParallelRecording</code></a> defaults true. <a href="api-reference.html#api-arda-rdg-fardgexecuteoptions-mmaxrecordingthreads-8afff500"><code>mMaxRecordingThreads</code></a> uses hardware concurrency when zero and otherwise clamps to at least one worker.</p>
           <p>Each pass level includes both data and explicit synchronization producers. Within one level, eligible passes are split into batches no larger than the thread cap and launched asynchronously. Every batch joins before the next batch, and every level completes before the next level. <a href="api-reference.html#api-arda-rdg-eardgpassflags-neverparallel-8aecc94b"><code>EARDGPassFlags::NeverParallel</code></a>, disabled parallel recording, and immediate mode place a pass on the serial list.</p>
-          <p>Each recorded pass owns a separate command list selected from its compiled graphics, compute, or copy pipeline. Recording workers write separate result slots and otherwise treat graph data as read-only. A pass callback should use <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-ead56b9c"><code>FARDGPassExecutionContext</code></a> so physical access remains declaration-checked.</p>
+          <p>Each recording job owns a command list selected from its graphics, compute, or copy pipeline. A job may contain several merged raster callbacks. Recording workers write separate result slots and otherwise treat graph data as read-only. A pass callback should use <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-ead56b9c"><code>FARDGPassExecutionContext</code></a> so physical access remains declaration-checked.</p>
           <aside class="callout warning">
             <h3>Parallel recording is not parallel submission</h3>
-            <p><a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedparallelrecording-dc898c24"><code>mbUsedParallelRecording</code></a> becomes true only when a batch actually contains more than one pass. It says nothing about GPU overlap.</p>
+            <p><a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedparallelrecording-dc898c24"><code>mbUsedParallelRecording</code></a> becomes true only when a batch actually contains more than one recording job. It says nothing about GPU overlap.</p>
           </aside>
         </section>
 
         <section id="uniforms">
           <h2>Uniform-buffer materialization and upload</h2>
           <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-createuniformbuffer-538b5a7e"><code>CreateUniformBuffer</code></a> freezes parameter bytes during graph construction. E2 creates dedicated physical buffers; unlike textures and ordinary buffers, these allocations do not use the committed reuse pools.</p>
-          <p>At E6, one graphics command list writes every frozen byte range, transitions each buffer to <code>ConstantBuffer</code>, closes, and submits. The returned graphics instance is zero when there are no uniform buffers or when submission fails. Graphics pass submissions inherit same-queue order. Before the first pass on each non-graphics queue, E7 inserts exactly one wait on the nonzero upload instance.</p>
+          <p>At E6, one graphics command list writes every frozen byte range, transitions each buffer to <code>ConstantBuffer</code>, closes, and submits. The returned graphics instance is zero when there are no uniform buffers. Upload creation, recording, or submission failure fails execution; failure is never treated as a successful empty upload. Graphics pass submissions inherit same-queue order. Before the first pass on each non-graphics queue, E7 inserts exactly one wait on the nonzero upload instance.</p>
         </section>
 
         <section id="submission">
           <h2>Deterministic submission and queue waits</h2>
-          <p>E7 ignores worker completion order and walks <code>mExecutionOrder</code>, which compilation preserves deterministically from registration order after culling and sentinel insertion. Each pass list is submitted separately. Its returned instance is stored by pass and as the last instance for that queue.</p>
+          <p>E7 ignores worker completion order and walks <code>mExecutionOrder</code>, which compilation preserves deterministically from registration order after culling and sentinel insertion. Each recording batch submits once. Its returned instance is shared by every member pass and stored as the last instance for that queue.</p>
           <p>For every <a href="api-reference.html#api-arda-rdg-fardgqueuedependency-ccd4a634"><code>FARDGQueueDependency</code></a> whose consumer is the current pass, execution looks up the producer pass instance and calls the RHI queue wait from the consumer pipeline to the producer pipeline. Same-queue dependencies need no explicit queue dependency: deterministic queue submission order supplies execution order.</p>
           <h3>Portable resource handoff between queues</h3>
           <p>A wait orders queue execution, but it does not by itself make every native resource state legal on the destination queue. When physical transition replay detects that the next use moves to another queue, the producer transitions the affected texture subresource or whole buffer to <code>Common</code>, emits a queue release, and records a <code>QueueRelease</code> state-conformance checkpoint. After the GPU wait, the consumer emits the matching acquire, records <code>QueueAcquire</code>, and transitions from <code>Common</code> to its declared state.</p>
@@ -201,37 +202,23 @@
             <figcaption>One portable handoff serves both D3D12's copy-queue state restrictions and Vulkan's explicit queue-family ownership rules.</figcaption>
           </figure>
           <p>D3D12 uses the <code>Common</code> boundary so a copy list never receives an illegal UAV-to-copy transition. Vulkan combines the same state boundary with paired queue-family release/acquire barriers when the selected families differ. If both logical queues share one Vulkan family, the ownership operation reduces to synchronization while normal state/layout transitions remain intact.</p>
-          <p>Queue waits are placed before the consuming list. A missing or zero producer instance is skipped; successful paths should therefore correlate the result count and backend statuses if submission loss is suspected. The current telemetry counts requested waits and submitted list attempts, not confirmed GPU completions.</p>
+          <p>Queue waits are placed before the consuming list. A missing or zero producer instance is skipped; successful paths should therefore correlate the result count and backend statuses if submission loss is suspected. Telemetry counts successful wait requests and accepted command-list submissions, not GPU completion.</p>
         </section>
 
         <section id="extraction">
           <h2>Extraction after submit, garbage collection, and completion</h2>
-          <p>Extraction publication happens only after the submission loop. The output pointer supplied during graph construction must still be valid. Publication transfers a durable RHI reference and the compiler has already arranged the requested final state, but the referenced GPU contents may still be in flight.</p>
+          <p>Extraction publication happens only after a successful submission loop. The output pointer supplied during graph construction must still be valid. Publication transfers a durable RHI reference and the compiler has already arranged the requested final state, but the referenced GPU contents may still be in flight.</p>
           <p>E9 calls device garbage collection once at the graph-submission boundary. Collection cooperates with backend retention; it does not replace external <a class="term" data-term="synchronization" href="../glossary.html#term-synchronization">synchronization</a>. Before CPU readback, manual memory reuse, or destruction outside retained ownership, wait for the appropriate queue instances through the RHI completion contract.</p>
           <p>On D3D12, ending the recorded-pass scope does not destroy in-flight native work. Submission captures the command allocator/list, transient upload or readback resources, command signatures, descriptor owners, and referenced native resources beside the exact graphics, compute, or copy fence value. Garbage collection retires that capture only when the same queue completes it. The 120-frame D3D12 ARDG regression exists specifically to detect premature retirement that may otherwise surface later as device removal during present or command-list allocation.</p>
         </section>
 
         <section id="telemetry">
           <h2>Execution result telemetry</h2>
-          <p>The returned report is builder-owned and describes one completed CPU submission phase:</p>
-          <dl>
-            <dt><code>mSubmittedCommandListCount</code></dt>
-            <dd>Pass and boundary command lists submitted; the separate uniform-upload list is not included.</dd>
-            <dt><code>mQueueWaitCount</code></dt>
-            <dd>Explicit cross-queue waits, including first-use uniform-upload waits.</dd>
-            <dt><code>mTexturePoolReuseCount</code> / <code>mBufferPoolReuseCount</code></dt>
-            <dd>Logical resources served by exact committed descriptor reuse.</dd>
-            <dt><code>mbUsedParallelRecording</code></dt>
-            <dd>At least one recording batch contained multiple jobs.</dd>
-            <dt><code>mbUsedVirtualHeaps</code> / <code>mbUsedTransientAliasing</code> / <code>mbUsedTransientFallback</code></dt>
-            <dd>Allocation-path facts. The current executor reports committed fallback rather than consuming the computed ideal heap layout.</dd>
-            <dt><code>mbUsedImmediateMode</code></dt>
-            <dd>The graph used the immediate-mode correctness oracle.</dd>
-            <dt><code>mClobberedResourceCount</code></dt>
-            <dd>Supported resources actually cleared before first writes.</dd>
-            <dt><code>mLastSubmittedInstances[3]</code></dt>
-            <dd>Last graphics, compute, and copy queue instances. Preserve queue identity; values from different queues are not globally comparable.</dd>
-          </dl>
+          <p>The returned report is builder-owned and describes one execution attempt. Check its status before interpreting successful submissions or using extracted outputs:</p>
+          <p>Begin with <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mstatus"><code>mStatus</code></a>. On failure, <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-msubmissionfailurecount"><code>mSubmissionFailureCount</code></a> distinguishes rejected pass submissions from recording errors. State validation attaches expected and observed checkpoints in <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mstateconformancerecords"><code>mStateConformanceRecords</code></a>, summarized by <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mstateconformancefailurecount"><code>mStateConformanceFailureCount</code></a>; inspect the first mismatch before interpreting output pixels.</p>
+          <p>For submission overhead, compare <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-msubmittedcommandlistcount-258048bb"><code>mSubmittedCommandListCount</code></a> with <a href="api-reference.html#api-arda-render-graph-fardgexecutionresult-mmergedrasterpasscount-ffd395b5"><code>mMergedRasterPassCount</code></a>: appended raster callbacks save lists, while boundary lists still count and the separate uniform-upload list does not. <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mqueuewaitcount-8024c75e"><code>mQueueWaitCount</code></a> counts successful cross-queue waits after coalescing the physical plan in <a href="api-reference.html#api-arda-render-graph-fardgexecutionresult-mqueuedependencies-e02cd763"><code>mQueueDependencies</code></a>. Preserve queue identity in <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mlastsubmittedinstances-4b633f90"><code>mLastSubmittedInstances</code></a> when retiring a frame; values from different queues are not globally comparable.</p>
+          <p>For memory pressure, <a href="api-reference.html#api-arda-render-graph-fardgexecutionresult-mtransientheapbytes-ffae26c5"><code>mTransientHeapBytes</code></a> measures explicit heap capacity and <a href="api-reference.html#api-arda-render-graph-fardgexecutionresult-mtransientaliasedbytes-f987e8d1"><code>mTransientAliasedBytes</code></a> measures avoided packed capacity. Neither includes committed fallback bytes. <a href="api-reference.html#api-arda-render-graph-fardgexecutionresult-maliasingbarriercount-df7ebb85"><code>mAliasingBarrierCount</code></a> counts reused resource activations. The flags <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedvirtualheaps-498e5cb3"><code>mbUsedVirtualHeaps</code></a>, <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedtransientaliasing-531524ee"><code>mbUsedTransientAliasing</code></a>, and <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedtransientfallback-21a39c91"><code>mbUsedTransientFallback</code></a> can all be true when eligible resources share heaps and another candidate falls back. Exact committed-object reuse is recorded separately by <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mtexturepoolreusecount-d0e9cb27"><code>mTexturePoolReuseCount</code></a> and <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbufferpoolreusecount-e7f71bf7"><code>mBufferPoolReuseCount</code></a>.</p>
+          <p>For differential debugging, <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedimmediatemode-c2b6cbbe"><code>mbUsedImmediateMode</code></a> records the selected oracle, <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mbusedparallelrecording-dc898c24"><code>mbUsedParallelRecording</code></a> confirms multiple recording jobs actually overlapped in a worker batch, and <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-mclobberedresourcecount-1e5bc079"><code>mClobberedResourceCount</code></a> counts supported first-write debug clears. These report CPU decisions and submitted work, not GPU duration.</p>
           <p>E10 also emits trace counters named <code>ARDG Submitted Command Lists</code>, <code>ARDG Queue Waits</code>, and <code>ARDG Clobbered Resources</code>. Use these with the <code>ARDG Execute</code> scoped CPU timer, not as substitutes for GPU timing.</p>
         </section>
 
@@ -250,7 +237,7 @@
             <li><strong>Render terrain</strong> consumes camera, terrain buffers, and the imported back buffer on graphics.</li>
             <li><strong>Terrain overlay</strong> is the last back-buffer writer and remains rooted through the graph epilogue.</li>
           </ol>
-          <p>At execution, imported camera/back-buffer resources retain their RHI handles. Created transient terrain resources materialize from committed pools. Independent recording may overlap on CPU, but submit order remains the compiled order. Queue waits are generated only where producer and consumer pipelines differ. The terrain vertex and index readbacks specifically exercise the async-compute UAV to dedicated-copy handoff; both queues observe <code>Common</code> at the ownership boundary before the copy queue enters <code>CopySource</code>.</p>
+          <p>At execution, imported camera/back-buffer resources retain their RHI handles. Created transient terrain resources use compatible heap placement or committed fallback. Independent recording may overlap on CPU, but submit order remains the compiled order. Queue waits are generated only where producer and consumer pipelines differ. The terrain vertex and index readbacks specifically exercise the async-compute UAV to dedicated-copy handoff; both queues observe <code>Common</code> at the ownership boundary before the copy queue enters <code>CopySource</code>.</p>
           <aside class="callout warning">
             <h3>Terrain example API version</h3>
             <p>The current checked-in terrain example still uses the deprecated <code>mCommandList</code> alias. New code should use <code>mUnsafeRawCommandList</code> only for the narrow commands that require raw RHI access, while declaring every graph resource access in pass parameters and resolving graph resources through the execution context.</p>
@@ -264,6 +251,8 @@ options.mbParallelRecording = true;
 options.mMaxRecordingThreads = 4;
 
 const FARDGExecutionResult&amp; submitted = graph.Execute(options);
+if (!submitted.mStatus)
+    return FailAndRetire(submitted.mStatus); // Application recovery boundary; see below.
 
 LogFrameSubmission(
     submitted.mSubmittedCommandListCount,
@@ -273,7 +262,7 @@ LogFrameSubmission(
 // The extracted handle is now published, but GPU writes may still be in flight.
 // Associate queue instances with the frame's completion primitive before reuse.
 frameRetirement.Track(submitted.mLastSubmittedInstances, extractedHeightmap);</code></pre>
-          <p><strong>Reasoning:</strong> the report supports CPU scheduling and observability. The frame-retirement system—not <code>Execute</code>—establishes when the extracted heightmap can be read, recycled, or released.</p>
+          <p><strong>Reasoning:</strong> the report supports CPU scheduling and observability. The application helper <code>FailAndRetire</code> must stop frame reuse and wait for whole-device completion, or perform device-loss recovery if completion fails, before releasing application-owned frame state. This also covers the separate uniform upload, which is excluded from the main-loop instance array. On success, the frame-retirement system establishes when the extracted heightmap can be read, recycled, or released.</p>
         </section>
 
         <section id="failures">
@@ -290,15 +279,23 @@ frameRetirement.Track(submitted.mLastSubmittedInstances, extractedHeightmap);</c
             <dt>Extracted output exists but CPU read is wrong</dt>
             <dd><strong>Cause:</strong> extraction publication was mistaken for GPU completion. <strong>Prevention:</strong> associate returned queue instances with frame retirement. <strong>Recovery:</strong> wait for the producing queue and fix the ownership boundary.</dd>
             <dt>Memory savings are lower than ideal-layout estimates</dt>
-            <dd><strong>Cause:</strong> ideal placed-resource layout is intentionally unused; committed fallback and same-queue descriptor reuse are the implemented paths. <strong>Prevention:</strong> budget from telemetry, not the ideal packer. <strong>Recovery:</strong> reduce live intervals or compatible resource pressure; do not assume physical aliasing.</dd>
+            <dd><strong>Cause:</strong> overlapping lifetimes or incompatible memory groups prevent further packing. <strong>Prevention:</strong> budget from actual heap and fallback telemetry. <strong>Recovery:</strong> shorten live intervals and inspect the queue waits required by aliasing; lower memory usage can reduce GPU overlap.</dd>
             <dt>Too many queue waits or command lists</dt>
-            <dd><strong>Cause:</strong> queue ping-pong, many cross-queue consumers, or one-list-per-pass granularity. <strong>Prevention:</strong> request async/copy queues only for measured benefit. <strong>Recovery:</strong> inspect compiled dependencies and consolidate pipeline choices.</dd>
+            <dd><strong>Cause:</strong> queue ping-pong, many cross-queue consumers, or raster boundaries that prevent batching. <strong>Prevention:</strong> request async/copy queues only for measured benefit. <strong>Recovery:</strong> inspect execution dependencies, raster split conditions, and pipeline choices.</dd>
           </dl>
+        </section>
+
+        <section id="raster-and-failures">
+          <h2>Raster batching and failure publication</h2>
+          <p>The executor can record adjacent compatible raster callbacks in one command list. It splits at required transitions, UAV or forced barriers, new resource initialization, queue handoffs, incoming queue dependencies, buffer/acceleration-structure declarations in the next pass, and NeverParallel boundaries. Immediate mode disables merging. Vulkan can continue its active rendering scope across matching framebuffer attachments; barriers or commands that end rendering still split that native scope. Control batching with <a href="api-reference.html#api-arda-render-graph-fardgexecuteoptions-mbmergerasterpasses-4636c7eb"><code>mbMergeRasterPasses</code></a>; <a href="api-reference.html#api-arda-render-graph-fardgexecutionresult-mmergedrasterpasscount-ffd395b5"><code>mMergedRasterPassCount</code></a> counts callbacks appended to earlier lists.</p>
+          <p>The immutable compile result describes logical dependencies. Execution publishes the physical plan in <a href="api-reference.html#api-arda-render-graph-fardgexecutionresult-mqueuedependencies-e02cd763"><code>FARDGExecutionResult::mQueueDependencies</code></a>, including ownership handoffs and alias reuse. Queue waits are coalesced to the latest required submitted instance per source queue. All members of a raster batch share its submission instance, so later consumers still wait for the correct work.</p>
+          <p>Pass callbacks may return an RHI status or call <a href="api-reference.html#api-arda-render-graph-fardgpassexecutioncontext-reportstatus-ba2ad5cc"><code>ReportStatus</code></a>; the first failure is retained. Dispatch helpers skip dispatch after failed setup. Recording completes before pass submission, and a callback failure prevents that graph's command-list submissions and extraction publication. Upload, queue-wait, or submission failures also fail execution. Earlier submitted work can remain in flight after a submission failure. <a href="api-reference.html#api-arda-rdg-fardgbuilder-getlastexecutionresult-e266694f"><code>GetLastExecutionResult</code></a> exposes the failed attempt; builders cannot retry execution.</p>
+          <p>The GPU regressions verify buffer aliasing across graphics/compute/copy queues, texture mip/array readback, aliased color/depth initialization across every mip and array slice, identical raster pixels with merging enabled or disabled and with conservative barriers, NeverParallel, or immediate mode, registered shader bindings in two descriptor spaces, and ray-dispatch output. The raster case uses six draws across two aliased targets and saves four command lists when merging is enabled. D3D12 GPU validation and Vulkan validation are enabled in the native acceptance run.</p>
         </section>
 
         <section id="summary">
           <h2>Summary</h2>
-          <p>Execution is a one-shot CPU pipeline: validate and compile, materialize committed resources, correct transitions by physical identity, record dependency waves, upload uniforms, submit in deterministic order with queue waits, publish extraction references, run garbage collection, and return telemetry. The current executor computes but does not consume an ideal transient heap layout. Successful return means submitted, never GPU-complete.</p>
+          <p>Execution is a one-shot CPU pipeline: validate and compile, materialize placed or committed resources, correct transitions by physical identity, record dependency waves, upload uniforms, submit in deterministic order with queue waits, publish extraction references, run garbage collection, and return telemetry. Aliased placements use barriers and cross-queue waits; compatible raster callbacks can share command lists. Successful return means submitted, never GPU-complete.</p>
         </section>
 
         <section id="checkpoints">
@@ -309,7 +306,7 @@ frameRetirement.Track(submitted.mLastSubmittedInstances, extractedHeightmap);</c
             <li>Why can two passes record concurrently but still submit in registration order?</li>
             <li>When does a non-graphics queue wait on uniform upload?</li>
             <li>What does extraction publication prove, and what does it not prove?</li>
-            <li>Why are ideal transient heap offsets currently diagnostic rather than executable?</li>
+            <li>Why must an aliasing wait cover prior uses on every queue, rather than only CPU registration order?</li>
             <li>Which telemetry fields help distinguish recording parallelism, resource reuse, and queue synchronization?</li>
           </ol>
         </section>

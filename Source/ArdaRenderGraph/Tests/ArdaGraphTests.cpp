@@ -14,7 +14,9 @@
 #include <condition_variable>
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <mutex>
 #include <thread>
 #include <EASTL/string.h>
@@ -42,12 +44,13 @@ namespace
     public:
         void Message(
             arda::backend::EArdaDiagnosticSeverity Severity,
-            const char*) override
+            const char* Text) override
         {
             if (Severity == arda::backend::EArdaDiagnosticSeverity::Error ||
                 Severity == arda::backend::EArdaDiagnosticSeverity::Fatal)
             {
                 mErrors.fetch_add(1, std::memory_order_relaxed);
+                std::fprintf(stderr, "%s\n", Text ? Text : "Native validation error");
             }
         }
 
@@ -3114,7 +3117,7 @@ TEST(ArdaRenderGraph, TransfersAsyncUavOutputThroughDedicatedCopyQueue)
         Options.mbParallelRecording = false;
         const FARDGExecutionResult& Result = Builder.Execute(Options);
         ExpectCompleteStateConformance(Result);
-        EXPECT_GE(Result.mQueueWaitCount, 3u);
+        EXPECT_EQ(Result.mQueueWaitCount, 2u);
         EXPECT_NE(Result.mLastSubmittedInstances[
             rhi::GetArdaRHIQueueIndex(
                 rhi::EArdaRHIQueueType::Compute)], 0u);
@@ -3152,4 +3155,645 @@ TEST(ArdaRenderGraph, TransfersAsyncUavOutputThroughDedicatedCopyQueue)
         EXPECT_TRUE(GraphContext.mDevice->WaitForIdle());
     }
     ShutdownBackend();
+}
+
+namespace
+{
+    class FARDGNativeExecution : public ::testing::TestWithParam<std::string>
+    {
+    protected:
+        rhi::FArdaRHIShaderRef CreateShader(const char* Entry, rhi::EArdaRHIShaderStage Stage,
+            const char* Source = "ArdaGraphConformance.hlsl")
+        {
+            using namespace arda::backend;
+            const auto Path = (std::filesystem::path(ARDA_RDG_TEST_SHADER_SOURCE_DIR) / Source).string();
+            FArdaShaderTypeRegistration Registration(Entry, Path.c_str(), Entry, Entry, Stage, nullptr);
+            const auto Previous = GetShaderCompilerConfiguration();
+            auto Configuration = Previous;
+            Configuration.mbCompileMissingArtifacts = true;
+            Configuration.mbCompileOutdatedArtifacts = true;
+            ConfigureShaderCompiler(Configuration);
+            const auto Compiled = EnsureRegisteredShaderArtifact(Registration.GetType(), GetParam().c_str(),
+                0, std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR));
+            ConfigureShaderCompiler(Previous);
+            if (!Compiled || Compiled.mJobs.empty())
+            {
+                ADD_FAILURE() << (Compiled.mDiagnostics.empty() ? "No shader job" :
+                    Compiled.mDiagnostics.front().mMessage.c_str());
+                return {};
+            }
+            std::ifstream Stream(Compiled.mJobs.front().mOutputPath, std::ios::binary | std::ios::ate);
+            if (!Stream)
+                return {};
+            eastl::vector<uint8_t> Bytecode(static_cast<size_t>(Stream.tellg()));
+            Stream.seekg(0);
+            Stream.read(reinterpret_cast<char*>(Bytecode.data()), Bytecode.size());
+            rhi::FArdaRHIShaderDesc Desc;
+            Desc.mStage = Stage;
+            Desc.mEntryPoint = Entry;
+            Desc.mBytecode = Bytecode.data();
+            Desc.mBytecodeSize = Bytecode.size();
+            auto Shader = mDevice->CreateShader(Desc);
+            EXPECT_TRUE(Shader) << Shader.mStatus.mMessage.c_str();
+            return Shader.mValue;
+        }
+
+        void SetUp() override
+        {
+            using namespace arda::backend;
+            ShutdownBackend();
+            FArdaBackendConfiguration Configuration;
+            Configuration.mBackendName = GetParam().c_str();
+            Configuration.mbEnableValidation = true;
+            Configuration.mMessageCallback = &mDiagnostics;
+            Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+            ASSERT_TRUE(ConfigureBackend(Configuration)) << GetBackendError().c_str();
+            ASSERT_TRUE(InitializeBackend()) << GetBackendError().c_str();
+            mDevice = GetDevice();
+        }
+
+        void TearDown() override
+        {
+            if (mDevice)
+            {
+                EXPECT_TRUE(mDevice->WaitForIdle());
+                mDevice->RunGarbageCollection();
+                mDevice = nullptr;
+            }
+            arda::backend::ShutdownBackend();
+            EXPECT_EQ(mDiagnostics.GetErrorCount(), 0u);
+        }
+
+        FARDGCollectingDiagnosticCallback mDiagnostics;
+        rhi::FArdaRHIDeviceRef mDevice;
+    };
+
+    INSTANTIATE_TEST_SUITE_P(AllNativeBackends, FARDGNativeExecution,
+        ::testing::ValuesIn([]
+        {
+            std::vector<std::string> Backends;
+            for (const auto& Module : arda::backend::EnumerateBackendModules())
+            {
+                if (Module.mbSupportsOwnedDevice)
+                    Backends.emplace_back(Module.mName.c_str());
+            }
+            return Backends;
+        }()));
+}
+
+TEST_P(FARDGNativeExecution, AliasedBuffersPreserveEveryQueueReadback)
+{
+    using namespace arda::render_graph;
+    FARDGBuilder Builder(MakeRenderGraphContext(mDevice));
+    eastl::vector<rhi::FArdaRHIBufferRef> Readbacks;
+    constexpr uint32_t Count = 12;
+    constexpr uint32_t WordCount = 65536;
+    const auto Usage = rhi::EArdaRHIBufferUsage::UnorderedAccess;
+
+    // This candidate cannot use a device-local heap. It must fall back
+    // independently, including when it is the first transient candidate.
+    rhi::FArdaRHIBufferDesc HostDesc;
+    HostDesc.mDebugName = "HostFallback";
+    HostDesc.mByteSize = 256;
+    HostDesc.mCpuAccess = rhi::EArdaRHICpuAccess::Read;
+    HostDesc.mInitialState = rhi::EArdaRHIResourceState::CopyDest;
+    auto Host = Builder.CreateBuffer(HostDesc);
+    FARDGBufferAccessParameters HostParameters;
+    HostParameters.mBuffer = {Host, rhi::EArdaRHIResourceState::CopyDest, {}};
+    (void)Builder.AddPass("HostFallback", &HostParameters,
+        EARDGPassFlags::Copy | EARDGPassFlags::NeverCull,
+        [](const FARDGBufferAccessParameters&) {});
+
+    for (uint32_t Index = 0; Index < Count; ++Index)
+    {
+        rhi::FArdaRHIBufferDesc Desc;
+        Desc.mDebugName = "AliasedBuffer";
+        Desc.mByteSize = WordCount * sizeof(uint32_t);
+        Desc.mUsage = Usage;
+        auto Buffer = Builder.CreateBuffer(Desc);
+        Desc.mUsage = rhi::EArdaRHIBufferUsage::None;
+        Desc.mInitialState = rhi::EArdaRHIResourceState::CopyDest;
+        auto Readback = mDevice->CreateBuffer(Desc);
+        ASSERT_TRUE(Readback);
+        Readbacks.push_back(Readback.mValue);
+        auto Output = Builder.RegisterExternalBuffer(Readback.mValue);
+        FARDGBufferAccessParameters Write;
+        Write.mBuffer = {Buffer, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+        (void)Builder.AddPass("AliasWrite", &Write,
+            EARDGPassFlags::Compute |
+                (Index % 2 ? EARDGPassFlags::AsyncCompute : EARDGPassFlags::None),
+            [Index](FARDGPassExecutionContext& Context, const FARDGBufferAccessParameters& Frozen)
+            {
+                ASSERT_TRUE(Context.mCommandList.ClearBufferUInt(
+                    *Context.GetBuffer(Frozen.mBuffer.mBuffer), 0x12340000u + Index));
+            });
+        FARDGFormationParameters Copy;
+        Copy.mInputA = {Buffer, rhi::EArdaRHIResourceState::CopySource, {}};
+        Copy.mOutput = {Output, rhi::EArdaRHIResourceState::CopyDest, {}};
+        (void)Builder.AddPass("AliasReadback", &Copy, EARDGPassFlags::Copy,
+            [WordCount](FARDGPassExecutionContext& Context, const FARDGFormationParameters& Frozen)
+            {
+                ASSERT_TRUE(Context.mCommandList.CopyBuffer(
+                    *Context.GetBuffer(Frozen.mOutput.mBuffer), 0,
+                    *Context.GetBuffer(Frozen.mInputA.mBuffer), 0, WordCount * sizeof(uint32_t)));
+            });
+    }
+    FARDGExecuteOptions Options;
+    Options.mMaxRecordingThreads = 4;
+    const auto& Compiled = Builder.Compile();
+    const size_t CompiledEdges = Compiled.mQueueDependencies.size();
+    const auto& Result = Builder.Execute(Options);
+    ExpectCompleteStateConformance(Result);
+    EXPECT_EQ(Compiled.mQueueDependencies.size(), CompiledEdges);
+    EXPECT_GT(Result.mQueueDependencies.size(), CompiledEdges);
+    EXPECT_TRUE(Result.mbUsedTransientFallback);
+    EXPECT_TRUE(Result.mbUsedTransientAliasing);
+    EXPECT_EQ(Result.mAliasingBarrierCount, Count - 1);
+    EXPECT_GT(Result.mTransientAliasedBytes, 0u);
+    EXPECT_LT(Result.mTransientHeapBytes, Count * WordCount * sizeof(uint32_t));
+    EXPECT_GE(Result.mQueueWaitCount, Count);
+    ASSERT_TRUE(mDevice->WaitForIdle());
+    for (uint32_t Index = 0; Index < Count; ++Index)
+    {
+        auto Commands = mDevice->CreateCommandList(rhi::EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(Commands);
+        ASSERT_TRUE(Commands.mValue->Open());
+        eastl::vector<uint8_t> Bytes;
+        ASSERT_TRUE(Commands.mValue->CopyBufferDeviceToHost(
+            *Readbacks[Index], Bytes, 0, WordCount * sizeof(uint32_t)));
+        ASSERT_TRUE(Commands.mValue->Close());
+        ASSERT_TRUE(mDevice->ExecuteCommandList(Commands.mValue));
+        ASSERT_EQ(Bytes.size(), WordCount * sizeof(uint32_t));
+        const auto* Words = reinterpret_cast<const uint32_t*>(Bytes.data());
+        for (uint32_t Word = 0; Word < WordCount; ++Word)
+        {
+            if (Words[Word] != 0x12340000u + Index)
+            {
+                ADD_FAILURE() << "Aliased buffer " << Index << " word " << Word
+                    << " contains " << Words[Word];
+                break;
+            }
+        }
+    }
+}
+
+TEST_P(FARDGNativeExecution, AliasedTexturesPreserveMipAndArrayReadback)
+{
+    using namespace arda::render_graph;
+    FARDGBuilder Builder(MakeRenderGraphContext(mDevice));
+    eastl::vector<rhi::FArdaRHIStagingTextureRef> Readbacks;
+    constexpr uint32_t Count = 6;
+    rhi::FArdaRHITextureDesc Desc;
+    Desc.mWidth = 64;
+    Desc.mHeight = 32;
+    Desc.mDebugName = "AliasedTexture";
+    Desc.mMipLevels = 3;
+    Desc.mArraySize = 2;
+    Desc.mDimension = rhi::EArdaRHITextureDimension::Texture2DArray;
+    Desc.mFormat = rhi::EArdaRHIFormat::R32UInt;
+    Desc.mUsage = rhi::EArdaRHITextureUsage::UnorderedAccess;
+    for (uint32_t Index = 0; Index < Count; ++Index)
+    {
+        auto Texture = Builder.CreateTexture(Desc);
+        rhi::FArdaRHIStagingTextureDesc StagingDesc;
+        StagingDesc.mTexture = Desc;
+        StagingDesc.mCpuAccess = rhi::EArdaRHICpuAccess::Read;
+        auto Readback = mDevice->CreateStagingTexture(StagingDesc);
+        ASSERT_TRUE(Readback);
+        Readbacks.push_back(Readback.mValue);
+        FARDGTextureAccessParameters Write;
+        Write.mOutput = {Texture, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+        (void)Builder.AddPass("AliasTextureWrite", &Write,
+            EARDGPassFlags::Compute | EARDGPassFlags::AsyncCompute,
+            [Index](FARDGPassExecutionContext& Context, const FARDGTextureAccessParameters& Frozen)
+            {
+                ASSERT_TRUE(Context.mCommandList.ClearTextureUInt(
+                    *Context.GetTexture(Frozen.mOutput.mTexture), {}, 0xABC00000u + Index));
+            });
+        FARDGTextureAccessParameters Copy;
+        Copy.mInput = {Texture, rhi::EArdaRHIResourceState::CopySource, {}};
+        (void)Builder.AddPass("AliasTextureReadback", &Copy,
+            EARDGPassFlags::Copy | EARDGPassFlags::NeverCull,
+            [Staging = Readback.mValue, Desc](FARDGPassExecutionContext& Context,
+                const FARDGTextureAccessParameters& Frozen)
+            {
+                for (uint32_t Slice = 0; Slice < Desc.mArraySize; ++Slice)
+                {
+                    for (uint32_t Mip = 0; Mip < Desc.mMipLevels; ++Mip)
+                    {
+                        rhi::FArdaRHITextureSlice Region;
+                        Region.mMipLevel = Mip;
+                        Region.mArraySlice = Slice;
+                        ASSERT_TRUE(Context.mCommandList.CopyTextureToStaging(*Staging, Region,
+                            *Context.GetTexture(Frozen.mInput.mTexture), Region));
+                    }
+                }
+            });
+    }
+    const auto& Result = Builder.Execute();
+    ExpectCompleteStateConformance(Result);
+    EXPECT_TRUE(Result.mbUsedTransientAliasing);
+    EXPECT_FALSE(Result.mbUsedTransientFallback);
+    EXPECT_EQ(Result.mAliasingBarrierCount, Count - 1);
+    EXPECT_GT(Result.mTransientAliasedBytes, 0u);
+    ASSERT_TRUE(mDevice->WaitForIdle());
+    for (uint32_t Index = 0; Index < Count; ++Index)
+    {
+        for (uint32_t Slice = 0; Slice < Desc.mArraySize; ++Slice)
+        {
+            for (uint32_t Mip = 0; Mip < Desc.mMipLevels; ++Mip)
+            {
+                rhi::FArdaRHITextureSlice Region;
+                Region.mMipLevel = Mip;
+                Region.mArraySlice = Slice;
+                auto Mapping = mDevice->MapStagingTexture(Readbacks[Index], Region,
+                    rhi::EArdaRHICpuAccess::Read);
+                ASSERT_TRUE(Mapping);
+                for (uint32_t Y = 0; Y < (Desc.mHeight >> Mip); ++Y)
+                {
+                    const auto* Row = reinterpret_cast<const uint32_t*>(
+                        static_cast<const uint8_t*>(Mapping.mValue.mData) + Y * Mapping.mValue.mRowPitch);
+                    for (uint32_t X = 0; X < (Desc.mWidth >> Mip); ++X)
+                        ASSERT_EQ(Row[X], 0xABC00000u + Index)
+                            << Index << ":" << Slice << ":" << Mip << ":" << X << ":" << Y;
+                }
+                ASSERT_TRUE(mDevice->UnmapStagingTexture(Readbacks[Index]));
+            }
+        }
+    }
+}
+
+TEST_P(FARDGNativeExecution, AliasedAttachmentsInitializeEveryMipAndArraySlice)
+{
+    using namespace arda::render_graph;
+    for (bool bDepth : {false, true})
+    {
+        SCOPED_TRACE(bDepth);
+        FARDGBuilder Builder(MakeRenderGraphContext(mDevice));
+        eastl::vector<rhi::FArdaRHIStagingTextureRef> Readbacks;
+        rhi::FArdaRHITextureDesc Desc;
+        Desc.mDebugName = "InitializedAlias";
+        Desc.mWidth = 16;
+        Desc.mHeight = 8;
+        Desc.mMipLevels = 3;
+        Desc.mArraySize = 2;
+        Desc.mDimension = rhi::EArdaRHITextureDimension::Texture2DArray;
+        Desc.mFormat = bDepth ? rhi::EArdaRHIFormat::D32 : rhi::EArdaRHIFormat::R32Float;
+        Desc.mUsage = bDepth ? rhi::EArdaRHITextureUsage::DepthStencil : rhi::EArdaRHITextureUsage::RenderTarget;
+        const float Expected[] = {bDepth ? 1.0f : 0.0f, 0.25f, 0.75f};
+        for (uint32_t Index = 0; Index < 3; ++Index)
+        {
+            Desc.mbUseClearValue = Index != 0;
+            Desc.mClearValue = {Expected[Index], 0, 0, 0};
+            auto Texture = Builder.CreateTexture(Desc);
+            FARDGTextureAccessParameters Write;
+            Write.mOutput = {Texture, bDepth ? rhi::EArdaRHIResourceState::DepthWrite
+                : rhi::EArdaRHIResourceState::RenderTarget, {}};
+            // No callback clear: the executor must initialize each placed cell
+            // at activation, after every prior occupant has finished reading.
+            (void)Builder.AddPass("InitializeAttachment", &Write, EARDGPassFlags::Raster, [] {});
+            rhi::FArdaRHIStagingTextureDesc StagingDesc;
+            StagingDesc.mTexture = Desc;
+            StagingDesc.mCpuAccess = rhi::EArdaRHICpuAccess::Read;
+            auto Staging = mDevice->CreateStagingTexture(StagingDesc);
+            ASSERT_TRUE(Staging);
+            Readbacks.push_back(Staging.mValue);
+            FARDGTextureAccessParameters Copy;
+            Copy.mInput = {Texture, rhi::EArdaRHIResourceState::CopySource, {}};
+            (void)Builder.AddPass("ReadInitializedAttachment", &Copy,
+                EARDGPassFlags::Copy | EARDGPassFlags::NeverCull,
+                [Readback = Staging.mValue, Desc](FARDGPassExecutionContext& Context,
+                    const FARDGTextureAccessParameters& Frozen)
+                {
+                    for (uint32_t Slice = 0; Slice < Desc.mArraySize; ++Slice)
+                    {
+                        for (uint32_t Mip = 0; Mip < Desc.mMipLevels; ++Mip)
+                        {
+                            rhi::FArdaRHITextureSlice Region;
+                            Region.mMipLevel = Mip;
+                            Region.mArraySlice = Slice;
+                            Context.ReportStatus(Context.mCommandList.CopyTextureToStaging(
+                                *Readback, Region, *Context.GetTexture(Frozen.mInput.mTexture), Region));
+                        }
+                    }
+                });
+        }
+        const auto& Result = Builder.Execute();
+        ExpectCompleteStateConformance(Result);
+        EXPECT_EQ(Result.mAliasingBarrierCount, 2u);
+        EXPECT_GT(Result.mTransientAliasedBytes, 0u);
+        ASSERT_TRUE(mDevice->WaitForIdle());
+        for (uint32_t Index = 0; Index < Readbacks.size(); ++Index)
+        {
+            for (uint32_t Slice = 0; Slice < Desc.mArraySize; ++Slice)
+            {
+                for (uint32_t Mip = 0; Mip < Desc.mMipLevels; ++Mip)
+                {
+                    rhi::FArdaRHITextureSlice Region;
+                    Region.mMipLevel = Mip;
+                    Region.mArraySlice = Slice;
+                    auto Mapping = mDevice->MapStagingTexture(Readbacks[Index], Region,
+                        rhi::EArdaRHICpuAccess::Read);
+                    ASSERT_TRUE(Mapping);
+                    for (uint32_t Y = 0; Y < (Desc.mHeight >> Mip); ++Y)
+                    {
+                        const auto* Row = reinterpret_cast<const float*>(
+                            static_cast<const uint8_t*>(Mapping.mValue.mData) + Y * Mapping.mValue.mRowPitch);
+                        for (uint32_t X = 0; X < (Desc.mWidth >> Mip); ++X)
+                            EXPECT_FLOAT_EQ(Row[X], Expected[Index])
+                                << Index << ":" << Slice << ":" << Mip << ":" << X << ":" << Y;
+                    }
+                    ASSERT_TRUE(mDevice->UnmapStagingTexture(Readbacks[Index]));
+                }
+            }
+        }
+    }
+}
+
+TEST_P(FARDGNativeExecution, RasterMergingPreservesEveryDrawAndAliasReadback)
+{
+    using namespace arda::render_graph;
+    rhi::FArdaRHIGraphicsPipelineDesc PipelineDesc;
+    PipelineDesc.mVertexShader = CreateShader("RasterVS", rhi::EArdaRHIShaderStage::Vertex);
+    PipelineDesc.mPixelShader = CreateShader("RasterPS", rhi::EArdaRHIShaderStage::Pixel);
+    ASSERT_TRUE(PipelineDesc.mVertexShader);
+    ASSERT_TRUE(PipelineDesc.mPixelShader);
+    PipelineDesc.mColorFormats = {rhi::EArdaRHIFormat::RGBA8UNorm};
+    PipelineDesc.mRasterState.mCullMode = rhi::EArdaRHICullMode::None;
+    PipelineDesc.mDepthStencilState.mbDepthTest = false;
+    PipelineDesc.mDepthStencilState.mbDepthWrite = false;
+    auto Pipeline = mDevice->CreateGraphicsPipeline(PipelineDesc);
+    ASSERT_TRUE(Pipeline) << Pipeline.mStatus.mMessage.c_str();
+    uint32_t SeparateLists = 0;
+    // Disabled, enabled, NeverParallel, forced barriers, and immediate mode.
+    for (uint32_t Mode = 0; Mode < 5; ++Mode)
+    {
+        SCOPED_TRACE(Mode);
+        auto GraphContext = MakeRenderGraphContext(mDevice);
+        GraphContext.mDebugOptions.mbConservativeBarriers = Mode == 3;
+        GraphContext.mDebugOptions.mbImmediateMode = Mode == 4;
+        FARDGBuilder Builder(GraphContext);
+        eastl::vector<rhi::FArdaRHIStagingTextureRef> Readbacks;
+        std::atomic<uint32_t> Draws{0};
+        for (uint32_t Target = 0; Target < 2; ++Target)
+        {
+            rhi::FArdaRHITextureDesc Desc;
+            Desc.mDebugName = "AliasedRasterTarget";
+            Desc.mWidth = 12;
+            Desc.mHeight = 8;
+            Desc.mFormat = rhi::EArdaRHIFormat::RGBA8UNorm;
+            Desc.mUsage = rhi::EArdaRHITextureUsage::RenderTarget;
+            auto Texture = Builder.CreateTexture(Desc);
+            FARDGRasterParameters Parameters;
+            Parameters.mRenderTargets.mColor[0].mTexture = Texture;
+            for (uint32_t Stripe = 0; Stripe < 3; ++Stripe)
+            {
+                (void)Builder.AddPass("RasterStripe", &Parameters, EARDGPassFlags::Raster |
+                    (Mode == 2 ? EARDGPassFlags::NeverParallel : EARDGPassFlags::None),
+                    [&, Stripe](FARDGPassExecutionContext& Context, const FARDGRasterParameters& Frozen)
+                    {
+                        auto* Color = Context.GetTexture(Frozen.mRenderTargets.mColor[0].mTexture);
+                        if (!Stripe)
+                            ASSERT_TRUE(Context.mCommandList.ClearTexture(*Color, {}, {0, 0, 0, 1}));
+                        rhi::FArdaRHIFramebufferDesc FramebufferDesc;
+                        FramebufferDesc.mColorAttachments.push_back({rhi::FArdaRHITextureRef(Color), {}});
+                        auto Framebuffer = mDevice->CreateFramebuffer(FramebufferDesc);
+                        ASSERT_TRUE(Framebuffer);
+                        rhi::FArdaRHIGraphicsState State;
+                        State.mPipeline = Pipeline.mValue;
+                        State.mFramebuffer = Framebuffer.mValue;
+                        State.mViewports.push_back({0, 12, 0, 8, 0, 1});
+                        State.mScissors.push_back({static_cast<int32_t>(Stripe * 4),
+                            static_cast<int32_t>((Stripe + 1) * 4), 0, 8});
+                        ASSERT_TRUE(Context.mCommandList.SetGraphicsState(State));
+                        rhi::FArdaRHIDrawArguments Draw;
+                        Draw.mVertexCount = 3;
+                        Context.mCommandList.Draw(Draw);
+                        ++Draws;
+                    });
+            }
+            rhi::FArdaRHIStagingTextureDesc StagingDesc;
+            StagingDesc.mTexture = Desc;
+            StagingDesc.mCpuAccess = rhi::EArdaRHICpuAccess::Read;
+            auto Readback = mDevice->CreateStagingTexture(StagingDesc);
+            ASSERT_TRUE(Readback);
+            Readbacks.push_back(Readback.mValue);
+            FARDGTextureAccessParameters Copy;
+            Copy.mInput = {Texture, rhi::EArdaRHIResourceState::CopySource, {}};
+            (void)Builder.AddPass("RasterReadback", &Copy,
+                EARDGPassFlags::Copy | EARDGPassFlags::NeverCull,
+                [Staging = Readback.mValue](FARDGPassExecutionContext& Context,
+                    const FARDGTextureAccessParameters& Frozen)
+                {
+                    return Context.mCommandList.CopyTextureToStaging(*Staging, {},
+                        *Context.GetTexture(Frozen.mInput.mTexture), {});
+                });
+        }
+        FARDGExecuteOptions Options;
+        Options.mbMergeRasterPasses = Mode != 0;
+        const auto& Result = Builder.Execute(Options);
+        ExpectCompleteStateConformance(Result);
+        EXPECT_EQ(Draws.load(), 6u);
+        EXPECT_EQ(Result.mMergedRasterPassCount, Mode == 1 ? 4u : 0u);
+        EXPECT_EQ(Result.mAliasingBarrierCount, Mode == 4 ? 0u : 1u);
+        if (Mode == 0)
+            SeparateLists = Result.mSubmittedCommandListCount;
+        else if (Mode == 1)
+            EXPECT_EQ(Result.mSubmittedCommandListCount + 4, SeparateLists);
+        ASSERT_TRUE(mDevice->WaitForIdle());
+        for (auto& Readback : Readbacks)
+        {
+            auto Mapping = mDevice->MapStagingTexture(Readback, {}, rhi::EArdaRHICpuAccess::Read);
+            ASSERT_TRUE(Mapping);
+            for (uint32_t Y = 0; Y < 8; ++Y)
+            {
+                const auto* Row = static_cast<const uint8_t*>(Mapping.mValue.mData) + Y * Mapping.mValue.mRowPitch;
+                for (uint32_t X = 0; X < 12; ++X)
+                {
+                    EXPECT_EQ(Row[X * 4], 255);
+                    EXPECT_EQ(Row[X * 4 + 1], 0);
+                    EXPECT_EQ(Row[X * 4 + 2], 255);
+                    EXPECT_EQ(Row[X * 4 + 3], 255);
+                }
+            }
+            ASSERT_TRUE(mDevice->UnmapStagingTexture(Readback));
+        }
+    }
+}
+
+TEST_P(FARDGNativeExecution, CallbackFailuresPreventSubmissionAndExtraction)
+{
+    using namespace arda::render_graph;
+    for (bool bRayDispatch : {false, true})
+    {
+        FARDGBuilder Builder(MakeRenderGraphContext(mDevice));
+        rhi::FArdaRHIBufferDesc Desc;
+        Desc.mDebugName = "FailedOutput";
+        Desc.mByteSize = 64;
+        Desc.mUsage = rhi::EArdaRHIBufferUsage::UnorderedAccess;
+        auto Buffer = Builder.CreateBuffer(Desc);
+        FARDGBufferAccessParameters Parameters;
+        Parameters.mBuffer = {Buffer, rhi::EArdaRHIResourceState::UnorderedAccess, {}};
+        if (bRayDispatch)
+        {
+            (void)Builder.AddRayDispatchPass("MissingRayPipeline", &Parameters, {},
+                [](FARDGPassExecutionContext&) {});
+        }
+        else
+        {
+            (void)Builder.AddDispatchPass("FailedComputeSetup", &Parameters, {},
+                [](FARDGPassExecutionContext&)
+                {
+                    return rhi::FArdaRHIStatus::Error(rhi::EArdaRHIResult::InvalidArgument,
+                        "Intentional callback failure");
+                });
+        }
+        rhi::FArdaRHIBufferRef Extracted;
+        Builder.QueueBufferExtraction(Buffer, Extracted, rhi::EArdaRHIResourceState::CopySource);
+        const auto& Result = Builder.Execute();
+        EXPECT_FALSE(Result.mStatus);
+        EXPECT_FALSE(Extracted);
+        EXPECT_EQ(Result.mSubmittedCommandListCount, 0u);
+        EXPECT_FATAL_CHECK((void)Builder.Execute(), "A render graph can only execute once");
+    }
+}
+
+TEST(ArdaRenderGraph, BufferProductionRejectsUnwrittenByteRanges)
+{
+    using namespace arda::render_graph;
+    auto Build = [](bool bFillGap)
+    {
+        FARDGBuilder Builder;
+        rhi::FArdaRHIBufferDesc Desc;
+        Desc.mDebugName = "PartialProduction";
+        Desc.mByteSize = 64;
+        auto Buffer = Builder.CreateBuffer(Desc);
+        FARDGBufferAccessParameters Write;
+        Write.mBuffer = {Buffer, rhi::EArdaRHIResourceState::CopyDest, {0, 32}};
+        (void)Builder.AddPass("FirstHalf", &Write, EARDGPassFlags::Copy,
+            [](const FARDGBufferAccessParameters&) {});
+        if (bFillGap)
+        {
+            Write.mBuffer.mRange = {32, 32};
+            (void)Builder.AddPass("SecondHalf", &Write, EARDGPassFlags::Copy,
+                [](const FARDGBufferAccessParameters&) {});
+        }
+        FARDGBufferAccessParameters Read;
+        Read.mBuffer = {Buffer, rhi::EArdaRHIResourceState::CopySource, {}};
+        (void)Builder.AddPass("ReadWhole", &Read, EARDGPassFlags::Copy | EARDGPassFlags::NeverCull,
+            [](const FARDGBufferAccessParameters&) {});
+        (void)Builder.Compile();
+    };
+    EXPECT_FATAL_CHECK(Build(false), "before its byte range is produced");
+    Build(true);
+}
+
+TEST_P(FARDGNativeExecution, RegisteredComputeDispatchWritesBothDescriptorSpaces)
+{
+    using namespace arda::render_graph;
+    auto Shader = CreateShader("RegisteredCS", rhi::EArdaRHIShaderStage::Compute);
+    ASSERT_TRUE(Shader);
+    const auto& Metadata = FARDGRegisteredShaderParameters::GetStaticMetadata();
+    eastl::vector<rhi::FArdaRHIBindingLayoutDesc> LayoutDescs;
+    ASSERT_TRUE(Metadata.BuildBindingLayoutDescs(LayoutDescs));
+    rhi::FArdaRHIComputePipelineDesc PipelineDesc;
+    PipelineDesc.mComputeShader = Shader;
+    for (const auto& Desc : LayoutDescs)
+    {
+        auto Layout = mDevice->CreateBindingLayout(Desc);
+        ASSERT_TRUE(Layout);
+        PipelineDesc.mBindingLayouts.push_back(Layout.mValue);
+    }
+    auto Pipeline = mDevice->CreateComputePipeline(PipelineDesc);
+    ASSERT_TRUE(Pipeline);
+    FARDGBuilder Builder(MakeRenderGraphContext(mDevice));
+    rhi::FArdaRHIBufferDesc Desc;
+    Desc.mDebugName = "RegisteredOutput";
+    Desc.mByteSize = 64;
+    Desc.mStructureStride = 4;
+    Desc.mUsage = rhi::EArdaRHIBufferUsage::Structured | rhi::EArdaRHIBufferUsage::UnorderedAccess;
+    auto First = Builder.CreateBuffer(Desc);
+    auto Second = Builder.CreateBuffer(Desc);
+    FARDGBufferViewDesc View;
+    View.mBuffer = First->GetHandle();
+    FARDGRegisteredBindingParameters Parameters;
+    Parameters.mFirst = Builder.CreateBufferUAV("First", View);
+    View.mBuffer = Second->GetHandle();
+    Parameters.mSecond = Builder.CreateBufferUAV("Second", View);
+    (void)Builder.AddDispatchPass("RegisteredDispatch", &Parameters, {16, 1, 1},
+        [&](FARDGPassExecutionContext& Context)
+        {
+            rhi::FArdaRHIComputeState State;
+            State.mPipeline = Pipeline.mValue;
+            for (auto& Layout : PipelineDesc.mBindingLayouts)
+                State.mBindings.push_back(Context.CreateBindingSet(Metadata, Layout.Get()));
+            return Context.mCommandList.SetComputeState(State);
+        }, EARDGPassFlags::Compute | EARDGPassFlags::AsyncCompute);
+    eastl::vector<uint8_t> FirstBytes;
+    eastl::vector<uint8_t> SecondBytes;
+    (void)Builder.AddDeviceToHostCopyPass(First, FirstBytes);
+    (void)Builder.AddDeviceToHostCopyPass(Second, SecondBytes);
+    ExpectCompleteStateConformance(Builder.Execute());
+    ASSERT_EQ(FirstBytes.size(), Desc.mByteSize);
+    ASSERT_EQ(SecondBytes.size(), Desc.mByteSize);
+    for (uint32_t Index = 0; Index < 16; ++Index)
+    {
+        uint32_t A;
+        uint32_t B;
+        std::memcpy(&A, FirstBytes.data() + Index * 4, 4);
+        std::memcpy(&B, SecondBytes.data() + Index * 4, 4);
+        EXPECT_EQ(A, 0xA2DA0000u + Index);
+        EXPECT_EQ(B, A ^ 0x12345678u);
+    }
+}
+
+TEST_P(FARDGNativeExecution, RayDispatchWritesDeclaredGraphOutput)
+{
+    using namespace arda::render_graph;
+    ASSERT_TRUE(mDevice->GetCapabilities().mRayTracing.mbPipelineShaders);
+    auto Shader = CreateShader("RayGen", rhi::EArdaRHIShaderStage::RayGeneration,
+        "../../ArdaBackend/Tests/ArdaRayTracingTest.hlsl");
+    ASSERT_TRUE(Shader);
+    rhi::FArdaRHIBindingLayoutDesc LayoutDesc;
+    LayoutDesc.mVisibility = rhi::EArdaRHIShaderStage::AllRayTracing;
+    LayoutDesc.mItems.push_back({0, 1, rhi::EArdaRHIBindingType::StructuredBufferUAV});
+    auto Layout = mDevice->CreateBindingLayout(LayoutDesc);
+    ASSERT_TRUE(Layout);
+    rhi::FArdaRHIRayTracingPipelineDesc PipelineDesc;
+    PipelineDesc.mShaders.push_back({"RayGen", Shader, {}});
+    PipelineDesc.mGlobalBindingLayouts.push_back(Layout.mValue);
+    PipelineDesc.mMaxPayloadSize = sizeof(uint32_t);
+    auto Pipeline = mDevice->CreateRayTracingPipeline(PipelineDesc);
+    ASSERT_TRUE(Pipeline) << Pipeline.mStatus.mMessage.c_str();
+    rhi::FArdaRHIShaderTableDesc TableDesc;
+    TableDesc.mMaxEntries = 1;
+    auto Table = mDevice->CreateShaderTable(Pipeline.mValue, TableDesc);
+    ASSERT_TRUE(Table);
+    ASSERT_TRUE(mDevice->SetShaderTableRayGeneration(Table.mValue, "RayGen", {}));
+    FARDGBuilder Builder(MakeRenderGraphContext(mDevice));
+    rhi::FArdaRHIBufferDesc Desc;
+    Desc.mDebugName = "RayOutput";
+    Desc.mByteSize = 4;
+    Desc.mStructureStride = 4;
+    Desc.mUsage = rhi::EArdaRHIBufferUsage::Structured | rhi::EArdaRHIBufferUsage::UnorderedAccess;
+    auto Output = Builder.CreateBuffer(Desc);
+    FARDGBufferViewDesc View;
+    View.mBuffer = Output->GetHandle();
+    FARDGRegisteredBindingParameters Parameters;
+    Parameters.mFirst = Builder.CreateBufferUAV("RayOutput", View);
+    (void)Builder.AddRayDispatchPass("RayDispatch", &Parameters, {},
+        [&](FARDGPassExecutionContext& Context)
+        {
+            rhi::FArdaRHIRayTracingState State;
+            State.mShaderTable = Table.mValue;
+            State.mBindings.push_back(Context.CreateBindingSet(Layout.mValue.Get()));
+            return Context.mCommandList.SetRayTracingState(State);
+        });
+    eastl::vector<uint8_t> Readback;
+    (void)Builder.AddDeviceToHostCopyPass(Output, Readback);
+    ExpectCompleteStateConformance(Builder.Execute());
+    ASSERT_EQ(Readback.size(), 4u);
+    uint32_t Value;
+    std::memcpy(&Value, Readback.data(), 4);
+    EXPECT_EQ(Value, 0xA11CEu);
 }

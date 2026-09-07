@@ -1,4 +1,5 @@
 #include "ArdaRenderGraphPch.h"
+#include "ArdaRenderGraphState.h"
 
 #include "ArdaRenderGraphBuilderInternal.h"
 #include "ArdaRenderGraphCompiler.h"
@@ -16,65 +17,6 @@ namespace arda::render_graph
     namespace
     {
         constexpr uint32_t InvalidGroup = eastl::numeric_limits<uint32_t>::max();
-
-        /**
-         * Returns whether a state contains any state bit that permits a write.
-         *
-         * State lowering uses this when merging declarations for one resource
-         * within one pass: writes must remain exclusive, while compatible
-         * read-only requirements may be combined.
-         */
-        [[nodiscard]] bool IsWriteState(
-            rhi::EArdaRHIResourceState State) noexcept
-        {
-            constexpr uint32_t WriteMask =
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::UnorderedAccess) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::RenderTarget) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::DepthWrite) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::CopyDest) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::ResolveDest) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::AccelStructWrite);
-            return (static_cast<uint32_t>(State) & WriteMask) != 0;
-        }
-
-        /**
-         * Returns whether a state includes unordered access.
-         *
-         * Barrier lowering checks this even when before and after states are
-         * equal, because consecutive UAV accesses still require memory ordering.
-         */
-        [[nodiscard]] bool IsUAVState(
-            rhi::EArdaRHIResourceState State) noexcept
-        {
-            return (State & rhi::EArdaRHIResourceState::UnorderedAccess) !=
-                rhi::EArdaRHIResourceState::Unknown;
-        }
-
-        /**
-         * Converts a declaration to the state required on the selected pipeline.
-         *
-         * Async compute cannot use the pixel stage. When a general shader-read
-         * declaration contains both pixel and non-pixel bits, this removes only
-         * the pixel bit; all other states and pipelines are preserved.
-         */
-        [[nodiscard]] rhi::EArdaRHIResourceState NormalizeStateForPipeline(
-            rhi::EArdaRHIResourceState State,
-            EARDGPipeline Pipeline) noexcept
-        {
-            if (Pipeline != EARDGPipeline::AsyncCompute ||
-                (State & rhi::EArdaRHIResourceState::PixelShaderResource) ==
-                    rhi::EArdaRHIResourceState::Unknown ||
-                (State & rhi::EArdaRHIResourceState::NonPixelShaderResource) ==
-                    rhi::EArdaRHIResourceState::Unknown)
-            {
-                return State;
-            }
-
-            return static_cast<rhi::EArdaRHIResourceState>(
-                static_cast<uint32_t>(State) &
-                ~static_cast<uint32_t>(
-                    rhi::EArdaRHIResourceState::PixelShaderResource));
-        }
 
         /**
          * Merges one pass's requirements for the same tracked resource unit.
@@ -111,9 +53,7 @@ namespace arda::render_graph
          */
         [[nodiscard]] bool IsCopyCompatible(const FARDGPass& Pass) noexcept
         {
-            constexpr uint32_t CopyMask =
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::CopySource) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::CopyDest);
+
             for (const FARDGPassTextureState& State :
                  Pass.GetState().mTextureStates)
             {
@@ -149,14 +89,10 @@ namespace arda::render_graph
         [[nodiscard]] bool IsAsyncComputeCompatible(
             const FARDGPass& Pass) noexcept
         {
-            constexpr uint32_t GraphicsOnlyMask =
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::RenderTarget) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::DepthWrite) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::DepthRead) |
-                static_cast<uint32_t>(rhi::EArdaRHIResourceState::Present);
+
             // Use the same queue-compatibility rule for textures and buffers.
             const auto IsCompatibleState =
-                [GraphicsOnlyMask](rhi::EArdaRHIResourceState State)
+                [](rhi::EArdaRHIResourceState State)
                 {
                     const bool bPixelShaderResource =
                         (State & rhi::EArdaRHIResourceState::PixelShaderResource) !=
@@ -206,7 +142,29 @@ namespace arda::render_graph
             for (FARDGPass* Pass : Graph.mPasses.GetEntries())
             {
                 EARDGPipeline Pipeline = EARDGPipeline::Graphics;
+                // Host-visible buffers have fixed native states, which cannot
+                // participate in the Common-state queue handoff protocol.
+                const bool bHostBuffer = eastl::any_of(
+                    Pass->GetState().mBufferStates.begin(), Pass->GetState().mBufferStates.end(),
+                    [&Graph](const auto& Access)
+                    {
+                        return Graph.mBuffers.Get(Access.mBuffer).GetDesc().mCpuAccess !=
+                            rhi::EArdaRHICpuAccess::None;
+                    });
+                // Depth/stencil transfers require a graphics-capable queue on
+                // the portable RHI contract; specialized transfer support is
+                // not exposed as a per-format queue capability.
+                const bool bDepthTransfer = eastl::any_of(
+                    Pass->GetState().mTextureStates.begin(), Pass->GetState().mTextureStates.end(),
+                    [&Graph](const auto& Access)
+                    {
+                        const auto& Format = rhi::GetArdaRHIFormatInfo(
+                            Graph.mTextures.Get(Access.mTexture).GetDesc().mFormat);
+                        return (Format.mbDepth || Format.mbStencil) &&
+                            (static_cast<uint32_t>(Access.mState) & CopyMask) != 0;
+                    });
                 if (!Graph.mContext.mDebugOptions.mbImmediateMode &&
+                    !bHostBuffer && !bDepthTransfer &&
                     !Pass->GetState().mbSentinel &&
                     HasAllFlags(Pass->GetFlags(), EARDGPassFlags::Copy) &&
                     Graph.mContext.mQueuePolicy.mbCopy &&
@@ -215,6 +173,7 @@ namespace arda::render_graph
                     Pipeline = EARDGPipeline::Copy;
                 }
                 else if (!Graph.mContext.mDebugOptions.mbImmediateMode &&
+                         !bHostBuffer && !bDepthTransfer &&
                          !Pass->GetState().mbSentinel &&
                          HasAllFlags(
                              Pass->GetFlags(),

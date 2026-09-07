@@ -1,10 +1,12 @@
 #include "ArdaRenderGraphPch.h"
+#include "ArdaRenderGraphState.h"
 
 #include "ArdaRenderGraphBuilderInternal.h"
 #include "ArdaRenderGraphLog.h"
 #include "ArdaRenderGraphValidation.h"
 
 #include <EASTL/algorithm.h>
+#include <EASTL/sort.h>
 #include <sstream>
 #include <EASTL/unordered_set.h>
 
@@ -12,23 +14,11 @@ namespace arda::render_graph
 {
     namespace
     {
-        constexpr uint32_t WriteMask =
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::UnorderedAccess) |
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::RenderTarget) |
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::DepthWrite) |
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::CopyDest) |
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::ResolveDest) |
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::AccelStructWrite);
 
-        constexpr uint32_t CopyMask =
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::CopySource) |
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::CopyDest);
 
-        constexpr uint32_t GraphicsOnlyMask =
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::RenderTarget) |
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::DepthWrite) |
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::DepthRead) |
-            static_cast<uint32_t>(rhi::EArdaRHIResourceState::Present);
+
+
+
 
         constexpr uint32_t TextureForbiddenMask =
             static_cast<uint32_t>(rhi::EArdaRHIResourceState::ConstantBuffer) |
@@ -43,43 +33,6 @@ namespace arda::render_graph
             static_cast<uint32_t>(rhi::EArdaRHIResourceState::ResolveDest) |
             static_cast<uint32_t>(rhi::EArdaRHIResourceState::ResolveSource) |
             static_cast<uint32_t>(rhi::EArdaRHIResourceState::Present);
-
-        /**
-         * Returns whether a state contains any bit that permits resource writes.
-         *
-         * The classification uses the same write mask as the declaration
-         * legality checks, covering UAV, attachment, copy, and acceleration writes.
-         */
-        [[nodiscard]] bool IsWriteState(rhi::EArdaRHIResourceState State) noexcept
-        {
-            return (static_cast<uint32_t>(State) & WriteMask) != 0;
-        }
-
-        /**
-         * Converts a declared state to the requirement for the selected pipeline.
-         *
-         * Async compute drops the pixel bit only from a combined pixel/non-pixel
-         * shader-read declaration. This exactly mirrors compiler lowering so
-         * transition replay tests the state the selected queue actually uses.
-         */
-        [[nodiscard]] rhi::EArdaRHIResourceState NormalizeStateForPipeline(
-            rhi::EArdaRHIResourceState State,
-            EARDGPipeline Pipeline) noexcept
-        {
-            if (Pipeline != EARDGPipeline::AsyncCompute ||
-                (State & rhi::EArdaRHIResourceState::PixelShaderResource) ==
-                    rhi::EArdaRHIResourceState::Unknown ||
-                (State & rhi::EArdaRHIResourceState::NonPixelShaderResource) ==
-                    rhi::EArdaRHIResourceState::Unknown)
-            {
-                return State;
-            }
-
-            return static_cast<rhi::EArdaRHIResourceState>(
-                static_cast<uint32_t>(State) &
-                ~static_cast<uint32_t>(
-                    rhi::EArdaRHIResourceState::PixelShaderResource));
-        }
 
         /**
          * Returns whether more than one independently writable state bit is set.
@@ -299,7 +252,7 @@ namespace arda::render_graph
          * Replays registration order to reject graph-created reads before production.
          *
          * External resources start produced. Texture production is tracked per
-         * mip/slice, while buffers use one whole-resource bit. Writes are first
+         * mip/slice, while buffer production follows merged byte intervals. Writes are first
          * collected for a pass, reads may then rely on earlier production or a
          * same-pass write, and finally those writes are committed globally.
          * Sentinels are ignored and no graph state is mutated.
@@ -315,11 +268,13 @@ namespace arda::render_graph
                     static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize,
                     Texture->IsExternal());
             }
-            eastl::vector<bool> ProducedBuffers(Graph.mBuffers.GetCount(), false);
+            eastl::vector<eastl::vector<rhi::FArdaRHIBufferRange>> ProducedBuffers(
+                Graph.mBuffers.GetCount());
             for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
             {
-                ProducedBuffers[Buffer->GetHandle().GetIndex()] =
-                    Buffer->IsExternal();
+                if (Buffer->IsExternal())
+                    ProducedBuffers[Buffer->GetHandle().GetIndex()].push_back(
+                        {0, Buffer->GetDesc().mByteSize});
             }
             eastl::vector<bool> ProducedAccelStructs(
                 Graph.mAccelStructs.GetCount(), false);
@@ -373,16 +328,30 @@ namespace arda::render_graph
                     }
                 }
 
-                bool bPassWritesBuffer = false;
-                eastl::unordered_set<uint32_t> PassBufferWrites;
-                for (const FARDGPassBufferState& Access :
-                     Pass->GetState().mBufferStates)
+                // Publish this pass's writes before checking reads, matching
+                // the texture rule that a callback may initialize then read.
+                for (const auto& Access : Pass->GetState().mBufferStates)
                 {
-                    if (Access.mbWrite)
+                    if (!Access.mbWrite)
+                        continue;
+                    auto& Ranges = ProducedBuffers[Access.mBuffer.GetIndex()];
+                    Ranges.push_back(Access.mRange.Resolve(Graph.mBuffers.Get(Access.mBuffer).GetDesc()));
+                    eastl::sort(Ranges.begin(), Ranges.end(), [](const auto& Left, const auto& Right)
+                    { return Left.mByteOffset < Right.mByteOffset; });
+                    size_t Count = 0;
+                    for (const auto Range : Ranges)
                     {
-                        PassBufferWrites.insert(Access.mBuffer.GetIndex());
-                        bPassWritesBuffer = true;
+                        if (Count && Ranges[Count - 1].mByteOffset + Ranges[Count - 1].mByteSize >=
+                            Range.mByteOffset)
+                        {
+                            auto& Last = Ranges[Count - 1];
+                            Last.mByteSize = eastl::max(Last.mByteOffset + Last.mByteSize,
+                                Range.mByteOffset + Range.mByteSize) - Last.mByteOffset;
+                        }
+                        else
+                            Ranges[Count++] = Range;
                     }
+                    Ranges.resize(Count);
                 }
                 eastl::unordered_set<uint32_t> PassAccelStructWrites;
                 for (const FARDGPassAccelStructState& Access :
@@ -431,12 +400,16 @@ namespace arda::render_graph
                      Pass->GetState().mBufferStates)
                 {
                     const uint32_t Index = Access.mBuffer.GetIndex();
-                    if (!Access.mbWrite && !ProducedBuffers[Index] &&
-                        PassBufferWrites.find(Index) == PassBufferWrites.end())
+                    const auto Read = Access.mRange.Resolve(Graph.mBuffers.Get(Access.mBuffer).GetDesc());
+                    const auto& Ranges = ProducedBuffers[Index];
+                    if (!Access.mbWrite && !eastl::any_of(Ranges.begin(), Ranges.end(),
+                        [&](const auto& Range)
+                        {
+                            return Range.mByteOffset <= Read.mByteOffset &&
+                                Range.mByteOffset + Range.mByteSize >= Read.mByteOffset + Read.mByteSize;
+                        }))
                     {
-                        ReportPassError(
-                            *Pass,
-                            "reads a buffer before it is produced.");
+                        ReportPassError(*Pass, "reads a buffer before its byte range is produced.");
                     }
                 }
                 for (const FARDGPassAccelStructState& Access :
@@ -464,13 +437,6 @@ namespace arda::render_graph
                         ProducedTextures[TextureIndex][Index] =
                             ProducedTextures[TextureIndex][Index] ||
                             Writes[Index];
-                    }
-                }
-                if (bPassWritesBuffer)
-                {
-                    for (uint32_t Index : PassBufferWrites)
-                    {
-                        ProducedBuffers[Index] = true;
                     }
                 }
                 for (uint32_t Index : PassAccelStructWrites)

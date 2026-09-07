@@ -144,7 +144,7 @@ render_graph::FARDGRenderGraphContext graphContext =
             <dd>Submitted work may continue after <code>Execute()</code> returns. Command submission retains required resources under the RHI contract, but CPU-visible reuse and external destruction still require explicit completion reasoning.</dd>
           </dl>
 
-          <p>Keep the builder on one setup thread. Current public mutation methods do not promise concurrent graph construction. Parallelism occurs later during command-list recording, where each eligible pass owns a distinct command list and the execution context guards physical access.</p>
+          <p>Keep the builder on one setup thread. Current public mutation methods do not promise concurrent graph construction. Parallelism occurs later during command-list recording, where each independent recording job owns a distinct command list; compatible adjacent raster callbacks can share that list and the execution context guards physical access.</p>
         </section>
 
         <section id="parameters">
@@ -196,7 +196,7 @@ parameters-&gt;mOutput.mState =
     {
         rhi::IArdaRHIBuffer* physical =
             context.GetBuffer(frozen.mOutput.mBuffer);
-        context.mUnsafeRawCommandList.ClearBufferUInt(
+        return context.mUnsafeRawCommandList.ClearBufferUInt(
             *physical,
             0x12345678u);
     });</code></pre>
@@ -287,7 +287,7 @@ arda::rhi::FArdaRHIBufferRef BuildClearGraph(
         [](FARDGPassExecutionContext&amp; context,
            const FClearParameters&amp; frozen)
         {
-            context.mUnsafeRawCommandList.ClearBufferUInt(
+            return context.mUnsafeRawCommandList.ClearBufferUInt(
                 *context.GetBuffer(frozen.mOutput.mBuffer),
                 0x12345678u);
         });
@@ -301,7 +301,8 @@ arda::rhi::FArdaRHIBufferRef BuildClearGraph(
     FARDGExecuteOptions options;
     options.mbParallelRecording = false;
     const FARDGExecutionResult&amp; result = graph.Execute(options);
-    (void)result; // Record counters and submitted instances in production.
+    if (!result.mStatus)
+        return nullptr; // Log result.mStatus.mMessage in the application.
 
     // This simple boundary waits before returning CPU-coordinated ownership.
     // A frame renderer would normally use submitted instances asynchronously.
@@ -343,7 +344,8 @@ const render_graph::FARDGExecutionResult&amp; submitted =
             <li>resource lifetimes, logical transitions, queue dependencies, async fork/join metadata, and raster groups are stable.</li>
           </ul>
 
-          <h3>What execution establishes</h3>
+          <h3>What successful execution establishes</h3>
+          <p>Check the returned report's <code>mStatus</code> first. Recording failure prevents graph submission and extraction; a later submission failure can leave earlier work in flight. The following guarantees apply only to a successful status.</p>
           <ul>
             <li>live resources were materialized or verified as external;</li>
             <li>runtime transitions were rebuilt against physical identities;</li>
@@ -390,7 +392,7 @@ const render_graph::FARDGExecutionResult&amp; submitted =
             <dt>Setup thread</dt>
             <dd>Build the graph serially unless a future API explicitly documents concurrent mutation. Append-only registries provide stable identity, not a concurrent writer contract.</dd>
             <dt>Recording workers</dt>
-            <dd>Execution groups passes into dependency levels. Eligible passes at one level may record through <code>std::async</code>, bounded by <code>mMaxRecordingThreads</code>. Each pass writes a distinct command list and result slot.</dd>
+            <dd>Execution groups passes into dependency levels. Eligible passes at one level may record through <code>std::async</code>, bounded by <code>mMaxRecordingThreads</code>. Each independent recording batch writes a distinct command list and result slot; merged raster callbacks share their batch list and submission instance.</dd>
             <dt>Serial exceptions</dt>
             <dd>Immediate mode, disabled parallel recording, and <code>NeverParallel</code> force serial recording. Use <code>NeverParallel</code> when callback-side non-graph state cannot safely be accessed concurrently.</dd>
             <dt>Submission order</dt>
@@ -398,7 +400,7 @@ const render_graph::FARDGExecutionResult&amp; submitted =
             <dt>Platform boundary</dt>
             <dd>ARDG code is backend-neutral. D3D12/Vulkan behavior, native queues, and presentation surfaces stay below Arda RHI and ArdaBackend.</dd>
             <dt>Transient resources</dt>
-            <dd>Current execution can reuse exact committed-resource matches across non-overlapping lifetimes in one queue domain. It does not apply physical placed-memory aliasing.</dd>
+            <dd>Execution binds compatible transient resources into explicit heaps, reuses expired ranges with barriers and queue waits, and uses committed fallback for unsupported candidates.</dd>
             <dt>Debug modes</dt>
             <dd>Immediate mode, conservative barriers, extended lifetimes, and first-write clobbering are correctness tools. They deliberately trade performance or normal scheduling for diagnostic clarity.</dd>
           </dl>

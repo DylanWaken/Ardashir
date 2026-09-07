@@ -73,6 +73,7 @@ namespace arda::rhi
         uint32_t mShaderTableAlignment = 0;
         uint32_t mAccelerationStructureAlignment = 0;
         uint32_t mMaxRecursionDepth = 0;
+        /** Zero means the native API does not expose a queryable payload limit. */
         uint32_t mMaxRayPayloadSize = 0;
         /** Maximum ray-generation invocations accepted by one direct dispatch. */
         uint32_t mMaxRayDispatchInvocations = 0;
@@ -171,7 +172,9 @@ namespace arda::rhi
     struct FArdaRHIMachineLearningCapabilities
     {
         bool mbSubgroupOperations = false;
+        /** Shader arithmetic on native 16-bit floating-point values. */
         bool mbNativeFloat16 = false;
+        /** Packed signed/unsigned 8-bit dot product with a 32-bit accumulator. */
         bool mbNativeInt8 = false;
         bool mbBufferDeviceAddress = false;
         uint32_t mSubgroupMinSize = 0;

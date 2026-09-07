@@ -24,6 +24,6 @@
     <rect y="480" width="530" height="82" rx="13" class="meta"/><text x="22" y="512" class="num">13</text><text x="72" y="512" class="name">CompileRasterGroups</text><text x="72" y="538" class="s">compatible consecutive raster metadata</text>
     <rect y="576" width="530" height="82" rx="13" class="stage"/><text x="22" y="608" class="num">14</text><text x="72" y="608" class="name">Set mbCompiled; return result</text><text x="72" y="634" class="s">later Compile returns the cache</text>
   </g>
-  <rect x="48" y="806" width="1104" height="48" rx="12" class="stage"/><text x="72" y="836" class="t">Limits: execution remains live registry order; raster groups do not merge command lists or render passes.</text>
+  <rect x="48" y="806" width="1104" height="48" rx="12" class="stage"/><text x="72" y="836" class="t">Execution keeps live registry order; raster groups merge only when physical barriers and waits allow.</text>
   <text x="48" y="882" class="s">Legend: amber = validation | green = graph lowering | purple = scheduling metadata | gray = publication</text>
 </svg>

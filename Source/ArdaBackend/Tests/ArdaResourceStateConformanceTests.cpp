@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <cstring>
+#include <cstdio>
 
 namespace
 {
@@ -14,12 +15,13 @@ namespace
     public:
         void Message(
             arda::backend::EArdaDiagnosticSeverity Severity,
-            const char*) override
+            const char* Message) override
         {
             if (Severity == arda::backend::EArdaDiagnosticSeverity::Error ||
                 Severity == arda::backend::EArdaDiagnosticSeverity::Fatal)
             {
                 mErrorCount.fetch_add(1, std::memory_order_relaxed);
+                std::fprintf(stderr, "Native state validation: %s\n", Message ? Message : "");
             }
         }
 

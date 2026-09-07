@@ -217,6 +217,8 @@ namespace arda::rhi
          */
         [[nodiscard]] virtual const FArdaRHIInputLayoutDesc& GetDesc() const noexcept = 0;
     };
+    struct FArdaRHIBindlessLayoutDesc;
+
     /** Interface for binding layout. */
     class IArdaRHIBindingLayout : public virtual IArdaRHIResource
     {
@@ -226,6 +228,11 @@ namespace arda::rhi
          * @return A reference to the requested value.
          */
         [[nodiscard]] virtual const FArdaRHIBindingLayoutDesc& GetDesc() const noexcept = 0;
+        /** Returns immutable bindless semantics, or null for a fixed layout. */
+        [[nodiscard]] virtual const FArdaRHIBindlessLayoutDesc* GetBindlessDesc() const noexcept
+        {
+            return nullptr;
+        }
     };
 
     /** Describes binding item. */
@@ -286,6 +293,8 @@ namespace arda::rhi
         bool mbVariableDescriptorCount = false;
         /** Shaders directly index the native resource/sampler heap. */
         bool mbDirectHeapIndexing = false;
+        /** Uses native descriptor-buffer storage instead of descriptor sets. */
+        bool mbDescriptorBuffer = false;
         /** Stores the layout type. */
         EArdaRHIBindlessLayoutType mLayoutType = EArdaRHIBindlessLayoutType::Immutable;
         /** Stores the register spaces. */
@@ -358,6 +367,8 @@ namespace arda::rhi
             GetDesc() const noexcept = 0;
         [[nodiscard]] virtual uint32_t GetFirstDescriptorIndexInHeap()
             const noexcept = 0;
+        /** Returns the collection's bindable descriptor table; empty for host-only collections. */
+        [[nodiscard]] virtual FArdaRHIDescriptorTableRef GetDescriptorTable() const = 0;
     };
 
     /** Describes framebuffer target. */

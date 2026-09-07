@@ -2097,7 +2097,7 @@ window.ArdaRDGApi = {
       ],
       "returns": "const FARDGExecutionResult&",
       "ownership": "Returns a stable non-owning reference to the builder-owned execution report. Submitted RHI work and extracted references are retained by their owning systems.",
-      "errors": "Fails ARDA checks if execution was already started, the graph previously failed, no RHI device is present, compile-time validation fails, or checked RHI resource, binding-set, or command-list creation fails. A failed attempt permanently marks the builder failed.",
+      "errors": "Fails ARDA checks if execution was already started, the graph previously failed, no RHI device is present, compile-time validation fails, or checked resource materialization, binding-set construction, or internal transition invariants fail. Command-list creation/open/close, reported callback errors, uniform-upload recording, queue waits, and submission errors return mStatus. A failed attempt permanently marks the builder failed.",
       "threading": "Invoke once from one controlling thread. Independent pass waves may record concurrently according to Options; queue submission is deterministic and returns before GPU completion.",
       "related": [
         "arda::render_graph::FARDGBuilder"
@@ -9906,6 +9906,126 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
 (() => {
   const generatedSymbols = [
   {
+    "id": "api-arda-render-graph-fardgexecuteoptions-mbmergerasterpasses-4636c7eb",
+    "name": "mbMergeRasterPasses",
+    "qualifiedName": "arda::render_graph::FARDGExecuteOptions::mbMergeRasterPasses",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "bool mbMergeRasterPasses = true",
+    "summary": "Stores merge raster passes in this public render-graph value.",
+    "details": "Stores merge raster passes in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGExecuteOptions"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgexecutionresult-mmergedrasterpasscount-ffd395b5",
+    "name": "mMergedRasterPassCount",
+    "qualifiedName": "arda::render_graph::FARDGExecutionResult::mMergedRasterPassCount",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMergedRasterPassCount = 0",
+    "summary": "Stores merged raster pass count in this public render-graph value.",
+    "details": "Stores merged raster pass count in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGExecutionResult"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgexecutionresult-mqueuedependencies-e02cd763",
+    "name": "mQueueDependencies",
+    "qualifiedName": "arda::render_graph::FARDGExecutionResult::mQueueDependencies",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FARDGQueueDependency> mQueueDependencies",
+    "summary": "Stores queue dependencies in this public render-graph value.",
+    "details": "Stores queue dependencies in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGExecutionResult"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgexecutionresult-mtransientheapbytes-ffae26c5",
+    "name": "mTransientHeapBytes",
+    "qualifiedName": "arda::render_graph::FARDGExecutionResult::mTransientHeapBytes",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint64_t mTransientHeapBytes = 0",
+    "summary": "Stores transient heap bytes in this public render-graph value.",
+    "details": "Stores transient heap bytes in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGExecutionResult"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgexecutionresult-mtransientaliasedbytes-f987e8d1",
+    "name": "mTransientAliasedBytes",
+    "qualifiedName": "arda::render_graph::FARDGExecutionResult::mTransientAliasedBytes",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint64_t mTransientAliasedBytes = 0",
+    "summary": "Stores transient aliased bytes in this public render-graph value.",
+    "details": "Stores transient aliased bytes in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGExecutionResult"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgexecutionresult-maliasingbarriercount-df7ebb85",
+    "name": "mAliasingBarrierCount",
+    "qualifiedName": "arda::render_graph::FARDGExecutionResult::mAliasingBarrierCount",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint32_t mAliasingBarrierCount = 0",
+    "summary": "Stores aliasing barrier count in this public render-graph value.",
+    "details": "Stores aliasing barrier count in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGExecutionResult"
+    ]
+  },
+  {
     "id": "api-arda-render-graph-fardgraydispatcharguments-2cfac7ec",
     "name": "FARDGRayDispatchArguments",
     "qualifiedName": "arda::render_graph::FARDGRayDispatchArguments",
@@ -10003,6 +10123,226 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::render_graph"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgaccelstructextraction-maccelstruct-0f073040",
+    "name": "mAccelStruct",
+    "qualifiedName": "arda::render_graph::FARDGAccelStructExtraction::mAccelStruct",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FARDGAccelStructRef mAccelStruct = nullptr",
+    "summary": "Stores accel struct in this public render-graph value.",
+    "details": "Stores accel struct in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGAccelStructExtraction"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgaccelstructextraction-moutput-9228da72",
+    "name": "mOutput",
+    "qualifiedName": "arda::render_graph::FARDGAccelStructExtraction::mOutput",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "rhi::FArdaRHIAccelStructRef* mOutput = nullptr",
+    "summary": "Stores output in this public render-graph value.",
+    "details": "Stores output in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGAccelStructExtraction"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgaccelstructextraction-mfinalstate-96562f6d",
+    "name": "mFinalState",
+    "qualifiedName": "arda::render_graph::FARDGAccelStructExtraction::mFinalState",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "rhi::EArdaRHIResourceState mFinalState = rhi::EArdaRHIResourceState::Unknown",
+    "summary": "Stores final state in this public render-graph value.",
+    "details": "Stores final state in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGAccelStructExtraction"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-operator-7df01789",
+    "name": "operator=",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::operator=",
+    "kind": "conversion operator",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FARDGBuilder& operator=(const FARDGBuilder&) = delete",
+    "summary": "Performs operator= through the public render-graph contract.",
+    "details": "Performs operator= through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-operator-5b85364c",
+    "name": "operator=",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::operator=",
+    "kind": "conversion operator",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FARDGBuilder& operator=(FARDGBuilder&&) = delete",
+    "summary": "Performs operator= through the public render-graph contract.",
+    "details": "Performs operator= through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-createsrv-4e4b5407",
+    "name": "CreateSRV",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::CreateSRV",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FARDGTextureSRVRef CreateSRV( eastl::string Name, FARDGTextureViewDesc Desc)",
+    "summary": "Performs create s r v through the public render-graph contract.",
+    "details": "Performs create s r v through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-createsrv-01f777d6",
+    "name": "CreateSRV",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::CreateSRV",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FARDGBufferSRVRef CreateSRV( eastl::string Name, FARDGBufferViewDesc Desc)",
+    "summary": "Performs create s r v through the public render-graph contract.",
+    "details": "Performs create s r v through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-createuav-0c8958e0",
+    "name": "CreateUAV",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::CreateUAV",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FARDGTextureUAVRef CreateUAV( eastl::string Name, FARDGTextureViewDesc Desc)",
+    "summary": "Performs create u a v through the public render-graph contract.",
+    "details": "Performs create u a v through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-createuav-a3bcdbdf",
+    "name": "CreateUAV",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::CreateUAV",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FARDGBufferUAVRef CreateUAV( eastl::string Name, FARDGBufferViewDesc Desc)",
+    "summary": "Performs create u a v through the public render-graph contract.",
+    "details": "Performs create u a v through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-queuetextureextraction-e4cc41d7",
+    "name": "QueueTextureExtraction",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::QueueTextureExtraction",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "void QueueTextureExtraction( FARDGTextureRef Texture, rhi::FArdaRHITextureRef& Output, rhi::EArdaRHIResourceState FinalState)",
+    "summary": "Performs queue texture extraction through the public render-graph contract.",
+    "details": "Performs queue texture extraction through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgbuilder-queuebufferextraction-05107656",
+    "name": "QueueBufferExtraction",
+    "qualifiedName": "arda::render_graph::FARDGBuilder::QueueBufferExtraction",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "void QueueBufferExtraction( FARDGBufferRef Buffer, rhi::FArdaRHIBufferRef& Output, rhi::EArdaRHIResourceState FinalState)",
+    "summary": "Performs queue buffer extraction through the public render-graph contract.",
+    "details": "Performs queue buffer extraction through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGBuilder"
     ]
   },
   {
@@ -10244,8 +10584,207 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::render_graph::FARDGRenderGraphContext"
     ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgrasterbindingsignature-operator-7687ba58",
+    "name": "operator==",
+    "qualifiedName": "arda::render_graph::FARDGRasterBindingSignature::operator==",
+    "kind": "conversion operator",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "friend bool operator==( const FARDGRasterBindingSignature& Left, const FARDGRasterBindingSignature& Right) noexcept",
+    "summary": "Performs operator== through the public render-graph contract.",
+    "details": "Performs operator== through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGRasterBindingSignature"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgrasterbindingsignature-operator-cbce490f",
+    "name": "operator!=",
+    "qualifiedName": "arda::render_graph::FARDGRasterBindingSignature::operator!=",
+    "kind": "conversion operator",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "friend bool operator!=( const FARDGRasterBindingSignature& Left, const FARDGRasterBindingSignature& Right) noexcept",
+    "summary": "Performs operator!= through the public render-graph contract.",
+    "details": "Performs operator!= through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGRasterBindingSignature"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgpassexecutioncontext-operator-614a3d71",
+    "name": "operator=",
+    "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::operator=",
+    "kind": "conversion operator",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FARDGPassExecutionContext& operator=(const FARDGPassExecutionContext&) = delete",
+    "summary": "Performs operator= through the public render-graph contract.",
+    "details": "Performs operator= through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGPassExecutionContext"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgpassexecutioncontext-reportstatus-ba2ad5cc",
+    "name": "ReportStatus",
+    "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::ReportStatus",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "void ReportStatus(rhi::FArdaRHIStatus Status)",
+    "summary": "Performs report status through the public render-graph contract.",
+    "details": "Performs report status through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGPassExecutionContext"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgpassexecutioncontext-getstatus-20fc8f6d",
+    "name": "GetStatus",
+    "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetStatus",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] const rhi::FArdaRHIStatus& GetStatus() const noexcept",
+    "summary": "Performs get status through the public render-graph contract.",
+    "details": "Performs get status through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGPassExecutionContext"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgpass-fardgpass-ff673a85",
+    "name": "FARDGPass",
+    "qualifiedName": "arda::render_graph::FARDGPass::FARDGPass",
+    "kind": "constructor",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FARDGPass( FARDGPassHandle Handle, eastl::string Name, EARDGPassFlags Flags, const void* Parameters = nullptr, const FARDGParameterMetadata* ParameterMetadata = nullptr) : mHandle(Handle) , mName(eastl::move(Name)) , mFlags(Flags) , mParameters(Parameters) , mParameterMetadata(ParameterMetadata)",
+    "summary": "Constructs the render-graph value from the declared inputs.",
+    "details": "Constructs the render-graph value from the declared inputs. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGPass"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardglambdapass-fardglambdapass-66b09787",
+    "name": "FARDGLambdaPass",
+    "qualifiedName": "arda::render_graph::FARDGLambdaPass::FARDGLambdaPass",
+    "kind": "constructor",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FARDGLambdaPass( FARDGPassHandle Handle, eastl::string Name, EARDGPassFlags Flags, const void* Parameters, const FARDGParameterMetadata* ParameterMetadata, FARDGPassExecuteFunction ExecuteFunction) : FARDGPass( Handle, eastl::move(Name), Flags, Parameters, ParameterMetadata) , mExecuteFunction(eastl::move(ExecuteFunction))",
+    "summary": "Constructs the render-graph value from the declared inputs.",
+    "details": "Constructs the render-graph value from the declared inputs. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGLambdaPass"
+    ]
+  },
+  {
+    "id": "api-arda-render-graph-fardgsentinelpass-fardgsentinelpass-e507edc5",
+    "name": "FARDGSentinelPass",
+    "qualifiedName": "arda::render_graph::FARDGSentinelPass::FARDGSentinelPass",
+    "kind": "constructor",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FARDGSentinelPass(FARDGPassHandle Handle, eastl::string Name) : FARDGPass( Handle, eastl::move(Name), EARDGPassFlags::NeverCull)",
+    "summary": "Constructs the render-graph value from the declared inputs.",
+    "details": "Constructs the render-graph value from the declared inputs. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::render_graph::FARDGSentinelPass"
+    ]
   }
 ];
   window.ArdaRDGApi.symbols.push(...generatedSymbols);
 })();
 /* END GENERATED ARDA RDG API GAPS */
+
+// Authored execution contracts for the RDG native conformance paths.
+(() => {
+  const contracts = {
+  "arda::render_graph::FARDGExecuteOptions::mbMergeRasterPasses": "The executor can record adjacent compatible raster callbacks in one command list. It splits at required transitions, UAV or forced barriers, new resource initialization, queue handoffs, incoming queue dependencies, buffer/acceleration-structure declarations in the next pass, and NeverParallel boundaries. Immediate mode disables merging. Vulkan can continue its active rendering scope across matching framebuffer attachments; barriers or commands that end rendering still split that native scope. Disabled in immediate mode. Default true.",
+  "arda::render_graph::FARDGExecutionResult::mMergedRasterPassCount": "Counts raster callbacks appended to an earlier compatible command list, not native render-pass objects. Zero when merging is disabled or no eligible pair exists.",
+  "arda::render_graph::FARDGExecutionResult::mTransientHeapBytes": "Sum of capacities of successfully bound explicit transient heaps. Excludes committed fallback allocations, imported resources, and dedicated uniforms.",
+  "arda::render_graph::FARDGExecutionResult::mTransientAliasedBytes": "Sum of the non-aliasing packed capacity minus the applied aliased capacity in each successful compatible heap group. Measures avoided heap bytes; excludes committed fallback.",
+  "arda::render_graph::FARDGExecutionResult::mAliasingBarrierCount": "Number of reused placed resources activated with aliasing barriers. Each new activation is ordered after prior overlapping uses on every queue.",
+  "arda::render_graph::FARDGExecutionResult::mQueueDependencies": "Execution plan containing compiled queue edges plus physical resource ownership and aliasing dependencies. Compile output remains unchanged. Actual waits are coalesced per source queue at submission; multiple raster members may share one submitted instance.",
+  "arda::render_graph::FARDGExecutionResult::mbUsedVirtualHeaps": "True when at least one transient compatibility group was successfully bound into an explicit heap. May be true together with committed fallback.",
+  "arda::render_graph::FARDGExecutionResult::mbUsedTransientAliasing": "True when an applied heap layout reuses a retired byte range. Inclusive lifetime overlap forbids reuse. Cross-queue prior uses are synchronized before activation.",
+  "arda::render_graph::FARDGExecutionResult::mbUsedTransientFallback": "True when any live transient candidate could not use placement, including unavailable device features, CPU-visible buffers, incompatible requirements, or heap/binding failure. Eligible groups can still use placed aliasing.",
+  "arda::render_graph::FARDGPassExecutionContext::ReportStatus": "Stores the first non-success callback status. Later success does not erase failure. After recording, any failed callback prevents graph command-list submission and extraction publication. Use from the active callback; the context is not shared across recording workers.",
+  "arda::render_graph::FARDGPassExecutionContext::GetStatus": "Returns the first callback failure reported or returned so far, or success. The reference is borrowed from this pass context and expires with the callback scope.",
+  "arda::render_graph::FARDGBuilder::GetLastExecutionResult": "Returns null before the first execution attempt. After execution starts, returns the builder-owned report, including failed attempts. The reference lasts until builder destruction; it is not a GPU completion signal.",
+  "arda::render_graph::FARDGBuilder::Execute": "Compiles, records, and submits the graph once. Inspect mStatus: callback failures prevent graph submission and extraction publication, while later upload, queue-wait, or submission failures can leave earlier work in flight. Successful submission publishes extractions but does not imply GPU completion. Invalid graph contracts, checked resource materialization, binding-set construction, and internal transition invariants remain fatal checks. Command-list creation/open/close, reported callback errors, uniform-upload recording, queue waits, and submission failures return mStatus. A failed builder cannot retry execution.",
+  "arda::render_graph::FARDGBuilder::AddPass": "Registers a graph pass and its declared resource accesses. Supported callback signatures may return void or FArdaRHIStatus. A returned error or context.ReportStatus error retains the first failure and prevents graph submission after recording finishes. Skip commands that depend on failed setup. Captured state must remain valid until execution and be synchronized when recording runs concurrently.",
+  "arda::render_graph::FARDGBuilder::AddDispatchPass": "Registers a typed compute pass, invokes setup, then dispatches only if setup succeeded. Setup may return FArdaRHIStatus or report failure through the context. Void setup callbacks remain supported.",
+  "arda::render_graph::FARDGBuilder::AddRayDispatchPass": "Registers a typed ray-tracing pass. Setup may return FArdaRHIStatus or report failure; failed setup suppresses dispatch. A failed native DispatchRays status is propagated into the graph result."
+};
+  for (const symbol of window.ArdaRDGApi.symbols) {
+    if (contracts[symbol.qualifiedName]) symbol.details = contracts[symbol.qualifiedName];
+    if (symbol.kind === "member variable" &&
+        (symbol.qualifiedName.startsWith("arda::render_graph::FARDGExecuteOptions::") ||
+         symbol.qualifiedName.startsWith("arda::render_graph::FARDGExecutionResult::"))) {
+      symbol.ownership = "The containing options or execution-result value owns this field.";
+      symbol.errors = "Reading this field performs no RHI operation. Inspect the execution result's mStatus for failures.";
+      symbol.threading = "Set options before Execute; inspect the builder-owned report after Execute returns.";
+    }
+  }
+})();
+
+for (const symbol of window.ArdaRDGApi.symbols) {
+  if (symbol.qualifiedName === "arda::render_graph::FARDGExecutionResult") {
+    symbol.summary = "Reports one graph execution attempt, including failures.";
+    symbol.details = "Check mStatus before using extraction results. Callback failures prevent graph command-list submission; later submission failures may leave earlier queue instances in flight. Counts and queue instances report accepted CPU submissions, not GPU completion.";
+  }
+}

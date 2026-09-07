@@ -30,6 +30,8 @@ namespace arda::rhi
         void* mData = nullptr;
         /** Stores the row pitch. */
         size_t mRowPitch = 0;
+        /** Byte distance between adjacent depth slices of the mapped mip. */
+        size_t mDepthPitch = 0;
     };
 
     /** Sizes of the bounded descriptor caches owned by a device. */
@@ -466,7 +468,9 @@ namespace arda::rhi
          */
         virtual FArdaRHIStatus BuildTopLevelAccelStruct(IArdaRHIAccelStruct& AccelStruct, const eastl::vector<FArdaRHIRayTracingInstanceDesc>& Instances, EArdaRHIAccelStructBuildFlags Flags) = 0;
         /**
-         * Performs the build top level accel struct from buffer operation.
+         * Builds a TLAS from native 64-byte instance records in GPU memory.
+         * The count is supplied by the CPU; this is not an indirect-count build.
+         * Instance addresses must refer to live BLAS resources through completion.
          * @param AccelStruct The accel struct.
          * @param InstanceBuffer The instance buffer.
          * @param Offset The offset.
@@ -488,7 +492,10 @@ namespace arda::rhi
             return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
                 "Work graphs are unsupported by this command-list implementation.");
         }
-        /** Dispatches every enabled record in a shader bundle. */
+        /**
+         * Dispatches every enabled record in a shader bundle. Mesh records
+         * inherit the framebuffer, viewports and scissors from SetMeshletState.
+         */
         virtual FArdaRHIStatus DispatchShaderBundle(IArdaRHIShaderBundle&)
         {
             return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
