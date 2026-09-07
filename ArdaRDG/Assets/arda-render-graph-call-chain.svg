@@ -191,7 +191,7 @@
     <rect class="algorithm" x="448" y="1258" width="876" height="126"/>
     <text x="886" y="1286" class="label">ValidateState; ValidateTextureAccess; ValidateBufferAccess</text>
     <text x="886" y="1312" class="small">flags; backing; state legality; bounds; UAV and attachment capability; queue legality</text>
-    <text x="886" y="1335" class="small">replay produced texture cells and whole buffers; check reads; publish writes</text>
+    <text x="886" y="1335" class="small">validate produced texture cells and buffer byte ranges before reads</text>
     <text x="886" y="1358" class="tiny">external resources start produced; same-pass write may initialize same-pass read</text>
     <path class="dataFlow" d="M1324 1321 H1376"/>
     <rect class="data" x="1380" y="1258" width="364" height="126"/>
@@ -355,17 +355,17 @@
 
     <rect class="internal" x="48" y="2474" width="350" height="150"/>
     <text x="223" y="2502" class="label">1 | MaterializeResources</text>
-    <text x="223" y="2528" class="small">EvaluateTransientHeapLayout</text>
+    <text x="223" y="2528" class="small">MaterializeTransientHeaps</text>
     <text x="223" y="2551" class="small">sort lifetimes; pool Acquire</text>
     <text x="223" y="2574" class="small">BindTexture / BindBuffer</text>
     <text x="223" y="2597" class="small">create uniform buffers</text>
     <text x="223" y="2617" class="tiny">Executor.cpp 396-654</text>
     <path class="flow" d="M398 2549 H444"/>
     <rect class="algorithm" x="448" y="2474" width="876" height="150"/>
-    <text x="886" y="2502" class="label">VirtualResources feature?</text>
-    <text x="886" y="2528" class="small">yes: create virtual probes; query memory requirements; transient allocator computes ideal layout</text>
-    <text x="886" y="2551" class="small">actual path uses committed fallback; pool key uses normalized descriptor and exact equality</text>
-    <text x="886" y="2574" class="small">reuse requires same queue domain and availableAfter less than firstUse</text>
+    <text x="886" y="2502" class="label">Virtual resources + heaps + aliasing barriers?</text>
+    <text x="886" y="2528" class="small">yes: query requirements; group compatible resources; pack lifetimes and bind explicit heap offsets</text>
+    <text x="886" y="2551" class="small">alias activation waits for prior queues and emits barriers; unsupported groups use committed fallback</text>
+    <text x="886" y="2574" class="small">committed reuse requires one queue domain and availableAfter less than firstUse</text>
     <text x="886" y="2597" class="small">external keeps imported handle; cross-queue and non-transient domain is minus one</text>
     <text x="886" y="2617" class="tiny">execution-local pools do not persist across graphs</text>
     <path class="dataFlow" d="M1324 2549 H1376"/>
@@ -373,7 +373,7 @@
     <text x="1562" y="2502" class="label">Physical RHI resources</text>
     <text x="1562" y="2528" class="small">IDevice.createTexture / createBuffer</text>
     <text x="1562" y="2551" class="small">logical record binds physical handle</text>
-    <text x="1562" y="2574" class="small">pool reuse and fallback counters</text>
+    <text x="1562" y="2574" class="small">heap bytes, aliasing, pooling, and fallback counters</text>
     <text x="1562" y="2597" class="small">uniform storage allocated, not uploaded</text>
     <text x="1562" y="2617" class="tiny">creation failures are fatal</text>
     <path class="flow" d="M223 2624 V2645"/>
@@ -433,7 +433,7 @@
     <text x="223" y="3119" class="small">enable UAV barriers; commitBarriers</text>
     <text x="223" y="3142" class="small">clobbers; marker; Pass.Execute</text>
     <text x="223" y="3165" class="small">close command list</text>
-    <text x="223" y="3198" class="tiny">one command list per live pass with work</text>
+    <text x="223" y="3198" class="tiny">one command list per recording batch</text>
     <path class="flow" d="M398 3111 H444"/>
     <rect class="algorithm" x="448" y="2996" width="876" height="230"/>
     <text x="886" y="3024" class="label">FARDGLambdaPass::Execute to stored FARDGPassExecuteFunction</text>

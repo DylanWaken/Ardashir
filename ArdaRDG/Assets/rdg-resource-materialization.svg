@@ -1,20 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
-  <title id="title">ARDG logical resource materialization committed pool reuse and physical state correction</title>
-  <desc id="desc">Logical resources and inclusive lifetimes feed materialization. ARDG can probe virtual resources and compute an ideal transient heap layout, but the current implementation discards that layout and uses committed resources. Exact descriptor matches can be reused within one execution when lifetimes do not overlap and queue domains match. Physical state history then corrects logical before states.</desc>
-  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/></linearGradient><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker>
-    <style>.logical{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.analysis{fill:#493720;stroke:#fbbf24;stroke-width:2}.physical{fill:#3a294d;stroke:#c084fc;stroke-width:2}.repair{fill:#214b45;stroke:#34d399;stroke-width:2}.h1{font:700 30px system-ui,sans-serif;fill:#eef6ff}.h2{font:700 19px system-ui,sans-serif;fill:#eef6ff}.t{font:15px system-ui,sans-serif;fill:#c5d2e3}.s{font:13px system-ui,sans-serif;fill:#aebdd0}.flow{fill:none;stroke:#7dd3fc;stroke-width:3;marker-end:url(#a)}.discard{fill:none;stroke:#fbbf24;stroke-width:3;stroke-dasharray:8 6}.x{font:700 26px system-ui,sans-serif;fill:#fbbf24}</style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Transient heap placement and cross-queue aliasing</title>
+  <desc id="desc">Two 128 KiB resources with disjoint logical lifetimes use offset zero in the same compatible heap. A graphics write and a later copy read of A must both finish before compute activates B. Registration order alone cannot prove this: the compute queue waits for the copy queue, then emits an aliasing barrier. Incompatible candidates fall back independently to committed resources.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#7dd3fc"/></marker>
+    <style>text{font:19px system-ui,sans-serif;fill:#e2e8f0}.title{font-size:30px;font-weight:700}.heading{font-size:23px;font-weight:700}.small{font-size:17px;fill:#cbd5e1}.panel{fill:#18283e;stroke:#52677f;stroke-width:2}.a{fill:#23476c;stroke:#7dd3fc;stroke-width:2}.b{fill:#305344;stroke:#6ee7b7;stroke-width:2}.wait{fill:#4f3f27;stroke:#fbbf24;stroke-width:2;stroke-dasharray:7 5}.line{fill:none;stroke:#7dd3fc;stroke-width:3;marker-end:url(#arrow)}</style>
   </defs>
-  <rect width="1200" height="800" rx="24" fill="url(#bg)"/><text x="48" y="52" class="h1">Logical resources to physical committed resources</text><text x="48" y="80" class="t">Materialization resolves identity before runtime transitions and parallel recording.</text>
-  <rect x="48" y="120" width="280" height="220" rx="16" class="logical"/><text x="72" y="157" class="h2">Compiled logical inputs</text><text x="72" y="194" class="t">descriptors + flags</text><text x="72" y="224" class="t">inclusive lifetimes</text><text x="72" y="254" class="t">queue-domain usage</text><text x="72" y="284" class="t">logical transitions</text><text x="72" y="318" class="s">external handles already exist</text>
-  <rect x="460" y="120" width="300" height="220" rx="16" class="analysis"/><text x="484" y="157" class="h2">Ideal transient layout analysis</text><text x="484" y="194" class="t">create virtual probes</text><text x="484" y="224" class="t">query memory requirements</text><text x="484" y="254" class="t">pack non-overlapping lifetimes</text><text x="484" y="284" class="t">report ideal heap metrics</text><text x="484" y="318" class="s">requires VirtualResources feature</text>
-  <rect x="872" y="120" width="280" height="220" rx="16" class="physical"/><text x="896" y="157" class="h2">Actual current path</text><text x="896" y="194" class="t">committed resource pool</text><text x="896" y="224" class="t">exact normalized descriptor</text><text x="896" y="254" class="t">same queue domain</text><text x="896" y="284" class="t">availableAfter &lt; firstUse</text><text x="896" y="318" class="s">pool exists only this execution</text>
-  <path d="M328 230H450" class="flow"/><path d="M760 230H850" class="discard"/><text x="805" y="214" class="x" text-anchor="middle">X</text><path d="M328 310C500 420 705 420 862 310" class="flow"/><text x="600" y="408" class="s" text-anchor="middle">committed fallback bypasses computed heap placement</text>
-  <rect x="48" y="450" width="1104" height="220" rx="18" class="repair"/><text x="72" y="488" class="h2">BuildPhysicalTransitions repairs state after reuse</text>
-  <rect x="82" y="525" width="290" height="94" rx="12" class="logical"/><text x="227" y="556" class="h2" text-anchor="middle">Logical A</text><text x="227" y="586" class="s" text-anchor="middle">compiled before = Common</text>
-  <rect x="455" y="525" width="290" height="94" rx="12" class="physical"/><text x="600" y="556" class="h2" text-anchor="middle">same physical object</text><text x="600" y="586" class="s" text-anchor="middle">Logical B left state UAV</text>
-  <rect x="828" y="525" width="290" height="94" rx="12" class="repair"/><text x="973" y="556" class="h2" text-anchor="middle">Runtime transition</text><text x="973" y="586" class="s" text-anchor="middle">corrected before = UAV</text><path d="M372 572H445" class="flow"/><path d="M745 572H818" class="flow"/>
-  <text x="72" y="650" class="s">Maps use physical ITexture / IBuffer identity; UAV ordering and forced-barrier conditions are recomputed.</text>
-  <rect x="48" y="700" width="1104" height="56" rx="12" class="analysis"/><text x="72" y="735" class="t">Limit: placed-resource aliasing and aliasing barriers are not applied; the ideal layout is diagnostic only.</text>
-  <text x="48" y="785" class="s">Legend: blue = logical | amber = analysis/limit | purple = physical allocation | green = state correction</text>
+  <rect width="1200" height="760" rx="20" fill="#0b1220"/>
+  <text x="40" y="50" class="title">Reusing bytes requires GPU ordering</text>
+  <text x="40" y="85">Placement is decided on the CPU; activation is ordered on GPU queues.</text>
+  <rect x="40" y="115" width="530" height="200" rx="12" class="panel"/>
+  <text x="60" y="150" class="heading">Compatible resources, disjoint lifetimes</text>
+  <rect x="60" y="170" width="210" height="65" rx="8" class="a"/>
+  <text x="80" y="198">A: 128 KiB</text><text x="80" y="222" class="small">uses [0, 2], inclusive</text>
+  <rect x="300" y="170" width="245" height="65" rx="8" class="b"/>
+  <text x="320" y="198">B: 128 KiB</text><text x="320" y="222" class="small">uses [3, 5], inclusive</text>
+  <text x="60" y="270">Strict retirement: A.lastUse &lt; B.firstUse</text>
+  <text x="60" y="296" class="small">Same kind; compatible memory types; aligned offsets</text>
+  <path d="M575 215 H630" class="line"/>
+  <rect x="650" y="115" width="510" height="200" rx="12" class="panel"/>
+  <text x="670" y="150" class="heading">One 128 KiB heap range</text>
+  <rect x="675" y="175" width="215" height="60" class="a"/><rect x="890" y="175" width="245" height="60" class="b"/>
+  <text x="710" y="211">A is active</text><text x="925" y="211">then B is active</text>
+  <text x="670" y="270">Both bind offset 0; never use it concurrently.</text>
+  <text x="670" y="296" class="small">Capacity: 128 KiB. Saved versus separate: 128 KiB.</text>
+  <text x="40" y="365" class="heading">Registration order does not stop queues from overlapping</text>
+  <path d="M210 390 H1140" class="line"/><text x="1020" y="378" class="small">GPU time →</text>
+  <text x="45" y="441">Graphics</text><text x="45" y="526">Copy</text><text x="45" y="611">Compute</text>
+  <rect x="230" y="405" width="190" height="55" rx="8" class="a"/><text x="265" y="440">Write A</text>
+  <path d="M420 435 L455 492" class="line"/>
+  <rect x="460" y="490" width="300" height="55" rx="8" class="a"/><text x="495" y="525">Read A → durable output</text>
+  <rect x="510" y="575" width="290" height="55" rx="8" class="wait"/><text x="540" y="610">B waits for A's copy</text>
+  <path d="M760 520 H835 V580" class="line"/><text x="830" y="556" class="small">alias barrier</text>
+  <rect x="850" y="575" width="260" height="55" rx="8" class="b"/><text x="892" y="610">Activate / write B</text>
+  <text x="40" y="681">Every prior overlapping use must retire, including the last use on each separate queue.</text>
+  <text x="40" y="715" class="small">Unsupported candidates use committed fallback. Buffers and optimal textures occupy separate heap groups.</text>
 </svg>

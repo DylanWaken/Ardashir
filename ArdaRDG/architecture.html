@@ -318,13 +318,13 @@ arena objects:  ^      ^      ^
           <ol>
             <li><a href="api-reference.html#api-arda-rdg-fardgbuilder-execute-462d7837"><code>FARDGBuilder::Execute()</code></a> delegates to <code>FARDGExecutor::Execute</code>.</li>
             <li>Lifecycle, previous failure, and device presence are checked; compile runs on demand.</li>
-            <li>Transient heap layout is evaluated, but placed aliasing is not applied. Live textures and buffers acquire exact committed-resource matches or new resources; external handles are verified; uniform buffers get dedicated allocations.</li>
+            <li>Compatible transients bind explicit heap placements; overlapping reuse gains queue dependencies and aliasing barriers. Unsupported candidates acquire committed resources; external handles are verified; uniform buffers get dedicated allocations.</li>
             <li>Physical transition history is rebuilt by physical identity and optional first-write clobbers are planned.</li>
             <li>Dependency levels partition CPU recording waves. Eligible passes record concurrently; <code>NeverParallel</code>, immediate mode, and configuration can serialize them.</li>
-            <li>Each <code>RecordPass</code> creates and opens a queue-specific command list, disables automatic barriers, establishes state tracking, emits barriers/clobbers, opens the physical-access gate, invokes the callback, closes the gate, and closes the command list.</li>
+            <li>The first callback in a recording batch creates and opens a queue-specific command list, disables automatic barriers, establishes state tracking, and emits barriers/clobbers. Every callback opens and closes its own physical-access gate. Compatible raster continuations reuse the list without redundant transitions; the last member closes it.</li>
             <li>Uniform-buffer uploads submit on graphics. Non-graphics queues wait on that upload before first relevant use.</li>
             <li>Recorded lists submit in deterministic execution order. Cross-queue consumers wait on producer submission instances.</li>
-            <li>Extraction references are assigned, device garbage collection runs, execution commits, and counters are traced.</li>
+            <li>After successful submission, extraction references are assigned, device garbage collection runs, execution commits, and counters are traced.</li>
           </ol>
 
           <aside class="callout warning">
@@ -375,7 +375,7 @@ arena objects:  ^      ^      ^
             <dt>Physical access validation</dt>
             <dd><code>mPassAccessMutex</code> protects active pass gates and logical-to-physical resolution during parallel callback recording. One pass can have only one active execution context.</dd>
             <dt>Parallel recording</dt>
-            <dd>Dependency levels include data and synchronization-only producers. Eligible same-level passes record to distinct command lists and result slots. Shared callback captures remain the caller's synchronization responsibility.</dd>
+            <dd>Dependency levels include data and synchronization-only producers. Eligible independent recording batches record to distinct command lists and result slots; merged raster callbacks share one list. Shared callback captures remain the caller's synchronization responsibility.</dd>
             <dt>Submission</dt>
             <dd>Occurs deterministically in live registration order after recording waves complete. RHI queue waits—not CPU recording order—establish cross-queue GPU dependencies.</dd>
             <dt>Completion</dt>
@@ -389,7 +389,7 @@ arena objects:  ^      ^      ^
             <li>Culling removes callbacks, physical materialization, barriers, and submissions for dead chains.</li>
             <li>Dependency waves expose CPU recording concurrency without changing deterministic submission order.</li>
             <li>Exact descriptor equality follows hash bucketing before committed-resource reuse, so collisions cannot authorize incompatible reuse.</li>
-            <li>Reuse requires <code>availableAfter &lt; firstUse</code> because intervals are inclusive, and it is disabled for resources spanning queue domains.</li>
+            <li>Reuse requires <code>availableAfter &lt; firstUse</code> because intervals are inclusive. Committed descriptor-pool reuse excludes resources spanning queue domains; explicit placed aliasing instead orders every prior queue use before activating reused memory.</li>
             <li>Immediate mode intentionally disables culling, specialized queues, parallel recording, and narrow lifetimes to act as a correctness oracle.</li>
           </ul>
 
@@ -407,11 +407,11 @@ arena objects:  ^      ^      ^
             <dt>Theory: hazard analysis can be range-precise</dt>
             <dd><strong>Current ARDG:</strong> dependency history is whole-resource. Texture transitions and production validation are per mip/slice; buffer transitions are whole-resource even though byte ranges are retained.</dd>
             <dt>Theory: transient resources can alias placed memory</dt>
-            <dd><strong>Current ARDG:</strong> an ideal interval layout is computed when capabilities permit, but physical placed aliasing is disabled because portable aliasing barriers and heap-compatibility queries are missing. Exact committed resources can still be recycled.</dd>
+            <dd><strong>Current ARDG:</strong> Live transient resources use explicit heaps when the device supports virtual resources, heaps, and aliasing barriers. The executor groups resources by kind and compatible memory types, packs inclusive lifetimes, and binds the selected offsets. Buffers and optimal textures use separate heaps. Before a range is reused, its new first-use pass waits for prior uses on other queues and emits an aliasing barrier. Unsupported candidates or failed heap groups fall back to committed resources independently.</dd>
             <dt>Theory: queue scheduling can optimize overlap globally</dt>
             <dd><strong>Current ARDG:</strong> pass flags request copy or async compute; capability and state checks either accept the request or fall back to graphics. Fork/join metadata is descriptive, and explicit dependencies drive waits.</dd>
             <dt>Theory: compatible raster passes can merge</dt>
-            <dd><strong>Current ARDG:</strong> adjacent compatible raster passes receive group metadata. The executor does not itself merge command lists or native render-pass objects from that grouping.</dd>
+            <dd><strong>Current ARDG:</strong> The executor can record adjacent compatible raster callbacks in one command list. It splits at required transitions, UAV or forced barriers, new resource initialization, queue handoffs, incoming queue dependencies, buffer/acceleration-structure declarations in the next pass, and NeverParallel boundaries. Immediate mode disables merging. Vulkan can continue its active rendering scope across matching framebuffer attachments; barriers or commands that end rendering still split that native scope.</dd>
             <dt>Theory: compiled graphs can be replayed</dt>
             <dd><strong>Current ARDG:</strong> compile results are cached for one builder, but execution is one-shot and physical resources/callback state are bound to that attempt.</dd>
             <dt>Theory: graph ownership can encompass all GPU resources</dt>
@@ -457,7 +457,7 @@ arena objects:  ^      ^      ^
             <li>External resources enter with one known state; extracted resources leave with one requested known state.</li>
             <li>Compilation validates before culling and publishes only after every lowering stage succeeds.</li>
             <li>Execution begins once; failure is sticky; no replay follows partial submission.</li>
-            <li>Physical reuse requires exact descriptor compatibility, non-overlapping inclusive lifetimes, and one queue domain.</li>
+            <li>Committed-object reuse requires exact descriptors, disjoint inclusive lifetimes, and one queue domain. Placed aliasing requires compatible heap placements and explicit ordering of every prior overlapping queue use.</li>
             <li>Submission order and GPU completion are different dimensions.</li>
           </ol>
         </section>
@@ -471,7 +471,7 @@ arena objects:  ^      ^      ^
             <li>Latest-writer and reader-epoch history derives data edges for RAW/WAW and synchronization-only edges for WAR.</li>
             <li>Forward-only edges make registration order topological, so culling emits a live subsequence without reordering.</li>
             <li>Compilation is device-independent logical lowering; execution resolves physical identity, records waves, submits queues, and publishes outputs.</li>
-            <li>Current ARDG pools committed objects but does not apply placed-memory aliasing, merge raster groups, replay builders, or wait for GPU completion.</li>
+            <li>ARDG applies placed-memory aliasing and eligible raster merging. Builders remain one-shot, and successful submission remains asynchronous with respect to GPU completion.</li>
           </ul>
 
           <h3>Review and checkpoint questions</h3>
@@ -483,7 +483,7 @@ arena objects:  ^      ^      ^
             <li>Why is WAR represented differently from RAW and WAW?</li>
             <li>What exact invariant makes a general topological sort unnecessary?</li>
             <li>Why must transitions be rebuilt after physical resource pooling?</li>
-            <li>Which current features are metadata or ideal planning rather than applied GPU optimization?</li>
+            <li>Which compiler products need physical execution decisions before they can change GPU allocation or recording?</li>
             <li>What must an application do after CPU submission before CPU readback?</li>
           </ol>
 

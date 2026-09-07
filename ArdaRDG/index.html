@@ -239,10 +239,10 @@
           <ul>
             <li><strong>No arbitrary pass reordering.</strong> Forward-only edges make registration order topological; compilation culls a subsequence but does not search alternate schedules.</li>
             <li><strong>One compile product and one execution.</strong> There is no reset, replay, incremental mutation after compile, or second execute.</li>
-            <li><strong>Physical placed-resource aliasing is disabled.</strong> <code>ArdaRenderGraphExecutor.cpp</code> computes an ideal heap layout when virtual-resource capabilities exist, but safely falls back because the portable RHI lacks required aliasing barriers and heap-compatibility queries.</li>
+            <li><strong>Placed aliasing follows compatibility and synchronization constraints.</strong> Compatible transient resources share real heap ranges with aliasing barriers and cross-queue waits. Unsupported candidates use committed fallback.</li>
             <li><strong>Committed-object pooling is execution-local.</strong> Compatible textures and buffers can be recycled only across strictly non-overlapping inclusive lifetimes in one queue reuse domain.</li>
             <li><strong>Buffer state tracking is whole-resource.</strong> Byte ranges are retained for declaration validation, but compiler transition state is one slot per buffer. Texture state is tracked per mip and array slice.</li>
-            <li><strong>Raster groups are metadata.</strong> Compatible adjacent raster passes receive group indices; grouping does not itself merge command lists or native render passes.</li>
+            <li><strong>Raster merging stops at synchronization boundaries.</strong> Compatible adjacent passes can share a command list and, on Vulkan, an active rendering scope. Necessary barriers, queue waits, and debug modes can split a group.</li>
             <li><strong>Raw command-list access cannot be proven complete.</strong> Independently retained RHI references can bypass graph declaration, dependency, transition, and lifetime inference.</li>
             <li><strong>Execution success is asynchronous.</strong> No implicit wait for complete GPU retirement is part of the graph contract.</li>
           </ul>

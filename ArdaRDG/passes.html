@@ -216,7 +216,7 @@
         <section id="raster">
           <h2>Raster binding slots</h2>
           <p><a href="api-reference.html#api-arda-rdg-fardgrendertargetbindingslots-84e0c0e2"><code>FARDGRenderTargetBindingSlots</code></a> contains a fixed color array indexed by RHI render-target slot and one depth/stencil binding. Each binding carries a logical texture and selected subresources.</p>
-          <p>Setup records color textures as <code>RenderTarget</code> writes and depth/stencil as <code>DepthWrite</code>. It also builds an attachment signature from logical handles and ranges. Compilation groups adjacent graphics raster passes only when their signatures are identical and neither uses <code>SkipRenderPass</code>. Group metadata does not itself merge command lists or native render passes.</p>
+          <p>Setup records color textures as <code>RenderTarget</code> writes and depth/stencil as <code>DepthWrite</code>. It also builds an attachment signature from logical handles and ranges. Compilation groups adjacent graphics raster passes only when their signatures are identical and neither uses <code>SkipRenderPass</code>. The executor can record adjacent compatible raster callbacks in one command list. It splits at required transitions, UAV or forced barriers, new resource initialization, queue handoffs, incoming queue dependencies, buffer/acceleration-structure declarations in the next pass, and NeverParallel boundaries. Immediate mode disables merging. Vulkan can continue its active rendering scope across matching framebuffer attachments; barriers or commands that end rendering still split that native scope.</p>
           <p>Unused color slots remain null. Attachment declarations are graph state; the callback still binds compatible pipeline, framebuffer, viewport, scissor, and draw state through the RHI.</p>
         </section>
 
@@ -309,7 +309,7 @@ graph.AddDispatchPass(
     {
         rhi::FArdaRHIComputeState state;
         state.mBindings = context.CreateBindingSets(lightingShader);
-        (void)pipelineStateCache.SetComputePipelineState(
+        return pipelineStateCache.SetComputePipelineState(
             context.mUnsafeRawCommandList,
             lightingInitializer,
             eastl::move(state));
@@ -332,11 +332,12 @@ graph.AddPass(
     {
         auto state = graphicsState; // includes a compatible framebuffer
         state.mBindings = context.CreateBindingSets(compositeShader);
-        (void)pipelineStateCache.SetGraphicsPipelineState(
+        context.ReportStatus(pipelineStateCache.SetGraphicsPipelineState(
             context.mUnsafeRawCommandList,
             compositeInitializer,
-            eastl::move(state));
-        context.mUnsafeRawCommandList.Draw(fullscreenDrawArguments);
+            eastl::move(state)));
+        if (context.GetStatus())
+            context.mUnsafeRawCommandList.Draw(fullscreenDrawArguments);
     });</code></pre>
           <p>The compute parameter declares a UAV write to <code>lighting</code>. The raster parameter declares an SRV read of the same logical texture, creating a RAW producer edge from <code>Lighting</code> to <code>Composite</code>. If async compute is selected, compilation emits a cross-queue dependency; otherwise same-queue order applies. The texture range drives the UAV-to-shader-resource barrier, while the dependency itself is whole-texture.</p>
           <p>The raster binding slot declares a render-target write to the imported back buffer. That observable external write anchors the composite pass at the epilogue, which in turn keeps the compute producer live. The callbacks use shader metadata to create bindings, then use the raw command list only for state and draw/dispatch commands that the context does not wrap.</p>
