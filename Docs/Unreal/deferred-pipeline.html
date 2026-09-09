@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An interactive Unreal Engine 5.8.1 deferred rendering timeline with Nanite, Lumen, VSM, implementation operations and source references.">
+  <title>Unreal deferred rendering pipeline · Ardashir</title>
+  <link rel="stylesheet" href="atlas.css">
+  <script src="guide.js" defer></script>
+  <script src="atlas.js" defer></script>
+  <script src="pipeline.js" defer></script>
+</head>
+<body data-page="pipeline">
+  <a class="skip" href="#main">Skip to timeline</a>
+  <header class="topbar">
+    <a class="brand" href="../index.html">Ardashir <span>/ Engineering atlas</span></a>
+    <nav aria-label="Atlas pages"><a href="scene-types.html">Scene & GPU types</a><a aria-current="page" href="deferred-pipeline.html">Rendering pipeline</a></nav>
+  </header>
+  <main id="main">
+    <section class="intro">
+      <div><p class="eyebrow">UNREAL ENGINE <span data-version></span> · SOURCE ATLAS 02</p><h1>Follow a deferred frame.</h1><p class="lede">Trace geometry, persistent lighting caches and image composition from left to right. Every stage includes its inputs, algorithm, implementation operations and correctness checks.</p></div>
+      <div class="stat"><strong id="stage-stat"></strong><span>stages, from scene update to output</span></div>
+    </section>
+    <div class="provenance"><span data-provenance></span><a href="reference.md">Text reference</a><a href="integrity-audit.md">Docs-only audit</a><a href="#roadmap">Reimplementation roadmap ↓</a></div>
+    <section class="pipeline-controls panel" aria-label="Pipeline configuration">
+      <div><span class="eyebrow">EXPLORE A CONFIGURATION</span><p>Desktop deferred · conventional meshes remain active</p></div>
+      <label class="toggle"><input id="feature-nanite" type="checkbox" checked>Nanite</label>
+      <label class="toggle"><input id="feature-lumen" type="checkbox" checked>Lumen GI + reflections</label>
+      <label for="trace-mode">Lumen fallback tracing<select id="trace-mode"><option value="hardware">Hardware triangles / AS</option><option value="software">Software distance fields</option></select></label>
+      <label for="shadow-mode">Shadow maps<select id="shadow-mode"><option value="vsm">Virtual shadow maps</option><option value="conventional">Conventional shadow maps</option></select></label>
+      <label class="toggle"><input id="feature-async" type="checkbox" checked>Show async opportunities</label>
+    </section>
+    <div class="diagram-heading"><div><h2>Frame dependency map</h2><p>Scroll horizontally or select a stage below. Arrows show major prerequisites; columns are scheduling windows, not measured durations.</p></div><div class="toolbar"><button type="button" id="timeline-left" aria-label="Scroll timeline left">←</button><button type="button" id="timeline-right" aria-label="Scroll timeline right">→</button><button type="button" id="reset-view">Reset</button></div></div>
+    <div class="timeline-scroll" id="timeline-scroll" tabindex="0" role="region" aria-label="Scrollable rendering timeline"><div id="timeline" class="timeline"><svg id="edges" aria-hidden="true"></svg></div></div>
+    <div class="timeline-legend"><span><i class="legend-line"></i> Major prerequisite</span><span><i class="legend-dot"></i> Selected stage</span><span><i class="legend-dash"></i> Async-capable grouping</span><span>Faded = feature disabled; details remain available</span></div>
+    <p class="notice" id="configuration-note" role="status"></p>
+    <div class="stage-layout">
+      <nav class="panel stage-index" aria-label="Rendering stage list"><p class="eyebrow">JUMP TO A STAGE</p><div id="stage-list"></div></nav>
+      <article class="panel stage-detail" id="stage-detail" aria-labelledby="detail-title" aria-live="polite"></article>
+    </div>
+    <section class="knowledge" id="roadmap" aria-labelledby="roadmap-title"><p class="eyebrow">FROM RESPONSIBILITIES TO A RENDERER</p><h2 id="roadmap-title">Build in verifiable steps.</h2><p class="section-note">An inferred engineering plan, not a claim about existing Ardashir features. Get each correctness gate working before optimizing the next layer.</p><div id="roadmap-items" class="roadmap-grid"></div><p class="checklist-status" id="checklist-status" role="status"></p><button type="button" id="clear-checklist">Clear operation checklist</button></section>
+    <section class="knowledge" aria-labelledby="contracts-title"><h2 id="contracts-title">Contracts across the frame</h2><div id="contracts" class="contract-grid"></div></section>
+    <section class="knowledge" aria-labelledby="faq-title"><h2 id="faq-title">Questions worth separating</h2><div id="faq"></div></section>
+    <noscript><p class="notice">Enable JavaScript for the timeline, or read the complete <a href="reference.md">text reference</a>.</p></noscript>
+  </main>
+  <footer><a href="scene-types.html">← Explore scene & GPU types</a><span>Algorithm responsibilities, source anchors and proposed tests. Not a GPU capture.</span></footer>
+</body>
+</html>
