@@ -44,6 +44,7 @@ CONTRACT_HEADERS = (
 
 COMPLETE_BACKEND_SOURCES = {
     "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h",
     "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
     "Source/ArdaBackend/Public/Compute/ArdaCudaCompiler.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
@@ -175,6 +176,12 @@ def callable_signature(text: str, name: str, offset: int) -> str:
 
 def declaration_signature(text: str, name: str, line: int, kind: str) -> str:
     offset = name_offset(text, name, line)
+    if kind == "macro":
+        # A macro's public signature is its name and formal arguments, not the
+        # preceding declaration or its implementation's continuation lines.
+        start = text.rfind("\n", 0, offset) + 1
+        match = re.match(r"[ \t]*#[ \t]*define[ \t]+\w+(?:\([^\n]*?\))?", text[start:])
+        return normalized(match.group(0)) if match else name
     if kind == "callable":
         return callable_signature(text, name, offset)
     if kind == "type":

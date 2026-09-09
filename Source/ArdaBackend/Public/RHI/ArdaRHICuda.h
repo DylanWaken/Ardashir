@@ -72,7 +72,7 @@ namespace arda
         /** The kernel may both load and store, including in-place updates. */
         ReadWrite
     };
-    /** Shader-independent shape of one operand port. */
+    /** Shader-independent kind of a CUDA resource binding. */
     enum class EArdaComputeBindingType : uint8_t
     {
         /** A byte range of an IArdaRHIBuffer. */
@@ -108,7 +108,7 @@ namespace arda
     {
         /** Retains the source buffer or texture; it must belong to the command-list device. */
         FArdaRHIResourceRef mResource;
-        /** Access declaration; FArdaComputeOperand replaces this with its port's declaration. */
+        /** Access declaration supplied by the dispatch implementation, matching its parameter contract. */
         EArdaComputeAccess mAccess = EArdaComputeAccess::Read;
         /** Buffer-only byte range; the byte offset is incorporated into the kernel address. */
         FArdaRHIBufferRange mBufferRange;

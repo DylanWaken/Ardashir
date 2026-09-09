@@ -1,4 +1,4 @@
-// One translation unit shared by several shape-specific operand implementations.
+// First translation unit; dispatch owns the sequence and dimension-specific launch policy.
 #include "ArdaCudaOperandValue.h"
 
 extern "C" __global__ void add_values(const unsigned int* Input, unsigned int* Output,

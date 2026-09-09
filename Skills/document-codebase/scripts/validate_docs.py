@@ -1175,10 +1175,10 @@ class Validator:
                 continue
             text = self.strip_cpp_comments(raw)
             undefined = set(re.findall(r"(?m)^\s*#\s*undef\s+([A-Za-z_]\w*)", text))
-            for match in re.finditer(r"(?m)^\s*#\s*define\s+([A-Za-z_]\w*)", text):
+            for match in re.finditer(r"(?m)^[ \t]*#[ \t]*define[ \t]+([A-Za-z_]\w*)", text):
                 name = match.group(1)
                 is_public_macro = (
-                    name.startswith("ARDA_")
+                    (name.startswith("ARDA_") and not name.startswith("ARDA_INTERNAL_"))
                     or (
                         name.startswith("ARDG_")
                         and not name.startswith("ARDG_INTERNAL_")
