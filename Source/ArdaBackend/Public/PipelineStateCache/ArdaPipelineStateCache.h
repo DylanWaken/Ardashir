@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace arda::backend
+namespace arda
 {
     /** Identifies the kind of cached pipeline state. */
     enum class EArdaPipelineStateKind : uint8_t
@@ -72,7 +72,7 @@ namespace arda::backend
         /** Kind of pipeline whose creation failed. */
         EArdaPipelineStateKind mKind = EArdaPipelineStateKind::Compute;
         /** RHI result returned by pipeline creation. */
-        rhi::EArdaRHIResult mCode = rhi::EArdaRHIResult::Success;
+        arda::EArdaRHIResult mCode = arda::EArdaRHIResult::Success;
         /** Hash of the normalized pipeline descriptor. */
         size_t mDescriptorHash = 0;
         /** Optional pipeline debug name. */
@@ -94,7 +94,7 @@ namespace arda::backend
          * @param Configuration Cache capacities and diagnostic retention.
          */
         explicit FArdaPipelineStateCache(
-            rhi::FArdaRHIDeviceRef Device,
+            arda::FArdaRHIDeviceRef Device,
             FArdaPipelineStateCacheConfiguration Configuration = {});
         /** Releases the cache and waits for internal operations to finish. */
         ~FArdaPipelineStateCache();
@@ -115,10 +115,10 @@ namespace arda::backend
          * @param RequestingDevice Optional device used to validate ownership.
          * @return RHI status for lookup or creation.
          */
-        [[nodiscard]] rhi::FArdaRHIStatus GetOrCreateCompute(
+        [[nodiscard]] arda::FArdaRHIStatus GetOrCreateCompute(
             const FArdaComputePipelineStateInitializer& Initializer,
-            rhi::FArdaRHIComputePipelineRef& OutPipeline,
-            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+            arda::FArdaRHIComputePipelineRef& OutPipeline,
+            const arda::IArdaRHIDevice* RequestingDevice = nullptr);
         /**
          * Resolves or creates a framebuffer-compatible graphics pipeline state.
          * @param Initializer Graphics pipeline description.
@@ -127,11 +127,11 @@ namespace arda::backend
          * @param RequestingDevice Optional device used to validate ownership.
          * @return RHI status for lookup or creation.
          */
-        [[nodiscard]] rhi::FArdaRHIStatus GetOrCreateGraphics(
+        [[nodiscard]] arda::FArdaRHIStatus GetOrCreateGraphics(
             const FArdaGraphicsPipelineStateInitializer& Initializer,
-            const rhi::FArdaRHIFramebufferRef& Framebuffer,
-            rhi::FArdaRHIGraphicsPipelineRef& OutPipeline,
-            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+            const arda::FArdaRHIFramebufferRef& Framebuffer,
+            arda::FArdaRHIGraphicsPipelineRef& OutPipeline,
+            const arda::IArdaRHIDevice* RequestingDevice = nullptr);
         /**
          * Resolves or creates a framebuffer-compatible meshlet pipeline state.
          * @param Initializer Meshlet pipeline description.
@@ -140,21 +140,21 @@ namespace arda::backend
          * @param RequestingDevice Optional device used to validate ownership.
          * @return RHI status for lookup or creation.
          */
-        [[nodiscard]] rhi::FArdaRHIStatus GetOrCreateMeshlet(
+        [[nodiscard]] arda::FArdaRHIStatus GetOrCreateMeshlet(
             const FArdaMeshletPipelineStateInitializer& Initializer,
-            const rhi::FArdaRHIFramebufferRef& Framebuffer,
-            rhi::FArdaRHIMeshletPipelineRef& OutPipeline,
-            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+            const arda::FArdaRHIFramebufferRef& Framebuffer,
+            arda::FArdaRHIMeshletPipelineRef& OutPipeline,
+            const arda::IArdaRHIDevice* RequestingDevice = nullptr);
         /** Resolves or creates a ray-tracing pipeline state. */
-        [[nodiscard]] rhi::FArdaRHIStatus GetOrCreateRayTracing(
+        [[nodiscard]] arda::FArdaRHIStatus GetOrCreateRayTracing(
             const FArdaRayTracingPipelineStateInitializer& Initializer,
-            rhi::FArdaRHIRayTracingPipelineRef& OutPipeline,
-            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+            arda::FArdaRHIRayTracingPipelineRef& OutPipeline,
+            const arda::IArdaRHIDevice* RequestingDevice = nullptr);
         /** Resolves or creates a work-graph pipeline state. */
-        [[nodiscard]] rhi::FArdaRHIStatus GetOrCreateWorkGraph(
+        [[nodiscard]] arda::FArdaRHIStatus GetOrCreateWorkGraph(
             const FArdaWorkGraphPipelineStateInitializer& Initializer,
-            rhi::FArdaRHIWorkGraphPipelineRef& OutPipeline,
-            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+            arda::FArdaRHIWorkGraphPipelineRef& OutPipeline,
+            const arda::IArdaRHIDevice* RequestingDevice = nullptr);
 
         /**
          * Creates and caches a compute pipeline without returning it.
@@ -162,9 +162,9 @@ namespace arda::backend
          * @param RequestingDevice Optional device used to validate ownership.
          * @return RHI status for lookup or creation.
          */
-        [[nodiscard]] rhi::FArdaRHIStatus PrecacheCompute(
+        [[nodiscard]] arda::FArdaRHIStatus PrecacheCompute(
             const FArdaComputePipelineStateInitializer& Initializer,
-            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+            const arda::IArdaRHIDevice* RequestingDevice = nullptr);
         /**
          * Creates and caches a framebuffer-compatible graphics pipeline.
          * @param Initializer Graphics pipeline description.
@@ -172,10 +172,10 @@ namespace arda::backend
          * @param RequestingDevice Optional device used to validate ownership.
          * @return RHI status for lookup or creation.
          */
-        [[nodiscard]] rhi::FArdaRHIStatus PrecacheGraphics(
+        [[nodiscard]] arda::FArdaRHIStatus PrecacheGraphics(
             const FArdaGraphicsPipelineStateInitializer& Initializer,
-            const rhi::FArdaRHIFramebufferRef& Framebuffer,
-            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+            const arda::FArdaRHIFramebufferRef& Framebuffer,
+            const arda::IArdaRHIDevice* RequestingDevice = nullptr);
         /**
          * Creates and caches a framebuffer-compatible meshlet pipeline.
          * @param Initializer Meshlet pipeline description.
@@ -183,18 +183,18 @@ namespace arda::backend
          * @param RequestingDevice Optional device used to validate ownership.
          * @return RHI status for lookup or creation.
          */
-        [[nodiscard]] rhi::FArdaRHIStatus PrecacheMeshlet(
+        [[nodiscard]] arda::FArdaRHIStatus PrecacheMeshlet(
             const FArdaMeshletPipelineStateInitializer& Initializer,
-            const rhi::FArdaRHIFramebufferRef& Framebuffer,
-            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+            const arda::FArdaRHIFramebufferRef& Framebuffer,
+            const arda::IArdaRHIDevice* RequestingDevice = nullptr);
         /** Creates and caches a ray-tracing pipeline without returning it. */
-        [[nodiscard]] rhi::FArdaRHIStatus PrecacheRayTracing(
+        [[nodiscard]] arda::FArdaRHIStatus PrecacheRayTracing(
             const FArdaRayTracingPipelineStateInitializer& Initializer,
-            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+            const arda::IArdaRHIDevice* RequestingDevice = nullptr);
         /** Creates and caches a work-graph pipeline without returning it. */
-        [[nodiscard]] rhi::FArdaRHIStatus PrecacheWorkGraph(
+        [[nodiscard]] arda::FArdaRHIStatus PrecacheWorkGraph(
             const FArdaWorkGraphPipelineStateInitializer& Initializer,
-            const rhi::IArdaRHIDevice* RequestingDevice = nullptr);
+            const arda::IArdaRHIDevice* RequestingDevice = nullptr);
 
         /**
          * Resolves and binds a compute pipeline state.
@@ -203,10 +203,10 @@ namespace arda::backend
          * @param State Additional compute state to bind.
          * @return RHI status for resolution and binding.
          */
-        [[nodiscard]] rhi::FArdaRHIStatus SetComputePipelineState(
-            rhi::IArdaRHICommandList& CommandList,
+        [[nodiscard]] arda::FArdaRHIStatus SetComputePipelineState(
+            arda::IArdaRHICommandList& CommandList,
             const FArdaComputePipelineStateInitializer& Initializer,
-            rhi::FArdaRHIComputeState State);
+            arda::FArdaRHIComputeState State);
         /**
          * Resolves and binds a graphics pipeline state.
          * @param CommandList Command list receiving the state.
@@ -214,10 +214,10 @@ namespace arda::backend
          * @param State Additional graphics state, including the framebuffer.
          * @return RHI status for resolution and binding.
          */
-        [[nodiscard]] rhi::FArdaRHIStatus SetGraphicsPipelineState(
-            rhi::IArdaRHICommandList& CommandList,
+        [[nodiscard]] arda::FArdaRHIStatus SetGraphicsPipelineState(
+            arda::IArdaRHICommandList& CommandList,
             const FArdaGraphicsPipelineStateInitializer& Initializer,
-            rhi::FArdaRHIGraphicsState State);
+            arda::FArdaRHIGraphicsState State);
         /**
          * Resolves and binds a meshlet pipeline state.
          * @param CommandList Command list receiving the state.
@@ -225,10 +225,10 @@ namespace arda::backend
          * @param State Additional meshlet state, including the framebuffer.
          * @return RHI status for resolution and binding.
          */
-        [[nodiscard]] rhi::FArdaRHIStatus SetMeshletPipelineState(
-            rhi::IArdaRHICommandList& CommandList,
+        [[nodiscard]] arda::FArdaRHIStatus SetMeshletPipelineState(
+            arda::IArdaRHICommandList& CommandList,
             const FArdaMeshletPipelineStateInitializer& Initializer,
-            rhi::FArdaRHIMeshletState State);
+            arda::FArdaRHIMeshletState State);
 
         /**
          * Evicts least-recently-used entries until capacities are satisfied.
@@ -261,7 +261,7 @@ namespace arda::backend
         /** @return Retained pipeline creation diagnostics. */
         [[nodiscard]] eastl::vector<FArdaPipelineStateDiagnostic> GetDiagnostics() const;
         /** @return The RHI device permanently bound to this cache. */
-        [[nodiscard]] const rhi::IArdaRHIDevice* GetDevice() const noexcept;
+        [[nodiscard]] const arda::IArdaRHIDevice* GetDevice() const noexcept;
 
     private:
         /** Opaque cache implementation. */

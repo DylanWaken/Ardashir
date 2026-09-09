@@ -2,15 +2,15 @@
 
 #include "RHI/ArdaRHI.h"
 
-namespace arda::phys
+namespace arda
 {
     /** Provides the opaque RHI device used by physics workloads. */
     struct FArdaPhysContext
     {
         /** The RHI device used to execute physics workloads. */
-        rhi::FArdaRHIDeviceRef mDevice;
+        arda::FArdaRHIDeviceRef mDevice;
     };
 
     /** Returns the stable name of the physics module. */
-    [[nodiscard]] const char* GetModuleName() noexcept;
+    [[nodiscard]] const char* GetPhysModuleName() noexcept;
 }

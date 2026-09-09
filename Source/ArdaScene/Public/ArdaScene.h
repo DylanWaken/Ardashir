@@ -1,7 +1,7 @@
 #pragma once
 
-namespace arda::scene
+namespace arda
 {
     /** Returns the stable name of the scene module. */
-    [[nodiscard]] const char* GetModuleName() noexcept;
+    [[nodiscard]] const char* GetSceneModuleName() noexcept;
 }

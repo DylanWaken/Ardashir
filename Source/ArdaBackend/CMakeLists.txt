@@ -1,13 +1,5 @@
-file(GLOB_RECURSE ARDA_BACKEND_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/Public/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.cpp"
-)
+ardashir_add_module(ArdaBackend Private/ArdaBackendCorePch.h)
 
-add_library(ArdaBackend STATIC ${ARDA_BACKEND_SOURCES})
-add_library(Ardashir::ArdaBackend ALIAS ArdaBackend)
-
-target_compile_features(ArdaBackend PUBLIC cxx_std_17)
 target_compile_definitions(ArdaBackend PRIVATE
     $<$<BOOL:${WIN32}>:NOMINMAX>
     $<$<BOOL:${WIN32}>:WIN32_LEAN_AND_MEAN>
@@ -20,12 +12,6 @@ if(ARDASHIR_DXC_EXECUTABLE)
     target_compile_definitions(ArdaBackend PRIVATE
         "ARDA_DEFAULT_DXC_EXECUTABLE=\"${ARDA_DEFAULT_DXC_ESCAPED}\"")
 endif()
-target_include_directories(ArdaBackend
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Public"
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private"
-)
-target_precompile_headers(ArdaBackend PRIVATE Private/ArdaBackendCorePch.h)
-
 target_link_libraries(ArdaBackend PRIVATE ${CMAKE_DL_LIBS})
 target_include_directories(ArdaBackend PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
@@ -47,7 +33,7 @@ function(ardashir_finalize_backend_modules)
             ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS)
         if(NOT ARDA_LINKED_BACKEND_FUNCTION MATCHES "^[A-Za-z_][A-Za-z0-9_]*$")
             message(FATAL_ERROR
-                "Invalid arda::backend registration function: ${ARDA_LINKED_BACKEND_FUNCTION}")
+                "Invalid arda registration function: ${ARDA_LINKED_BACKEND_FUNCTION}")
         endif()
         string(APPEND ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT
             "ARDA_LINKED_BACKEND(${ARDA_LINKED_BACKEND_FUNCTION})\n")
@@ -56,12 +42,6 @@ function(ardashir_finalize_backend_modules)
         OUTPUT "${PROJECT_BINARY_DIR}/Source/ArdaBackend/ArdaLinkedBackendRegistrations.inl"
         CONTENT "${ARDA_LINKED_BACKEND_REGISTRATIONS_CONTENT}")
 endfunction()
-
-target_link_libraries(ArdaBackend
-    PUBLIC Ardashir::EASTL
-)
-
-set_target_properties(ArdaBackend PROPERTIES FOLDER "Ardashir")
 
 # Compile every public header in isolation without a provider implementation's
 # private or public include paths. This guards the module boundary.

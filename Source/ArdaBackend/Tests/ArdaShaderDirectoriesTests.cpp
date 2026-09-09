@@ -15,7 +15,7 @@
 namespace
 {
     namespace fs = std::filesystem;
-    using namespace arda::backend;
+    using namespace arda;
 
     class FTemporaryShaderTree
     {
@@ -162,7 +162,7 @@ TEST_F(ArdaShaderDirectories, RejectsIncompatiblePhysicalRegistrationsAtAdd)
 TEST_F(ArdaShaderDirectories, RegistryUseGuardRejectsEveryMutation)
 {
     FTemporaryShaderTree Tree("registry-guard");
-    ASSERT_TRUE(private_api::BeginShaderDirectoryRegistryUse());
+    ASSERT_TRUE(arda::BeginShaderDirectoryRegistryUse());
 
     EXPECT_EQ(
         AddShaderSourceDirectory(Tree.Root()).mCode,
@@ -177,7 +177,7 @@ TEST_F(ArdaShaderDirectories, RegistryUseGuardRejectsEveryMutation)
         ClearShaderSourceDirectories().mCode,
         EArdaShaderDirectoryError::RegistryInUse);
 
-    private_api::CompleteShaderDirectoryRegistryUse(false);
+    arda::CompleteShaderDirectoryRegistryUse(false);
     EXPECT_TRUE(AddShaderSourceDirectory(Tree.Root()));
 }
 
@@ -366,7 +366,7 @@ TEST_F(ArdaShaderDirectories, CommitFailureDuringInitRollsBackFreeze)
         "/Types/Missing.hlsl",
         "InitMissingVirtual",
         "Main",
-        arda::rhi::EArdaRHIShaderStage::Compute,
+        arda::EArdaRHIShaderStage::Compute,
         nullptr);
 
     EXPECT_FALSE(InitializeBackend());
@@ -386,7 +386,7 @@ TEST_F(ArdaShaderDirectories, VirtualCommitBeforeFreezeIsActionable)
         "/Types/Present.hlsl",
         "NotFrozenVirtual",
         "Main",
-        arda::rhi::EArdaRHIShaderStage::Compute,
+        arda::EArdaRHIShaderStage::Compute,
         nullptr);
 
     const auto Status = FArdaShaderTypeRegistration::CommitAll();
@@ -410,7 +410,7 @@ TEST_F(ArdaShaderDirectories, ValidatesVirtualShaderTypeAgainstManifest)
         "/Types/Present.hlsl",
         "VirtualPresent",
         "Main",
-        arda::rhi::EArdaRHIShaderStage::Compute,
+        arda::EArdaRHIShaderStage::Compute,
         nullptr);
     EXPECT_TRUE(FArdaShaderTypeRegistration::CommitAll());
 
@@ -420,7 +420,7 @@ TEST_F(ArdaShaderDirectories, ValidatesVirtualShaderTypeAgainstManifest)
             "/Types/Missing.hlsl",
             "VirtualMissing",
             "Main",
-            arda::rhi::EArdaRHIShaderStage::Compute,
+            arda::EArdaRHIShaderStage::Compute,
             nullptr);
         const auto Status = FArdaShaderTypeRegistration::CommitAll();
         EXPECT_EQ(
@@ -443,7 +443,7 @@ TEST_F(ArdaShaderDirectories, ArtifactFailureReportsVirtualAndPhysicalSource)
         "/Diagnostics/Diagnostic.hlsl",
         "DefinitelyMissingVirtualDiagnosticArtifact",
         "Main",
-        arda::rhi::EArdaRHIShaderStage::Compute,
+        arda::EArdaRHIShaderStage::Compute,
         nullptr);
 
     FArdaBackendConfiguration Configuration;

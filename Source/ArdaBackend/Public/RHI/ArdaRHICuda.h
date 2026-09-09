@@ -7,9 +7,20 @@
 #include "ArdaRHIResources.h"
 #include <type_traits>
 
-namespace arda::rhi
+namespace arda
 {
-    /** CUDA code can execute in a graphics command stream without changing queue ownership. */
+    /** Selects CUDA scheduling once, before resources and command lists are created. */
+    enum class EArdaCudaExecutionMode : uint8_t
+    {
+        /** Prefer graphics-queue execution; fall back when context or surface qualification fails. */
+        Automatic,
+        /** Require the provider's native graphics-queue CUDA path. */
+        GraphicsQueue,
+        /** Use an ordinary CUDA context and serialize graphics/CUDA submission segments. */
+        ContextSwitch
+    };
+
+    /** The qualified native execution path selected for this device. */
     enum class EArdaCudaLaunchMode : uint8_t
     {
         /** CUDA is disabled, unavailable, or rejected by device admission. */
@@ -17,7 +28,9 @@ namespace arda::rhi
         /** CUDA in Graphics capture on the D3D12 graphics queue. */
         D3D12CiG,
         /** VK_NV_cuda_kernel_launch on a Vulkan graphics or compute queue. */
-        VulkanKernel
+        VulkanKernel,
+        /** An ordinary CUDA context; graphics and CUDA segments execute separately. */
+        ContextSwitch
     };
 
     /** Qualified launch mode and limits for this device, independent of graphics capabilities. */
@@ -25,6 +38,8 @@ namespace arda::rhi
     {
         /** None disables CUDA selection without disabling graphics compute. */
         EArdaCudaLaunchMode mLaunchMode = EArdaCudaLaunchMode::None;
+        /** Explains why automatic selection used a context-switching fallback. */
+        eastl::string mFallbackReason;
         /** CUDA architecture encoded as major * 10 + minor; SM 12.0 is 120. */
         uint32_t mComputeCapability = 0;
         /** Maximum product of the three block dimensions. */
@@ -37,6 +52,8 @@ namespace arda::rhi
         uint32_t mMaxSharedMemoryBytes = 0;
         /** True only when native surface mapping/handles have been qualified. */
         bool mbSurfaceAccess = false;
+        /** True when layered CUDA surfaces are qualified in addition to ordinary surfaces. */
+        bool mbLayeredSurfaceAccess = false;
         /** Diagnostic explaining surface exclusion; buffer launches may still work. */
         eastl::string mSurfaceUnavailableReason = "CUDA surfaces were not enabled by this provider.";
         /** Diagnostic explaining why no CUDA launch mode is available. */

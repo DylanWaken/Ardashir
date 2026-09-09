@@ -10,7 +10,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace arda::backend
+namespace arda
 {
     namespace
     {
@@ -785,60 +785,58 @@ namespace arda::backend
         return {};
     }
 
-    namespace private_api
+    FArdaShaderDirectoryStatus BeginShaderDirectoryRegistryUse()
     {
-        FArdaShaderDirectoryStatus BeginShaderDirectoryRegistryUse()
-        {
-            FDirectoryRegistry& Registry = GetRegistry();
-            std::lock_guard<std::mutex> Lock(Registry.mMutex);
-            FArdaShaderDirectoryStatus MutationStatus =
-                RegistryMutationStatus(Registry);
-            if (!MutationStatus)
-                return Publish(Registry, eastl::move(MutationStatus));
-            Registry.mbRegistryInUse = true;
-            return Publish(Registry, {});
-        }
+        FDirectoryRegistry& Registry = GetRegistry();
+        std::lock_guard<std::mutex> Lock(Registry.mMutex);
+        FArdaShaderDirectoryStatus MutationStatus =
+            RegistryMutationStatus(Registry);
+        if (!MutationStatus)
+            return Publish(Registry, eastl::move(MutationStatus));
+        Registry.mbRegistryInUse = true;
+        return Publish(Registry, {});
+    }
 
-        FArdaShaderDirectoryStatus
-        ScanAndFreezeShaderSourceDirectoriesForBackend()
+    FArdaShaderDirectoryStatus
+    ScanAndFreezeShaderSourceDirectoriesForBackend()
+    {
+        FDirectoryRegistry& Registry = GetRegistry();
         {
-            FDirectoryRegistry& Registry = GetRegistry();
-            {
-                std::lock_guard<std::mutex> Lock(Registry.mMutex);
-                if (!Registry.mbRegistryInUse)
-                {
-                    return Publish(
-                        Registry,
-                        MakeStatus(
-                            EArdaShaderDirectoryError::RegistryInUse,
-                            "Backend shader scan requires an active registry-use guard."));
-                }
-            }
-            return ScanAndFreezeImpl(true);
-        }
-
-        void CompleteShaderDirectoryRegistryUse(
-            bool BackendInitialized) noexcept
-        {
-            FDirectoryRegistry& Registry = GetRegistry();
             std::lock_guard<std::mutex> Lock(Registry.mMutex);
-            Registry.mbBackendInitialized = BackendInitialized;
-            Registry.mbRegistryInUse = false;
-            if (!BackendInitialized)
+            if (!Registry.mbRegistryInUse)
             {
-                Registry.mFiles.clear();
-                Registry.mbFrozen = false;
+                return Publish(
+                    Registry,
+                    MakeStatus(
+                        EArdaShaderDirectoryError::RegistryInUse,
+                        "Backend shader scan requires an active registry-use guard."));
             }
         }
+        return ScanAndFreezeImpl(true);
+    }
 
-        void ReleaseShaderDirectoryRegistryAfterShutdown() noexcept
+    void CompleteShaderDirectoryRegistryUse(
+        bool BackendInitialized) noexcept
+    {
+        FDirectoryRegistry& Registry = GetRegistry();
+        std::lock_guard<std::mutex> Lock(Registry.mMutex);
+        Registry.mbBackendInitialized = BackendInitialized;
+        Registry.mbRegistryInUse = false;
+        if (!BackendInitialized)
         {
-            FDirectoryRegistry& Registry = GetRegistry();
-            std::lock_guard<std::mutex> Lock(Registry.mMutex);
-            Registry.mbBackendInitialized = false;
-            Registry.mbRegistryInUse = false;
             Registry.mFiles.clear();
             Registry.mbFrozen = false;
         }
     }
+
+    void ReleaseShaderDirectoryRegistryAfterShutdown() noexcept
+    {
+        FDirectoryRegistry& Registry = GetRegistry();
+        std::lock_guard<std::mutex> Lock(Registry.mMutex);
+        Registry.mbBackendInitialized = false;
+        Registry.mbRegistryInUse = false;
+        Registry.mFiles.clear();
+        Registry.mbFrozen = false;
+    }
+
 }

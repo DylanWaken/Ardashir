@@ -10,15 +10,15 @@
 namespace
 {
     class FStateDiagnosticCallback final
-        : public arda::backend::IArdaDiagnosticCallback
+        : public arda::IArdaDiagnosticCallback
     {
     public:
         void Message(
-            arda::backend::EArdaDiagnosticSeverity Severity,
+            arda::EArdaDiagnosticSeverity Severity,
             const char* Message) override
         {
-            if (Severity == arda::backend::EArdaDiagnosticSeverity::Error ||
-                Severity == arda::backend::EArdaDiagnosticSeverity::Fatal)
+            if (Severity == arda::EArdaDiagnosticSeverity::Error ||
+                Severity == arda::EArdaDiagnosticSeverity::Fatal)
             {
                 mErrorCount.fetch_add(1, std::memory_order_relaxed);
                 std::fprintf(stderr, "Native state validation: %s\n", Message ? Message : "");
@@ -39,17 +39,16 @@ namespace
     public:
         ~FStateBackendCleanup()
         {
-            arda::backend::ShutdownBackend();
+            arda::ShutdownBackend();
         }
     };
 
     void VerifyNativeResourceStateConformance(
         const char* BackendName,
-        arda::rhi::EArdaRHINativeResourceType TextureNativeType,
-        arda::rhi::EArdaRHINativeResourceType BufferNativeType)
+        arda::EArdaRHINativeResourceType TextureNativeType,
+        arda::EArdaRHINativeResourceType BufferNativeType)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FStateBackendCleanup Cleanup;
@@ -289,8 +288,8 @@ TEST(ArdaBackend, D3D12ResourceStateMatchesFacadeAndNativeEncodingAtEveryStep)
 {
     VerifyNativeResourceStateConformance(
         "native-d3d12",
-        arda::rhi::EArdaRHINativeResourceType::D3D12Resource,
-        arda::rhi::EArdaRHINativeResourceType::D3D12Resource);
+        arda::EArdaRHINativeResourceType::D3D12Resource,
+        arda::EArdaRHINativeResourceType::D3D12Resource);
 }
 #endif
 
@@ -299,7 +298,7 @@ TEST(ArdaBackend, VulkanResourceStateMatchesFacadeAndNativeEncodingAtEveryStep)
 {
     VerifyNativeResourceStateConformance(
         "native-vulkan",
-        arda::rhi::EArdaRHINativeResourceType::VulkanImage,
-        arda::rhi::EArdaRHINativeResourceType::VulkanBuffer);
+        arda::EArdaRHINativeResourceType::VulkanImage,
+        arda::EArdaRHINativeResourceType::VulkanBuffer);
 }
 #endif

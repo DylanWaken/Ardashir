@@ -19,7 +19,7 @@ class FARDGRenderGraph;
 struct FARDGRenderGraphContext;
 class IARDGPassExecutor;
 enum class EARDGResourceState;
-using FARDGTextureHandle = arda::rhi::FArdaRHITextureRef;
+using FARDGTextureHandle = arda::FArdaRHITextureRef;
 
 template <typename ElementType>
 class TARDGResourcePool;

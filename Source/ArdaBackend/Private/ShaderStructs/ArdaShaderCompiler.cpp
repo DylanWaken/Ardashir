@@ -30,7 +30,7 @@
 #include <unistd.h>
 #endif
 
-namespace arda::backend
+namespace arda
 {
     namespace
     {
@@ -90,9 +90,9 @@ namespace arda::backend
             return Result;
         }
 
-        eastl::string ProfileForStage(rhi::EArdaRHIShaderStage Stage)
+        eastl::string ProfileForStage(arda::EArdaRHIShaderStage Stage)
         {
-            using StageType = rhi::EArdaRHIShaderStage;
+            using StageType = arda::EArdaRHIShaderStage;
             if (Stage == StageType::Vertex) return "vs_6_0";
             if (Stage == StageType::Pixel) return "ps_6_0";
             if (Stage == StageType::Compute) return "cs_6_0";
@@ -102,7 +102,7 @@ namespace arda::backend
             if (Stage == StageType::Amplification) return "as_6_5";
             if (Stage == StageType::Mesh) return "ms_6_5";
             if (Stage == StageType::WorkGraph) return "lib_6_8";
-            if (rhi::IsArdaRHIRayTracingShaderStage(Stage)) return "lib_6_3";
+            if (arda::IsArdaRHIRayTracingShaderStage(Stage)) return "lib_6_3";
             return {};
         }
 
@@ -134,7 +134,7 @@ namespace arda::backend
 
         void HashBytes(uint64_t& Hash, const void* Data, size_t Size)
         {
-            private_api::AppendFnv1a64(Hash, Data, Size);
+            AppendArdaFnv1a64(Hash, Data, Size);
         }
 
         void HashString(uint64_t& Hash, const std::string& Value)
@@ -656,7 +656,7 @@ namespace arda::backend
                 Invocation.mStage = Type.GetStage();
                 Invocation.mProfile = Job.mProfile;
                 Invocation.mArguments = Job.mArguments;
-                const rhi::FArdaRHIStatus Status =
+                const arda::FArdaRHIStatus Status =
                     BackendModule->ConfigureShaderCompileInvocation(Invocation);
                 if (!Status)
                 {
@@ -691,7 +691,7 @@ namespace arda::backend
                     return false;
                 }
             }
-            uint64_t Hash = private_api::ArdaFnv1a64OffsetBasis;
+            uint64_t Hash = arda::ArdaFnv1a64OffsetBasis;
             HashString(Hash, CacheSchema);
             HashString(Hash, Type.GetName());
             HashString(Hash, ToStd(Target.mBackendName));

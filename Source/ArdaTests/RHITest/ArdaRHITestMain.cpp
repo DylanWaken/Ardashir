@@ -9,7 +9,7 @@
 
 ARDA_DEFINE_LOG_CATEGORY_NAMED(LogRHITest, "RHITest", Log);
 
-namespace arda::tests::rhi_test
+namespace arda
 {
     namespace
     {
@@ -22,21 +22,21 @@ namespace arda::tests::rhi_test
             bool mbHidden = false;
         };
 
-        class FArdaMessageCallback final : public backend::IArdaDiagnosticCallback
+        class FArdaMessageCallback final : public arda::IArdaDiagnosticCallback
         {
         public:
-            void Message(backend::EArdaDiagnosticSeverity severity, const char* messageText) override
+            void Message(arda::EArdaDiagnosticSeverity severity, const char* messageText) override
             {
                 switch (severity)
                 {
-                case backend::EArdaDiagnosticSeverity::Warning:
+                case arda::EArdaDiagnosticSeverity::Warning:
                     ARDA_LOG(
                         LogRHITest,
                         Warning,
                         "%s",
                         messageText ? messageText : "");
                     break;
-                case backend::EArdaDiagnosticSeverity::Error:
+                case arda::EArdaDiagnosticSeverity::Error:
                     ++mErrorCount;
                     ARDA_LOG(
                         LogRHITest,
@@ -44,7 +44,7 @@ namespace arda::tests::rhi_test
                         "%s",
                         messageText ? messageText : "");
                     break;
-                case backend::EArdaDiagnosticSeverity::Fatal:
+                case arda::EArdaDiagnosticSeverity::Fatal:
                     ++mErrorCount;
                     ARDA_LOG(
                         LogRHITest,
@@ -72,7 +72,7 @@ namespace arda::tests::rhi_test
         {
         public:
             explicit FArdaBackendShutdownGuard(
-                eastl::unique_ptr<backend::IArdaSwapChain>& swapChain)
+                eastl::unique_ptr<arda::IArdaSwapChain>& swapChain)
                 : mSwapChain(swapChain)
             {
             }
@@ -84,14 +84,14 @@ namespace arda::tests::rhi_test
                     mSwapChain->WaitForIdle();
                     mSwapChain.reset();
                 }
-                if (backend::IsBackendInitialized())
+                if (arda::IsBackendInitialized())
                 {
-                    backend::ShutdownBackend();
+                    arda::ShutdownBackend();
                 }
             }
 
         private:
-            eastl::unique_ptr<backend::IArdaSwapChain>& mSwapChain;
+            eastl::unique_ptr<arda::IArdaSwapChain>& mSwapChain;
         };
 
         bool ParseOptions(int argumentCount, char** arguments, FArdaOptions& options, eastl::string& error)
@@ -166,40 +166,40 @@ namespace arda::tests::rhi_test
             }
 
             FArdaMessageCallback messageCallback;
-            backend::FArdaBackendConfiguration configuration;
+            arda::FArdaBackendConfiguration configuration;
             configuration.mBackendName = options.mBackendName;
             configuration.mbEnableValidation = true;
             configuration.mMessageCallback = &messageCallback;
-            if (!backend::ConfigureBackend(configuration))
+            if (!arda::ConfigureBackend(configuration))
             {
-                const eastl::string backendError = backend::GetBackendError();
+                const eastl::string backendError = arda::GetBackendError();
                 ARDA_LOG(LogRHITest, Error, "%s", backendError.c_str());
                 return options.mBackendName == "native-d3d12"
                     ? SkippedExitCode
                     : EXIT_FAILURE;
             }
 
-            eastl::unique_ptr<backend::IArdaSwapChain> swapChain;
+            eastl::unique_ptr<arda::IArdaSwapChain> swapChain;
             FArdaBackendShutdownGuard shutdownGuard(swapChain);
-            const backend::EArdaInitializeResult result =
-                backend::InitializeBackendForPresentation(
+            const arda::EArdaInitializeResult result =
+                arda::InitializeBackendForPresentation(
                 window,
                 window.GetWidth(),
                 window.GetHeight(),
                 swapChain);
-            if (result != backend::EArdaInitializeResult::Success)
+            if (result != arda::EArdaInitializeResult::Success)
             {
-                const eastl::string backendError = backend::GetBackendError();
+                const eastl::string backendError = arda::GetBackendError();
                 ARDA_LOG(LogRHITest, Error, "%s", backendError.c_str());
-                return result == backend::EArdaInitializeResult::Unavailable ||
-                    result == backend::EArdaInitializeResult::ValidationUnavailable
+                return result == arda::EArdaInitializeResult::Unavailable ||
+                    result == arda::EArdaInitializeResult::ValidationUnavailable
                     ? SkippedExitCode
                     : EXIT_FAILURE;
             }
 
             FArdaTriangleRenderer renderer;
             if (!renderer.Initialize(
-                backend::GetDevice(),
+                arda::GetDevice(),
                 swapChain->GetFormat(),
                 GetExecutableDirectory(arguments[0])))
             {
@@ -238,5 +238,5 @@ namespace arda::tests::rhi_test
 
 int main(int argumentCount, char** arguments)
 {
-    return arda::tests::rhi_test::Run(argumentCount, arguments);
+    return arda::Run(argumentCount, arguments);
 }

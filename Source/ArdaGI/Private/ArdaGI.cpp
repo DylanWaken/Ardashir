@@ -2,9 +2,9 @@
 
 #include "ArdaGI.h"
 
-namespace arda::gi
+namespace arda
 {
-    const char* GetModuleName() noexcept
+    const char* GetGIModuleName() noexcept
     {
         return "ArdaGI";
     }

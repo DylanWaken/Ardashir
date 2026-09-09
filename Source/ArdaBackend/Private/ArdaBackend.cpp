@@ -9,7 +9,7 @@
 #include "ShaderStructs/ArdaShaderCompiler.h"
 #include "ShaderStructs/ArdaShaderDirectoriesPrivate.h"
 
-namespace arda::backend
+namespace arda
 {
     void SetBackendError(const char* Error);
 
@@ -62,7 +62,7 @@ namespace arda::backend
             FArdaBackendConfiguration mConfiguration;
             FArdaDefaultMessageCallback mDefaultMessageCallback;
             eastl::unique_ptr<IArdaBackendRuntime> mBackendRuntime;
-            rhi::FArdaRHIDeviceRef mDevice;
+            arda::FArdaRHIDeviceRef mDevice;
             IArdaExternalDeviceProvider* mExternalDeviceProvider = nullptr;
             eastl::string mError;
             EArdaInitializeResult mInitializeResult = EArdaInitializeResult::Unavailable;
@@ -80,7 +80,7 @@ namespace arda::backend
             IArdaBackendModule*& OutModule,
             bool bValidateRuntimeProvider)
         {
-            private_api::RegisterLinkedBackendModules();
+            arda::RegisterLinkedBackendModules();
             if (Configuration.mBackendName.empty() &&
                 Configuration.mDeviceSource == EArdaDeviceSource::ExternalProvider &&
                 State.mExternalDeviceProvider)
@@ -195,7 +195,7 @@ namespace arda::backend
                     State.mError = "The selected backend module failed to create a device.";
                 return Result.mResult;
             }
-            State.mDevice = rhi::provider::CreateArdaRHIDevice(
+            State.mDevice = arda::CreateArdaRHIDevice(
                 eastl::move(Result.mProviderDevice));
             if (!State.mDevice)
             {
@@ -211,14 +211,14 @@ namespace arda::backend
             FArdaBackendState& State,
             IArdaBackendModule& Module)
         {
-            private_api::SetActiveBackendModule(&Module);
+            arda::SetActiveBackendModule(&Module);
             State.mError.clear();
         }
 
         bool FreezeAndValidateShaderSources(FArdaBackendState& State)
         {
             const FArdaShaderDirectoryStatus DirectoryStatus =
-                private_api::ScanAndFreezeShaderSourceDirectoriesForBackend();
+                arda::ScanAndFreezeShaderSourceDirectoriesForBackend();
             if (!DirectoryStatus)
             {
                 State.mError =
@@ -241,7 +241,7 @@ namespace arda::backend
         bool BeginShaderDirectoryUse(FArdaBackendState& State)
         {
             const FArdaShaderDirectoryStatus Status =
-                private_api::BeginShaderDirectoryRegistryUse();
+                arda::BeginShaderDirectoryRegistryUse();
             if (Status)
                 return true;
             State.mError =
@@ -290,7 +290,7 @@ namespace arda::backend
             if (!FreezeAndValidateShaderSources(State) ||
                 !EnsureStartupShaders(State, RuntimeConfiguration))
             {
-                private_api::CompleteShaderDirectoryRegistryUse(false);
+                arda::CompleteShaderDirectoryRegistryUse(false);
                 return false;
             }
             return true;
@@ -304,6 +304,12 @@ namespace arda::backend
         if (state.mBackendRuntime)
         {
             state.mError = "The backend cannot be reconfigured after initialization.";
+            return false;
+        }
+
+        if (configuration.mCudaExecutionMode > EArdaCudaExecutionMode::ContextSwitch)
+        {
+            state.mError = "Invalid CUDA execution mode.";
             return false;
         }
 
@@ -354,12 +360,12 @@ namespace arda::backend
         state.mInitializeResult = CreateConfiguredDevice(state, runtimeConfiguration, *Module, nullptr);
         if (state.mInitializeResult != EArdaInitializeResult::Success)
         {
-            private_api::CompleteShaderDirectoryRegistryUse(false);
+            arda::CompleteShaderDirectoryRegistryUse(false);
             return false;
         }
 
         PublishInitializedDevice(state, *Module);
-        private_api::CompleteShaderDirectoryRegistryUse(true);
+        arda::CompleteShaderDirectoryRegistryUse(true);
         return true;
     }
 
@@ -399,7 +405,7 @@ namespace arda::backend
             state, runtimeConfiguration, *Module, &WindowSurface);
         if (result != EArdaInitializeResult::Success)
         {
-            private_api::CompleteShaderDirectoryRegistryUse(false);
+            arda::CompleteShaderDirectoryRegistryUse(false);
             return result;
         }
 
@@ -411,13 +417,13 @@ namespace arda::backend
             state.mError = eastl::move(SwapChainResult.mError);
             state.mDevice = nullptr;
             state.mBackendRuntime.reset();
-            private_api::CompleteShaderDirectoryRegistryUse(false);
+            arda::CompleteShaderDirectoryRegistryUse(false);
             return EArdaInitializeResult::Failure;
         }
         OutSwapChain = eastl::move(SwapChainResult.mSwapChain);
 
         PublishInitializedDevice(state, *Module);
-        private_api::CompleteShaderDirectoryRegistryUse(true);
+        arda::CompleteShaderDirectoryRegistryUse(true);
         return EArdaInitializeResult::Success;
     }
 
@@ -429,8 +435,8 @@ namespace arda::backend
             state.mDevice->FlushAndDisablePipelineCachePersistence();
         state.mDevice = nullptr;
         state.mBackendRuntime.reset();
-        private_api::SetActiveBackendModule(nullptr);
-        private_api::ReleaseShaderDirectoryRegistryAfterShutdown();
+        arda::SetActiveBackendModule(nullptr);
+        arda::ReleaseShaderDirectoryRegistryAfterShutdown();
     }
 
     bool IsBackendInitialized() noexcept
@@ -438,7 +444,7 @@ namespace arda::backend
         return GetState().mDevice != nullptr;
     }
 
-    rhi::FArdaRHIDeviceRef GetDevice() noexcept
+    arda::FArdaRHIDeviceRef GetDevice() noexcept
     {
         return GetState().mDevice;
     }
@@ -506,7 +512,7 @@ namespace arda::backend
         state.mError = Error ? Error : "";
     }
 
-    const char* GetModuleName() noexcept
+    const char* GetBackendModuleName() noexcept
     {
         return "ArdaBackend";
     }

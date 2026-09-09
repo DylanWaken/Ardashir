@@ -4,7 +4,7 @@
 #include "ShaderStructs/ArdaShaderCompiler.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 
-namespace arda::tests::rhi_test
+namespace arda
 {
     namespace
     {
@@ -34,8 +34,8 @@ namespace arda::tests::rhi_test
     }
 
     bool FArdaTriangleRenderer::Initialize(
-        rhi::FArdaRHIDeviceRef device,
-        rhi::EArdaRHIFormat swapChainFormat,
+        arda::FArdaRHIDeviceRef device,
+        arda::EArdaRHIFormat swapChainFormat,
         const std::filesystem::path& shaderDirectory)
     {
         mDevice = eastl::move(device);
@@ -50,24 +50,24 @@ namespace arda::tests::rhi_test
         const std::string shaderSource =
             (std::filesystem::path(ARDA_RHI_TEST_SHADER_SOURCE_DIR) /
              "ArdaTriangle.hlsl").string();
-        backend::FArdaShaderTypeRegistration vertexRegistration(
+        arda::FArdaShaderTypeRegistration vertexRegistration(
             "RHITestTriangleVertex", shaderSource.c_str(), "TriangleVS",
-            "VSMain", rhi::EArdaRHIShaderStage::Vertex, nullptr);
-        backend::FArdaShaderTypeRegistration pixelRegistration(
+            "VSMain", arda::EArdaRHIShaderStage::Vertex, nullptr);
+        arda::FArdaShaderTypeRegistration pixelRegistration(
             "RHITestTrianglePixel", shaderSource.c_str(), "TrianglePS",
-            "PSMain", rhi::EArdaRHIShaderStage::Pixel, nullptr);
-        const backend::FArdaShaderCompilerConfiguration previousCompiler =
-            backend::GetShaderCompilerConfiguration();
-        backend::FArdaShaderCompilerConfiguration runtimeCompiler =
+            "PSMain", arda::EArdaRHIShaderStage::Pixel, nullptr);
+        const arda::FArdaShaderCompilerConfiguration previousCompiler =
+            arda::GetShaderCompilerConfiguration();
+        arda::FArdaShaderCompilerConfiguration runtimeCompiler =
             previousCompiler;
         runtimeCompiler.mbCompileMissingArtifacts = true;
         runtimeCompiler.mbCompileOutdatedArtifacts = true;
-        backend::ConfigureShaderCompiler(runtimeCompiler);
-        const backend::FArdaShaderCompileResult compileResult =
-            backend::EnsureRegisteredShaderArtifacts(
+        arda::ConfigureShaderCompiler(runtimeCompiler);
+        const arda::FArdaShaderCompileResult compileResult =
+            arda::EnsureRegisteredShaderArtifacts(
                 shaderCache,
-                backend::GetBackendConfiguration().mBackendName.c_str());
-        backend::ConfigureShaderCompiler(previousCompiler);
+                arda::GetBackendConfiguration().mBackendName.c_str());
+        arda::ConfigureShaderCompiler(previousCompiler);
         if (!compileResult)
         {
             mError = compileResult.mDiagnostics.empty()
@@ -76,8 +76,8 @@ namespace arda::tests::rhi_test
             return false;
         }
 
-        const char* ArtifactExtension = backend::GetShaderArtifactExtension(
-            backend::GetBackendConfiguration().mBackendName.c_str());
+        const char* ArtifactExtension = arda::GetShaderArtifactExtension(
+            arda::GetBackendConfiguration().mBackendName.c_str());
         eastl::vector<uint8_t> vertexBinary;
         eastl::vector<uint8_t> pixelBinary;
         if (!LoadBinary(shaderCache / (std::string("TriangleVS") + ArtifactExtension), vertexBinary, mError) ||
@@ -86,14 +86,14 @@ namespace arda::tests::rhi_test
             return false;
         }
 
-        rhi::FArdaRHIShaderDesc shaderDesc;
-        shaderDesc.mStage = rhi::EArdaRHIShaderStage::Vertex;
+        arda::FArdaRHIShaderDesc shaderDesc;
+        shaderDesc.mStage = arda::EArdaRHIShaderStage::Vertex;
         shaderDesc.mBytecode = vertexBinary.data();
         shaderDesc.mBytecodeSize = vertexBinary.size();
         shaderDesc.mEntryPoint = "VSMain";
         shaderDesc.mDebugName = "Triangle vertex shader";
         auto vertexShader = mDevice->CreateShader(shaderDesc);
-        shaderDesc.mStage = rhi::EArdaRHIShaderStage::Pixel;
+        shaderDesc.mStage = arda::EArdaRHIShaderStage::Pixel;
         shaderDesc.mBytecode = pixelBinary.data();
         shaderDesc.mBytecodeSize = pixelBinary.size();
         shaderDesc.mEntryPoint = "PSMain";
@@ -107,13 +107,13 @@ namespace arda::tests::rhi_test
         mVertexShader = eastl::move(vertexShader.mValue);
         mPixelShader = eastl::move(pixelShader.mValue);
 
-        eastl::vector<rhi::FArdaRHIVertexAttributeDesc> attributes(2);
+        eastl::vector<arda::FArdaRHIVertexAttributeDesc> attributes(2);
         attributes[0].mSemanticName = "POSITION";
-        attributes[0].mFormat = rhi::EArdaRHIFormat::RG32Float;
+        attributes[0].mFormat = arda::EArdaRHIFormat::RG32Float;
         attributes[0].mOffset = offsetof(FArdaVertex, mPosition);
         attributes[0].mElementStride = sizeof(FArdaVertex);
         attributes[1].mSemanticName = "COLOR";
-        attributes[1].mFormat = rhi::EArdaRHIFormat::RGB32Float;
+        attributes[1].mFormat = arda::EArdaRHIFormat::RGB32Float;
         attributes[1].mOffset = offsetof(FArdaVertex, mColor);
         attributes[1].mElementStride = sizeof(FArdaVertex);
         auto inputLayout = mDevice->CreateInputLayout(attributes);
@@ -124,13 +124,13 @@ namespace arda::tests::rhi_test
         }
         mInputLayout = eastl::move(inputLayout.mValue);
 
-        rhi::FArdaRHIGraphicsPipelineDesc pipelineDesc;
+        arda::FArdaRHIGraphicsPipelineDesc pipelineDesc;
         pipelineDesc.mInputLayout = mInputLayout;
         pipelineDesc.mVertexShader = mVertexShader;
         pipelineDesc.mPixelShader = mPixelShader;
         pipelineDesc.mDepthStencilState.mbDepthTest = false;
         pipelineDesc.mDepthStencilState.mbDepthWrite = false;
-        pipelineDesc.mRasterState.mCullMode = rhi::EArdaRHICullMode::None;
+        pipelineDesc.mRasterState.mCullMode = arda::EArdaRHICullMode::None;
         pipelineDesc.mColorFormats.push_back(swapChainFormat);
         pipelineDesc.mDebugName = "Triangle pipeline";
         auto pipeline = mDevice->CreateGraphicsPipeline(pipelineDesc);
@@ -141,16 +141,16 @@ namespace arda::tests::rhi_test
         }
         mPipeline = eastl::move(pipeline.mValue);
 
-        rhi::FArdaRHIBufferDesc bufferDesc;
+        arda::FArdaRHIBufferDesc bufferDesc;
         bufferDesc.mByteSize = sizeof(Vertices);
-        bufferDesc.mUsage = rhi::EArdaRHIBufferUsage::Vertex;
-        bufferDesc.mInitialState = rhi::EArdaRHIResourceState::VertexBuffer;
+        bufferDesc.mUsage = arda::EArdaRHIBufferUsage::Vertex;
+        bufferDesc.mInitialState = arda::EArdaRHIResourceState::VertexBuffer;
         bufferDesc.mbKeepInitialState = true;
         bufferDesc.mDebugName = "Triangle vertex buffer";
         auto vertexBuffer = mDevice->CreateBuffer(bufferDesc);
         bufferDesc.mByteSize = sizeof(Indices);
-        bufferDesc.mUsage = rhi::EArdaRHIBufferUsage::Index;
-        bufferDesc.mInitialState = rhi::EArdaRHIResourceState::IndexBuffer;
+        bufferDesc.mUsage = arda::EArdaRHIBufferUsage::Index;
+        bufferDesc.mInitialState = arda::EArdaRHIResourceState::IndexBuffer;
         bufferDesc.mDebugName = "Triangle index buffer";
         auto indexBuffer = mDevice->CreateBuffer(bufferDesc);
         if (!vertexBuffer || !indexBuffer)
@@ -161,21 +161,21 @@ namespace arda::tests::rhi_test
         mVertexBuffer = eastl::move(vertexBuffer.mValue);
         mIndexBuffer = eastl::move(indexBuffer.mValue);
 
-        render_graph::FARDGBuilder graph(CreateGraphContext());
+        arda::FARDGBuilder graph(CreateGraphContext());
         auto* graphVertexBuffer = graph.RegisterExternalBuffer(
-            mVertexBuffer, rhi::EArdaRHIResourceState::VertexBuffer, "Triangle vertex buffer");
+            mVertexBuffer, arda::EArdaRHIResourceState::VertexBuffer, "Triangle vertex buffer");
         auto* graphIndexBuffer = graph.RegisterExternalBuffer(
-            mIndexBuffer, rhi::EArdaRHIResourceState::IndexBuffer, "Triangle index buffer");
+            mIndexBuffer, arda::EArdaRHIResourceState::IndexBuffer, "Triangle index buffer");
         FArdaTriangleUploadParameters parameters;
         parameters.mVertexBuffer = {
-            graphVertexBuffer, rhi::EArdaRHIResourceState::CopyDest, {}};
+            graphVertexBuffer, arda::EArdaRHIResourceState::CopyDest, {}};
         parameters.mIndexBuffer = {
-            graphIndexBuffer, rhi::EArdaRHIResourceState::CopyDest, {}};
+            graphIndexBuffer, arda::EArdaRHIResourceState::CopyDest, {}};
         (void)graph.AddPass(
             "Upload triangle geometry",
             &parameters,
-            render_graph::EARDGPassFlags::None,
-            [](render_graph::FARDGPassExecutionContext& context,
+            arda::EARDGPassFlags::None,
+            [](arda::FARDGPassExecutionContext& context,
                const FArdaTriangleUploadParameters& frozen)
             {
                 (void)context.mCommandList.WriteBuffer(
@@ -194,9 +194,9 @@ namespace arda::tests::rhi_test
         return true;
     }
 
-    bool FArdaTriangleRenderer::RenderFrame(backend::IArdaSwapChain& swapChain)
+    bool FArdaTriangleRenderer::RenderFrame(arda::IArdaSwapChain& swapChain)
     {
-        rhi::FArdaRHIFramebufferRef framebuffer;
+        arda::FArdaRHIFramebufferRef framebuffer;
         if (!swapChain.AcquireFrame(framebuffer))
         {
             mError = swapChain.GetError();
@@ -211,19 +211,19 @@ namespace arda::tests::rhi_test
         }
         const auto colorAttachment = framebufferDesc.mColorAttachments[0];
 
-        render_graph::FARDGBuilder graph(CreateGraphContext());
+        arda::FARDGBuilder graph(CreateGraphContext());
         auto* graphRenderTarget = graph.RegisterExternalTexture(
-            colorAttachment.mTexture, rhi::EArdaRHIResourceState::Present, "Swap-chain color");
+            colorAttachment.mTexture, arda::EArdaRHIResourceState::Present, "Swap-chain color");
         auto* graphVertexBuffer = graph.RegisterExternalBuffer(
-            mVertexBuffer, rhi::EArdaRHIResourceState::VertexBuffer, "Triangle vertex buffer");
+            mVertexBuffer, arda::EArdaRHIResourceState::VertexBuffer, "Triangle vertex buffer");
         auto* graphIndexBuffer = graph.RegisterExternalBuffer(
-            mIndexBuffer, rhi::EArdaRHIResourceState::IndexBuffer, "Triangle index buffer");
+            mIndexBuffer, arda::EArdaRHIResourceState::IndexBuffer, "Triangle index buffer");
 
         FArdaTriangleRasterParameters parameters;
         parameters.mVertexBuffer = {
-            graphVertexBuffer, rhi::EArdaRHIResourceState::VertexBuffer, {}};
+            graphVertexBuffer, arda::EArdaRHIResourceState::VertexBuffer, {}};
         parameters.mIndexBuffer = {
-            graphIndexBuffer, rhi::EArdaRHIResourceState::IndexBuffer, {}};
+            graphIndexBuffer, arda::EArdaRHIResourceState::IndexBuffer, {}};
         parameters.mRenderTargets.mColor[0] = {
             graphRenderTarget, colorAttachment.mAttachment.mSubresources};
         const uint32_t width = swapChain.GetWidth();
@@ -231,22 +231,22 @@ namespace arda::tests::rhi_test
         (void)graph.AddPass(
             "Render triangle",
             &parameters,
-            render_graph::EARDGPassFlags::Raster,
+            arda::EARDGPassFlags::Raster,
             [this, framebuffer, width, height](
-                render_graph::FARDGPassExecutionContext& context,
+                arda::FARDGPassExecutionContext& context,
                 const FArdaTriangleRasterParameters& frozen)
             {
                 auto* target = context.GetTexture(frozen.mRenderTargets.mColor[0].mTexture);
                 (void)context.mCommandList.ClearTexture(
                     *target, frozen.mRenderTargets.mColor[0].mSubresources,
                     { 0.025f, 0.035f, 0.06f, 1.f });
-                rhi::FArdaRHIGraphicsState state;
+                arda::FArdaRHIGraphicsState state;
                 state.mPipeline = mPipeline;
                 state.mFramebuffer = framebuffer;
                 state.mVertexBuffers.push_back({
-                    rhi::FArdaRHIBufferRef(context.GetBuffer(frozen.mVertexBuffer.mBuffer)), 0, 0});
+                    arda::FArdaRHIBufferRef(context.GetBuffer(frozen.mVertexBuffer.mBuffer)), 0, 0});
                 state.mIndexBuffer.Reset(context.GetBuffer(frozen.mIndexBuffer.mBuffer));
-                state.mIndexFormat = rhi::EArdaRHIFormat::R16UInt;
+                state.mIndexFormat = arda::EArdaRHIFormat::R16UInt;
                 state.mViewports.push_back({
                     0.f, static_cast<float>(width), 0.f, static_cast<float>(height), 0.f, 1.f});
                 state.mScissors.push_back({
@@ -266,9 +266,9 @@ namespace arda::tests::rhi_test
         return true;
     }
 
-    render_graph::FARDGRenderGraphContext FArdaTriangleRenderer::CreateGraphContext() const
+    arda::FARDGRenderGraphContext FArdaTriangleRenderer::CreateGraphContext() const
     {
-        return render_graph::MakeRenderGraphContext(mDevice);
+        return arda::MakeRenderGraphContext(mDevice);
     }
 
     bool FArdaTriangleRenderer::LoadBinary(

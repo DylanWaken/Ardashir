@@ -1,3 +1,4 @@
+#include "RHI/ArdaRHISubresources.h"
 #include "RHI/ArdaRHIDevicePrivate.h"
 
 #include "ArdaHash.h"
@@ -13,7 +14,7 @@
 #include <thread>
 #include <unordered_map>
 
-namespace arda::rhi::provider
+namespace arda
 {
     namespace
     {
@@ -48,14 +49,14 @@ namespace arda::rhi::provider
 
         uint64_t PersistentShaderHash(const FArdaRHIShaderDesc& Desc) noexcept
         {
-            uint64_t Hash = private_api::ArdaFnv1a64OffsetBasis;
+            uint64_t Hash = arda::ArdaFnv1a64OffsetBasis;
             const auto Append = [&Hash](const void* Data, size_t Size)
             {
-                private_api::AppendFnv1a64(Hash, Data, Size);
+                AppendArdaFnv1a64(Hash, Data, Size);
             };
             const auto AppendUnsigned = [&Hash](uint64_t Value)
             {
-                private_api::AppendFnv1a64LittleEndian(Hash, Value);
+                AppendArdaFnv1a64LittleEndian(Hash, Value);
             };
             AppendUnsigned(static_cast<uint64_t>(Desc.mStage));
             AppendUnsigned(Desc.mEntryPoint.size());
@@ -63,7 +64,7 @@ namespace arda::rhi::provider
             AppendUnsigned(Desc.mBytecodeSize);
             if (Desc.mBytecode && Desc.mBytecodeSize)
                 Append(Desc.mBytecode, Desc.mBytecodeSize);
-            return private_api::FinishPersistentHash(Hash);
+            return FinishArdaPersistentHash(Hash);
         }
 
         class FLifetimeTracker
@@ -727,22 +728,10 @@ namespace arda::rhi::provider
             EArdaRHIResourceState State)
         {
             const auto Range = InputRange.Resolve(Desc);
-            for (uint32_t Plane = Range.mBasePlane;
-                 Plane < Range.mBasePlane + Range.mPlaneCount;
-                 ++Plane)
+            for (const auto [MipLevel, ArraySlice, Plane] : FArdaTextureSubresources(Range))
             {
-                for (uint32_t ArraySlice = Range.mBaseArraySlice;
-                     ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
-                     ++ArraySlice)
-                {
-                    for (uint32_t MipLevel = Range.mBaseMipLevel;
-                         MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
-                         ++MipLevel)
-                    {
-                        States[TextureStateIndex(
-                            Desc, MipLevel, ArraySlice, Plane)] = State;
-                    }
-                }
+                States[TextureStateIndex(
+                    Desc, MipLevel, ArraySlice, Plane)] = State;
             }
         }
 
@@ -757,26 +746,14 @@ namespace arda::rhi::provider
                 Range.mBaseMipLevel,
                 Range.mBaseArraySlice,
                 Range.mBasePlane)];
-            for (uint32_t Plane = Range.mBasePlane;
-                 Plane < Range.mBasePlane + Range.mPlaneCount;
-                 ++Plane)
+            for (const auto [MipLevel, ArraySlice, Plane] : FArdaTextureSubresources(Range))
             {
-                for (uint32_t ArraySlice = Range.mBaseArraySlice;
-                     ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
-                     ++ArraySlice)
+                if (States[TextureStateIndex(
+                        Desc, MipLevel, ArraySlice, Plane)] != State)
                 {
-                    for (uint32_t MipLevel = Range.mBaseMipLevel;
-                         MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
-                         ++MipLevel)
-                    {
-                        if (States[TextureStateIndex(
-                                Desc, MipLevel, ArraySlice, Plane)] != State)
-                        {
-                            return { {}, FArdaRHIStatus::Error(
-                                EArdaRHIResult::InvalidState,
-                                "Texture range contains mixed facade states.") };
-                        }
-                    }
+                    return { {}, FArdaRHIStatus::Error(
+                        EArdaRHIResult::InvalidState,
+                        "Texture range contains mixed facade states.") };
                 }
             }
             return { State, {} };
@@ -1058,6 +1035,10 @@ namespace arda::rhi::provider
             }
 
         private:
+            FArdaRHIStatus QueueBufferReadback(
+                IArdaRHIBuffer& Source, uint64_t SourceOffset, uint64_t Size,
+                FPendingBufferCopyCompletion Completion);
+            void ClearRecordingState();
             bool RetainOwned(const FResource* Resource) const;
             FArdaRHIStatus ResolveBindings(
                 const eastl::vector<FArdaRHIBindingSetRef>& Bindings,
@@ -1307,6 +1288,10 @@ namespace arda::rhi::provider
         {
             if (Desc.mbCudaInterop)
             {
+                if ((Desc.mDimension == EArdaRHITextureDimension::Texture1DArray ||
+                     Desc.mDimension == EArdaRHITextureDimension::Texture2DArray) &&
+                    !GetCudaCapabilities().mbLayeredSurfaceAccess)
+                    return Failure<FArdaRHITextureRef>(Unsupported("Layered CUDA surfaces are not qualified in this execution mode."));
                 if (!GetCudaCapabilities()) return UnsupportedResult<FArdaRHITextureRef>(GetCudaCapabilities().mUnavailableReason.c_str());
                 if (!GetCudaCapabilities().mbSurfaceAccess)
                     return UnsupportedResult<FArdaRHITextureRef>(GetCudaCapabilities().mSurfaceUnavailableReason.c_str());
@@ -3374,7 +3359,7 @@ namespace arda::rhi::provider
             return true;
         }
 
-        FArdaRHIStatus FCommandList::Open()
+        void FCommandList::ClearRecordingState()
         {
             mRetainedResources.clear();
             mMeshletState = {};
@@ -3388,6 +3373,11 @@ namespace arda::rhi::provider
             mFacadeOpacityMicromapStates.clear();
             mExpectedTextureStartStates.clear();
             mExpectedBufferStartStates.clear();
+        }
+
+        FArdaRHIStatus FCommandList::Open()
+        {
+            ClearRecordingState();
             return mNative->Open();
         }
 
@@ -3516,18 +3506,7 @@ namespace arda::rhi::provider
 
         FArdaRHIStatus FCommandList::Reset()
         {
-            mRetainedResources.clear();
-            mMeshletState = {};
-            mCopyCompletions.clear();
-            mFacadeTextureStates.clear();
-            mFacadeBufferStates.clear();
-            mFacadeSamplerFeedbackStates.clear();
-            mFacadeTextureQueueOwners.clear();
-            mFacadeBufferQueueOwners.clear();
-            mFacadeAccelStructStates.clear();
-            mFacadeOpacityMicromapStates.clear();
-            mExpectedTextureStartStates.clear();
-            mExpectedBufferStartStates.clear();
+            ClearRecordingState();
             return mNative->Reset();
         }
 
@@ -3578,11 +3557,9 @@ namespace arda::rhi::provider
             return {};
         }
 
-        FArdaRHIStatus FCommandList::CopyBufferDeviceToHost(
-            IArdaRHIBuffer& Source,
-            eastl::vector<uint8_t>& Output,
-            uint64_t SourceOffset,
-            uint64_t Size)
+        FArdaRHIStatus FCommandList::QueueBufferReadback(
+            IArdaRHIBuffer& Source, uint64_t SourceOffset, uint64_t Size,
+            FPendingBufferCopyCompletion Completion)
         {
             auto* Native = Cast<FBuffer>(&Source);
             if (!Native || !RetainOwned(Native)) return WrongDevice();
@@ -3613,13 +3590,22 @@ namespace arda::rhi::provider
                 !Status)
                 return Status;
 
-            FPendingBufferCopyCompletion Completion;
-            Completion.mbBlocking = true;
             Completion.mReadbackBuffer = eastl::move(Readback.mValue);
             Completion.mByteSize = static_cast<size_t>(ResolvedSize);
-            Completion.mOutput = &Output;
             mCopyCompletions.push_back(eastl::move(Completion));
             return {};
+        }
+
+        FArdaRHIStatus FCommandList::CopyBufferDeviceToHost(
+            IArdaRHIBuffer& Source,
+            eastl::vector<uint8_t>& Output,
+            uint64_t SourceOffset,
+            uint64_t Size)
+        {
+            FPendingBufferCopyCompletion Completion;
+            Completion.mbBlocking = true;
+            Completion.mOutput = &Output;
+            return QueueBufferReadback(Source, SourceOffset, Size, eastl::move(Completion));
         }
 
         FArdaRHIStatus FCommandList::CopyBufferDeviceToHostAsync(
@@ -3631,41 +3617,9 @@ namespace arda::rhi::provider
             if (!Callback)
                 return Invalid(
                     "An asynchronous device-to-host copy requires a callback.");
-            auto* Native = Cast<FBuffer>(&Source);
-            if (!Native || !RetainOwned(Native)) return WrongDevice();
-            if (SourceOffset > Native->mDesc.mByteSize)
-                return Invalid("Buffer readback offset is invalid.");
-            const uint64_t ResolvedSize = Size == ArdaRHIWholeBuffer
-                ? Native->mDesc.mByteSize - SourceOffset : Size;
-            if (ResolvedSize == 0 ||
-                ResolvedSize > Native->mDesc.mByteSize - SourceOffset ||
-                ResolvedSize > static_cast<uint64_t>(SIZE_MAX))
-                return Invalid("Buffer readback range is invalid.");
-
-            FArdaRHIBufferDesc ReadbackDesc;
-            ReadbackDesc.mByteSize = ResolvedSize;
-            ReadbackDesc.mCpuAccess = EArdaRHICpuAccess::Read;
-            ReadbackDesc.mInitialState = EArdaRHIResourceState::CopyDest;
-            ReadbackDesc.mbKeepInitialState = true;
-            ReadbackDesc.mDebugName = "Asynchronous buffer readback";
-            auto Readback = mDevice->GetProviderDevice().CreateBuffer(ReadbackDesc);
-            if (!Readback) return eastl::move(Readback.mStatus);
-            if (auto Status = SetBufferState(
-                    Source, EArdaRHIResourceState::CopySource);
-                !Status)
-                return Status;
-            if (auto Status = mNative->CopyBuffer(
-                    Readback.mValue, 0, Native->mNative,
-                    SourceOffset, ResolvedSize);
-                !Status)
-                return Status;
-
             FPendingBufferCopyCompletion Completion;
-            Completion.mReadbackBuffer = eastl::move(Readback.mValue);
-            Completion.mByteSize = static_cast<size_t>(ResolvedSize);
             Completion.mReadbackCallback = eastl::move(Callback);
-            mCopyCompletions.push_back(eastl::move(Completion));
-            return {};
+            return QueueBufferReadback(Source, SourceOffset, Size, eastl::move(Completion));
         }
 
         FArdaRHIStatus FCommandList::CopyBuffer(

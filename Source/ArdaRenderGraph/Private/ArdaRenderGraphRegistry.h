@@ -10,22 +10,20 @@
 #include <EASTL/utility.h>
 #include <EASTL/vector.h>
 
-namespace arda::render_graph
+namespace arda
 {
-    namespace detail
+    /** Identifies the strongly typed handle template accepted by registries. */
+    template <typename Type>
+    struct TIsARDGHandle : eastl::false_type
     {
-        /** Identifies the strongly typed handle template accepted by registries. */
-        template <typename Type>
-        struct TIsARDGHandle : eastl::false_type
-        {
-        };
+    };
 
-        /** Matches any TARDGHandle specialization while preserving its tag type. */
-        template <typename TagType>
-        struct TIsARDGHandle<TARDGHandle<TagType>> : eastl::true_type
-        {
-        };
-    }
+    /** Matches any TARDGHandle specialization while preserving its tag type. */
+    template <typename TagType>
+    struct TIsARDGHandle<TARDGHandle<TagType>> : eastl::true_type
+    {
+    };
+
 
     /**
      * Maps small, strongly typed handles to one category of graph records.
@@ -80,7 +78,7 @@ namespace arda::render_graph
     class TARDGHandleRegistry final
     {
         static_assert(
-            detail::TIsARDGHandle<HandleType>::value,
+            arda::TIsARDGHandle<HandleType>::value,
             "TARDGHandleRegistry HandleType must specialize TARDGHandle<TagType>.");
 
     public:

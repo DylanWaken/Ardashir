@@ -2,9 +2,9 @@
 
 #include "ArdaScene.h"
 
-namespace arda::scene
+namespace arda
 {
-    const char* GetModuleName() noexcept
+    const char* GetSceneModuleName() noexcept
     {
         return "ArdaScene";
     }

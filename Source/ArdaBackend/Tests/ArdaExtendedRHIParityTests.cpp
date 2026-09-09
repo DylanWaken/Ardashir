@@ -37,15 +37,15 @@
 namespace
 {
     class FExtendedDiagnosticCallback final
-        : public arda::backend::IArdaDiagnosticCallback
+        : public arda::IArdaDiagnosticCallback
     {
     public:
         void Message(
-            arda::backend::EArdaDiagnosticSeverity Severity,
+            arda::EArdaDiagnosticSeverity Severity,
             const char* Message) override
         {
-            if (Severity == arda::backend::EArdaDiagnosticSeverity::Error ||
-                Severity == arda::backend::EArdaDiagnosticSeverity::Fatal)
+            if (Severity == arda::EArdaDiagnosticSeverity::Error ||
+                Severity == arda::EArdaDiagnosticSeverity::Fatal)
             {
                 mErrorCount.fetch_add(1, std::memory_order_relaxed);
                 if (Message)
@@ -68,16 +68,16 @@ namespace
     public:
         ~FExtendedBackendCleanup()
         {
-            arda::backend::ShutdownBackend();
+            arda::ShutdownBackend();
             // Configuration borrows the diagnostic sink. Clear it before the
             // enclosing scope destroys that sink or another test initializes.
-            static_cast<void>(arda::backend::ConfigureBackend(
-                arda::backend::FArdaBackendConfiguration{}));
+            static_cast<void>(arda::ConfigureBackend(
+                arda::FArdaBackendConfiguration{}));
         }
     };
 
 #if defined(_WIN32)
-    class FWin32TestSurface final : public arda::backend::IArdaWindowSurface
+    class FWin32TestSurface final : public arda::IArdaWindowSurface
     {
     public:
         FWin32TestSurface()
@@ -95,10 +95,10 @@ namespace
 
         [[nodiscard]] bool IsValid() const noexcept { return mWindow != nullptr; }
 
-        [[nodiscard]] arda::backend::FArdaNativeObject
+        [[nodiscard]] arda::FArdaNativeObject
             GetD3D12WindowHandle() const noexcept override
         {
-            return arda::backend::FArdaNativeObject(mWindow);
+            return arda::FArdaNativeObject(mWindow);
         }
 
         [[nodiscard]] eastl::vector<const char*>
@@ -114,8 +114,8 @@ namespace
 #endif
         }
 
-        [[nodiscard]] arda::backend::FArdaNativeObject CreateVulkanSurface(
-            arda::backend::FArdaNativeObject NativeInstance,
+        [[nodiscard]] arda::FArdaNativeObject CreateVulkanSurface(
+            arda::FArdaNativeObject NativeInstance,
             eastl::string& OutError) override
         {
 #if defined(ARDA_TEST_NATIVE_VULKAN)
@@ -151,7 +151,7 @@ namespace
                 return {};
             }
             OutError.clear();
-            return arda::backend::FArdaNativeObject(
+            return arda::FArdaNativeObject(
                 reinterpret_cast<uintptr_t>(Surface));
 #else
             static_cast<void>(NativeInstance);
@@ -164,7 +164,7 @@ namespace
         HWND mWindow = nullptr;
     };
 
-    class FCustomPresentTracker final : public arda::backend::IArdaCustomPresent
+    class FCustomPresentTracker final : public arda::IArdaCustomPresent
     {
     public:
         void OnBackBufferResize(uint32_t Width, uint32_t Height) override
@@ -180,7 +180,7 @@ namespace
         }
 
         [[nodiscard]] bool Present(
-            arda::backend::FArdaNativeObject BackBuffer,
+            arda::FArdaNativeObject BackBuffer,
             uint32_t Width,
             uint32_t Height) override
         {
@@ -198,7 +198,7 @@ namespace
         uint32_t mPostPresentCount = 0;
         uint32_t mWidth = 0;
         uint32_t mHeight = 0;
-        arda::backend::FArdaNativeObject mBackBuffer;
+        arda::FArdaNativeObject mBackBuffer;
     };
 #endif
 
@@ -218,29 +218,29 @@ namespace
         return Result;
     }
 
-    arda::rhi::TArdaRHIResult<arda::rhi::FArdaRHIShaderRef>
+    arda::TArdaRHIResult<arda::FArdaRHIShaderRef>
     CreateExtendedShader(
-        arda::rhi::IArdaRHIDevice& Device,
+        arda::IArdaRHIDevice& Device,
         const char* BackendName,
         const char* Artifact,
         const char* EntryPoint,
-        arda::rhi::EArdaRHIShaderStage Stage)
+        arda::EArdaRHIShaderStage Stage)
     {
         using namespace arda;
         const eastl::string FileName = eastl::string(Artifact) +
-            backend::GetShaderArtifactExtension(BackendName);
+            arda::GetShaderArtifactExtension(BackendName);
         const std::vector<uint8_t> Bytecode =
             LoadExtendedShaderArtifact(FileName.c_str());
         if (Bytecode.empty())
         {
             return {
                 {},
-                rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidState,
+                arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::InvalidState,
                     "The indirect conformance shader artifact is missing.")
             };
         }
-        rhi::FArdaRHIShaderDesc Desc;
+        arda::FArdaRHIShaderDesc Desc;
         Desc.mStage = Stage;
         Desc.mBytecode = Bytecode.data();
         Desc.mBytecodeSize = Bytecode.size();
@@ -249,9 +249,9 @@ namespace
         return Device.CreateShader(Desc);
     }
 
-    arda::rhi::TArdaRHIResult<arda::rhi::FArdaRHIShaderRef>
+    arda::TArdaRHIResult<arda::FArdaRHIShaderRef>
     CreateExtendedComputeShader(
-        arda::rhi::IArdaRHIDevice& Device,
+        arda::IArdaRHIDevice& Device,
         const char* BackendName)
     {
         return CreateExtendedShader(
@@ -259,14 +259,14 @@ namespace
             BackendName,
             "ArdaShaderStructTest",
             "ShaderStructTestCS",
-            arda::rhi::EArdaRHIShaderStage::Compute);
+            arda::EArdaRHIShaderStage::Compute);
     }
 
     void ExpectTextureState(
-        arda::rhi::IArdaRHICommandList& Commands,
-        arda::rhi::IArdaRHITexture& Texture,
-        const arda::rhi::FArdaRHITextureSubresourceRange& Range,
-        arda::rhi::EArdaRHIResourceState Expected)
+        arda::IArdaRHICommandList& Commands,
+        arda::IArdaRHITexture& Texture,
+        const arda::FArdaRHITextureSubresourceRange& Range,
+        arda::EArdaRHIResourceState Expected)
     {
         const auto Snapshot = Commands.QueryTextureState(Texture, Range);
         ASSERT_TRUE(Snapshot) << Snapshot.mStatus.mMessage.c_str();
@@ -277,9 +277,9 @@ namespace
     }
 
     void ExpectBufferState(
-        arda::rhi::IArdaRHICommandList& Commands,
-        arda::rhi::IArdaRHIBuffer& Buffer,
-        arda::rhi::EArdaRHIResourceState Expected)
+        arda::IArdaRHICommandList& Commands,
+        arda::IArdaRHIBuffer& Buffer,
+        arda::EArdaRHIResourceState Expected)
     {
         const auto Snapshot = Commands.QueryBufferState(Buffer);
         ASSERT_TRUE(Snapshot) << Snapshot.mStatus.mMessage.c_str();
@@ -290,9 +290,9 @@ namespace
     }
 
     void ExpectSamplerFeedbackState(
-        arda::rhi::IArdaRHICommandList& Commands,
-        arda::rhi::IArdaRHISamplerFeedbackTexture& Texture,
-        arda::rhi::EArdaRHIResourceState Expected)
+        arda::IArdaRHICommandList& Commands,
+        arda::IArdaRHISamplerFeedbackTexture& Texture,
+        arda::EArdaRHIResourceState Expected)
     {
         const auto Snapshot =
             Commands.QuerySamplerFeedbackTextureState(Texture);
@@ -305,8 +305,7 @@ namespace
 
     void VerifySamplerFeedbackStateParity(bool bMipRegionUsed = false)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -530,8 +529,7 @@ namespace
     void VerifyExtendedCommands(
         const char* BackendName)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -846,8 +844,7 @@ namespace
     void VerifyResolveAndPlaneTracking(
         const char* BackendName)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -996,8 +993,7 @@ namespace
     void VerifyExplicitHeapAliasing(
         const char* BackendName)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -1114,8 +1110,7 @@ namespace
 
     void VerifyComputeArithmetic(const char* BackendName, const char* Artifact, const char* Entry)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
         FExtendedBackendCleanup Cleanup;
@@ -1203,8 +1198,7 @@ namespace
 
     void VerifyRuntimeDescriptorVersions(const char* BackendName)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
         FExtendedBackendCleanup Cleanup;
@@ -1307,8 +1301,7 @@ namespace
         bool bDirectHeapIndexing = false,
         bool bDescriptorBuffer = false)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -1426,8 +1419,7 @@ namespace
     void VerifyDirectResourceAndSamplerHeapIndexing(
         const char* BackendName, bool bDescriptorBuffer = false)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -1577,8 +1569,7 @@ namespace
     void VerifyShaderBundleExecution(
         const char* BackendName)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
         FExtendedBackendCleanup Cleanup;
@@ -1685,8 +1676,7 @@ namespace
 
     void VerifyD3D12WorkGraphExecution()
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
         FExtendedBackendCleanup Cleanup;
@@ -1770,8 +1760,7 @@ namespace
     void VerifyMeshPipelineCapabilityAndExecution(
         const char* BackendName, bool bBundle = false)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -1971,8 +1960,7 @@ namespace
     void VerifyQueueBreadth(
         const char* BackendName)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -2168,8 +2156,7 @@ namespace
     void VerifyRayTracingPipelineCapabilityAndExecution(
         const char* BackendName, bool bLocalDescriptors = false)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -2328,8 +2315,7 @@ namespace
     void VerifyAccelerationStructureLifecycleAndStateParity(
         const char* BackendName)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -2494,8 +2480,7 @@ namespace
     void VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(
         const char* BackendName, bool bInlineQuery = false, bool bInstanceBuffer = false)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -2829,8 +2814,7 @@ namespace
 
     void VerifyVulkanOpacityMicromapLifecycleAndStateParity()
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -3141,8 +3125,7 @@ namespace
     void VerifyExpandedDescriptorsAndResourceCollections(
         const char* BackendName)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
         FExtendedBackendCleanup Cleanup;
@@ -3280,10 +3263,10 @@ namespace
         EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
     }
 
-    void VerifyMappedTextureContents(arda::rhi::IArdaRHIDevice& Device,
-        const arda::rhi::FArdaRHITextureRef& Texture)
+    void VerifyMappedTextureContents(arda::IArdaRHIDevice& Device,
+        const arda::FArdaRHITextureRef& Texture)
     {
-        using namespace arda::rhi;
+        using namespace arda;
         FArdaRHIStagingTextureDesc StagingDesc;
         StagingDesc.mTexture = Texture->GetDesc();
         StagingDesc.mTexture.mbTiled = false;
@@ -3342,8 +3325,7 @@ namespace
     void VerifySparseResidencyAndStreamingBudget(
         const char* BackendName)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
         FExtendedBackendCleanup Cleanup;
@@ -3541,8 +3523,7 @@ namespace
     void VerifyStreamingBudgetExecution(
         const char* BackendName)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -3573,8 +3554,7 @@ namespace
     void VerifyQueryExecution(
         const char* BackendName)
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -3657,8 +3637,7 @@ namespace
     void VerifyShaderLibraryExecution(
         const char* BackendName, const std::filesystem::path& CacheDirectory = {})
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -3743,8 +3722,7 @@ namespace
 #if defined(_WIN32)
     void VerifyD3D12DeferredSubmissionLifetime()
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedDiagnosticCallback Diagnostics;
@@ -3808,8 +3786,7 @@ namespace
 
     void VerifyD3D12CustomPresentExecution()
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedBackendCleanup Cleanup;
@@ -3880,8 +3857,7 @@ namespace
 #if defined(ARDA_TEST_NATIVE_VULKAN)
     void VerifyVulkanCustomPresentExecution()
     {
-        using namespace arda::backend;
-        using namespace arda::rhi;
+        using namespace arda;
 
         ShutdownBackend();
         FExtendedBackendCleanup Cleanup;
@@ -3981,7 +3957,7 @@ namespace
     };
 
     using FCapabilityPredicate = bool (*)(
-        const arda::rhi::FArdaRHICapabilities&);
+        const arda::FArdaRHICapabilities&);
 
     struct FCapabilityDefinition
     {
@@ -3999,9 +3975,9 @@ namespace
     };
 
     void VerifyCapabilityInvariants(
-        const arda::rhi::FArdaRHICapabilities& Caps)
+        const arda::FArdaRHICapabilities& Caps)
     {
-        using namespace arda::rhi;
+        using namespace arda;
         const auto& Ray = Caps.mRayTracing;
         if (Ray.mbHardwareAccelerated)
             EXPECT_TRUE(Ray.mbInfrastructure);
@@ -4065,7 +4041,7 @@ namespace
 
     void RunCapabilityProbe(const FCapabilityConformanceCase& TestCase)
     {
-        using namespace arda::backend;
+        using namespace arda;
         switch (TestCase.mCapability.mProbe)
         {
         case ECapabilityProbe::Contract:
@@ -4214,7 +4190,7 @@ namespace
     }
 
 #define ARDA_CAPABILITY(Name, Expression, Probe) \
-    { Name, +[](const arda::rhi::FArdaRHICapabilities& C) \
+    { Name, +[](const arda::FArdaRHICapabilities& C) \
         { return static_cast<bool>(Expression); }, ECapabilityProbe::Probe, #Expression }
 
     const std::vector<FCapabilityConformanceCase>&
@@ -4251,7 +4227,7 @@ namespace
                 C.mRayTracing.mbOpacityMicromaps, OpacityMicromap),
             ARDA_CAPABILITY("RayTracingTier",
                 C.mRayTracing.GetTier() !=
-                    arda::rhi::EArdaRHIRayTracingTier::None,
+                    arda::EArdaRHIRayTracingTier::None,
                 AccelerationStructure),
             ARDA_CAPABILITY("RayShaderIdentifierSize",
                 C.mRayTracing.mShaderIdentifierSize > 0, RayTracingPipeline),
@@ -4319,13 +4295,13 @@ namespace
                 C.mQueues.mbSparseBindingQueue, SparseResidency),
             ARDA_CAPABILITY("GraphicsQueueFamilyIndex",
                 C.mQueues.mGraphicsFamily !=
-                    arda::rhi::ArdaRHIInvalidQueueFamily, QueueBreadth),
+                    arda::ArdaRHIInvalidQueueFamily, QueueBreadth),
             ARDA_CAPABILITY("ComputeQueueFamilyIndex",
                 C.mQueues.mComputeFamily !=
-                    arda::rhi::ArdaRHIInvalidQueueFamily, QueueBreadth),
+                    arda::ArdaRHIInvalidQueueFamily, QueueBreadth),
             ARDA_CAPABILITY("CopyQueueFamilyIndex",
                 C.mQueues.mCopyFamily !=
-                    arda::rhi::ArdaRHIInvalidQueueFamily, QueueBreadth),
+                    arda::ArdaRHIInvalidQueueFamily, QueueBreadth),
 
             ARDA_CAPABILITY("SparseBinding",
                 C.mResidency.mbSparseBinding, SparseResidency),
@@ -4358,14 +4334,14 @@ namespace
                 C.mMachineLearning.mSubgroupMaxSize > 0, Subgroup),
 
             ARDA_CAPABILITY("MeshShaders",
-                C.mMeshShaderTier != arda::rhi::EArdaRHIMeshShaderTier::None,
+                C.mMeshShaderTier != arda::EArdaRHIMeshShaderTier::None,
                 MeshShader),
             ARDA_CAPABILITY("WorkGraphs",
-                C.mWorkGraphTier != arda::rhi::EArdaRHIWorkGraphTier::None,
+                C.mWorkGraphTier != arda::EArdaRHIWorkGraphTier::None,
                 WorkGraph),
             ARDA_CAPABILITY("SamplerFeedback",
                 C.mSamplerFeedbackTier !=
-                    arda::rhi::EArdaRHISamplerFeedbackTier::None,
+                    arda::EArdaRHISamplerFeedbackTier::None,
                 SamplerFeedback),
             ARDA_CAPABILITY("ShaderBundleDispatch",
                 C.mbShaderBundleDispatch, ShaderBundle),
@@ -4457,7 +4433,7 @@ TEST(ArdaBackend, CapabilityMatrixCoversEveryPublicField)
 
 TEST_P(FArdaRHICapabilityConformanceTest, AdvertisedCapabilityConforms)
 {
-    using namespace arda::backend;
+    using namespace arda;
 
     const FCapabilityConformanceCase& TestCase = GetParam();
     ShutdownBackend();
@@ -4472,9 +4448,9 @@ TEST_P(FArdaRHICapabilityConformanceTest, AdvertisedCapabilityConforms)
     ASSERT_TRUE(ConfigureBackend(Configuration));
     ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
 
-    arda::rhi::FArdaRHIDeviceRef Device = GetDevice();
+    arda::FArdaRHIDeviceRef Device = GetDevice();
     ASSERT_TRUE(Device);
-    const arda::rhi::FArdaRHICapabilities Capabilities =
+    const arda::FArdaRHICapabilities Capabilities =
         Device->GetCapabilities();
     if (!TestCase.mCapability.mIsAdvertised(Capabilities))
     {

@@ -15,7 +15,7 @@
 #include <thread>
 #include <EASTL/unordered_map.h>
 
-namespace arda::render_graph
+namespace arda
 {
     namespace
     {
@@ -29,19 +29,19 @@ namespace arda::render_graph
             struct FTextureQueueTransfer
             {
                 FARDGTextureHandle mTexture;
-                rhi::FArdaRHITextureSubresourceRange mSubresources;
-                rhi::EArdaRHIQueueType mSourceQueue =
-                    rhi::EArdaRHIQueueType::Graphics;
-                rhi::EArdaRHIQueueType mDestinationQueue =
-                    rhi::EArdaRHIQueueType::Graphics;
+                arda::FArdaRHITextureSubresourceRange mSubresources;
+                arda::EArdaRHIQueueType mSourceQueue =
+                    arda::EArdaRHIQueueType::Graphics;
+                arda::EArdaRHIQueueType mDestinationQueue =
+                    arda::EArdaRHIQueueType::Graphics;
             };
             struct FBufferQueueTransfer
             {
                 FARDGBufferHandle mBuffer;
-                rhi::EArdaRHIQueueType mSourceQueue =
-                    rhi::EArdaRHIQueueType::Graphics;
-                rhi::EArdaRHIQueueType mDestinationQueue =
-                    rhi::EArdaRHIQueueType::Graphics;
+                arda::EArdaRHIQueueType mSourceQueue =
+                    arda::EArdaRHIQueueType::Graphics;
+                arda::EArdaRHIQueueType mDestinationQueue =
+                    arda::EArdaRHIQueueType::Graphics;
             };
             /** Physical texture transitions emitted while recording this pass. */
             eastl::vector<FARDGTextureTransition> mTextures;
@@ -75,11 +75,11 @@ namespace arda::render_graph
         struct FARDGRecordedPass
         {
             /** First failure from command recording or the pass callback. */
-            rhi::FArdaRHIStatus mStatus;
+            arda::FArdaRHIStatus mStatus;
             /** RHI command list populated during the recording stage. */
-            rhi::FArdaRHICommandListRef mCommandList;
+            arda::FArdaRHICommandListRef mCommandList;
             /** Submission queue selected from the pass pipeline; graphics is the default. */
-            rhi::EArdaRHIQueueType mQueue = rhi::EArdaRHIQueueType::Graphics;
+            arda::EArdaRHIQueueType mQueue = arda::EArdaRHIQueueType::Graphics;
             /** Number of debug resource clears encoded into this pass's command list. */
             uint32_t mClobberedResourceCount = 0;
             /** State evidence captured while recording this pass. */
@@ -111,34 +111,34 @@ namespace arda::render_graph
         };
 
         /** Maps the compiler-selected graph pipeline to its RHI submit queue. */
-        [[nodiscard]] rhi::EArdaRHIQueueType GetCommandQueue(
+        [[nodiscard]] arda::EArdaRHIQueueType GetCommandQueue(
             EARDGPipeline Pipeline) noexcept
         {
             switch (Pipeline)
             {
             case EARDGPipeline::Graphics:
-                return rhi::EArdaRHIQueueType::Graphics;
+                return arda::EArdaRHIQueueType::Graphics;
             case EARDGPipeline::AsyncCompute:
-                return rhi::EArdaRHIQueueType::Compute;
+                return arda::EArdaRHIQueueType::Compute;
             case EARDGPipeline::Copy:
-                return rhi::EArdaRHIQueueType::Copy;
+                return arda::EArdaRHIQueueType::Copy;
             }
-            return rhi::EArdaRHIQueueType::Graphics;
+            return arda::EArdaRHIQueueType::Graphics;
         }
 
         /** Maps a submit queue to the matching explicit-transition pipeline. */
-        [[nodiscard]] rhi::EArdaRHIPipeline GetTransitionPipeline(
-            rhi::EArdaRHIQueueType Queue) noexcept
+        [[nodiscard]] arda::EArdaRHIPipeline GetTransitionPipeline(
+            arda::EArdaRHIQueueType Queue) noexcept
         {
             switch (Queue)
             {
-            case rhi::EArdaRHIQueueType::Compute:
-                return rhi::EArdaRHIPipeline::AsyncCompute;
-            case rhi::EArdaRHIQueueType::Copy:
-                return rhi::EArdaRHIPipeline::Copy;
-            case rhi::EArdaRHIQueueType::Graphics:
+            case arda::EArdaRHIQueueType::Compute:
+                return arda::EArdaRHIPipeline::AsyncCompute;
+            case arda::EArdaRHIQueueType::Copy:
+                return arda::EArdaRHIPipeline::Copy;
+            case arda::EArdaRHIQueueType::Graphics:
             default:
-                return rhi::EArdaRHIPipeline::Graphics;
+                return arda::EArdaRHIPipeline::Graphics;
             }
         }
 
@@ -149,8 +149,8 @@ namespace arda::render_graph
          * relevant to the pool policy; hash equality alone is never trusted.
          */
         [[nodiscard]] bool TextureDescriptorsEqual(
-            const rhi::FArdaRHITextureDesc& Left,
-            const rhi::FArdaRHITextureDesc& Right) noexcept
+            const arda::FArdaRHITextureDesc& Left,
+            const arda::FArdaRHITextureDesc& Right) noexcept
         {
             return Left.mWidth == Right.mWidth &&
                 Left.mHeight == Right.mHeight &&
@@ -167,8 +167,8 @@ namespace arda::render_graph
 
         /** Performs the definitive descriptor check for committed-buffer reuse. */
         [[nodiscard]] bool BufferDescriptorsEqual(
-            const rhi::FArdaRHIBufferDesc& Left,
-            const rhi::FArdaRHIBufferDesc& Right) noexcept
+            const arda::FArdaRHIBufferDesc& Left,
+            const arda::FArdaRHIBufferDesc& Right) noexcept
         {
             return Left.mByteSize == Right.mByteSize &&
                 Left.mStructureStride == Right.mStructureStride &&
@@ -184,14 +184,7 @@ namespace arda::render_graph
          * Collisions are harmless because acquisition always follows hashing
          * with full descriptor equality.
          */
-        template <typename ValueType>
-        void HashCombine(size_t& Seed, const ValueType& Value)
-        {
-            Seed ^= eastl::hash<ValueType>{}(Value) +
-                0x9e3779b9u +
-                (Seed << 6u) +
-                (Seed >> 2u);
-        }
+
 
         /**
          * Builds a fast texture-pool bucket key from high-selectivity fields.
@@ -199,11 +192,11 @@ namespace arda::render_graph
          * Omitted fields are checked by TextureDescriptorsEqual before reuse.
          */
         [[nodiscard]] size_t HashTextureDescriptor(
-            const rhi::FArdaRHITextureDesc& Desc)
+            const arda::FArdaRHITextureDesc& Desc)
         {
-            rhi::FArdaRHITextureDesc PoolDesc = Desc;
+            arda::FArdaRHITextureDesc PoolDesc = Desc;
             PoolDesc.mDebugName.clear();
-            return rhi::HashValue(PoolDesc);
+            return arda::HashValue(PoolDesc);
         }
 
         /**
@@ -212,11 +205,11 @@ namespace arda::render_graph
          * Omitted fields are checked by BufferDescriptorsEqual before reuse.
          */
         [[nodiscard]] size_t HashBufferDescriptor(
-            const rhi::FArdaRHIBufferDesc& Desc)
+            const arda::FArdaRHIBufferDesc& Desc)
         {
-            rhi::FArdaRHIBufferDesc PoolDesc = Desc;
+            arda::FArdaRHIBufferDesc PoolDesc = Desc;
             PoolDesc.mDebugName.clear();
-            return rhi::HashValue(PoolDesc);
+            return arda::HashValue(PoolDesc);
         }
 
         class FARDGTexturePool final
@@ -224,7 +217,7 @@ namespace arda::render_graph
         public:
             /** Creates an execution-local texture pool and result counter sink. */
             FARDGTexturePool(
-                rhi::IArdaRHIDevice& Device,
+                arda::IArdaRHIDevice& Device,
                 FARDGExecutionResult& Result)
                 : mDevice(Device)
                 , mResult(Result)
@@ -240,8 +233,8 @@ namespace arda::render_graph
              * Reuse advances the entry's availability and updates the report;
              * otherwise a new RHI object is created.
              */
-            [[nodiscard]] rhi::FArdaRHITextureRef Acquire(
-                rhi::FArdaRHITextureDesc Desc,
+            [[nodiscard]] arda::FArdaRHITextureRef Acquire(
+                arda::FArdaRHITextureDesc Desc,
                 uint32_t FirstUse,
                 uint32_t LastUse,
                 int32_t ReuseDomain)
@@ -281,9 +274,9 @@ namespace arda::render_graph
             struct FEntry
             {
                 /** Normalized descriptor used for definitive compatibility checks. */
-                rhi::FArdaRHITextureDesc mDesc;
+                arda::FArdaRHITextureDesc mDesc;
                 /** Pool-owned reference to the reusable physical texture. */
-                rhi::FArdaRHITextureRef mTexture;
+                arda::FArdaRHITextureRef mTexture;
                 /** Inclusive execution-order index of the latest logical user's last use. */
                 uint32_t mAvailableAfter = 0;
                 /** Queue reuse domain index, or -1 when this entry cannot be recycled. */
@@ -291,7 +284,7 @@ namespace arda::render_graph
             };
 
             /** Non-owning device used to create textures during materialization. */
-            rhi::IArdaRHIDevice& mDevice;
+            arda::IArdaRHIDevice& mDevice;
             /** Non-owning execution report updated with texture reuse statistics. */
             FARDGExecutionResult& mResult;
             /** Execution-local descriptor-hash buckets owning reusable texture handles. */
@@ -303,7 +296,7 @@ namespace arda::render_graph
         public:
             /** Creates an execution-local buffer pool and result counter sink. */
             FARDGBufferPool(
-                rhi::IArdaRHIDevice& Device,
+                arda::IArdaRHIDevice& Device,
                 FARDGExecutionResult& Result)
                 : mDevice(Device)
                 , mResult(Result)
@@ -317,8 +310,8 @@ namespace arda::render_graph
              * and same-queue-domain invariants as texture acquisition. A
              * negative domain deliberately forces a fresh physical object.
              */
-            [[nodiscard]] rhi::FArdaRHIBufferRef Acquire(
-                rhi::FArdaRHIBufferDesc Desc,
+            [[nodiscard]] arda::FArdaRHIBufferRef Acquire(
+                arda::FArdaRHIBufferDesc Desc,
                 uint32_t FirstUse,
                 uint32_t LastUse,
                 int32_t ReuseDomain)
@@ -358,9 +351,9 @@ namespace arda::render_graph
             struct FEntry
             {
                 /** Normalized descriptor used for definitive compatibility checks. */
-                rhi::FArdaRHIBufferDesc mDesc;
+                arda::FArdaRHIBufferDesc mDesc;
                 /** Pool-owned reference to the reusable physical buffer. */
-                rhi::FArdaRHIBufferRef mBuffer;
+                arda::FArdaRHIBufferRef mBuffer;
                 /** Inclusive execution-order index of the latest logical user's last use. */
                 uint32_t mAvailableAfter = 0;
                 /** Queue reuse domain index, or -1 when this entry cannot be recycled. */
@@ -368,7 +361,7 @@ namespace arda::render_graph
             };
 
             /** Non-owning device used to create buffers during materialization. */
-            rhi::IArdaRHIDevice& mDevice;
+            arda::IArdaRHIDevice& mDevice;
             /** Non-owning execution report updated with buffer reuse statistics. */
             FARDGExecutionResult& mResult;
             /** Execution-local descriptor-hash buckets owning reusable buffer handles. */
@@ -378,17 +371,17 @@ namespace arda::render_graph
         /** Places compatible transient resources and orders every overlapping reuse. */
         void MaterializeTransientHeaps(
             FARDGBuilder::FImpl& Graph,
-            rhi::IArdaRHIDevice& Device,
+            arda::IArdaRHIDevice& Device,
             FARDGExecutionResult& Result,
             eastl::vector<FARDGAliasingTransition>& OutAliases)
         {
             struct FARDGPlacedResource
             {
                 FARDGResourceLifetime mLifetime;
-                rhi::FArdaRHIMemoryRequirements mRequirements;
-                rhi::FArdaRHITextureRef mTexture;
-                rhi::FArdaRHIBufferRef mBuffer;
-                eastl::array<FARDGPassHandle, rhi::ArdaRHIQueueTypeCount> mLastUses;
+                arda::FArdaRHIMemoryRequirements mRequirements;
+                arda::FArdaRHITextureRef mTexture;
+                arda::FArdaRHIBufferRef mBuffer;
+                eastl::array<FARDGPassHandle, arda::ArdaRHIQueueTypeCount> mLastUses;
             };
             struct FARDGHeapGroup
             {
@@ -431,7 +424,7 @@ namespace arda::render_graph
                     {
                         auto Desc = Graph.mBuffers.Get(
                             FARDGBufferHandle(Lifetime.mResourceIndex)).GetDesc();
-                        if (Desc.mCpuAccess == rhi::EArdaRHICpuAccess::None)
+                        if (Desc.mCpuAccess == arda::EArdaRHICpuAccess::None)
                         {
                             Desc.mInitialState = NormalizeInitialState(Desc.mInitialState);
                             Desc.mbKeepInitialState = false;
@@ -470,7 +463,7 @@ namespace arda::render_graph
                             [&](const auto& Access)
                             { return Access.mBuffer.GetIndex() == Lifetime.mResourceIndex; });
                     if (bUsesResource)
-                        Resource.mLastUses[rhi::GetArdaRHIQueueIndex(
+                        Resource.mLastUses[arda::GetArdaRHIQueueIndex(
                             GetCommandQueue(State.mPipeline))] = Handle;
                 }
 
@@ -502,9 +495,9 @@ namespace arda::render_graph
                         Resource.mRequirements.mAlignment});
                 }
                 const auto Layout = FARDGTransientHeapAllocator::Allocate(Requests, true);
-                rhi::FArdaRHIHeapDesc HeapDesc;
+                arda::FArdaRHIHeapDesc HeapDesc;
                 HeapDesc.mCapacity = Layout.mCapacity;
-                HeapDesc.mType = rhi::EArdaRHIHeapType::DeviceLocal;
+                HeapDesc.mType = arda::EArdaRHIHeapType::DeviceLocal;
                 HeapDesc.mMemoryTypeBits = Group.mMemoryTypeBits;
                 HeapDesc.mDebugName = "ARDG transient alias heap";
                 auto Heap = Device.CreateHeap(HeapDesc);
@@ -571,14 +564,14 @@ namespace arda::render_graph
             FARDGPassHandle PassHandle,
             FARDGTexture& Texture,
             FARDGTextureHandle TextureHandle,
-            const rhi::FArdaRHITextureSubresourceRange& Subresources,
+            const arda::FArdaRHITextureSubresourceRange& Subresources,
             EARDGStateCheckpoint Checkpoint,
-            rhi::EArdaRHIResourceState ExpectedState,
+            arda::EArdaRHIResourceState ExpectedState,
             bool bValidateQueueOwnership = false,
-            rhi::EArdaRHIQueueType ExpectedQueueOwner =
-                rhi::EArdaRHIQueueType::Graphics,
+            arda::EArdaRHIQueueType ExpectedQueueOwner =
+                arda::EArdaRHIQueueType::Graphics,
             uint32_t ExpectedQueueFamily =
-                rhi::ArdaRHIInvalidQueueFamily)
+                arda::ArdaRHIInvalidQueueFamily)
         {
             FARDGStateConformanceRecord Record;
             Record.mPass = PassHandle;
@@ -607,12 +600,12 @@ namespace arda::render_graph
             FARDGBuffer& Buffer,
             FARDGBufferHandle BufferHandle,
             EARDGStateCheckpoint Checkpoint,
-            rhi::EArdaRHIResourceState ExpectedState,
+            arda::EArdaRHIResourceState ExpectedState,
             bool bValidateQueueOwnership = false,
-            rhi::EArdaRHIQueueType ExpectedQueueOwner =
-                rhi::EArdaRHIQueueType::Graphics,
+            arda::EArdaRHIQueueType ExpectedQueueOwner =
+                arda::EArdaRHIQueueType::Graphics,
             uint32_t ExpectedQueueFamily =
-                rhi::ArdaRHIInvalidQueueFamily)
+                arda::ArdaRHIInvalidQueueFamily)
         {
             FARDGStateConformanceRecord Record;
             Record.mPass = PassHandle;
@@ -663,7 +656,7 @@ namespace arda::render_graph
                     continue;
                 }
                 const int32_t PassDomain = static_cast<int32_t>(
-                    rhi::GetArdaRHIQueueIndex(
+                    arda::GetArdaRHIQueueIndex(
                         GetCommandQueue(Pass.GetState().mPipeline)));
                 if (Domain >= 0 && Domain != PassDomain)
                 {
@@ -697,7 +690,7 @@ namespace arda::render_graph
                     continue;
                 }
                 const int32_t PassDomain = static_cast<int32_t>(
-                    rhi::GetArdaRHIQueueIndex(
+                    arda::GetArdaRHIQueueIndex(
                         GetCommandQueue(Pass.GetState().mPipeline)));
                 if (Domain >= 0 && Domain != PassDomain)
                 {
@@ -731,7 +724,7 @@ namespace arda::render_graph
          */
         void MaterializeResources(
             FARDGBuilder::FImpl& Graph,
-            rhi::IArdaRHIDevice& Device,
+            arda::IArdaRHIDevice& Device,
             FARDGExecutionResult& Result,
             eastl::vector<FARDGAliasingTransition>& OutAliases)
         {
@@ -864,23 +857,23 @@ namespace arda::render_graph
             struct FTextureQueueHistory
             {
                 eastl::vector<FARDGPassHandle> mPasses;
-                eastl::vector<rhi::EArdaRHIQueueType> mQueues;
+                eastl::vector<arda::EArdaRHIQueueType> mQueues;
                 eastl::vector<FARDGTextureHandle> mTextures;
             };
             struct FBufferQueueHistory
             {
                 FARDGPassHandle mPass;
-                rhi::EArdaRHIQueueType mQueue =
-                    rhi::EArdaRHIQueueType::Graphics;
+                arda::EArdaRHIQueueType mQueue =
+                    arda::EArdaRHIQueueType::Graphics;
                 FARDGBufferHandle mBuffer;
             };
             eastl::unordered_map<
                 const void*,
-                eastl::vector<rhi::EArdaRHIResourceState>>
+                eastl::vector<arda::EArdaRHIResourceState>>
                 TextureStates;
             eastl::unordered_map<const void*, FTextureQueueHistory>
                 TextureQueues;
-            eastl::unordered_map<const void*, rhi::EArdaRHIResourceState>
+            eastl::unordered_map<const void*, arda::EArdaRHIResourceState>
                 BufferStates;
             eastl::unordered_map<const void*, FBufferQueueHistory>
                 BufferQueues;
@@ -891,7 +884,7 @@ namespace arda::render_graph
             {
                 const FARDGPass& Pass = Graph.mPasses.Get(Handle);
                 auto& Out = Runtime[Handle.GetIndex()];
-                const rhi::EArdaRHIQueueType Queue =
+                const arda::EArdaRHIQueueType Queue =
                     GetCommandQueue(Pass.GetState().mPipeline);
                 for (const FARDGTextureTransition& Compiled :
                      Pass.GetState().mTextureTransitions)
@@ -905,7 +898,7 @@ namespace arda::render_graph
                             "A live graph texture was not materialized.");
                     }
                     auto& States = TextureStates[Physical];
-                    const rhi::FArdaRHITextureDesc& Desc = Texture.GetDesc();
+                    const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
                     if (States.empty())
                     {
                         // A physical texture enters history once; later logical
@@ -918,12 +911,12 @@ namespace arda::render_graph
                             States.size(), Graph.mCompileResult.mPrologue);
                         History.mQueues.assign(
                             States.size(), Texture.IsExternal()
-                                ? rhi::EArdaRHIQueueType::Graphics : Queue);
+                                ? arda::EArdaRHIQueueType::Graphics : Queue);
                         History.mTextures.assign(
                             States.size(), Compiled.mTexture);
                     }
                     auto& History = TextureQueues[Physical];
-                    const rhi::FArdaRHITextureSubresourceRange Subresources =
+                    const arda::FArdaRHITextureSubresourceRange Subresources =
                         Compiled.mSubresources.Resolve(Desc);
                     for (uint32_t ArraySlice = Subresources.mBaseArraySlice;
                          ArraySlice <
@@ -940,12 +933,12 @@ namespace arda::render_graph
                             const size_t Index =
                                 static_cast<size_t>(ArraySlice) * Desc.mMipLevels +
                                 MipLevel;
-                            const rhi::FArdaRHITextureSubresourceRange Cell{
+                            const arda::FArdaRHITextureSubresourceRange Cell{
                                 MipLevel, 1, ArraySlice, 1 };
                             if (!Texture.IsExternal() && Texture.GetTexture()->GetDesc().mbVirtual &&
                                 History.mPasses[Index] == Graph.mCompileResult.mPrologue &&
-                                (Compiled.mStateAfter == rhi::EArdaRHIResourceState::RenderTarget ||
-                                 Compiled.mStateAfter == rhi::EArdaRHIResourceState::DepthWrite))
+                                (Compiled.mStateAfter == arda::EArdaRHIResourceState::RenderTarget ||
+                                 Compiled.mStateAfter == arda::EArdaRHIResourceState::DepthWrite))
                             {
                                 Out.mTextureInitializations.push_back(
                                     {Compiled.mTexture, Cell, Compiled.mStateAfter, true});
@@ -968,7 +961,7 @@ namespace arda::render_graph
                                      History.mQueues[Index],
                                      Queue});
                                 States[Index] =
-                                    rhi::EArdaRHIResourceState::Common;
+                                    arda::EArdaRHIResourceState::Common;
                             }
                             Out.mTextures.push_back(
                                 {Compiled.mTexture,
@@ -1009,7 +1002,7 @@ namespace arda::render_graph
                             Physical,
                             FBufferQueueHistory{
                                 Graph.mCompileResult.mPrologue,
-                                Buffer.IsExternal() ? rhi::EArdaRHIQueueType::Graphics : Queue,
+                                Buffer.IsExternal() ? arda::EArdaRHIQueueType::Graphics : Queue,
                                 Compiled.mBuffer});
                     }
                     auto& History = BufferQueues.at(Physical);
@@ -1022,7 +1015,7 @@ namespace arda::render_graph
                         Out.mBufferAcquires.push_back(
                             {Compiled.mBuffer, History.mQueue, Queue});
                         Existing->second =
-                            rhi::EArdaRHIResourceState::Common;
+                            arda::EArdaRHIResourceState::Common;
                     }
                     Out.mBuffers.push_back(
                         {Compiled.mBuffer,
@@ -1051,7 +1044,7 @@ namespace arda::render_graph
                 ProducedTextures.reserve(Graph.mTextures.GetCount());
                 for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
                 {
-                    const rhi::FArdaRHITextureDesc& Desc = Texture->GetDesc();
+                    const arda::FArdaRHITextureDesc& Desc = Texture->GetDesc();
                     ProducedTextures.emplace_back(
                         static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize,
                         Texture->IsExternal());
@@ -1085,7 +1078,7 @@ namespace arda::render_graph
                         }
                         const FARDGTexture& Texture =
                             Graph.mTextures.Get(Access.mTexture);
-                        const rhi::FArdaRHITextureDesc& Desc = Texture.GetDesc();
+                        const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
                         const auto Range =
                             Access.mSubresources.Resolve(Desc);
                         bool bAllUnproduced = !Texture.IsExternal();
@@ -1106,15 +1099,15 @@ namespace arda::render_graph
                                           Mip];
                             }
                         }
-                        const rhi::FArdaRHIFormatInfo& Format =
-                            rhi::GetArdaRHIFormatInfo(Desc.mFormat);
+                        const arda::FArdaRHIFormatInfo& Format =
+                            arda::GetArdaRHIFormatInfo(Desc.mFormat);
                         const bool bColorClear =
                             !Format.mbDepth && !Format.mbStencil &&
-                            (rhi::HasAnyFlags(Desc.mUsage, rhi::EArdaRHITextureUsage::RenderTarget) ||
-                             rhi::HasAnyFlags(Desc.mUsage, rhi::EArdaRHITextureUsage::UnorderedAccess));
+                            (arda::HasAnyFlags(Desc.mUsage, arda::EArdaRHITextureUsage::RenderTarget) ||
+                             arda::HasAnyFlags(Desc.mUsage, arda::EArdaRHITextureUsage::UnorderedAccess));
                         const bool bDepthClear =
                             (Format.mbDepth || Format.mbStencil) &&
-                            rhi::HasAnyFlags(Desc.mUsage, rhi::EArdaRHITextureUsage::DepthStencil) &&
+                            arda::HasAnyFlags(Desc.mUsage, arda::EArdaRHITextureUsage::DepthStencil) &&
                             Pass.GetState().mPipeline ==
                                 EARDGPipeline::Graphics;
                         if (bCanIssueClobber &&
@@ -1154,11 +1147,11 @@ namespace arda::render_graph
                             bCanIssueClobber &&
                             !ProducedBuffers[Index] &&
                             !Buffer.IsExternal() &&
-                            rhi::HasAnyFlags(Buffer.GetDesc().mUsage, rhi::EArdaRHIBufferUsage::UnorderedAccess) &&
+                            arda::HasAnyFlags(Buffer.GetDesc().mUsage, arda::EArdaRHIBufferUsage::UnorderedAccess) &&
                             Access.mRange.IsWholeBuffer(Buffer.GetDesc()) &&
                             (Access.mState &
-                             rhi::EArdaRHIResourceState::UnorderedAccess) !=
-                                rhi::EArdaRHIResourceState::Unknown;
+                             arda::EArdaRHIResourceState::UnorderedAccess) !=
+                                arda::EArdaRHIResourceState::Unknown;
                         if (bCanClobber)
                         {
                             Out.mBufferClobbers.push_back(Access);
@@ -1209,7 +1202,7 @@ namespace arda::render_graph
                 Recorded.mCommandList->SetAutomaticBarriers(false);
                 for (const auto& Alias : Transitions.mAliasingResources)
                 {
-                    rhi::IArdaRHIResource* ResourceAfter = nullptr;
+                    arda::IArdaRHIResource* ResourceAfter = nullptr;
                     if (Alias.mType == EARDGResourceType::Texture)
                     {
                         ResourceAfter = Graph.mTextures
@@ -1246,19 +1239,19 @@ namespace arda::render_graph
                     Recorded.mCommandList->BeginTrackingTextureState(
                         *Texture.GetTexture(),
                         Transfer.mSubresources,
-                        rhi::EArdaRHIResourceState::Common);
-                    rhi::FArdaRHITextureTransitionDesc Acquire;
+                        arda::EArdaRHIResourceState::Common);
+                    arda::FArdaRHITextureTransitionDesc Acquire;
                     Acquire.mSubresources = Transfer.mSubresources;
                     Acquire.mStateBefore =
-                        rhi::EArdaRHIResourceState::Common;
+                        arda::EArdaRHIResourceState::Common;
                     Acquire.mStateAfter =
-                        rhi::EArdaRHIResourceState::Common;
+                        arda::EArdaRHIResourceState::Common;
                     Acquire.mSourcePipelines =
                         GetTransitionPipeline(Transfer.mSourceQueue);
                     Acquire.mDestinationPipelines =
                         GetTransitionPipeline(Transfer.mDestinationQueue);
                     Acquire.mFlags =
-                        rhi::EArdaRHITransitionFlags::EndOnly;
+                        arda::EArdaRHITransitionFlags::EndOnly;
                     Acquire.mSourceQueue = Transfer.mSourceQueue;
                     Acquire.mDestinationQueue = Transfer.mDestinationQueue;
                     Acquire.mbQueueOwnershipTransfer = true;
@@ -1278,7 +1271,7 @@ namespace arda::render_graph
                             Transfer.mTexture,
                             Transfer.mSubresources,
                             EARDGStateCheckpoint::QueueAcquire,
-                            rhi::EArdaRHIResourceState::Common,
+                            arda::EArdaRHIResourceState::Common,
                             true,
                             Transfer.mDestinationQueue,
                             Graph.mContext.mDevice->GetCapabilities()
@@ -1292,18 +1285,18 @@ namespace arda::render_graph
                         Graph.mBuffers.Get(Transfer.mBuffer);
                     Recorded.mCommandList->BeginTrackingBufferState(
                         *Buffer.GetBuffer(),
-                        rhi::EArdaRHIResourceState::Common);
-                    rhi::FArdaRHIBufferTransitionDesc Acquire;
+                        arda::EArdaRHIResourceState::Common);
+                    arda::FArdaRHIBufferTransitionDesc Acquire;
                     Acquire.mStateBefore =
-                        rhi::EArdaRHIResourceState::Common;
+                        arda::EArdaRHIResourceState::Common;
                     Acquire.mStateAfter =
-                        rhi::EArdaRHIResourceState::Common;
+                        arda::EArdaRHIResourceState::Common;
                     Acquire.mSourcePipelines =
                         GetTransitionPipeline(Transfer.mSourceQueue);
                     Acquire.mDestinationPipelines =
                         GetTransitionPipeline(Transfer.mDestinationQueue);
                     Acquire.mFlags =
-                        rhi::EArdaRHITransitionFlags::EndOnly;
+                        arda::EArdaRHITransitionFlags::EndOnly;
                     Acquire.mSourceQueue = Transfer.mSourceQueue;
                     Acquire.mDestinationQueue = Transfer.mDestinationQueue;
                     Acquire.mbQueueOwnershipTransfer = true;
@@ -1322,7 +1315,7 @@ namespace arda::render_graph
                             Buffer,
                             Transfer.mBuffer,
                             EARDGStateCheckpoint::QueueAcquire,
-                            rhi::EArdaRHIResourceState::Common,
+                            arda::EArdaRHIResourceState::Common,
                             true,
                             Transfer.mDestinationQueue,
                             Graph.mContext.mDevice->GetCapabilities()
@@ -1358,7 +1351,7 @@ namespace arda::render_graph
                         Recorded.mCommandList->SetTextureState(
                             *Texture.GetTexture(),
                             Transition.mSubresources,
-                            rhi::EArdaRHIResourceState::Common);
+                            arda::EArdaRHIResourceState::Common);
                         Recorded.mCommandList->CommitBarriers();
                         if (bValidateResourceStates)
                         {
@@ -1370,7 +1363,7 @@ namespace arda::render_graph
                                 Transition.mTexture,
                                 Transition.mSubresources,
                                 EARDGStateCheckpoint::ForcedCommon,
-                                rhi::EArdaRHIResourceState::Common);
+                                arda::EArdaRHIResourceState::Common);
                         }
                     }
                     if (IsUAVState(Transition.mStateAfter))
@@ -1419,7 +1412,7 @@ namespace arda::render_graph
                     {
                         Recorded.mCommandList->SetBufferState(
                             *Buffer.GetBuffer(),
-                            rhi::EArdaRHIResourceState::Common);
+                            arda::EArdaRHIResourceState::Common);
                         Recorded.mCommandList->CommitBarriers();
                         if (bValidateResourceStates)
                         {
@@ -1430,7 +1423,7 @@ namespace arda::render_graph
                                 Buffer,
                                 Transition.mBuffer,
                                 EARDGStateCheckpoint::ForcedCommon,
-                                rhi::EArdaRHIResourceState::Common);
+                                arda::EArdaRHIResourceState::Common);
                         }
                     }
                     if (IsUAVState(Transition.mStateAfter))
@@ -1463,7 +1456,7 @@ namespace arda::render_graph
                     {
                         Recorded.mCommandList->SetAccelStructState(
                             *AccelStruct.GetAccelStruct(),
-                            rhi::EArdaRHIResourceState::Common);
+                            arda::EArdaRHIResourceState::Common);
                         Recorded.mCommandList->CommitBarriers();
                     }
                     Recorded.mCommandList->SetAccelStructState(
@@ -1476,7 +1469,7 @@ namespace arda::render_graph
                 {
                     auto& Texture = Graph.mTextures.Get(Initialization.mTexture);
                     const auto& Desc = Texture.GetDesc();
-                    const auto& Format = rhi::GetArdaRHIFormatInfo(Desc.mFormat);
+                    const auto& Format = arda::GetArdaRHIFormatInfo(Desc.mFormat);
                     const auto Status = Format.mbDepth || Format.mbStencil
                         ? Recorded.mCommandList->ClearDepthStencilTexture(*Texture.GetTexture(),
                             Initialization.mSubresources, Format.mbDepth,
@@ -1485,7 +1478,7 @@ namespace arda::render_graph
                                 ? static_cast<uint8_t>(Desc.mClearValue.mG) : 0)
                         : Recorded.mCommandList->ClearTexture(*Texture.GetTexture(),
                             Initialization.mSubresources, Desc.mbUseClearValue
-                                ? Desc.mClearValue : rhi::FArdaRHIColor{0, 0, 0, 0});
+                                ? Desc.mClearValue : arda::FArdaRHIColor{0, 0, 0, 0});
                     if (!Status)
                     {
                         Recorded.mStatus = Status;
@@ -1498,8 +1491,8 @@ namespace arda::render_graph
                 {
                     FARDGTexture& Texture =
                         Graph.mTextures.Get(Clobber.mTexture);
-                    const rhi::FArdaRHIFormatInfo& Format =
-                        rhi::GetArdaRHIFormatInfo(Texture.GetDesc().mFormat);
+                    const arda::FArdaRHIFormatInfo& Format =
+                        arda::GetArdaRHIFormatInfo(Texture.GetDesc().mFormat);
                     if (Format.mbDepth || Format.mbStencil)
                     {
                         Recorded.mCommandList->ClearDepthStencilTexture(
@@ -1522,7 +1515,7 @@ namespace arda::render_graph
                         Recorded.mCommandList->ClearTexture(
                             *Texture.GetTexture(),
                             Clobber.mSubresources,
-                            rhi::FArdaRHIColor{1.0f, 0.0f, 1.0f, 1.0f});
+                            arda::FArdaRHIColor{1.0f, 0.0f, 1.0f, 1.0f});
                     }
                     ++Recorded.mClobberedResourceCount;
                 }
@@ -1591,24 +1584,24 @@ namespace arda::render_graph
                 if (!Recorded.mCommandList->SetTextureState(
                         *Texture.GetTexture(),
                         Transfer.mSubresources,
-                        rhi::EArdaRHIResourceState::Common))
+                        arda::EArdaRHIResourceState::Common))
                 {
                     ARDA_CHECK_MSG(
                         "The RHI failed to transition an RDG texture to its queue-release state.");
                 }
                 Recorded.mCommandList->CommitBarriers();
-                rhi::FArdaRHITextureTransitionDesc Release;
+                arda::FArdaRHITextureTransitionDesc Release;
                 Release.mSubresources = Transfer.mSubresources;
                 Release.mStateBefore =
-                    rhi::EArdaRHIResourceState::Common;
+                    arda::EArdaRHIResourceState::Common;
                 Release.mStateAfter =
-                    rhi::EArdaRHIResourceState::Common;
+                    arda::EArdaRHIResourceState::Common;
                 Release.mSourcePipelines =
                     GetTransitionPipeline(Transfer.mSourceQueue);
                 Release.mDestinationPipelines =
                     GetTransitionPipeline(Transfer.mDestinationQueue);
                 Release.mFlags =
-                    rhi::EArdaRHITransitionFlags::BeginOnly;
+                    arda::EArdaRHITransitionFlags::BeginOnly;
                 Release.mSourceQueue = Transfer.mSourceQueue;
                 Release.mDestinationQueue = Transfer.mDestinationQueue;
                 Release.mbQueueOwnershipTransfer = true;
@@ -1628,7 +1621,7 @@ namespace arda::render_graph
                         Transfer.mTexture,
                         Transfer.mSubresources,
                         EARDGStateCheckpoint::QueueRelease,
-                        rhi::EArdaRHIResourceState::Common,
+                        arda::EArdaRHIResourceState::Common,
                         true,
                         Transfer.mDestinationQueue,
                         Graph.mContext.mDevice->GetCapabilities()
@@ -1642,23 +1635,23 @@ namespace arda::render_graph
                     Graph.mBuffers.Get(Transfer.mBuffer);
                 if (!Recorded.mCommandList->SetBufferState(
                         *Buffer.GetBuffer(),
-                        rhi::EArdaRHIResourceState::Common))
+                        arda::EArdaRHIResourceState::Common))
                 {
                     ARDA_CHECK_MSG(
                         "The RHI failed to transition an RDG buffer to its queue-release state.");
                 }
                 Recorded.mCommandList->CommitBarriers();
-                rhi::FArdaRHIBufferTransitionDesc Release;
+                arda::FArdaRHIBufferTransitionDesc Release;
                 Release.mStateBefore =
-                    rhi::EArdaRHIResourceState::Common;
+                    arda::EArdaRHIResourceState::Common;
                 Release.mStateAfter =
-                    rhi::EArdaRHIResourceState::Common;
+                    arda::EArdaRHIResourceState::Common;
                 Release.mSourcePipelines =
                     GetTransitionPipeline(Transfer.mSourceQueue);
                 Release.mDestinationPipelines =
                     GetTransitionPipeline(Transfer.mDestinationQueue);
                 Release.mFlags =
-                    rhi::EArdaRHITransitionFlags::BeginOnly;
+                    arda::EArdaRHITransitionFlags::BeginOnly;
                 Release.mSourceQueue = Transfer.mSourceQueue;
                 Release.mDestinationQueue = Transfer.mDestinationQueue;
                 Release.mbQueueOwnershipTransfer = true;
@@ -1677,7 +1670,7 @@ namespace arda::render_graph
                         Buffer,
                         Transfer.mBuffer,
                         EARDGStateCheckpoint::QueueRelease,
-                        rhi::EArdaRHIResourceState::Common,
+                        arda::EArdaRHIResourceState::Common,
                         true,
                         Transfer.mDestinationQueue,
                         Graph.mContext.mDevice->GetCapabilities()
@@ -1701,7 +1694,7 @@ namespace arda::render_graph
          * Non-graphics queues wait on a non-zero instance before their first
          * pass submission; graphics work is naturally ordered on its queue.
          */
-        [[nodiscard]] rhi::TArdaRHIResult<uint64_t> UploadUniformBuffers(
+        [[nodiscard]] arda::TArdaRHIResult<uint64_t> UploadUniformBuffers(
             FARDGBuilder::FImpl& Graph)
         {
             if (Graph.mUniformBuffers.GetCount() == 0)
@@ -1710,12 +1703,12 @@ namespace arda::render_graph
             }
 
             auto CommandListResult = Graph.mContext.mDevice->CreateCommandList(
-                rhi::EArdaRHIQueueType::Graphics);
+                arda::EArdaRHIQueueType::Graphics);
             if (!CommandListResult)
             {
                 return {0, CommandListResult.mStatus};
             }
-            rhi::FArdaRHICommandListRef CommandList = eastl::move(CommandListResult.mValue);
+            arda::FArdaRHICommandListRef CommandList = eastl::move(CommandListResult.mValue);
             if (auto Status = CommandList->Open(); !Status)
                 return {0, Status};
             for (const FARDGUniformBuffer* UniformBuffer :
@@ -1732,7 +1725,7 @@ namespace arda::render_graph
                     return {0, Status};
                 CommandList->SetBufferState(
                     *UniformBuffer->GetBuffer(),
-                    rhi::EArdaRHIResourceState::ConstantBuffer);
+                    arda::EArdaRHIResourceState::ConstantBuffer);
             }
             CommandList->CommitBarriers();
             if (auto Status = CommandList->Close(); !Status)
@@ -2040,7 +2033,7 @@ namespace arda::render_graph
             return Graph.mExecutionResult;
         }
         const uint64_t UploadInstance = Upload.mValue;
-        eastl::array<bool, rhi::ArdaRHIQueueTypeCount> bUploadWaited{};
+        eastl::array<bool, arda::ArdaRHIQueueTypeCount> bUploadWaited{};
         eastl::vector<uint64_t> PassInstances(Graph.mPasses.GetCount(), 0);
         // Submission order remains deterministic even when recording completed
         // out of order. Per-pass instances become synchronization tokens for
@@ -2064,21 +2057,21 @@ namespace arda::render_graph
             if (Options.mbValidateResourceStates &&
                 Graph.mExecutionResult.mStateConformanceFailureCount != 0)
             {
-                Graph.mExecutionResult.mStatus = rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidState,
+                Graph.mExecutionResult.mStatus = arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::InvalidState,
                     "RDG resource state differs from the facade/backend/native state.");
                 break;
             }
 
             const size_t ConsumerQueueIndex =
-                rhi::GetArdaRHIQueueIndex(Pass.mQueue);
-            eastl::array<uint64_t, rhi::ArdaRHIQueueTypeCount> RequiredInstances{};
+                arda::GetArdaRHIQueueIndex(Pass.mQueue);
+            eastl::array<uint64_t, arda::ArdaRHIQueueTypeCount> RequiredInstances{};
             if (UploadInstance != 0 &&
-                Pass.mQueue != rhi::EArdaRHIQueueType::Graphics &&
+                Pass.mQueue != arda::EArdaRHIQueueType::Graphics &&
                 !bUploadWaited[ConsumerQueueIndex])
             {
-                RequiredInstances[rhi::GetArdaRHIQueueIndex(
-                    rhi::EArdaRHIQueueType::Graphics)] = UploadInstance;
+                RequiredInstances[arda::GetArdaRHIQueueIndex(
+                    arda::EArdaRHIQueueType::Graphics)] = UploadInstance;
                 bUploadWaited[ConsumerQueueIndex] = true;
             }
 
@@ -2095,7 +2088,7 @@ namespace arda::render_graph
                 {
                     continue;
                 }
-                auto& Required = RequiredInstances[rhi::GetArdaRHIQueueIndex(
+                auto& Required = RequiredInstances[arda::GetArdaRHIQueueIndex(
                     GetCommandQueue(Dependency.mProducerPipeline))];
                 Required = eastl::max(Required, ProducerInstance);
             }
@@ -2105,7 +2098,7 @@ namespace arda::render_graph
                 if (!RequiredInstances[QueueIndex])
                     continue;
                 auto Status = Graph.mContext.mDevice->QueueWait(Pass.mQueue,
-                    static_cast<rhi::EArdaRHIQueueType>(QueueIndex), RequiredInstances[QueueIndex]);
+                    static_cast<arda::EArdaRHIQueueType>(QueueIndex), RequiredInstances[QueueIndex]);
                 if (!Status)
                 {
                     Graph.mExecutionResult.mStatus = eastl::move(Status);
@@ -2123,7 +2116,7 @@ namespace arda::render_graph
                 Graph.mExecutionResult.mStatus = SubmitResult.mStatus;
                 ++Graph.mExecutionResult.mSubmissionFailureCount;
                 if (SubmitResult.mStatus.mCode ==
-                    rhi::EArdaRHIResult::InvalidState)
+                    arda::EArdaRHIResult::InvalidState)
                 {
                     ++Graph.mExecutionResult.mStateConformanceFailureCount;
                 }

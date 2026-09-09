@@ -9,8 +9,8 @@ namespace
     protected:
         void SetUp() override
         {
-            arda::backend::SetEnsureBehavior(
-                arda::backend::EArdaEnsureBehavior::Log);
+            arda::SetEnsureBehavior(
+                arda::EArdaEnsureBehavior::Log);
         }
     };
 }

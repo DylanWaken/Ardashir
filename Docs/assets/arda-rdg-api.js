@@ -3,7 +3,7 @@ window.ArdaRDGApi = {
   "module": {
     "id": "arda-rdg",
     "name": "ArdaRenderGraph",
-    "namespace": "arda::render_graph",
+    "namespace": "arda",
     "summary": "Deferred render dependency graph construction, compilation, resource lifetime management, multi-queue execution, and diagnostics."
   },
   "generatedFrom": "Source/ArdaRenderGraph/Public (all 8 unique public headers)",
@@ -65,16 +65,16 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-makerendergraphcontext-ddc93cbb",
       "name": "MakeRenderGraphContext",
-      "qualifiedName": "arda::render_graph::MakeRenderGraphContext",
+      "qualifiedName": "arda::MakeRenderGraphContext",
       "kind": "function",
       "component": "core",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] inline FARDGRenderGraphContext MakeRenderGraphContext( const backend::FArdaDeviceContext& DeviceContext, FARDGDebugOptions DebugOptions = {})",
+      "signature": "[[nodiscard]] inline FARDGRenderGraphContext MakeRenderGraphContext( const arda::FArdaDeviceContext& DeviceContext, FARDGDebugOptions DebugOptions = {})",
       "summary": "Builds a render-graph context by copying the device, queue capabilities, and requested debug options from a backend device context.",
       "details": "Builds a render-graph context by copying the device, queue capabilities, and requested debug options from a backend device context.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraph.h",
       "params": [
-        "const backend::FArdaDeviceContext& DeviceContext",
+        "const arda::FArdaDeviceContext& DeviceContext",
         "FARDGDebugOptions DebugOptions = {}"
       ],
       "returns": "FARDGRenderGraphContext",
@@ -82,14 +82,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph"
+        "arda"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-getmodulename-bc83bad4",
       "name": "GetModuleName",
-      "qualifiedName": "arda::render_graph::GetModuleName",
+      "qualifiedName": "arda::GetRenderGraphModuleName",
       "kind": "function",
       "component": "core",
       "page": "api-reference.html",
@@ -103,14 +103,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph"
+        "arda"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtypeindexhash-24448533",
       "name": "FARDGTypeIndexHash",
-      "qualifiedName": "arda::render_graph::FARDGTypeIndexHash",
+      "qualifiedName": "arda::FARDGTypeIndexHash",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
@@ -129,7 +129,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtypeindexhash-operator-fb944de8",
       "name": "operator()",
-      "qualifiedName": "arda::render_graph::FARDGTypeIndexHash::operator()",
+      "qualifiedName": "arda::FARDGTypeIndexHash::operator()",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -145,14 +145,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTypeIndexHash"
+        "arda::FARDGTypeIndexHash"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgblackboard-e315614c",
       "name": "FARDGBlackboard",
-      "qualifiedName": "arda::render_graph::FARDGBlackboard",
+      "qualifiedName": "arda::FARDGBlackboard",
       "kind": "class",
       "component": "core",
       "page": "api-reference.html",
@@ -171,7 +171,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgblackboard-contains-3a6a9009",
       "name": "Contains",
-      "qualifiedName": "arda::render_graph::FARDGBlackboard::Contains",
+      "qualifiedName": "arda::FARDGBlackboard::Contains",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -185,14 +185,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBlackboard"
+        "arda::FARDGBlackboard"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgblackboard-set-a2083f44",
       "name": "Set",
-      "qualifiedName": "arda::render_graph::FARDGBlackboard::Set",
+      "qualifiedName": "arda::FARDGBlackboard::Set",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -208,14 +208,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBlackboard"
+        "arda::FARDGBlackboard"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgblackboard-emplace-335bcaea",
       "name": "Emplace",
-      "qualifiedName": "arda::render_graph::FARDGBlackboard::Emplace",
+      "qualifiedName": "arda::FARDGBlackboard::Emplace",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -231,14 +231,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBlackboard"
+        "arda::FARDGBlackboard"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgblackboard-get-c5c3d392",
       "name": "Get",
-      "qualifiedName": "arda::render_graph::FARDGBlackboard::Get",
+      "qualifiedName": "arda::FARDGBlackboard::Get",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -252,14 +252,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBlackboard"
+        "arda::FARDGBlackboard"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgblackboard-get-6bdb77d8",
       "name": "Get",
-      "qualifiedName": "arda::render_graph::FARDGBlackboard::Get",
+      "qualifiedName": "arda::FARDGBlackboard::Get",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -273,14 +273,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBlackboard"
+        "arda::FARDGBlackboard"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgblackboard-tryget-a3452cdd",
       "name": "TryGet",
-      "qualifiedName": "arda::render_graph::FARDGBlackboard::TryGet",
+      "qualifiedName": "arda::FARDGBlackboard::TryGet",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -294,14 +294,14 @@ window.ArdaRDGApi = {
       "errors": "Returns the value associated with ValueType, or null when absent.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBlackboard"
+        "arda::FARDGBlackboard"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgblackboard-tryget-057ca089",
       "name": "TryGet",
-      "qualifiedName": "arda::render_graph::FARDGBlackboard::TryGet",
+      "qualifiedName": "arda::FARDGBlackboard::TryGet",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -315,14 +315,14 @@ window.ArdaRDGApi = {
       "errors": "Returns the immutable value associated with ValueType, or null when absent.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBlackboard"
+        "arda::FARDGBlackboard"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgblackboard-getorcreate-ab8be33e",
       "name": "GetOrCreate",
-      "qualifiedName": "arda::render_graph::FARDGBlackboard::GetOrCreate",
+      "qualifiedName": "arda::FARDGBlackboard::GetOrCreate",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -336,14 +336,14 @@ window.ArdaRDGApi = {
       "errors": "Returns an existing value or default-constructs it when absent.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBlackboard"
+        "arda::FARDGBlackboard"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgresourcelifetime-48c457ef",
       "name": "FARDGResourceLifetime",
-      "qualifiedName": "arda::render_graph::FARDGResourceLifetime",
+      "qualifiedName": "arda::FARDGResourceLifetime",
       "kind": "struct",
       "component": "compilation",
       "page": "api-reference.html",
@@ -362,7 +362,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgresourcelifetime-mtype-51b82ce0",
       "name": "mType",
-      "qualifiedName": "arda::render_graph::FARDGResourceLifetime::mType",
+      "qualifiedName": "arda::FARDGResourceLifetime::mType",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -376,14 +376,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGResourceLifetime"
+        "arda::FARDGResourceLifetime"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgresourcelifetime-mresourceindex-0aef14f7",
       "name": "mResourceIndex",
-      "qualifiedName": "arda::render_graph::FARDGResourceLifetime::mResourceIndex",
+      "qualifiedName": "arda::FARDGResourceLifetime::mResourceIndex",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -397,14 +397,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGResourceLifetime"
+        "arda::FARDGResourceLifetime"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgresourcelifetime-mfirstuse-b03f98a6",
       "name": "mFirstUse",
-      "qualifiedName": "arda::render_graph::FARDGResourceLifetime::mFirstUse",
+      "qualifiedName": "arda::FARDGResourceLifetime::mFirstUse",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -418,14 +418,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGResourceLifetime"
+        "arda::FARDGResourceLifetime"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgresourcelifetime-mlastuse-7ad395e8",
       "name": "mLastUse",
-      "qualifiedName": "arda::render_graph::FARDGResourceLifetime::mLastUse",
+      "qualifiedName": "arda::FARDGResourceLifetime::mLastUse",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -439,14 +439,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGResourceLifetime"
+        "arda::FARDGResourceLifetime"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgresourcelifetime-mbtransient-20eaab8d",
       "name": "mbTransient",
-      "qualifiedName": "arda::render_graph::FARDGResourceLifetime::mbTransient",
+      "qualifiedName": "arda::FARDGResourceLifetime::mbTransient",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -460,14 +460,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGResourceLifetime"
+        "arda::FARDGResourceLifetime"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgqueuedependency-ccd4a634",
       "name": "FARDGQueueDependency",
-      "qualifiedName": "arda::render_graph::FARDGQueueDependency",
+      "qualifiedName": "arda::FARDGQueueDependency",
       "kind": "struct",
       "component": "compilation",
       "page": "api-reference.html",
@@ -486,7 +486,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgqueuedependency-mproducer-74ceb461",
       "name": "mProducer",
-      "qualifiedName": "arda::render_graph::FARDGQueueDependency::mProducer",
+      "qualifiedName": "arda::FARDGQueueDependency::mProducer",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -500,14 +500,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGQueueDependency"
+        "arda::FARDGQueueDependency"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgqueuedependency-mconsumer-9c0ea9e7",
       "name": "mConsumer",
-      "qualifiedName": "arda::render_graph::FARDGQueueDependency::mConsumer",
+      "qualifiedName": "arda::FARDGQueueDependency::mConsumer",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -521,14 +521,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGQueueDependency"
+        "arda::FARDGQueueDependency"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgqueuedependency-mproducerpipeline-46be4ccf",
       "name": "mProducerPipeline",
-      "qualifiedName": "arda::render_graph::FARDGQueueDependency::mProducerPipeline",
+      "qualifiedName": "arda::FARDGQueueDependency::mProducerPipeline",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -542,14 +542,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGQueueDependency"
+        "arda::FARDGQueueDependency"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgqueuedependency-mconsumerpipeline-17e5fc4e",
       "name": "mConsumerPipeline",
-      "qualifiedName": "arda::render_graph::FARDGQueueDependency::mConsumerPipeline",
+      "qualifiedName": "arda::FARDGQueueDependency::mConsumerPipeline",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -563,14 +563,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGQueueDependency"
+        "arda::FARDGQueueDependency"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgexecuteoptions-94bea5d2",
       "name": "FARDGExecuteOptions",
-      "qualifiedName": "arda::render_graph::FARDGExecuteOptions",
+      "qualifiedName": "arda::FARDGExecuteOptions",
       "kind": "struct",
       "component": "execution",
       "page": "api-reference.html",
@@ -589,7 +589,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgexecuteoptions-mbparallelrecording-5cb996d7",
       "name": "mbParallelRecording",
-      "qualifiedName": "arda::render_graph::FARDGExecuteOptions::mbParallelRecording",
+      "qualifiedName": "arda::FARDGExecuteOptions::mbParallelRecording",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -603,14 +603,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecuteOptions"
+        "arda::FARDGExecuteOptions"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecuteoptions-mmaxrecordingthreads-8afff500",
       "name": "mMaxRecordingThreads",
-      "qualifiedName": "arda::render_graph::FARDGExecuteOptions::mMaxRecordingThreads",
+      "qualifiedName": "arda::FARDGExecuteOptions::mMaxRecordingThreads",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -624,14 +624,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecuteOptions"
+        "arda::FARDGExecuteOptions"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecutionresult-55e456b3",
       "name": "FARDGExecutionResult",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult",
+      "qualifiedName": "arda::FARDGExecutionResult",
       "kind": "struct",
       "component": "execution",
       "page": "api-reference.html",
@@ -650,7 +650,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgexecutionresult-msubmittedcommandlistcount-258048bb",
       "name": "mSubmittedCommandListCount",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult::mSubmittedCommandListCount",
+      "qualifiedName": "arda::FARDGExecutionResult::mSubmittedCommandListCount",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -664,14 +664,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecutionResult"
+        "arda::FARDGExecutionResult"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecutionresult-mlastsubmittedinstances-4b633f90",
       "name": "mLastSubmittedInstances",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult::mLastSubmittedInstances",
+      "qualifiedName": "arda::FARDGExecutionResult::mLastSubmittedInstances",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -685,14 +685,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "Written during deterministic queue submission and read after Execute returns.",
       "related": [
-        "arda::render_graph::FARDGExecutionResult"
+        "arda::FARDGExecutionResult"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecutionresult-mqueuewaitcount-8024c75e",
       "name": "mQueueWaitCount",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult::mQueueWaitCount",
+      "qualifiedName": "arda::FARDGExecutionResult::mQueueWaitCount",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -706,14 +706,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecutionResult"
+        "arda::FARDGExecutionResult"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecutionresult-mtexturepoolreusecount-d0e9cb27",
       "name": "mTexturePoolReuseCount",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult::mTexturePoolReuseCount",
+      "qualifiedName": "arda::FARDGExecutionResult::mTexturePoolReuseCount",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -727,14 +727,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecutionResult"
+        "arda::FARDGExecutionResult"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecutionresult-mbufferpoolreusecount-e7f71bf7",
       "name": "mBufferPoolReuseCount",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult::mBufferPoolReuseCount",
+      "qualifiedName": "arda::FARDGExecutionResult::mBufferPoolReuseCount",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -748,14 +748,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecutionResult"
+        "arda::FARDGExecutionResult"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecutionresult-mbusedparallelrecording-dc898c24",
       "name": "mbUsedParallelRecording",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult::mbUsedParallelRecording",
+      "qualifiedName": "arda::FARDGExecutionResult::mbUsedParallelRecording",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -769,14 +769,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecutionResult"
+        "arda::FARDGExecutionResult"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecutionresult-mbusedvirtualheaps-498e5cb3",
       "name": "mbUsedVirtualHeaps",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult::mbUsedVirtualHeaps",
+      "qualifiedName": "arda::FARDGExecutionResult::mbUsedVirtualHeaps",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -790,14 +790,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecutionResult"
+        "arda::FARDGExecutionResult"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecutionresult-mbusedtransientaliasing-531524ee",
       "name": "mbUsedTransientAliasing",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult::mbUsedTransientAliasing",
+      "qualifiedName": "arda::FARDGExecutionResult::mbUsedTransientAliasing",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -811,14 +811,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecutionResult"
+        "arda::FARDGExecutionResult"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecutionresult-mbusedtransientfallback-21a39c91",
       "name": "mbUsedTransientFallback",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult::mbUsedTransientFallback",
+      "qualifiedName": "arda::FARDGExecutionResult::mbUsedTransientFallback",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -832,14 +832,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecutionResult"
+        "arda::FARDGExecutionResult"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecutionresult-mbusedimmediatemode-c2b6cbbe",
       "name": "mbUsedImmediateMode",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult::mbUsedImmediateMode",
+      "qualifiedName": "arda::FARDGExecutionResult::mbUsedImmediateMode",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -853,14 +853,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecutionResult"
+        "arda::FARDGExecutionResult"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgexecutionresult-mclobberedresourcecount-1e5bc079",
       "name": "mClobberedResourceCount",
-      "qualifiedName": "arda::render_graph::FARDGExecutionResult::mClobberedResourceCount",
+      "qualifiedName": "arda::FARDGExecutionResult::mClobberedResourceCount",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -874,14 +874,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGExecutionResult"
+        "arda::FARDGExecutionResult"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgdispatcharguments-ddac02f9",
       "name": "FARDGDispatchArguments",
-      "qualifiedName": "arda::render_graph::FARDGDispatchArguments",
+      "qualifiedName": "arda::FARDGDispatchArguments",
       "kind": "struct",
       "component": "resources",
       "page": "api-reference.html",
@@ -900,7 +900,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgdispatcharguments-mgroupcountx-3efc841d",
       "name": "mGroupCountX",
-      "qualifiedName": "arda::render_graph::FARDGDispatchArguments::mGroupCountX",
+      "qualifiedName": "arda::FARDGDispatchArguments::mGroupCountX",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -914,14 +914,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGDispatchArguments"
+        "arda::FARDGDispatchArguments"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgdispatcharguments-mgroupcounty-7fc8d23e",
       "name": "mGroupCountY",
-      "qualifiedName": "arda::render_graph::FARDGDispatchArguments::mGroupCountY",
+      "qualifiedName": "arda::FARDGDispatchArguments::mGroupCountY",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -935,14 +935,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGDispatchArguments"
+        "arda::FARDGDispatchArguments"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgdispatcharguments-mgroupcountz-652e2d16",
       "name": "mGroupCountZ",
-      "qualifiedName": "arda::render_graph::FARDGDispatchArguments::mGroupCountZ",
+      "qualifiedName": "arda::FARDGDispatchArguments::mGroupCountZ",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -956,14 +956,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGDispatchArguments"
+        "arda::FARDGDispatchArguments"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureextraction-b753b753",
       "name": "FARDGTextureExtraction",
-      "qualifiedName": "arda::render_graph::FARDGTextureExtraction",
+      "qualifiedName": "arda::FARDGTextureExtraction",
       "kind": "struct",
       "component": "resources",
       "page": "api-reference.html",
@@ -982,7 +982,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtextureextraction-mtexture-b8035931",
       "name": "mTexture",
-      "qualifiedName": "arda::render_graph::FARDGTextureExtraction::mTexture",
+      "qualifiedName": "arda::FARDGTextureExtraction::mTexture",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -996,18 +996,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureExtraction"
+        "arda::FARDGTextureExtraction"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureextraction-moutput-d712fbe4",
       "name": "mOutput",
-      "qualifiedName": "arda::render_graph::FARDGTextureExtraction::mOutput",
+      "qualifiedName": "arda::FARDGTextureExtraction::mOutput",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHITextureRef* mOutput = nullptr",
+      "signature": "arda::FArdaRHITextureRef* mOutput = nullptr",
       "summary": "Receives the physical handle after graph submission.",
       "details": "Receives the physical handle after graph submission.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -1017,18 +1017,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureExtraction"
+        "arda::FARDGTextureExtraction"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureextraction-mfinalstate-15c0ff7b",
       "name": "mFinalState",
-      "qualifiedName": "arda::render_graph::FARDGTextureExtraction::mFinalState",
+      "qualifiedName": "arda::FARDGTextureExtraction::mFinalState",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mFinalState = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mFinalState = arda::EArdaRHIResourceState::Unknown",
       "summary": "The state required when graph execution completes.",
       "details": "The state required when graph execution completes.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -1038,14 +1038,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureExtraction"
+        "arda::FARDGTextureExtraction"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbufferextraction-ea124ed9",
       "name": "FARDGBufferExtraction",
-      "qualifiedName": "arda::render_graph::FARDGBufferExtraction",
+      "qualifiedName": "arda::FARDGBufferExtraction",
       "kind": "struct",
       "component": "resources",
       "page": "api-reference.html",
@@ -1064,7 +1064,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbufferextraction-mbuffer-8b3cec19",
       "name": "mBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBufferExtraction::mBuffer",
+      "qualifiedName": "arda::FARDGBufferExtraction::mBuffer",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -1078,18 +1078,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferExtraction"
+        "arda::FARDGBufferExtraction"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbufferextraction-moutput-9c71cd51",
       "name": "mOutput",
-      "qualifiedName": "arda::render_graph::FARDGBufferExtraction::mOutput",
+      "qualifiedName": "arda::FARDGBufferExtraction::mOutput",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHIBufferRef* mOutput = nullptr",
+      "signature": "arda::FArdaRHIBufferRef* mOutput = nullptr",
       "summary": "Receives the physical handle after graph submission.",
       "details": "Receives the physical handle after graph submission.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -1099,18 +1099,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferExtraction"
+        "arda::FARDGBufferExtraction"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbufferextraction-mfinalstate-fe57130b",
       "name": "mFinalState",
-      "qualifiedName": "arda::render_graph::FARDGBufferExtraction::mFinalState",
+      "qualifiedName": "arda::FARDGBufferExtraction::mFinalState",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mFinalState = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mFinalState = arda::EArdaRHIResourceState::Unknown",
       "summary": "The state required when graph execution completes.",
       "details": "The state required when graph execution completes.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -1120,14 +1120,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferExtraction"
+        "arda::FARDGBufferExtraction"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgcompileresult-192e7594",
       "name": "FARDGCompileResult",
-      "qualifiedName": "arda::render_graph::FARDGCompileResult",
+      "qualifiedName": "arda::FARDGCompileResult",
       "kind": "struct",
       "component": "compilation",
       "page": "api-reference.html",
@@ -1146,7 +1146,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgcompileresult-mprologue-36781a83",
       "name": "mPrologue",
-      "qualifiedName": "arda::render_graph::FARDGCompileResult::mPrologue",
+      "qualifiedName": "arda::FARDGCompileResult::mPrologue",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -1160,14 +1160,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGCompileResult"
+        "arda::FARDGCompileResult"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgcompileresult-mepilogue-fa648c5b",
       "name": "mEpilogue",
-      "qualifiedName": "arda::render_graph::FARDGCompileResult::mEpilogue",
+      "qualifiedName": "arda::FARDGCompileResult::mEpilogue",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -1181,14 +1181,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGCompileResult"
+        "arda::FARDGCompileResult"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgcompileresult-mexecutionorder-a571c56b",
       "name": "mExecutionOrder",
-      "qualifiedName": "arda::render_graph::FARDGCompileResult::mExecutionOrder",
+      "qualifiedName": "arda::FARDGCompileResult::mExecutionOrder",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -1202,14 +1202,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGCompileResult"
+        "arda::FARDGCompileResult"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgcompileresult-mrastergroupcount-2a146b4f",
       "name": "mRasterGroupCount",
-      "qualifiedName": "arda::render_graph::FARDGCompileResult::mRasterGroupCount",
+      "qualifiedName": "arda::FARDGCompileResult::mRasterGroupCount",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -1223,14 +1223,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGCompileResult"
+        "arda::FARDGCompileResult"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgcompileresult-mresourcelifetimes-cb951f3b",
       "name": "mResourceLifetimes",
-      "qualifiedName": "arda::render_graph::FARDGCompileResult::mResourceLifetimes",
+      "qualifiedName": "arda::FARDGCompileResult::mResourceLifetimes",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -1244,14 +1244,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGCompileResult"
+        "arda::FARDGCompileResult"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgcompileresult-mqueuedependencies-56f547fa",
       "name": "mQueueDependencies",
-      "qualifiedName": "arda::render_graph::FARDGCompileResult::mQueueDependencies",
+      "qualifiedName": "arda::FARDGCompileResult::mQueueDependencies",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -1265,14 +1265,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGCompileResult"
+        "arda::FARDGCompileResult"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-e0fc26d2",
       "name": "FARDGBuilder",
-      "qualifiedName": "arda::render_graph::FARDGBuilder",
+      "qualifiedName": "arda::FARDGBuilder",
       "kind": "class",
       "component": "core",
       "page": "api-reference.html",
@@ -1291,7 +1291,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbuilder-fardgbuilder-4d6e7a90",
       "name": "FARDGBuilder",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::FARDGBuilder",
+      "qualifiedName": "arda::FARDGBuilder::FARDGBuilder",
       "kind": "constructor",
       "component": "core",
       "page": "api-reference.html",
@@ -1307,14 +1307,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-fardgbuilder-c6b811ce",
       "name": "~FARDGBuilder",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::~FARDGBuilder",
+      "qualifiedName": "arda::FARDGBuilder::~FARDGBuilder",
       "kind": "destructor",
       "component": "core",
       "page": "api-reference.html",
@@ -1328,14 +1328,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-fardgbuilder-9d765f69",
       "name": "FARDGBuilder",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::FARDGBuilder",
+      "qualifiedName": "arda::FARDGBuilder::FARDGBuilder",
       "kind": "constructor",
       "component": "core",
       "page": "api-reference.html",
@@ -1351,14 +1351,14 @@ window.ArdaRDGApi = {
       "errors": "This operation is deleted and cannot be called.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-operator-52089ac8",
       "name": "operator=",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::operator=",
+      "qualifiedName": "arda::FARDGBuilder::operator=",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -1374,14 +1374,14 @@ window.ArdaRDGApi = {
       "errors": "This operation is deleted and cannot be called.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-fardgbuilder-1f2849b1",
       "name": "FARDGBuilder",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::FARDGBuilder",
+      "qualifiedName": "arda::FARDGBuilder::FARDGBuilder",
       "kind": "constructor",
       "component": "core",
       "page": "api-reference.html",
@@ -1397,14 +1397,14 @@ window.ArdaRDGApi = {
       "errors": "This operation is deleted and cannot be called.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-operator-67fffb52",
       "name": "operator=",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::operator=",
+      "qualifiedName": "arda::FARDGBuilder::operator=",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -1420,14 +1420,14 @@ window.ArdaRDGApi = {
       "errors": "This operation is deleted and cannot be called.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-allocateparameters-de82be20",
       "name": "AllocateParameters",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::AllocateParameters",
+      "qualifiedName": "arda::FARDGBuilder::AllocateParameters",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -1443,23 +1443,23 @@ window.ArdaRDGApi = {
       "errors": "ParameterType must be standard-layout.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createtexture-1c683c9b",
       "name": "CreateTexture",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateTexture",
+      "qualifiedName": "arda::FARDGBuilder::CreateTexture",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] FARDGTextureRef CreateTexture( rhi::FArdaRHITextureDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::Transient)",
+      "signature": "[[nodiscard]] FARDGTextureRef CreateTexture( arda::FArdaRHITextureDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::Transient)",
       "summary": "Creates a deferred logical texture.",
       "details": "Creates a deferred logical texture.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
-        "rhi::FArdaRHITextureDesc Desc",
+        "arda::FArdaRHITextureDesc Desc",
         "EARDGResourceFlags Flags = EARDGResourceFlags::Transient"
       ],
       "returns": "FARDGTextureRef",
@@ -1467,23 +1467,23 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check outside graph building, for an empty debug name or zero texture dimensions, array size, or mip count, or for unsupported resource flags.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createbuffer-3391cbe2",
       "name": "CreateBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateBuffer",
+      "qualifiedName": "arda::FARDGBuilder::CreateBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] FARDGBufferRef CreateBuffer( rhi::FArdaRHIBufferDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::Transient)",
+      "signature": "[[nodiscard]] FARDGBufferRef CreateBuffer( arda::FArdaRHIBufferDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::Transient)",
       "summary": "Creates a deferred logical buffer.",
       "details": "Creates a deferred logical buffer.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
-        "rhi::FArdaRHIBufferDesc Desc",
+        "arda::FArdaRHIBufferDesc Desc",
         "EARDGResourceFlags Flags = EARDGResourceFlags::Transient"
       ],
       "returns": "FARDGBufferRef",
@@ -1491,23 +1491,23 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check outside graph building, for an empty debug name or zero byte size, or for unsupported resource flags.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createaccelstruct-05891975",
       "name": "CreateAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateAccelStruct",
+      "qualifiedName": "arda::FARDGBuilder::CreateAccelStruct",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] FARDGAccelStructRef CreateAccelStruct( rhi::FArdaRHIAccelStructDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::None)",
+      "signature": "[[nodiscard]] FARDGAccelStructRef CreateAccelStruct( arda::FArdaRHIAccelStructDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::None)",
       "summary": "Creates a deferred logical acceleration structure.",
       "details": "Creates a deferred logical acceleration structure.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
-        "rhi::FArdaRHIAccelStructDesc Desc",
+        "arda::FArdaRHIAccelStructDesc Desc",
         "EARDGResourceFlags Flags = EARDGResourceFlags::None"
       ],
       "returns": "FARDGAccelStructRef",
@@ -1515,14 +1515,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check outside graph building, for an empty debug name, invalid top- or bottom-level geometry sizing, or External resource flags.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createtexturesrv-907c4226",
       "name": "CreateTextureSRV",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateTextureSRV",
+      "qualifiedName": "arda::FARDGBuilder::CreateTextureSRV",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -1539,14 +1539,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, when Name is empty, or when the descriptor parent handle does not resolve to a texture or buffer owned by this graph.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createtextureuav-317de9f0",
       "name": "CreateTextureUAV",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateTextureUAV",
+      "qualifiedName": "arda::FARDGBuilder::CreateTextureUAV",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -1563,14 +1563,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, when Name is empty, or when the descriptor parent handle does not resolve to a texture or buffer owned by this graph.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createbuffersrv-faf39304",
       "name": "CreateBufferSRV",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateBufferSRV",
+      "qualifiedName": "arda::FARDGBuilder::CreateBufferSRV",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -1587,14 +1587,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, when Name is empty, or when the descriptor parent handle does not resolve to a texture or buffer owned by this graph.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createbufferuav-e5f48288",
       "name": "CreateBufferUAV",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateBufferUAV",
+      "qualifiedName": "arda::FARDGBuilder::CreateBufferUAV",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -1611,14 +1611,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, when Name is empty, or when the descriptor parent handle does not resolve to a texture or buffer owned by this graph.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createsrv-eb4fe324",
       "name": "CreateSRV",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateSRV",
+      "qualifiedName": "arda::FARDGBuilder::CreateSRV",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -1635,14 +1635,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, when Name is empty, or when the descriptor parent handle does not resolve to a texture or buffer owned by this graph.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createsrv-89fed085",
       "name": "CreateSRV",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateSRV",
+      "qualifiedName": "arda::FARDGBuilder::CreateSRV",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -1659,14 +1659,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, when Name is empty, or when the descriptor parent handle does not resolve to a texture or buffer owned by this graph.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createuav-addf8c18",
       "name": "CreateUAV",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateUAV",
+      "qualifiedName": "arda::FARDGBuilder::CreateUAV",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -1683,14 +1683,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, when Name is empty, or when the descriptor parent handle does not resolve to a texture or buffer owned by this graph.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createuav-dad88d46",
       "name": "CreateUAV",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateUAV",
+      "qualifiedName": "arda::FARDGBuilder::CreateUAV",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -1707,24 +1707,24 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, when Name is empty, or when the descriptor parent handle does not resolve to a texture or buffer owned by this graph.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-registerexternaltexture-4853552d",
       "name": "RegisterExternalTexture",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::RegisterExternalTexture",
+      "qualifiedName": "arda::FARDGBuilder::RegisterExternalTexture",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] FARDGTextureRef RegisterExternalTexture( rhi::FArdaRHITextureRef Texture, rhi::EArdaRHIResourceState InitialState, eastl::string Name = {})",
+      "signature": "[[nodiscard]] FARDGTextureRef RegisterExternalTexture( arda::FArdaRHITextureRef Texture, arda::EArdaRHIResourceState InitialState, eastl::string Name = {})",
       "summary": "Imports an externally owned texture into the logical graph.",
       "details": "Imports an externally owned texture into the logical graph.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
-        "rhi::FArdaRHITextureRef Texture",
-        "rhi::EArdaRHIResourceState InitialState",
+        "arda::FArdaRHITextureRef Texture",
+        "arda::EArdaRHIResourceState InitialState",
         "eastl::string Name = {}"
       ],
       "returns": "FARDGTextureRef",
@@ -1732,24 +1732,24 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, for a null texture or Unknown initial state, or when the same physical texture is reimported with a conflicting initial state.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-registerexternalbuffer-fa9aa334",
       "name": "RegisterExternalBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::RegisterExternalBuffer",
+      "qualifiedName": "arda::FARDGBuilder::RegisterExternalBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] FARDGBufferRef RegisterExternalBuffer( rhi::FArdaRHIBufferRef Buffer, rhi::EArdaRHIResourceState InitialState, eastl::string Name = {})",
+      "signature": "[[nodiscard]] FARDGBufferRef RegisterExternalBuffer( arda::FArdaRHIBufferRef Buffer, arda::EArdaRHIResourceState InitialState, eastl::string Name = {})",
       "summary": "Imports an externally owned buffer into the logical graph.",
       "details": "Imports an externally owned buffer into the logical graph.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
-        "rhi::FArdaRHIBufferRef Buffer",
-        "rhi::EArdaRHIResourceState InitialState",
+        "arda::FArdaRHIBufferRef Buffer",
+        "arda::EArdaRHIResourceState InitialState",
         "eastl::string Name = {}"
       ],
       "returns": "FARDGBufferRef",
@@ -1757,24 +1757,24 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, for a null buffer or Unknown initial state, or when the same physical buffer is reimported with a conflicting initial state.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-registerexternalaccelstruct-96cf924d",
       "name": "RegisterExternalAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::RegisterExternalAccelStruct",
+      "qualifiedName": "arda::FARDGBuilder::RegisterExternalAccelStruct",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] FARDGAccelStructRef RegisterExternalAccelStruct( rhi::FArdaRHIAccelStructRef AccelStruct, rhi::EArdaRHIResourceState InitialState, eastl::string Name = {})",
+      "signature": "[[nodiscard]] FARDGAccelStructRef RegisterExternalAccelStruct( arda::FArdaRHIAccelStructRef AccelStruct, arda::EArdaRHIResourceState InitialState, eastl::string Name = {})",
       "summary": "Imports an externally owned acceleration structure.",
       "details": "Imports an externally owned acceleration structure.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
-        "rhi::FArdaRHIAccelStructRef AccelStruct",
-        "rhi::EArdaRHIResourceState InitialState",
+        "arda::FArdaRHIAccelStructRef AccelStruct",
+        "arda::EArdaRHIResourceState InitialState",
         "eastl::string Name = {}"
       ],
       "returns": "FARDGAccelStructRef",
@@ -1782,23 +1782,23 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check outside graph building, for a null acceleration structure, Unknown initial state, missing physical identity, or a conflicting initial state on reimport.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-registerexternaltexture-308fd6ac",
       "name": "RegisterExternalTexture",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::RegisterExternalTexture",
+      "qualifiedName": "arda::FARDGBuilder::RegisterExternalTexture",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] FARDGTextureRef RegisterExternalTexture( rhi::FArdaRHITextureRef Texture, eastl::string Name = {})",
+      "signature": "[[nodiscard]] FARDGTextureRef RegisterExternalTexture( arda::FArdaRHITextureRef Texture, eastl::string Name = {})",
       "summary": "Imports a texture using the initial state stored in its descriptor.",
       "details": "Imports a texture using the initial state stored in its descriptor.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
-        "rhi::FArdaRHITextureRef Texture",
+        "arda::FArdaRHITextureRef Texture",
         "eastl::string Name = {}"
       ],
       "returns": "FARDGTextureRef",
@@ -1806,23 +1806,23 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, for a null texture or Unknown initial state, or when the same physical texture is reimported with a conflicting initial state.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-registerexternalbuffer-655ba9d8",
       "name": "RegisterExternalBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::RegisterExternalBuffer",
+      "qualifiedName": "arda::FARDGBuilder::RegisterExternalBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] FARDGBufferRef RegisterExternalBuffer( rhi::FArdaRHIBufferRef Buffer, eastl::string Name = {})",
+      "signature": "[[nodiscard]] FARDGBufferRef RegisterExternalBuffer( arda::FArdaRHIBufferRef Buffer, eastl::string Name = {})",
       "summary": "Imports a buffer using the initial state stored in its descriptor.",
       "details": "Imports a buffer using the initial state stored in its descriptor.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
-        "rhi::FArdaRHIBufferRef Buffer",
+        "arda::FArdaRHIBufferRef Buffer",
         "eastl::string Name = {}"
       ],
       "returns": "FARDGBufferRef",
@@ -1830,14 +1830,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check after building closes, for a null buffer or Unknown initial state, or when the same physical buffer is reimported with a conflicting initial state.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-createuniformbuffer-538b5a7e",
       "name": "CreateUniformBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::CreateUniformBuffer",
+      "qualifiedName": "arda::FARDGBuilder::CreateUniformBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -1854,114 +1854,114 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check for null Parameters, outside graph building, or for an empty name or invalid metadata/contents; ParameterType must expose valid static ARDG metadata.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-queuetextureextraction-920af16d",
       "name": "QueueTextureExtraction",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::QueueTextureExtraction",
+      "qualifiedName": "arda::FARDGBuilder::QueueTextureExtraction",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "void QueueTextureExtraction( FARDGTextureRef Texture, rhi::FArdaRHITextureRef* Output, rhi::EArdaRHIResourceState FinalState)",
+      "signature": "void QueueTextureExtraction( FARDGTextureRef Texture, arda::FArdaRHITextureRef* Output, arda::EArdaRHIResourceState FinalState)",
       "summary": "Declares that a logical texture must survive graph completion.",
       "details": "Declares that a logical texture must survive graph completion.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
         "FARDGTextureRef Texture",
-        "rhi::FArdaRHITextureRef* Output",
-        "rhi::EArdaRHIResourceState FinalState"
+        "arda::FArdaRHITextureRef* Output",
+        "arda::EArdaRHIResourceState FinalState"
       ],
       "returns": "void",
       "ownership": "Output is caller-owned storage; execution publishes a retained RHI reference into it after submission, while the logical resource remains builder-owned.",
       "errors": "Fails an ARDA check outside graph building, for null resource/output, a texture from another graph, Unknown final state, duplicate texture extraction, or reuse of an output address.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-queuetextureextraction-0f2bf6f0",
       "name": "QueueTextureExtraction",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::QueueTextureExtraction",
+      "qualifiedName": "arda::FARDGBuilder::QueueTextureExtraction",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "void QueueTextureExtraction(FARDGTextureRef Texture, rhi::FArdaRHITextureRef& Output, rhi::EArdaRHIResourceState FinalState)",
+      "signature": "void QueueTextureExtraction(FARDGTextureRef Texture, arda::FArdaRHITextureRef& Output, arda::EArdaRHIResourceState FinalState)",
       "summary": "Declares texture extraction using an RHI reference.",
       "details": "Declares texture extraction using an RHI reference.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
         "FARDGTextureRef Texture",
-        "rhi::FArdaRHITextureRef& Output",
-        "rhi::EArdaRHIResourceState FinalState"
+        "arda::FArdaRHITextureRef& Output",
+        "arda::EArdaRHIResourceState FinalState"
       ],
       "returns": "void",
       "ownership": "Output is caller-owned storage; execution publishes a retained RHI reference into it after submission, while the logical resource remains builder-owned.",
       "errors": "Fails an ARDA check outside graph building, for null resource/output, a texture from another graph, Unknown final state, duplicate texture extraction, or reuse of an output address.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-queuebufferextraction-2454eb04",
       "name": "QueueBufferExtraction",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::QueueBufferExtraction",
+      "qualifiedName": "arda::FARDGBuilder::QueueBufferExtraction",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "void QueueBufferExtraction( FARDGBufferRef Buffer, rhi::FArdaRHIBufferRef* Output, rhi::EArdaRHIResourceState FinalState)",
+      "signature": "void QueueBufferExtraction( FARDGBufferRef Buffer, arda::FArdaRHIBufferRef* Output, arda::EArdaRHIResourceState FinalState)",
       "summary": "Declares that a logical buffer must survive graph completion.",
       "details": "Declares that a logical buffer must survive graph completion.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
         "FARDGBufferRef Buffer",
-        "rhi::FArdaRHIBufferRef* Output",
-        "rhi::EArdaRHIResourceState FinalState"
+        "arda::FArdaRHIBufferRef* Output",
+        "arda::EArdaRHIResourceState FinalState"
       ],
       "returns": "void",
       "ownership": "Output is caller-owned storage; execution publishes a retained RHI reference into it after submission, while the logical resource remains builder-owned.",
       "errors": "Fails an ARDA check outside graph building, for null resource/output, a buffer from another graph, Unknown final state, duplicate buffer extraction, or reuse of an output address.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-queuebufferextraction-54e67cf9",
       "name": "QueueBufferExtraction",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::QueueBufferExtraction",
+      "qualifiedName": "arda::FARDGBuilder::QueueBufferExtraction",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "void QueueBufferExtraction(FARDGBufferRef Buffer, rhi::FArdaRHIBufferRef& Output, rhi::EArdaRHIResourceState FinalState)",
+      "signature": "void QueueBufferExtraction(FARDGBufferRef Buffer, arda::FArdaRHIBufferRef& Output, arda::EArdaRHIResourceState FinalState)",
       "summary": "Declares buffer extraction using an RHI reference.",
       "details": "Declares buffer extraction using an RHI reference.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
       "params": [
         "FARDGBufferRef Buffer",
-        "rhi::FArdaRHIBufferRef& Output",
-        "rhi::EArdaRHIResourceState FinalState"
+        "arda::FArdaRHIBufferRef& Output",
+        "arda::EArdaRHIResourceState FinalState"
       ],
       "returns": "void",
       "ownership": "Output is caller-owned storage; execution publishes a retained RHI reference into it after submission, while the logical resource remains builder-owned.",
       "errors": "Fails an ARDA check outside graph building, for null resource/output, a buffer from another graph, Unknown final state, duplicate buffer extraction, or reuse of an output address.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-addpass-eb5f83be",
       "name": "AddPass",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::AddPass",
+      "qualifiedName": "arda::FARDGBuilder::AddPass",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -1980,14 +1980,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check for null typed parameters, outside graph building, for an empty name or empty body, incompatible pass flags, cross-graph resources, or Unknown declared states; unsupported lambda signatures fail a static assertion.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-addpass-5e5f12c7",
       "name": "AddPass",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::AddPass",
+      "qualifiedName": "arda::FARDGBuilder::AddPass",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -2005,14 +2005,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check outside graph building, for an empty name or empty body, or for incompatible pass flags; unsupported lambda signatures fail a static assertion.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-adddispatchpass-4e159d83",
       "name": "AddDispatchPass",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::AddDispatchPass",
+      "qualifiedName": "arda::FARDGBuilder::AddDispatchPass",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -2032,14 +2032,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check for null typed parameters, outside graph building, for an empty name or empty body, incompatible pass flags, cross-graph resources, or Unknown declared states; unsupported lambda signatures fail a static assertion.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-adddependency-0a07e4eb",
       "name": "AddDependency",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::AddDependency",
+      "qualifiedName": "arda::FARDGBuilder::AddDependency",
       "kind": "method",
       "component": "compilation",
       "page": "api-reference.html",
@@ -2056,14 +2056,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check outside graph building, for invalid or unregistered handles, a self-edge, or an edge that violates forward registration order.",
       "threading": "Builder mutation is single-threaded and valid only during the graph-building stage.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-compile-97614587",
       "name": "Compile",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::Compile",
+      "qualifiedName": "arda::FARDGBuilder::Compile",
       "kind": "method",
       "component": "compilation",
       "page": "api-reference.html",
@@ -2077,14 +2077,14 @@ window.ArdaRDGApi = {
       "errors": "Fails ARDA checks on re-entrant compilation, compilation after execution starts or failure, invalid ownership/backing or extraction records, illegal or conflicting resource states, invalid dependency edges, reads before production, or extracted graph resources without a producer.",
       "threading": "Call from one controlling thread. Compilation is one-time and not re-entrant; repeated calls after success reuse the published result.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-execute-462d7837",
       "name": "Execute",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::Execute",
+      "qualifiedName": "arda::FARDGBuilder::Execute",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
@@ -2100,14 +2100,14 @@ window.ArdaRDGApi = {
       "errors": "Fails ARDA checks if execution was already started, the graph previously failed, no RHI device is present, compile-time validation fails, or checked resource materialization, binding-set construction, or internal transition invariants fail. Command-list creation/open/close, reported callback errors, uniform-upload recording, queue waits, and submission errors return mStatus. A failed attempt permanently marks the builder failed.",
       "threading": "Invoke once from one controlling thread. Independent pass waves may record concurrently according to Options; queue submission is deterministic and returns before GPU completion.",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-getlastexecutionresult-e266694f",
       "name": "GetLastExecutionResult",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::GetLastExecutionResult",
+      "qualifiedName": "arda::FARDGBuilder::GetLastExecutionResult",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
@@ -2121,14 +2121,14 @@ window.ArdaRDGApi = {
       "errors": "Returns the latest execution report, or null before Execute.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-iscompiled-84fe303c",
       "name": "IsCompiled",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::IsCompiled",
+      "qualifiedName": "arda::FARDGBuilder::IsCompiled",
       "kind": "method",
       "component": "compilation",
       "page": "api-reference.html",
@@ -2142,14 +2142,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-getcontext-f9e84de1",
       "name": "GetContext",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::GetContext",
+      "qualifiedName": "arda::FARDGBuilder::GetContext",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -2163,14 +2163,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-getblackboard-d2ab6408",
       "name": "GetBlackboard",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::GetBlackboard",
+      "qualifiedName": "arda::FARDGBuilder::GetBlackboard",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -2184,14 +2184,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-getblackboard-ff44038e",
       "name": "GetBlackboard",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::GetBlackboard",
+      "qualifiedName": "arda::FARDGBuilder::GetBlackboard",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -2205,14 +2205,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-getprologuepass-3c669033",
       "name": "GetProloguePass",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::GetProloguePass",
+      "qualifiedName": "arda::FARDGBuilder::GetProloguePass",
       "kind": "method",
       "component": "compilation",
       "page": "api-reference.html",
@@ -2226,14 +2226,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-getepiloguepass-a5d645ca",
       "name": "GetEpiloguePass",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::GetEpiloguePass",
+      "qualifiedName": "arda::FARDGBuilder::GetEpiloguePass",
       "kind": "method",
       "component": "compilation",
       "page": "api-reference.html",
@@ -2247,14 +2247,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygetpass-5d63c92d",
       "name": "TryGetPass",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetPass",
+      "qualifiedName": "arda::FARDGBuilder::TryGetPass",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -2270,14 +2270,14 @@ window.ArdaRDGApi = {
       "errors": "Returns a registered pass, or null for an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygetpass-61d67018",
       "name": "TryGetPass",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetPass",
+      "qualifiedName": "arda::FARDGBuilder::TryGetPass",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -2293,14 +2293,14 @@ window.ArdaRDGApi = {
       "errors": "Returns an immutable registered pass, or null for an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygettexture-3247ca61",
       "name": "TryGetTexture",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetTexture",
+      "qualifiedName": "arda::FARDGBuilder::TryGetTexture",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -2316,14 +2316,14 @@ window.ArdaRDGApi = {
       "errors": "Returns a registered texture, or null for an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygettexture-0144a6aa",
       "name": "TryGetTexture",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetTexture",
+      "qualifiedName": "arda::FARDGBuilder::TryGetTexture",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -2339,14 +2339,14 @@ window.ArdaRDGApi = {
       "errors": "Returns an immutable registered texture, or null for an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygetbuffer-d216cb7e",
       "name": "TryGetBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetBuffer",
+      "qualifiedName": "arda::FARDGBuilder::TryGetBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -2362,14 +2362,14 @@ window.ArdaRDGApi = {
       "errors": "Returns a registered buffer, or null for an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygetbuffer-19155714",
       "name": "TryGetBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetBuffer",
+      "qualifiedName": "arda::FARDGBuilder::TryGetBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -2385,14 +2385,14 @@ window.ArdaRDGApi = {
       "errors": "Returns an immutable registered buffer, or null for an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygetaccelstruct-af5b02e5",
       "name": "TryGetAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetAccelStruct",
+      "qualifiedName": "arda::FARDGBuilder::TryGetAccelStruct",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -2408,14 +2408,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygetaccelstruct-e50fefb3",
       "name": "TryGetAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetAccelStruct",
+      "qualifiedName": "arda::FARDGBuilder::TryGetAccelStruct",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -2431,14 +2431,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygetview-7c320639",
       "name": "TryGetView",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetView",
+      "qualifiedName": "arda::FARDGBuilder::TryGetView",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -2454,14 +2454,14 @@ window.ArdaRDGApi = {
       "errors": "Returns a registered logical view, or null for an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygetview-a965f1ea",
       "name": "TryGetView",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetView",
+      "qualifiedName": "arda::FARDGBuilder::TryGetView",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -2477,14 +2477,14 @@ window.ArdaRDGApi = {
       "errors": "Returns an immutable logical view, or null for an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygetuniformbuffer-579cf90d",
       "name": "TryGetUniformBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetUniformBuffer",
+      "qualifiedName": "arda::FARDGBuilder::TryGetUniformBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -2500,14 +2500,14 @@ window.ArdaRDGApi = {
       "errors": "Returns a logical uniform buffer, or null for an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-trygetuniformbuffer-6a7e74a6",
       "name": "TryGetUniformBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::TryGetUniformBuffer",
+      "qualifiedName": "arda::FARDGBuilder::TryGetUniformBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -2523,14 +2523,14 @@ window.ArdaRDGApi = {
       "errors": "Returns an immutable uniform buffer, or null for an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-gettextureextractions-5bc8f472",
       "name": "GetTextureExtractions",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::GetTextureExtractions",
+      "qualifiedName": "arda::FARDGBuilder::GetTextureExtractions",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -2544,14 +2544,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-getbufferextractions-2affd5c1",
       "name": "GetBufferExtractions",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::GetBufferExtractions",
+      "qualifiedName": "arda::FARDGBuilder::GetBufferExtractions",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -2565,14 +2565,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuilder-dumpgraph-c392d068",
       "name": "DumpGraph",
-      "qualifiedName": "arda::render_graph::FARDGBuilder::DumpGraph",
+      "qualifiedName": "arda::FARDGBuilder::DumpGraph",
       "kind": "method",
       "component": "diagnostics",
       "page": "api-reference.html",
@@ -2586,14 +2586,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuilder"
+        "arda::FARDGBuilder"
       ],
       "audience": "Diagnostics and tooling"
     },
     {
       "id": "api-arda-rdg-tardghandle-fd7e052b",
       "name": "TARDGHandle",
-      "qualifiedName": "arda::render_graph::TARDGHandle",
+      "qualifiedName": "arda::TARDGHandle",
       "kind": "class",
       "component": "core",
       "page": "api-reference.html",
@@ -2612,7 +2612,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-tardghandle-invalidindex-3ebc2d4b",
       "name": "InvalidIndex",
-      "qualifiedName": "arda::render_graph::TARDGHandle::InvalidIndex",
+      "qualifiedName": "arda::TARDGHandle::InvalidIndex",
       "kind": "constant",
       "component": "core",
       "page": "api-reference.html",
@@ -2626,14 +2626,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::TARDGHandle"
+        "arda::TARDGHandle"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-tardghandle-tardghandle-7685fcdd",
       "name": "TARDGHandle",
-      "qualifiedName": "arda::render_graph::TARDGHandle::TARDGHandle",
+      "qualifiedName": "arda::TARDGHandle::TARDGHandle",
       "kind": "constructor",
       "component": "core",
       "page": "api-reference.html",
@@ -2647,14 +2647,14 @@ window.ArdaRDGApi = {
       "errors": "Constructs an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::TARDGHandle"
+        "arda::TARDGHandle"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-tardghandle-tardghandle-485a9b0c",
       "name": "TARDGHandle",
-      "qualifiedName": "arda::render_graph::TARDGHandle::TARDGHandle",
+      "qualifiedName": "arda::TARDGHandle::TARDGHandle",
       "kind": "constructor",
       "component": "core",
       "page": "api-reference.html",
@@ -2670,14 +2670,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::TARDGHandle"
+        "arda::TARDGHandle"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-tardghandle-isvalid-3aa03c33",
       "name": "IsValid",
-      "qualifiedName": "arda::render_graph::TARDGHandle::IsValid",
+      "qualifiedName": "arda::TARDGHandle::IsValid",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -2691,14 +2691,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::TARDGHandle"
+        "arda::TARDGHandle"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-tardghandle-getindex-be175f8d",
       "name": "GetIndex",
-      "qualifiedName": "arda::render_graph::TARDGHandle::GetIndex",
+      "qualifiedName": "arda::TARDGHandle::GetIndex",
       "kind": "method",
       "component": "core",
       "page": "api-reference.html",
@@ -2712,14 +2712,14 @@ window.ArdaRDGApi = {
       "errors": "Returns the zero-based registry index, or InvalidIndex for an invalid handle.",
       "threading": "",
       "related": [
-        "arda::render_graph::TARDGHandle"
+        "arda::TARDGHandle"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-tardghandlehasher-dcc0014d",
       "name": "TARDGHandleHasher",
-      "qualifiedName": "arda::render_graph::TARDGHandleHasher",
+      "qualifiedName": "arda::TARDGHandleHasher",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
@@ -2738,7 +2738,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-tardghandlehasher-operator-eb60d666",
       "name": "operator()",
-      "qualifiedName": "arda::render_graph::TARDGHandleHasher::operator()",
+      "qualifiedName": "arda::TARDGHandleHasher::operator()",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -2754,14 +2754,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::TARDGHandleHasher"
+        "arda::TARDGHandleHasher"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpasshandletag-4381c091",
       "name": "FARDGPassHandleTag",
-      "qualifiedName": "arda::render_graph::FARDGPassHandleTag",
+      "qualifiedName": "arda::FARDGPassHandleTag",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
@@ -2780,7 +2780,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtexturehandletag-b289d902",
       "name": "FARDGTextureHandleTag",
-      "qualifiedName": "arda::render_graph::FARDGTextureHandleTag",
+      "qualifiedName": "arda::FARDGTextureHandleTag",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
@@ -2799,7 +2799,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbufferhandletag-9fb465ea",
       "name": "FARDGBufferHandleTag",
-      "qualifiedName": "arda::render_graph::FARDGBufferHandleTag",
+      "qualifiedName": "arda::FARDGBufferHandleTag",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
@@ -2818,7 +2818,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgaccelstructhandletag-a7a50b47",
       "name": "FARDGAccelStructHandleTag",
-      "qualifiedName": "arda::render_graph::FARDGAccelStructHandleTag",
+      "qualifiedName": "arda::FARDGAccelStructHandleTag",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
@@ -2837,7 +2837,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgviewhandletag-8756974e",
       "name": "FARDGViewHandleTag",
-      "qualifiedName": "arda::render_graph::FARDGViewHandleTag",
+      "qualifiedName": "arda::FARDGViewHandleTag",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
@@ -2856,7 +2856,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardguniformbufferhandletag-70af78b6",
       "name": "FARDGUniformBufferHandleTag",
-      "qualifiedName": "arda::render_graph::FARDGUniformBufferHandleTag",
+      "qualifiedName": "arda::FARDGUniformBufferHandleTag",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
@@ -2875,7 +2875,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgpasshandle-db3d106a",
       "name": "FARDGPassHandle",
-      "qualifiedName": "arda::render_graph::FARDGPassHandle",
+      "qualifiedName": "arda::FARDGPassHandle",
       "kind": "alias",
       "component": "core",
       "page": "api-reference.html",
@@ -2894,7 +2894,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtexturehandle-11d17b7a",
       "name": "FARDGTextureHandle",
-      "qualifiedName": "arda::render_graph::FARDGTextureHandle",
+      "qualifiedName": "arda::FARDGTextureHandle",
       "kind": "alias",
       "component": "core",
       "page": "api-reference.html",
@@ -2913,7 +2913,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbufferhandle-3025dda0",
       "name": "FARDGBufferHandle",
-      "qualifiedName": "arda::render_graph::FARDGBufferHandle",
+      "qualifiedName": "arda::FARDGBufferHandle",
       "kind": "alias",
       "component": "core",
       "page": "api-reference.html",
@@ -2932,7 +2932,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgaccelstructhandle-a068b505",
       "name": "FARDGAccelStructHandle",
-      "qualifiedName": "arda::render_graph::FARDGAccelStructHandle",
+      "qualifiedName": "arda::FARDGAccelStructHandle",
       "kind": "alias",
       "component": "core",
       "page": "api-reference.html",
@@ -2951,7 +2951,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgviewhandle-6c15ae8a",
       "name": "FARDGViewHandle",
-      "qualifiedName": "arda::render_graph::FARDGViewHandle",
+      "qualifiedName": "arda::FARDGViewHandle",
       "kind": "alias",
       "component": "core",
       "page": "api-reference.html",
@@ -2970,7 +2970,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardguniformbufferhandle-e15097a6",
       "name": "FARDGUniformBufferHandle",
-      "qualifiedName": "arda::render_graph::FARDGUniformBufferHandle",
+      "qualifiedName": "arda::FARDGUniformBufferHandle",
       "kind": "alias",
       "component": "core",
       "page": "api-reference.html",
@@ -2989,7 +2989,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-eardgpipeline-188e6387",
       "name": "EARDGPipeline",
-      "qualifiedName": "arda::render_graph::EARDGPipeline",
+      "qualifiedName": "arda::EARDGPipeline",
       "kind": "enum",
       "component": "core",
       "page": "api-reference.html",
@@ -3003,16 +3003,16 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPipeline::Graphics",
-        "arda::render_graph::EARDGPipeline::AsyncCompute",
-        "arda::render_graph::EARDGPipeline::Copy"
+        "arda::EARDGPipeline::Graphics",
+        "arda::EARDGPipeline::AsyncCompute",
+        "arda::EARDGPipeline::Copy"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpipeline-graphics-34869c08",
       "name": "Graphics",
-      "qualifiedName": "arda::render_graph::EARDGPipeline::Graphics",
+      "qualifiedName": "arda::EARDGPipeline::Graphics",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3026,14 +3026,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPipeline"
+        "arda::EARDGPipeline"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpipeline-asynccompute-02d5df83",
       "name": "AsyncCompute",
-      "qualifiedName": "arda::render_graph::EARDGPipeline::AsyncCompute",
+      "qualifiedName": "arda::EARDGPipeline::AsyncCompute",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3047,14 +3047,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPipeline"
+        "arda::EARDGPipeline"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpipeline-copy-b4027f5b",
       "name": "Copy",
-      "qualifiedName": "arda::render_graph::EARDGPipeline::Copy",
+      "qualifiedName": "arda::EARDGPipeline::Copy",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3068,14 +3068,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPipeline"
+        "arda::EARDGPipeline"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgqueuecapabilities-6104362a",
       "name": "FARDGQueueCapabilities",
-      "qualifiedName": "arda::render_graph::FARDGQueueCapabilities",
+      "qualifiedName": "arda::FARDGQueueCapabilities",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
@@ -3094,7 +3094,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgqueuecapabilities-mbgraphics-8a28c880",
       "name": "mbGraphics",
-      "qualifiedName": "arda::render_graph::FARDGQueueCapabilities::mbGraphics",
+      "qualifiedName": "arda::FARDGQueueCapabilities::mbGraphics",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
@@ -3108,14 +3108,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGQueueCapabilities"
+        "arda::FARDGQueueCapabilities"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgqueuecapabilities-mbcompute-fb0f3d64",
       "name": "mbCompute",
-      "qualifiedName": "arda::render_graph::FARDGQueueCapabilities::mbCompute",
+      "qualifiedName": "arda::FARDGQueueCapabilities::mbCompute",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
@@ -3129,14 +3129,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGQueueCapabilities"
+        "arda::FARDGQueueCapabilities"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgqueuecapabilities-mbcopy-006aef39",
       "name": "mbCopy",
-      "qualifiedName": "arda::render_graph::FARDGQueueCapabilities::mbCopy",
+      "qualifiedName": "arda::FARDGQueueCapabilities::mbCopy",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
@@ -3150,14 +3150,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGQueueCapabilities"
+        "arda::FARDGQueueCapabilities"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgdebugoptions-e1513d7e",
       "name": "FARDGDebugOptions",
-      "qualifiedName": "arda::render_graph::FARDGDebugOptions",
+      "qualifiedName": "arda::FARDGDebugOptions",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
@@ -3176,7 +3176,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgdebugoptions-mbimmediatemode-8a47e1e4",
       "name": "mbImmediateMode",
-      "qualifiedName": "arda::render_graph::FARDGDebugOptions::mbImmediateMode",
+      "qualifiedName": "arda::FARDGDebugOptions::mbImmediateMode",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
@@ -3190,14 +3190,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGDebugOptions"
+        "arda::FARDGDebugOptions"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgdebugoptions-mbconservativebarriers-622ad184",
       "name": "mbConservativeBarriers",
-      "qualifiedName": "arda::render_graph::FARDGDebugOptions::mbConservativeBarriers",
+      "qualifiedName": "arda::FARDGDebugOptions::mbConservativeBarriers",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
@@ -3211,14 +3211,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGDebugOptions"
+        "arda::FARDGDebugOptions"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgdebugoptions-mbextendresourcelifetimes-262fb0e3",
       "name": "mbExtendResourceLifetimes",
-      "qualifiedName": "arda::render_graph::FARDGDebugOptions::mbExtendResourceLifetimes",
+      "qualifiedName": "arda::FARDGDebugOptions::mbExtendResourceLifetimes",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
@@ -3232,14 +3232,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGDebugOptions"
+        "arda::FARDGDebugOptions"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgdebugoptions-mbclobberfirstwrites-e353a8f1",
       "name": "mbClobberFirstWrites",
-      "qualifiedName": "arda::render_graph::FARDGDebugOptions::mbClobberFirstWrites",
+      "qualifiedName": "arda::FARDGDebugOptions::mbClobberFirstWrites",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
@@ -3253,14 +3253,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGDebugOptions"
+        "arda::FARDGDebugOptions"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpassflags-6384e9b1",
       "name": "EARDGPassFlags",
-      "qualifiedName": "arda::render_graph::EARDGPassFlags",
+      "qualifiedName": "arda::EARDGPassFlags",
       "kind": "enum",
       "component": "core",
       "page": "api-reference.html",
@@ -3274,21 +3274,21 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPassFlags::None",
-        "arda::render_graph::EARDGPassFlags::Raster",
-        "arda::render_graph::EARDGPassFlags::Compute",
-        "arda::render_graph::EARDGPassFlags::AsyncCompute",
-        "arda::render_graph::EARDGPassFlags::Copy",
-        "arda::render_graph::EARDGPassFlags::NeverCull",
-        "arda::render_graph::EARDGPassFlags::SkipRenderPass",
-        "arda::render_graph::EARDGPassFlags::NeverParallel"
+        "arda::EARDGPassFlags::None",
+        "arda::EARDGPassFlags::Raster",
+        "arda::EARDGPassFlags::Compute",
+        "arda::EARDGPassFlags::AsyncCompute",
+        "arda::EARDGPassFlags::Copy",
+        "arda::EARDGPassFlags::NeverCull",
+        "arda::EARDGPassFlags::SkipRenderPass",
+        "arda::EARDGPassFlags::NeverParallel"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpassflags-none-7a822727",
       "name": "None",
-      "qualifiedName": "arda::render_graph::EARDGPassFlags::None",
+      "qualifiedName": "arda::EARDGPassFlags::None",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3302,14 +3302,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPassFlags"
+        "arda::EARDGPassFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpassflags-raster-9377effa",
       "name": "Raster",
-      "qualifiedName": "arda::render_graph::EARDGPassFlags::Raster",
+      "qualifiedName": "arda::EARDGPassFlags::Raster",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3323,14 +3323,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPassFlags"
+        "arda::EARDGPassFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpassflags-compute-f024f260",
       "name": "Compute",
-      "qualifiedName": "arda::render_graph::EARDGPassFlags::Compute",
+      "qualifiedName": "arda::EARDGPassFlags::Compute",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3344,14 +3344,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPassFlags"
+        "arda::EARDGPassFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpassflags-asynccompute-05e9b26e",
       "name": "AsyncCompute",
-      "qualifiedName": "arda::render_graph::EARDGPassFlags::AsyncCompute",
+      "qualifiedName": "arda::EARDGPassFlags::AsyncCompute",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3365,14 +3365,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPassFlags"
+        "arda::EARDGPassFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpassflags-copy-6a4fbcab",
       "name": "Copy",
-      "qualifiedName": "arda::render_graph::EARDGPassFlags::Copy",
+      "qualifiedName": "arda::EARDGPassFlags::Copy",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3386,14 +3386,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPassFlags"
+        "arda::EARDGPassFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpassflags-nevercull-d1fc8014",
       "name": "NeverCull",
-      "qualifiedName": "arda::render_graph::EARDGPassFlags::NeverCull",
+      "qualifiedName": "arda::EARDGPassFlags::NeverCull",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3407,14 +3407,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPassFlags"
+        "arda::EARDGPassFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpassflags-skiprenderpass-25dc8a9b",
       "name": "SkipRenderPass",
-      "qualifiedName": "arda::render_graph::EARDGPassFlags::SkipRenderPass",
+      "qualifiedName": "arda::EARDGPassFlags::SkipRenderPass",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3428,14 +3428,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPassFlags"
+        "arda::EARDGPassFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgpassflags-neverparallel-8aecc94b",
       "name": "NeverParallel",
-      "qualifiedName": "arda::render_graph::EARDGPassFlags::NeverParallel",
+      "qualifiedName": "arda::EARDGPassFlags::NeverParallel",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3449,14 +3449,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGPassFlags"
+        "arda::EARDGPassFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-operator-81533b18",
       "name": "operator|",
-      "qualifiedName": "arda::render_graph::operator|",
+      "qualifiedName": "arda::operator|",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -3473,14 +3473,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph"
+        "arda"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-operator-cecb60cd",
       "name": "operator&",
-      "qualifiedName": "arda::render_graph::operator&",
+      "qualifiedName": "arda::operator&",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -3497,14 +3497,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph"
+        "arda"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-operator-b5e3cfbf",
       "name": "operator|=",
-      "qualifiedName": "arda::render_graph::operator|=",
+      "qualifiedName": "arda::operator|=",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -3521,14 +3521,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph"
+        "arda"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-hasallflags-9b02d60f",
       "name": "HasAllFlags",
-      "qualifiedName": "arda::render_graph::HasAllFlags",
+      "qualifiedName": "arda::HasAllFlags",
       "kind": "function",
       "component": "core",
       "page": "api-reference.html",
@@ -3545,14 +3545,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph"
+        "arda"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourceflags-7032a490",
       "name": "EARDGResourceFlags",
-      "qualifiedName": "arda::render_graph::EARDGResourceFlags",
+      "qualifiedName": "arda::EARDGResourceFlags",
       "kind": "enum",
       "component": "core",
       "page": "api-reference.html",
@@ -3566,17 +3566,17 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceFlags::None",
-        "arda::render_graph::EARDGResourceFlags::External",
-        "arda::render_graph::EARDGResourceFlags::Extracted",
-        "arda::render_graph::EARDGResourceFlags::Transient"
+        "arda::EARDGResourceFlags::None",
+        "arda::EARDGResourceFlags::External",
+        "arda::EARDGResourceFlags::Extracted",
+        "arda::EARDGResourceFlags::Transient"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourceflags-none-2fb06c90",
       "name": "None",
-      "qualifiedName": "arda::render_graph::EARDGResourceFlags::None",
+      "qualifiedName": "arda::EARDGResourceFlags::None",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3590,14 +3590,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceFlags"
+        "arda::EARDGResourceFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourceflags-external-aed6a791",
       "name": "External",
-      "qualifiedName": "arda::render_graph::EARDGResourceFlags::External",
+      "qualifiedName": "arda::EARDGResourceFlags::External",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3611,14 +3611,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceFlags"
+        "arda::EARDGResourceFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourceflags-extracted-e87e9c8f",
       "name": "Extracted",
-      "qualifiedName": "arda::render_graph::EARDGResourceFlags::Extracted",
+      "qualifiedName": "arda::EARDGResourceFlags::Extracted",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3632,14 +3632,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceFlags"
+        "arda::EARDGResourceFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourceflags-transient-e36d3a82",
       "name": "Transient",
-      "qualifiedName": "arda::render_graph::EARDGResourceFlags::Transient",
+      "qualifiedName": "arda::EARDGResourceFlags::Transient",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3653,14 +3653,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceFlags"
+        "arda::EARDGResourceFlags"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-operator-49426bed",
       "name": "operator|",
-      "qualifiedName": "arda::render_graph::operator|",
+      "qualifiedName": "arda::operator|",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -3677,14 +3677,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph"
+        "arda"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-operator-0f81ec79",
       "name": "operator&",
-      "qualifiedName": "arda::render_graph::operator&",
+      "qualifiedName": "arda::operator&",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -3701,14 +3701,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph"
+        "arda"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-operator-83b3da17",
       "name": "operator|=",
-      "qualifiedName": "arda::render_graph::operator|=",
+      "qualifiedName": "arda::operator|=",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -3725,14 +3725,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph"
+        "arda"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-hasallflags-fe272c3f",
       "name": "HasAllFlags",
-      "qualifiedName": "arda::render_graph::HasAllFlags",
+      "qualifiedName": "arda::HasAllFlags",
       "kind": "function",
       "component": "core",
       "page": "api-reference.html",
@@ -3749,14 +3749,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph"
+        "arda"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourcetype-e9cf2f2b",
       "name": "EARDGResourceType",
-      "qualifiedName": "arda::render_graph::EARDGResourceType",
+      "qualifiedName": "arda::EARDGResourceType",
       "kind": "enum",
       "component": "core",
       "page": "api-reference.html",
@@ -3770,21 +3770,21 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceType::Texture",
-        "arda::render_graph::EARDGResourceType::Buffer",
-        "arda::render_graph::EARDGResourceType::TextureShaderResourceView",
-        "arda::render_graph::EARDGResourceType::TextureUnorderedAccessView",
-        "arda::render_graph::EARDGResourceType::BufferShaderResourceView",
-        "arda::render_graph::EARDGResourceType::BufferUnorderedAccessView",
-        "arda::render_graph::EARDGResourceType::UniformBuffer",
-        "arda::render_graph::EARDGResourceType::AccelStruct"
+        "arda::EARDGResourceType::Texture",
+        "arda::EARDGResourceType::Buffer",
+        "arda::EARDGResourceType::TextureShaderResourceView",
+        "arda::EARDGResourceType::TextureUnorderedAccessView",
+        "arda::EARDGResourceType::BufferShaderResourceView",
+        "arda::EARDGResourceType::BufferUnorderedAccessView",
+        "arda::EARDGResourceType::UniformBuffer",
+        "arda::EARDGResourceType::AccelStruct"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourcetype-texture-748118c6",
       "name": "Texture",
-      "qualifiedName": "arda::render_graph::EARDGResourceType::Texture",
+      "qualifiedName": "arda::EARDGResourceType::Texture",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3798,14 +3798,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceType"
+        "arda::EARDGResourceType"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourcetype-buffer-563b352a",
       "name": "Buffer",
-      "qualifiedName": "arda::render_graph::EARDGResourceType::Buffer",
+      "qualifiedName": "arda::EARDGResourceType::Buffer",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3819,14 +3819,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceType"
+        "arda::EARDGResourceType"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourcetype-textureshaderresourceview-fd09d8c3",
       "name": "TextureShaderResourceView",
-      "qualifiedName": "arda::render_graph::EARDGResourceType::TextureShaderResourceView",
+      "qualifiedName": "arda::EARDGResourceType::TextureShaderResourceView",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3840,14 +3840,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceType"
+        "arda::EARDGResourceType"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourcetype-textureunorderedaccessview-ffc3a511",
       "name": "TextureUnorderedAccessView",
-      "qualifiedName": "arda::render_graph::EARDGResourceType::TextureUnorderedAccessView",
+      "qualifiedName": "arda::EARDGResourceType::TextureUnorderedAccessView",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3861,14 +3861,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceType"
+        "arda::EARDGResourceType"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourcetype-buffershaderresourceview-ec99fee9",
       "name": "BufferShaderResourceView",
-      "qualifiedName": "arda::render_graph::EARDGResourceType::BufferShaderResourceView",
+      "qualifiedName": "arda::EARDGResourceType::BufferShaderResourceView",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3882,14 +3882,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceType"
+        "arda::EARDGResourceType"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourcetype-bufferunorderedaccessview-dba51d9e",
       "name": "BufferUnorderedAccessView",
-      "qualifiedName": "arda::render_graph::EARDGResourceType::BufferUnorderedAccessView",
+      "qualifiedName": "arda::EARDGResourceType::BufferUnorderedAccessView",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3903,14 +3903,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceType"
+        "arda::EARDGResourceType"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourcetype-uniformbuffer-ae342e19",
       "name": "UniformBuffer",
-      "qualifiedName": "arda::render_graph::EARDGResourceType::UniformBuffer",
+      "qualifiedName": "arda::EARDGResourceType::UniformBuffer",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3924,14 +3924,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceType"
+        "arda::EARDGResourceType"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgresourcetype-accelstruct-889bd55d",
       "name": "AccelStruct",
-      "qualifiedName": "arda::render_graph::EARDGResourceType::AccelStruct",
+      "qualifiedName": "arda::EARDGResourceType::AccelStruct",
       "kind": "enumerator",
       "component": "core",
       "page": "api-reference.html",
@@ -3945,14 +3945,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGResourceType"
+        "arda::EARDGResourceType"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgrendergraphcontext-0e7e7f3f",
       "name": "FARDGRenderGraphContext",
-      "qualifiedName": "arda::render_graph::FARDGRenderGraphContext",
+      "qualifiedName": "arda::FARDGRenderGraphContext",
       "kind": "struct",
       "component": "core",
       "page": "api-reference.html",
@@ -3971,11 +3971,11 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgrendergraphcontext-mdevice-fe88f8f2",
       "name": "mDevice",
-      "qualifiedName": "arda::render_graph::FARDGRenderGraphContext::mDevice",
+      "qualifiedName": "arda::FARDGRenderGraphContext::mDevice",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHIDeviceRef mDevice",
+      "signature": "arda::FArdaRHIDeviceRef mDevice",
       "summary": "The RHI device on which render-graph work is executed.",
       "details": "The RHI device on which render-graph work is executed.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h",
@@ -3985,14 +3985,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRenderGraphContext"
+        "arda::FARDGRenderGraphContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgrendergraphcontext-mqueuecapabilities-f5399dc5",
       "name": "mQueueCapabilities",
-      "qualifiedName": "arda::render_graph::FARDGRenderGraphContext::mQueueCapabilities",
+      "qualifiedName": "arda::FARDGRenderGraphContext::mQueueCapabilities",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
@@ -4006,14 +4006,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRenderGraphContext"
+        "arda::FARDGRenderGraphContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgrendergraphcontext-mdebugoptions-6b05ebc5",
       "name": "mDebugOptions",
-      "qualifiedName": "arda::render_graph::FARDGRenderGraphContext::mDebugOptions",
+      "qualifiedName": "arda::FARDGRenderGraphContext::mDebugOptions",
       "kind": "member variable",
       "component": "core",
       "page": "api-reference.html",
@@ -4027,14 +4027,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRenderGraphContext"
+        "arda::FARDGRenderGraphContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-0af11438",
       "name": "EARDGParameterType",
-      "qualifiedName": "arda::render_graph::EARDGParameterType",
+      "qualifiedName": "arda::EARDGParameterType",
       "kind": "enum",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4048,26 +4048,26 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType::Value",
-        "arda::render_graph::EARDGParameterType::Texture",
-        "arda::render_graph::EARDGParameterType::Buffer",
-        "arda::render_graph::EARDGParameterType::TextureShaderResourceView",
-        "arda::render_graph::EARDGParameterType::TextureUnorderedAccessView",
-        "arda::render_graph::EARDGParameterType::BufferShaderResourceView",
-        "arda::render_graph::EARDGParameterType::BufferUnorderedAccessView",
-        "arda::render_graph::EARDGParameterType::TextureAccess",
-        "arda::render_graph::EARDGParameterType::BufferAccess",
-        "arda::render_graph::EARDGParameterType::AccelStructAccess",
-        "arda::render_graph::EARDGParameterType::UniformBuffer",
-        "arda::render_graph::EARDGParameterType::NestedStruct",
-        "arda::render_graph::EARDGParameterType::RenderTargetBindingSlots"
+        "arda::EARDGParameterType::Value",
+        "arda::EARDGParameterType::Texture",
+        "arda::EARDGParameterType::Buffer",
+        "arda::EARDGParameterType::TextureShaderResourceView",
+        "arda::EARDGParameterType::TextureUnorderedAccessView",
+        "arda::EARDGParameterType::BufferShaderResourceView",
+        "arda::EARDGParameterType::BufferUnorderedAccessView",
+        "arda::EARDGParameterType::TextureAccess",
+        "arda::EARDGParameterType::BufferAccess",
+        "arda::EARDGParameterType::AccelStructAccess",
+        "arda::EARDGParameterType::UniformBuffer",
+        "arda::EARDGParameterType::NestedStruct",
+        "arda::EARDGParameterType::RenderTargetBindingSlots"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-value-5f96fbad",
       "name": "Value",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::Value",
+      "qualifiedName": "arda::EARDGParameterType::Value",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4081,14 +4081,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-texture-7a59ff69",
       "name": "Texture",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::Texture",
+      "qualifiedName": "arda::EARDGParameterType::Texture",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4102,14 +4102,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-buffer-6d301078",
       "name": "Buffer",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::Buffer",
+      "qualifiedName": "arda::EARDGParameterType::Buffer",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4123,14 +4123,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-textureshaderresourceview-a6768abe",
       "name": "TextureShaderResourceView",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::TextureShaderResourceView",
+      "qualifiedName": "arda::EARDGParameterType::TextureShaderResourceView",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4144,14 +4144,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-textureunorderedaccessview-069c3bc5",
       "name": "TextureUnorderedAccessView",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::TextureUnorderedAccessView",
+      "qualifiedName": "arda::EARDGParameterType::TextureUnorderedAccessView",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4165,14 +4165,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-buffershaderresourceview-84ffbacc",
       "name": "BufferShaderResourceView",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::BufferShaderResourceView",
+      "qualifiedName": "arda::EARDGParameterType::BufferShaderResourceView",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4186,14 +4186,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-bufferunorderedaccessview-353bec17",
       "name": "BufferUnorderedAccessView",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::BufferUnorderedAccessView",
+      "qualifiedName": "arda::EARDGParameterType::BufferUnorderedAccessView",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4207,14 +4207,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-textureaccess-28718fbd",
       "name": "TextureAccess",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::TextureAccess",
+      "qualifiedName": "arda::EARDGParameterType::TextureAccess",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4228,14 +4228,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-bufferaccess-48a10183",
       "name": "BufferAccess",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::BufferAccess",
+      "qualifiedName": "arda::EARDGParameterType::BufferAccess",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4249,14 +4249,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-accelstructaccess-e3812d42",
       "name": "AccelStructAccess",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::AccelStructAccess",
+      "qualifiedName": "arda::EARDGParameterType::AccelStructAccess",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4270,14 +4270,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-uniformbuffer-a61bda2d",
       "name": "UniformBuffer",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::UniformBuffer",
+      "qualifiedName": "arda::EARDGParameterType::UniformBuffer",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4291,14 +4291,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-nestedstruct-115fdb94",
       "name": "NestedStruct",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::NestedStruct",
+      "qualifiedName": "arda::EARDGParameterType::NestedStruct",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4312,14 +4312,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-eardgparametertype-rendertargetbindingslots-b8be1233",
       "name": "RenderTargetBindingSlots",
-      "qualifiedName": "arda::render_graph::EARDGParameterType::RenderTargetBindingSlots",
+      "qualifiedName": "arda::EARDGParameterType::RenderTargetBindingSlots",
       "kind": "enumerator",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4333,14 +4333,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::EARDGParameterType"
+        "arda::EARDGParameterType"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermember-af4eb6f7",
       "name": "FARDGParameterMember",
-      "qualifiedName": "arda::render_graph::FARDGParameterMember",
+      "qualifiedName": "arda::FARDGParameterMember",
       "kind": "struct",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4359,7 +4359,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgparametermember-mname-3058a339",
       "name": "mName",
-      "qualifiedName": "arda::render_graph::FARDGParameterMember::mName",
+      "qualifiedName": "arda::FARDGParameterMember::mName",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4373,14 +4373,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMember"
+        "arda::FARDGParameterMember"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermember-mtype-5f6083ca",
       "name": "mType",
-      "qualifiedName": "arda::render_graph::FARDGParameterMember::mType",
+      "qualifiedName": "arda::FARDGParameterMember::mType",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4394,14 +4394,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMember"
+        "arda::FARDGParameterMember"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermember-moffset-e5e7d474",
       "name": "mOffset",
-      "qualifiedName": "arda::render_graph::FARDGParameterMember::mOffset",
+      "qualifiedName": "arda::FARDGParameterMember::mOffset",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4415,14 +4415,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMember"
+        "arda::FARDGParameterMember"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermember-msize-14129cfe",
       "name": "mSize",
-      "qualifiedName": "arda::render_graph::FARDGParameterMember::mSize",
+      "qualifiedName": "arda::FARDGParameterMember::mSize",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4436,14 +4436,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMember"
+        "arda::FARDGParameterMember"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermember-malignment-c10a19e9",
       "name": "mAlignment",
-      "qualifiedName": "arda::render_graph::FARDGParameterMember::mAlignment",
+      "qualifiedName": "arda::FARDGParameterMember::mAlignment",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4457,14 +4457,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMember"
+        "arda::FARDGParameterMember"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermember-melementcount-cc8394ea",
       "name": "mElementCount",
-      "qualifiedName": "arda::render_graph::FARDGParameterMember::mElementCount",
+      "qualifiedName": "arda::FARDGParameterMember::mElementCount",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4478,14 +4478,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMember"
+        "arda::FARDGParameterMember"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermember-melementstride-f2fcf0ff",
       "name": "mElementStride",
-      "qualifiedName": "arda::render_graph::FARDGParameterMember::mElementStride",
+      "qualifiedName": "arda::FARDGParameterMember::mElementStride",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4499,18 +4499,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMember"
+        "arda::FARDGParameterMember"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermember-mdefaultstate-f6ec05f9",
       "name": "mDefaultState",
-      "qualifiedName": "arda::render_graph::FARDGParameterMember::mDefaultState",
+      "qualifiedName": "arda::FARDGParameterMember::mDefaultState",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mDefaultState = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mDefaultState = arda::EArdaRHIResourceState::Unknown",
       "summary": "The default RHI state implied by the member kind.",
       "details": "The default RHI state implied by the member kind.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphParameters.h",
@@ -4520,14 +4520,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMember"
+        "arda::FARDGParameterMember"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermember-mnestedmetadata-9a8aa4ea",
       "name": "mNestedMetadata",
-      "qualifiedName": "arda::render_graph::FARDGParameterMember::mNestedMetadata",
+      "qualifiedName": "arda::FARDGParameterMember::mNestedMetadata",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4541,14 +4541,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMember"
+        "arda::FARDGParameterMember"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparameter-7dd1dbcd",
       "name": "FARDGParameter",
-      "qualifiedName": "arda::render_graph::FARDGParameter",
+      "qualifiedName": "arda::FARDGParameter",
       "kind": "struct",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4567,7 +4567,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgparameter-mmember-29b684ab",
       "name": "mMember",
-      "qualifiedName": "arda::render_graph::FARDGParameter::mMember",
+      "qualifiedName": "arda::FARDGParameter::mMember",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4581,14 +4581,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameter"
+        "arda::FARDGParameter"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparameter-mvalue-e20e4b36",
       "name": "mValue",
-      "qualifiedName": "arda::render_graph::FARDGParameter::mValue",
+      "qualifiedName": "arda::FARDGParameter::mValue",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4602,14 +4602,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameter"
+        "arda::FARDGParameter"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparameter-mpath-5c0ca97e",
       "name": "mPath",
-      "qualifiedName": "arda::render_graph::FARDGParameter::mPath",
+      "qualifiedName": "arda::FARDGParameter::mPath",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4623,14 +4623,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameter"
+        "arda::FARDGParameter"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparameter-marrayindex-fd1e9342",
       "name": "mArrayIndex",
-      "qualifiedName": "arda::render_graph::FARDGParameter::mArrayIndex",
+      "qualifiedName": "arda::FARDGParameter::mArrayIndex",
       "kind": "member variable",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4644,14 +4644,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameter"
+        "arda::FARDGParameter"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparameter-getvalue-f2aafd53",
       "name": "GetValue",
-      "qualifiedName": "arda::render_graph::FARDGParameter::GetValue",
+      "qualifiedName": "arda::FARDGParameter::GetValue",
       "kind": "method",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4665,14 +4665,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameter"
+        "arda::FARDGParameter"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametervisitor-eb5f7455",
       "name": "FARDGParameterVisitor",
-      "qualifiedName": "arda::render_graph::FARDGParameterVisitor",
+      "qualifiedName": "arda::FARDGParameterVisitor",
       "kind": "alias",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4693,7 +4693,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgparametermetadata-8b7ec1e7",
       "name": "FARDGParameterMetadata",
-      "qualifiedName": "arda::render_graph::FARDGParameterMetadata",
+      "qualifiedName": "arda::FARDGParameterMetadata",
       "kind": "class",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4712,7 +4712,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgparametermetadata-fardgparametermetadata-d2ac3f5e",
       "name": "FARDGParameterMetadata",
-      "qualifiedName": "arda::render_graph::FARDGParameterMetadata::FARDGParameterMetadata",
+      "qualifiedName": "arda::FARDGParameterMetadata::FARDGParameterMetadata",
       "kind": "constructor",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4731,14 +4731,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMetadata"
+        "arda::FARDGParameterMetadata"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermetadata-getname-afd36dd0",
       "name": "GetName",
-      "qualifiedName": "arda::render_graph::FARDGParameterMetadata::GetName",
+      "qualifiedName": "arda::FARDGParameterMetadata::GetName",
       "kind": "method",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4752,14 +4752,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMetadata"
+        "arda::FARDGParameterMetadata"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermetadata-getsize-81be2ee9",
       "name": "GetSize",
-      "qualifiedName": "arda::render_graph::FARDGParameterMetadata::GetSize",
+      "qualifiedName": "arda::FARDGParameterMetadata::GetSize",
       "kind": "method",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4773,14 +4773,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMetadata"
+        "arda::FARDGParameterMetadata"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermetadata-getalignment-8c9ad768",
       "name": "GetAlignment",
-      "qualifiedName": "arda::render_graph::FARDGParameterMetadata::GetAlignment",
+      "qualifiedName": "arda::FARDGParameterMetadata::GetAlignment",
       "kind": "method",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4794,14 +4794,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMetadata"
+        "arda::FARDGParameterMetadata"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermetadata-getmembers-3ed009c5",
       "name": "GetMembers",
-      "qualifiedName": "arda::render_graph::FARDGParameterMetadata::GetMembers",
+      "qualifiedName": "arda::FARDGParameterMetadata::GetMembers",
       "kind": "method",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4815,14 +4815,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMetadata"
+        "arda::FARDGParameterMetadata"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermetadata-findmember-86be71d5",
       "name": "FindMember",
-      "qualifiedName": "arda::render_graph::FARDGParameterMetadata::FindMember",
+      "qualifiedName": "arda::FARDGParameterMetadata::FindMember",
       "kind": "method",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4838,14 +4838,14 @@ window.ArdaRDGApi = {
       "errors": "Finds a direct member by source name, or returns null if it is absent.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMetadata"
+        "arda::FARDGParameterMetadata"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgparametermetadata-enumerate-352d28d2",
       "name": "Enumerate",
-      "qualifiedName": "arda::render_graph::FARDGParameterMetadata::Enumerate",
+      "qualifiedName": "arda::FARDGParameterMetadata::Enumerate",
       "kind": "method",
       "component": "parameters",
       "page": "api-reference.html",
@@ -4863,14 +4863,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGParameterMetadata"
+        "arda::FARDGParameterMetadata"
       ],
       "audience": "Pass authors"
     },
     {
       "id": "api-arda-rdg-fardgpasstexturestate-097ca3f1",
       "name": "FARDGPassTextureState",
-      "qualifiedName": "arda::render_graph::FARDGPassTextureState",
+      "qualifiedName": "arda::FARDGPassTextureState",
       "kind": "struct",
       "component": "compilation",
       "page": "api-reference.html",
@@ -4889,7 +4889,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgpasstexturestate-mtexture-aa3afba1",
       "name": "mTexture",
-      "qualifiedName": "arda::render_graph::FARDGPassTextureState::mTexture",
+      "qualifiedName": "arda::FARDGPassTextureState::mTexture",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -4903,18 +4903,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassTextureState"
+        "arda::FARDGPassTextureState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpasstexturestate-msubresources-d39301b2",
       "name": "mSubresources",
-      "qualifiedName": "arda::render_graph::FARDGPassTextureState::mSubresources",
+      "qualifiedName": "arda::FARDGPassTextureState::mSubresources",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHITextureSubresourceRange mSubresources",
+      "signature": "arda::FArdaRHITextureSubresourceRange mSubresources",
       "summary": "The affected texture subresources.",
       "details": "The affected texture subresources.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -4924,18 +4924,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassTextureState"
+        "arda::FARDGPassTextureState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpasstexturestate-mstate-fcd24ebb",
       "name": "mState",
-      "qualifiedName": "arda::render_graph::FARDGPassTextureState::mState",
+      "qualifiedName": "arda::FARDGPassTextureState::mState",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mState = arda::EArdaRHIResourceState::Unknown",
       "summary": "The RHI state required while the pass executes.",
       "details": "The RHI state required while the pass executes.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -4945,14 +4945,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassTextureState"
+        "arda::FARDGPassTextureState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpasstexturestate-mbwrite-8b3da54d",
       "name": "mbWrite",
-      "qualifiedName": "arda::render_graph::FARDGPassTextureState::mbWrite",
+      "qualifiedName": "arda::FARDGPassTextureState::mbWrite",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -4966,14 +4966,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassTextureState"
+        "arda::FARDGPassTextureState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassbufferstate-95e13ccc",
       "name": "FARDGPassBufferState",
-      "qualifiedName": "arda::render_graph::FARDGPassBufferState",
+      "qualifiedName": "arda::FARDGPassBufferState",
       "kind": "struct",
       "component": "compilation",
       "page": "api-reference.html",
@@ -4992,7 +4992,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgpassbufferstate-mbuffer-8a0da785",
       "name": "mBuffer",
-      "qualifiedName": "arda::render_graph::FARDGPassBufferState::mBuffer",
+      "qualifiedName": "arda::FARDGPassBufferState::mBuffer",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5006,18 +5006,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassBufferState"
+        "arda::FARDGPassBufferState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassbufferstate-mrange-c2f5eeef",
       "name": "mRange",
-      "qualifiedName": "arda::render_graph::FARDGPassBufferState::mRange",
+      "qualifiedName": "arda::FARDGPassBufferState::mRange",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHIBufferRange mRange",
+      "signature": "arda::FArdaRHIBufferRange mRange",
       "summary": "The affected byte range.",
       "details": "The affected byte range.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5027,18 +5027,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassBufferState"
+        "arda::FARDGPassBufferState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassbufferstate-mstate-846cb112",
       "name": "mState",
-      "qualifiedName": "arda::render_graph::FARDGPassBufferState::mState",
+      "qualifiedName": "arda::FARDGPassBufferState::mState",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mState = arda::EArdaRHIResourceState::Unknown",
       "summary": "The RHI state required while the pass executes.",
       "details": "The RHI state required while the pass executes.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5048,14 +5048,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassBufferState"
+        "arda::FARDGPassBufferState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassbufferstate-mbwrite-e9cd2dc1",
       "name": "mbWrite",
-      "qualifiedName": "arda::render_graph::FARDGPassBufferState::mbWrite",
+      "qualifiedName": "arda::FARDGPassBufferState::mbWrite",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5069,14 +5069,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassBufferState"
+        "arda::FARDGPassBufferState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassaccelstructstate-58ebb1ab",
       "name": "FARDGPassAccelStructState",
-      "qualifiedName": "arda::render_graph::FARDGPassAccelStructState",
+      "qualifiedName": "arda::FARDGPassAccelStructState",
       "kind": "struct",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5095,7 +5095,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgpassaccelstructstate-maccelstruct-007143fd",
       "name": "mAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGPassAccelStructState::mAccelStruct",
+      "qualifiedName": "arda::FARDGPassAccelStructState::mAccelStruct",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5109,18 +5109,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassAccelStructState"
+        "arda::FARDGPassAccelStructState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassaccelstructstate-mstate-992e5e6d",
       "name": "mState",
-      "qualifiedName": "arda::render_graph::FARDGPassAccelStructState::mState",
+      "qualifiedName": "arda::FARDGPassAccelStructState::mState",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mState = arda::EArdaRHIResourceState::Unknown",
       "summary": "The RHI state required while the pass executes.",
       "details": "The RHI state required while the pass executes.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5130,14 +5130,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassAccelStructState"
+        "arda::FARDGPassAccelStructState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassaccelstructstate-mbwrite-40dd9519",
       "name": "mbWrite",
-      "qualifiedName": "arda::render_graph::FARDGPassAccelStructState::mbWrite",
+      "qualifiedName": "arda::FARDGPassAccelStructState::mbWrite",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5151,14 +5151,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassAccelStructState"
+        "arda::FARDGPassAccelStructState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgtexturetransition-df763729",
       "name": "FARDGTextureTransition",
-      "qualifiedName": "arda::render_graph::FARDGTextureTransition",
+      "qualifiedName": "arda::FARDGTextureTransition",
       "kind": "struct",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5177,7 +5177,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtexturetransition-mtexture-60ed78f4",
       "name": "mTexture",
-      "qualifiedName": "arda::render_graph::FARDGTextureTransition::mTexture",
+      "qualifiedName": "arda::FARDGTextureTransition::mTexture",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5191,18 +5191,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureTransition"
+        "arda::FARDGTextureTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgtexturetransition-msubresources-ecb0574e",
       "name": "mSubresources",
-      "qualifiedName": "arda::render_graph::FARDGTextureTransition::mSubresources",
+      "qualifiedName": "arda::FARDGTextureTransition::mSubresources",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHITextureSubresourceRange mSubresources",
+      "signature": "arda::FArdaRHITextureSubresourceRange mSubresources",
       "summary": "The texture subresources covered by the transition.",
       "details": "The texture subresources covered by the transition.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5212,18 +5212,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureTransition"
+        "arda::FARDGTextureTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgtexturetransition-mstatebefore-f93dc9c2",
       "name": "mStateBefore",
-      "qualifiedName": "arda::render_graph::FARDGTextureTransition::mStateBefore",
+      "qualifiedName": "arda::FARDGTextureTransition::mStateBefore",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mStateBefore = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mStateBefore = arda::EArdaRHIResourceState::Unknown",
       "summary": "The state known before the transition.",
       "details": "The state known before the transition.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5233,18 +5233,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureTransition"
+        "arda::FARDGTextureTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgtexturetransition-mstateafter-de0610b8",
       "name": "mStateAfter",
-      "qualifiedName": "arda::render_graph::FARDGTextureTransition::mStateAfter",
+      "qualifiedName": "arda::FARDGTextureTransition::mStateAfter",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mStateAfter = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mStateAfter = arda::EArdaRHIResourceState::Unknown",
       "summary": "The state required after the transition.",
       "details": "The state required after the transition.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5254,14 +5254,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureTransition"
+        "arda::FARDGTextureTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgtexturetransition-mbuavbarrier-ef721ca1",
       "name": "mbUAVBarrier",
-      "qualifiedName": "arda::render_graph::FARDGTextureTransition::mbUAVBarrier",
+      "qualifiedName": "arda::FARDGTextureTransition::mbUAVBarrier",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5275,14 +5275,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureTransition"
+        "arda::FARDGTextureTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgtexturetransition-mbforcebarrier-703493da",
       "name": "mbForceBarrier",
-      "qualifiedName": "arda::render_graph::FARDGTextureTransition::mbForceBarrier",
+      "qualifiedName": "arda::FARDGTextureTransition::mbForceBarrier",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5296,14 +5296,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureTransition"
+        "arda::FARDGTextureTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgbuffertransition-54a8cc83",
       "name": "FARDGBufferTransition",
-      "qualifiedName": "arda::render_graph::FARDGBufferTransition",
+      "qualifiedName": "arda::FARDGBufferTransition",
       "kind": "struct",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5322,7 +5322,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbuffertransition-mbuffer-fa725caf",
       "name": "mBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBufferTransition::mBuffer",
+      "qualifiedName": "arda::FARDGBufferTransition::mBuffer",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5336,18 +5336,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferTransition"
+        "arda::FARDGBufferTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgbuffertransition-mstatebefore-9c6ba463",
       "name": "mStateBefore",
-      "qualifiedName": "arda::render_graph::FARDGBufferTransition::mStateBefore",
+      "qualifiedName": "arda::FARDGBufferTransition::mStateBefore",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mStateBefore = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mStateBefore = arda::EArdaRHIResourceState::Unknown",
       "summary": "The state known before the transition.",
       "details": "The state known before the transition.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5357,18 +5357,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferTransition"
+        "arda::FARDGBufferTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgbuffertransition-mstateafter-51b0cfcd",
       "name": "mStateAfter",
-      "qualifiedName": "arda::render_graph::FARDGBufferTransition::mStateAfter",
+      "qualifiedName": "arda::FARDGBufferTransition::mStateAfter",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mStateAfter = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mStateAfter = arda::EArdaRHIResourceState::Unknown",
       "summary": "The state required after the transition.",
       "details": "The state required after the transition.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5378,14 +5378,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferTransition"
+        "arda::FARDGBufferTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgbuffertransition-mbuavbarrier-8fa73161",
       "name": "mbUAVBarrier",
-      "qualifiedName": "arda::render_graph::FARDGBufferTransition::mbUAVBarrier",
+      "qualifiedName": "arda::FARDGBufferTransition::mbUAVBarrier",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5399,14 +5399,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferTransition"
+        "arda::FARDGBufferTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgbuffertransition-mbforcebarrier-c7f53881",
       "name": "mbForceBarrier",
-      "qualifiedName": "arda::render_graph::FARDGBufferTransition::mbForceBarrier",
+      "qualifiedName": "arda::FARDGBufferTransition::mbForceBarrier",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5420,14 +5420,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferTransition"
+        "arda::FARDGBufferTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgaccelstructtransition-da78b353",
       "name": "FARDGAccelStructTransition",
-      "qualifiedName": "arda::render_graph::FARDGAccelStructTransition",
+      "qualifiedName": "arda::FARDGAccelStructTransition",
       "kind": "struct",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5446,7 +5446,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgaccelstructtransition-maccelstruct-bef8c9f1",
       "name": "mAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGAccelStructTransition::mAccelStruct",
+      "qualifiedName": "arda::FARDGAccelStructTransition::mAccelStruct",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5460,18 +5460,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGAccelStructTransition"
+        "arda::FARDGAccelStructTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgaccelstructtransition-mstatebefore-1ce32b20",
       "name": "mStateBefore",
-      "qualifiedName": "arda::render_graph::FARDGAccelStructTransition::mStateBefore",
+      "qualifiedName": "arda::FARDGAccelStructTransition::mStateBefore",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mStateBefore = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mStateBefore = arda::EArdaRHIResourceState::Unknown",
       "summary": "The state known before the transition.",
       "details": "The state known before the transition.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5481,18 +5481,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGAccelStructTransition"
+        "arda::FARDGAccelStructTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgaccelstructtransition-mstateafter-d0aad754",
       "name": "mStateAfter",
-      "qualifiedName": "arda::render_graph::FARDGAccelStructTransition::mStateAfter",
+      "qualifiedName": "arda::FARDGAccelStructTransition::mStateAfter",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mStateAfter = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mStateAfter = arda::EArdaRHIResourceState::Unknown",
       "summary": "The state required after the transition.",
       "details": "The state required after the transition.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5502,14 +5502,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGAccelStructTransition"
+        "arda::FARDGAccelStructTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgaccelstructtransition-mbforcebarrier-9a066b48",
       "name": "mbForceBarrier",
-      "qualifiedName": "arda::render_graph::FARDGAccelStructTransition::mbForceBarrier",
+      "qualifiedName": "arda::FARDGAccelStructTransition::mbForceBarrier",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5523,14 +5523,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGAccelStructTransition"
+        "arda::FARDGAccelStructTransition"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgrasterbindingsignature-a5a81811",
       "name": "FARDGRasterBindingSignature",
-      "qualifiedName": "arda::render_graph::FARDGRasterBindingSignature",
+      "qualifiedName": "arda::FARDGRasterBindingSignature",
       "kind": "struct",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5549,11 +5549,11 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgrasterbindingsignature-mcolor-25c9f2fd",
       "name": "mColor",
-      "qualifiedName": "arda::render_graph::FARDGRasterBindingSignature::mColor",
+      "qualifiedName": "arda::FARDGRasterBindingSignature::mColor",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "eastl::array<FARDGTextureHandle, rhi::ArdaRHIMaxRenderTargets> mColor",
+      "signature": "eastl::array<FARDGTextureHandle, arda::ArdaRHIMaxRenderTargets> mColor",
       "summary": "Color attachment handles indexed by render-target slot.",
       "details": "Color attachment handles indexed by render-target slot.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5563,18 +5563,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRasterBindingSignature"
+        "arda::FARDGRasterBindingSignature"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgrasterbindingsignature-mcolorsubresources-f572424e",
       "name": "mColorSubresources",
-      "qualifiedName": "arda::render_graph::FARDGRasterBindingSignature::mColorSubresources",
+      "qualifiedName": "arda::FARDGRasterBindingSignature::mColorSubresources",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "eastl::array<rhi::FArdaRHITextureSubresourceRange, rhi::ArdaRHIMaxRenderTargets> mColorSubresources",
+      "signature": "eastl::array<arda::FArdaRHITextureSubresourceRange, arda::ArdaRHIMaxRenderTargets> mColorSubresources",
       "summary": "Color attachment subresources indexed by render-target slot.",
       "details": "Color attachment subresources indexed by render-target slot.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5584,14 +5584,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRasterBindingSignature"
+        "arda::FARDGRasterBindingSignature"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgrasterbindingsignature-mdepthstencil-50605ec8",
       "name": "mDepthStencil",
-      "qualifiedName": "arda::render_graph::FARDGRasterBindingSignature::mDepthStencil",
+      "qualifiedName": "arda::FARDGRasterBindingSignature::mDepthStencil",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5605,18 +5605,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRasterBindingSignature"
+        "arda::FARDGRasterBindingSignature"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgrasterbindingsignature-mdepthstencilsubresources-539bb3bb",
       "name": "mDepthStencilSubresources",
-      "qualifiedName": "arda::render_graph::FARDGRasterBindingSignature::mDepthStencilSubresources",
+      "qualifiedName": "arda::FARDGRasterBindingSignature::mDepthStencilSubresources",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHITextureSubresourceRange mDepthStencilSubresources",
+      "signature": "arda::FArdaRHITextureSubresourceRange mDepthStencilSubresources",
       "summary": "Depth-stencil attachment subresources.",
       "details": "Depth-stencil attachment subresources.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -5626,14 +5626,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRasterBindingSignature"
+        "arda::FARDGRasterBindingSignature"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-73cc4f4e",
       "name": "FARDGPassState",
-      "qualifiedName": "arda::render_graph::FARDGPassState",
+      "qualifiedName": "arda::FARDGPassState",
       "kind": "struct",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5652,7 +5652,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgpassstate-mproducers-fba389ac",
       "name": "mProducers",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mProducers",
+      "qualifiedName": "arda::FARDGPassState::mProducers",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5666,14 +5666,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-mconsumers-a702960f",
       "name": "mConsumers",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mConsumers",
+      "qualifiedName": "arda::FARDGPassState::mConsumers",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5687,14 +5687,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-msynchronizationproducers-b86420ae",
       "name": "mSynchronizationProducers",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mSynchronizationProducers",
+      "qualifiedName": "arda::FARDGPassState::mSynchronizationProducers",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5708,14 +5708,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-msynchronizationconsumers-f56a5bb1",
       "name": "mSynchronizationConsumers",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mSynchronizationConsumers",
+      "qualifiedName": "arda::FARDGPassState::mSynchronizationConsumers",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5729,14 +5729,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-mtexturestates-29682bb8",
       "name": "mTextureStates",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mTextureStates",
+      "qualifiedName": "arda::FARDGPassState::mTextureStates",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5750,14 +5750,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-mbufferstates-61ee258f",
       "name": "mBufferStates",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mBufferStates",
+      "qualifiedName": "arda::FARDGPassState::mBufferStates",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5771,14 +5771,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-maccelstructstates-2abbc8db",
       "name": "mAccelStructStates",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mAccelStructStates",
+      "qualifiedName": "arda::FARDGPassState::mAccelStructStates",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5792,14 +5792,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-muniformbuffers-a05a6c6e",
       "name": "mUniformBuffers",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mUniformBuffers",
+      "qualifiedName": "arda::FARDGPassState::mUniformBuffers",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5813,14 +5813,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-mviews-1a52f9df",
       "name": "mViews",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mViews",
+      "qualifiedName": "arda::FARDGPassState::mViews",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5834,14 +5834,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-mtexturetransitions-49e23faa",
       "name": "mTextureTransitions",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mTextureTransitions",
+      "qualifiedName": "arda::FARDGPassState::mTextureTransitions",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5855,14 +5855,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-mbuffertransitions-ac3531dd",
       "name": "mBufferTransitions",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mBufferTransitions",
+      "qualifiedName": "arda::FARDGPassState::mBufferTransitions",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5876,14 +5876,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-maccelstructtransitions-a71e5944",
       "name": "mAccelStructTransitions",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mAccelStructTransitions",
+      "qualifiedName": "arda::FARDGPassState::mAccelStructTransitions",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5897,14 +5897,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-mpipeline-03b62afd",
       "name": "mPipeline",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mPipeline",
+      "qualifiedName": "arda::FARDGPassState::mPipeline",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5918,14 +5918,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-masyncfork-3c787e2a",
       "name": "mAsyncFork",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mAsyncFork",
+      "qualifiedName": "arda::FARDGPassState::mAsyncFork",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5939,14 +5939,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-masyncjoin-1a6866fc",
       "name": "mAsyncJoin",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mAsyncJoin",
+      "qualifiedName": "arda::FARDGPassState::mAsyncJoin",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5960,14 +5960,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-mrastergroup-50d75543",
       "name": "mRasterGroup",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mRasterGroup",
+      "qualifiedName": "arda::FARDGPassState::mRasterGroup",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -5981,14 +5981,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-mrasterbindings-ed44db21",
       "name": "mRasterBindings",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mRasterBindings",
+      "qualifiedName": "arda::FARDGPassState::mRasterBindings",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -6002,14 +6002,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-mbculled-450df1c3",
       "name": "mbCulled",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mbCulled",
+      "qualifiedName": "arda::FARDGPassState::mbCulled",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -6023,14 +6023,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassstate-mbsentinel-8b443458",
       "name": "mbSentinel",
-      "qualifiedName": "arda::render_graph::FARDGPassState::mbSentinel",
+      "qualifiedName": "arda::FARDGPassState::mbSentinel",
       "kind": "member variable",
       "component": "compilation",
       "page": "api-reference.html",
@@ -6044,14 +6044,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPassState"
+        "arda::FARDGPassState"
       ],
       "audience": "Compiler, tests, and graph-inspection tooling"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-ead56b9c",
       "name": "FARDGPassExecutionContext",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext",
+      "qualifiedName": "arda::FARDGPassExecutionContext",
       "kind": "class",
       "component": "execution",
       "page": "api-reference.html",
@@ -6070,18 +6070,18 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-fardgpassexecutioncontext-fe90828f",
       "name": "FARDGPassExecutionContext",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::FARDGPassExecutionContext",
+      "qualifiedName": "arda::FARDGPassExecutionContext::FARDGPassExecutionContext",
       "kind": "constructor",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "FARDGPassExecutionContext( FARDGBuilder& Graph, FARDGPassHandle Pass, rhi::IArdaRHICommandList& CommandList, EARDGPipeline Pipeline)",
+      "signature": "FARDGPassExecutionContext( FARDGBuilder& Graph, FARDGPassHandle Pass, arda::IArdaRHICommandList& CommandList, EARDGPipeline Pipeline)",
       "summary": "Constructs a context for one pass recording operation.",
       "details": "Constructs a context for one pass recording operation.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
         "FARDGBuilder& Graph",
         "FARDGPassHandle Pass",
-        "rhi::IArdaRHICommandList& CommandList",
+        "arda::IArdaRHICommandList& CommandList",
         "EARDGPipeline Pipeline"
       ],
       "returns": "",
@@ -6089,14 +6089,14 @@ window.ArdaRDGApi = {
       "errors": "Fails an ARDA check unless execution is active and Pass resolves to a live, non-sentinel pass with no other open physical-access gate.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-fardgpassexecutioncontext-2ab22f68",
       "name": "~FARDGPassExecutionContext",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::~FARDGPassExecutionContext",
+      "qualifiedName": "arda::FARDGPassExecutionContext::~FARDGPassExecutionContext",
       "kind": "destructor",
       "component": "execution",
       "page": "api-reference.html",
@@ -6110,14 +6110,14 @@ window.ArdaRDGApi = {
       "errors": "No-fail; closes the active gate when construction opened it.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-fardgpassexecutioncontext-11c0ed39",
       "name": "FARDGPassExecutionContext",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::FARDGPassExecutionContext",
+      "qualifiedName": "arda::FARDGPassExecutionContext::FARDGPassExecutionContext",
       "kind": "constructor",
       "component": "execution",
       "page": "api-reference.html",
@@ -6133,14 +6133,14 @@ window.ArdaRDGApi = {
       "errors": "This operation is deleted and cannot be called.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-operator-1e1f919b",
       "name": "operator=",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::operator=",
+      "qualifiedName": "arda::FARDGPassExecutionContext::operator=",
       "kind": "operator",
       "component": "execution",
       "page": "api-reference.html",
@@ -6156,14 +6156,14 @@ window.ArdaRDGApi = {
       "errors": "This operation is deleted and cannot be called.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-getgraph-2c617380",
       "name": "GetGraph",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetGraph",
+      "qualifiedName": "arda::FARDGPassExecutionContext::GetGraph",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
@@ -6177,14 +6177,14 @@ window.ArdaRDGApi = {
       "errors": "No-fail while the context is alive.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-getpass-fe02b11d",
       "name": "GetPass",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetPass",
+      "qualifiedName": "arda::FARDGPassExecutionContext::GetPass",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
@@ -6198,296 +6198,296 @@ window.ArdaRDGApi = {
       "errors": "No-fail while the context is alive.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-gettexture-835f8625",
       "name": "GetTexture",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetTexture",
+      "qualifiedName": "arda::FARDGPassExecutionContext::GetTexture",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::IArdaRHITexture* GetTexture(FARDGTexture* Texture) const",
+      "signature": "[[nodiscard]] arda::IArdaRHITexture* GetTexture(FARDGTexture* Texture) const",
       "summary": "Returns a declared texture's physical handle during this pass.",
       "details": "Returns a declared texture's physical handle during this pass.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
         "FARDGTexture* Texture"
       ],
-      "returns": "rhi::IArdaRHITexture*",
+      "returns": "arda::IArdaRHITexture*",
       "ownership": "Returns a borrowed raw RHI pointer; the graph/RHI retains the physical resource for the active pass callback.",
       "errors": "Fails an ARDA check when called outside the active pass gate, with null, unavailable, unmaterialized, cross-graph, wrong-kind, or undeclared logical resources or views.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-gettexture-30b95b82",
       "name": "GetTexture",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetTexture",
+      "qualifiedName": "arda::FARDGPassExecutionContext::GetTexture",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::IArdaRHITexture* GetTexture(FARDGTextureSRV* View) const",
+      "signature": "[[nodiscard]] arda::IArdaRHITexture* GetTexture(FARDGTextureSRV* View) const",
       "summary": "Returns a declared texture SRV's parent physical texture.",
       "details": "Returns a declared texture SRV's parent physical texture.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
         "FARDGTextureSRV* View"
       ],
-      "returns": "rhi::IArdaRHITexture*",
+      "returns": "arda::IArdaRHITexture*",
       "ownership": "Returns a borrowed raw RHI pointer; the graph/RHI retains the physical resource for the active pass callback.",
       "errors": "Fails an ARDA check when called outside the active pass gate, with null, unavailable, unmaterialized, cross-graph, wrong-kind, or undeclared logical resources or views.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-gettexture-973ff39b",
       "name": "GetTexture",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetTexture",
+      "qualifiedName": "arda::FARDGPassExecutionContext::GetTexture",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::IArdaRHITexture* GetTexture(FARDGTextureUAV* View) const",
+      "signature": "[[nodiscard]] arda::IArdaRHITexture* GetTexture(FARDGTextureUAV* View) const",
       "summary": "Returns a declared texture UAV's parent physical texture.",
       "details": "Returns a declared texture UAV's parent physical texture.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
         "FARDGTextureUAV* View"
       ],
-      "returns": "rhi::IArdaRHITexture*",
+      "returns": "arda::IArdaRHITexture*",
       "ownership": "Returns a borrowed raw RHI pointer; the graph/RHI retains the physical resource for the active pass callback.",
       "errors": "Fails an ARDA check when called outside the active pass gate, with null, unavailable, unmaterialized, cross-graph, wrong-kind, or undeclared logical resources or views.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-getbuffer-7bf14520",
       "name": "GetBuffer",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetBuffer",
+      "qualifiedName": "arda::FARDGPassExecutionContext::GetBuffer",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::IArdaRHIBuffer* GetBuffer(FARDGBuffer* Buffer) const",
+      "signature": "[[nodiscard]] arda::IArdaRHIBuffer* GetBuffer(FARDGBuffer* Buffer) const",
       "summary": "Returns a declared buffer's physical handle during this pass.",
       "details": "Returns a declared buffer's physical handle during this pass.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
         "FARDGBuffer* Buffer"
       ],
-      "returns": "rhi::IArdaRHIBuffer*",
+      "returns": "arda::IArdaRHIBuffer*",
       "ownership": "Returns a borrowed raw RHI pointer; the graph/RHI retains the physical resource for the active pass callback.",
       "errors": "Fails an ARDA check when called outside the active pass gate, with null, unavailable, unmaterialized, cross-graph, wrong-kind, or undeclared logical resources or views.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-getbuffer-0ad47cf3",
       "name": "GetBuffer",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetBuffer",
+      "qualifiedName": "arda::FARDGPassExecutionContext::GetBuffer",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::IArdaRHIBuffer* GetBuffer(FARDGBufferSRV* View) const",
+      "signature": "[[nodiscard]] arda::IArdaRHIBuffer* GetBuffer(FARDGBufferSRV* View) const",
       "summary": "Returns a declared buffer SRV's parent physical buffer.",
       "details": "Returns a declared buffer SRV's parent physical buffer.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
         "FARDGBufferSRV* View"
       ],
-      "returns": "rhi::IArdaRHIBuffer*",
+      "returns": "arda::IArdaRHIBuffer*",
       "ownership": "Returns a borrowed raw RHI pointer; the graph/RHI retains the physical resource for the active pass callback.",
       "errors": "Fails an ARDA check when called outside the active pass gate, with null, unavailable, unmaterialized, cross-graph, wrong-kind, or undeclared logical resources or views.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-getbuffer-b4a2be6c",
       "name": "GetBuffer",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetBuffer",
+      "qualifiedName": "arda::FARDGPassExecutionContext::GetBuffer",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::IArdaRHIBuffer* GetBuffer(FARDGBufferUAV* View) const",
+      "signature": "[[nodiscard]] arda::IArdaRHIBuffer* GetBuffer(FARDGBufferUAV* View) const",
       "summary": "Returns a declared buffer UAV's parent physical buffer.",
       "details": "Returns a declared buffer UAV's parent physical buffer.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
         "FARDGBufferUAV* View"
       ],
-      "returns": "rhi::IArdaRHIBuffer*",
+      "returns": "arda::IArdaRHIBuffer*",
       "ownership": "Returns a borrowed raw RHI pointer; the graph/RHI retains the physical resource for the active pass callback.",
       "errors": "Fails an ARDA check when called outside the active pass gate, with null, unavailable, unmaterialized, cross-graph, wrong-kind, or undeclared logical resources or views.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-getuniformbuffer-6404d52b",
       "name": "GetUniformBuffer",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetUniformBuffer",
+      "qualifiedName": "arda::FARDGPassExecutionContext::GetUniformBuffer",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::IArdaRHIBuffer* GetUniformBuffer( FARDGUniformBuffer* UniformBuffer) const",
+      "signature": "[[nodiscard]] arda::IArdaRHIBuffer* GetUniformBuffer( FARDGUniformBuffer* UniformBuffer) const",
       "summary": "Returns a declared uniform buffer's physical constant buffer.",
       "details": "Returns a declared uniform buffer's physical constant buffer.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
         "FARDGUniformBuffer* UniformBuffer"
       ],
-      "returns": "rhi::IArdaRHIBuffer*",
+      "returns": "arda::IArdaRHIBuffer*",
       "ownership": "Returns a borrowed raw RHI pointer; the graph/RHI retains the physical resource for the active pass callback.",
       "errors": "Fails an ARDA check when called outside the active pass gate, with null, unavailable, unmaterialized, cross-graph, wrong-kind, or undeclared logical resources or views.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-getaccelstruct-63040d05",
       "name": "GetAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetAccelStruct",
+      "qualifiedName": "arda::FARDGPassExecutionContext::GetAccelStruct",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::IArdaRHIAccelStruct* GetAccelStruct( FARDGAccelStruct* AccelStruct) const",
+      "signature": "[[nodiscard]] arda::IArdaRHIAccelStruct* GetAccelStruct( FARDGAccelStruct* AccelStruct) const",
       "summary": "Returns a declared acceleration structure's physical handle.",
       "details": "Returns a declared acceleration structure's physical handle.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
         "FARDGAccelStruct* AccelStruct"
       ],
-      "returns": "rhi::IArdaRHIAccelStruct*",
+      "returns": "arda::IArdaRHIAccelStruct*",
       "ownership": "Returns a borrowed raw RHI pointer; the graph/RHI retains the physical resource for the active pass callback.",
       "errors": "Fails an ARDA check when called outside the active pass gate, with null, unavailable, unmaterialized, cross-graph, wrong-kind, or undeclared logical resources or views.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-createbindingset-e84c9508",
       "name": "CreateBindingSet",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::CreateBindingSet",
+      "qualifiedName": "arda::FARDGPassExecutionContext::CreateBindingSet",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSet( rhi::IArdaRHIBindingLayout* BindingLayout) const",
+      "signature": "[[nodiscard]] arda::FArdaRHIBindingSetRef CreateBindingSet( arda::IArdaRHIBindingLayout* BindingLayout) const",
       "summary": "Creates an RHI binding set from this pass's parameter descriptors.",
       "details": "Creates an RHI binding set from this pass's parameter descriptors. Shader-resource, unordered-access, and uniform-buffer parameters are matched to the supplied layout by register class and declaration order. Direct access and render-target parameters are intentionally not bindings.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
-        "rhi::IArdaRHIBindingLayout* BindingLayout"
+        "arda::IArdaRHIBindingLayout* BindingLayout"
       ],
-      "returns": "rhi::FArdaRHIBindingSetRef",
+      "returns": "arda::FArdaRHIBindingSetRef",
       "ownership": "Returns retained RHI binding-set reference(s); source graph resources remain graph/RHI-owned.",
       "errors": "Fails ARDA checks for an inactive pass, missing device or pass metadata, null or non-generated layouts, invalid shader metadata or layout index, incompatible or incomplete parameter bindings, or RHI binding-set creation failure.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-createbindingset-dc7ccbde",
       "name": "CreateBindingSet",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::CreateBindingSet",
+      "qualifiedName": "arda::FARDGPassExecutionContext::CreateBindingSet",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSet( const backend::FArdaShaderParameterMetadata& ShaderParameters, rhi::IArdaRHIBindingLayout* BindingLayout) const",
+      "signature": "[[nodiscard]] arda::FArdaRHIBindingSetRef CreateBindingSet( const arda::FArdaShaderParameterMetadata& ShaderParameters, arda::IArdaRHIBindingLayout* BindingLayout) const",
       "summary": "Validates a generated shader layout, then resolves the active ARDG pass parameters through the existing graph reflection subsystem.",
       "details": "Validates a generated shader layout, then resolves the active ARDG pass parameters through the existing graph reflection subsystem.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
-        "const backend::FArdaShaderParameterMetadata& ShaderParameters",
-        "rhi::IArdaRHIBindingLayout* BindingLayout"
+        "const arda::FArdaShaderParameterMetadata& ShaderParameters",
+        "arda::IArdaRHIBindingLayout* BindingLayout"
       ],
-      "returns": "rhi::FArdaRHIBindingSetRef",
+      "returns": "arda::FArdaRHIBindingSetRef",
       "ownership": "Returns retained RHI binding-set reference(s); source graph resources remain graph/RHI-owned.",
       "errors": "Fails ARDA checks for an inactive pass, missing device or pass metadata, null or non-generated layouts, invalid shader metadata or layout index, incompatible or incomplete parameter bindings, or RHI binding-set creation failure.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-createbindingset-92f0ea6b",
       "name": "CreateBindingSet",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::CreateBindingSet",
+      "qualifiedName": "arda::FARDGPassExecutionContext::CreateBindingSet",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSet( const backend::FArdaGlobalShaderInstance& Shader, size_t LayoutIndex = 0) const",
+      "signature": "[[nodiscard]] arda::FArdaRHIBindingSetRef CreateBindingSet( const arda::FArdaGlobalShaderInstance& Shader, size_t LayoutIndex = 0) const",
       "summary": "Creates pass bindings for a registered shader's generated layout.",
       "details": "Creates pass bindings for a registered shader's generated layout.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
-        "const backend::FArdaGlobalShaderInstance& Shader",
+        "const arda::FArdaGlobalShaderInstance& Shader",
         "size_t LayoutIndex = 0"
       ],
-      "returns": "rhi::FArdaRHIBindingSetRef",
+      "returns": "arda::FArdaRHIBindingSetRef",
       "ownership": "Returns retained RHI binding-set reference(s); source graph resources remain graph/RHI-owned.",
       "errors": "Fails ARDA checks for an inactive pass, missing device or pass metadata, null or non-generated layouts, invalid shader metadata or layout index, incompatible or incomplete parameter bindings, or RHI binding-set creation failure.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-createbindingsets-28ccb2b7",
       "name": "CreateBindingSets",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::CreateBindingSets",
+      "qualifiedName": "arda::FARDGPassExecutionContext::CreateBindingSets",
       "kind": "method",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] eastl::vector<rhi::FArdaRHIBindingSetRef> CreateBindingSets( const backend::FArdaGlobalShaderInstance& Shader) const",
+      "signature": "[[nodiscard]] eastl::vector<arda::FArdaRHIBindingSetRef> CreateBindingSets( const arda::FArdaGlobalShaderInstance& Shader) const",
       "summary": "Creates every generated binding set for a registered shader in layout order.",
       "details": "Creates every generated binding set for a registered shader in layout order.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
       "params": [
-        "const backend::FArdaGlobalShaderInstance& Shader"
+        "const arda::FArdaGlobalShaderInstance& Shader"
       ],
-      "returns": "eastl::vector<rhi::FArdaRHIBindingSetRef>",
+      "returns": "eastl::vector<arda::FArdaRHIBindingSetRef>",
       "ownership": "Returns retained RHI binding-set reference(s); source graph resources remain graph/RHI-owned.",
       "errors": "Fails ARDA checks for an inactive pass, missing device or pass metadata, null or non-generated layouts, invalid shader metadata or layout index, incompatible or incomplete parameter bindings, or RHI binding-set creation failure.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-munsaferawcommandlist-7e7a9512",
       "name": "mUnsafeRawCommandList",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::mUnsafeRawCommandList",
+      "qualifiedName": "arda::FARDGPassExecutionContext::mUnsafeRawCommandList",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "rhi::IArdaRHICommandList& mUnsafeRawCommandList",
+      "signature": "arda::IArdaRHICommandList& mUnsafeRawCommandList",
       "summary": "The command list currently recording the pass.",
       "details": "Raw command-list access bypasses validation that physical resources were declared in pass parameters.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -6497,18 +6497,18 @@ window.ArdaRDGApi = {
       "errors": "Raw command-list use bypasses ARDG declaration validation; independently retained resource access cannot be proven by the graph.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-mcommandlist-e83cccac",
       "name": "mCommandList",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::mCommandList",
+      "qualifiedName": "arda::FARDGPassExecutionContext::mCommandList",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
-      "signature": "[[deprecated(\"Use mUnsafeRawCommandList only for operations that cannot use validated context getters.\")]] rhi::IArdaRHICommandList& mCommandList",
+      "signature": "[[deprecated(\"Use mUnsafeRawCommandList only for operations that cannot use validated context getters.\")]] arda::IArdaRHICommandList& mCommandList",
       "summary": "Compatibility alias; raw command-list use bypasses declaration validation.",
       "details": "Deprecated compatibility alias for mUnsafeRawCommandList; raw access bypasses declaration validation.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -6520,14 +6520,14 @@ window.ArdaRDGApi = {
       "errors": "Raw command-list use bypasses ARDG declaration validation; independently retained resource access cannot be proven by the graph.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutioncontext-mpipeline-38c1d613",
       "name": "mPipeline",
-      "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::mPipeline",
+      "qualifiedName": "arda::FARDGPassExecutionContext::mPipeline",
       "kind": "member variable",
       "component": "execution",
       "page": "api-reference.html",
@@ -6541,14 +6541,14 @@ window.ArdaRDGApi = {
       "errors": "No-fail; valid only for the active pass callback.",
       "threading": "Use only on the worker recording this pass. Parallel recording is supported for different passes; one active context is permitted per pass.",
       "related": [
-        "arda::render_graph::FARDGPassExecutionContext"
+        "arda::FARDGPassExecutionContext"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpassexecutefunction-350c52b4",
       "name": "FARDGPassExecuteFunction",
-      "qualifiedName": "arda::render_graph::FARDGPassExecuteFunction",
+      "qualifiedName": "arda::FARDGPassExecuteFunction",
       "kind": "alias",
       "component": "execution",
       "page": "api-reference.html",
@@ -6569,7 +6569,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgpass-56e8fe06",
       "name": "FARDGPass",
-      "qualifiedName": "arda::render_graph::FARDGPass",
+      "qualifiedName": "arda::FARDGPass",
       "kind": "class",
       "component": "passes",
       "page": "api-reference.html",
@@ -6588,7 +6588,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgpass-fardgpass-107785f5",
       "name": "FARDGPass",
-      "qualifiedName": "arda::render_graph::FARDGPass::FARDGPass",
+      "qualifiedName": "arda::FARDGPass::FARDGPass",
       "kind": "constructor",
       "component": "passes",
       "page": "api-reference.html",
@@ -6608,14 +6608,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-fardgpass-01d4d78c",
       "name": "~FARDGPass",
-      "qualifiedName": "arda::render_graph::FARDGPass::~FARDGPass",
+      "qualifiedName": "arda::FARDGPass::~FARDGPass",
       "kind": "destructor",
       "component": "passes",
       "page": "api-reference.html",
@@ -6629,14 +6629,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-gethandle-3893f188",
       "name": "GetHandle",
-      "qualifiedName": "arda::render_graph::FARDGPass::GetHandle",
+      "qualifiedName": "arda::FARDGPass::GetHandle",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6650,14 +6650,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-getname-a8514721",
       "name": "GetName",
-      "qualifiedName": "arda::render_graph::FARDGPass::GetName",
+      "qualifiedName": "arda::FARDGPass::GetName",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6671,14 +6671,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-getflags-70ee2460",
       "name": "GetFlags",
-      "qualifiedName": "arda::render_graph::FARDGPass::GetFlags",
+      "qualifiedName": "arda::FARDGPass::GetFlags",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6692,14 +6692,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-getparameters-93a3b34d",
       "name": "GetParameters",
-      "qualifiedName": "arda::render_graph::FARDGPass::GetParameters",
+      "qualifiedName": "arda::FARDGPass::GetParameters",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6713,14 +6713,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-getparametermetadata-7a145730",
       "name": "GetParameterMetadata",
-      "qualifiedName": "arda::render_graph::FARDGPass::GetParameterMetadata",
+      "qualifiedName": "arda::FARDGPass::GetParameterMetadata",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6734,14 +6734,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-getstate-65a62ea9",
       "name": "GetState",
-      "qualifiedName": "arda::render_graph::FARDGPass::GetState",
+      "qualifiedName": "arda::FARDGPass::GetState",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6755,14 +6755,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-getstate-44e05f6a",
       "name": "GetState",
-      "qualifiedName": "arda::render_graph::FARDGPass::GetState",
+      "qualifiedName": "arda::FARDGPass::GetState",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6776,14 +6776,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-addproducer-78c1002f",
       "name": "AddProducer",
-      "qualifiedName": "arda::render_graph::FARDGPass::AddProducer",
+      "qualifiedName": "arda::FARDGPass::AddProducer",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6799,14 +6799,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-addconsumer-fc75e722",
       "name": "AddConsumer",
-      "qualifiedName": "arda::render_graph::FARDGPass::AddConsumer",
+      "qualifiedName": "arda::FARDGPass::AddConsumer",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6822,14 +6822,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-addsynchronizationproducer-b619d2f5",
       "name": "AddSynchronizationProducer",
-      "qualifiedName": "arda::render_graph::FARDGPass::AddSynchronizationProducer",
+      "qualifiedName": "arda::FARDGPass::AddSynchronizationProducer",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6845,14 +6845,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-addsynchronizationconsumer-b77512ac",
       "name": "AddSynchronizationConsumer",
-      "qualifiedName": "arda::render_graph::FARDGPass::AddSynchronizationConsumer",
+      "qualifiedName": "arda::FARDGPass::AddSynchronizationConsumer",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6868,14 +6868,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-execute-e97f5f4e",
       "name": "Execute",
-      "qualifiedName": "arda::render_graph::FARDGPass::Execute",
+      "qualifiedName": "arda::FARDGPass::Execute",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6891,14 +6891,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-addtexturestate-b37c8739",
       "name": "AddTextureState",
-      "qualifiedName": "arda::render_graph::FARDGPass::AddTextureState",
+      "qualifiedName": "arda::FARDGPass::AddTextureState",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6914,14 +6914,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-addbufferstate-969d3972",
       "name": "AddBufferState",
-      "qualifiedName": "arda::render_graph::FARDGPass::AddBufferState",
+      "qualifiedName": "arda::FARDGPass::AddBufferState",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6937,14 +6937,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgpass-addaccelstructstate-2d9bdb7c",
       "name": "AddAccelStructState",
-      "qualifiedName": "arda::render_graph::FARDGPass::AddAccelStructState",
+      "qualifiedName": "arda::FARDGPass::AddAccelStructState",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -6960,14 +6960,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGPass"
+        "arda::FARDGPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardglambdapass-9d91e54f",
       "name": "FARDGLambdaPass",
-      "qualifiedName": "arda::render_graph::FARDGLambdaPass",
+      "qualifiedName": "arda::FARDGLambdaPass",
       "kind": "class",
       "component": "passes",
       "page": "api-reference.html",
@@ -6986,7 +6986,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardglambdapass-fardglambdapass-964a6f36",
       "name": "FARDGLambdaPass",
-      "qualifiedName": "arda::render_graph::FARDGLambdaPass::FARDGLambdaPass",
+      "qualifiedName": "arda::FARDGLambdaPass::FARDGLambdaPass",
       "kind": "constructor",
       "component": "passes",
       "page": "api-reference.html",
@@ -7007,14 +7007,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGLambdaPass"
+        "arda::FARDGLambdaPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardglambdapass-execute-baf2319f",
       "name": "Execute",
-      "qualifiedName": "arda::render_graph::FARDGLambdaPass::Execute",
+      "qualifiedName": "arda::FARDGLambdaPass::Execute",
       "kind": "method",
       "component": "passes",
       "page": "api-reference.html",
@@ -7030,14 +7030,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGLambdaPass"
+        "arda::FARDGLambdaPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgsentinelpass-0581d987",
       "name": "FARDGSentinelPass",
-      "qualifiedName": "arda::render_graph::FARDGSentinelPass",
+      "qualifiedName": "arda::FARDGSentinelPass",
       "kind": "class",
       "component": "passes",
       "page": "api-reference.html",
@@ -7056,7 +7056,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgsentinelpass-fardgsentinelpass-0cdd835d",
       "name": "FARDGSentinelPass",
-      "qualifiedName": "arda::render_graph::FARDGSentinelPass::FARDGSentinelPass",
+      "qualifiedName": "arda::FARDGSentinelPass::FARDGSentinelPass",
       "kind": "constructor",
       "component": "passes",
       "page": "api-reference.html",
@@ -7073,14 +7073,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGSentinelPass"
+        "arda::FARDGSentinelPass"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgresource-a8162106",
       "name": "FARDGResource",
-      "qualifiedName": "arda::render_graph::FARDGResource",
+      "qualifiedName": "arda::FARDGResource",
       "kind": "class",
       "component": "resources",
       "page": "api-reference.html",
@@ -7099,7 +7099,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgresource-fardgresource-2e5b1074",
       "name": "FARDGResource",
-      "qualifiedName": "arda::render_graph::FARDGResource::FARDGResource",
+      "qualifiedName": "arda::FARDGResource::FARDGResource",
       "kind": "constructor",
       "component": "resources",
       "page": "api-reference.html",
@@ -7116,14 +7116,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGResource"
+        "arda::FARDGResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgresource-fardgresource-1e4ee220",
       "name": "~FARDGResource",
-      "qualifiedName": "arda::render_graph::FARDGResource::~FARDGResource",
+      "qualifiedName": "arda::FARDGResource::~FARDGResource",
       "kind": "destructor",
       "component": "resources",
       "page": "api-reference.html",
@@ -7137,14 +7137,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGResource"
+        "arda::FARDGResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgresource-getname-9eca95aa",
       "name": "GetName",
-      "qualifiedName": "arda::render_graph::FARDGResource::GetName",
+      "qualifiedName": "arda::FARDGResource::GetName",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7158,14 +7158,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGResource"
+        "arda::FARDGResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgresource-gettype-26573e8c",
       "name": "GetType",
-      "qualifiedName": "arda::render_graph::FARDGResource::GetType",
+      "qualifiedName": "arda::FARDGResource::GetType",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7179,14 +7179,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGResource"
+        "arda::FARDGResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-438d45d5",
       "name": "FARDGViewableResource",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource",
+      "qualifiedName": "arda::FARDGViewableResource",
       "kind": "class",
       "component": "resources",
       "page": "api-reference.html",
@@ -7205,18 +7205,18 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgviewableresource-fardgviewableresource-e5b274e2",
       "name": "FARDGViewableResource",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::FARDGViewableResource",
+      "qualifiedName": "arda::FARDGViewableResource::FARDGViewableResource",
       "kind": "constructor",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "FARDGViewableResource(eastl::string Name, EARDGResourceType Type, rhi::EArdaRHIResourceState InitialState, EARDGResourceFlags Flags)",
+      "signature": "FARDGViewableResource(eastl::string Name, EARDGResourceType Type, arda::EArdaRHIResourceState InitialState, EARDGResourceFlags Flags)",
       "summary": "Constructs a viewable logical resource.",
       "details": "Constructs a viewable logical resource.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [
         "eastl::string Name",
         "EARDGResourceType Type",
-        "rhi::EArdaRHIResourceState InitialState",
+        "arda::EArdaRHIResourceState InitialState",
         "EARDGResourceFlags Flags"
       ],
       "returns": "",
@@ -7224,79 +7224,79 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-getinitialstate-2d7613ab",
       "name": "GetInitialState",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::GetInitialState",
+      "qualifiedName": "arda::FARDGViewableResource::GetInitialState",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::EArdaRHIResourceState GetInitialState() const noexcept",
+      "signature": "[[nodiscard]] arda::EArdaRHIResourceState GetInitialState() const noexcept",
       "summary": "Returns the known RHI state on graph entry.",
       "details": "Returns the known RHI state on graph entry.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [],
-      "returns": "rhi::EArdaRHIResourceState",
+      "returns": "arda::EArdaRHIResourceState",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-getfinalstate-b38bc05c",
       "name": "GetFinalState",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::GetFinalState",
+      "qualifiedName": "arda::FARDGViewableResource::GetFinalState",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] rhi::EArdaRHIResourceState GetFinalState() const noexcept",
+      "signature": "[[nodiscard]] arda::EArdaRHIResourceState GetFinalState() const noexcept",
       "summary": "Returns the requested RHI state on graph exit.",
       "details": "Returns the requested RHI state on graph exit.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [],
-      "returns": "rhi::EArdaRHIResourceState",
+      "returns": "arda::EArdaRHIResourceState",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-setfinalstate-ea416807",
       "name": "SetFinalState",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::SetFinalState",
+      "qualifiedName": "arda::FARDGViewableResource::SetFinalState",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "void SetFinalState(rhi::EArdaRHIResourceState FinalState) noexcept",
+      "signature": "void SetFinalState(arda::EArdaRHIResourceState FinalState) noexcept",
       "summary": "Sets the requested RHI state on graph exit.",
       "details": "Sets the requested RHI state on graph exit.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [
-        "rhi::EArdaRHIResourceState FinalState"
+        "arda::EArdaRHIResourceState FinalState"
       ],
       "returns": "void",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-getflags-2191c441",
       "name": "GetFlags",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::GetFlags",
+      "qualifiedName": "arda::FARDGViewableResource::GetFlags",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7310,14 +7310,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-isexternal-fa1effd3",
       "name": "IsExternal",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::IsExternal",
+      "qualifiedName": "arda::FARDGViewableResource::IsExternal",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7331,14 +7331,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-isextracted-6d457e97",
       "name": "IsExtracted",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::IsExtracted",
+      "qualifiedName": "arda::FARDGViewableResource::IsExtracted",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7352,14 +7352,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-addflags-81b71667",
       "name": "AddFlags",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::AddFlags",
+      "qualifiedName": "arda::FARDGViewableResource::AddFlags",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7375,14 +7375,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-getlastproducer-8dd269eb",
       "name": "GetLastProducer",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::GetLastProducer",
+      "qualifiedName": "arda::FARDGViewableResource::GetLastProducer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7396,14 +7396,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-setlastproducer-c5173fc9",
       "name": "SetLastProducer",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::SetLastProducer",
+      "qualifiedName": "arda::FARDGViewableResource::SetLastProducer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7419,14 +7419,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-getreaders-731dafc8",
       "name": "GetReaders",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::GetReaders",
+      "qualifiedName": "arda::FARDGViewableResource::GetReaders",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7440,14 +7440,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-addreader-40976131",
       "name": "AddReader",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::AddReader",
+      "qualifiedName": "arda::FARDGViewableResource::AddReader",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7463,14 +7463,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-clearreaders-392d482b",
       "name": "ClearReaders",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::ClearReaders",
+      "qualifiedName": "arda::FARDGViewableResource::ClearReaders",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7484,14 +7484,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-markused-fcef11f9",
       "name": "MarkUsed",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::MarkUsed",
+      "qualifiedName": "arda::FARDGViewableResource::MarkUsed",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7507,14 +7507,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-getfirstuse-69b8c175",
       "name": "GetFirstUse",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::GetFirstUse",
+      "qualifiedName": "arda::FARDGViewableResource::GetFirstUse",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7528,14 +7528,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-getlastuse-ac92c851",
       "name": "GetLastUse",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::GetLastUse",
+      "qualifiedName": "arda::FARDGViewableResource::GetLastUse",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7549,14 +7549,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgviewableresource-resetusage-f56466bf",
       "name": "ResetUsage",
-      "qualifiedName": "arda::render_graph::FARDGViewableResource::ResetUsage",
+      "qualifiedName": "arda::FARDGViewableResource::ResetUsage",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7570,14 +7570,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGViewableResource"
+        "arda::FARDGViewableResource"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtexture-cf497813",
       "name": "FARDGTexture",
-      "qualifiedName": "arda::render_graph::FARDGTexture",
+      "qualifiedName": "arda::FARDGTexture",
       "kind": "class",
       "component": "resources",
       "page": "api-reference.html",
@@ -7596,33 +7596,33 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtexture-fardgtexture-3d3d78c3",
       "name": "FARDGTexture",
-      "qualifiedName": "arda::render_graph::FARDGTexture::FARDGTexture",
+      "qualifiedName": "arda::FARDGTexture::FARDGTexture",
       "kind": "constructor",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "FARDGTexture(FARDGTextureHandle Handle, rhi::FArdaRHITextureDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::Transient, rhi::FArdaRHITextureRef Texture = nullptr)",
+      "signature": "FARDGTexture(FARDGTextureHandle Handle, arda::FArdaRHITextureDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::Transient, arda::FArdaRHITextureRef Texture = nullptr)",
       "summary": "Constructs a logical texture.",
       "details": "Constructs a logical texture.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [
         "FARDGTextureHandle Handle",
-        "rhi::FArdaRHITextureDesc Desc",
+        "arda::FArdaRHITextureDesc Desc",
         "EARDGResourceFlags Flags = EARDGResourceFlags::Transient",
-        "rhi::FArdaRHITextureRef Texture = nullptr"
+        "arda::FArdaRHITextureRef Texture = nullptr"
       ],
       "returns": "",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTexture"
+        "arda::FARDGTexture"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtexture-gethandle-d9917435",
       "name": "GetHandle",
-      "qualifiedName": "arda::render_graph::FARDGTexture::GetHandle",
+      "qualifiedName": "arda::FARDGTexture::GetHandle",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7636,79 +7636,79 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTexture"
+        "arda::FARDGTexture"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtexture-getdesc-bf3b590f",
       "name": "GetDesc",
-      "qualifiedName": "arda::render_graph::FARDGTexture::GetDesc",
+      "qualifiedName": "arda::FARDGTexture::GetDesc",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] const rhi::FArdaRHITextureDesc& GetDesc() const noexcept",
+      "signature": "[[nodiscard]] const arda::FArdaRHITextureDesc& GetDesc() const noexcept",
       "summary": "Returns the RHI descriptor used to allocate or validate the texture.",
       "details": "Returns the RHI descriptor used to allocate or validate the texture.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [],
-      "returns": "const rhi::FArdaRHITextureDesc&",
+      "returns": "const arda::FArdaRHITextureDesc&",
       "ownership": "Returns a non-owning reference into graph-owned storage.",
       "errors": "Returns the RHI descriptor used to allocate or validate the texture.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTexture"
+        "arda::FARDGTexture"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtexture-gettexture-412b0263",
       "name": "GetTexture",
-      "qualifiedName": "arda::render_graph::FARDGTexture::GetTexture",
+      "qualifiedName": "arda::FARDGTexture::GetTexture",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] const rhi::FArdaRHITextureRef& GetTexture() const noexcept",
+      "signature": "[[nodiscard]] const arda::FArdaRHITextureRef& GetTexture() const noexcept",
       "summary": "Returns the physical texture, or an empty handle before materialization.",
       "details": "Returns the physical texture, or an empty handle before materialization. Pass code should use FARDGPassExecutionContext::GetTexture so the graph can validate that the resource was declared.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [],
-      "returns": "const rhi::FArdaRHITextureRef&",
+      "returns": "const arda::FArdaRHITextureRef&",
       "ownership": "",
       "errors": "Returns the physical texture, or an empty handle before materialization. Pass code should use FARDGPassExecutionContext::GetTexture so the graph can validate that the resource was declared.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTexture"
+        "arda::FARDGTexture"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtexture-bindtexture-8576db36",
       "name": "BindTexture",
-      "qualifiedName": "arda::render_graph::FARDGTexture::BindTexture",
+      "qualifiedName": "arda::FARDGTexture::BindTexture",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "void BindTexture(rhi::FArdaRHITextureRef Texture) noexcept",
+      "signature": "void BindTexture(arda::FArdaRHITextureRef Texture) noexcept",
       "summary": "Binds a materialized or imported RHI texture to this logical record.",
       "details": "Binds a materialized or imported RHI texture to this logical record.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [
-        "rhi::FArdaRHITextureRef Texture"
+        "arda::FArdaRHITextureRef Texture"
       ],
       "returns": "void",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTexture"
+        "arda::FARDGTexture"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuffer-1b6b47fe",
       "name": "FARDGBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuffer",
+      "qualifiedName": "arda::FARDGBuffer",
       "kind": "class",
       "component": "resources",
       "page": "api-reference.html",
@@ -7727,33 +7727,33 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbuffer-fardgbuffer-822393a3",
       "name": "FARDGBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuffer::FARDGBuffer",
+      "qualifiedName": "arda::FARDGBuffer::FARDGBuffer",
       "kind": "constructor",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "FARDGBuffer(FARDGBufferHandle Handle, rhi::FArdaRHIBufferDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::Transient, rhi::FArdaRHIBufferRef Buffer = nullptr)",
+      "signature": "FARDGBuffer(FARDGBufferHandle Handle, arda::FArdaRHIBufferDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::Transient, arda::FArdaRHIBufferRef Buffer = nullptr)",
       "summary": "Constructs a logical buffer.",
       "details": "Constructs a logical buffer.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [
         "FARDGBufferHandle Handle",
-        "rhi::FArdaRHIBufferDesc Desc",
+        "arda::FArdaRHIBufferDesc Desc",
         "EARDGResourceFlags Flags = EARDGResourceFlags::Transient",
-        "rhi::FArdaRHIBufferRef Buffer = nullptr"
+        "arda::FArdaRHIBufferRef Buffer = nullptr"
       ],
       "returns": "",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuffer"
+        "arda::FARDGBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuffer-gethandle-d2a217ba",
       "name": "GetHandle",
-      "qualifiedName": "arda::render_graph::FARDGBuffer::GetHandle",
+      "qualifiedName": "arda::FARDGBuffer::GetHandle",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7767,79 +7767,79 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuffer"
+        "arda::FARDGBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuffer-getdesc-2157d92c",
       "name": "GetDesc",
-      "qualifiedName": "arda::render_graph::FARDGBuffer::GetDesc",
+      "qualifiedName": "arda::FARDGBuffer::GetDesc",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] const rhi::FArdaRHIBufferDesc& GetDesc() const noexcept",
+      "signature": "[[nodiscard]] const arda::FArdaRHIBufferDesc& GetDesc() const noexcept",
       "summary": "Returns the RHI descriptor used to allocate or validate the buffer.",
       "details": "Returns the RHI descriptor used to allocate or validate the buffer.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [],
-      "returns": "const rhi::FArdaRHIBufferDesc&",
+      "returns": "const arda::FArdaRHIBufferDesc&",
       "ownership": "Returns a non-owning reference into graph-owned storage.",
       "errors": "Returns the RHI descriptor used to allocate or validate the buffer.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuffer"
+        "arda::FARDGBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuffer-getbuffer-a14c1d0e",
       "name": "GetBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuffer::GetBuffer",
+      "qualifiedName": "arda::FARDGBuffer::GetBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] const rhi::FArdaRHIBufferRef& GetBuffer() const noexcept",
+      "signature": "[[nodiscard]] const arda::FArdaRHIBufferRef& GetBuffer() const noexcept",
       "summary": "Returns the physical buffer, or an empty handle before materialization.",
       "details": "Returns the physical buffer, or an empty handle before materialization. Pass code should use FARDGPassExecutionContext::GetBuffer so the graph can validate that the resource was declared.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [],
-      "returns": "const rhi::FArdaRHIBufferRef&",
+      "returns": "const arda::FArdaRHIBufferRef&",
       "ownership": "",
       "errors": "Returns the physical buffer, or an empty handle before materialization. Pass code should use FARDGPassExecutionContext::GetBuffer so the graph can validate that the resource was declared.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuffer"
+        "arda::FARDGBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuffer-bindbuffer-b6d5b878",
       "name": "BindBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBuffer::BindBuffer",
+      "qualifiedName": "arda::FARDGBuffer::BindBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "void BindBuffer(rhi::FArdaRHIBufferRef Buffer) noexcept",
+      "signature": "void BindBuffer(arda::FArdaRHIBufferRef Buffer) noexcept",
       "summary": "Binds a materialized or imported RHI buffer to this logical record.",
       "details": "Binds a materialized or imported RHI buffer to this logical record.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [
-        "rhi::FArdaRHIBufferRef Buffer"
+        "arda::FArdaRHIBufferRef Buffer"
       ],
       "returns": "void",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBuffer"
+        "arda::FARDGBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgaccelstruct-d3221204",
       "name": "FARDGAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGAccelStruct",
+      "qualifiedName": "arda::FARDGAccelStruct",
       "kind": "class",
       "component": "resources",
       "page": "api-reference.html",
@@ -7858,34 +7858,34 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgaccelstruct-fardgaccelstruct-c22fb5d3",
       "name": "FARDGAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGAccelStruct::FARDGAccelStruct",
+      "qualifiedName": "arda::FARDGAccelStruct::FARDGAccelStruct",
       "kind": "constructor",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "FARDGAccelStruct(FARDGAccelStructHandle Handle, rhi::FArdaRHIAccelStructDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::None, rhi::FArdaRHIAccelStructRef AccelStruct = nullptr, rhi::EArdaRHIResourceState InitialState = rhi::EArdaRHIResourceState::AccelStructWrite)",
+      "signature": "FARDGAccelStruct(FARDGAccelStructHandle Handle, arda::FArdaRHIAccelStructDesc Desc, EARDGResourceFlags Flags = EARDGResourceFlags::None, arda::FArdaRHIAccelStructRef AccelStruct = nullptr, arda::EArdaRHIResourceState InitialState = arda::EArdaRHIResourceState::AccelStructWrite)",
       "summary": "Constructs a logical acceleration structure from its stable handle, descriptor, ownership flags, optional imported RHI object, and initial state.",
       "details": "Constructs a logical acceleration structure from its stable handle, descriptor, ownership flags, optional imported RHI object, and initial state.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [
         "FARDGAccelStructHandle Handle",
-        "rhi::FArdaRHIAccelStructDesc Desc",
+        "arda::FArdaRHIAccelStructDesc Desc",
         "EARDGResourceFlags Flags = EARDGResourceFlags::None",
-        "rhi::FArdaRHIAccelStructRef AccelStruct = nullptr",
-        "rhi::EArdaRHIResourceState InitialState = rhi::EArdaRHIResourceState::AccelStructWrite"
+        "arda::FArdaRHIAccelStructRef AccelStruct = nullptr",
+        "arda::EArdaRHIResourceState InitialState = arda::EArdaRHIResourceState::AccelStructWrite"
       ],
       "returns": "",
       "ownership": "The descriptor and optional RHI reference are moved into the logical record.",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGAccelStruct"
+        "arda::FARDGAccelStruct"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgaccelstruct-gethandle-427bb5a5",
       "name": "GetHandle",
-      "qualifiedName": "arda::render_graph::FARDGAccelStruct::GetHandle",
+      "qualifiedName": "arda::FARDGAccelStruct::GetHandle",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -7899,79 +7899,79 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGAccelStruct"
+        "arda::FARDGAccelStruct"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgaccelstruct-getdesc-4514d647",
       "name": "GetDesc",
-      "qualifiedName": "arda::render_graph::FARDGAccelStruct::GetDesc",
+      "qualifiedName": "arda::FARDGAccelStruct::GetDesc",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] const rhi::FArdaRHIAccelStructDesc& GetDesc() const noexcept",
+      "signature": "[[nodiscard]] const arda::FArdaRHIAccelStructDesc& GetDesc() const noexcept",
       "summary": "Returns the RHI descriptor used to allocate or validate the acceleration structure.",
       "details": "Returns the RHI descriptor used to allocate or validate the acceleration structure.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [],
-      "returns": "const rhi::FArdaRHIAccelStructDesc&",
+      "returns": "const arda::FArdaRHIAccelStructDesc&",
       "ownership": "Returns a non-owning reference into graph-owned storage.",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGAccelStruct"
+        "arda::FARDGAccelStruct"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgaccelstruct-getaccelstruct-22530211",
       "name": "GetAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGAccelStruct::GetAccelStruct",
+      "qualifiedName": "arda::FARDGAccelStruct::GetAccelStruct",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] const rhi::FArdaRHIAccelStructRef& GetAccelStruct() const noexcept",
+      "signature": "[[nodiscard]] const arda::FArdaRHIAccelStructRef& GetAccelStruct() const noexcept",
       "summary": "Returns the physical acceleration structure, or an empty handle before materialization.",
       "details": "Returns the physical acceleration structure, or an empty handle before materialization.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [],
-      "returns": "const rhi::FArdaRHIAccelStructRef&",
+      "returns": "const arda::FArdaRHIAccelStructRef&",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGAccelStruct"
+        "arda::FARDGAccelStruct"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgaccelstruct-bindaccelstruct-7bdcea5c",
       "name": "BindAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGAccelStruct::BindAccelStruct",
+      "qualifiedName": "arda::FARDGAccelStruct::BindAccelStruct",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "void BindAccelStruct(rhi::FArdaRHIAccelStructRef AccelStruct) noexcept",
+      "signature": "void BindAccelStruct(arda::FArdaRHIAccelStructRef AccelStruct) noexcept",
       "summary": "Binds a materialized or imported RHI acceleration structure to this logical record.",
       "details": "Binds a materialized or imported RHI acceleration structure to this logical record.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [
-        "rhi::FArdaRHIAccelStructRef AccelStruct"
+        "arda::FArdaRHIAccelStructRef AccelStruct"
       ],
       "returns": "void",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGAccelStruct"
+        "arda::FARDGAccelStruct"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureviewdesc-44408d5b",
       "name": "FARDGTextureViewDesc",
-      "qualifiedName": "arda::render_graph::FARDGTextureViewDesc",
+      "qualifiedName": "arda::FARDGTextureViewDesc",
       "kind": "struct",
       "component": "resources",
       "page": "api-reference.html",
@@ -7990,7 +7990,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtextureviewdesc-mtexture-b6dc10fd",
       "name": "mTexture",
-      "qualifiedName": "arda::render_graph::FARDGTextureViewDesc::mTexture",
+      "qualifiedName": "arda::FARDGTextureViewDesc::mTexture",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -8004,18 +8004,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureViewDesc"
+        "arda::FARDGTextureViewDesc"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureviewdesc-msubresources-14a26a32",
       "name": "mSubresources",
-      "qualifiedName": "arda::render_graph::FARDGTextureViewDesc::mSubresources",
+      "qualifiedName": "arda::FARDGTextureViewDesc::mSubresources",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHITextureSubresourceRange mSubresources",
+      "signature": "arda::FArdaRHITextureSubresourceRange mSubresources",
       "summary": "The texture subresources exposed by the view.",
       "details": "The texture subresources exposed by the view.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8025,18 +8025,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureViewDesc"
+        "arda::FARDGTextureViewDesc"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureviewdesc-mformat-fbc90bbb",
       "name": "mFormat",
-      "qualifiedName": "arda::render_graph::FARDGTextureViewDesc::mFormat",
+      "qualifiedName": "arda::FARDGTextureViewDesc::mFormat",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIFormat mFormat = rhi::EArdaRHIFormat::Unknown",
+      "signature": "arda::EArdaRHIFormat mFormat = arda::EArdaRHIFormat::Unknown",
       "summary": "An optional format override for the view.",
       "details": "An optional format override for the view.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8046,18 +8046,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureViewDesc"
+        "arda::FARDGTextureViewDesc"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureviewdesc-mdimension-2c298d3e",
       "name": "mDimension",
-      "qualifiedName": "arda::render_graph::FARDGTextureViewDesc::mDimension",
+      "qualifiedName": "arda::FARDGTextureViewDesc::mDimension",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHITextureDimension mDimension = rhi::EArdaRHITextureDimension::Unknown",
+      "signature": "arda::EArdaRHITextureDimension mDimension = arda::EArdaRHITextureDimension::Unknown",
       "summary": "An optional texture-dimension override for the view.",
       "details": "An optional texture-dimension override for the view.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8067,14 +8067,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureViewDesc"
+        "arda::FARDGTextureViewDesc"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbufferviewdesc-bd892a43",
       "name": "FARDGBufferViewDesc",
-      "qualifiedName": "arda::render_graph::FARDGBufferViewDesc",
+      "qualifiedName": "arda::FARDGBufferViewDesc",
       "kind": "struct",
       "component": "resources",
       "page": "api-reference.html",
@@ -8093,7 +8093,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbufferviewdesc-mbuffer-cc114354",
       "name": "mBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBufferViewDesc::mBuffer",
+      "qualifiedName": "arda::FARDGBufferViewDesc::mBuffer",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -8107,18 +8107,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferViewDesc"
+        "arda::FARDGBufferViewDesc"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbufferviewdesc-mrange-26f5b1f8",
       "name": "mRange",
-      "qualifiedName": "arda::render_graph::FARDGBufferViewDesc::mRange",
+      "qualifiedName": "arda::FARDGBufferViewDesc::mRange",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHIBufferRange mRange",
+      "signature": "arda::FArdaRHIBufferRange mRange",
       "summary": "The byte range exposed by the view.",
       "details": "The byte range exposed by the view.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8128,18 +8128,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferViewDesc"
+        "arda::FARDGBufferViewDesc"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbufferviewdesc-mformat-2ec75d58",
       "name": "mFormat",
-      "qualifiedName": "arda::render_graph::FARDGBufferViewDesc::mFormat",
+      "qualifiedName": "arda::FARDGBufferViewDesc::mFormat",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIFormat mFormat = rhi::EArdaRHIFormat::Unknown",
+      "signature": "arda::EArdaRHIFormat mFormat = arda::EArdaRHIFormat::Unknown",
       "summary": "An optional typed-buffer format override.",
       "details": "An optional typed-buffer format override.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8149,14 +8149,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferViewDesc"
+        "arda::FARDGBufferViewDesc"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgview-56299839",
       "name": "FARDGView",
-      "qualifiedName": "arda::render_graph::FARDGView",
+      "qualifiedName": "arda::FARDGView",
       "kind": "class",
       "component": "resources",
       "page": "api-reference.html",
@@ -8175,7 +8175,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgview-fardgview-dd74231a",
       "name": "FARDGView",
-      "qualifiedName": "arda::render_graph::FARDGView::FARDGView",
+      "qualifiedName": "arda::FARDGView::FARDGView",
       "kind": "constructor",
       "component": "resources",
       "page": "api-reference.html",
@@ -8193,14 +8193,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGView"
+        "arda::FARDGView"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgview-gethandle-0c5e65cd",
       "name": "GetHandle",
-      "qualifiedName": "arda::render_graph::FARDGView::GetHandle",
+      "qualifiedName": "arda::FARDGView::GetHandle",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -8214,14 +8214,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGView"
+        "arda::FARDGView"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtexturesrv-e546d9b0",
       "name": "FARDGTextureSRV",
-      "qualifiedName": "arda::render_graph::FARDGTextureSRV",
+      "qualifiedName": "arda::FARDGTextureSRV",
       "kind": "class",
       "component": "resources",
       "page": "api-reference.html",
@@ -8240,7 +8240,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtexturesrv-fardgtexturesrv-9b096fdb",
       "name": "FARDGTextureSRV",
-      "qualifiedName": "arda::render_graph::FARDGTextureSRV::FARDGTextureSRV",
+      "qualifiedName": "arda::FARDGTextureSRV::FARDGTextureSRV",
       "kind": "constructor",
       "component": "resources",
       "page": "api-reference.html",
@@ -8258,14 +8258,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureSRV"
+        "arda::FARDGTextureSRV"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtexturesrv-getdesc-746cddae",
       "name": "GetDesc",
-      "qualifiedName": "arda::render_graph::FARDGTextureSRV::GetDesc",
+      "qualifiedName": "arda::FARDGTextureSRV::GetDesc",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -8279,14 +8279,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureSRV"
+        "arda::FARDGTextureSRV"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureuav-ba03d8c6",
       "name": "FARDGTextureUAV",
-      "qualifiedName": "arda::render_graph::FARDGTextureUAV",
+      "qualifiedName": "arda::FARDGTextureUAV",
       "kind": "class",
       "component": "resources",
       "page": "api-reference.html",
@@ -8305,7 +8305,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtextureuav-fardgtextureuav-4f98c2f2",
       "name": "FARDGTextureUAV",
-      "qualifiedName": "arda::render_graph::FARDGTextureUAV::FARDGTextureUAV",
+      "qualifiedName": "arda::FARDGTextureUAV::FARDGTextureUAV",
       "kind": "constructor",
       "component": "resources",
       "page": "api-reference.html",
@@ -8323,14 +8323,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureUAV"
+        "arda::FARDGTextureUAV"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureuav-getdesc-e7d61749",
       "name": "GetDesc",
-      "qualifiedName": "arda::render_graph::FARDGTextureUAV::GetDesc",
+      "qualifiedName": "arda::FARDGTextureUAV::GetDesc",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -8344,14 +8344,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureUAV"
+        "arda::FARDGTextureUAV"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuffersrv-e477409e",
       "name": "FARDGBufferSRV",
-      "qualifiedName": "arda::render_graph::FARDGBufferSRV",
+      "qualifiedName": "arda::FARDGBufferSRV",
       "kind": "class",
       "component": "resources",
       "page": "api-reference.html",
@@ -8370,7 +8370,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbuffersrv-fardgbuffersrv-f1b95f29",
       "name": "FARDGBufferSRV",
-      "qualifiedName": "arda::render_graph::FARDGBufferSRV::FARDGBufferSRV",
+      "qualifiedName": "arda::FARDGBufferSRV::FARDGBufferSRV",
       "kind": "constructor",
       "component": "resources",
       "page": "api-reference.html",
@@ -8388,14 +8388,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferSRV"
+        "arda::FARDGBufferSRV"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbuffersrv-getdesc-14c76a7b",
       "name": "GetDesc",
-      "qualifiedName": "arda::render_graph::FARDGBufferSRV::GetDesc",
+      "qualifiedName": "arda::FARDGBufferSRV::GetDesc",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -8409,14 +8409,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferSRV"
+        "arda::FARDGBufferSRV"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbufferuav-5e29308a",
       "name": "FARDGBufferUAV",
-      "qualifiedName": "arda::render_graph::FARDGBufferUAV",
+      "qualifiedName": "arda::FARDGBufferUAV",
       "kind": "class",
       "component": "resources",
       "page": "api-reference.html",
@@ -8435,7 +8435,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbufferuav-fardgbufferuav-2b811c45",
       "name": "FARDGBufferUAV",
-      "qualifiedName": "arda::render_graph::FARDGBufferUAV::FARDGBufferUAV",
+      "qualifiedName": "arda::FARDGBufferUAV::FARDGBufferUAV",
       "kind": "constructor",
       "component": "resources",
       "page": "api-reference.html",
@@ -8453,14 +8453,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferUAV"
+        "arda::FARDGBufferUAV"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbufferuav-getdesc-35363605",
       "name": "GetDesc",
-      "qualifiedName": "arda::render_graph::FARDGBufferUAV::GetDesc",
+      "qualifiedName": "arda::FARDGBufferUAV::GetDesc",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -8474,14 +8474,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferUAV"
+        "arda::FARDGBufferUAV"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardguniformbuffer-b1336a8c",
       "name": "FARDGUniformBuffer",
-      "qualifiedName": "arda::render_graph::FARDGUniformBuffer",
+      "qualifiedName": "arda::FARDGUniformBuffer",
       "kind": "class",
       "component": "resources",
       "page": "api-reference.html",
@@ -8500,18 +8500,18 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardguniformbuffer-fardguniformbuffer-5f2e1f41",
       "name": "FARDGUniformBuffer",
-      "qualifiedName": "arda::render_graph::FARDGUniformBuffer::FARDGUniformBuffer",
+      "qualifiedName": "arda::FARDGUniformBuffer::FARDGUniformBuffer",
       "kind": "constructor",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "FARDGUniformBuffer(FARDGUniformBufferHandle Handle, eastl::string Name, rhi::FArdaRHIBufferDesc Desc, const FARDGParameterMetadata* Metadata, const void* Contents)",
+      "signature": "FARDGUniformBuffer(FARDGUniformBufferHandle Handle, eastl::string Name, arda::FArdaRHIBufferDesc Desc, const FARDGParameterMetadata* Metadata, const void* Contents)",
       "summary": "Constructs a logical uniform buffer.",
       "details": "Constructs a logical uniform buffer.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [
         "FARDGUniformBufferHandle Handle",
         "eastl::string Name",
-        "rhi::FArdaRHIBufferDesc Desc",
+        "arda::FArdaRHIBufferDesc Desc",
         "const FARDGParameterMetadata* Metadata",
         "const void* Contents"
       ],
@@ -8520,14 +8520,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGUniformBuffer"
+        "arda::FARDGUniformBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardguniformbuffer-gethandle-72830b11",
       "name": "GetHandle",
-      "qualifiedName": "arda::render_graph::FARDGUniformBuffer::GetHandle",
+      "qualifiedName": "arda::FARDGUniformBuffer::GetHandle",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -8541,35 +8541,35 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGUniformBuffer"
+        "arda::FARDGUniformBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardguniformbuffer-getdesc-97b8b181",
       "name": "GetDesc",
-      "qualifiedName": "arda::render_graph::FARDGUniformBuffer::GetDesc",
+      "qualifiedName": "arda::FARDGUniformBuffer::GetDesc",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] const rhi::FArdaRHIBufferDesc& GetDesc() const noexcept",
+      "signature": "[[nodiscard]] const arda::FArdaRHIBufferDesc& GetDesc() const noexcept",
       "summary": "Returns the RHI descriptor used for physical constant-buffer allocation.",
       "details": "Returns the RHI descriptor used for physical constant-buffer allocation.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [],
-      "returns": "const rhi::FArdaRHIBufferDesc&",
+      "returns": "const arda::FArdaRHIBufferDesc&",
       "ownership": "Returns a non-owning reference into graph-owned storage.",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGUniformBuffer"
+        "arda::FARDGUniformBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardguniformbuffer-getmetadata-b2808d00",
       "name": "GetMetadata",
-      "qualifiedName": "arda::render_graph::FARDGUniformBuffer::GetMetadata",
+      "qualifiedName": "arda::FARDGUniformBuffer::GetMetadata",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -8583,14 +8583,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGUniformBuffer"
+        "arda::FARDGUniformBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardguniformbuffer-getcontents-34b3863a",
       "name": "GetContents",
-      "qualifiedName": "arda::render_graph::FARDGUniformBuffer::GetContents",
+      "qualifiedName": "arda::FARDGUniformBuffer::GetContents",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
@@ -8604,58 +8604,58 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGUniformBuffer"
+        "arda::FARDGUniformBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardguniformbuffer-getbuffer-d527da04",
       "name": "GetBuffer",
-      "qualifiedName": "arda::render_graph::FARDGUniformBuffer::GetBuffer",
+      "qualifiedName": "arda::FARDGUniformBuffer::GetBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "[[nodiscard]] const rhi::FArdaRHIBufferRef& GetBuffer() const noexcept",
+      "signature": "[[nodiscard]] const arda::FArdaRHIBufferRef& GetBuffer() const noexcept",
       "summary": "Returns the physical constant buffer, or an empty handle before materialization.",
       "details": "Returns the physical constant buffer, or an empty handle before materialization. Pass code should use FARDGPassExecutionContext::GetUniformBuffer so the graph can validate that the resource was declared.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [],
-      "returns": "const rhi::FArdaRHIBufferRef&",
+      "returns": "const arda::FArdaRHIBufferRef&",
       "ownership": "",
       "errors": "Returns the physical constant buffer, or an empty handle before materialization. Pass code should use FARDGPassExecutionContext::GetUniformBuffer so the graph can validate that the resource was declared.",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGUniformBuffer"
+        "arda::FARDGUniformBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardguniformbuffer-bindbuffer-08294e24",
       "name": "BindBuffer",
-      "qualifiedName": "arda::render_graph::FARDGUniformBuffer::BindBuffer",
+      "qualifiedName": "arda::FARDGUniformBuffer::BindBuffer",
       "kind": "method",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "void BindBuffer(rhi::FArdaRHIBufferRef Buffer) noexcept",
+      "signature": "void BindBuffer(arda::FArdaRHIBufferRef Buffer) noexcept",
       "summary": "Binds a materialized RHI constant buffer to this logical record.",
       "details": "Binds a materialized RHI constant buffer to this logical record.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
       "params": [
-        "rhi::FArdaRHIBufferRef Buffer"
+        "arda::FArdaRHIBufferRef Buffer"
       ],
       "returns": "void",
       "ownership": "",
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGUniformBuffer"
+        "arda::FARDGUniformBuffer"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureaccess-8ba7b0ad",
       "name": "FARDGTextureAccess",
-      "qualifiedName": "arda::render_graph::FARDGTextureAccess",
+      "qualifiedName": "arda::FARDGTextureAccess",
       "kind": "struct",
       "component": "resources",
       "page": "api-reference.html",
@@ -8674,7 +8674,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtextureaccess-mtexture-8261a713",
       "name": "mTexture",
-      "qualifiedName": "arda::render_graph::FARDGTextureAccess::mTexture",
+      "qualifiedName": "arda::FARDGTextureAccess::mTexture",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -8688,18 +8688,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureAccess"
+        "arda::FARDGTextureAccess"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureaccess-mstate-07054654",
       "name": "mState",
-      "qualifiedName": "arda::render_graph::FARDGTextureAccess::mState",
+      "qualifiedName": "arda::FARDGTextureAccess::mState",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mState = arda::EArdaRHIResourceState::Unknown",
       "summary": "The RHI state required by the access.",
       "details": "The RHI state required by the access.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8709,18 +8709,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureAccess"
+        "arda::FARDGTextureAccess"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureaccess-msubresources-237c5bad",
       "name": "mSubresources",
-      "qualifiedName": "arda::render_graph::FARDGTextureAccess::mSubresources",
+      "qualifiedName": "arda::FARDGTextureAccess::mSubresources",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHITextureSubresourceRange mSubresources",
+      "signature": "arda::FArdaRHITextureSubresourceRange mSubresources",
       "summary": "The texture subresources covered by the access.",
       "details": "The texture subresources covered by the access.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8730,14 +8730,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGTextureAccess"
+        "arda::FARDGTextureAccess"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbufferaccess-919444b2",
       "name": "FARDGBufferAccess",
-      "qualifiedName": "arda::render_graph::FARDGBufferAccess",
+      "qualifiedName": "arda::FARDGBufferAccess",
       "kind": "struct",
       "component": "resources",
       "page": "api-reference.html",
@@ -8756,7 +8756,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbufferaccess-mbuffer-bf7a23d8",
       "name": "mBuffer",
-      "qualifiedName": "arda::render_graph::FARDGBufferAccess::mBuffer",
+      "qualifiedName": "arda::FARDGBufferAccess::mBuffer",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -8770,18 +8770,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferAccess"
+        "arda::FARDGBufferAccess"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbufferaccess-mstate-891c61f7",
       "name": "mState",
-      "qualifiedName": "arda::render_graph::FARDGBufferAccess::mState",
+      "qualifiedName": "arda::FARDGBufferAccess::mState",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mState = arda::EArdaRHIResourceState::Unknown",
       "summary": "The RHI state required by the access.",
       "details": "The RHI state required by the access.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8791,18 +8791,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferAccess"
+        "arda::FARDGBufferAccess"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgbufferaccess-mrange-d9c43a7d",
       "name": "mRange",
-      "qualifiedName": "arda::render_graph::FARDGBufferAccess::mRange",
+      "qualifiedName": "arda::FARDGBufferAccess::mRange",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHIBufferRange mRange",
+      "signature": "arda::FArdaRHIBufferRange mRange",
       "summary": "The byte range covered by the access.",
       "details": "The byte range covered by the access.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8812,14 +8812,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGBufferAccess"
+        "arda::FARDGBufferAccess"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgaccelstructaccess-0ad8acde",
       "name": "FARDGAccelStructAccess",
-      "qualifiedName": "arda::render_graph::FARDGAccelStructAccess",
+      "qualifiedName": "arda::FARDGAccelStructAccess",
       "kind": "struct",
       "component": "resources",
       "page": "api-reference.html",
@@ -8838,7 +8838,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgaccelstructaccess-maccelstruct-bc7867cf",
       "name": "mAccelStruct",
-      "qualifiedName": "arda::render_graph::FARDGAccelStructAccess::mAccelStruct",
+      "qualifiedName": "arda::FARDGAccelStructAccess::mAccelStruct",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -8852,18 +8852,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGAccelStructAccess"
+        "arda::FARDGAccelStructAccess"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgaccelstructaccess-mstate-de5ce38a",
       "name": "mState",
-      "qualifiedName": "arda::render_graph::FARDGAccelStructAccess::mState",
+      "qualifiedName": "arda::FARDGAccelStructAccess::mState",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown",
+      "signature": "arda::EArdaRHIResourceState mState = arda::EArdaRHIResourceState::Unknown",
       "summary": "The RHI state required by the acceleration-structure access.",
       "details": "The RHI state required by the acceleration-structure access.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8873,14 +8873,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGAccelStructAccess"
+        "arda::FARDGAccelStructAccess"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgrendertargetbinding-42d04935",
       "name": "FARDGRenderTargetBinding",
-      "qualifiedName": "arda::render_graph::FARDGRenderTargetBinding",
+      "qualifiedName": "arda::FARDGRenderTargetBinding",
       "kind": "struct",
       "component": "resources",
       "page": "api-reference.html",
@@ -8899,7 +8899,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgrendertargetbinding-mtexture-74c64a11",
       "name": "mTexture",
-      "qualifiedName": "arda::render_graph::FARDGRenderTargetBinding::mTexture",
+      "qualifiedName": "arda::FARDGRenderTargetBinding::mTexture",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -8913,18 +8913,18 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRenderTargetBinding"
+        "arda::FARDGRenderTargetBinding"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgrendertargetbinding-msubresources-e73daa64",
       "name": "mSubresources",
-      "qualifiedName": "arda::render_graph::FARDGRenderTargetBinding::mSubresources",
+      "qualifiedName": "arda::FARDGRenderTargetBinding::mSubresources",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "rhi::FArdaRHITextureSubresourceRange mSubresources",
+      "signature": "arda::FArdaRHITextureSubresourceRange mSubresources",
       "summary": "The texture subresources attached to the framebuffer.",
       "details": "The texture subresources attached to the framebuffer.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8934,14 +8934,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRenderTargetBinding"
+        "arda::FARDGRenderTargetBinding"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgrendertargetbindingslots-84e0c0e2",
       "name": "FARDGRenderTargetBindingSlots",
-      "qualifiedName": "arda::render_graph::FARDGRenderTargetBindingSlots",
+      "qualifiedName": "arda::FARDGRenderTargetBindingSlots",
       "kind": "struct",
       "component": "resources",
       "page": "api-reference.html",
@@ -8960,11 +8960,11 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgrendertargetbindingslots-mcolor-993ed83e",
       "name": "mColor",
-      "qualifiedName": "arda::render_graph::FARDGRenderTargetBindingSlots::mColor",
+      "qualifiedName": "arda::FARDGRenderTargetBindingSlots::mColor",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
-      "signature": "eastl::array<FARDGRenderTargetBinding, rhi::ArdaRHIMaxRenderTargets> mColor",
+      "signature": "eastl::array<FARDGRenderTargetBinding, arda::ArdaRHIMaxRenderTargets> mColor",
       "summary": "The logical color attachments, indexed by render-target slot.",
       "details": "The logical color attachments, indexed by render-target slot.",
       "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphResources.h",
@@ -8974,14 +8974,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRenderTargetBindingSlots"
+        "arda::FARDGRenderTargetBindingSlots"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgrendertargetbindingslots-mdepthstencil-982940bd",
       "name": "mDepthStencil",
-      "qualifiedName": "arda::render_graph::FARDGRenderTargetBindingSlots::mDepthStencil",
+      "qualifiedName": "arda::FARDGRenderTargetBindingSlots::mDepthStencil",
       "kind": "member variable",
       "component": "resources",
       "page": "api-reference.html",
@@ -8995,14 +8995,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRenderTargetBindingSlots"
+        "arda::FARDGRenderTargetBindingSlots"
       ],
       "audience": "Render-graph integrators"
     },
     {
       "id": "api-arda-rdg-fardgtextureref-4abb034e",
       "name": "FARDGTextureRef",
-      "qualifiedName": "arda::render_graph::FARDGTextureRef",
+      "qualifiedName": "arda::FARDGTextureRef",
       "kind": "alias",
       "component": "resources",
       "page": "api-reference.html",
@@ -9021,7 +9021,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbufferref-7599a0b3",
       "name": "FARDGBufferRef",
-      "qualifiedName": "arda::render_graph::FARDGBufferRef",
+      "qualifiedName": "arda::FARDGBufferRef",
       "kind": "alias",
       "component": "resources",
       "page": "api-reference.html",
@@ -9040,7 +9040,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgaccelstructref-1c56954d",
       "name": "FARDGAccelStructRef",
-      "qualifiedName": "arda::render_graph::FARDGAccelStructRef",
+      "qualifiedName": "arda::FARDGAccelStructRef",
       "kind": "alias",
       "component": "resources",
       "page": "api-reference.html",
@@ -9059,7 +9059,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtexturesrvref-82878291",
       "name": "FARDGTextureSRVRef",
-      "qualifiedName": "arda::render_graph::FARDGTextureSRVRef",
+      "qualifiedName": "arda::FARDGTextureSRVRef",
       "kind": "alias",
       "component": "resources",
       "page": "api-reference.html",
@@ -9078,7 +9078,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgtextureuavref-2080145a",
       "name": "FARDGTextureUAVRef",
-      "qualifiedName": "arda::render_graph::FARDGTextureUAVRef",
+      "qualifiedName": "arda::FARDGTextureUAVRef",
       "kind": "alias",
       "component": "resources",
       "page": "api-reference.html",
@@ -9097,7 +9097,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbuffersrvref-05e12954",
       "name": "FARDGBufferSRVRef",
-      "qualifiedName": "arda::render_graph::FARDGBufferSRVRef",
+      "qualifiedName": "arda::FARDGBufferSRVRef",
       "kind": "alias",
       "component": "resources",
       "page": "api-reference.html",
@@ -9116,7 +9116,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardgbufferuavref-60af356a",
       "name": "FARDGBufferUAVRef",
-      "qualifiedName": "arda::render_graph::FARDGBufferUAVRef",
+      "qualifiedName": "arda::FARDGBufferUAVRef",
       "kind": "alias",
       "component": "resources",
       "page": "api-reference.html",
@@ -9135,7 +9135,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-fardguniformbufferref-881d988d",
       "name": "FARDGUniformBufferRef",
-      "qualifiedName": "arda::render_graph::FARDGUniformBufferRef",
+      "qualifiedName": "arda::FARDGUniformBufferRef",
       "kind": "alias",
       "component": "resources",
       "page": "api-reference.html",
@@ -9732,7 +9732,7 @@ window.ArdaRDGApi = {
     {
       "id": "api-arda-rdg-tardghandle-operator-bool-829c0a73",
       "name": "operator bool",
-      "qualifiedName": "arda::render_graph::TARDGHandle::operator bool",
+      "qualifiedName": "arda::TARDGHandle::operator bool",
       "kind": "conversion operator",
       "component": "core",
       "page": "api-reference.html",
@@ -9746,14 +9746,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::TARDGHandle"
+        "arda::TARDGHandle"
       ],
       "audience": "Render-graph integrators and tooling"
     },
     {
       "id": "api-arda-rdg-operator-a42bed51",
       "name": "operator==",
-      "qualifiedName": "arda::render_graph::operator==",
+      "qualifiedName": "arda::operator==",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -9770,14 +9770,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::TARDGHandle"
+        "arda::TARDGHandle"
       ],
       "audience": "Render-graph integrators and tooling"
     },
     {
       "id": "api-arda-rdg-operator-cad8161a",
       "name": "operator!=",
-      "qualifiedName": "arda::render_graph::operator!=",
+      "qualifiedName": "arda::operator!=",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -9794,14 +9794,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::TARDGHandle"
+        "arda::TARDGHandle"
       ],
       "audience": "Render-graph integrators and tooling"
     },
     {
       "id": "api-arda-rdg-operator-af8ee1c6",
       "name": "operator<",
-      "qualifiedName": "arda::render_graph::operator<",
+      "qualifiedName": "arda::operator<",
       "kind": "operator",
       "component": "core",
       "page": "api-reference.html",
@@ -9818,14 +9818,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::TARDGHandle"
+        "arda::TARDGHandle"
       ],
       "audience": "Render-graph integrators and tooling"
     },
     {
       "id": "api-arda-rdg-operator-ec4ec965",
       "name": "operator==",
-      "qualifiedName": "arda::render_graph::operator==",
+      "qualifiedName": "arda::operator==",
       "kind": "operator",
       "component": "compilation",
       "page": "api-reference.html",
@@ -9842,14 +9842,14 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRasterBindingSignature"
+        "arda::FARDGRasterBindingSignature"
       ],
       "audience": "Render-graph integrators and tooling"
     },
     {
       "id": "api-arda-rdg-operator-c33ea99b",
       "name": "operator!=",
-      "qualifiedName": "arda::render_graph::operator!=",
+      "qualifiedName": "arda::operator!=",
       "kind": "operator",
       "component": "compilation",
       "page": "api-reference.html",
@@ -9866,38 +9866,38 @@ window.ArdaRDGApi = {
       "errors": "",
       "threading": "",
       "related": [
-        "arda::render_graph::FARDGRasterBindingSignature"
+        "arda::FARDGRasterBindingSignature"
       ],
       "audience": "Render-graph integrators and tooling"
     }
   ,
-    {"id":"api-arda-rdg-fardgexecuteoptions-mbvalidateresourcestates","name":"mbValidateResourceStates","qualifiedName":"arda::render_graph::FARDGExecuteOptions::mbValidateResourceStates","kind":"member variable","component":"execution","page":"api-reference.html","signature":"bool mbValidateResourceStates = true","summary":"Captures and validates RHI/native state at every graph checkpoint.","details":"Captures and validates RHI/native state at every graph checkpoint.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGExecuteOptions"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-eardgstatecheckpoint","name":"EARDGStateCheckpoint","qualifiedName":"arda::render_graph::EARDGStateCheckpoint","kind":"enum","component":"execution","page":"api-reference.html","signature":"enum class EARDGStateCheckpoint : uint8_t","summary":"Identifies when a render-graph state snapshot was captured.","details":"Identifies when a render-graph state snapshot was captured.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-eardgstatecheckpoint-beforetransition","name":"BeforeTransition","qualifiedName":"arda::render_graph::EARDGStateCheckpoint::BeforeTransition","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"BeforeTransition","summary":"Captured before lowering a physical transition.","details":"Captured before lowering a physical transition.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-eardgstatecheckpoint-forcedcommon","name":"ForcedCommon","qualifiedName":"arda::render_graph::EARDGStateCheckpoint::ForcedCommon","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"ForcedCommon","summary":"Captured after a conservative forced-common barrier.","details":"Captured after a conservative forced-common barrier.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-eardgstatecheckpoint-aftertransition","name":"AfterTransition","qualifiedName":"arda::render_graph::EARDGStateCheckpoint::AfterTransition","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"AfterTransition","summary":"Captured after transition lowering.","details":"Captured after transition lowering.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-eardgstatecheckpoint-afterpass","name":"AfterPass","qualifiedName":"arda::render_graph::EARDGStateCheckpoint::AfterPass","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"AfterPass","summary":"Captured after the pass callback completes.","details":"Captured after the pass callback completes.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-eardgstatecheckpoint-queuerelease","name":"QueueRelease","qualifiedName":"arda::render_graph::EARDGStateCheckpoint::QueueRelease","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"QueueRelease","summary":"Captured after the producer releases a resource in Common state.","details":"Captured after the producer releases a resource in Common state.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-eardgstatecheckpoint-queueacquire","name":"QueueAcquire","qualifiedName":"arda::render_graph::EARDGStateCheckpoint::QueueAcquire","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"QueueAcquire","summary":"Captured after the consumer acquires a resource in Common state.","details":"Captured after the consumer acquires a resource in Common state.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord","name":"FARDGStateConformanceRecord","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord","kind":"struct","component":"execution","page":"api-reference.html","signature":"struct FARDGStateConformanceRecord","summary":"One RDG expected state and the independently observed RHI/native state at a named checkpoint.","details":"One RDG expected state and the independently observed RHI/native state at a named checkpoint.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mpass","name":"mPass","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mPass","kind":"member variable","component":"execution","page":"api-reference.html","signature":"FARDGPassHandle mPass","summary":"Pass associated with the checkpoint.","details":"Pass associated with the checkpoint.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mpassname","name":"mPassName","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mPassName","kind":"member variable","component":"execution","page":"api-reference.html","signature":"eastl::string mPassName","summary":"Human-readable pass name.","details":"Human-readable pass name.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mresourcetype","name":"mResourceType","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mResourceType","kind":"member variable","component":"execution","page":"api-reference.html","signature":"EARDGResourceType mResourceType = EARDGResourceType::Texture","summary":"Texture or buffer resource kind.","details":"Texture or buffer resource kind.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mresourceindex","name":"mResourceIndex","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mResourceIndex","kind":"member variable","component":"execution","page":"api-reference.html","signature":"uint32_t mResourceIndex = 0","summary":"Resource registry index for the recorded kind.","details":"Resource registry index for the recorded kind.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mresourcename","name":"mResourceName","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mResourceName","kind":"member variable","component":"execution","page":"api-reference.html","signature":"eastl::string mResourceName","summary":"Human-readable logical resource name.","details":"Human-readable logical resource name.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mtexturesubresources","name":"mTextureSubresources","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mTextureSubresources","kind":"member variable","component":"execution","page":"api-reference.html","signature":"rhi::FArdaRHITextureSubresourceRange mTextureSubresources","summary":"Texture range, or the default range for a buffer.","details":"Texture range, or the default range for a buffer.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mcheckpoint","name":"mCheckpoint","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mCheckpoint","kind":"member variable","component":"execution","page":"api-reference.html","signature":"EARDGStateCheckpoint mCheckpoint = EARDGStateCheckpoint::BeforeTransition","summary":"Checkpoint that produced this observation.","details":"Checkpoint that produced this observation.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mexpectedstate","name":"mExpectedState","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mExpectedState","kind":"member variable","component":"execution","page":"api-reference.html","signature":"rhi::EArdaRHIResourceState mExpectedState = rhi::EArdaRHIResourceState::Unknown","summary":"State expected by compiled physical transition lowering.","details":"State expected by compiled physical transition lowering.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mexpectedqueueowner","name":"mExpectedQueueOwner","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mExpectedQueueOwner","kind":"member variable","component":"execution","page":"api-reference.html","signature":"rhi::EArdaRHIQueueType mExpectedQueueOwner = rhi::EArdaRHIQueueType::Graphics","summary":"Queue expected to own the resource at an ownership checkpoint.","details":"Queue expected to own the resource at an ownership checkpoint.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mexpectedqueuefamily","name":"mExpectedQueueFamily","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mExpectedQueueFamily","kind":"member variable","component":"execution","page":"api-reference.html","signature":"uint32_t mExpectedQueueFamily = rhi::ArdaRHIInvalidQueueFamily","summary":"Expected Vulkan family, or the invalid-family sentinel on D3D12.","details":"Expected Vulkan family, or the invalid-family sentinel on D3D12.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mbvalidatequeueownership","name":"mbValidateQueueOwnership","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mbValidateQueueOwnership","kind":"member variable","component":"execution","page":"api-reference.html","signature":"bool mbValidateQueueOwnership = false","summary":"Whether queue and native-family ownership participate in consistency.","details":"Whether queue and native-family ownership participate in consistency.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mobserved","name":"mObserved","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mObserved","kind":"member variable","component":"execution","page":"api-reference.html","signature":"rhi::FArdaRHIResourceStateSnapshot mObserved","summary":"Independent facade, backend, and native state snapshot.","details":"Independent facade, backend, and native state snapshot.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-mstatus","name":"mStatus","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::mStatus","kind":"member variable","component":"execution","page":"api-reference.html","signature":"rhi::FArdaRHIStatus mStatus","summary":"Query status when the observation could not be produced.","details":"Query status when the observation could not be produced.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgstateconformancerecord-isconsistent","name":"IsConsistent","qualifiedName":"arda::render_graph::FARDGStateConformanceRecord::IsConsistent","kind":"method","component":"execution","page":"api-reference.html","signature":"[[nodiscard]] bool IsConsistent() const noexcept","summary":"Returns true when expected RDG state and enabled queue ownership checks agree with facade, backend, and native evidence.","details":"Returns true when expected RDG state and enabled queue ownership checks agree with facade, backend, and native evidence.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"bool","ownership":"The result observes graph-owned records and does not transfer RHI ownership.","errors":"Returns false when a query failed or any enabled expected, facade, backend, native state, queue owner, or native family disagrees.","threading":"Read after graph execution or while externally synchronized.","related":["arda::render_graph::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgexecutionresult-mstatus","name":"mStatus","qualifiedName":"arda::render_graph::FARDGExecutionResult::mStatus","kind":"member variable","component":"execution","page":"api-reference.html","signature":"rhi::FArdaRHIStatus mStatus","summary":"Overall recording, conformance-validation, and submission status.","details":"Overall recording, conformance-validation, and submission status.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGExecutionResult"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgexecutionresult-msubmissionfailurecount","name":"mSubmissionFailureCount","qualifiedName":"arda::render_graph::FARDGExecutionResult::mSubmissionFailureCount","kind":"member variable","component":"execution","page":"api-reference.html","signature":"uint32_t mSubmissionFailureCount = 0","summary":"Number of command lists rejected during RHI submission.","details":"Number of command lists rejected during RHI submission.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGExecutionResult"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgexecutionresult-mstateconformancerecords","name":"mStateConformanceRecords","qualifiedName":"arda::render_graph::FARDGExecutionResult::mStateConformanceRecords","kind":"member variable","component":"execution","page":"api-reference.html","signature":"eastl::vector<FARDGStateConformanceRecord> mStateConformanceRecords","summary":"Per-checkpoint expected and observed state evidence.","details":"Per-checkpoint expected and observed state evidence.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGExecutionResult"],"audience":"Render-graph integrators and validation tooling"},
-    {"id":"api-arda-rdg-fardgexecutionresult-mstateconformancefailurecount","name":"mStateConformanceFailureCount","qualifiedName":"arda::render_graph::FARDGExecutionResult::mStateConformanceFailureCount","kind":"member variable","component":"execution","page":"api-reference.html","signature":"uint32_t mStateConformanceFailureCount = 0","summary":"Number of state checkpoints that disagreed across layers.","details":"Number of state checkpoints that disagreed across layers.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::render_graph::FARDGExecutionResult"],"audience":"Render-graph integrators and validation tooling"}
+    {"id":"api-arda-rdg-fardgexecuteoptions-mbvalidateresourcestates","name":"mbValidateResourceStates","qualifiedName":"arda::FARDGExecuteOptions::mbValidateResourceStates","kind":"member variable","component":"execution","page":"api-reference.html","signature":"bool mbValidateResourceStates = true","summary":"Captures and validates RHI/native state at every graph checkpoint.","details":"Captures and validates RHI/native state at every graph checkpoint.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGExecuteOptions"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-eardgstatecheckpoint","name":"EARDGStateCheckpoint","qualifiedName":"arda::EARDGStateCheckpoint","kind":"enum","component":"execution","page":"api-reference.html","signature":"enum class EARDGStateCheckpoint : uint8_t","summary":"Identifies when a render-graph state snapshot was captured.","details":"Identifies when a render-graph state snapshot was captured.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-eardgstatecheckpoint-beforetransition","name":"BeforeTransition","qualifiedName":"arda::EARDGStateCheckpoint::BeforeTransition","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"BeforeTransition","summary":"Captured before lowering a physical transition.","details":"Captured before lowering a physical transition.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-eardgstatecheckpoint-forcedcommon","name":"ForcedCommon","qualifiedName":"arda::EARDGStateCheckpoint::ForcedCommon","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"ForcedCommon","summary":"Captured after a conservative forced-common barrier.","details":"Captured after a conservative forced-common barrier.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-eardgstatecheckpoint-aftertransition","name":"AfterTransition","qualifiedName":"arda::EARDGStateCheckpoint::AfterTransition","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"AfterTransition","summary":"Captured after transition lowering.","details":"Captured after transition lowering.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-eardgstatecheckpoint-afterpass","name":"AfterPass","qualifiedName":"arda::EARDGStateCheckpoint::AfterPass","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"AfterPass","summary":"Captured after the pass callback completes.","details":"Captured after the pass callback completes.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-eardgstatecheckpoint-queuerelease","name":"QueueRelease","qualifiedName":"arda::EARDGStateCheckpoint::QueueRelease","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"QueueRelease","summary":"Captured after the producer releases a resource in Common state.","details":"Captured after the producer releases a resource in Common state.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-eardgstatecheckpoint-queueacquire","name":"QueueAcquire","qualifiedName":"arda::EARDGStateCheckpoint::QueueAcquire","kind":"enumerator","component":"execution","page":"api-reference.html","signature":"QueueAcquire","summary":"Captured after the consumer acquires a resource in Common state.","details":"Captured after the consumer acquires a resource in Common state.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::EARDGStateCheckpoint"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord","name":"FARDGStateConformanceRecord","qualifiedName":"arda::FARDGStateConformanceRecord","kind":"struct","component":"execution","page":"api-reference.html","signature":"struct FARDGStateConformanceRecord","summary":"One RDG expected state and the independently observed RHI/native state at a named checkpoint.","details":"One RDG expected state and the independently observed RHI/native state at a named checkpoint.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mpass","name":"mPass","qualifiedName":"arda::FARDGStateConformanceRecord::mPass","kind":"member variable","component":"execution","page":"api-reference.html","signature":"FARDGPassHandle mPass","summary":"Pass associated with the checkpoint.","details":"Pass associated with the checkpoint.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mpassname","name":"mPassName","qualifiedName":"arda::FARDGStateConformanceRecord::mPassName","kind":"member variable","component":"execution","page":"api-reference.html","signature":"eastl::string mPassName","summary":"Human-readable pass name.","details":"Human-readable pass name.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mresourcetype","name":"mResourceType","qualifiedName":"arda::FARDGStateConformanceRecord::mResourceType","kind":"member variable","component":"execution","page":"api-reference.html","signature":"EARDGResourceType mResourceType = EARDGResourceType::Texture","summary":"Texture or buffer resource kind.","details":"Texture or buffer resource kind.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mresourceindex","name":"mResourceIndex","qualifiedName":"arda::FARDGStateConformanceRecord::mResourceIndex","kind":"member variable","component":"execution","page":"api-reference.html","signature":"uint32_t mResourceIndex = 0","summary":"Resource registry index for the recorded kind.","details":"Resource registry index for the recorded kind.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mresourcename","name":"mResourceName","qualifiedName":"arda::FARDGStateConformanceRecord::mResourceName","kind":"member variable","component":"execution","page":"api-reference.html","signature":"eastl::string mResourceName","summary":"Human-readable logical resource name.","details":"Human-readable logical resource name.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mtexturesubresources","name":"mTextureSubresources","qualifiedName":"arda::FARDGStateConformanceRecord::mTextureSubresources","kind":"member variable","component":"execution","page":"api-reference.html","signature":"arda::FArdaRHITextureSubresourceRange mTextureSubresources","summary":"Texture range, or the default range for a buffer.","details":"Texture range, or the default range for a buffer.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mcheckpoint","name":"mCheckpoint","qualifiedName":"arda::FARDGStateConformanceRecord::mCheckpoint","kind":"member variable","component":"execution","page":"api-reference.html","signature":"EARDGStateCheckpoint mCheckpoint = EARDGStateCheckpoint::BeforeTransition","summary":"Checkpoint that produced this observation.","details":"Checkpoint that produced this observation.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mexpectedstate","name":"mExpectedState","qualifiedName":"arda::FARDGStateConformanceRecord::mExpectedState","kind":"member variable","component":"execution","page":"api-reference.html","signature":"arda::EArdaRHIResourceState mExpectedState = arda::EArdaRHIResourceState::Unknown","summary":"State expected by compiled physical transition lowering.","details":"State expected by compiled physical transition lowering.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mexpectedqueueowner","name":"mExpectedQueueOwner","qualifiedName":"arda::FARDGStateConformanceRecord::mExpectedQueueOwner","kind":"member variable","component":"execution","page":"api-reference.html","signature":"arda::EArdaRHIQueueType mExpectedQueueOwner = arda::EArdaRHIQueueType::Graphics","summary":"Queue expected to own the resource at an ownership checkpoint.","details":"Queue expected to own the resource at an ownership checkpoint.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mexpectedqueuefamily","name":"mExpectedQueueFamily","qualifiedName":"arda::FARDGStateConformanceRecord::mExpectedQueueFamily","kind":"member variable","component":"execution","page":"api-reference.html","signature":"uint32_t mExpectedQueueFamily = arda::ArdaRHIInvalidQueueFamily","summary":"Expected Vulkan family, or the invalid-family sentinel on D3D12.","details":"Expected Vulkan family, or the invalid-family sentinel on D3D12.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mbvalidatequeueownership","name":"mbValidateQueueOwnership","qualifiedName":"arda::FARDGStateConformanceRecord::mbValidateQueueOwnership","kind":"member variable","component":"execution","page":"api-reference.html","signature":"bool mbValidateQueueOwnership = false","summary":"Whether queue and native-family ownership participate in consistency.","details":"Whether queue and native-family ownership participate in consistency.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mobserved","name":"mObserved","qualifiedName":"arda::FARDGStateConformanceRecord::mObserved","kind":"member variable","component":"execution","page":"api-reference.html","signature":"arda::FArdaRHIResourceStateSnapshot mObserved","summary":"Independent facade, backend, and native state snapshot.","details":"Independent facade, backend, and native state snapshot.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-mstatus","name":"mStatus","qualifiedName":"arda::FARDGStateConformanceRecord::mStatus","kind":"member variable","component":"execution","page":"api-reference.html","signature":"arda::FArdaRHIStatus mStatus","summary":"Query status when the observation could not be produced.","details":"Query status when the observation could not be produced.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgstateconformancerecord-isconsistent","name":"IsConsistent","qualifiedName":"arda::FARDGStateConformanceRecord::IsConsistent","kind":"method","component":"execution","page":"api-reference.html","signature":"[[nodiscard]] bool IsConsistent() const noexcept","summary":"Returns true when expected RDG state and enabled queue ownership checks agree with facade, backend, and native evidence.","details":"Returns true when expected RDG state and enabled queue ownership checks agree with facade, backend, and native evidence.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"bool","ownership":"The result observes graph-owned records and does not transfer RHI ownership.","errors":"Returns false when a query failed or any enabled expected, facade, backend, native state, queue owner, or native family disagrees.","threading":"Read after graph execution or while externally synchronized.","related":["arda::FARDGStateConformanceRecord"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgexecutionresult-mstatus","name":"mStatus","qualifiedName":"arda::FARDGExecutionResult::mStatus","kind":"member variable","component":"execution","page":"api-reference.html","signature":"arda::FArdaRHIStatus mStatus","summary":"Overall recording, conformance-validation, and submission status.","details":"Overall recording, conformance-validation, and submission status.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGExecutionResult"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgexecutionresult-msubmissionfailurecount","name":"mSubmissionFailureCount","qualifiedName":"arda::FARDGExecutionResult::mSubmissionFailureCount","kind":"member variable","component":"execution","page":"api-reference.html","signature":"uint32_t mSubmissionFailureCount = 0","summary":"Number of command lists rejected during RHI submission.","details":"Number of command lists rejected during RHI submission.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGExecutionResult"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgexecutionresult-mstateconformancerecords","name":"mStateConformanceRecords","qualifiedName":"arda::FARDGExecutionResult::mStateConformanceRecords","kind":"member variable","component":"execution","page":"api-reference.html","signature":"eastl::vector<FARDGStateConformanceRecord> mStateConformanceRecords","summary":"Per-checkpoint expected and observed state evidence.","details":"Per-checkpoint expected and observed state evidence.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGExecutionResult"],"audience":"Render-graph integrators and validation tooling"},
+    {"id":"api-arda-rdg-fardgexecutionresult-mstateconformancefailurecount","name":"mStateConformanceFailureCount","qualifiedName":"arda::FARDGExecutionResult::mStateConformanceFailureCount","kind":"member variable","component":"execution","page":"api-reference.html","signature":"uint32_t mStateConformanceFailureCount = 0","summary":"Number of state checkpoints that disagreed across layers.","details":"Number of state checkpoints that disagreed across layers.","source":"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h","params":[],"returns":"","ownership":"The containing value owns this state.","errors":"","threading":"","related":["arda::FARDGExecutionResult"],"audience":"Render-graph integrators and validation tooling"}
   ]
 };
 window.ArdaCurrentApi = window.ArdaRDGApi;
@@ -9906,9 +9906,30 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
 (() => {
   const generatedSymbols = [
   {
-    "id": "api-arda-render-graph-fardgexecuteoptions-mbmergerasterpasses-4636c7eb",
+    "id": "api-arda-getrendergraphmodulename-a313b6f0",
+    "name": "GetRenderGraphModuleName",
+    "qualifiedName": "arda::GetRenderGraphModuleName",
+    "kind": "function",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] const char* GetRenderGraphModuleName() noexcept",
+    "summary": "Returns the stable name of the render-graph module.",
+    "details": "Returns the stable name of the render-graph module.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraph.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 31
+  },
+  {
+    "id": "api-arda-fardgexecuteoptions-mbmergerasterpasses-03770049",
     "name": "mbMergeRasterPasses",
-    "qualifiedName": "arda::render_graph::FARDGExecuteOptions::mbMergeRasterPasses",
+    "qualifiedName": "arda::FARDGExecuteOptions::mbMergeRasterPasses",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
@@ -9922,14 +9943,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGExecuteOptions"
+      "arda::FARDGExecuteOptions"
     ],
     "sourceLine": 69
   },
   {
-    "id": "api-arda-render-graph-fardgexecutionresult-mmergedrasterpasscount-ffd395b5",
+    "id": "api-arda-fardgexecutionresult-mmergedrasterpasscount-dda09807",
     "name": "mMergedRasterPassCount",
-    "qualifiedName": "arda::render_graph::FARDGExecutionResult::mMergedRasterPassCount",
+    "qualifiedName": "arda::FARDGExecutionResult::mMergedRasterPassCount",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
@@ -9943,14 +9964,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGExecutionResult"
+      "arda::FARDGExecutionResult"
     ],
     "sourceLine": 153
   },
   {
-    "id": "api-arda-render-graph-fardgexecutionresult-mqueuedependencies-e02cd763",
+    "id": "api-arda-fardgexecutionresult-mqueuedependencies-d53bd245",
     "name": "mQueueDependencies",
-    "qualifiedName": "arda::render_graph::FARDGExecutionResult::mQueueDependencies",
+    "qualifiedName": "arda::FARDGExecutionResult::mQueueDependencies",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
@@ -9964,14 +9985,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGExecutionResult"
+      "arda::FARDGExecutionResult"
     ],
     "sourceLine": 162
   },
   {
-    "id": "api-arda-render-graph-fardgexecutionresult-mtransientheapbytes-ffae26c5",
+    "id": "api-arda-fardgexecutionresult-mtransientheapbytes-2b5acefa",
     "name": "mTransientHeapBytes",
-    "qualifiedName": "arda::render_graph::FARDGExecutionResult::mTransientHeapBytes",
+    "qualifiedName": "arda::FARDGExecutionResult::mTransientHeapBytes",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
@@ -9985,14 +10006,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGExecutionResult"
+      "arda::FARDGExecutionResult"
     ],
     "sourceLine": 183
   },
   {
-    "id": "api-arda-render-graph-fardgexecutionresult-mtransientaliasedbytes-f987e8d1",
+    "id": "api-arda-fardgexecutionresult-mtransientaliasedbytes-d7ce615f",
     "name": "mTransientAliasedBytes",
-    "qualifiedName": "arda::render_graph::FARDGExecutionResult::mTransientAliasedBytes",
+    "qualifiedName": "arda::FARDGExecutionResult::mTransientAliasedBytes",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
@@ -10006,14 +10027,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGExecutionResult"
+      "arda::FARDGExecutionResult"
     ],
     "sourceLine": 186
   },
   {
-    "id": "api-arda-render-graph-fardgexecutionresult-maliasingbarriercount-df7ebb85",
+    "id": "api-arda-fardgexecutionresult-maliasingbarriercount-ddfef5f4",
     "name": "mAliasingBarrierCount",
-    "qualifiedName": "arda::render_graph::FARDGExecutionResult::mAliasingBarrierCount",
+    "qualifiedName": "arda::FARDGExecutionResult::mAliasingBarrierCount",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
@@ -10027,14 +10048,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGExecutionResult"
+      "arda::FARDGExecutionResult"
     ],
     "sourceLine": 189
   },
   {
-    "id": "api-arda-render-graph-fardgraydispatcharguments-2cfac7ec",
+    "id": "api-arda-fardgraydispatcharguments-3fcc4a56",
     "name": "FARDGRayDispatchArguments",
-    "qualifiedName": "arda::render_graph::FARDGRayDispatchArguments",
+    "qualifiedName": "arda::FARDGRayDispatchArguments",
     "kind": "struct",
     "component": "core",
     "page": "api-reference.html",
@@ -10048,14 +10069,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph"
+      "arda"
     ],
     "sourceLine": 222
   },
   {
-    "id": "api-arda-render-graph-fardgraydispatcharguments-mwidth-b454adde",
+    "id": "api-arda-fardgraydispatcharguments-mwidth-12eabf58",
     "name": "mWidth",
-    "qualifiedName": "arda::render_graph::FARDGRayDispatchArguments::mWidth",
+    "qualifiedName": "arda::FARDGRayDispatchArguments::mWidth",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
@@ -10069,14 +10090,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGRayDispatchArguments"
+      "arda::FARDGRayDispatchArguments"
     ],
     "sourceLine": 225
   },
   {
-    "id": "api-arda-render-graph-fardgraydispatcharguments-mheight-7b82e677",
+    "id": "api-arda-fardgraydispatcharguments-mheight-e3ccd19f",
     "name": "mHeight",
-    "qualifiedName": "arda::render_graph::FARDGRayDispatchArguments::mHeight",
+    "qualifiedName": "arda::FARDGRayDispatchArguments::mHeight",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
@@ -10090,14 +10111,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGRayDispatchArguments"
+      "arda::FARDGRayDispatchArguments"
     ],
     "sourceLine": 228
   },
   {
-    "id": "api-arda-render-graph-fardgraydispatcharguments-mdepth-b6d5b1cf",
+    "id": "api-arda-fardgraydispatcharguments-mdepth-6d0805d3",
     "name": "mDepth",
-    "qualifiedName": "arda::render_graph::FARDGRayDispatchArguments::mDepth",
+    "qualifiedName": "arda::FARDGRayDispatchArguments::mDepth",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
@@ -10111,14 +10132,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGRayDispatchArguments"
+      "arda::FARDGRayDispatchArguments"
     ],
     "sourceLine": 231
   },
   {
-    "id": "api-arda-render-graph-fardgaccelstructextraction-56a16946",
+    "id": "api-arda-fardgaccelstructextraction-1e15fbf3",
     "name": "FARDGAccelStructExtraction",
-    "qualifiedName": "arda::render_graph::FARDGAccelStructExtraction",
+    "qualifiedName": "arda::FARDGAccelStructExtraction",
     "kind": "struct",
     "component": "core",
     "page": "api-reference.html",
@@ -10132,14 +10153,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph"
+      "arda"
     ],
     "sourceLine": 261
   },
   {
-    "id": "api-arda-render-graph-fardgaccelstructextraction-maccelstruct-0f073040",
+    "id": "api-arda-fardgaccelstructextraction-maccelstruct-d8196956",
     "name": "mAccelStruct",
-    "qualifiedName": "arda::render_graph::FARDGAccelStructExtraction::mAccelStruct",
+    "qualifiedName": "arda::FARDGAccelStructExtraction::mAccelStruct",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
@@ -10153,18 +10174,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGAccelStructExtraction"
+      "arda::FARDGAccelStructExtraction"
     ],
     "sourceLine": 264
   },
   {
-    "id": "api-arda-render-graph-fardgaccelstructextraction-moutput-9228da72",
+    "id": "api-arda-fardgaccelstructextraction-moutput-502872ca",
     "name": "mOutput",
-    "qualifiedName": "arda::render_graph::FARDGAccelStructExtraction::mOutput",
+    "qualifiedName": "arda::FARDGAccelStructExtraction::mOutput",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "rhi::FArdaRHIAccelStructRef* mOutput = nullptr",
+    "signature": "arda::FArdaRHIAccelStructRef* mOutput = nullptr",
     "summary": "Receives the physical handle after graph submission.",
     "details": "Receives the physical handle after graph submission.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10174,18 +10195,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGAccelStructExtraction"
+      "arda::FARDGAccelStructExtraction"
     ],
     "sourceLine": 267
   },
   {
-    "id": "api-arda-render-graph-fardgaccelstructextraction-mfinalstate-96562f6d",
+    "id": "api-arda-fardgaccelstructextraction-mfinalstate-957e1d1b",
     "name": "mFinalState",
-    "qualifiedName": "arda::render_graph::FARDGAccelStructExtraction::mFinalState",
+    "qualifiedName": "arda::FARDGAccelStructExtraction::mFinalState",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "rhi::EArdaRHIResourceState mFinalState = rhi::EArdaRHIResourceState::Unknown",
+    "signature": "arda::EArdaRHIResourceState mFinalState = arda::EArdaRHIResourceState::Unknown",
     "summary": "The state required when graph execution completes.",
     "details": "The state required when graph execution completes.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10195,14 +10216,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGAccelStructExtraction"
+      "arda::FARDGAccelStructExtraction"
     ],
     "sourceLine": 270
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-operator-7df01789",
+    "id": "api-arda-fardgbuilder-operator-7fcf1667",
     "name": "operator=",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::operator=",
+    "qualifiedName": "arda::FARDGBuilder::operator=",
     "kind": "conversion operator",
     "component": "core",
     "page": "api-reference.html",
@@ -10216,14 +10237,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 313
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-operator-5b85364c",
+    "id": "api-arda-fardgbuilder-operator-e2f74543",
     "name": "operator=",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::operator=",
+    "qualifiedName": "arda::FARDGBuilder::operator=",
     "kind": "conversion operator",
     "component": "core",
     "page": "api-reference.html",
@@ -10237,14 +10258,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 315
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-createsrv-4e4b5407",
+    "id": "api-arda-fardgbuilder-createsrv-7e38b601",
     "name": "CreateSRV",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::CreateSRV",
+    "qualifiedName": "arda::FARDGBuilder::CreateSRV",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
@@ -10258,14 +10279,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 379
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-createsrv-01f777d6",
+    "id": "api-arda-fardgbuilder-createsrv-9e49dd5b",
     "name": "CreateSRV",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::CreateSRV",
+    "qualifiedName": "arda::FARDGBuilder::CreateSRV",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
@@ -10279,14 +10300,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 387
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-createuav-0c8958e0",
+    "id": "api-arda-fardgbuilder-createuav-c2e0d938",
     "name": "CreateUAV",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::CreateUAV",
+    "qualifiedName": "arda::FARDGBuilder::CreateUAV",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
@@ -10300,14 +10321,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 395
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-createuav-a3bcdbdf",
+    "id": "api-arda-fardgbuilder-createuav-0e363768",
     "name": "CreateUAV",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::CreateUAV",
+    "qualifiedName": "arda::FARDGBuilder::CreateUAV",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
@@ -10321,18 +10342,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 403
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-queuetextureextraction-e4cc41d7",
+    "id": "api-arda-fardgbuilder-queuetextureextraction-e46c2e74",
     "name": "QueueTextureExtraction",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::QueueTextureExtraction",
+    "qualifiedName": "arda::FARDGBuilder::QueueTextureExtraction",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "void QueueTextureExtraction( FARDGTextureRef Texture, rhi::FArdaRHITextureRef& Output, rhi::EArdaRHIResourceState FinalState)",
+    "signature": "void QueueTextureExtraction( FARDGTextureRef Texture, arda::FArdaRHITextureRef& Output, arda::EArdaRHIResourceState FinalState)",
     "summary": "Declares texture extraction using an RHI reference.",
     "details": "Declares texture extraction using an RHI reference.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10342,18 +10363,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 484
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-queuebufferextraction-05107656",
+    "id": "api-arda-fardgbuilder-queuebufferextraction-a299895b",
     "name": "QueueBufferExtraction",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::QueueBufferExtraction",
+    "qualifiedName": "arda::FARDGBuilder::QueueBufferExtraction",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "void QueueBufferExtraction( FARDGBufferRef Buffer, rhi::FArdaRHIBufferRef& Output, rhi::EArdaRHIResourceState FinalState)",
+    "signature": "void QueueBufferExtraction( FARDGBufferRef Buffer, arda::FArdaRHIBufferRef& Output, arda::EArdaRHIResourceState FinalState)",
     "summary": "Declares buffer extraction using an RHI reference.",
     "details": "Declares buffer extraction using an RHI reference.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10363,18 +10384,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 499
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-queueaccelstructextraction-541dfffc",
+    "id": "api-arda-fardgbuilder-queueaccelstructextraction-b5d2512b",
     "name": "QueueAccelStructExtraction",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::QueueAccelStructExtraction",
+    "qualifiedName": "arda::FARDGBuilder::QueueAccelStructExtraction",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "void QueueAccelStructExtraction( FARDGAccelStructRef AccelStruct, rhi::FArdaRHIAccelStructRef* Output, rhi::EArdaRHIResourceState FinalState)",
+    "signature": "void QueueAccelStructExtraction( FARDGAccelStructRef AccelStruct, arda::FArdaRHIAccelStructRef* Output, arda::EArdaRHIResourceState FinalState)",
     "summary": "Declares that a logical acceleration structure survives graph completion.",
     "details": "Declares that a logical acceleration structure survives graph completion.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10384,18 +10405,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 508
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-queueaccelstructextraction-72f77d2a",
+    "id": "api-arda-fardgbuilder-queueaccelstructextraction-1f240868",
     "name": "QueueAccelStructExtraction",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::QueueAccelStructExtraction",
+    "qualifiedName": "arda::FARDGBuilder::QueueAccelStructExtraction",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "void QueueAccelStructExtraction( FARDGAccelStructRef AccelStruct, rhi::FArdaRHIAccelStructRef& Output, rhi::EArdaRHIResourceState FinalState)",
+    "signature": "void QueueAccelStructExtraction( FARDGAccelStructRef AccelStruct, arda::FArdaRHIAccelStructRef& Output, arda::EArdaRHIResourceState FinalState)",
     "summary": "Declares acceleration-structure extraction using an RHI reference.",
     "details": "Declares acceleration-structure extraction using an RHI reference.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10405,14 +10426,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 514
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-addhosttodevicecopypass-955504b3",
+    "id": "api-arda-fardgbuilder-addhosttodevicecopypass-f7e567a5",
     "name": "AddHostToDeviceCopyPass",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::AddHostToDeviceCopyPass",
+    "qualifiedName": "arda::FARDGBuilder::AddHostToDeviceCopyPass",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
@@ -10426,18 +10447,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 528
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-addhosttodevicecopypassasync-2aae6f28",
+    "id": "api-arda-fardgbuilder-addhosttodevicecopypassasync-37db3a10",
     "name": "AddHostToDeviceCopyPassAsync",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::AddHostToDeviceCopyPassAsync",
+    "qualifiedName": "arda::FARDGBuilder::AddHostToDeviceCopyPassAsync",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPassAsync( FARDGBufferRef Destination, const void* SourceData, size_t Size, rhi::FArdaRHIHostToDeviceCopyCallback Completion, uint64_t DestinationOffset = 0, eastl::string Name = \"HostToDeviceCopyAsync\")",
+    "signature": "[[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPassAsync( FARDGBufferRef Destination, const void* SourceData, size_t Size, arda::FArdaRHIHostToDeviceCopyCallback Completion, uint64_t DestinationOffset = 0, eastl::string Name = \"HostToDeviceCopyAsync\")",
     "summary": "Adds a nonblocking host-to-device copy pass with a GPU callback.",
     "details": "Adds a nonblocking host-to-device copy pass with a GPU callback.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10447,18 +10468,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 536
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-adddevicetohostcopypass-f760f42c",
+    "id": "api-arda-fardgbuilder-adddevicetohostcopypass-10f74a50",
     "name": "AddDeviceToHostCopyPass",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::AddDeviceToHostCopyPass",
+    "qualifiedName": "arda::FARDGBuilder::AddDeviceToHostCopyPass",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPass( FARDGBufferRef Source, eastl::vector<uint8_t>& Output, uint64_t SourceOffset = 0, uint64_t Size = rhi::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopy\")",
+    "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPass( FARDGBufferRef Source, eastl::vector<uint8_t>& Output, uint64_t SourceOffset = 0, uint64_t Size = arda::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopy\")",
     "summary": "Adds a blocking device-to-host buffer readback pass.",
     "details": "Adds a blocking device-to-host buffer readback pass.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10468,18 +10489,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 545
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-adddevicetohostcopypassasync-85e4adeb",
+    "id": "api-arda-fardgbuilder-adddevicetohostcopypassasync-90f05d35",
     "name": "AddDeviceToHostCopyPassAsync",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::AddDeviceToHostCopyPassAsync",
+    "qualifiedName": "arda::FARDGBuilder::AddDeviceToHostCopyPassAsync",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPassAsync( FARDGBufferRef Source, rhi::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = rhi::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopyAsync\")",
+    "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPassAsync( FARDGBufferRef Source, arda::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = arda::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopyAsync\")",
     "summary": "Adds a nonblocking device-to-host readback pass with owned bytes.",
     "details": "Adds a nonblocking device-to-host readback pass with owned bytes.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10489,14 +10510,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 553
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-queuebufferupload-38616f14",
+    "id": "api-arda-fardgbuilder-queuebufferupload-6b01ad2a",
     "name": "QueueBufferUpload",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::QueueBufferUpload",
+    "qualifiedName": "arda::FARDGBuilder::QueueBufferUpload",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
@@ -10510,18 +10531,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 561
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-addenqueuecopypass-2c79bde8",
+    "id": "api-arda-fardgbuilder-addenqueuecopypass-7c794a98",
     "name": "AddEnqueueCopyPass",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::AddEnqueueCopyPass",
+    "qualifiedName": "arda::FARDGBuilder::AddEnqueueCopyPass",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGPassHandle AddEnqueueCopyPass( FARDGBufferRef Source, rhi::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = rhi::ArdaRHIWholeBuffer, eastl::string Name = \"EnqueueBufferReadback\")",
+    "signature": "[[nodiscard]] FARDGPassHandle AddEnqueueCopyPass( FARDGBufferRef Source, arda::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = arda::ArdaRHIWholeBuffer, eastl::string Name = \"EnqueueBufferReadback\")",
     "summary": "Unreal-style alias for an asynchronous GPU buffer readback pass.",
     "details": "Unreal-style alias for an asynchronous GPU buffer readback pass.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10531,14 +10552,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 574
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-addraydispatchpass-537bf94c",
+    "id": "api-arda-fardgbuilder-addraydispatchpass-5cf34761",
     "name": "AddRayDispatchPass",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::AddRayDispatchPass",
+    "qualifiedName": "arda::FARDGBuilder::AddRayDispatchPass",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
@@ -10552,14 +10573,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 685
   },
   {
-    "id": "api-arda-render-graph-fardgbuilder-getaccelstructextractions-97b1a7ba",
+    "id": "api-arda-fardgbuilder-getaccelstructextractions-43069a4b",
     "name": "GetAccelStructExtractions",
-    "qualifiedName": "arda::render_graph::FARDGBuilder::GetAccelStructExtractions",
+    "qualifiedName": "arda::FARDGBuilder::GetAccelStructExtractions",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
@@ -10573,14 +10594,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGBuilder"
+      "arda::FARDGBuilder"
     ],
     "sourceLine": 804
   },
   {
-    "id": "api-arda-render-graph-fardgqueuepolicy-b1936ac6",
+    "id": "api-arda-fardgqueuepolicy-12f238e2",
     "name": "FARDGQueuePolicy",
-    "qualifiedName": "arda::render_graph::FARDGQueuePolicy",
+    "qualifiedName": "arda::FARDGQueuePolicy",
     "kind": "struct",
     "component": "core",
     "page": "api-reference.html",
@@ -10594,14 +10615,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph"
+      "arda"
     ],
     "sourceLine": 151
   },
   {
-    "id": "api-arda-render-graph-fardgrendergraphcontext-mqueuepolicy-de6d9b38",
+    "id": "api-arda-fardgrendergraphcontext-mqueuepolicy-d6f28bca",
     "name": "mQueuePolicy",
-    "qualifiedName": "arda::render_graph::FARDGRenderGraphContext::mQueuePolicy",
+    "qualifiedName": "arda::FARDGRenderGraphContext::mQueuePolicy",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
@@ -10615,14 +10636,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGRenderGraphContext"
+      "arda::FARDGRenderGraphContext"
     ],
     "sourceLine": 324
   },
   {
-    "id": "api-arda-render-graph-fardgrasterbindingsignature-operator-7687ba58",
+    "id": "api-arda-fardgrasterbindingsignature-operator-9df6f9b8",
     "name": "operator==",
-    "qualifiedName": "arda::render_graph::FARDGRasterBindingSignature::operator==",
+    "qualifiedName": "arda::FARDGRasterBindingSignature::operator==",
     "kind": "conversion operator",
     "component": "core",
     "page": "api-reference.html",
@@ -10636,14 +10657,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGRasterBindingSignature"
+      "arda::FARDGRasterBindingSignature"
     ],
     "sourceLine": 132
   },
   {
-    "id": "api-arda-render-graph-fardgrasterbindingsignature-operator-cbce490f",
+    "id": "api-arda-fardgrasterbindingsignature-operator-412dda8d",
     "name": "operator!=",
-    "qualifiedName": "arda::render_graph::FARDGRasterBindingSignature::operator!=",
+    "qualifiedName": "arda::FARDGRasterBindingSignature::operator!=",
     "kind": "conversion operator",
     "component": "core",
     "page": "api-reference.html",
@@ -10657,14 +10678,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGRasterBindingSignature"
+      "arda::FARDGRasterBindingSignature"
     ],
     "sourceLine": 143
   },
   {
-    "id": "api-arda-render-graph-fardgpassexecutioncontext-operator-614a3d71",
+    "id": "api-arda-fardgpassexecutioncontext-operator-781d6b61",
     "name": "operator=",
-    "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::operator=",
+    "qualifiedName": "arda::FARDGPassExecutionContext::operator=",
     "kind": "conversion operator",
     "component": "core",
     "page": "api-reference.html",
@@ -10678,18 +10699,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGPassExecutionContext"
+      "arda::FARDGPassExecutionContext"
     ],
     "sourceLine": 230
   },
   {
-    "id": "api-arda-render-graph-fardgpassexecutioncontext-reportstatus-ba2ad5cc",
+    "id": "api-arda-fardgpassexecutioncontext-reportstatus-3c8856c0",
     "name": "ReportStatus",
-    "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::ReportStatus",
+    "qualifiedName": "arda::FARDGPassExecutionContext::ReportStatus",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "void ReportStatus(rhi::FArdaRHIStatus Status)",
+    "signature": "void ReportStatus(arda::FArdaRHIStatus Status)",
     "summary": "Retains the first callback failure; failed graphs publish no extractions.",
     "details": "Retains the first callback failure; failed graphs publish no extractions.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -10699,18 +10720,18 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGPassExecutionContext"
+      "arda::FARDGPassExecutionContext"
     ],
     "sourceLine": 314
   },
   {
-    "id": "api-arda-render-graph-fardgpassexecutioncontext-getstatus-20fc8f6d",
+    "id": "api-arda-fardgpassexecutioncontext-getstatus-4a4ab6c9",
     "name": "GetStatus",
-    "qualifiedName": "arda::render_graph::FARDGPassExecutionContext::GetStatus",
+    "qualifiedName": "arda::FARDGPassExecutionContext::GetStatus",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] const rhi::FArdaRHIStatus& GetStatus() const noexcept",
+    "signature": "[[nodiscard]] const arda::FArdaRHIStatus& GetStatus() const noexcept",
     "summary": "Returns the first reported callback failure, or success.",
     "details": "Returns the first reported callback failure, or success.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -10720,14 +10741,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGPassExecutionContext"
+      "arda::FARDGPassExecutionContext"
     ],
     "sourceLine": 321
   },
   {
-    "id": "api-arda-render-graph-fardgpass-fardgpass-ff673a85",
+    "id": "api-arda-fardgpass-fardgpass-32fb441c",
     "name": "FARDGPass",
-    "qualifiedName": "arda::render_graph::FARDGPass::FARDGPass",
+    "qualifiedName": "arda::FARDGPass::FARDGPass",
     "kind": "constructor",
     "component": "core",
     "page": "api-reference.html",
@@ -10762,14 +10783,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGPass"
+      "arda::FARDGPass"
     ],
     "sourceLine": 349
   },
   {
-    "id": "api-arda-render-graph-fardglambdapass-fardglambdapass-66b09787",
+    "id": "api-arda-fardglambdapass-fardglambdapass-2760f962",
     "name": "FARDGLambdaPass",
-    "qualifiedName": "arda::render_graph::FARDGLambdaPass::FARDGLambdaPass",
+    "qualifiedName": "arda::FARDGLambdaPass::FARDGLambdaPass",
     "kind": "constructor",
     "component": "core",
     "page": "api-reference.html",
@@ -10808,14 +10829,14 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGLambdaPass"
+      "arda::FARDGLambdaPass"
     ],
     "sourceLine": 536
   },
   {
-    "id": "api-arda-render-graph-fardgsentinelpass-fardgsentinelpass-e507edc5",
+    "id": "api-arda-fardgsentinelpass-fardgsentinelpass-5db7790c",
     "name": "FARDGSentinelPass",
-    "qualifiedName": "arda::render_graph::FARDGSentinelPass::FARDGSentinelPass",
+    "qualifiedName": "arda::FARDGSentinelPass::FARDGSentinelPass",
     "kind": "constructor",
     "component": "core",
     "page": "api-reference.html",
@@ -10829,7 +10850,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::render_graph::FARDGSentinelPass"
+      "arda::FARDGSentinelPass"
     ],
     "sourceLine": 571
   }
@@ -10846,28 +10867,28 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
 // Authored execution contracts for the RDG native conformance paths.
 (() => {
   const contracts = {
-  "arda::render_graph::FARDGExecuteOptions::mbMergeRasterPasses": "The executor can record adjacent compatible raster callbacks in one command list. It splits at required transitions, UAV or forced barriers, new resource initialization, queue handoffs, incoming queue dependencies, buffer/acceleration-structure declarations in the next pass, and NeverParallel boundaries. Immediate mode disables merging. Vulkan can continue its active rendering scope across matching framebuffer attachments; barriers or commands that end rendering still split that native scope. Disabled in immediate mode. Default true.",
-  "arda::render_graph::FARDGExecutionResult::mMergedRasterPassCount": "Counts raster callbacks appended to an earlier compatible command list, not native render-pass objects. Zero when merging is disabled or no eligible pair exists.",
-  "arda::render_graph::FARDGExecutionResult::mTransientHeapBytes": "Sum of capacities of successfully bound explicit transient heaps. Excludes committed fallback allocations, imported resources, and dedicated uniforms.",
-  "arda::render_graph::FARDGExecutionResult::mTransientAliasedBytes": "Sum of the non-aliasing packed capacity minus the applied aliased capacity in each successful compatible heap group. Measures avoided heap bytes; excludes committed fallback.",
-  "arda::render_graph::FARDGExecutionResult::mAliasingBarrierCount": "Number of reused placed resources activated with aliasing barriers. Each new activation is ordered after prior overlapping uses on every queue.",
-  "arda::render_graph::FARDGExecutionResult::mQueueDependencies": "Execution plan containing compiled queue edges plus physical resource ownership and aliasing dependencies. Compile output remains unchanged. Actual waits are coalesced per source queue at submission; multiple raster members may share one submitted instance.",
-  "arda::render_graph::FARDGExecutionResult::mbUsedVirtualHeaps": "True when at least one transient compatibility group was successfully bound into an explicit heap. May be true together with committed fallback.",
-  "arda::render_graph::FARDGExecutionResult::mbUsedTransientAliasing": "True when an applied heap layout reuses a retired byte range. Inclusive lifetime overlap forbids reuse. Cross-queue prior uses are synchronized before activation.",
-  "arda::render_graph::FARDGExecutionResult::mbUsedTransientFallback": "True when any live transient candidate could not use placement, including unavailable device features, CPU-visible buffers, incompatible requirements, or heap/binding failure. Eligible groups can still use placed aliasing.",
-  "arda::render_graph::FARDGPassExecutionContext::ReportStatus": "Stores the first non-success callback status. Later success does not erase failure. After recording, any failed callback prevents graph command-list submission and extraction publication. Use from the active callback; the context is not shared across recording workers.",
-  "arda::render_graph::FARDGPassExecutionContext::GetStatus": "Returns the first callback failure reported or returned so far, or success. The reference is borrowed from this pass context and expires with the callback scope.",
-  "arda::render_graph::FARDGBuilder::GetLastExecutionResult": "Returns null before the first execution attempt. After execution starts, returns the builder-owned report, including failed attempts. The reference lasts until builder destruction; it is not a GPU completion signal.",
-  "arda::render_graph::FARDGBuilder::Execute": "Compiles, records, and submits the graph once. Inspect mStatus: callback failures prevent graph submission and extraction publication, while later upload, queue-wait, or submission failures can leave earlier work in flight. Successful submission publishes extractions but does not imply GPU completion. Invalid graph contracts, checked resource materialization, binding-set construction, and internal transition invariants remain fatal checks. Command-list creation/open/close, reported callback errors, uniform-upload recording, queue waits, and submission failures return mStatus. A failed builder cannot retry execution.",
-  "arda::render_graph::FARDGBuilder::AddPass": "Registers a graph pass and its declared resource accesses. Supported callback signatures may return void or FArdaRHIStatus. A returned error or context.ReportStatus error retains the first failure and prevents graph submission after recording finishes. Skip commands that depend on failed setup. Captured state must remain valid until execution and be synchronized when recording runs concurrently.",
-  "arda::render_graph::FARDGBuilder::AddDispatchPass": "Registers a typed compute pass, invokes setup, then dispatches only if setup succeeded. Setup may return FArdaRHIStatus or report failure through the context. Void setup callbacks remain supported.",
-  "arda::render_graph::FARDGBuilder::AddRayDispatchPass": "Registers a typed ray-tracing pass. Setup may return FArdaRHIStatus or report failure; failed setup suppresses dispatch. A failed native DispatchRays status is propagated into the graph result."
+  "arda::FARDGExecuteOptions::mbMergeRasterPasses": "The executor can record adjacent compatible raster callbacks in one command list. It splits at required transitions, UAV or forced barriers, new resource initialization, queue handoffs, incoming queue dependencies, buffer/acceleration-structure declarations in the next pass, and NeverParallel boundaries. Immediate mode disables merging. Vulkan can continue its active rendering scope across matching framebuffer attachments; barriers or commands that end rendering still split that native scope. Disabled in immediate mode. Default true.",
+  "arda::FARDGExecutionResult::mMergedRasterPassCount": "Counts raster callbacks appended to an earlier compatible command list, not native render-pass objects. Zero when merging is disabled or no eligible pair exists.",
+  "arda::FARDGExecutionResult::mTransientHeapBytes": "Sum of capacities of successfully bound explicit transient heaps. Excludes committed fallback allocations, imported resources, and dedicated uniforms.",
+  "arda::FARDGExecutionResult::mTransientAliasedBytes": "Sum of the non-aliasing packed capacity minus the applied aliased capacity in each successful compatible heap group. Measures avoided heap bytes; excludes committed fallback.",
+  "arda::FARDGExecutionResult::mAliasingBarrierCount": "Number of reused placed resources activated with aliasing barriers. Each new activation is ordered after prior overlapping uses on every queue.",
+  "arda::FARDGExecutionResult::mQueueDependencies": "Execution plan containing compiled queue edges plus physical resource ownership and aliasing dependencies. Compile output remains unchanged. Actual waits are coalesced per source queue at submission; multiple raster members may share one submitted instance.",
+  "arda::FARDGExecutionResult::mbUsedVirtualHeaps": "True when at least one transient compatibility group was successfully bound into an explicit heap. May be true together with committed fallback.",
+  "arda::FARDGExecutionResult::mbUsedTransientAliasing": "True when an applied heap layout reuses a retired byte range. Inclusive lifetime overlap forbids reuse. Cross-queue prior uses are synchronized before activation.",
+  "arda::FARDGExecutionResult::mbUsedTransientFallback": "True when any live transient candidate could not use placement, including unavailable device features, CPU-visible buffers, incompatible requirements, or heap/binding failure. Eligible groups can still use placed aliasing.",
+  "arda::FARDGPassExecutionContext::ReportStatus": "Stores the first non-success callback status. Later success does not erase failure. After recording, any failed callback prevents graph command-list submission and extraction publication. Use from the active callback; the context is not shared across recording workers.",
+  "arda::FARDGPassExecutionContext::GetStatus": "Returns the first callback failure reported or returned so far, or success. The reference is borrowed from this pass context and expires with the callback scope.",
+  "arda::FARDGBuilder::GetLastExecutionResult": "Returns null before the first execution attempt. After execution starts, returns the builder-owned report, including failed attempts. The reference lasts until builder destruction; it is not a GPU completion signal.",
+  "arda::FARDGBuilder::Execute": "Compiles, records, and submits the graph once. Inspect mStatus: callback failures prevent graph submission and extraction publication, while later upload, queue-wait, or submission failures can leave earlier work in flight. Successful submission publishes extractions but does not imply GPU completion. Invalid graph contracts, checked resource materialization, binding-set construction, and internal transition invariants remain fatal checks. Command-list creation/open/close, reported callback errors, uniform-upload recording, queue waits, and submission failures return mStatus. A failed builder cannot retry execution.",
+  "arda::FARDGBuilder::AddPass": "Registers a graph pass and its declared resource accesses. Supported callback signatures may return void or FArdaRHIStatus. A returned error or context.ReportStatus error retains the first failure and prevents graph submission after recording finishes. Skip commands that depend on failed setup. Captured state must remain valid until execution and be synchronized when recording runs concurrently.",
+  "arda::FARDGBuilder::AddDispatchPass": "Registers a typed compute pass, invokes setup, then dispatches only if setup succeeded. Setup may return FArdaRHIStatus or report failure through the context. Void setup callbacks remain supported.",
+  "arda::FARDGBuilder::AddRayDispatchPass": "Registers a typed ray-tracing pass. Setup may return FArdaRHIStatus or report failure; failed setup suppresses dispatch. A failed native DispatchRays status is propagated into the graph result."
 };
   for (const symbol of window.ArdaRDGApi.symbols) {
     if (contracts[symbol.qualifiedName]) symbol.details = contracts[symbol.qualifiedName];
     if (symbol.kind === "member variable" &&
-        (symbol.qualifiedName.startsWith("arda::render_graph::FARDGExecuteOptions::") ||
-         symbol.qualifiedName.startsWith("arda::render_graph::FARDGExecutionResult::"))) {
+        (symbol.qualifiedName.startsWith("arda::FARDGExecuteOptions::") ||
+         symbol.qualifiedName.startsWith("arda::FARDGExecutionResult::"))) {
       symbol.ownership = "The containing options or execution-result value owns this field.";
       symbol.errors = "Reading this field performs no RHI operation. Inspect the execution result's mStatus for failures.";
       symbol.threading = "Set options before Execute; inspect the builder-owned report after Execute returns.";
@@ -10876,7 +10897,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
 })();
 
 for (const symbol of window.ArdaRDGApi.symbols) {
-  if (symbol.qualifiedName === "arda::render_graph::FARDGExecutionResult") {
+  if (symbol.qualifiedName === "arda::FARDGExecutionResult") {
     symbol.summary = "Reports one graph execution attempt, including failures.";
     symbol.details = "Check mStatus before using extraction results. Callback failures prevent graph command-list submission; later submission failures may leave earlier queue instances in flight. Counts and queue instances report accepted CPU submissions, not GPU completion.";
   }

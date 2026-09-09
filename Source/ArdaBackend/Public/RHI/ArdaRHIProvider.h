@@ -9,7 +9,7 @@
 #include <EASTL/unique_ptr.h>
 #include <EASTL/vector.h>
 
-namespace arda::rhi::provider
+namespace arda
 {
     class IArdaProviderObject
     {

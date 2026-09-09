@@ -6,7 +6,7 @@
 
 #include "ArdaRHITypes.h"
 
-namespace arda::rhi
+namespace arda
 {
     inline constexpr uint32_t ArdaRHIInvalidQueueFamily = 0xffffffffu;
 

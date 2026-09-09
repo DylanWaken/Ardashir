@@ -7,7 +7,7 @@
 #include <cstdio>
 #include <cstring>
 
-namespace arda::trace
+namespace arda
 {
     namespace
     {
@@ -18,7 +18,7 @@ namespace arda::trace
             std::uint32_t mThreadId = 0;
             std::uint64_t mGeneration = 0;
             eastl::string mName;
-            eastl::vector<detail::FArdaBufferedEvent> mEvents;
+            eastl::vector<arda::FArdaBufferedEvent> mEvents;
         };
 
         struct FArdaTraceState
@@ -61,7 +61,7 @@ namespace arda::trace
             std::uint32_t NameId,
             const eastl::string& Name)
         {
-            const detail::EArdaTraceRecordType Type = detail::EArdaTraceRecordType::Name;
+            const arda::EArdaTraceRecordType Type = arda::EArdaTraceRecordType::Name;
             const std::uint32_t Length = static_cast<std::uint32_t>(Name.size());
             WriteValue(Stream, Type);
             WriteValue(Stream, NameId);
@@ -74,7 +74,7 @@ namespace arda::trace
             std::uint32_t ThreadId,
             const eastl::string& Name)
         {
-            const detail::EArdaTraceRecordType Type = detail::EArdaTraceRecordType::Thread;
+            const arda::EArdaTraceRecordType Type = arda::EArdaTraceRecordType::Thread;
             const std::uint32_t Length = static_cast<std::uint32_t>(Name.size());
             WriteValue(Stream, Type);
             WriteValue(Stream, ThreadId);
@@ -82,13 +82,13 @@ namespace arda::trace
             WriteBytes(Stream, Name.data(), Name.size());
         }
 
-        void WriteEvent(std::ofstream& Stream, const detail::FArdaBufferedEvent& Event)
+        void WriteEvent(std::ofstream& Stream, const arda::FArdaBufferedEvent& Event)
         {
             switch (Event.mType)
             {
-            case detail::EArdaBufferedEventType::Scope:
+            case arda::EArdaBufferedEventType::Scope:
             {
-                const detail::EArdaTraceRecordType Type = detail::EArdaTraceRecordType::Scope;
+                const arda::EArdaTraceRecordType Type = arda::EArdaTraceRecordType::Scope;
                 WriteValue(Stream, Type);
                 WriteValue(Stream, Event.mThreadId);
                 WriteValue(Stream, Event.mNameId);
@@ -98,9 +98,9 @@ namespace arda::trace
                 WriteValue(Stream, Event.mEndNanoseconds);
                 break;
             }
-            case detail::EArdaBufferedEventType::Counter:
+            case arda::EArdaBufferedEventType::Counter:
             {
-                const detail::EArdaTraceRecordType Type = detail::EArdaTraceRecordType::Counter;
+                const arda::EArdaTraceRecordType Type = arda::EArdaTraceRecordType::Counter;
                 WriteValue(Stream, Type);
                 WriteValue(Stream, Event.mThreadId);
                 WriteValue(Stream, Event.mNameId);
@@ -108,9 +108,9 @@ namespace arda::trace
                 WriteValue(Stream, Event.mValue);
                 break;
             }
-            case detail::EArdaBufferedEventType::Marker:
+            case arda::EArdaBufferedEventType::Marker:
             {
-                const detail::EArdaTraceRecordType Type = detail::EArdaTraceRecordType::Marker;
+                const arda::EArdaTraceRecordType Type = arda::EArdaTraceRecordType::Marker;
                 WriteValue(Stream, Type);
                 WriteValue(Stream, Event.mThreadId);
                 WriteValue(Stream, Event.mNameId);
@@ -179,7 +179,7 @@ namespace arda::trace
             if (State.mbActive.load(eastl::memory_order_relaxed)
                 && State.mGeneration.load(eastl::memory_order_relaxed) == ThreadBuffer.mGeneration)
             {
-                for (const detail::FArdaBufferedEvent& Event : ThreadBuffer.mEvents)
+                for (const arda::FArdaBufferedEvent& Event : ThreadBuffer.mEvents)
                 {
                     WriteEvent(State.mStream, Event);
                 }
@@ -193,7 +193,7 @@ namespace arda::trace
             ThreadBuffer.mEvents.clear();
         }
 
-        void BufferEvent(detail::FArdaBufferedEvent Event) noexcept
+        void BufferEvent(arda::FArdaBufferedEvent Event) noexcept
         {
             FArdaTraceState& State = GetState();
             if (!State.mbActive.load(eastl::memory_order_acquire))
@@ -271,14 +271,14 @@ namespace arda::trace
         }
 
         State.mError.clear();
-        State.mOriginNanoseconds = detail::GetTraceTimestampNanoseconds();
+        State.mOriginNanoseconds = arda::GetTraceTimestampNanoseconds();
         const std::uint64_t Generation =
             State.mGeneration.fetch_add(1, eastl::memory_order_relaxed) + 1;
         (void)Generation;
 
-        WriteBytes(State.mStream, detail::TraceMagic.data(), detail::TraceMagic.size());
-        WriteValue(State.mStream, detail::TraceVersion);
-        WriteValue(State.mStream, detail::TraceEndianMarker);
+        WriteBytes(State.mStream, arda::TraceMagic.data(), arda::TraceMagic.size());
+        WriteValue(State.mStream, arda::TraceVersion);
+        WriteValue(State.mStream, arda::TraceEndianMarker);
         WriteValue(State.mStream, State.mOriginNanoseconds);
         for (const auto& [NameId, Name] : State.mNames)
         {
@@ -318,7 +318,7 @@ namespace arda::trace
             {
                 continue;
             }
-            for (const detail::FArdaBufferedEvent& Event : ThreadBuffer->mEvents)
+            for (const arda::FArdaBufferedEvent& Event : ThreadBuffer->mEvents)
             {
                 WriteEvent(State.mStream, Event);
             }
@@ -326,7 +326,7 @@ namespace arda::trace
         }
         State.mThreadBuffers.clear();
 
-        const detail::EArdaTraceRecordType EndType = detail::EArdaTraceRecordType::CaptureEnd;
+        const arda::EArdaTraceRecordType EndType = arda::EArdaTraceRecordType::CaptureEnd;
         WriteValue(State.mStream, EndType);
         State.mStream.flush();
         const bool bSucceeded = static_cast<bool>(State.mStream);
@@ -381,10 +381,10 @@ namespace arda::trace
             return;
         }
 
-        detail::FArdaBufferedEvent Event;
-        Event.mType = detail::EArdaBufferedEventType::Counter;
+        arda::FArdaBufferedEvent Event;
+        Event.mType = arda::EArdaBufferedEventType::Counter;
         Event.mNameId = Name.GetId();
-        Event.mStartNanoseconds = detail::GetTraceTimestampNanoseconds();
+        Event.mStartNanoseconds = arda::GetTraceTimestampNanoseconds();
         Event.mValue = Value;
         BufferEvent(Event);
     }
@@ -396,42 +396,40 @@ namespace arda::trace
             return;
         }
 
-        detail::FArdaBufferedEvent Event;
-        Event.mType = detail::EArdaBufferedEventType::Marker;
+        arda::FArdaBufferedEvent Event;
+        Event.mType = arda::EArdaBufferedEventType::Marker;
         Event.mNameId = Name.GetId();
-        Event.mStartNanoseconds = detail::GetTraceTimestampNanoseconds();
+        Event.mStartNanoseconds = arda::GetTraceTimestampNanoseconds();
         BufferEvent(Event);
     }
 
-    namespace detail
+    std::uint64_t AllocateTraceScopeId() noexcept
     {
-        std::uint64_t AllocateScopeId() noexcept
-        {
-            return GetState().mNextScopeId.fetch_add(1, eastl::memory_order_relaxed);
-        }
-
-        void RecordScope(
-            std::uint32_t NameId,
-            std::uint64_t ScopeId,
-            std::uint64_t ParentScopeId,
-            std::uint64_t StartNanoseconds,
-            std::uint64_t EndNanoseconds) noexcept
-        {
-            FArdaBufferedEvent Event;
-            Event.mType = EArdaBufferedEventType::Scope;
-            Event.mNameId = NameId;
-            Event.mPrimaryId = ScopeId;
-            Event.mSecondaryId = ParentScopeId;
-            Event.mStartNanoseconds = StartNanoseconds;
-            Event.mEndNanoseconds = EndNanoseconds;
-            BufferEvent(Event);
-        }
-
-        std::uint64_t GetTraceTimestampNanoseconds() noexcept
-        {
-            const auto Timestamp = std::chrono::steady_clock::now().time_since_epoch();
-            return static_cast<std::uint64_t>(
-                std::chrono::duration_cast<std::chrono::nanoseconds>(Timestamp).count());
-        }
+        return GetState().mNextScopeId.fetch_add(1, eastl::memory_order_relaxed);
     }
+
+    void RecordTraceScope(
+        std::uint32_t NameId,
+        std::uint64_t ScopeId,
+        std::uint64_t ParentScopeId,
+        std::uint64_t StartNanoseconds,
+        std::uint64_t EndNanoseconds) noexcept
+    {
+        FArdaBufferedEvent Event;
+        Event.mType = EArdaBufferedEventType::Scope;
+        Event.mNameId = NameId;
+        Event.mPrimaryId = ScopeId;
+        Event.mSecondaryId = ParentScopeId;
+        Event.mStartNanoseconds = StartNanoseconds;
+        Event.mEndNanoseconds = EndNanoseconds;
+        BufferEvent(Event);
+    }
+
+    std::uint64_t GetTraceTimestampNanoseconds() noexcept
+    {
+        const auto Timestamp = std::chrono::steady_clock::now().time_since_epoch();
+        return static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(Timestamp).count());
+    }
+
 }

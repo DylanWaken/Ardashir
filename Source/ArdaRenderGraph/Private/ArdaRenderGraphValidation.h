@@ -2,7 +2,7 @@
 
 #include "ArdaRenderGraphBuilder.h"
 
-namespace arda::render_graph
+namespace arda
 {
     /**
      * Validates render-graph declarations and compiler-generated state metadata.

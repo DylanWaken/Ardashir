@@ -19,7 +19,7 @@ namespace
 
 TEST(ArdaTrace, RecordsNestedScopesCountersAndMarkers)
 {
-    using namespace arda::trace;
+    using namespace arda;
 
     const std::filesystem::path CapturePath = MakeCapturePath("ArdaTraceRoundTrip.ardatrace");
     ASSERT_TRUE(StartTraceCapture(CapturePath)) << GetTraceError().c_str();
@@ -77,7 +77,7 @@ TEST(ArdaTrace, RecordsNestedScopesCountersAndMarkers)
 
 TEST(ArdaTrace, RejectsTruncatedCapture)
 {
-    using namespace arda::trace;
+    using namespace arda;
 
     const std::filesystem::path CapturePath = MakeCapturePath("ArdaTraceTruncated.ardatrace");
     {
@@ -94,7 +94,7 @@ TEST(ArdaTrace, RejectsTruncatedCapture)
 
 TEST(ArdaTrace, StreamsFullChunksFromIndependentThreads)
 {
-    using namespace arda::trace;
+    using namespace arda;
 
     const std::filesystem::path CapturePath = MakeCapturePath("ArdaTraceThreads.ardatrace");
     ASSERT_TRUE(StartTraceCapture(CapturePath)) << GetTraceError().c_str();

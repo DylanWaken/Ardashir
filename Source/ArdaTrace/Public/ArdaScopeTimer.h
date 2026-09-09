@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace arda::trace
+namespace arda
 {
     /** Records the execution interval and parent relationship of a lexical scope. */
     class FArdaScopeTimer final
@@ -17,9 +17,9 @@ namespace arda::trace
         explicit FArdaScopeTimer(const FArdaTraceName& Name) noexcept
             : mbRecording(IsTraceCaptureActive())
             , mNameId(Name.GetId())
-            , mScopeId(mbRecording ? detail::AllocateScopeId() : 0)
+            , mScopeId(mbRecording ? arda::AllocateTraceScopeId() : 0)
             , mParentScopeId(mbRecording ? mActiveScopeId : 0)
-            , mStartNanoseconds(mbRecording ? detail::GetTraceTimestampNanoseconds() : 0)
+            , mStartNanoseconds(mbRecording ? arda::GetTraceTimestampNanoseconds() : 0)
         {
             if (mbRecording)
             {
@@ -35,9 +35,9 @@ namespace arda::trace
                 return;
             }
 
-            const std::uint64_t EndNanoseconds = detail::GetTraceTimestampNanoseconds();
+            const std::uint64_t EndNanoseconds = arda::GetTraceTimestampNanoseconds();
             mActiveScopeId = mParentScopeId;
-            detail::RecordScope(
+            arda::RecordTraceScope(
                 mNameId,
                 mScopeId,
                 mParentScopeId,
@@ -68,11 +68,11 @@ namespace arda::trace
 #if ARDASHIR_ENABLE_TRACE
 /** Times the enclosing scope and uses its function name as the trace label. */
 #define ARDA_SCOPE_TIMER() \
-    ::arda::trace::FArdaScopeTimer \
+    ::arda::FArdaScopeTimer \
         ARDA_PRIVATE_JOIN_TRACE_NAMES(ArdaScopeTimer, __LINE__)( \
-            [](const char* FunctionName) -> const ::arda::trace::FArdaTraceName& \
+            [](const char* FunctionName) -> const ::arda::FArdaTraceName& \
             { \
-                static const ::arda::trace::FArdaTraceName Name(FunctionName); \
+                static const ::arda::FArdaTraceName Name(FunctionName); \
                 return Name; \
             }(__func__))
 
@@ -91,11 +91,11 @@ namespace arda::trace
  * @endcode
  */
 #define ARDA_NAMED_SCOPE_TIMER(ScopeName) \
-    ::arda::trace::FArdaScopeTimer \
+    ::arda::FArdaScopeTimer \
         ARDA_PRIVATE_JOIN_TRACE_NAMES(ArdaScopeTimer, __LINE__)( \
-            [](const char* Label) -> const ::arda::trace::FArdaTraceName& \
+            [](const char* Label) -> const ::arda::FArdaTraceName& \
             { \
-                static const ::arda::trace::FArdaTraceName TraceName(Label); \
+                static const ::arda::FArdaTraceName TraceName(Label); \
                 return TraceName; \
             }(ScopeName))
 #else

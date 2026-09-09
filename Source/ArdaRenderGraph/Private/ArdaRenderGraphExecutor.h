@@ -2,7 +2,7 @@
 
 #include "ArdaRenderGraphBuilder.h"
 
-namespace arda::render_graph
+namespace arda
 {
     /** Implements the materialize, record, and CPU-submit stages of one graph. */
     class FARDGExecutor final

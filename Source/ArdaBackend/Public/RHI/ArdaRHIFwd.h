@@ -4,7 +4,7 @@
 
 #pragma once
 
-namespace arda::rhi
+namespace arda
 {
     /** Forward declaration of RHI object. */
     template <typename T> class TArdaRHIRef;

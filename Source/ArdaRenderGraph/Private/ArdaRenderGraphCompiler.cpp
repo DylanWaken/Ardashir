@@ -12,7 +12,7 @@
 #include <EASTL/sort.h>
 #include <EASTL/unordered_set.h>
 
-namespace arda::render_graph
+namespace arda
 {
     namespace
     {
@@ -25,11 +25,11 @@ namespace arda::render_graph
          * and distinct read-only states are ORed. A conflict involving a write
          * fails compilation. The unit is a texture mip/slice or a whole buffer.
          */
-        [[nodiscard]] rhi::EArdaRHIResourceState MergePassState(
-            rhi::EArdaRHIResourceState Existing,
-            rhi::EArdaRHIResourceState Required)
+        [[nodiscard]] arda::EArdaRHIResourceState MergePassState(
+            arda::EArdaRHIResourceState Existing,
+            arda::EArdaRHIResourceState Required)
         {
-            if (Existing == rhi::EArdaRHIResourceState::Unknown)
+            if (Existing == arda::EArdaRHIResourceState::Unknown)
             {
                 return Required;
             }
@@ -92,14 +92,14 @@ namespace arda::render_graph
 
             // Use the same queue-compatibility rule for textures and buffers.
             const auto IsCompatibleState =
-                [](rhi::EArdaRHIResourceState State)
+                [](arda::EArdaRHIResourceState State)
                 {
                     const bool bPixelShaderResource =
-                        (State & rhi::EArdaRHIResourceState::PixelShaderResource) !=
-                        rhi::EArdaRHIResourceState::Unknown;
+                        (State & arda::EArdaRHIResourceState::PixelShaderResource) !=
+                        arda::EArdaRHIResourceState::Unknown;
                     const bool bNonPixelShaderResource =
-                        (State & rhi::EArdaRHIResourceState::NonPixelShaderResource) !=
-                        rhi::EArdaRHIResourceState::Unknown;
+                        (State & arda::EArdaRHIResourceState::NonPixelShaderResource) !=
+                        arda::EArdaRHIResourceState::Unknown;
                     return (static_cast<uint32_t>(State) & GraphicsOnlyMask) == 0 &&
                         (!bPixelShaderResource || bNonPixelShaderResource);
                 };
@@ -149,7 +149,7 @@ namespace arda::render_graph
                     [&Graph](const auto& Access)
                     {
                         return Graph.mBuffers.Get(Access.mBuffer).GetDesc().mCpuAccess !=
-                            rhi::EArdaRHICpuAccess::None;
+                            arda::EArdaRHICpuAccess::None;
                     });
                 // Depth/stencil transfers require a graphics-capable queue on
                 // the portable RHI contract; specialized transfer support is
@@ -158,7 +158,7 @@ namespace arda::render_graph
                     Pass->GetState().mTextureStates.begin(), Pass->GetState().mTextureStates.end(),
                     [&Graph](const auto& Access)
                     {
-                        const auto& Format = rhi::GetArdaRHIFormatInfo(
+                        const auto& Format = arda::GetArdaRHIFormatInfo(
                             Graph.mTextures.Get(Access.mTexture).GetDesc().mFormat);
                         return (Format.mbDepth || Format.mbStencil) &&
                             (static_cast<uint32_t>(Access.mState) & CopyMask) != 0;
@@ -466,39 +466,39 @@ namespace arda::render_graph
          */
         void CompileBarriers(FARDGBuilder::FImpl& Graph)
         {
-            eastl::vector<eastl::vector<rhi::EArdaRHIResourceState>> TextureStates;
+            eastl::vector<eastl::vector<arda::EArdaRHIResourceState>> TextureStates;
             TextureStates.reserve(Graph.mTextures.GetCount());
             for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
             {
-                const rhi::FArdaRHITextureDesc& Desc = Texture->GetDesc();
-                rhi::EArdaRHIResourceState Initial = Texture->GetInitialState();
-                if (Initial == rhi::EArdaRHIResourceState::Unknown)
+                const arda::FArdaRHITextureDesc& Desc = Texture->GetDesc();
+                arda::EArdaRHIResourceState Initial = Texture->GetInitialState();
+                if (Initial == arda::EArdaRHIResourceState::Unknown)
                 {
-                    Initial = rhi::EArdaRHIResourceState::Common;
+                    Initial = arda::EArdaRHIResourceState::Common;
                 }
                 TextureStates.emplace_back(
                     static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize,
                     Initial);
             }
 
-            eastl::vector<rhi::EArdaRHIResourceState> BufferStates;
+            eastl::vector<arda::EArdaRHIResourceState> BufferStates;
             BufferStates.reserve(Graph.mBuffers.GetCount());
             for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
             {
-                rhi::EArdaRHIResourceState Initial = Buffer->GetInitialState();
-                if (Initial == rhi::EArdaRHIResourceState::Unknown)
+                arda::EArdaRHIResourceState Initial = Buffer->GetInitialState();
+                if (Initial == arda::EArdaRHIResourceState::Unknown)
                 {
-                    Initial = rhi::EArdaRHIResourceState::Common;
+                    Initial = arda::EArdaRHIResourceState::Common;
                 }
                 BufferStates.push_back(Initial);
             }
-            eastl::vector<rhi::EArdaRHIResourceState> AccelStructStates;
+            eastl::vector<arda::EArdaRHIResourceState> AccelStructStates;
             for (const FARDGAccelStruct* AccelStruct : Graph.mAccelStructs.GetEntries())
             {
                 auto Initial = AccelStruct->GetInitialState();
                 AccelStructStates.push_back(
-                    Initial == rhi::EArdaRHIResourceState::Unknown
-                        ? rhi::EArdaRHIResourceState::Common : Initial);
+                    Initial == arda::EArdaRHIResourceState::Unknown
+                        ? arda::EArdaRHIResourceState::Common : Initial);
             }
 
             for (FARDGPass* Pass : Graph.mPasses.GetEntries())
@@ -517,27 +517,27 @@ namespace arda::render_graph
                 }
 
                 // Merge all aliases/views before advancing the tracked texture state.
-                eastl::vector<eastl::vector<rhi::EArdaRHIResourceState>> RequiredTextures(
+                eastl::vector<eastl::vector<arda::EArdaRHIResourceState>> RequiredTextures(
                     Graph.mTextures.GetCount());
                 for (const FARDGPassTextureState& Access :
                      Pass.GetState().mTextureStates)
                 {
-                    const rhi::EArdaRHIResourceState RequiredState =
+                    const arda::EArdaRHIResourceState RequiredState =
                         NormalizeStateForPipeline(
                             Access.mState,
                             Pass.GetState().mPipeline);
                     const FARDGTexture& Texture =
                         Graph.mTextures.Get(Access.mTexture);
-                    const rhi::FArdaRHITextureDesc& Desc = Texture.GetDesc();
+                    const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
                     auto& Required = RequiredTextures[
                         Access.mTexture.GetIndex()];
                     if (Required.empty())
                     {
                         Required.resize(
                             static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize,
-                            rhi::EArdaRHIResourceState::Unknown);
+                            arda::EArdaRHIResourceState::Unknown);
                     }
-                    const rhi::FArdaRHITextureSubresourceRange Subresources =
+                    const arda::FArdaRHITextureSubresourceRange Subresources =
                         Access.mSubresources.Resolve(Desc);
                     for (uint32_t ArraySlice = Subresources.mBaseArraySlice;
                          ArraySlice <
@@ -573,7 +573,7 @@ namespace arda::render_graph
                     }
                     const FARDGTexture& Texture =
                         Graph.mTextures.Get(FARDGTextureHandle(TextureIndex));
-                    const rhi::FArdaRHITextureDesc& Desc = Texture.GetDesc();
+                    const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
                     auto& Current = TextureStates[TextureIndex];
                     for (uint32_t ArraySlice = 0;
                          ArraySlice < Desc.mArraySize;
@@ -587,7 +587,7 @@ namespace arda::render_graph
                                 static_cast<size_t>(ArraySlice) * Desc.mMipLevels +
                                 MipLevel;
                             if (Required[Index] ==
-                                rhi::EArdaRHIResourceState::Unknown)
+                                arda::EArdaRHIResourceState::Unknown)
                             {
                                 continue;
                             }
@@ -599,10 +599,10 @@ namespace arda::render_graph
                                     .mbConservativeBarriers &&
                                 Current[Index] == Required[Index] &&
                                 !bUAVBarrier &&
-                                Required[Index] != rhi::EArdaRHIResourceState::Common;
+                                Required[Index] != arda::EArdaRHIResourceState::Common;
                             Pass.GetState().mTextureTransitions.push_back(
                                 {FARDGTextureHandle(TextureIndex),
-                                 rhi::FArdaRHITextureSubresourceRange{
+                                 arda::FArdaRHITextureSubresourceRange{
                                      MipLevel, 1, ArraySlice, 1 },
                                  Current[Index],
                                  Required[Index],
@@ -614,9 +614,9 @@ namespace arda::render_graph
                 }
 
                 // Buffer ranges are validated elsewhere but share one state slot.
-                eastl::vector<rhi::EArdaRHIResourceState> RequiredBuffers(
+                eastl::vector<arda::EArdaRHIResourceState> RequiredBuffers(
                     Graph.mBuffers.GetCount(),
-                    rhi::EArdaRHIResourceState::Unknown);
+                    arda::EArdaRHIResourceState::Unknown);
                 for (const FARDGPassBufferState& Access :
                      Pass.GetState().mBufferStates)
                 {
@@ -632,7 +632,7 @@ namespace arda::render_graph
                      ++BufferIndex)
                 {
                     if (RequiredBuffers[BufferIndex] ==
-                        rhi::EArdaRHIResourceState::Unknown)
+                        arda::EArdaRHIResourceState::Unknown)
                     {
                         continue;
                     }
@@ -646,7 +646,7 @@ namespace arda::render_graph
                             RequiredBuffers[BufferIndex] &&
                         !bUAVBarrier &&
                         RequiredBuffers[BufferIndex] !=
-                            rhi::EArdaRHIResourceState::Common;
+                            arda::EArdaRHIResourceState::Common;
                     Pass.GetState().mBufferTransitions.push_back(
                         {FARDGBufferHandle(BufferIndex),
                          BufferStates[BufferIndex],
@@ -656,9 +656,9 @@ namespace arda::render_graph
                     BufferStates[BufferIndex] = RequiredBuffers[BufferIndex];
                 }
 
-                eastl::vector<rhi::EArdaRHIResourceState> RequiredAccelStructs(
+                eastl::vector<arda::EArdaRHIResourceState> RequiredAccelStructs(
                     Graph.mAccelStructs.GetCount(),
-                    rhi::EArdaRHIResourceState::Unknown);
+                    arda::EArdaRHIResourceState::Unknown);
                 for (const FARDGPassAccelStructState& Access :
                      Pass.GetState().mAccelStructStates)
                 {
@@ -671,7 +671,7 @@ namespace arda::render_graph
                 for (uint32_t Index = 0; Index < RequiredAccelStructs.size(); ++Index)
                 {
                     const auto Required = RequiredAccelStructs[Index];
-                    if (Required == rhi::EArdaRHIResourceState::Unknown) continue;
+                    if (Required == arda::EArdaRHIResourceState::Unknown) continue;
                     Pass.GetState().mAccelStructTransitions.push_back(
                         {FARDGAccelStructHandle(Index),
                          AccelStructStates[Index],
@@ -692,7 +692,7 @@ namespace arda::render_graph
                 {
                     continue;
                 }
-                const rhi::FArdaRHITextureDesc& Desc = Texture->GetDesc();
+                const arda::FArdaRHITextureDesc& Desc = Texture->GetDesc();
                 auto& Current =
                     TextureStates[Texture->GetHandle().GetIndex()];
                 for (uint32_t ArraySlice = 0;
@@ -714,7 +714,7 @@ namespace arda::render_graph
                         {
                             Epilogue.GetState().mTextureTransitions.push_back(
                                 {Texture->GetHandle(),
-                                 rhi::FArdaRHITextureSubresourceRange{
+                                 arda::FArdaRHITextureSubresourceRange{
                                      MipLevel, 1, ArraySlice, 1 },
                                  Current[Index],
                                  Texture->GetFinalState(),

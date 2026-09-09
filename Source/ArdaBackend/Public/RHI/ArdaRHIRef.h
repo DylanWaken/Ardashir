@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace arda::rhi
+namespace arda
 {
     /** Intrusive smart reference that retains RHI objects through AddRef and Release. */
     template <typename T>

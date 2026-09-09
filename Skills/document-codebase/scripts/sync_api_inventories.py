@@ -26,24 +26,26 @@ RDG_END = "/* END GENERATED ARDA RDG API GAPS */"
 CONTRACT_HEADERS = (
     (
         "Source/ArdaBackend/Public/ArdaBackendProvider.h",
-        "arda::backend",
+        "arda",
         "backend-modules",
     ),
-    ("Source/ArdaBackend/Public/ArdaSwapChain.h", "arda::backend", "presentation"),
+    ("Source/ArdaBackend/Public/ArdaSwapChain.h", "arda", "presentation"),
     (
         "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
-        "arda::rhi::provider",
+        "arda",
         "rhi-device",
     ),
     (
         "Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
-        "arda::rhi::provider::pipeline_cache",
+        "arda",
         "pipelines",
     ),
 )
 
 COMPLETE_BACKEND_SOURCES = {
     "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaCompiler.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHIResource.h",
     "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
@@ -240,13 +242,13 @@ def backend_specs(repo: Path) -> List[Tuple[str, str, str]]:
             specs.append(overrides[source])
             continue
         if "/RHI/" in source:
-            namespace = "arda::rhi"
+            namespace = "arda"
             component = "rhi-device" if header.name == "ArdaRHIDevice.h" else (
                 "rhi-types" if header.name in {"ArdaRHICapabilities.h", "ArdaRHITypes.h"}
                 else "rhi-resources"
             )
         else:
-            namespace = "arda::backend"
+            namespace = "arda"
             if "/ShaderStructs/" in source:
                 component = "shaders"
             elif "/PipelineStateCache/" in source:
@@ -293,7 +295,7 @@ def source_contract(raw: str, line: int) -> Dict[str, object]:
 
 def rdg_specs(repo: Path) -> List[Tuple[str, str, str]]:
     return [
-        (header.relative_to(repo).as_posix(), "arda::render_graph", "core")
+        (header.relative_to(repo).as_posix(), "arda", "core")
         for header in sorted((repo / "Source/ArdaRenderGraph/Public").rglob("*.h"))
     ]
 

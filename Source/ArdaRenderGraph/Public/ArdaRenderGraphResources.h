@@ -9,7 +9,7 @@
 #include <EASTL/utility.h>
 #include <EASTL/vector.h>
 
-namespace arda::render_graph
+namespace arda
 {
     class FARDGParameterMetadata;
 
@@ -64,7 +64,7 @@ namespace arda::render_graph
         FARDGViewableResource(
             eastl::string Name,
             EARDGResourceType Type,
-            rhi::EArdaRHIResourceState InitialState,
+            arda::EArdaRHIResourceState InitialState,
             EARDGResourceFlags Flags)
             : FARDGResource(eastl::move(Name), Type)
             , mInitialState(InitialState)
@@ -74,19 +74,19 @@ namespace arda::render_graph
         }
 
         /** Returns the known RHI state on graph entry. */
-        [[nodiscard]] rhi::EArdaRHIResourceState GetInitialState() const noexcept
+        [[nodiscard]] arda::EArdaRHIResourceState GetInitialState() const noexcept
         {
             return mInitialState;
         }
 
         /** Returns the requested RHI state on graph exit. */
-        [[nodiscard]] rhi::EArdaRHIResourceState GetFinalState() const noexcept
+        [[nodiscard]] arda::EArdaRHIResourceState GetFinalState() const noexcept
         {
             return mFinalState;
         }
 
         /** Sets the requested RHI state on graph exit. */
-        void SetFinalState(rhi::EArdaRHIResourceState FinalState) noexcept
+        void SetFinalState(arda::EArdaRHIResourceState FinalState) noexcept
         {
             mFinalState = FinalState;
         }
@@ -187,8 +187,8 @@ namespace arda::render_graph
         }
 
     private:
-        rhi::EArdaRHIResourceState mInitialState;
-        rhi::EArdaRHIResourceState mFinalState;
+        arda::EArdaRHIResourceState mInitialState;
+        arda::EArdaRHIResourceState mFinalState;
         EARDGResourceFlags mFlags;
         FARDGPassHandle mLastProducer;
         eastl::vector<FARDGPassHandle> mReaders;
@@ -210,9 +210,9 @@ namespace arda::render_graph
          */
         FARDGTexture(
             FARDGTextureHandle Handle,
-            rhi::FArdaRHITextureDesc Desc,
+            arda::FArdaRHITextureDesc Desc,
             EARDGResourceFlags Flags = EARDGResourceFlags::Transient,
-            rhi::FArdaRHITextureRef Texture = nullptr)
+            arda::FArdaRHITextureRef Texture = nullptr)
             : FARDGViewableResource(
                   Desc.mDebugName,
                   EARDGResourceType::Texture,
@@ -231,7 +231,7 @@ namespace arda::render_graph
         }
 
         /** Returns the RHI descriptor used to allocate or validate the texture. */
-        [[nodiscard]] const rhi::FArdaRHITextureDesc& GetDesc() const noexcept
+        [[nodiscard]] const arda::FArdaRHITextureDesc& GetDesc() const noexcept
         {
             return mDesc;
         }
@@ -241,21 +241,21 @@ namespace arda::render_graph
          * Pass code should use FARDGPassExecutionContext::GetTexture so the
          * graph can validate that the resource was declared.
          */
-        [[nodiscard]] const rhi::FArdaRHITextureRef& GetTexture() const noexcept
+        [[nodiscard]] const arda::FArdaRHITextureRef& GetTexture() const noexcept
         {
             return mTexture;
         }
 
         /** Binds a materialized or imported RHI texture to this logical record. */
-        void BindTexture(rhi::FArdaRHITextureRef Texture) noexcept
+        void BindTexture(arda::FArdaRHITextureRef Texture) noexcept
         {
             mTexture = eastl::move(Texture);
         }
 
     private:
         FARDGTextureHandle mHandle;
-        rhi::FArdaRHITextureDesc mDesc;
-        rhi::FArdaRHITextureRef mTexture;
+        arda::FArdaRHITextureDesc mDesc;
+        arda::FArdaRHITextureRef mTexture;
     };
 
     /** A logical buffer record with deferred or imported RHI backing. */
@@ -272,9 +272,9 @@ namespace arda::render_graph
          */
         FARDGBuffer(
             FARDGBufferHandle Handle,
-            rhi::FArdaRHIBufferDesc Desc,
+            arda::FArdaRHIBufferDesc Desc,
             EARDGResourceFlags Flags = EARDGResourceFlags::Transient,
-            rhi::FArdaRHIBufferRef Buffer = nullptr)
+            arda::FArdaRHIBufferRef Buffer = nullptr)
             : FARDGViewableResource(
                   Desc.mDebugName,
                   EARDGResourceType::Buffer,
@@ -293,7 +293,7 @@ namespace arda::render_graph
         }
 
         /** Returns the RHI descriptor used to allocate or validate the buffer. */
-        [[nodiscard]] const rhi::FArdaRHIBufferDesc& GetDesc() const noexcept
+        [[nodiscard]] const arda::FArdaRHIBufferDesc& GetDesc() const noexcept
         {
             return mDesc;
         }
@@ -303,21 +303,21 @@ namespace arda::render_graph
          * Pass code should use FARDGPassExecutionContext::GetBuffer so the
          * graph can validate that the resource was declared.
          */
-        [[nodiscard]] const rhi::FArdaRHIBufferRef& GetBuffer() const noexcept
+        [[nodiscard]] const arda::FArdaRHIBufferRef& GetBuffer() const noexcept
         {
             return mBuffer;
         }
 
         /** Binds a materialized or imported RHI buffer to this logical record. */
-        void BindBuffer(rhi::FArdaRHIBufferRef Buffer) noexcept
+        void BindBuffer(arda::FArdaRHIBufferRef Buffer) noexcept
         {
             mBuffer = eastl::move(Buffer);
         }
 
     private:
         FARDGBufferHandle mHandle;
-        rhi::FArdaRHIBufferDesc mDesc;
-        rhi::FArdaRHIBufferRef mBuffer;
+        arda::FArdaRHIBufferDesc mDesc;
+        arda::FArdaRHIBufferRef mBuffer;
     };
 
     /** A logical acceleration structure with deferred or imported RHI backing. */
@@ -326,11 +326,11 @@ namespace arda::render_graph
     public:
         FARDGAccelStruct(
             FARDGAccelStructHandle Handle,
-            rhi::FArdaRHIAccelStructDesc Desc,
+            arda::FArdaRHIAccelStructDesc Desc,
             EARDGResourceFlags Flags = EARDGResourceFlags::None,
-            rhi::FArdaRHIAccelStructRef AccelStruct = nullptr,
-            rhi::EArdaRHIResourceState InitialState =
-                rhi::EArdaRHIResourceState::AccelStructWrite)
+            arda::FArdaRHIAccelStructRef AccelStruct = nullptr,
+            arda::EArdaRHIResourceState InitialState =
+                arda::EArdaRHIResourceState::AccelStructWrite)
             : FARDGViewableResource(
                   Desc.mDebugName,
                   EARDGResourceType::AccelStruct,
@@ -343,17 +343,17 @@ namespace arda::render_graph
         }
 
         [[nodiscard]] FARDGAccelStructHandle GetHandle() const noexcept { return mHandle; }
-        [[nodiscard]] const rhi::FArdaRHIAccelStructDesc& GetDesc() const noexcept { return mDesc; }
-        [[nodiscard]] const rhi::FArdaRHIAccelStructRef& GetAccelStruct() const noexcept { return mAccelStruct; }
-        void BindAccelStruct(rhi::FArdaRHIAccelStructRef AccelStruct) noexcept
+        [[nodiscard]] const arda::FArdaRHIAccelStructDesc& GetDesc() const noexcept { return mDesc; }
+        [[nodiscard]] const arda::FArdaRHIAccelStructRef& GetAccelStruct() const noexcept { return mAccelStruct; }
+        void BindAccelStruct(arda::FArdaRHIAccelStructRef AccelStruct) noexcept
         {
             mAccelStruct = eastl::move(AccelStruct);
         }
 
     private:
         FARDGAccelStructHandle mHandle;
-        rhi::FArdaRHIAccelStructDesc mDesc;
-        rhi::FArdaRHIAccelStructRef mAccelStruct;
+        arda::FArdaRHIAccelStructDesc mDesc;
+        arda::FArdaRHIAccelStructRef mAccelStruct;
     };
 
     /** Describes a logical texture SRV or UAV. */
@@ -363,13 +363,13 @@ namespace arda::render_graph
         FARDGTextureHandle mTexture;
 
         /** The texture subresources exposed by the view. */
-        rhi::FArdaRHITextureSubresourceRange mSubresources;
+        arda::FArdaRHITextureSubresourceRange mSubresources;
 
         /** An optional format override for the view. */
-        rhi::EArdaRHIFormat mFormat = rhi::EArdaRHIFormat::Unknown;
+        arda::EArdaRHIFormat mFormat = arda::EArdaRHIFormat::Unknown;
 
         /** An optional texture-dimension override for the view. */
-        rhi::EArdaRHITextureDimension mDimension = rhi::EArdaRHITextureDimension::Unknown;
+        arda::EArdaRHITextureDimension mDimension = arda::EArdaRHITextureDimension::Unknown;
     };
 
     /** Describes a logical buffer SRV or UAV. */
@@ -379,10 +379,10 @@ namespace arda::render_graph
         FARDGBufferHandle mBuffer;
 
         /** The byte range exposed by the view. */
-        rhi::FArdaRHIBufferRange mRange;
+        arda::FArdaRHIBufferRange mRange;
 
         /** An optional typed-buffer format override. */
-        rhi::EArdaRHIFormat mFormat = rhi::EArdaRHIFormat::Unknown;
+        arda::EArdaRHIFormat mFormat = arda::EArdaRHIFormat::Unknown;
     };
 
     /** Base record for a logical texture or buffer view. */
@@ -512,7 +512,7 @@ namespace arda::render_graph
         FARDGUniformBuffer(
             FARDGUniformBufferHandle Handle,
             eastl::string Name,
-            rhi::FArdaRHIBufferDesc Desc,
+            arda::FArdaRHIBufferDesc Desc,
             const FARDGParameterMetadata* Metadata,
             const void* Contents)
             : FARDGResource(eastl::move(Name), EARDGResourceType::UniformBuffer)
@@ -530,7 +530,7 @@ namespace arda::render_graph
         }
 
         /** Returns the RHI descriptor used for physical constant-buffer allocation. */
-        [[nodiscard]] const rhi::FArdaRHIBufferDesc& GetDesc() const noexcept
+        [[nodiscard]] const arda::FArdaRHIBufferDesc& GetDesc() const noexcept
         {
             return mDesc;
         }
@@ -552,23 +552,23 @@ namespace arda::render_graph
          * Pass code should use FARDGPassExecutionContext::GetUniformBuffer so
          * the graph can validate that the resource was declared.
          */
-        [[nodiscard]] const rhi::FArdaRHIBufferRef& GetBuffer() const noexcept
+        [[nodiscard]] const arda::FArdaRHIBufferRef& GetBuffer() const noexcept
         {
             return mBuffer;
         }
 
         /** Binds a materialized RHI constant buffer to this logical record. */
-        void BindBuffer(rhi::FArdaRHIBufferRef Buffer) noexcept
+        void BindBuffer(arda::FArdaRHIBufferRef Buffer) noexcept
         {
             mBuffer = eastl::move(Buffer);
         }
 
     private:
         FARDGUniformBufferHandle mHandle;
-        rhi::FArdaRHIBufferDesc mDesc;
+        arda::FArdaRHIBufferDesc mDesc;
         const FARDGParameterMetadata* mMetadata = nullptr;
         const void* mContents = nullptr;
-        rhi::FArdaRHIBufferRef mBuffer;
+        arda::FArdaRHIBufferRef mBuffer;
     };
 
     /** Declares a direct texture access that does not require a logical view. */
@@ -578,10 +578,10 @@ namespace arda::render_graph
         FARDGTexture* mTexture = nullptr;
 
         /** The RHI state required by the access. */
-        rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown;
+        arda::EArdaRHIResourceState mState = arda::EArdaRHIResourceState::Unknown;
 
         /** The texture subresources covered by the access. */
-        rhi::FArdaRHITextureSubresourceRange mSubresources;
+        arda::FArdaRHITextureSubresourceRange mSubresources;
     };
 
     /** Declares a direct buffer access that does not require a logical view. */
@@ -591,17 +591,17 @@ namespace arda::render_graph
         FARDGBuffer* mBuffer = nullptr;
 
         /** The RHI state required by the access. */
-        rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown;
+        arda::EArdaRHIResourceState mState = arda::EArdaRHIResourceState::Unknown;
 
         /** The byte range covered by the access. */
-        rhi::FArdaRHIBufferRange mRange;
+        arda::FArdaRHIBufferRange mRange;
     };
 
     /** Declares direct acceleration-structure access and its required state. */
     struct FARDGAccelStructAccess
     {
         FARDGAccelStruct* mAccelStruct = nullptr;
-        rhi::EArdaRHIResourceState mState = rhi::EArdaRHIResourceState::Unknown;
+        arda::EArdaRHIResourceState mState = arda::EArdaRHIResourceState::Unknown;
     };
 
     /** Identifies one logical texture attachment and its selected subresources. */
@@ -611,14 +611,14 @@ namespace arda::render_graph
         FARDGTexture* mTexture = nullptr;
 
         /** The texture subresources attached to the framebuffer. */
-        rhi::FArdaRHITextureSubresourceRange mSubresources;
+        arda::FArdaRHITextureSubresourceRange mSubresources;
     };
 
     /** Stores color and depth attachments declared by a raster pass. */
     struct FARDGRenderTargetBindingSlots
     {
         /** The logical color attachments, indexed by render-target slot. */
-        eastl::array<FARDGRenderTargetBinding, rhi::ArdaRHIMaxRenderTargets> mColor;
+        eastl::array<FARDGRenderTargetBinding, arda::ArdaRHIMaxRenderTargets> mColor;
 
         /** The logical depth-stencil attachment, or an empty binding when unused. */
         FARDGRenderTargetBinding mDepthStencil;

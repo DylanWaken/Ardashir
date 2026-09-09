@@ -11,7 +11,7 @@
 #include <filesystem>
 #include <mutex>
 
-namespace arda::backend
+namespace arda
 {
     /** Identifies failures while loading or creating global shaders. */
     enum class EArdaGlobalShaderMapError : uint8_t
@@ -78,13 +78,13 @@ namespace arda::backend
         /** @return The registered type used to create this instance. */
         [[nodiscard]] const FArdaShaderType& GetType() const noexcept { return mType; }
         /** @return The created RHI shader. */
-        [[nodiscard]] const rhi::FArdaRHIShaderRef& GetShader() const noexcept { return mShader; }
+        [[nodiscard]] const arda::FArdaRHIShaderRef& GetShader() const noexcept { return mShader; }
         /** @return True after bytecode and RHI resources were created successfully. */
         [[nodiscard]] bool IsLoaded() const noexcept { return mShader != nullptr; }
         /** @return Encoded permutation identifier used to create this instance. */
         [[nodiscard]] uint32_t GetPermutationId() const noexcept { return mPermutationId; }
         /** @return Binding layouts created for the shader parameters. */
-        [[nodiscard]] const eastl::vector<rhi::FArdaRHIBindingLayoutRef>&
+        [[nodiscard]] const eastl::vector<arda::FArdaRHIBindingLayoutRef>&
         GetBindingLayouts() const noexcept { return mBindingLayouts; }
         /** @return Parameter metadata, or null for a parameterless shader. */
         [[nodiscard]] const FArdaShaderParameterMetadata* GetParameterMetadata() const
@@ -99,9 +99,9 @@ namespace arda::backend
         /** Encoded permutation identifier used to create the instance. */
         uint32_t mPermutationId = 0;
         /** Created RHI shader. */
-        rhi::FArdaRHIShaderRef mShader;
+        arda::FArdaRHIShaderRef mShader;
         /** Binding layouts created from the parameter metadata. */
-        eastl::vector<rhi::FArdaRHIBindingLayoutRef> mBindingLayouts;
+        eastl::vector<arda::FArdaRHIBindingLayoutRef> mBindingLayouts;
     };
 
     /** Loads, creates, and indexes all committed global shaders for one device. */
@@ -118,14 +118,14 @@ namespace arda::backend
          * @return True when all global shaders were initialized successfully.
          */
         [[nodiscard]] bool Initialize(
-            rhi::FArdaRHIDeviceRef Device,
+            arda::FArdaRHIDeviceRef Device,
             const std::filesystem::path& ShaderDirectory);
         /**
          * Initializes using the configured persistent backend shader cache.
          * @param Device Device used to create shaders.
          * @return True when registration and policy-specific initialization succeed.
          */
-        [[nodiscard]] bool Initialize(rhi::FArdaRHIDeviceRef Device);
+        [[nodiscard]] bool Initialize(arda::FArdaRHIDeviceRef Device);
 
         /** @return True when the map contains initialized global shaders. */
         [[nodiscard]] bool IsInitialized() const noexcept;
@@ -172,7 +172,7 @@ namespace arda::backend
         /** Lock-held implementation; slots are preallocated before publication. */
         [[nodiscard]] bool EnsureSlotLoadedLocked(size_t Index) const;
         /** Device permanently associated with initialized shader instances. */
-        rhi::FArdaRHIDeviceRef mDevice;
+        arda::FArdaRHIDeviceRef mDevice;
         /** Exact backend-module shader target used by this map. */
         FArdaShaderTarget mTarget;
         /** Compilation timing policy captured at initialization. */

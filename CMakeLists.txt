@@ -17,7 +17,7 @@ option(ARDASHIR_BUILD_ARDG_EXAMPLE "Build the dual-backend render-graph terrain 
 option(ARDASHIR_BUILD_CORNELL_BOX "Build the RDG hardware path-traced Cornell Box application" ON)
 option(ARDASHIR_ENABLE_TRACE "Enable Ardashir CPU trace instrumentation" ON)
 option(ARDASHIR_ENABLE_CUDA "Enable native CUDA kernel launch providers (optional SDK and runtime driver)" OFF)
-set(ARDASHIR_CUDA_INCLUDE_DIR "" CACHE PATH "CUDA 13.3 or newer include directory; public RHI headers do not require it")
+set(ARDASHIR_CUDA_INCLUDE_DIR "" CACHE PATH "CUDA 12.0 or newer include directory (CiG capture requires 13.3+); public RHI headers do not require it")
 option(ARDASHIR_BACKEND_VULKAN
     "Link the native Vulkan 1.4 ArdaBackend module" ON)
 option(ARDASHIR_BACKEND_D3D12
@@ -25,11 +25,12 @@ option(ARDASHIR_BACKEND_D3D12
 set(ARDASHIR_BACKEND_MODULE_TARGETS "" CACHE STRING
     "Additional semicolon-separated CMake backend library targets")
 set(ARDASHIR_BACKEND_REGISTRATION_FUNCTIONS "" CACHE STRING
-    "Additional arda::backend registration function names supplied by linked modules")
+    "Additional arda registration function names supplied by linked modules")
 
 list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/Cmake")
 include(Platform)
 include(Dependencies)
+include(ArdaModule)
 
 add_custom_target(ArdaRHISourceBoundary ALL
     COMMAND "${CMAKE_COMMAND}"
@@ -39,6 +40,15 @@ add_custom_target(ArdaRHISourceBoundary ALL
     VERBATIM
 )
 set_target_properties(ArdaRHISourceBoundary PROPERTIES FOLDER "Ardashir/Tests")
+
+add_custom_target(ArdaNamespaceBoundary ALL
+    COMMAND "${CMAKE_COMMAND}"
+        "-DARDASHIR_SOURCE_DIR=${PROJECT_SOURCE_DIR}/Source"
+        -P "${PROJECT_SOURCE_DIR}/Cmake/VerifyNamespaces.cmake"
+    COMMENT "Checking flat project namespaces"
+    VERBATIM
+)
+set_target_properties(ArdaNamespaceBoundary PROPERTIES FOLDER "Ardashir/Tests")
 
 if(ARDASHIR_BUILD_TESTS)
     include(CTest)
@@ -50,6 +60,12 @@ if(ARDASHIR_BUILD_TESTS)
         COMMAND "${CMAKE_COMMAND}"
             "-DARDASHIR_SOURCE_DIR=${PROJECT_SOURCE_DIR}/Source"
             -P "${PROJECT_SOURCE_DIR}/Cmake/VerifyRhiBoundary.cmake"
+    )
+    add_test(
+        NAME ArdaNamespaceBoundary
+        COMMAND "${CMAKE_COMMAND}"
+            "-DARDASHIR_SOURCE_DIR=${PROJECT_SOURCE_DIR}/Source"
+            -P "${PROJECT_SOURCE_DIR}/Cmake/VerifyNamespaces.cmake"
     )
 endif()
 

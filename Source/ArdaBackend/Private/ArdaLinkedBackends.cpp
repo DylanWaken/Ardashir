@@ -4,25 +4,23 @@
 
 #include <mutex>
 
-namespace arda::backend
+namespace arda
 {
     #define ARDA_LINKED_BACKEND(Function) [[nodiscard]] bool Function();
     #include "ArdaLinkedBackendRegistrations.inl"
     #undef ARDA_LINKED_BACKEND
 
-    namespace private_api
+    void RegisterLinkedBackendModules()
     {
-        void RegisterLinkedBackendModules()
-        {
-            static std::once_flag RegistrationFlag;
-            std::call_once(
-                RegistrationFlag,
-                []
-                {
-                    #define ARDA_LINKED_BACKEND(Function) (void)Function();
-                    #include "ArdaLinkedBackendRegistrations.inl"
-                    #undef ARDA_LINKED_BACKEND
-                });
-        }
+        static std::once_flag RegistrationFlag;
+        std::call_once(
+            RegistrationFlag,
+            []
+            {
+                #define ARDA_LINKED_BACKEND(Function) (void)Function();
+                #include "ArdaLinkedBackendRegistrations.inl"
+                #undef ARDA_LINKED_BACKEND
+            });
     }
+
 }

@@ -11,7 +11,14 @@ project stem in type names and as the prefix for filenames.
   domain terms, such as `GPU`, `D3D12`, or `RHI`.
 - Use `PascalCase` without underscores for types, functions, variables,
   constants, and enum values, except for required variable prefixes.
-- Use lowercase names for namespaces, for example `arda::backend`.
+- Put all project-owned APIs in the single `arda` namespace. Their `FArda`, `IArda`,
+  `EArda`, and `FARDG` names already identify the project and subsystem.
+- This includes provider contracts, shared implementation helpers, tests, and
+  sample programs. Use descriptive names instead of nested namespaces.
+- Keep file-local helpers in anonymous namespaces and shared internal declarations
+  in private headers. The `ArdaNamespaceBoundary` build check enforces this rule.
+- Do not add public module namespace chains or parallel alias facades. Clients
+  can write `using namespace arda;` locally; never put this directive in a public header.
 - Name types and variables with nouns.
 - Name functions with verbs that describe their effect or result.
 
@@ -29,7 +36,7 @@ prefix with the `Arda` project stem:
 class FArdaBackendDevice;
 struct FArdaBackendConfiguration;
 enum class EArdaShaderBinaryFormat;
-using FArdaDeviceHandle = arda::rhi::FArdaRHIDeviceRef;
+using FArdaDeviceHandle = arda::FArdaRHIDeviceRef;
 
 template <typename ElementType>
 class TArdaArray;

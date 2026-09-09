@@ -9,21 +9,21 @@
 #include <EASTL/string.h>
 #include <memory>
 
-namespace arda::tests::ardg_example
+namespace arda
 {
     class FArdaTerrainRenderer
     {
     public:
         bool Initialize(
-            rhi::FArdaRHIDeviceRef device,
-            rhi::EArdaRHIFormat swapChainFormat);
+            arda::FArdaRHIDeviceRef device,
+            arda::EArdaRHIFormat swapChainFormat);
         void UpdateCamera(
             float forward,
             float right,
             float lookX,
             float lookY,
             float deltaSeconds);
-        bool RenderFrame(backend::IArdaSwapChain& swapChain);
+        bool RenderFrame(arda::IArdaSwapChain& swapChain);
 
         [[nodiscard]] const eastl::string& GetError() const { return mError; }
 
@@ -32,28 +32,28 @@ namespace arda::tests::ardg_example
         bool CreateSettingsUploadBuffer();
         bool CreateCameraResources();
 
-        [[nodiscard]] render_graph::FARDGRenderGraphContext
+        [[nodiscard]] arda::FARDGRenderGraphContext
         CreateGraphContext() const;
 
-        rhi::FArdaRHIDeviceRef mDevice;
-        backend::FArdaGlobalShaderMap mShaderMap;
-        std::unique_ptr<backend::FArdaPipelineStateCache> mPipelineStateCache;
-        const backend::FArdaGlobalShaderInstance* mGenerateShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mErodeShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mTriangulateShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mTerrainVertexShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mTerrainPixelShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mOverlayVertexShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mOverlayPixelShader = nullptr;
-        backend::FArdaComputePipelineStateInitializer mGeneratePipelineInitializer;
-        backend::FArdaComputePipelineStateInitializer mErodePipelineInitializer;
-        backend::FArdaComputePipelineStateInitializer mTriangulatePipelineInitializer;
-        rhi::FArdaRHIInputLayoutRef mTerrainInputLayout;
-        backend::FArdaGraphicsPipelineStateInitializer mTerrainPipelineInitializer;
-        backend::FArdaGraphicsPipelineStateInitializer mOverlayPipelineInitializer;
-        rhi::FArdaRHIBufferRef mSettingsUploadBuffer;
-        rhi::FArdaRHIBufferRef mCameraBuffer;
-        rhi::FArdaRHIBindingSetRef mCameraBindingSet;
+        arda::FArdaRHIDeviceRef mDevice;
+        arda::FArdaGlobalShaderMap mShaderMap;
+        std::unique_ptr<arda::FArdaPipelineStateCache> mPipelineStateCache;
+        const arda::FArdaGlobalShaderInstance* mGenerateShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mErodeShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mTriangulateShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mTerrainVertexShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mTerrainPixelShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mOverlayVertexShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mOverlayPixelShader = nullptr;
+        arda::FArdaComputePipelineStateInitializer mGeneratePipelineInitializer;
+        arda::FArdaComputePipelineStateInitializer mErodePipelineInitializer;
+        arda::FArdaComputePipelineStateInitializer mTriangulatePipelineInitializer;
+        arda::FArdaRHIInputLayoutRef mTerrainInputLayout;
+        arda::FArdaGraphicsPipelineStateInitializer mTerrainPipelineInitializer;
+        arda::FArdaGraphicsPipelineStateInitializer mOverlayPipelineInitializer;
+        arda::FArdaRHIBufferRef mSettingsUploadBuffer;
+        arda::FArdaRHIBufferRef mCameraBuffer;
+        arda::FArdaRHIBindingSetRef mCameraBindingSet;
 
         float mCameraPosition[3] = {-0.96875f, -0.96875f, 0.8125f};
         float mCameraYaw = 0.78539816f;

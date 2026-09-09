@@ -2,7 +2,7 @@
 
 #include "RHI/ArdaRHIProvider.h"
 
-namespace arda::rhi::provider
+namespace arda
 {
     /** Constructs ArdaBackend's RHI facade around one backend-provider device. */
     [[nodiscard]] FArdaRHIDeviceRef CreateArdaRHIDevice(

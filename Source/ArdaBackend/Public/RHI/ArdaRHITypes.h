@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <limits>
 
-namespace arda::rhi
+namespace arda
 {
     /** Forward declaration of texture desc. */
     struct FArdaRHITextureDesc;

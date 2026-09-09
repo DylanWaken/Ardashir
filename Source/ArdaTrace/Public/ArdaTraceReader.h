@@ -6,7 +6,7 @@
 #include <EASTL/unordered_map.h>
 #include <EASTL/vector.h>
 
-namespace arda::trace
+namespace arda
 {
     /** Describes one completed CPU scope from a capture. */
     struct FArdaTraceScope

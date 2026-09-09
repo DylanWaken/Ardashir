@@ -8,10 +8,10 @@
 #include "ArdaRenderGraphBuilder.h"
 #include "ArdaBackend.h"
 
-namespace arda::render_graph
+namespace arda
 {
     [[nodiscard]] inline FARDGRenderGraphContext MakeRenderGraphContext(
-        rhi::FArdaRHIDeviceRef Device,
+        arda::FArdaRHIDeviceRef Device,
         FARDGDebugOptions DebugOptions = {})
     {
         FARDGRenderGraphContext Result;
@@ -28,5 +28,5 @@ namespace arda::render_graph
     }
 
     /** Returns the stable name of the render-graph module. */
-    [[nodiscard]] const char* GetModuleName() noexcept;
+    [[nodiscard]] const char* GetRenderGraphModuleName() noexcept;
 }

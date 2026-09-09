@@ -13,7 +13,7 @@
 #include <cstdint>
 #include <filesystem>
 
-namespace arda::backend
+namespace arda
 {
     /** Identifies the severity of a backend diagnostic message. */
     enum class EArdaDiagnosticSeverity : uint8_t { Info, Warning, Error, Fatal };
@@ -111,10 +111,10 @@ namespace arda::backend
     };
 
     /** Returns the feature requirements implied by a standard device profile. */
-    [[nodiscard]] inline rhi::FArdaRHIFeatureRequirements
+    [[nodiscard]] inline arda::FArdaRHIFeatureRequirements
         GetArdaRHIProfileRequirements(EArdaRHIDeviceProfile Profile) noexcept
     {
-        rhi::FArdaRHIFeatureRequirements Result;
+        arda::FArdaRHIFeatureRequirements Result;
         if (Profile >= EArdaRHIDeviceProfile::RayTracingInfrastructure)
         {
             Result.mbRequireRayTracingInfrastructure = true;
@@ -147,13 +147,15 @@ namespace arda::backend
         eastl::string mBackendName;
         /** The source from which the native graphics device is obtained. */
         EArdaDeviceSource mDeviceSource = EArdaDeviceSource::ArdaCreated;
+        /** CUDA scheduling policy; fixed for the lifetime of this device and its mappings. */
+        EArdaCudaExecutionMode mCudaExecutionMode = EArdaCudaExecutionMode::Automatic;
         /** Whether graphics API validation layers are enabled. */
         bool mbEnableValidation = true;
         /** Optional RT/ML-oriented desktop-GPU admission profile. */
         EArdaRHIDeviceProfile mRequiredDeviceProfile =
             EArdaRHIDeviceProfile::None;
         /** Additional module-specific abilities required during initialization. */
-        rhi::FArdaRHIFeatureRequirements mRequiredFeatures;
+        arda::FArdaRHIFeatureRequirements mRequiredFeatures;
         /** Timing policy for registered shader compilation on the active backend. */
         EArdaShaderCompilationMode mShaderCompilationMode =
             EArdaShaderCompilationMode::OnDemand;
@@ -207,10 +209,10 @@ namespace arda::backend
     [[nodiscard]] bool IsBackendInitialized() noexcept;
 
     /** @return The initialized opaque RHI device, or an empty reference. */
-    [[nodiscard]] rhi::FArdaRHIDeviceRef GetDevice() noexcept;
+    [[nodiscard]] arda::FArdaRHIDeviceRef GetDevice() noexcept;
 
     /** @return The most recent backend error message. */
     [[nodiscard]] eastl::string GetBackendError();
     /** @return The stable name of the backend module. */
-    [[nodiscard]] const char* GetModuleName() noexcept;
+    [[nodiscard]] const char* GetBackendModuleName() noexcept;
 }

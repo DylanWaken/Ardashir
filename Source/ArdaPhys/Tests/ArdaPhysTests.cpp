@@ -4,5 +4,5 @@
 
 TEST(ArdaPhys, ReportsModuleName)
 {
-    EXPECT_STREQ(arda::phys::GetModuleName(), "ArdaPhys");
+    EXPECT_STREQ(arda::GetPhysModuleName(), "ArdaPhys");
 }

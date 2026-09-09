@@ -7,7 +7,7 @@
 #include <EASTL/utility.h>
 #include <EASTL/vector.h>
 
-namespace arda::render_graph
+namespace arda
 {
     /** Describes one virtual-resource request for interval allocation. */
     struct FARDGTransientAllocationRequest

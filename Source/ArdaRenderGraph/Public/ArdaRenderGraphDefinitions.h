@@ -8,7 +8,7 @@
 
 #include "RHI/ArdaRHI.h"
 
-namespace arda::render_graph
+namespace arda
 {
     /**
      * A compact, type-safe index into an append-only render-graph registry.
@@ -318,7 +318,7 @@ namespace arda::render_graph
     struct FARDGRenderGraphContext
     {
         /** The RHI device on which render-graph work is executed. */
-        rhi::FArdaRHIDeviceRef mDevice;
+        arda::FArdaRHIDeviceRef mDevice;
 
         /** Per-graph queue policy, normally derived from the RHI device. */
         FARDGQueuePolicy mQueuePolicy;

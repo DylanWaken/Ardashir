@@ -12,7 +12,7 @@
 #include <EASTL/utility.h>
 #include <EASTL/vector.h>
 
-namespace arda::render_graph
+namespace arda
 {
     /** Identifies the semantic kind of a generated parameter-struct member. */
     enum class EARDGParameterType : uint8_t
@@ -82,7 +82,7 @@ namespace arda::render_graph
         size_t mElementStride = 0;
 
         /** The default RHI state implied by the member kind. */
-        rhi::EArdaRHIResourceState mDefaultState = rhi::EArdaRHIResourceState::Unknown;
+        arda::EArdaRHIResourceState mDefaultState = arda::EArdaRHIResourceState::Unknown;
 
         /** Metadata for a nested parameter struct, or null for a leaf member. */
         const FARDGParameterMetadata* mNestedMetadata = nullptr;
@@ -302,7 +302,7 @@ namespace arda::render_graph
         };                                                                                               \
         static void FARDGAppendMembers(                                                                  \
             FARDGNextMemberId##MemberName,                                                               \
-            eastl::vector<::arda::render_graph::FARDGParameterMember>& Members)                           \
+            eastl::vector<::arda::FARDGParameterMember>& Members)                           \
         {                                                                                                \
             FARDGAppendMembers(FARDGMemberId##MemberName{}, Members);                                    \
             Members.push_back({                                                                          \
@@ -328,7 +328,7 @@ namespace arda::render_graph
         };                                                                                                \
         static void FARDGAppendMembers(                                                                   \
             FARDGNextMemberId##MemberName,                                                                \
-            eastl::vector<::arda::render_graph::FARDGParameterMember>& Members)                            \
+            eastl::vector<::arda::FARDGParameterMember>& Members)                            \
         {                                                                                                 \
             FARDGAppendMembers(FARDGMemberId##MemberName{}, Members);                                     \
             Members.push_back({                                                                           \
@@ -354,18 +354,18 @@ namespace arda::render_graph
         };                                                                                                 \
         static void FARDGAppendMembers(                                                                    \
             FARDGNextMemberId##MemberName,                                                                 \
-            eastl::vector<::arda::render_graph::FARDGParameterMember>& Members)                             \
+            eastl::vector<::arda::FARDGParameterMember>& Members)                             \
         {                                                                                                  \
             FARDGAppendMembers(FARDGMemberId##MemberName{}, Members);                                      \
             Members.push_back({                                                                            \
                 #MemberName,                                                                                \
-                ::arda::render_graph::EARDGParameterType::NestedStruct,                                    \
+                ::arda::EARDGParameterType::NestedStruct,                                    \
                 offsetof(FARDGThisStruct, MemberName),                                                      \
                 sizeof(StructType),                                                                         \
                 alignof(StructType),                                                                        \
                 1u,                                                                                         \
                 sizeof(StructType),                                                                         \
-                rhi::EArdaRHIResourceState::Unknown,                                                       \
+                arda::EArdaRHIResourceState::Unknown,                                                       \
                 &StructType::GetStaticMetadata()});                                                         \
         }                                                                                                  \
         typedef FARDGNextMemberId##MemberName
@@ -380,18 +380,18 @@ namespace arda::render_graph
         };                                                                                                 \
         static void FARDGAppendMembers(                                                                    \
             FARDGNextMemberId##MemberName,                                                                 \
-            eastl::vector<::arda::render_graph::FARDGParameterMember>& Members)                             \
+            eastl::vector<::arda::FARDGParameterMember>& Members)                             \
         {                                                                                                  \
             FARDGAppendMembers(FARDGMemberId##MemberName{}, Members);                                      \
             Members.push_back({                                                                            \
                 #MemberName,                                                                                \
-                ::arda::render_graph::EARDGParameterType::NestedStruct,                                    \
+                ::arda::EARDGParameterType::NestedStruct,                                    \
                 offsetof(FARDGThisStruct, MemberName),                                                      \
                 sizeof(eastl::array<StructType, Count>),                                                       \
                 alignof(eastl::array<StructType, Count>),                                                      \
                 Count,                                                                                      \
                 sizeof(StructType),                                                                         \
-                rhi::EArdaRHIResourceState::Unknown,                                                       \
+                arda::EArdaRHIResourceState::Unknown,                                                       \
                 &StructType::GetStaticMetadata()});                                                         \
         }                                                                                                  \
         typedef FARDGNextMemberId##MemberName
@@ -410,7 +410,7 @@ namespace arda::render_graph
         };                                                                                                 \
         static void FARDGAppendMembers(                                                                    \
             FARDGFirstMemberId,                                                                            \
-            eastl::vector<::arda::render_graph::FARDGParameterMember>&)                                     \
+            eastl::vector<::arda::FARDGParameterMember>&)                                     \
         {                                                                                                  \
         }                                                                                                  \
         typedef FARDGFirstMemberId
@@ -419,15 +419,15 @@ namespace arda::render_graph
 #define ARDG_END_PARAMETER_STRUCT()                                                                        \
         FARDGLastMemberId;                                                                                 \
     public:                                                                                                \
-        static const ::arda::render_graph::FARDGParameterMetadata& GetStaticMetadata()                    \
+        static const ::arda::FARDGParameterMetadata& GetStaticMetadata()                    \
         {                                                                                                  \
             static_assert(eastl::is_standard_layout_v<FARDGThisStruct>,                                     \
                 "ARDG parameter structs must use standard layout.");                                      \
-            static const ::arda::render_graph::FARDGParameterMetadata Metadata = []                       \
+            static const ::arda::FARDGParameterMetadata Metadata = []                       \
             {                                                                                              \
-                eastl::vector<::arda::render_graph::FARDGParameterMember> Members;                          \
+                eastl::vector<::arda::FARDGParameterMember> Members;                          \
                 FARDGAppendMembers(FARDGLastMemberId{}, Members);                                          \
-                return ::arda::render_graph::FARDGParameterMetadata(                                      \
+                return ::arda::FARDGParameterMetadata(                                      \
                     FARDGStructName,                                                                        \
                     sizeof(FARDGThisStruct),                                                                \
                     alignof(FARDGThisStruct),                                                               \
@@ -440,180 +440,180 @@ namespace arda::render_graph
 /** Declares an ordinary value member in an ARDG parameter struct. */
 #define ARDG_PARAMETER(CppType, MemberName)                                                               \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::Value,                                                  \
+        ::arda::EARDGParameterType::Value,                                                  \
         CppType,                                                                                           \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::Unknown)
+        arda::EArdaRHIResourceState::Unknown)
 
 /** Declares an array of ordinary value members in an ARDG parameter struct. */
 #define ARDG_PARAMETER_ARRAY(CppType, MemberName, Count)                                                  \
     ARDG_INTERNAL_PARAMETER_ARRAY(                                                                         \
-        ::arda::render_graph::EARDGParameterType::Value,                                                  \
+        ::arda::EARDGParameterType::Value,                                                  \
         CppType,                                                                                           \
         MemberName,                                                                                        \
         Count,                                                                                             \
-        rhi::EArdaRHIResourceState::Unknown)
+        arda::EArdaRHIResourceState::Unknown)
 
 /** Declares a logical texture member with default shader-resource access. */
 #define ARDG_TEXTURE(MemberName)                                                                           \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::Texture,                                                \
-        ::arda::render_graph::FARDGTextureRef,                                                             \
+        ::arda::EARDGParameterType::Texture,                                                \
+        ::arda::FARDGTextureRef,                                                             \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::ShaderResource)
+        arda::EArdaRHIResourceState::ShaderResource)
 
 /** Declares an array of logical textures with default shader-resource access. */
 #define ARDG_TEXTURE_ARRAY(MemberName, Count)                                                              \
     ARDG_INTERNAL_PARAMETER_ARRAY(                                                                         \
-        ::arda::render_graph::EARDGParameterType::Texture,                                                \
-        ::arda::render_graph::FARDGTextureRef,                                                             \
+        ::arda::EARDGParameterType::Texture,                                                \
+        ::arda::FARDGTextureRef,                                                             \
         MemberName,                                                                                        \
         Count,                                                                                             \
-        rhi::EArdaRHIResourceState::ShaderResource)
+        arda::EArdaRHIResourceState::ShaderResource)
 
 /** Declares a logical buffer member with default shader-resource access. */
 #define ARDG_BUFFER(MemberName)                                                                            \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::Buffer,                                                 \
-        ::arda::render_graph::FARDGBufferRef,                                                              \
+        ::arda::EARDGParameterType::Buffer,                                                 \
+        ::arda::FARDGBufferRef,                                                              \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::ShaderResource)
+        arda::EArdaRHIResourceState::ShaderResource)
 
 /** Declares an array of logical buffers with default shader-resource access. */
 #define ARDG_BUFFER_ARRAY(MemberName, Count)                                                               \
     ARDG_INTERNAL_PARAMETER_ARRAY(                                                                         \
-        ::arda::render_graph::EARDGParameterType::Buffer,                                                 \
-        ::arda::render_graph::FARDGBufferRef,                                                              \
+        ::arda::EARDGParameterType::Buffer,                                                 \
+        ::arda::FARDGBufferRef,                                                              \
         MemberName,                                                                                        \
         Count,                                                                                             \
-        rhi::EArdaRHIResourceState::ShaderResource)
+        arda::EArdaRHIResourceState::ShaderResource)
 
 /** Declares a logical texture shader-resource view member. */
 #define ARDG_TEXTURE_SRV(MemberName)                                                                       \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::TextureShaderResourceView,                              \
-        ::arda::render_graph::FARDGTextureSRVRef,                                                          \
+        ::arda::EARDGParameterType::TextureShaderResourceView,                              \
+        ::arda::FARDGTextureSRVRef,                                                          \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::ShaderResource)
+        arda::EArdaRHIResourceState::ShaderResource)
 
 /** Declares an array of logical texture shader-resource view members. */
 #define ARDG_TEXTURE_SRV_ARRAY(MemberName, Count)                                                          \
     ARDG_INTERNAL_PARAMETER_ARRAY(                                                                         \
-        ::arda::render_graph::EARDGParameterType::TextureShaderResourceView,                              \
-        ::arda::render_graph::FARDGTextureSRVRef,                                                          \
+        ::arda::EARDGParameterType::TextureShaderResourceView,                              \
+        ::arda::FARDGTextureSRVRef,                                                          \
         MemberName,                                                                                        \
         Count,                                                                                             \
-        rhi::EArdaRHIResourceState::ShaderResource)
+        arda::EArdaRHIResourceState::ShaderResource)
 
 /** Declares a logical texture unordered-access view member. */
 #define ARDG_TEXTURE_UAV(MemberName)                                                                       \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::TextureUnorderedAccessView,                             \
-        ::arda::render_graph::FARDGTextureUAVRef,                                                          \
+        ::arda::EARDGParameterType::TextureUnorderedAccessView,                             \
+        ::arda::FARDGTextureUAVRef,                                                          \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::UnorderedAccess)
+        arda::EArdaRHIResourceState::UnorderedAccess)
 
 /** Declares an array of logical texture unordered-access view members. */
 #define ARDG_TEXTURE_UAV_ARRAY(MemberName, Count)                                                          \
     ARDG_INTERNAL_PARAMETER_ARRAY(                                                                         \
-        ::arda::render_graph::EARDGParameterType::TextureUnorderedAccessView,                             \
-        ::arda::render_graph::FARDGTextureUAVRef,                                                          \
+        ::arda::EARDGParameterType::TextureUnorderedAccessView,                             \
+        ::arda::FARDGTextureUAVRef,                                                          \
         MemberName,                                                                                        \
         Count,                                                                                             \
-        rhi::EArdaRHIResourceState::UnorderedAccess)
+        arda::EArdaRHIResourceState::UnorderedAccess)
 
 /** Declares a logical buffer shader-resource view member. */
 #define ARDG_BUFFER_SRV(MemberName)                                                                        \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::BufferShaderResourceView,                               \
-        ::arda::render_graph::FARDGBufferSRVRef,                                                           \
+        ::arda::EARDGParameterType::BufferShaderResourceView,                               \
+        ::arda::FARDGBufferSRVRef,                                                           \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::ShaderResource)
+        arda::EArdaRHIResourceState::ShaderResource)
 
 /** Declares an array of logical buffer shader-resource view members. */
 #define ARDG_BUFFER_SRV_ARRAY(MemberName, Count)                                                           \
     ARDG_INTERNAL_PARAMETER_ARRAY(                                                                         \
-        ::arda::render_graph::EARDGParameterType::BufferShaderResourceView,                               \
-        ::arda::render_graph::FARDGBufferSRVRef,                                                           \
+        ::arda::EARDGParameterType::BufferShaderResourceView,                               \
+        ::arda::FARDGBufferSRVRef,                                                           \
         MemberName,                                                                                        \
         Count,                                                                                             \
-        rhi::EArdaRHIResourceState::ShaderResource)
+        arda::EArdaRHIResourceState::ShaderResource)
 
 /** Declares a logical buffer unordered-access view member. */
 #define ARDG_BUFFER_UAV(MemberName)                                                                        \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::BufferUnorderedAccessView,                              \
-        ::arda::render_graph::FARDGBufferUAVRef,                                                           \
+        ::arda::EARDGParameterType::BufferUnorderedAccessView,                              \
+        ::arda::FARDGBufferUAVRef,                                                           \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::UnorderedAccess)
+        arda::EArdaRHIResourceState::UnorderedAccess)
 
 /** Declares an array of logical buffer unordered-access view members. */
 #define ARDG_BUFFER_UAV_ARRAY(MemberName, Count)                                                           \
     ARDG_INTERNAL_PARAMETER_ARRAY(                                                                         \
-        ::arda::render_graph::EARDGParameterType::BufferUnorderedAccessView,                              \
-        ::arda::render_graph::FARDGBufferUAVRef,                                                           \
+        ::arda::EARDGParameterType::BufferUnorderedAccessView,                              \
+        ::arda::FARDGBufferUAVRef,                                                           \
         MemberName,                                                                                        \
         Count,                                                                                             \
-        rhi::EArdaRHIResourceState::UnorderedAccess)
+        arda::EArdaRHIResourceState::UnorderedAccess)
 
 /** Declares a direct texture-access member whose state is set at runtime. */
 #define ARDG_TEXTURE_ACCESS(MemberName)                                                                    \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::TextureAccess,                                          \
-        ::arda::render_graph::FARDGTextureAccess,                                                          \
+        ::arda::EARDGParameterType::TextureAccess,                                          \
+        ::arda::FARDGTextureAccess,                                                          \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::Unknown)
+        arda::EArdaRHIResourceState::Unknown)
 
 /** Declares an array of direct texture-access members. */
 #define ARDG_TEXTURE_ACCESS_ARRAY(MemberName, Count)                                                       \
     ARDG_INTERNAL_PARAMETER_ARRAY(                                                                         \
-        ::arda::render_graph::EARDGParameterType::TextureAccess,                                          \
-        ::arda::render_graph::FARDGTextureAccess,                                                          \
+        ::arda::EARDGParameterType::TextureAccess,                                          \
+        ::arda::FARDGTextureAccess,                                                          \
         MemberName,                                                                                        \
         Count,                                                                                             \
-        rhi::EArdaRHIResourceState::Unknown)
+        arda::EArdaRHIResourceState::Unknown)
 
 /** Declares a direct buffer-access member whose state is set at runtime. */
 #define ARDG_BUFFER_ACCESS(MemberName)                                                                     \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::BufferAccess,                                           \
-        ::arda::render_graph::FARDGBufferAccess,                                                           \
+        ::arda::EARDGParameterType::BufferAccess,                                           \
+        ::arda::FARDGBufferAccess,                                                           \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::Unknown)
+        arda::EArdaRHIResourceState::Unknown)
 
 /** Declares an array of direct buffer-access members. */
 #define ARDG_BUFFER_ACCESS_ARRAY(MemberName, Count)                                                        \
     ARDG_INTERNAL_PARAMETER_ARRAY(                                                                         \
-        ::arda::render_graph::EARDGParameterType::BufferAccess,                                           \
-        ::arda::render_graph::FARDGBufferAccess,                                                           \
+        ::arda::EARDGParameterType::BufferAccess,                                           \
+        ::arda::FARDGBufferAccess,                                                           \
         MemberName,                                                                                        \
         Count,                                                                                             \
-        rhi::EArdaRHIResourceState::Unknown)
+        arda::EArdaRHIResourceState::Unknown)
 
 /** Declares a direct acceleration-structure access member. */
 #define ARDG_ACCEL_STRUCT_ACCESS(MemberName)                                                               \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::AccelStructAccess,                                      \
-        ::arda::render_graph::FARDGAccelStructAccess,                                                      \
+        ::arda::EARDGParameterType::AccelStructAccess,                                      \
+        ::arda::FARDGAccelStructAccess,                                                      \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::Unknown)
+        arda::EArdaRHIResourceState::Unknown)
 
 /** Declares a logical uniform-buffer member. */
 #define ARDG_UNIFORM_BUFFER(MemberName)                                                                    \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::UniformBuffer,                                          \
-        ::arda::render_graph::FARDGUniformBufferRef,                                                       \
+        ::arda::EARDGParameterType::UniformBuffer,                                          \
+        ::arda::FARDGUniformBufferRef,                                                       \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::ConstantBuffer)
+        arda::EArdaRHIResourceState::ConstantBuffer)
 
 /** Declares an array of logical uniform-buffer members. */
 #define ARDG_UNIFORM_BUFFER_ARRAY(MemberName, Count)                                                       \
     ARDG_INTERNAL_PARAMETER_ARRAY(                                                                         \
-        ::arda::render_graph::EARDGParameterType::UniformBuffer,                                          \
-        ::arda::render_graph::FARDGUniformBufferRef,                                                       \
+        ::arda::EARDGParameterType::UniformBuffer,                                          \
+        ::arda::FARDGUniformBufferRef,                                                       \
         MemberName,                                                                                        \
         Count,                                                                                             \
-        rhi::EArdaRHIResourceState::ConstantBuffer)
+        arda::EArdaRHIResourceState::ConstantBuffer)
 
 /** Declares one recursively enumerated nested ARDG parameter struct. */
 #define ARDG_PARAMETER_STRUCT(StructType, MemberName)                                                      \
@@ -626,7 +626,7 @@ namespace arda::render_graph
 /** Declares raster render-target binding slots. */
 #define ARDG_RENDER_TARGET_BINDING_SLOTS(MemberName)                                                       \
     ARDG_INTERNAL_PARAMETER(                                                                               \
-        ::arda::render_graph::EARDGParameterType::RenderTargetBindingSlots,                               \
-        ::arda::render_graph::FARDGRenderTargetBindingSlots,                                              \
+        ::arda::EARDGParameterType::RenderTargetBindingSlots,                               \
+        ::arda::FARDGRenderTargetBindingSlots,                                              \
         MemberName,                                                                                        \
-        rhi::EArdaRHIResourceState::RenderTarget)
+        arda::EArdaRHIResourceState::RenderTarget)

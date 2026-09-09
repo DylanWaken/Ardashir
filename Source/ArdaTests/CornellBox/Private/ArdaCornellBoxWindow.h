@@ -7,7 +7,7 @@
 
 struct GLFWwindow;
 
-namespace arda::tests::cornell_box
+namespace arda
 {
     struct FArdaCameraInput
     {
@@ -17,7 +17,7 @@ namespace arda::tests::cornell_box
         float mLookY = 0.0f;
     };
 
-    class FArdaCornellBoxWindow final : public backend::IArdaWindowSurface
+    class FArdaCornellBoxWindow final : public arda::IArdaWindowSurface
     {
     public:
         ~FArdaCornellBoxWindow();
@@ -39,12 +39,12 @@ namespace arda::tests::cornell_box
             return mError;
         }
 
-        [[nodiscard]] backend::FArdaNativeObject
+        [[nodiscard]] arda::FArdaNativeObject
         GetD3D12WindowHandle() const noexcept override;
         [[nodiscard]] eastl::vector<const char*>
         GetVulkanInstanceExtensions() const override;
-        [[nodiscard]] backend::FArdaNativeObject CreateVulkanSurface(
-            backend::FArdaNativeObject VulkanInstance,
+        [[nodiscard]] arda::FArdaNativeObject CreateVulkanSurface(
+            arda::FArdaNativeObject VulkanInstance,
             eastl::string& OutError) override;
 
     private:

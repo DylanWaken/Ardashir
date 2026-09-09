@@ -12,7 +12,7 @@
 #include <memory>
 #include <type_traits>
 
-namespace arda::backend
+namespace arda
 {
     /** Base class for globally registered shader declarations. */
     class FArdaGlobalShader
@@ -87,7 +87,7 @@ namespace arda::backend
         /** @return The shader entry-point name. */
         [[nodiscard]] const char* GetEntryPoint() const noexcept { return mEntryPoint.c_str(); }
         /** @return The RHI stage implemented by the shader. */
-        [[nodiscard]] rhi::EArdaRHIShaderStage GetStage() const noexcept { return mStage; }
+        [[nodiscard]] arda::EArdaRHIShaderStage GetStage() const noexcept { return mStage; }
         /** @return Parameter metadata, or null for a parameterless shader. */
         [[nodiscard]] const FArdaShaderParameterMetadata* GetParameterMetadata() const;
         /** @return Stable hash of the shader type's source identity. */
@@ -121,7 +121,7 @@ namespace arda::backend
         /** Shader entry-point name. */
         eastl::string mEntryPoint;
         /** RHI shader stage. */
-        rhi::EArdaRHIShaderStage mStage = rhi::EArdaRHIShaderStage::None;
+        arda::EArdaRHIShaderStage mStage = arda::EArdaRHIShaderStage::None;
         /** Optional static parameter-metadata accessor. */
         FParameterMetadataFunction mParameterMetadataFunction = nullptr;
         /** Number of encoded shader permutations. */
@@ -157,7 +157,7 @@ namespace arda::backend
             const char* SourceStem,
             const char* OutputStem,
             const char* EntryPoint,
-            rhi::EArdaRHIShaderStage Stage,
+            arda::EArdaRHIShaderStage Stage,
             FArdaShaderType::FParameterMetadataFunction ParameterMetadataFunction,
             uint32_t PermutationCount = 1,
             FArdaShaderType::FShouldCompilePermutationFunction
@@ -196,110 +196,108 @@ namespace arda::backend
         std::shared_ptr<FArdaShaderType> mType;
     };
 
-    namespace detail
+    template <typename ShaderClass, typename = void>
+    struct TArdaShaderPermutationTraits
     {
-        template <typename ShaderClass, typename = void>
-        struct TShaderPermutationDomain
+        static constexpr uint32_t PermutationCount = 1;
+        static void AddDefines(
+            uint32_t,
+            FArdaShaderCompileEnvironment&)
         {
-            static constexpr uint32_t PermutationCount = 1;
-            static void AddDefines(
-                uint32_t,
-                FArdaShaderCompileEnvironment&)
-            {
-            }
-        };
-
-        template <typename ShaderClass>
-        struct TShaderPermutationDomain<
-            ShaderClass,
-            std::void_t<typename ShaderClass::FPermutationDomain>>
-        {
-            using Domain = typename ShaderClass::FPermutationDomain;
-            static constexpr uint32_t PermutationCount = Domain::PermutationCount;
-            static void AddDefines(
-                uint32_t PermutationId,
-                FArdaShaderCompileEnvironment& Environment)
-            {
-                Domain(PermutationId).ModifyCompilationEnvironment(Environment);
-            }
-        };
-
-        template <typename ShaderClass, typename = void>
-        struct THasShouldCompilePermutation : std::false_type {};
-
-        template <typename ShaderClass>
-        struct THasShouldCompilePermutation<
-            ShaderClass,
-            std::void_t<decltype(&ShaderClass::ShouldCompilePermutation)>>
-            : std::bool_constant<std::is_same_v<
-                decltype(&ShaderClass::ShouldCompilePermutation),
-                bool (*)(const FArdaShaderPermutationParameters&)>> {};
-
-        template <typename ShaderClass, typename = void>
-        struct THasNamedShouldCompilePermutation : std::false_type {};
-
-        template <typename ShaderClass>
-        struct THasNamedShouldCompilePermutation<
-            ShaderClass,
-            std::void_t<decltype(&ShaderClass::ShouldCompilePermutation)>>
-            : std::true_type {};
-
-        template <typename ShaderClass, typename = void>
-        struct THasModifyCompilationEnvironment : std::false_type {};
-
-        template <typename ShaderClass>
-        struct THasModifyCompilationEnvironment<
-            ShaderClass,
-            std::void_t<decltype(&ShaderClass::ModifyCompilationEnvironment)>>
-            : std::bool_constant<std::is_same_v<
-                decltype(&ShaderClass::ModifyCompilationEnvironment),
-                void (*)(
-                    const FArdaShaderPermutationParameters&,
-                    FArdaShaderCompileEnvironment&)>> {};
-
-        template <typename ShaderClass, typename = void>
-        struct THasNamedModifyCompilationEnvironment : std::false_type {};
-
-        template <typename ShaderClass>
-        struct THasNamedModifyCompilationEnvironment<
-            ShaderClass,
-            std::void_t<decltype(&ShaderClass::ModifyCompilationEnvironment)>>
-            : std::true_type {};
-
-        template <typename ShaderClass>
-        [[nodiscard]] bool ShouldCompileShaderPermutation(
-            const FArdaShaderPermutationParameters& Parameters)
-        {
-            static_assert(
-                !THasNamedShouldCompilePermutation<ShaderClass>::value ||
-                    THasShouldCompilePermutation<ShaderClass>::value,
-                "ShouldCompilePermutation must be static bool(const FArdaShaderPermutationParameters&).");
-            if (Parameters.mPermutationId >=
-                TShaderPermutationDomain<ShaderClass>::PermutationCount)
-            {
-                return false;
-            }
-            if constexpr (THasShouldCompilePermutation<ShaderClass>::value)
-                return ShaderClass::ShouldCompilePermutation(Parameters);
-            return true;
         }
+    };
 
-        template <typename ShaderClass>
-        void BuildShaderCompilationEnvironment(
-            const FArdaShaderPermutationParameters& Parameters,
+    template <typename ShaderClass>
+    struct TArdaShaderPermutationTraits<
+        ShaderClass,
+        std::void_t<typename ShaderClass::FPermutationDomain>>
+    {
+        using Domain = typename ShaderClass::FPermutationDomain;
+        static constexpr uint32_t PermutationCount = Domain::PermutationCount;
+        static void AddDefines(
+            uint32_t PermutationId,
             FArdaShaderCompileEnvironment& Environment)
         {
-            static_assert(
-                !THasNamedModifyCompilationEnvironment<ShaderClass>::value ||
-                    THasModifyCompilationEnvironment<ShaderClass>::value,
-                "ModifyCompilationEnvironment must be static void(const FArdaShaderPermutationParameters&, FArdaShaderCompileEnvironment&).");
-            TShaderPermutationDomain<ShaderClass>::AddDefines(
-                Parameters.mPermutationId,
-                Environment);
-            if constexpr (THasModifyCompilationEnvironment<ShaderClass>::value)
-                ShaderClass::ModifyCompilationEnvironment(Parameters, Environment);
+            Domain(PermutationId).ModifyCompilationEnvironment(Environment);
         }
+    };
+
+    template <typename ShaderClass, typename = void>
+    struct TArdaHasShouldCompilePermutation : std::false_type {};
+
+    template <typename ShaderClass>
+    struct TArdaHasShouldCompilePermutation<
+        ShaderClass,
+        std::void_t<decltype(&ShaderClass::ShouldCompilePermutation)>>
+        : std::bool_constant<std::is_same_v<
+            decltype(&ShaderClass::ShouldCompilePermutation),
+            bool (*)(const FArdaShaderPermutationParameters&)>> {};
+
+    template <typename ShaderClass, typename = void>
+    struct TArdaHasNamedShouldCompilePermutation : std::false_type {};
+
+    template <typename ShaderClass>
+    struct TArdaHasNamedShouldCompilePermutation<
+        ShaderClass,
+        std::void_t<decltype(&ShaderClass::ShouldCompilePermutation)>>
+        : std::true_type {};
+
+    template <typename ShaderClass, typename = void>
+    struct TArdaHasModifyCompilationEnvironment : std::false_type {};
+
+    template <typename ShaderClass>
+    struct TArdaHasModifyCompilationEnvironment<
+        ShaderClass,
+        std::void_t<decltype(&ShaderClass::ModifyCompilationEnvironment)>>
+        : std::bool_constant<std::is_same_v<
+            decltype(&ShaderClass::ModifyCompilationEnvironment),
+            void (*)(
+                const FArdaShaderPermutationParameters&,
+                FArdaShaderCompileEnvironment&)>> {};
+
+    template <typename ShaderClass, typename = void>
+    struct TArdaHasNamedModifyCompilationEnvironment : std::false_type {};
+
+    template <typename ShaderClass>
+    struct TArdaHasNamedModifyCompilationEnvironment<
+        ShaderClass,
+        std::void_t<decltype(&ShaderClass::ModifyCompilationEnvironment)>>
+        : std::true_type {};
+
+    template <typename ShaderClass>
+    [[nodiscard]] bool ShouldCompileShaderPermutation(
+        const FArdaShaderPermutationParameters& Parameters)
+    {
+        static_assert(
+            !TArdaHasNamedShouldCompilePermutation<ShaderClass>::value ||
+                TArdaHasShouldCompilePermutation<ShaderClass>::value,
+            "ShouldCompilePermutation must be static bool(const FArdaShaderPermutationParameters&).");
+        if (Parameters.mPermutationId >=
+            TArdaShaderPermutationTraits<ShaderClass>::PermutationCount)
+        {
+            return false;
+        }
+        if constexpr (TArdaHasShouldCompilePermutation<ShaderClass>::value)
+            return ShaderClass::ShouldCompilePermutation(Parameters);
+        return true;
     }
+
+    template <typename ShaderClass>
+    void BuildShaderCompilationEnvironment(
+        const FArdaShaderPermutationParameters& Parameters,
+        FArdaShaderCompileEnvironment& Environment)
+    {
+        static_assert(
+            !TArdaHasNamedModifyCompilationEnvironment<ShaderClass>::value ||
+                TArdaHasModifyCompilationEnvironment<ShaderClass>::value,
+            "ModifyCompilationEnvironment must be static void(const FArdaShaderPermutationParameters&, FArdaShaderCompileEnvironment&).");
+        TArdaShaderPermutationTraits<ShaderClass>::AddDefines(
+            Parameters.mPermutationId,
+            Environment);
+        if constexpr (TArdaHasModifyCompilationEnvironment<ShaderClass>::value)
+            ShaderClass::ModifyCompilationEnvironment(Parameters, Environment);
+    }
+
 }
 
 /**
@@ -309,10 +307,10 @@ namespace arda::backend
 #define ARDA_DECLARE_GLOBAL_SHADER(ShaderClass)                                                              \
     public:                                                                                                  \
         /** @return The registered static shader type. */                                                   \
-        static const ::arda::backend::FArdaShaderType& GetStaticType();                                     \
+        static const ::arda::FArdaShaderType& GetStaticType();                                     \
     private:                                                                                                 \
         /** Registration node that owns the class's static shader type. */                                  \
-        static ::arda::backend::FArdaShaderTypeRegistration sArdaShaderRegistration;                         \
+        static ::arda::FArdaShaderTypeRegistration sArdaShaderRegistration;                         \
     public:
 
 /**
@@ -325,15 +323,15 @@ namespace arda::backend
  */
 #define ARDA_IMPLEMENT_GLOBAL_SHADER(ShaderClass, SourceStem, OutputStem, EntryPoint, Stage)                  \
     /** Defines the shader class's static registration node. */                                             \
-    ::arda::backend::FArdaShaderTypeRegistration ShaderClass::sArdaShaderRegistration(                      \
+    ::arda::FArdaShaderTypeRegistration ShaderClass::sArdaShaderRegistration(                      \
         #ShaderClass, SourceStem, OutputStem, EntryPoint, Stage,                                             \
-        []() -> const ::arda::backend::FArdaShaderParameterMetadata*                                        \
+        []() -> const ::arda::FArdaShaderParameterMetadata*                                        \
         { return &ShaderClass::FParameters::GetStaticMetadata(); },                                          \
-        ::arda::backend::detail::TShaderPermutationDomain<ShaderClass>::PermutationCount,                    \
-        &::arda::backend::detail::ShouldCompileShaderPermutation<ShaderClass>,                               \
-        &::arda::backend::detail::BuildShaderCompilationEnvironment<ShaderClass>);                           \
+        ::arda::TArdaShaderPermutationTraits<ShaderClass>::PermutationCount,                    \
+        &::arda::ShouldCompileShaderPermutation<ShaderClass>,                               \
+        &::arda::BuildShaderCompilationEnvironment<ShaderClass>);                           \
     /** @return The registered static shader type. */                                                       \
-    const ::arda::backend::FArdaShaderType& ShaderClass::GetStaticType()                                    \
+    const ::arda::FArdaShaderType& ShaderClass::GetStaticType()                                    \
     { return sArdaShaderRegistration.GetType(); }
 
 /**
@@ -347,11 +345,11 @@ namespace arda::backend
 #define ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(                                                     \
     ShaderClass, SourceStem, OutputStem, EntryPoint, Stage)                                                  \
     /** Defines the shader class's static registration node. */                                             \
-    ::arda::backend::FArdaShaderTypeRegistration ShaderClass::sArdaShaderRegistration(                      \
+    ::arda::FArdaShaderTypeRegistration ShaderClass::sArdaShaderRegistration(                      \
         #ShaderClass, SourceStem, OutputStem, EntryPoint, Stage, nullptr,                                    \
-        ::arda::backend::detail::TShaderPermutationDomain<ShaderClass>::PermutationCount,                    \
-        &::arda::backend::detail::ShouldCompileShaderPermutation<ShaderClass>,                               \
-        &::arda::backend::detail::BuildShaderCompilationEnvironment<ShaderClass>);                           \
+        ::arda::TArdaShaderPermutationTraits<ShaderClass>::PermutationCount,                    \
+        &::arda::ShouldCompileShaderPermutation<ShaderClass>,                               \
+        &::arda::BuildShaderCompilationEnvironment<ShaderClass>);                           \
     /** @return The registered static shader type. */                                                       \
-    const ::arda::backend::FArdaShaderType& ShaderClass::GetStaticType()                                    \
+    const ::arda::FArdaShaderType& ShaderClass::GetStaticType()                                    \
     { return sArdaShaderRegistration.GetType(); }

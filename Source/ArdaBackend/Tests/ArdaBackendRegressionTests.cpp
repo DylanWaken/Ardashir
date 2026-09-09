@@ -14,8 +14,7 @@
 
 namespace
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     class FArdaRegressionDiagnostics final : public IArdaDiagnosticCallback
     {

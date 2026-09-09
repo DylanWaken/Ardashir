@@ -1,7 +1,9 @@
+#include "../../ArdaBackend/Private/RHI/ArdaRHISubresources.h"
 #include "RHI/ArdaRHIProvider.h"
 #include "../Cuda/ArdaCudaInterop.h"
 #include "RHI/ArdaRHIProviderPipelineCache.h"
 #include "ArdaBackendProvider.h"
+#include "../ArdaBackendRequirements.h"
 #include "ArdaExternalInterop.h"
 #include "ArdaSwapChain.h"
 
@@ -24,6 +26,7 @@
 #include <atomic>
 #include <filesystem>
 #include <mutex>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -34,13 +37,13 @@ extern "C"
     __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\";
 }
 
-namespace arda::backend
+namespace arda
 {
     namespace
     {
         using Microsoft::WRL::ComPtr;
-        using namespace rhi;
-        using namespace rhi::provider;
+
+
 
         constexpr uint32_t D3D12ResourceDescriptorHeapCapacity = 65536;
         // A 2048-entry heap corrupts sampler-feedback LOD writes on NVIDIA
@@ -445,7 +448,7 @@ namespace arda::backend
             { return mCudaMapping ? FArdaCudaResourceInfo{EArdaCudaRepresentation::Surface,
                 EArdaResourceRepresentations::GraphicsAndCuda, true} : FArdaCudaResourceInfo{}; }
             ComPtr<ID3D12Resource> mResource;
-            eastl::shared_ptr<cuda::IMapping> mCudaMapping;
+            eastl::shared_ptr<IArdaCudaMapping> mCudaMapping;
             FArdaRHITextureDesc mDesc;
             mutable std::mutex mStateMutex;
             eastl::vector<EArdaRHIResourceState> mAbstractStates;
@@ -475,7 +478,7 @@ namespace arda::backend
             { return mCudaMapping ? FArdaCudaResourceInfo{EArdaCudaRepresentation::LinearBuffer,
                 EArdaResourceRepresentations::GraphicsAndCuda, true} : FArdaCudaResourceInfo{}; }
             ComPtr<ID3D12Resource> mResource;
-            eastl::shared_ptr<cuda::IMapping> mCudaMapping;
+            eastl::shared_ptr<IArdaCudaMapping> mCudaMapping;
             FArdaRHIBufferDesc mDesc;
             mutable std::mutex mStateMutex;
             EArdaRHIResourceState mAbstractState = EArdaRHIResourceState::Unknown;
@@ -931,6 +934,14 @@ namespace arda::backend
             eastl::vector<FArdaProviderObjectRef> mObjects;
         };
 
+        struct FArdaD3D12CudaSegment final : IArdaProviderObject
+        {
+            const void* GetIdentity() const noexcept override { return this; }
+            ComPtr<ID3D12CommandAllocator> mAllocator;
+            ComPtr<ID3D12GraphicsCommandList> mCommands;
+            eastl::shared_ptr<IArdaCudaBatch> mCudaBatch;
+        };
+
         class FArdaD3D12ProviderDevice;
 
         class FArdaD3D12CommandList final : public IArdaProviderCommandList
@@ -939,7 +950,11 @@ namespace arda::backend
             bool IsOpen() const noexcept override { return mbOpen; }
             FArdaRHIStatus DispatchCuda(const eastl::vector<FArdaProviderCudaBinding>&,
                 const eastl::vector<FArdaCudaKernel>&) override;
-            eastl::shared_ptr<cuda::IBatch> mCudaBatch;
+            eastl::shared_ptr<IArdaCudaBatch> mCudaBatch;
+            eastl::vector<eastl::shared_ptr<FArdaD3D12CudaSegment>> mCudaSegments;
+            bool mbContextSubmitted = false;
+            FArdaRHIStatus RecordCudaSegment(const eastl::vector<FArdaCudaKernel>&,
+                const eastl::vector<uint64_t>&);
             FArdaD3D12CommandList(
                 FArdaD3D12ProviderDevice& Device,
                 D3D12_COMMAND_LIST_TYPE Type);
@@ -1119,6 +1134,8 @@ namespace arda::backend
             FD3D12Pipeline* mBoundGraphicsPipeline = nullptr;
             FD3D12Pipeline* mBoundComputePipeline = nullptr;
             FD3D12ShaderTable* mBoundShaderTable = nullptr;
+            std::function<FArdaRHIStatus()> mRestoreState;
+            eastl::vector<uint8_t> mPushConstants;
             bool mbOpen = false;
             bool mbAutomaticBarriers = true;
         };
@@ -1133,20 +1150,24 @@ namespace arda::backend
                 ComPtr<ID3D12CommandQueue> CopyQueue,
                 std::filesystem::path PipelineCacheDirectory,
                 IArdaDiagnosticCallback* DiagnosticCallback,
-                eastl::shared_ptr<void> LifetimeToken)
+                eastl::shared_ptr<void> LifetimeToken,
+                EArdaCudaExecutionMode CudaExecutionMode)
                 : mD3DDevice(eastl::move(Device))
                 , mQueue(eastl::move(GraphicsQueue))
                 , mComputeQueue(eastl::move(ComputeQueue))
                 , mCopyQueue(eastl::move(CopyQueue))
                 , mPipelineCacheDirectory(eastl::move(PipelineCacheDirectory))
                 , mDiagnosticCallback(DiagnosticCallback)
-                , mLifetimeToken(eastl::move(LifetimeToken)) {}
+                , mLifetimeToken(eastl::move(LifetimeToken))
+                , mCudaExecutionMode(CudaExecutionMode) {}
             ~FArdaD3D12ProviderDevice() override;
             FArdaRHIStatus Initialize();
             FArdaCudaCapabilities GetCudaCapabilities() const override { return mCudaCapabilities; }
-            eastl::shared_ptr<cuda::IContext> mCudaContext;
+            eastl::shared_ptr<IArdaCudaContext> mCudaContext;
             FArdaCudaCapabilities mCudaCapabilities;
-            TArdaRHIResult<eastl::shared_ptr<cuda::IMapping>> MapCudaResource(
+            EArdaCudaExecutionMode mCudaExecutionMode;
+            std::mutex mExecutionMutex;
+            TArdaRHIResult<eastl::shared_ptr<IArdaCudaMapping>> MapCudaResource(
                 ID3D12Resource*, uint64_t, const FArdaRHITextureDesc*);
             const FArdaRHICapabilities& GetCapabilities() const noexcept override { return mCapabilities; }
             EArdaRHINativeResourceType GetTextureImportType() const noexcept override { return EArdaRHINativeResourceType::D3D12Resource; }
@@ -1337,12 +1358,12 @@ namespace arda::backend
             {
                 const auto Luid = mD3DDevice->GetAdapterLuid();
                 auto Lifetime = eastl::make_shared<std::pair<ComPtr<ID3D12Device>, ComPtr<ID3D12CommandQueue>>>(mD3DDevice, mQueue);
-                auto Context = cuda::CreateD3D12Context(mQueue.Get(), &Luid, Lifetime);
-                if (Context)
+                const auto Qualify = [&](EArdaCudaExecutionMode Mode) -> FArdaRHIStatus
                 {
+                    auto Context = CreateArdaD3D12CudaContext(mQueue.Get(), &Luid, Lifetime, Mode);
+                    if (!Context) return Context.mStatus;
                     mCudaContext = Context.mValue;
                     mCudaCapabilities = mCudaContext->GetCapabilities();
-                    // CiG support alone does not guarantee that this driver can map images.
                     FArdaRHITextureDesc Probe;
                     Probe.mbCudaInterop = true;
                     Probe.mWidth = Probe.mHeight = 64;
@@ -1350,9 +1371,34 @@ namespace arda::backend
                     Probe.mUsage = EArdaRHITextureUsage::UnorderedAccess;
                     const auto Image = CreateTexture(Probe);
                     mCudaCapabilities.mbSurfaceAccess = bool(Image);
+                    mCudaCapabilities.mbLayeredSurfaceAccess &= mCudaCapabilities.mbSurfaceAccess;
                     mCudaCapabilities.mSurfaceUnavailableReason = Image ? eastl::string{} : Image.mStatus.mMessage;
+                    return {};
+                };
+                auto Status = Qualify(mCudaExecutionMode);
+                if (!Status && mCudaExecutionMode == EArdaCudaExecutionMode::Automatic)
+                {
+                    const auto Reason = Status.mMessage;
+                    Status = Qualify(EArdaCudaExecutionMode::ContextSwitch);
+                    if (Status) mCudaCapabilities.mFallbackReason = Reason;
                 }
-                else mCudaCapabilities.mUnavailableReason = Context.mStatus.mMessage;
+                if (Status && mCudaExecutionMode == EArdaCudaExecutionMode::Automatic &&
+                    mCudaCapabilities.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG && !mCudaCapabilities.mbSurfaceAccess)
+                {
+                    const auto Reason = mCudaCapabilities.mSurfaceUnavailableReason;
+                    auto CigContext = mCudaContext;
+                    const auto CigCapabilities = mCudaCapabilities;
+                    Status = Qualify(EArdaCudaExecutionMode::ContextSwitch);
+                    if (Status) mCudaCapabilities.mFallbackReason = Reason;
+                    else
+                    {
+                        // Preserve qualified buffer CiG if even ordinary context creation fails.
+                        mCudaContext = eastl::move(CigContext);
+                        mCudaCapabilities = CigCapabilities;
+                        Status = {};
+                    }
+                }
+                if (!Status) mCudaCapabilities.mUnavailableReason = Status.mMessage;
             }
             D3D12_DESCRIPTOR_HEAP_DESC HeapDesc{};
             HeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -1580,11 +1626,11 @@ namespace arda::backend
                 return;
 
             const eastl::string BackendName = "native-d3d12";
-            const auto Path = pipeline_cache::MakePath(
+            const auto Path = MakeArdaPipelineCachePath(
                 mPipelineCacheDirectory, BackendName);
             std::error_code Error;
             const bool bExists = std::filesystem::exists(Path, Error);
-            const bool bValid = bExists && pipeline_cache::ReadBlob(
+            const bool bValid = bExists && ReadArdaPipelineCacheBlob(
                 Path, BackendName, mPipelineCacheSource);
             HRESULT Result = Device1->CreatePipelineLibrary(
                 bValid && !mPipelineCacheSource.empty()
@@ -1593,7 +1639,7 @@ namespace arda::backend
                 IID_PPV_ARGS(&mPipelineLibrary));
             if (FAILED(Result) && bValid)
             {
-                pipeline_cache::Message(mDiagnosticCallback,
+                LogArdaPipelineCacheMessage(mDiagnosticCallback,
                     EArdaDiagnosticSeverity::Warning,
                     "D3D12 rejected persistent pipeline library data; using an empty library.");
                 mPipelineCacheSource.clear();
@@ -1602,14 +1648,14 @@ namespace arda::backend
             }
             else if (bExists && !bValid)
             {
-                pipeline_cache::Message(mDiagnosticCallback,
+                LogArdaPipelineCacheMessage(mDiagnosticCallback,
                     EArdaDiagnosticSeverity::Warning,
                     "Ignoring a corrupt, truncated, or wrong-backend pipeline cache blob.");
             }
             if (FAILED(Result))
             {
                 mPipelineLibrary.Reset();
-                pipeline_cache::Message(mDiagnosticCallback,
+                LogArdaPipelineCacheMessage(mDiagnosticCallback,
                     EArdaDiagnosticSeverity::Warning,
                     "ID3D12PipelineLibrary is unavailable for this device.");
             }
@@ -2028,17 +2074,10 @@ namespace arda::backend
             return { Buffer, {} };
         }
 
-        TArdaRHIResult<FArdaRHIAccelStructMemoryRequirements>
-        FArdaD3D12ProviderDevice::GetAccelStructBuildMemoryRequirements(
-            const FArdaRHIAccelStructDesc& Desc,
-            const eastl::vector<FArdaProviderRayTracingGeometry>& Geometries)
+        FArdaRHIStatus BuildD3D12GeometryDescriptions(
+            const eastl::vector<FArdaProviderRayTracingGeometry>& Geometries,
+            eastl::vector<D3D12_RAYTRACING_GEOMETRY_DESC>& NativeGeometries)
         {
-            ComPtr<ID3D12Device5> Device5;
-            if (FAILED(mD3DDevice.As(&Device5)))
-                return Fail<FArdaRHIAccelStructMemoryRequirements>(
-                    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
-                        "The D3D12 device does not expose DXR."));
-            eastl::vector<D3D12_RAYTRACING_GEOMETRY_DESC> NativeGeometries;
             NativeGeometries.reserve(Geometries.size());
             for (const auto& Geometry : Geometries)
             {
@@ -2047,9 +2086,8 @@ namespace arda::backend
                 auto* Vertex = dynamic_cast<FD3D12Buffer*>(
                     Geometry.mVertexOrAABBBuffer.get());
                 if (!Vertex || !Vertex->mResource)
-                    return Fail<FArdaRHIAccelStructMemoryRequirements>(
-                        FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-                            "A D3D12 BLAS geometry buffer is invalid."));
+                    return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+                            "A D3D12 BLAS geometry buffer is invalid.");
                 if (Geometry.mDesc.mType ==
                     EArdaRHIRayTracingGeometryType::Triangles)
                 {
@@ -2068,10 +2106,9 @@ namespace arda::backend
                         auto* Index = dynamic_cast<FD3D12Buffer*>(
                             Geometry.mIndexBuffer.get());
                         if (!Index || !Index->mResource)
-                            return Fail<FArdaRHIAccelStructMemoryRequirements>(
-                                FArdaRHIStatus::Error(
+                            return FArdaRHIStatus::Error(
                                     EArdaRHIResult::WrongDevice,
-                                    "A D3D12 BLAS index buffer is invalid."));
+                                    "A D3D12 BLAS index buffer is invalid.");
                         Native.Triangles.IndexBuffer =
                             Index->mResource->GetGPUVirtualAddress() +
                             Geometry.mDesc.mIndexOffset;
@@ -2095,6 +2132,22 @@ namespace arda::backend
                 }
                 NativeGeometries.push_back(Native);
             }
+            return {};
+        }
+
+        TArdaRHIResult<FArdaRHIAccelStructMemoryRequirements>
+        FArdaD3D12ProviderDevice::GetAccelStructBuildMemoryRequirements(
+            const FArdaRHIAccelStructDesc& Desc,
+            const eastl::vector<FArdaProviderRayTracingGeometry>& Geometries)
+        {
+            ComPtr<ID3D12Device5> Device5;
+            if (FAILED(mD3DDevice.As(&Device5)))
+                return Fail<FArdaRHIAccelStructMemoryRequirements>(
+                    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+                        "The D3D12 device does not expose DXR."));
+            eastl::vector<D3D12_RAYTRACING_GEOMETRY_DESC> NativeGeometries;
+            if (auto Status = BuildD3D12GeometryDescriptions(Geometries, NativeGeometries); !Status)
+                return Fail<FArdaRHIAccelStructMemoryRequirements>(eastl::move(Status));
             D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS Inputs{};
             Inputs.Type = Desc.mbTopLevel
                 ? D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL
@@ -3602,7 +3655,7 @@ namespace arda::backend
                     Name.c_str(), &Desc, IID_PPV_ARGS(&Pipeline->mPipeline));
                 if (SUCCEEDED(Result))
                 {
-                    pipeline_cache::Message(mDiagnosticCallback,
+                    LogArdaPipelineCacheMessage(mDiagnosticCallback,
                         EArdaDiagnosticSeverity::Info,
                         "LoadGraphicsPipeline accepted a cached D3D12 PSO.");
                 }
@@ -3651,7 +3704,7 @@ namespace arda::backend
                     Name.c_str(), &Desc, IID_PPV_ARGS(&Pipeline->mPipeline));
                 if (SUCCEEDED(Result))
                 {
-                    pipeline_cache::Message(mDiagnosticCallback,
+                    LogArdaPipelineCacheMessage(mDiagnosticCallback,
                         EArdaDiagnosticSeverity::Info,
                         "LoadComputePipeline accepted a cached D3D12 PSO.");
                 }
@@ -3828,7 +3881,7 @@ namespace arda::backend
                 }
                 if (SUCCEEDED(Result))
                 {
-                    pipeline_cache::Message(
+                    LogArdaPipelineCacheMessage(
                         mDiagnosticCallback,
                         EArdaDiagnosticSeverity::Info,
                         "LoadPipeline accepted a cached D3D12 meshlet PSO.");
@@ -4545,7 +4598,7 @@ namespace arda::backend
             return {};
         }
 
-        TArdaRHIResult<eastl::shared_ptr<cuda::IMapping>> FArdaD3D12ProviderDevice::MapCudaResource(
+        TArdaRHIResult<eastl::shared_ptr<IArdaCudaMapping>> FArdaD3D12ProviderDevice::MapCudaResource(
             ID3D12Resource* Resource, uint64_t BufferSize, const FArdaRHITextureDesc* Texture)
         {
             if (!mCudaContext) return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, mCudaCapabilities.mUnavailableReason.c_str())};
@@ -4564,8 +4617,8 @@ namespace arda::backend
         FArdaRHIStatus FArdaD3D12CommandList::DispatchCuda(
             const eastl::vector<FArdaProviderCudaBinding>& Bindings, const eastl::vector<FArdaCudaKernel>& Kernels)
         {
-            if (!mbOpen || mType != D3D12_COMMAND_LIST_TYPE_DIRECT)
-                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "CiG requires an open graphics command list on its context queue.");
+            if (!mbOpen || mType == D3D12_COMMAND_LIST_TYPE_COPY)
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "CUDA requires an open graphics or compute command list.");
             if (!mDevice.mCudaContext)
                 return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "D3D12 CiG is unavailable.");
             eastl::vector<uint64_t> Arguments;
@@ -4578,6 +4631,10 @@ namespace arda::backend
                 Arguments.push_back(Mapping->GetArgument(B.mMipLevel, B.mBufferRange.mByteOffset));
                 Retain(B.mObject);
             }
+            if (mDevice.mCudaCapabilities.mLaunchMode == EArdaCudaLaunchMode::ContextSwitch)
+                return RecordCudaSegment(Kernels, Arguments);
+            if (mType != D3D12_COMMAND_LIST_TYPE_DIRECT)
+                return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "CiG requires its graphics context queue.");
             if (!mCudaBatch) { mCudaBatch = mDevice.mCudaContext->CreateBatch(); Retain(mCudaBatch); }
             CommitBarriers();
             D3D12_RESOURCE_BARRIER Barrier{};
@@ -4593,6 +4650,46 @@ namespace arda::backend
             return Status;
         }
 
+        FArdaRHIStatus FArdaD3D12CommandList::RecordCudaSegment(
+            const eastl::vector<FArdaCudaKernel>& Kernels, const eastl::vector<uint64_t>& Arguments)
+        {
+            auto Segment = eastl::make_shared<FArdaD3D12CudaSegment>();
+            Segment->mCudaBatch = mDevice.mCudaContext->CreateBatch();
+            if (auto Status = Segment->mCudaBatch->Record(nullptr, Kernels, Arguments); !Status) return Status;
+            ComPtr<ID3D12CommandAllocator> Allocator;
+            ComPtr<ID3D12GraphicsCommandList> Commands;
+            auto Result = mDevice.GetDevice().CreateCommandAllocator(mType, IID_PPV_ARGS(&Allocator));
+            if (FAILED(Result)) return D3D12Failure("Create CUDA segment allocator", Result);
+            Result = mDevice.GetDevice().CreateCommandList(0, mType, Allocator.Get(), nullptr, IID_PPV_ARGS(&Commands));
+            if (FAILED(Result)) return D3D12Failure("Create CUDA segment command list", Result);
+            CommitBarriers();
+            D3D12_RESOURCE_BARRIER Barrier{};
+            Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+            mCommandList->ResourceBarrier(1, &Barrier);
+            Result = mCommandList->Close();
+            if (FAILED(Result)) return D3D12Failure("Close graphics segment before CUDA", Result);
+            Segment->mAllocator = eastl::move(mAllocator);
+            Segment->mCommands = eastl::move(mCommandList);
+            mCudaSegments.push_back(Segment);
+            Retain(Segment);
+            mAllocator = eastl::move(Allocator);
+            mCommandList = eastl::move(Commands);
+            mCommandList->ResourceBarrier(1, &Barrier);
+            // A new native list has no bindings. Replay the last successful state bind.
+            const bool bHasState = mBoundGraphicsPipeline || mBoundComputePipeline || mBoundShaderTable;
+            mBoundGraphicsPipeline = nullptr;
+            mBoundComputePipeline = nullptr;
+            mBoundShaderTable = nullptr;
+            if (bHasState && mRestoreState)
+            {
+                const auto Restore = mRestoreState;
+                const auto Constants = mPushConstants;
+                if (auto Status = Restore(); !Status) return Status;
+                SetPushConstants(Constants.data(), Constants.size());
+            }
+            return {};
+        }
+
         FArdaRHIStatus FArdaD3D12CommandList::Open()
         {
             if (mbOpen) return FArdaRHIStatus::Error(
@@ -4606,6 +4703,10 @@ namespace arda::backend
             mCommandSignatures.clear();
             mRetainedObjects.clear();
             mCudaBatch.reset();
+            mCudaSegments.clear();
+            mbContextSubmitted = false;
+            mRestoreState = {};
+            mPushConstants.clear();
             mTimerQueries.clear();
             mTextureStates.clear();
             mBufferStates.clear();
@@ -4821,36 +4922,24 @@ namespace arda::backend
                     D3D12TextureStateCount(Desc),
                     ToD3D12State(Desc.mInitialState));
             }
-            for (uint32_t Plane = Range.mBasePlane;
-                 Plane < Range.mBasePlane + Range.mPlaneCount;
-                 ++Plane)
+            for (const auto [MipLevel, ArraySlice, Plane] : FArdaTextureSubresources(Range))
             {
-                for (uint32_t ArraySlice = Range.mBaseArraySlice;
-                     ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
-                     ++ArraySlice)
+                const uint32_t Subresource = ArdaD3D12CalcSubresource(
+                    MipLevel, ArraySlice, Plane,
+                    Desc.mMipLevels, Desc.mArraySize);
+                if (Tracking.mNativeStates[Subresource] != NewState)
                 {
-                    for (uint32_t MipLevel = Range.mBaseMipLevel;
-                         MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
-                         ++MipLevel)
-                    {
-                        const uint32_t Subresource = ArdaD3D12CalcSubresource(
-                            MipLevel, ArraySlice, Plane,
-                            Desc.mMipLevels, Desc.mArraySize);
-                        if (Tracking.mNativeStates[Subresource] != NewState)
-                        {
-                            D3D12_RESOURCE_BARRIER Barrier{};
-                            Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                            Barrier.Transition.pResource = Texture->mResource.Get();
-                            Barrier.Transition.Subresource = Subresource;
-                            Barrier.Transition.StateBefore =
-                                Tracking.mNativeStates[Subresource];
-                            Barrier.Transition.StateAfter = NewState;
-                            Barriers.push_back(Barrier);
-                            Tracking.mNativeStates[Subresource] = NewState;
-                        }
-                        Tracking.mAbstractStates[Subresource] = State;
-                    }
+                    D3D12_RESOURCE_BARRIER Barrier{};
+                    Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                    Barrier.Transition.pResource = Texture->mResource.Get();
+                    Barrier.Transition.Subresource = Subresource;
+                    Barrier.Transition.StateBefore =
+                        Tracking.mNativeStates[Subresource];
+                    Barrier.Transition.StateAfter = NewState;
+                    Barriers.push_back(Barrier);
+                    Tracking.mNativeStates[Subresource] = NewState;
                 }
+                Tracking.mAbstractStates[Subresource] = State;
             }
             if (!Barriers.empty())
             {
@@ -5503,41 +5592,29 @@ namespace arda::backend
             const D3D12_RESOURCE_STATES StateAfter =
                 ToD3D12State(Transition.mStateAfter);
             std::vector<D3D12_RESOURCE_BARRIER> Barriers;
-            for (uint32_t Plane = Range.mBasePlane;
-                 Plane < Range.mBasePlane + Range.mPlaneCount;
-                 ++Plane)
+            for (const auto [MipLevel, ArraySlice, Plane] : FArdaTextureSubresources(Range))
             {
-                for (uint32_t ArraySlice = Range.mBaseArraySlice;
-                     ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
-                     ++ArraySlice)
+                const uint32_t Subresource = ArdaD3D12CalcSubresource(
+                    MipLevel, ArraySlice, Plane,
+                    Desc.mMipLevels, Desc.mArraySize);
+                if (Tracking.mNativeStates[Subresource] == StateAfter)
+                    continue;
+                D3D12_RESOURCE_BARRIER Barrier{};
+                Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                Barrier.Flags = bBegin
+                    ? D3D12_RESOURCE_BARRIER_FLAG_BEGIN_ONLY
+                    : D3D12_RESOURCE_BARRIER_FLAG_END_ONLY;
+                Barrier.Transition.pResource = Texture->mResource.Get();
+                Barrier.Transition.Subresource = Subresource;
+                Barrier.Transition.StateBefore =
+                    Tracking.mNativeStates[Subresource];
+                Barrier.Transition.StateAfter = StateAfter;
+                Barriers.push_back(Barrier);
+                if (bEnd)
                 {
-                    for (uint32_t MipLevel = Range.mBaseMipLevel;
-                         MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
-                         ++MipLevel)
-                    {
-                        const uint32_t Subresource = ArdaD3D12CalcSubresource(
-                            MipLevel, ArraySlice, Plane,
-                            Desc.mMipLevels, Desc.mArraySize);
-                        if (Tracking.mNativeStates[Subresource] == StateAfter)
-                            continue;
-                        D3D12_RESOURCE_BARRIER Barrier{};
-                        Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                        Barrier.Flags = bBegin
-                            ? D3D12_RESOURCE_BARRIER_FLAG_BEGIN_ONLY
-                            : D3D12_RESOURCE_BARRIER_FLAG_END_ONLY;
-                        Barrier.Transition.pResource = Texture->mResource.Get();
-                        Barrier.Transition.Subresource = Subresource;
-                        Barrier.Transition.StateBefore =
-                            Tracking.mNativeStates[Subresource];
-                        Barrier.Transition.StateAfter = StateAfter;
-                        Barriers.push_back(Barrier);
-                        if (bEnd)
-                        {
-                            Tracking.mNativeStates[Subresource] = StateAfter;
-                            Tracking.mAbstractStates[Subresource] =
-                                Transition.mStateAfter;
-                        }
-                    }
+                    Tracking.mNativeStates[Subresource] = StateAfter;
+                    Tracking.mAbstractStates[Subresource] =
+                        Transition.mStateAfter;
                 }
             }
             if (!Barriers.empty())
@@ -5618,27 +5695,15 @@ namespace arda::backend
                     "D3D12 texture tracking has the wrong implementation.");
             const auto Range = InputRange.Resolve(Desc);
             FTextureTracking& Tracking = GetTextureTracking(*Texture);
-            for (uint32_t Plane = Range.mBasePlane;
-                 Plane < Range.mBasePlane + Range.mPlaneCount;
-                 ++Plane)
+            for (const auto [MipLevel, ArraySlice, Plane] : FArdaTextureSubresources(Range))
             {
-                for (uint32_t ArraySlice = Range.mBaseArraySlice;
-                     ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
-                     ++ArraySlice)
-                {
-                    for (uint32_t MipLevel = Range.mBaseMipLevel;
-                         MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
-                         ++MipLevel)
-                    {
-                        const uint32_t Subresource = ArdaD3D12CalcSubresource(
-                            MipLevel, ArraySlice, Plane,
-                            Desc.mMipLevels, Desc.mArraySize);
-                        Tracking.mExpectedStartStates[Subresource] = State;
-                        Tracking.mAbstractStates[Subresource] = State;
-                        Tracking.mNativeStates[Subresource] =
-                            ToD3D12State(State);
-                    }
-                }
+                const uint32_t Subresource = ArdaD3D12CalcSubresource(
+                    MipLevel, ArraySlice, Plane,
+                    Desc.mMipLevels, Desc.mArraySize);
+                Tracking.mExpectedStartStates[Subresource] = State;
+                Tracking.mAbstractStates[Subresource] = State;
+                Tracking.mNativeStates[Subresource] =
+                    ToD3D12State(State);
             }
             return {};
         }
@@ -5703,33 +5768,21 @@ namespace arda::backend
             Snapshot.mbNativeCompatible =
                 (*NativeStates)[First] ==
                     ToD3D12State(Snapshot.mState);
-            for (uint32_t Plane = Range.mBasePlane;
-                 Plane < Range.mBasePlane + Range.mPlaneCount;
-                 ++Plane)
+            for (const auto [MipLevel, ArraySlice, Plane] : FArdaTextureSubresources(Range))
             {
-                for (uint32_t ArraySlice = Range.mBaseArraySlice;
-                     ArraySlice < Range.mBaseArraySlice + Range.mArraySliceCount;
-                     ++ArraySlice)
+                const uint32_t Subresource = ArdaD3D12CalcSubresource(
+                    MipLevel, ArraySlice, Plane,
+                    Desc.mMipLevels, Desc.mArraySize);
+                if ((*AbstractStates)[Subresource] !=
+                        Snapshot.mState ||
+                    (*NativeStates)[Subresource] !=
+                        static_cast<D3D12_RESOURCE_STATES>(
+                            Snapshot.mPrimaryState))
                 {
-                    for (uint32_t MipLevel = Range.mBaseMipLevel;
-                         MipLevel < Range.mBaseMipLevel + Range.mMipLevelCount;
-                         ++MipLevel)
-                    {
-                        const uint32_t Subresource = ArdaD3D12CalcSubresource(
-                            MipLevel, ArraySlice, Plane,
-                            Desc.mMipLevels, Desc.mArraySize);
-                        if ((*AbstractStates)[Subresource] !=
-                                Snapshot.mState ||
-                            (*NativeStates)[Subresource] !=
-                                static_cast<D3D12_RESOURCE_STATES>(
-                                    Snapshot.mPrimaryState))
-                        {
-                            return Fail<FArdaRHINativeResourceState>(
-                                FArdaRHIStatus::Error(
-                                    EArdaRHIResult::InvalidState,
-                                    "D3D12 texture range contains mixed backend states."));
-                        }
-                    }
+                    return Fail<FArdaRHINativeResourceState>(
+                        FArdaRHIStatus::Error(
+                            EArdaRHIResult::InvalidState,
+                            "D3D12 texture range contains mixed backend states."));
                 }
             }
             return { Snapshot, {} };
@@ -6000,6 +6053,7 @@ namespace arda::backend
                 static_cast<UINT>(Framebuffer->mRtvs.size()),
                 Framebuffer->mRtvs.data(), FALSE,
                 Framebuffer->mbHasDepth ? &Framebuffer->mDsv : nullptr);
+            mRestoreState = [this, State] { return SetGraphicsState(State); };
             return {};
         }
 
@@ -6016,7 +6070,9 @@ namespace arda::backend
             mBoundShaderTable = nullptr;
             mCommandList->SetComputeRootSignature(Pipeline->mRootSignature.Get());
             mCommandList->SetPipelineState(Pipeline->mPipeline.Get());
-            return BindDescriptorSets(*Pipeline, State.mBindings, false);
+            auto Status = BindDescriptorSets(*Pipeline, State.mBindings, false);
+            if (Status) mRestoreState = [this, State] { return SetComputeState(State); };
+            return Status;
         }
 
         FArdaRHIStatus FArdaD3D12CommandList::SetMeshletState(
@@ -6058,10 +6114,9 @@ namespace arda::backend
                 Table->mPipeline->mStateObject.Get());
             mCommandList->SetComputeRootSignature(
                 Table->mPipeline->mGlobalBindings.mRootSignature.Get());
-            return BindDescriptorSets(
-                Table->mPipeline->mGlobalBindings,
-                State.mBindings,
-                false);
+            auto Status = BindDescriptorSets(Table->mPipeline->mGlobalBindings, State.mBindings, false);
+            if (Status) mRestoreState = [this, State] { return SetRayTracingState(State); };
+            return Status;
         }
 
         void FArdaD3D12CommandList::SetPushConstants(const void* Data, size_t Size)
@@ -6070,6 +6125,7 @@ namespace arda::backend
             FD3D12Pipeline* Pipeline = mBoundGraphicsPipeline
                 ? mBoundGraphicsPipeline : mBoundComputePipeline;
             if (!Pipeline) return;
+            mPushConstants.assign(static_cast<const uint8_t*>(Data), static_cast<const uint8_t*>(Data) + Size);
             for (int32_t Root : Pipeline->mPushConstantRoots)
             {
                 if (Root < 0) continue;
@@ -6314,59 +6370,13 @@ namespace arda::backend
             EArdaRHIAccelStructBuildFlags Flags)
         {
             eastl::vector<D3D12_RAYTRACING_GEOMETRY_DESC> Native;
-            Native.reserve(Geometries.size());
+            if (auto Status = BuildD3D12GeometryDescriptions(Geometries, Native); !Status)
+                return Status;
             for (const auto& Geometry : Geometries)
             {
-                auto* Vertex = dynamic_cast<FD3D12Buffer*>(
-                    Geometry.mVertexOrAABBBuffer.get());
-                if (!Vertex || !Vertex->mResource)
-                    return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-                        "D3D12 BLAS geometry buffer is invalid.");
-                D3D12_RAYTRACING_GEOMETRY_DESC Desc{};
-                Desc.Flags = ToD3D12GeometryFlags(Geometry.mDesc.mFlags);
-                if (Geometry.mDesc.mType ==
-                    EArdaRHIRayTracingGeometryType::Triangles)
-                {
-                    Desc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-                    Desc.Triangles.VertexBuffer.StartAddress =
-                        Vertex->mResource->GetGPUVirtualAddress() +
-                        Geometry.mDesc.mVertexOrAABBOffset;
-                    Desc.Triangles.VertexBuffer.StrideInBytes =
-                        Geometry.mDesc.mStride;
-                    Desc.Triangles.VertexCount =
-                        Geometry.mDesc.mVertexOrAABBCount;
-                    Desc.Triangles.VertexFormat = ToDxgi(
-                        Geometry.mDesc.mVertexFormat);
-                    if (Geometry.mIndexBuffer)
-                    {
-                        auto* Index = dynamic_cast<FD3D12Buffer*>(
-                            Geometry.mIndexBuffer.get());
-                        if (!Index || !Index->mResource)
-                            return FArdaRHIStatus::Error(
-                                EArdaRHIResult::WrongDevice,
-                                "D3D12 BLAS index buffer is invalid.");
-                        Desc.Triangles.IndexBuffer =
-                            Index->mResource->GetGPUVirtualAddress() +
-                            Geometry.mDesc.mIndexOffset;
-                        Desc.Triangles.IndexCount = Geometry.mDesc.mIndexCount;
-                        Desc.Triangles.IndexFormat = ToDxgi(
-                            Geometry.mDesc.mIndexFormat);
-                        Retain(Geometry.mIndexBuffer);
-                    }
-                }
-                else
-                {
-                    Desc.Type =
-                        D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
-                    Desc.AABBs.AABBCount =
-                        Geometry.mDesc.mVertexOrAABBCount;
-                    Desc.AABBs.AABBs.StartAddress =
-                        Vertex->mResource->GetGPUVirtualAddress() +
-                        Geometry.mDesc.mVertexOrAABBOffset;
-                    Desc.AABBs.AABBs.StrideInBytes = Geometry.mDesc.mStride;
-                }
                 Retain(Geometry.mVertexOrAABBBuffer);
-                Native.push_back(Desc);
+                if (Geometry.mDesc.mType == EArdaRHIRayTracingGeometryType::Triangles && Geometry.mIndexBuffer)
+                    Retain(Geometry.mIndexBuffer);
             }
             D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS Inputs{};
             Inputs.Type =
@@ -7065,6 +7075,7 @@ namespace arda::backend
         TArdaRHIResult<uint64_t> FArdaD3D12ProviderDevice::ExecuteCommandList(
             IArdaProviderCommandList& CommandList, EArdaRHIQueueType QueueType)
         {
+            std::lock_guard<std::mutex> ExecutionLock(mExecutionMutex);
             auto* Native = dynamic_cast<FArdaD3D12CommandList*>(&CommandList);
             if (!Native) return Fail<uint64_t>(FArdaRHIStatus::Error(
                 EArdaRHIResult::WrongDevice, "D3D12 command list has the wrong implementation."));
@@ -7096,6 +7107,22 @@ namespace arda::backend
             }
             if (Native->mCudaBatch)
                 if (auto Status = Native->mCudaBatch->ValidateSubmit(); !Status) return Fail<uint64_t>(Status);
+            if (!Native->mCudaSegments.empty())
+            {
+                if (Native->mbContextSubmitted)
+                    return Fail<uint64_t>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Context-switching CUDA lists are single-use."));
+                for (const auto& Segment : Native->mCudaSegments)
+                    if (auto Status = Segment->mCudaBatch->ValidateSubmit(); !Status) return Fail<uint64_t>(Status);
+                if (auto Status = WaitForIdle(); !Status) return Fail<uint64_t>(Status);
+                Native->mbContextSubmitted = true;
+                for (const auto& Segment : Native->mCudaSegments)
+                {
+                    ID3D12CommandList* Graphics[] = {Segment->mCommands.Get()};
+                    Queue->ExecuteCommandLists(1, Graphics);
+                    if (auto Status = WaitForIdle(); !Status) return Fail<uint64_t>(Status);
+                    if (auto Status = Segment->mCudaBatch->Execute(); !Status) return Fail<uint64_t>(Status);
+                }
+            }
             ID3D12CommandList* Lists[] = { Native->GetSubmitList() };
             Queue->ExecuteCommandLists(1, Lists);
             if (Native->mCudaBatch) Native->mCudaBatch->MarkSubmitted();
@@ -7233,17 +7260,17 @@ namespace arda::backend
             if (mbPipelineCacheDirty)
             {
                 const SIZE_T Size = mPipelineLibrary->GetSerializedSize();
-                if (Size <= pipeline_cache::MaxPayloadSize)
+                if (Size <= ArdaProviderPipelineCacheMaxPayloadSize)
                 {
                     std::vector<uint8_t> Payload(Size);
                     if (SUCCEEDED(mPipelineLibrary->Serialize(
                             Payload.data(), Payload.size())) &&
-                        !pipeline_cache::WriteBlob(
-                            pipeline_cache::MakePath(
+                        !WriteArdaPipelineCacheBlob(
+                            MakeArdaPipelineCachePath(
                                 mPipelineCacheDirectory, "native-d3d12"),
                             "native-d3d12", Payload))
                     {
-                        pipeline_cache::Message(mDiagnosticCallback,
+                        LogArdaPipelineCacheMessage(mDiagnosticCallback,
                             EArdaDiagnosticSeverity::Warning,
                             "Failed to atomically save the D3D12 pipeline library.");
                     }
@@ -7568,23 +7595,16 @@ namespace arda::backend
                 mProviderDevice = eastl::make_shared<FArdaD3D12ProviderDevice>(
                     mD3DDevice, mQueue, mComputeQueue, mCopyQueue,
                     Configuration.mPipelineCacheDirectory,
-                    Configuration.mMessageCallback, mLifetimeToken);
+                    Configuration.mMessageCallback, mLifetimeToken, Configuration.mCudaExecutionMode);
                 if (auto Status = mProviderDevice->Initialize(); !Status)
                 {
                     mError = Status.mMessage;
                     return EArdaInitializeResult::Failure;
                 }
-                const auto ProfileReport = mProviderDevice->GetCapabilities().Evaluate(
-                    GetArdaRHIProfileRequirements(
-                        Configuration.mRequiredDeviceProfile));
-                const auto ExplicitReport = mProviderDevice->GetCapabilities().Evaluate(
-                    Configuration.mRequiredFeatures);
-                if (!ProfileReport.IsSupported() ||
-                    !ExplicitReport.IsSupported())
+                if (auto Status = ValidateArdaBackendRequirements(
+                        mProviderDevice->GetCapabilities(), Configuration); !Status)
                 {
-                    const auto& Failed = !ProfileReport.IsSupported()
-                        ? ProfileReport : ExplicitReport;
-                    mError = Failed.ToStatus().mMessage;
+                    mError = Status.mMessage;
                     mProviderDevice.reset();
                     return EArdaInitializeResult::Unavailable;
                 }

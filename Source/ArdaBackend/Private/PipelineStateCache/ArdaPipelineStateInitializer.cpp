@@ -1,11 +1,11 @@
 #include "PipelineStateCache/ArdaPipelineStateInitializer.h"
 
-namespace arda::backend
+namespace arda
 {
     namespace
     {
         void AddShaderLayouts(
-            eastl::vector<rhi::FArdaRHIBindingLayoutRef>& Destination,
+            eastl::vector<arda::FArdaRHIBindingLayoutRef>& Destination,
             const FArdaGlobalShaderInstance* Shader)
         {
             if (Shader == nullptr)
@@ -43,8 +43,8 @@ namespace arda::backend
     FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
         const FArdaGlobalShaderInstance& VertexShader,
         const FArdaGlobalShaderInstance* PixelShader,
-        const rhi::FArdaRHIInputLayoutRef& InputLayout,
-        const rhi::FArdaRHIGraphicsPipelineDesc& FixedState)
+        const arda::FArdaRHIInputLayoutRef& InputLayout,
+        const arda::FArdaRHIGraphicsPipelineDesc& FixedState)
     {
         return FromGlobalShaders(
             VertexShader, nullptr, nullptr, nullptr, PixelShader,
@@ -58,21 +58,21 @@ namespace arda::backend
         const FArdaGlobalShaderInstance* DomainShader,
         const FArdaGlobalShaderInstance* GeometryShader,
         const FArdaGlobalShaderInstance* PixelShader,
-        const rhi::FArdaRHIInputLayoutRef& InputLayout,
-        const rhi::FArdaRHIGraphicsPipelineDesc& FixedState)
+        const arda::FArdaRHIInputLayoutRef& InputLayout,
+        const arda::FArdaRHIGraphicsPipelineDesc& FixedState)
     {
         FArdaGraphicsPipelineStateInitializer Result;
         Result.mDesc = FixedState;
         Result.mDesc.mInputLayout = InputLayout;
         Result.mDesc.mVertexShader = VertexShader.GetShader();
         Result.mDesc.mHullShader = HullShader != nullptr
-            ? HullShader->GetShader() : rhi::FArdaRHIShaderRef{};
+            ? HullShader->GetShader() : arda::FArdaRHIShaderRef{};
         Result.mDesc.mDomainShader = DomainShader != nullptr
-            ? DomainShader->GetShader() : rhi::FArdaRHIShaderRef{};
+            ? DomainShader->GetShader() : arda::FArdaRHIShaderRef{};
         Result.mDesc.mGeometryShader = GeometryShader != nullptr
-            ? GeometryShader->GetShader() : rhi::FArdaRHIShaderRef{};
+            ? GeometryShader->GetShader() : arda::FArdaRHIShaderRef{};
         Result.mDesc.mPixelShader = PixelShader != nullptr
-            ? PixelShader->GetShader() : rhi::FArdaRHIShaderRef{};
+            ? PixelShader->GetShader() : arda::FArdaRHIShaderRef{};
         Result.mDesc.mBindingLayouts = VertexShader.GetBindingLayouts();
         AddShaderLayouts(Result.mDesc.mBindingLayouts, HullShader);
         AddShaderLayouts(Result.mDesc.mBindingLayouts, DomainShader);
@@ -86,15 +86,15 @@ namespace arda::backend
         const FArdaGlobalShaderInstance& MeshShader,
         const FArdaGlobalShaderInstance* AmplificationShader,
         const FArdaGlobalShaderInstance* PixelShader,
-        const rhi::FArdaRHIMeshletPipelineDesc& FixedState)
+        const arda::FArdaRHIMeshletPipelineDesc& FixedState)
     {
         FArdaMeshletPipelineStateInitializer Result;
         Result.mDesc = FixedState;
         Result.mDesc.mAmplificationShader = AmplificationShader != nullptr
-            ? AmplificationShader->GetShader() : rhi::FArdaRHIShaderRef{};
+            ? AmplificationShader->GetShader() : arda::FArdaRHIShaderRef{};
         Result.mDesc.mMeshShader = MeshShader.GetShader();
         Result.mDesc.mPixelShader = PixelShader != nullptr
-            ? PixelShader->GetShader() : rhi::FArdaRHIShaderRef{};
+            ? PixelShader->GetShader() : arda::FArdaRHIShaderRef{};
         Result.mDesc.mBindingLayouts = MeshShader.GetBindingLayouts();
         AddShaderLayouts(Result.mDesc.mBindingLayouts, AmplificationShader);
         AddShaderLayouts(Result.mDesc.mBindingLayouts, PixelShader);

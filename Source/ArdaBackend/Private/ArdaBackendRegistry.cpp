@@ -10,7 +10,7 @@
 #include <mutex>
 #include <limits>
 
-namespace arda::backend
+namespace arda
 {
     namespace
     {
@@ -98,7 +98,7 @@ namespace arda::backend
 
     IArdaBackendModule* FindBackendModule(const char* Name) noexcept
     {
-        private_api::RegisterLinkedBackendModules();
+        arda::RegisterLinkedBackendModules();
         if (!Name || !Name[0])
         {
             return nullptr;
@@ -117,7 +117,7 @@ namespace arda::backend
 
     IArdaBackendModule* FindDefaultBackendModule() noexcept
     {
-        private_api::RegisterLinkedBackendModules();
+        arda::RegisterLinkedBackendModules();
         auto& Registry = GetBackendModuleRegistry();
         std::lock_guard<std::mutex> Lock(Registry.mMutex);
         IArdaBackendModule* BestModule = nullptr;
@@ -167,7 +167,7 @@ namespace arda::backend
 
     eastl::vector<FArdaBackendModuleDescriptor> EnumerateBackendModules()
     {
-        private_api::RegisterLinkedBackendModules();
+        arda::RegisterLinkedBackendModules();
         auto& Registry = GetBackendModuleRegistry();
         std::lock_guard<std::mutex> Lock(Registry.mMutex);
         eastl::vector<FArdaBackendModuleDescriptor> Result;
@@ -184,12 +184,10 @@ namespace arda::backend
         return GetBackendModuleRegistry().mActiveModule.load(std::memory_order_acquire);
     }
 
-    namespace private_api
+    void SetActiveBackendModule(const IArdaBackendModule* Module) noexcept
     {
-        void SetActiveBackendModule(const IArdaBackendModule* Module) noexcept
-        {
-            GetBackendModuleRegistry().mActiveModule.store(
-                Module, std::memory_order_release);
-        }
+        GetBackendModuleRegistry().mActiveModule.store(
+            Module, std::memory_order_release);
     }
+
 }

@@ -4,19 +4,19 @@
 
 #include <cmath>
 
-namespace arda::rhi
+namespace arda
 {
     namespace
     {
         template <typename T>
         void Combine(size_t& Seed, const T& Value) noexcept
         {
-            private_api::HashCombine(Seed, Value);
+            ArdaHashCombine(Seed, Value);
         }
 
         void CombineString(size_t& Seed, const eastl::string& Value) noexcept
         {
-            private_api::HashString(Seed, Value);
+            ArdaHashString(Seed, Value);
         }
 
         template <typename T>

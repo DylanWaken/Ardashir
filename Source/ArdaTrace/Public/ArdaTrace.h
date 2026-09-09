@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <EASTL/string.h>
 
-namespace arda::trace
+namespace arda
 {
     /** Identifies a trace name that is registered once and reused by events. */
     class FArdaTraceName final
@@ -63,29 +63,27 @@ namespace arda::trace
      */
     void RecordTraceMarker(const FArdaTraceName& Name) noexcept;
 
-    namespace detail
-    {
-        /** Returns the next process-wide scope identifier. */
-        [[nodiscard]] std::uint64_t AllocateScopeId() noexcept;
+    /** Returns the next process-wide scope identifier. */
+    [[nodiscard]] std::uint64_t AllocateTraceScopeId() noexcept;
 
-        /**
-         * Records a completed CPU scope.
-         * @param NameId Registered scope name identifier.
-         * @param ScopeId Unique scope identifier.
-         * @param ParentScopeId Parent scope identifier, or zero for a root scope.
-         * @param StartNanoseconds Scope start on the steady-clock timeline.
-         * @param EndNanoseconds Scope end on the steady-clock timeline.
-         */
-        void RecordScope(
-            std::uint32_t NameId,
-            std::uint64_t ScopeId,
-            std::uint64_t ParentScopeId,
-            std::uint64_t StartNanoseconds,
-            std::uint64_t EndNanoseconds) noexcept;
+    /**
+     * Records a completed CPU scope.
+     * @param NameId Registered scope name identifier.
+     * @param ScopeId Unique scope identifier.
+     * @param ParentScopeId Parent scope identifier, or zero for a root scope.
+     * @param StartNanoseconds Scope start on the steady-clock timeline.
+     * @param EndNanoseconds Scope end on the steady-clock timeline.
+     */
+    void RecordTraceScope(
+        std::uint32_t NameId,
+        std::uint64_t ScopeId,
+        std::uint64_t ParentScopeId,
+        std::uint64_t StartNanoseconds,
+        std::uint64_t EndNanoseconds) noexcept;
 
-        /** Returns a steady-clock timestamp in nanoseconds. */
-        [[nodiscard]] std::uint64_t GetTraceTimestampNanoseconds() noexcept;
-    }
+    /** Returns a steady-clock timestamp in nanoseconds. */
+    [[nodiscard]] std::uint64_t GetTraceTimestampNanoseconds() noexcept;
+
 }
 
 #if !defined(ARDASHIR_ENABLE_TRACE)
@@ -101,9 +99,9 @@ namespace arda::trace
 #define ARDA_TRACE_COUNTER(Name, Value) \
     do \
     { \
-        static const ::arda::trace::FArdaTraceName \
+        static const ::arda::FArdaTraceName \
             ARDA_PRIVATE_JOIN_TRACE_NAMES(ArdaTraceCounterName, __LINE__)(Name); \
-        ::arda::trace::RecordTraceCounter( \
+        ::arda::RecordTraceCounter( \
             ARDA_PRIVATE_JOIN_TRACE_NAMES(ArdaTraceCounterName, __LINE__), \
             static_cast<double>(Value)); \
     } while (false)
@@ -112,9 +110,9 @@ namespace arda::trace
 #define ARDA_TRACE_MARKER(Name) \
     do \
     { \
-        static const ::arda::trace::FArdaTraceName \
+        static const ::arda::FArdaTraceName \
             ARDA_PRIVATE_JOIN_TRACE_NAMES(ArdaTraceMarkerName, __LINE__)(Name); \
-        ::arda::trace::RecordTraceMarker( \
+        ::arda::RecordTraceMarker( \
             ARDA_PRIVATE_JOIN_TRACE_NAMES(ArdaTraceMarkerName, __LINE__)); \
     } while (false)
 #else

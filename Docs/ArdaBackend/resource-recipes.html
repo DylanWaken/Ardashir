@@ -252,29 +252,29 @@ BindingSetDesc.mItems.push_back({
     TArdaRHIRef&lt;IArdaRHIResource&gt;(Sampler.mValue.Get()), {} });
 auto BindingSet = Device-&gt;CreateBindingSet(BindingSetDesc);
 ASSERT_TRUE(BindingSet);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#NativeTransientResourcesAndDescriptorsReturnToBaseline">Complete example: NativeTransientResourcesAndDescriptorsReturnToBaseline</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
-<section id="resource-shader"><h2>Shader: Create a shader from backend bytecode</h2><p><a href="api-reference.html#api-arda-rhi-iardarhishader-7cd993f7"><code>IArdaRHIShader</code></a>: The helper loads the artifact selected by the exact backend name and supplies stage and entry point. DXIL and SPIR-V are not interchangeable. Bytecode may be released after successful creation; the shader handle is retained by dependent pipelines.</p><pre><code class="language-cpp">arda::rhi::TArdaRHIResult&lt;arda::rhi::FArdaRHIShaderRef&gt;
+<section id="resource-shader"><h2>Shader: Create a shader from backend bytecode</h2><p><a href="api-reference.html#api-arda-rhi-iardarhishader-7cd993f7"><code>IArdaRHIShader</code></a>: The helper loads the artifact selected by the exact backend name and supplies stage and entry point. DXIL and SPIR-V are not interchangeable. Bytecode may be released after successful creation; the shader handle is retained by dependent pipelines.</p><pre><code class="language-cpp">arda::TArdaRHIResult&lt;arda::FArdaRHIShaderRef&gt;
 CreateExtendedShader(
-    arda::rhi::IArdaRHIDevice&amp; Device,
+    arda::IArdaRHIDevice&amp; Device,
     const char* BackendName,
     const char* Artifact,
     const char* EntryPoint,
-    arda::rhi::EArdaRHIShaderStage Stage)
+    arda::EArdaRHIShaderStage Stage)
 {
     using namespace arda;
     const eastl::string FileName = eastl::string(Artifact) +
-        backend::GetShaderArtifactExtension(BackendName);
+        arda::GetShaderArtifactExtension(BackendName);
     const std::vector&lt;uint8_t&gt; Bytecode =
         LoadExtendedShaderArtifact(FileName.c_str());
     if (Bytecode.empty())
     {
         return {
             {},
-            rhi::FArdaRHIStatus::Error(
-                rhi::EArdaRHIResult::InvalidState,
+            arda::FArdaRHIStatus::Error(
+                arda::EArdaRHIResult::InvalidState,
                 &quot;The indirect conformance shader artifact is missing.&quot;)
         };
     }
-    rhi::FArdaRHIShaderDesc Desc;
+    arda::FArdaRHIShaderDesc Desc;
     Desc.mStage = Stage;
     Desc.mBytecode = Bytecode.data();
     Desc.mBytecodeSize = Bytecode.size();
@@ -385,7 +385,7 @@ auto Table = Device-&gt;CreateDescriptorTable(Layout.mValue);
 ASSERT_TRUE(Table) &lt;&lt; Table.mStatus.mMessage.c_str();
 EXPECT_EQ(Table.mValue-&gt;GetCapacity(), 4u);
 EXPECT_EQ(Table.mValue-&gt;GetFirstDescriptorIndexInHeap(), 0u);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyBindlessDescriptorTable">Complete example: VerifyBindlessDescriptorTable</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
-<section id="resource-resourcecollection"><h2>ResourceCollection: Maintain an indexed set of resources</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiresourcecollection"><code>IArdaRHIResourceCollection</code></a>: A collection retains typed items and exposes a descriptor table to the shader. UpdateResourceCollection replaces one indexed item; descriptor versioning preserves already recorded uses. The example dispatches before and after replacement and verifies both outputs.</p><pre><code class="language-cpp">FArdaRHIResourceCollectionItem ItemA;
+<section id="resource-resourcecollection"><h2>ResourceCollection: Maintain an indexed set of resources</h2><p><a href="api-reference.html#api-arda-iardarhiresourcecollection"><code>IArdaRHIResourceCollection</code></a>: A collection retains typed items and exposes a descriptor table to the shader. UpdateResourceCollection replaces one indexed item; descriptor versioning preserves already recorded uses. The example dispatches before and after replacement and verifies both outputs.</p><pre><code class="language-cpp">FArdaRHIResourceCollectionItem ItemA;
     ItemA.mType = EArdaRHIResourceCollectionItemType::Buffer;
     ItemA.mBuffer = BufferA.mValue;
     FArdaRHIResourceCollectionItem ItemB = ItemA;
@@ -611,7 +611,7 @@ ASSERT_TRUE(WriteRecord(
     &quot;KnownHitGroup&quot;, 0x33333333u));
 ASSERT_TRUE(Device-&gt;CommitShaderTable(ShaderTable.mValue));
 EXPECT_EQ(ShaderTable.mValue-&gt;GetEntryCount(), 3u);</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">Complete example: VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
-<section id="resource-workgraphpipeline"><h2>WorkGraphPipeline: Launch a native work graph</h2><p><a href="api-reference.html#api-arda-rhi-iardarhiworkgraphpipeline"><code>IArdaRHIWorkGraphPipeline</code></a>: QueryWorkGraphSupport and mWorkGraphTier gate this path. The checked-in implementation is D3D12-specific; Vulkan reports Unsupported. The library defines node records, and the caller supplies entry records and backing-memory requirements.</p><pre><code class="language-cpp">auto Shader = CreateExtendedShader(
+<section id="resource-workgraphpipeline"><h2>WorkGraphPipeline: Launch a native work graph</h2><p><a href="api-reference.html#api-arda-iardarhiworkgraphpipeline"><code>IArdaRHIWorkGraphPipeline</code></a>: QueryWorkGraphSupport and mWorkGraphTier gate this path. The checked-in implementation is D3D12-specific; Vulkan reports Unsupported. The library defines node records, and the caller supplies entry records and backing-memory requirements.</p><pre><code class="language-cpp">auto Shader = CreateExtendedShader(
     *Device, &quot;native-d3d12&quot;,
     &quot;ArdaWorkGraphTest&quot;, &quot;WorkGraphMain&quot;,
     EArdaRHIShaderStage::WorkGraph);
@@ -631,7 +631,7 @@ PipelineDesc.mMaxInputRecords = 4;
 PipelineDesc.mDebugName = &quot;Native D3D12 work graph&quot;;
 auto Pipeline = Device-&gt;CreateWorkGraphPipeline(PipelineDesc);
 ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyD3D12WorkGraphExecution">Complete example: VerifyD3D12WorkGraphExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section>
-<section id="resource-shaderbundle"><h2>ShaderBundle: Batch shader dispatch records</h2><p><a href="api-reference.html#api-arda-rhi-iardarhishaderbundle"><code>IArdaRHIShaderBundle</code></a>: A bundle stores records for supported compute/mesh dispatch families. Record data and binding conventions must match the bundle's pipeline. It does not imply native work-graph support; query mbShaderBundleDispatch independently.</p><pre><code class="language-cpp">FArdaRHIShaderBundleDesc BundleDesc;
+<section id="resource-shaderbundle"><h2>ShaderBundle: Batch shader dispatch records</h2><p><a href="api-reference.html#api-arda-iardarhishaderbundle"><code>IArdaRHIShaderBundle</code></a>: A bundle stores records for supported compute/mesh dispatch families. Record data and binding conventions must match the bundle's pipeline. It does not imply native work-graph support; query mbShaderBundleDispatch independently.</p><pre><code class="language-cpp">FArdaRHIShaderBundleDesc BundleDesc;
 BundleDesc.mMaxRecords = 2;
 BundleDesc.mbPersistent = true;
 BundleDesc.mDebugName = &quot;Persistent compute shader bundle&quot;;

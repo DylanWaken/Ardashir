@@ -5,7 +5,7 @@
 
 #include "ShaderStructs/ArdaShaderDirectories.h"
 
-namespace arda::backend::private_api
+namespace arda
 {
     /** Marks the shader directory registry as in use by backend initialization.
      *  @return Success status, or the reason the registry cannot be acquired.

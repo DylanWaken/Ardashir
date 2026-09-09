@@ -16,11 +16,11 @@
 namespace
 {
     class FCapturingDiagnosticCallback final
-        : public arda::backend::IArdaDiagnosticCallback
+        : public arda::IArdaDiagnosticCallback
     {
     public:
         void Message(
-            arda::backend::EArdaDiagnosticSeverity,
+            arda::EArdaDiagnosticSeverity,
             const char* Text) override
         {
             mMessages.emplace_back(Text ? Text : "");
@@ -42,10 +42,10 @@ namespace
         std::vector<std::string> mMessages;
     };
 
-    class FTestTexture final : public arda::rhi::IArdaRHITexture
+    class FTestTexture final : public arda::IArdaRHITexture
     {
     public:
-        explicit FTestTexture(arda::rhi::FArdaRHITextureDesc Desc)
+        explicit FTestTexture(arda::FArdaRHITextureDesc Desc)
             : mDesc(eastl::move(Desc)) {}
         void AddRef() noexcept override { ++mReferences; }
         void Release() noexcept override
@@ -53,12 +53,12 @@ namespace
             if (--mReferences == 0)
                 delete this;
         }
-        arda::rhi::EArdaRHIResourceType GetResourceType() const noexcept override
+        arda::EArdaRHIResourceType GetResourceType() const noexcept override
         {
-            return arda::rhi::EArdaRHIResourceType::Texture;
+            return arda::EArdaRHIResourceType::Texture;
         }
         const char* GetDebugName() const noexcept override { return "TestTexture"; }
-        const arda::rhi::FArdaRHITextureDesc& GetDesc() const noexcept override
+        const arda::FArdaRHITextureDesc& GetDesc() const noexcept override
         {
             return mDesc;
         }
@@ -66,13 +66,13 @@ namespace
 
     private:
         uint32_t mReferences = 0;
-        arda::rhi::FArdaRHITextureDesc mDesc;
+        arda::FArdaRHITextureDesc mDesc;
     };
 
-    class FTestFramebuffer final : public arda::rhi::IArdaRHIFramebuffer
+    class FTestFramebuffer final : public arda::IArdaRHIFramebuffer
     {
     public:
-        explicit FTestFramebuffer(arda::rhi::FArdaRHIFramebufferDesc Desc)
+        explicit FTestFramebuffer(arda::FArdaRHIFramebufferDesc Desc)
             : mDesc(eastl::move(Desc)) {}
         void AddRef() noexcept override { ++mReferences; }
         void Release() noexcept override
@@ -80,44 +80,44 @@ namespace
             if (--mReferences == 0)
                 delete this;
         }
-        arda::rhi::EArdaRHIResourceType GetResourceType() const noexcept override
+        arda::EArdaRHIResourceType GetResourceType() const noexcept override
         {
-            return arda::rhi::EArdaRHIResourceType::Framebuffer;
+            return arda::EArdaRHIResourceType::Framebuffer;
         }
         const char* GetDebugName() const noexcept override { return "TestFramebuffer"; }
-        const arda::rhi::FArdaRHIFramebufferDesc& GetDesc() const noexcept override
+        const arda::FArdaRHIFramebufferDesc& GetDesc() const noexcept override
         {
             return mDesc;
         }
 
     private:
         uint32_t mReferences = 0;
-        arda::rhi::FArdaRHIFramebufferDesc mDesc;
+        arda::FArdaRHIFramebufferDesc mDesc;
     };
 
-    arda::rhi::TArdaRHIResult<arda::rhi::FArdaRHIShaderRef> CreateTestShader(
-        arda::rhi::IArdaRHIDevice& Device,
+    arda::TArdaRHIResult<arda::FArdaRHIShaderRef> CreateTestShader(
+        arda::IArdaRHIDevice& Device,
         const char* BackendName,
         const char* Artifact,
         const char* EntryPoint,
-        arda::rhi::EArdaRHIShaderStage Stage)
+        arda::EArdaRHIShaderStage Stage)
     {
         using namespace arda;
         const std::filesystem::path Path =
             std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR) /
             (eastl::string(Artifact) +
-             backend::GetShaderArtifactExtension(BackendName)).c_str();
-        auto Bytecode = backend::LoadShaderBytecode(Path);
+             arda::GetShaderArtifactExtension(BackendName)).c_str();
+        auto Bytecode = arda::LoadShaderBytecode(Path);
         if (!Bytecode)
         {
             return {
                 {},
-                rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidState,
+                arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::InvalidState,
                     Bytecode.mDiagnostic.mMessage.c_str())
             };
         }
-        rhi::FArdaRHIShaderDesc Desc;
+        arda::FArdaRHIShaderDesc Desc;
         Desc.mStage = Stage;
         Desc.mBytecode = Bytecode.mBytecode.data();
         Desc.mBytecodeSize = Bytecode.mBytecode.size();
@@ -126,15 +126,13 @@ namespace
         return Device.CreateShader(Desc);
     }
 
-    arda::rhi::FArdaRHIStatus CreatePersistentTestPipelines(
+    arda::FArdaRHIStatus CreatePersistentTestPipelines(
         const char* BackendName,
         uint64_t& OutComputeKey,
         uint64_t& OutGraphicsKey,
         uint64_t* OutMeshletKey = nullptr)
     {
         using namespace arda;
-        using namespace backend;
-        using namespace rhi;
 
         auto Device = GetDevice();
         auto ComputeShader = CreateTestShader(
@@ -226,7 +224,7 @@ namespace
 
 TEST(ArdaPipelineStateCache, PersistentKeysAreNonSemanticMetadata)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     FArdaRHIComputePipelineDesc ComputeA;
     FArdaRHIComputePipelineDesc ComputeB;
     ComputeA.mPersistentCacheKey = 1;
@@ -253,8 +251,6 @@ TEST(ArdaPipelineStateCache, PersistentKeysAreNonSemanticMetadata)
 TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     ShutdownBackend();
     const auto Unique = std::chrono::steady_clock::now()
@@ -388,7 +384,7 @@ TEST(ArdaPipelineStateCache, PersistsReloadsAndRejectsCorruptD3D12Blobs)
 
 TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
 {
-    using namespace arda::backend;
+    using namespace arda;
 
     ShutdownBackend();
     const auto Unique = std::chrono::steady_clock::now()
@@ -458,8 +454,6 @@ TEST(ArdaPipelineStateCache, PersistsAndReloadsVulkanBlobsWhenAvailable)
 TEST(ArdaPipelineStateCache, CachesPrecachesEvictsAndReportsFailures)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     ShutdownBackend();
     FArdaBackendConfiguration BackendConfiguration;
@@ -567,8 +561,6 @@ TEST(ArdaPipelineStateCache, CachesPrecachesEvictsAndReportsFailures)
 TEST(ArdaPipelineStateCache, ResolvesFramebufferFormatsAndRejectsMismatches)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     ShutdownBackend();
     FArdaBackendConfiguration BackendConfiguration;
@@ -717,8 +709,6 @@ TEST(ArdaPipelineStateCache, ResolvesFramebufferFormatsAndRejectsMismatches)
 TEST(ArdaPipelineStateCache, CachesPrecachesBindsAndEvictsMeshletPipelines)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     ShutdownBackend();
     FArdaBackendConfiguration BackendConfiguration;
@@ -834,8 +824,6 @@ TEST(ArdaPipelineStateCache, CachesPrecachesBindsAndEvictsMeshletPipelines)
 TEST(ArdaPipelineStateCache, CachesRayTracingAndWorkGraphPipelines)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     ShutdownBackend();
     FArdaBackendConfiguration BackendConfiguration;
@@ -981,7 +969,7 @@ TEST(ArdaPipelineStateCache, CachesRayTracingAndWorkGraphPipelines)
 
 TEST(ArdaPipelineStateCache, WorkGraphDescriptorUsesSemanticIdentity)
 {
-    using namespace arda::rhi;
+    using namespace arda;
 
     FArdaRHIWorkGraphPipelineDesc First;
     First.mProgramName = "Program";
@@ -1002,8 +990,6 @@ TEST(ArdaPipelineStateCache, WorkGraphDescriptorUsesSemanticIdentity)
 TEST(ArdaPipelineStateCache, DeterministicLruKeepsMostRecentlyUsedEntry)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     ShutdownBackend();
     FArdaBackendConfiguration BackendConfiguration;
@@ -1080,8 +1066,6 @@ TEST(ArdaPipelineStateCache, DeterministicLruKeepsMostRecentlyUsedEntry)
 TEST(ArdaPipelineStateCache, ConcurrentSameKeyCreatesOneOuterEntry)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     ShutdownBackend();
     FArdaBackendConfiguration BackendConfiguration;

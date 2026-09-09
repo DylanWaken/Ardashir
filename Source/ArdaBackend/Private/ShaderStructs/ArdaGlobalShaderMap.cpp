@@ -7,7 +7,7 @@
 
 #include <fstream>
 
-namespace arda::backend
+namespace arda
 {
     namespace
     {
@@ -105,7 +105,7 @@ namespace arda::backend
     }
 
     bool FArdaGlobalShaderMap::Initialize(
-        rhi::FArdaRHIDeviceRef Device,
+        arda::FArdaRHIDeviceRef Device,
         const std::filesystem::path& ShaderDirectory)
     {
         std::lock_guard<std::mutex> Lock(mLoadMutex);
@@ -233,7 +233,7 @@ namespace arda::backend
     }
 
     bool FArdaGlobalShaderMap::Initialize(
-        rhi::FArdaRHIDeviceRef Device)
+        arda::FArdaRHIDeviceRef Device)
     {
         return Initialize(
             eastl::move(Device),
@@ -302,7 +302,7 @@ namespace arda::backend
             return false;
         }
 
-        rhi::FArdaRHIShaderDesc ShaderDesc;
+        arda::FArdaRHIShaderDesc ShaderDesc;
         ShaderDesc.mStage = Type.GetStage();
         ShaderDesc.mBytecode = Bytecode.mBytecode.data();
         ShaderDesc.mBytecodeSize = Bytecode.mBytecode.size();
@@ -320,11 +320,11 @@ namespace arda::backend
             return false;
         }
 
-        eastl::vector<rhi::FArdaRHIBindingLayoutRef> Layouts;
+        eastl::vector<arda::FArdaRHIBindingLayoutRef> Layouts;
         if (const FArdaShaderParameterMetadata* Metadata =
                 Type.GetParameterMetadata())
         {
-            eastl::vector<rhi::FArdaRHIBindingLayoutDesc> LayoutDescs;
+            eastl::vector<arda::FArdaRHIBindingLayoutDesc> LayoutDescs;
             const FArdaShaderStructStatus LayoutStatus =
                 Metadata->BuildBindingLayoutDescs(LayoutDescs);
             if (!LayoutStatus)

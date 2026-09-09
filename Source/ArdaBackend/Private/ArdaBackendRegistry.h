@@ -5,7 +5,7 @@
 
 #include "ArdaBackendProvider.h"
 
-namespace arda::backend::private_api
+namespace arda
 {
     /** Publishes the active module while the backend state lock is held. */
     void SetActiveBackendModule(const IArdaBackendModule* Module) noexcept;

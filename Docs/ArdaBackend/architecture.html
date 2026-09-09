@@ -129,9 +129,9 @@
           <dl>
             <dt>Application policy</dt>
             <dd>Selects startup mode, backend preference, validation profile, logging, lifecycle owner, and shutdown policy.</dd>
-            <dt>Public backend layer — <code>arda::backend</code></dt>
+            <dt>Public backend layer — <code>arda</code></dt>
             <dd>Owns process configuration and context, shader registration and global maps, pipeline-state cache, and presentation interfaces.</dd>
-            <dt>Public RHI layer — <code>arda::rhi</code></dt>
+            <dt>Public RHI layer — <code>arda</code></dt>
             <dd>Defines descriptors, capabilities, result types, resource interfaces, command lists, and the device creation/submission surface.</dd>
             <dt>Backend provider contract</dt>
             <dd><code>IArdaBackendModule</code> advertises a linked implementation and creates an <code>IArdaBackendRuntime</code> plus an RHI provider. The runtime owns module-private lifetime and presentation state; <code>FArdaRHIDeviceRef</code> is the public device.</dd>
@@ -235,11 +235,11 @@
 
           <p>When this invariant is violated, APIs return <a href="api-reference.html#api-arda-rhi-eardarhiresult-wrongdevice-58a25b4b"><code>EArdaRHIResult::WrongDevice</code></a> before crossing into native calls where possible. Treat that result as evidence of an ownership-routing defect, not a transient GPU error.</p>
 
-          <pre><code>arda::rhi::TArdaRHIResult&lt;arda::rhi::FArdaRHIBindingSetRef&gt; result =
+          <pre><code>arda::TArdaRHIResult&lt;arda::FArdaRHIBindingSetRef&gt; result =
     device-&gt;CreateBindingSet(desc, layout);
 
 if (!result &amp;&amp;
-    result.mStatus.mCode == arda::rhi::EArdaRHIResult::WrongDevice)
+    result.mStatus.mCode == arda::EArdaRHIResult::WrongDevice)
 {
     // Trace the resource, layout, and cache owners that supplied `desc`.
 }</code></pre>
@@ -262,38 +262,38 @@ if (!result &amp;&amp;
           </aside>
           <pre><code>using namespace arda;
 
-backend::FArdaBackendConfiguration config;
+arda::FArdaBackendConfiguration config;
 config.mbEnableValidation = true;
 
-if (!backend::ConfigureBackend(config))
-    return ReportStartupFailure(backend::GetBackendError());
+if (!arda::ConfigureBackend(config))
+    return ReportStartupFailure(arda::GetBackendError());
 
-eastl::unique_ptr&lt;backend::IArdaSwapChain&gt; swapChain;
-const backend::EArdaInitializeResult init =
-    backend::InitializeBackendForPresentation(
+eastl::unique_ptr&lt;arda::IArdaSwapChain&gt; swapChain;
+const arda::EArdaInitializeResult init =
+    arda::InitializeBackendForPresentation(
         windowSurface, width, height, swapChain);
-if (init != backend::EArdaInitializeResult::Success)
-    return ReportStartupFailure(backend::GetBackendError());
+if (init != arda::EArdaInitializeResult::Success)
+    return ReportStartupFailure(arda::GetBackendError());
 
-rhi::FArdaRHIDeviceRef device = backend::GetDevice(); // retained copy
+arda::FArdaRHIDeviceRef device = arda::GetDevice(); // retained copy
 
 {
-    rhi::FArdaRHIBufferDesc desc;
+    arda::FArdaRHIBufferDesc desc;
     desc.mByteSize = 4096;
-    desc.mUsage = rhi::EArdaRHIBufferUsage::Structured;
+    desc.mUsage = arda::EArdaRHIBufferUsage::Structured;
     desc.mStructureStride = sizeof(uint32_t);
     desc.mDebugName = "WorkedExampleBuffer";
     auto buffer = device-&gt;CreateBuffer(desc);
     if (!buffer)
         return ReportRhiFailure(buffer.mStatus);
 
-    backend::FArdaPipelineStateCache cache(device);
+    arda::FArdaPipelineStateCache cache(device);
 
     // Validation-path pseudocode: supplied only by a test fixture/double.
-    const rhi::IArdaRHIDevice* foreignDevice = testFixture.ForeignDevice();
-    const rhi::FArdaRHIStatus mismatch =
+    const arda::IArdaRHIDevice* foreignDevice = testFixture.ForeignDevice();
+    const arda::FArdaRHIStatus mismatch =
         cache.PrecacheCompute(initializer, foreignDevice);
-    assert(mismatch.mCode == rhi::EArdaRHIResult::WrongDevice);
+    assert(mismatch.mCode == arda::EArdaRHIResult::WrongDevice);
 
     StopRenderingAndWaitForGpu();
     swapChain.reset();
@@ -304,18 +304,18 @@ rhi::FArdaRHIDeviceRef device = backend::GetDevice(); // retained copy
 if (!runLifetimeConformanceExperiment)
 {
     // Normative production teardown: flush persistence through process context.
-    backend::ShutdownBackend();
+    arda::ShutdownBackend();
     device = nullptr;
 }
 else
 {
     // Test-only alternative: prove retained ownership after singleton shutdown.
-    backend::ShutdownBackend();
-    assert(!backend::IsBackendInitialized());
-    assert(!backend::GetDevice());
+    arda::ShutdownBackend();
+    assert(!arda::IsBackendInitialized());
+    assert(!arda::GetDevice());
     assert(device);
 
-    rhi::FArdaRHISamplerDesc probeDesc;
+    arda::FArdaRHISamplerDesc probeDesc;
     auto probe = device-&gt;CreateSampler(probeDesc);
     assert(probe);
     probe.mValue = nullptr;

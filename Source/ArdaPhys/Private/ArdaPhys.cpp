@@ -2,9 +2,9 @@
 
 #include "ArdaPhys.h"
 
-namespace arda::phys
+namespace arda
 {
-    const char* GetModuleName() noexcept
+    const char* GetPhysModuleName() noexcept
     {
         return "ArdaPhys";
     }

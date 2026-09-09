@@ -3,7 +3,7 @@
  */
 #pragma once
 
-namespace arda::backend::private_api
+namespace arda
 {
     /** Registers every backend library selected in the current build. */
     void RegisterLinkedBackendModules();

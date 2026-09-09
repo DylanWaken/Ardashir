@@ -5,13 +5,13 @@
 #include <EASTL/algorithm.h>
 #include <EASTL/utility.h>
 
-namespace arda::backend
+namespace arda
 {
     namespace
     {
         void HashBytes(uint64_t& Hash, const void* Data, size_t Size)
         {
-            private_api::AppendFnv1a64(Hash, Data, Size);
+            AppendArdaFnv1a64(Hash, Data, Size);
         }
 
         void HashString(uint64_t& Hash, const char* Text)
@@ -35,9 +35,9 @@ namespace arda::backend
             PushConstants
         };
 
-        ERegisterClass GetRegisterClass(rhi::EArdaRHIBindingType Type)
+        ERegisterClass GetRegisterClass(arda::EArdaRHIBindingType Type)
         {
-            using TypeEnum = rhi::EArdaRHIBindingType;
+            using TypeEnum = arda::EArdaRHIBindingType;
             switch (Type)
             {
             case TypeEnum::TextureSRV:
@@ -157,7 +157,7 @@ namespace arda::backend
 
     void FArdaShaderParameterMetadata::ValidateAndHash()
     {
-        mLayoutHash = private_api::ArdaFnv1a64OffsetBasis;
+        mLayoutHash = arda::ArdaFnv1a64OffsetBasis;
         if (mName == nullptr || *mName == '\0' || mSize == 0 || mAlignment == 0)
         {
             mStatus = MakeError(
@@ -195,7 +195,7 @@ namespace arda::backend
                 return;
             }
             if (IsBindingMember(Member.mKind) &&
-                Member.mVisibility == rhi::EArdaRHIShaderStage::None)
+                Member.mVisibility == arda::EArdaRHIShaderStage::None)
             {
                 mStatus = MakeError(
                     EArdaShaderStructError::IncompatibleVisibility,
@@ -257,7 +257,7 @@ namespace arda::backend
     }
 
     FArdaShaderStructStatus FArdaShaderParameterMetadata::BuildBindingLayoutDescs(
-        eastl::vector<rhi::FArdaRHIBindingLayoutDesc>& OutDescs) const
+        eastl::vector<arda::FArdaRHIBindingLayoutDesc>& OutDescs) const
     {
         OutDescs.clear();
         if (!mStatus)
@@ -274,14 +274,14 @@ namespace arda::backend
             auto Existing = eastl::find_if(
                 OutDescs.begin(),
                 OutDescs.end(),
-                [&Member](const rhi::FArdaRHIBindingLayoutDesc& Desc)
+                [&Member](const arda::FArdaRHIBindingLayoutDesc& Desc)
                 {
                     return Desc.mRegisterSpace == Member.mRegisterSpace &&
                         Desc.mVisibility == Member.mVisibility;
                 });
             if (Existing == OutDescs.end())
             {
-                rhi::FArdaRHIBindingLayoutDesc Desc;
+                arda::FArdaRHIBindingLayoutDesc Desc;
                 Desc.mRegisterSpace = Member.mRegisterSpace;
                 Desc.mVisibility = Member.mVisibility;
                 Desc.mDebugName = mName;
@@ -293,12 +293,12 @@ namespace arda::backend
                 Member.mArrayCount,
                 Member.mBindingType });
         }
-        for (const rhi::FArdaRHIBindingLayoutDesc& Desc : OutDescs)
+        for (const arda::FArdaRHIBindingLayoutDesc& Desc : OutDescs)
         {
             size_t PushConstantCount = 0;
-            for (const rhi::FArdaRHIBindingLayoutItem& Item : Desc.mItems)
+            for (const arda::FArdaRHIBindingLayoutItem& Item : Desc.mItems)
             {
-                if (Item.mType == rhi::EArdaRHIBindingType::PushConstants)
+                if (Item.mType == arda::EArdaRHIBindingType::PushConstants)
                     ++PushConstantCount;
             }
             if (PushConstantCount > 1)
@@ -314,8 +314,8 @@ namespace arda::backend
 
     FArdaShaderStructStatus FArdaShaderParameterMetadata::BuildBindingSetDesc(
         const void* Parameters,
-        const rhi::FArdaRHIBindingLayoutRef& Layout,
-        rhi::FArdaRHIBindingSetDesc& OutDesc) const
+        const arda::FArdaRHIBindingLayoutRef& Layout,
+        arda::FArdaRHIBindingSetDesc& OutDesc) const
     {
         if (!mStatus)
             return mStatus;
@@ -330,7 +330,7 @@ namespace arda::backend
         OutDesc.mLayout = Layout;
         OutDesc.mDebugName = mName;
         const auto& LayoutDesc = Layout->GetDesc();
-        eastl::vector<rhi::FArdaRHIBindingLayoutDesc> GeneratedLayouts;
+        eastl::vector<arda::FArdaRHIBindingLayoutDesc> GeneratedLayouts;
         const FArdaShaderStructStatus LayoutStatus =
             BuildBindingLayoutDescs(GeneratedLayouts);
         if (!LayoutStatus)
@@ -338,7 +338,7 @@ namespace arda::backend
         const bool bGeneratedLayout = eastl::any_of(
             GeneratedLayouts.begin(),
             GeneratedLayouts.end(),
-            [&LayoutDesc](const rhi::FArdaRHIBindingLayoutDesc& Generated)
+            [&LayoutDesc](const arda::FArdaRHIBindingLayoutDesc& Generated)
             {
                 return Generated == LayoutDesc;
             });
@@ -365,7 +365,7 @@ namespace arda::backend
             size_t LayoutIndex = LayoutDesc.mItems.size();
             for (size_t Index = 0; Index < LayoutDesc.mItems.size(); ++Index)
             {
-                const rhi::FArdaRHIBindingLayoutItem& Item =
+                const arda::FArdaRHIBindingLayoutItem& Item =
                     LayoutDesc.mItems[Index];
                 if (Item.mSlot == Member.mSlot &&
                     Item.mType == Member.mBindingType &&
@@ -386,7 +386,7 @@ namespace arda::backend
             {
                 const void* Value =
                     Bytes + Resolved.mAbsoluteOffset + Element * Member.mElementStride;
-                rhi::FArdaRHIBindingItem Item;
+                arda::FArdaRHIBindingItem Item;
                 Item.mSlot = Member.mSlot;
                 Item.mArrayElement = Element;
                 Item.mType = Member.mBindingType;
@@ -394,26 +394,26 @@ namespace arda::backend
                 {
                 case EArdaShaderParameterKind::TextureSRV:
                 case EArdaShaderParameterKind::TextureUAV:
-                    Item.mResource = rhi::TArdaRHIRef<rhi::IArdaRHIResource>(
-                        static_cast<const rhi::FArdaRHITextureRef*>(Value)->Get());
+                    Item.mResource = arda::TArdaRHIRef<arda::IArdaRHIResource>(
+                        static_cast<const arda::FArdaRHITextureRef*>(Value)->Get());
                     break;
                 case EArdaShaderParameterKind::BufferSRV:
                 case EArdaShaderParameterKind::BufferUAV:
                 case EArdaShaderParameterKind::ConstantBuffer:
-                    Item.mResource = rhi::TArdaRHIRef<rhi::IArdaRHIResource>(
-                        static_cast<const rhi::FArdaRHIBufferRef*>(Value)->Get());
+                    Item.mResource = arda::TArdaRHIRef<arda::IArdaRHIResource>(
+                        static_cast<const arda::FArdaRHIBufferRef*>(Value)->Get());
                     break;
                 case EArdaShaderParameterKind::UniformBuffer:
-                    Item.mResource = rhi::TArdaRHIRef<rhi::IArdaRHIResource>(
-                        static_cast<const rhi::FArdaRHIUniformBufferRef*>(Value)->Get());
+                    Item.mResource = arda::TArdaRHIRef<arda::IArdaRHIResource>(
+                        static_cast<const arda::FArdaRHIUniformBufferRef*>(Value)->Get());
                     break;
                 case EArdaShaderParameterKind::Sampler:
-                    Item.mResource = rhi::TArdaRHIRef<rhi::IArdaRHIResource>(
-                        static_cast<const rhi::FArdaRHISamplerRef*>(Value)->Get());
+                    Item.mResource = arda::TArdaRHIRef<arda::IArdaRHIResource>(
+                        static_cast<const arda::FArdaRHISamplerRef*>(Value)->Get());
                     break;
                 case EArdaShaderParameterKind::AccelerationStructure:
-                    Item.mResource = rhi::TArdaRHIRef<rhi::IArdaRHIResource>(
-                        static_cast<const rhi::FArdaRHIAccelStructRef*>(Value)->Get());
+                    Item.mResource = arda::TArdaRHIRef<arda::IArdaRHIResource>(
+                        static_cast<const arda::FArdaRHIAccelStructRef*>(Value)->Get());
                     break;
                 case EArdaShaderParameterKind::PushConstants:
                     Item.mView.mBufferRange.mByteSize = Member.mSize;
@@ -436,7 +436,7 @@ namespace arda::backend
         }
         for (size_t Index = 0; Index < LayoutDesc.mItems.size(); ++Index)
         {
-            const rhi::FArdaRHIBindingLayoutItem& Item =
+            const arda::FArdaRHIBindingLayoutItem& Item =
                 LayoutDesc.mItems[Index];
             if (Populated[Index] != Item.mArraySize)
             {
@@ -449,12 +449,12 @@ namespace arda::backend
     }
 
     FArdaShaderStructStatus FArdaShaderParameterMetadata::CreateBindingSet(
-        rhi::IArdaRHIDevice& Device,
+        arda::IArdaRHIDevice& Device,
         const void* Parameters,
-        const rhi::FArdaRHIBindingLayoutRef& Layout,
-        rhi::FArdaRHIBindingSetRef& OutBindingSet) const
+        const arda::FArdaRHIBindingLayoutRef& Layout,
+        arda::FArdaRHIBindingSetRef& OutBindingSet) const
     {
-        rhi::FArdaRHIBindingSetDesc Desc;
+        arda::FArdaRHIBindingSetDesc Desc;
         const FArdaShaderStructStatus Status =
             BuildBindingSetDesc(Parameters, Layout, Desc);
         if (!Status)
@@ -472,7 +472,7 @@ namespace arda::backend
 
     FArdaShaderStructStatus FArdaShaderParameterMetadata::GetPushConstantData(
         const void* Parameters,
-        const rhi::FArdaRHIBindingLayoutDesc& Layout,
+        const arda::FArdaRHIBindingLayoutDesc& Layout,
         const void*& OutData,
         size_t& OutSize) const
     {
@@ -487,7 +487,7 @@ namespace arda::backend
                 "Push constants require a concrete parameter instance.");
         }
 
-        eastl::vector<rhi::FArdaRHIBindingLayoutDesc> GeneratedLayouts;
+        eastl::vector<arda::FArdaRHIBindingLayoutDesc> GeneratedLayouts;
         const FArdaShaderStructStatus LayoutStatus =
             BuildBindingLayoutDescs(GeneratedLayouts);
         if (!LayoutStatus)
@@ -495,7 +495,7 @@ namespace arda::backend
         if (!eastl::any_of(
                 GeneratedLayouts.begin(),
                 GeneratedLayouts.end(),
-                [&Layout](const rhi::FArdaRHIBindingLayoutDesc& Generated)
+                [&Layout](const arda::FArdaRHIBindingLayoutDesc& Generated)
                 {
                     return Generated == Layout;
                 }))
@@ -535,9 +535,9 @@ namespace arda::backend
     }
 
     FArdaShaderStructStatus FArdaShaderParameterMetadata::ApplyPushConstants(
-        rhi::IArdaRHICommandList& CommandList,
+        arda::IArdaRHICommandList& CommandList,
         const void* Parameters,
-        const rhi::FArdaRHIBindingLayoutDesc& Layout) const
+        const arda::FArdaRHIBindingLayoutDesc& Layout) const
     {
         const void* Data = nullptr;
         size_t Size = 0;

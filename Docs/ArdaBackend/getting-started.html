@@ -136,11 +136,11 @@
 }</code></pre>
 
           <pre><code>// Exact implementation selection, independent of priority.
-arda::backend::FArdaBackendConfiguration config;
+arda::FArdaBackendConfiguration config;
 config.mBackendName = "native-vulkan";
 
 // Or inspect the link-time module set before presenting a choice.
-for (const auto&amp; module : arda::backend::EnumerateBackendModules())
+for (const auto&amp; module : arda::EnumerateBackendModules())
     Log(module.mName.c_str());</code></pre>
 
           <p>The selected module declares its shader representation and artifact extension. The sample native modules consume DXIL or SPIR-V; another module may declare a backend-defined format and compiler service. Confirm deployment includes artifacts for the exact selected module.</p>
@@ -157,17 +157,17 @@ for (const auto&amp; module : arda::backend::EnumerateBackendModules())
           <h3>Diagnostic callback lifetime</h3>
           <p><a href="api-reference.html#api-arda-backend-iardadiagnosticcallback-f00c8ba0"><code>IArdaDiagnosticCallback</code></a> is caller-owned. The pointer stored in configuration must remain valid for as long as it may receive backend messages. A process service or an object that outlives backend shutdown is appropriate; a stack-local callback that dies after a helper returns is not.</p>
 
-          <pre><code>arda::backend::FArdaBackendConfiguration BuildConfiguration(
+          <pre><code>arda::FArdaBackendConfiguration BuildConfiguration(
     const char* backendName,
     bool enableValidation,
-    arda::backend::IArdaDiagnosticCallback&amp; diagnostics)
+    arda::IArdaDiagnosticCallback&amp; diagnostics)
 {
-    arda::backend::FArdaBackendConfiguration config;
+    arda::FArdaBackendConfiguration config;
     config.mBackendName = backendName;
     config.mbEnableValidation = enableValidation;
     config.mMessageCallback = &amp;diagnostics;
     config.mShaderCompilationMode =
-        arda::backend::EArdaShaderCompilationMode::Startup;
+        arda::EArdaShaderCompilationMode::Startup;
     config.mShaderCacheDirectory =
         GetWritableUserCache() / "Ardashir" / "shaders";
     config.mPipelineCacheDirectory =
@@ -207,13 +207,13 @@ for (const auto&amp; module : arda::backend::EnumerateBackendModules())
 
         <section id="headless">
           <h2>Worked example: headless startup</h2>
-          <p>Headless means “no presentation surface,” not “no GPU.” Use it for compute tools, offline processing, tests, servers, and renderer bootstrap that creates presentation later through another design. It is also the required initialization call when <a href="external-interop.html">adopting a host-owned device</a>; that wrapper is host-presented and rejects presentation initialization. <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend()</code></a> returns <code>bool</code>.</p>
+          <p>Headless means “no presentation surface,” not “no GPU.” Use it for compute tools, offline processing, tests, servers, and renderer bootstrap that creates presentation later through another design. Use it when <a href="external-interop.html">adopting a host-owned device</a> whose presentation remains with the host. An adopted device can instead use presentation initialization when its enabled extensions, queues and window surface satisfy the native provider’s requirements. <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend()</code></a> returns <code>bool</code>.</p>
 
           <pre><code>#include "ArdaBackend.h"
 
 int RunHeadlessGpuJob()
 {
-    using namespace arda::backend;
+    using namespace arda;
 
     FArdaBackendConfiguration config;
     config.mbEnableValidation = true;
@@ -232,7 +232,7 @@ int RunHeadlessGpuJob()
         return 2;
     }
 
-    arda::rhi::FArdaRHIDeviceRef device = GetDevice();
+    arda::FArdaRHIDeviceRef device = GetDevice();
     if (!device)
     {
         ShutdownBackend();
@@ -249,7 +249,7 @@ int RunHeadlessGpuJob()
 
     // Create resources, record command lists, and submit work here.
 
-    const arda::rhi::FArdaRHIStatus idle = device->WaitForIdle();
+    const arda::FArdaRHIStatus idle = device->WaitForIdle();
     device = nullptr;
     ShutdownBackend();
     return idle ? 0 : 5;
@@ -262,24 +262,24 @@ int RunHeadlessGpuJob()
           <h2>Worked example: presentation startup</h2>
           <p>Presentation initialization is a distinct transaction because native adapter/device selection can depend on the window surface. It returns <a href="api-reference.html#api-arda-backend-eardainitializeresult-2bf6fe00"><code>EArdaInitializeResult</code></a>, distinguishing success, backend unavailability, and another failure.</p>
 
-          <pre><code>eastl::unique_ptr&lt;arda::backend::IArdaSwapChain&gt; swapChain;
+          <pre><code>eastl::unique_ptr&lt;arda::IArdaSwapChain&gt; swapChain;
 
-const arda::backend::EArdaInitializeResult result =
-    arda::backend::InitializeBackendForPresentation(
+const arda::EArdaInitializeResult result =
+    arda::InitializeBackendForPresentation(
         windowSurface,
         initialWidth,
         initialHeight,
         swapChain);
 
-if (result != arda::backend::EArdaInitializeResult::Success)
+if (result != arda::EArdaInitializeResult::Success)
 {
-    const eastl::string error = arda::backend::GetBackendError();
+    const eastl::string error = arda::GetBackendError();
     // `swapChain` is empty on failure. Report result and error.
-    arda::backend::ShutdownBackend();
+    arda::ShutdownBackend();
     return false;
 }
 
-arda::rhi::FArdaRHIDeviceRef device = arda::backend::GetDevice();
+arda::FArdaRHIDeviceRef device = arda::GetDevice();
 // Own both `device` and `swapChain` in the renderer lifetime object.</code></pre>
 
           <p>Width and height must be non-zero. The supplied <a href="api-reference.html#api-arda-backend-iardawindowsurface-b0c31083"><code>IArdaWindowSurface</code></a> abstracts an HWND for D3D12 or Vulkan instance extensions and surface creation. The returned <code>eastl::unique_ptr&lt;IArdaSwapChain&gt;</code> is caller-owned and must be destroyed before backend shutdown.</p>

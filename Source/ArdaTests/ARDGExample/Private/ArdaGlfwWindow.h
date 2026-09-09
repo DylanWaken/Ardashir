@@ -7,7 +7,7 @@
 
 struct GLFWwindow;
 
-namespace arda::tests::ardg_example
+namespace arda
 {
     struct FArdaCameraInput
     {
@@ -17,7 +17,7 @@ namespace arda::tests::ardg_example
         float mLookY = 0.0f;
     };
 
-    class FArdaGlfwWindow final : public backend::IArdaWindowSurface
+    class FArdaGlfwWindow final : public arda::IArdaWindowSurface
     {
     public:
         ~FArdaGlfwWindow();
@@ -36,10 +36,10 @@ namespace arda::tests::ardg_example
         [[nodiscard]] uint32_t GetHeight() const { return mHeight; }
         [[nodiscard]] const eastl::string& GetError() const { return mError; }
 
-        [[nodiscard]] backend::FArdaNativeObject GetD3D12WindowHandle() const noexcept override;
+        [[nodiscard]] arda::FArdaNativeObject GetD3D12WindowHandle() const noexcept override;
         [[nodiscard]] eastl::vector<const char*> GetVulkanInstanceExtensions() const override;
-        [[nodiscard]] backend::FArdaNativeObject CreateVulkanSurface(
-            backend::FArdaNativeObject vulkanInstance,
+        [[nodiscard]] arda::FArdaNativeObject CreateVulkanSurface(
+            arda::FArdaNativeObject vulkanInstance,
             eastl::string& outError) override;
 
     private:

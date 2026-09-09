@@ -10,7 +10,7 @@
 
 #include <EASTL/functional.h>
 
-namespace arda::rhi
+namespace arda
 {
     /** Result returned by a device-to-host buffer copy. */
     using FArdaRHIBufferReadbackResult =
@@ -87,8 +87,11 @@ namespace arda::rhi
          * Records ordered CUDA launches on an open list; ExecuteCommandList submits the work.
          * Bindings must belong to this device and already have qualified CUDA representations.
          * Providers insert memory dependencies and retain bindings/modules until completion.
-         * D3D12 CiG accepts graphics lists; Vulkan accepts graphics/compute lists. Copy lists
-         * are rejected. Capture failures are not retried as graphics work.
+         * D3D12 CiG accepts graphics lists; Vulkan and ContextSwitch accept graphics/compute
+         * lists. Copy lists are rejected. ContextSwitch records deferred segments and blocks
+         * at submission to drain graphics, execute CUDA, and complete its stream before the
+         * next graphics segment. CiG and ContextSwitch lists are single-use until reset.
+         * Execution failures are not retried as graphics work.
          */
         virtual FArdaRHIStatus DispatchCuda(const FArdaCudaDispatch&)
         { return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "CUDA recording is unavailable."); }

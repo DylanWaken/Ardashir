@@ -16,7 +16,7 @@
 #include <EASTL/utility.h>
 #include <EASTL/vector.h>
 
-namespace arda::render_graph
+namespace arda
 {
     /** Records a live logical resource interval in execution-order indices. */
     struct FARDGResourceLifetime
@@ -100,25 +100,25 @@ namespace arda::render_graph
         /** Human-readable logical resource name. */
         eastl::string mResourceName;
         /** Texture subresources, or the default range for a buffer. */
-        rhi::FArdaRHITextureSubresourceRange mTextureSubresources;
+        arda::FArdaRHITextureSubresourceRange mTextureSubresources;
         /** Checkpoint within transition recording or pass execution. */
         EARDGStateCheckpoint mCheckpoint =
             EARDGStateCheckpoint::BeforeTransition;
         /** State expected by physical RDG transition lowering. */
-        rhi::EArdaRHIResourceState mExpectedState =
-            rhi::EArdaRHIResourceState::Unknown;
+        arda::EArdaRHIResourceState mExpectedState =
+            arda::EArdaRHIResourceState::Unknown;
         /** Queue expected to own the resource at an ownership checkpoint. */
-        rhi::EArdaRHIQueueType mExpectedQueueOwner =
-            rhi::EArdaRHIQueueType::Graphics;
+        arda::EArdaRHIQueueType mExpectedQueueOwner =
+            arda::EArdaRHIQueueType::Graphics;
         /** Expected Vulkan family, or the invalid-family sentinel on D3D12. */
         uint32_t mExpectedQueueFamily =
-            rhi::ArdaRHIInvalidQueueFamily;
+            arda::ArdaRHIInvalidQueueFamily;
         /** Whether queue and native-family ownership participate in consistency. */
         bool mbValidateQueueOwnership = false;
         /** Independently observed facade/backend/native state. */
-        rhi::FArdaRHIResourceStateSnapshot mObserved;
+        arda::FArdaRHIResourceStateSnapshot mObserved;
         /** Query status when the observation could not be produced. */
-        rhi::FArdaRHIStatus mStatus;
+        arda::FArdaRHIStatus mStatus;
 
         /**
          * Tests whether RDG, facade, backend, and native encoding agree.
@@ -135,7 +135,7 @@ namespace arda::render_graph
                 return true;
             return mObserved.mbFacadeQueueOwnerKnown &&
                 mObserved.mFacadeQueueOwner == mExpectedQueueOwner &&
-                (mExpectedQueueFamily == rhi::ArdaRHIInvalidQueueFamily ||
+                (mExpectedQueueFamily == arda::ArdaRHIInvalidQueueFamily ||
                  mObserved.mNative.mQueueFamily == mExpectedQueueFamily);
         }
     };
@@ -144,7 +144,7 @@ namespace arda::render_graph
     struct FARDGExecutionResult
     {
         /** Overall recording, conformance-validation, and submission status. */
-        rhi::FArdaRHIStatus mStatus;
+        arda::FArdaRHIStatus mStatus;
 
         /** Number of pass and boundary-barrier command lists submitted. */
         uint32_t mSubmittedCommandListCount = 0;
@@ -202,7 +202,7 @@ namespace arda::render_graph
 
         /** Last submitted RHI instance for graphics, compute, and copy queues. */
         eastl::array<uint64_t,
-            rhi::ArdaRHIQueueTypeCount> mLastSubmittedInstances{};
+            arda::ArdaRHIQueueTypeCount> mLastSubmittedInstances{};
     };
 
     /** Defines direct compute dispatch dimensions. */
@@ -238,10 +238,10 @@ namespace arda::render_graph
         FARDGTextureRef mTexture = nullptr;
 
         /** Receives the physical handle after graph submission. */
-        rhi::FArdaRHITextureRef* mOutput = nullptr;
+        arda::FArdaRHITextureRef* mOutput = nullptr;
 
         /** The state required when graph execution completes. */
-        rhi::EArdaRHIResourceState mFinalState = rhi::EArdaRHIResourceState::Unknown;
+        arda::EArdaRHIResourceState mFinalState = arda::EArdaRHIResourceState::Unknown;
     };
 
     /** Describes a buffer handle requested from graph execution. */
@@ -251,10 +251,10 @@ namespace arda::render_graph
         FARDGBufferRef mBuffer = nullptr;
 
         /** Receives the physical handle after graph submission. */
-        rhi::FArdaRHIBufferRef* mOutput = nullptr;
+        arda::FArdaRHIBufferRef* mOutput = nullptr;
 
         /** The state required when graph execution completes. */
-        rhi::EArdaRHIResourceState mFinalState = rhi::EArdaRHIResourceState::Unknown;
+        arda::EArdaRHIResourceState mFinalState = arda::EArdaRHIResourceState::Unknown;
     };
 
     /** Describes an acceleration-structure handle requested from graph execution. */
@@ -264,11 +264,11 @@ namespace arda::render_graph
         FARDGAccelStructRef mAccelStruct = nullptr;
 
         /** Receives the physical handle after graph submission. */
-        rhi::FArdaRHIAccelStructRef* mOutput = nullptr;
+        arda::FArdaRHIAccelStructRef* mOutput = nullptr;
 
         /** The state required when graph execution completes. */
-        rhi::EArdaRHIResourceState mFinalState =
-            rhi::EArdaRHIResourceState::Unknown;
+        arda::EArdaRHIResourceState mFinalState =
+            arda::EArdaRHIResourceState::Unknown;
     };
 
     /** Immutable products emitted by device-independent graph compilation. */
@@ -342,17 +342,17 @@ namespace arda::render_graph
 
         /** Creates a deferred logical texture. */
         [[nodiscard]] FARDGTextureRef CreateTexture(
-            rhi::FArdaRHITextureDesc Desc,
+            arda::FArdaRHITextureDesc Desc,
             EARDGResourceFlags Flags = EARDGResourceFlags::Transient);
 
         /** Creates a deferred logical buffer. */
         [[nodiscard]] FARDGBufferRef CreateBuffer(
-            rhi::FArdaRHIBufferDesc Desc,
+            arda::FArdaRHIBufferDesc Desc,
             EARDGResourceFlags Flags = EARDGResourceFlags::Transient);
 
         /** Creates a deferred logical acceleration structure. */
         [[nodiscard]] FARDGAccelStructRef CreateAccelStruct(
-            rhi::FArdaRHIAccelStructDesc Desc,
+            arda::FArdaRHIAccelStructDesc Desc,
             EARDGResourceFlags Flags = EARDGResourceFlags::None);
 
         /** Creates a logical texture shader-resource view. */
@@ -409,25 +409,25 @@ namespace arda::render_graph
 
         /** Imports an externally owned texture into the logical graph. */
         [[nodiscard]] FARDGTextureRef RegisterExternalTexture(
-            rhi::FArdaRHITextureRef Texture,
-            rhi::EArdaRHIResourceState InitialState,
+            arda::FArdaRHITextureRef Texture,
+            arda::EArdaRHIResourceState InitialState,
             eastl::string Name = {});
 
         /** Imports an externally owned buffer into the logical graph. */
         [[nodiscard]] FARDGBufferRef RegisterExternalBuffer(
-            rhi::FArdaRHIBufferRef Buffer,
-            rhi::EArdaRHIResourceState InitialState,
+            arda::FArdaRHIBufferRef Buffer,
+            arda::EArdaRHIResourceState InitialState,
             eastl::string Name = {});
 
         /** Imports an externally owned acceleration structure. */
         [[nodiscard]] FARDGAccelStructRef RegisterExternalAccelStruct(
-            rhi::FArdaRHIAccelStructRef AccelStruct,
-            rhi::EArdaRHIResourceState InitialState,
+            arda::FArdaRHIAccelStructRef AccelStruct,
+            arda::EArdaRHIResourceState InitialState,
             eastl::string Name = {});
 
         /** Imports a texture using the initial state stored in its descriptor. */
         [[nodiscard]] FARDGTextureRef RegisterExternalTexture(
-            rhi::FArdaRHITextureRef Texture,
+            arda::FArdaRHITextureRef Texture,
             eastl::string Name = {})
         {
             if (!Texture)
@@ -442,7 +442,7 @@ namespace arda::render_graph
 
         /** Imports a buffer using the initial state stored in its descriptor. */
         [[nodiscard]] FARDGBufferRef RegisterExternalBuffer(
-            rhi::FArdaRHIBufferRef Buffer,
+            arda::FArdaRHIBufferRef Buffer,
             eastl::string Name = {})
         {
             if (!Buffer)
@@ -477,14 +477,14 @@ namespace arda::render_graph
         /** Declares that a logical texture must survive graph completion. */
         void QueueTextureExtraction(
             FARDGTextureRef Texture,
-            rhi::FArdaRHITextureRef* Output,
-            rhi::EArdaRHIResourceState FinalState);
+            arda::FArdaRHITextureRef* Output,
+            arda::EArdaRHIResourceState FinalState);
 
         /** Declares texture extraction using an RHI reference. */
         void QueueTextureExtraction(
             FARDGTextureRef Texture,
-            rhi::FArdaRHITextureRef& Output,
-            rhi::EArdaRHIResourceState FinalState)
+            arda::FArdaRHITextureRef& Output,
+            arda::EArdaRHIResourceState FinalState)
         {
             QueueTextureExtraction(Texture, eastl::addressof(Output), FinalState);
         }
@@ -492,14 +492,14 @@ namespace arda::render_graph
         /** Declares that a logical buffer must survive graph completion. */
         void QueueBufferExtraction(
             FARDGBufferRef Buffer,
-            rhi::FArdaRHIBufferRef* Output,
-            rhi::EArdaRHIResourceState FinalState);
+            arda::FArdaRHIBufferRef* Output,
+            arda::EArdaRHIResourceState FinalState);
 
         /** Declares buffer extraction using an RHI reference. */
         void QueueBufferExtraction(
             FARDGBufferRef Buffer,
-            rhi::FArdaRHIBufferRef& Output,
-            rhi::EArdaRHIResourceState FinalState)
+            arda::FArdaRHIBufferRef& Output,
+            arda::EArdaRHIResourceState FinalState)
         {
             QueueBufferExtraction(Buffer, eastl::addressof(Output), FinalState);
         }
@@ -507,14 +507,14 @@ namespace arda::render_graph
         /** Declares that a logical acceleration structure survives graph completion. */
         void QueueAccelStructExtraction(
             FARDGAccelStructRef AccelStruct,
-            rhi::FArdaRHIAccelStructRef* Output,
-            rhi::EArdaRHIResourceState FinalState);
+            arda::FArdaRHIAccelStructRef* Output,
+            arda::EArdaRHIResourceState FinalState);
 
         /** Declares acceleration-structure extraction using an RHI reference. */
         void QueueAccelStructExtraction(
             FARDGAccelStructRef AccelStruct,
-            rhi::FArdaRHIAccelStructRef& Output,
-            rhi::EArdaRHIResourceState FinalState)
+            arda::FArdaRHIAccelStructRef& Output,
+            arda::EArdaRHIResourceState FinalState)
         {
             QueueAccelStructExtraction(
                 AccelStruct, eastl::addressof(Output), FinalState);
@@ -537,7 +537,7 @@ namespace arda::render_graph
             FARDGBufferRef Destination,
             const void* SourceData,
             size_t Size,
-            rhi::FArdaRHIHostToDeviceCopyCallback Completion,
+            arda::FArdaRHIHostToDeviceCopyCallback Completion,
             uint64_t DestinationOffset = 0,
             eastl::string Name = "HostToDeviceCopyAsync");
 
@@ -546,15 +546,15 @@ namespace arda::render_graph
             FARDGBufferRef Source,
             eastl::vector<uint8_t>& Output,
             uint64_t SourceOffset = 0,
-            uint64_t Size = rhi::ArdaRHIWholeBuffer,
+            uint64_t Size = arda::ArdaRHIWholeBuffer,
             eastl::string Name = "DeviceToHostCopy");
 
         /** Adds a nonblocking device-to-host readback pass with owned bytes. */
         [[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPassAsync(
             FARDGBufferRef Source,
-            rhi::FArdaRHIDeviceToHostCopyCallback Completion,
+            arda::FArdaRHIDeviceToHostCopyCallback Completion,
             uint64_t SourceOffset = 0,
-            uint64_t Size = rhi::ArdaRHIWholeBuffer,
+            uint64_t Size = arda::ArdaRHIWholeBuffer,
             eastl::string Name = "DeviceToHostCopyAsync");
 
         /** Unreal-style alias for a graph-owned host buffer upload. */
@@ -573,9 +573,9 @@ namespace arda::render_graph
         /** Unreal-style alias for an asynchronous GPU buffer readback pass. */
         [[nodiscard]] FARDGPassHandle AddEnqueueCopyPass(
             FARDGBufferRef Source,
-            rhi::FArdaRHIDeviceToHostCopyCallback Completion,
+            arda::FArdaRHIDeviceToHostCopyCallback Completion,
             uint64_t SourceOffset = 0,
-            uint64_t Size = rhi::ArdaRHIWholeBuffer,
+            uint64_t Size = arda::ArdaRHIWholeBuffer,
             eastl::string Name = "EnqueueBufferReadback")
         {
             return AddDeviceToHostCopyPassAsync(
@@ -841,35 +841,35 @@ namespace arda::render_graph
 
         void BeginPassAccess(FARDGPassHandle Pass);
         void EndPassAccess(FARDGPassHandle Pass) noexcept;
-        [[nodiscard]] rhi::IArdaRHITexture* ResolveTextureForPass(
+        [[nodiscard]] arda::IArdaRHITexture* ResolveTextureForPass(
             FARDGPassHandle Pass,
             FARDGTexture* Texture) const;
-        [[nodiscard]] rhi::IArdaRHITexture* ResolveTextureViewForPass(
+        [[nodiscard]] arda::IArdaRHITexture* ResolveTextureViewForPass(
             FARDGPassHandle Pass,
             FARDGView* View) const;
-        [[nodiscard]] rhi::IArdaRHIBuffer* ResolveBufferForPass(
+        [[nodiscard]] arda::IArdaRHIBuffer* ResolveBufferForPass(
             FARDGPassHandle Pass,
             FARDGBuffer* Buffer) const;
-        [[nodiscard]] rhi::IArdaRHIBuffer* ResolveBufferViewForPass(
+        [[nodiscard]] arda::IArdaRHIBuffer* ResolveBufferViewForPass(
             FARDGPassHandle Pass,
             FARDGView* View) const;
-        [[nodiscard]] rhi::IArdaRHIAccelStruct* ResolveAccelStructForPass(
+        [[nodiscard]] arda::IArdaRHIAccelStruct* ResolveAccelStructForPass(
             FARDGPassHandle Pass,
             FARDGAccelStruct* AccelStruct) const;
-        [[nodiscard]] rhi::IArdaRHIBuffer* ResolveUniformBufferForPass(
+        [[nodiscard]] arda::IArdaRHIBuffer* ResolveUniformBufferForPass(
             FARDGPassHandle Pass,
             FARDGUniformBuffer* UniformBuffer) const;
-        [[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSetForPass(
+        [[nodiscard]] arda::FArdaRHIBindingSetRef CreateBindingSetForPass(
             FARDGPassHandle Pass,
-            rhi::IArdaRHIBindingLayout* BindingLayout) const;
-        [[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSetForPass(
+            arda::IArdaRHIBindingLayout* BindingLayout) const;
+        [[nodiscard]] arda::FArdaRHIBindingSetRef CreateBindingSetForPass(
             FARDGPassHandle Pass,
-            const backend::FArdaShaderParameterMetadata& ShaderParameters,
-            rhi::IArdaRHIBindingLayout* BindingLayout) const;
-        [[nodiscard]] rhi::FArdaRHIBindingSetRef CreateBindingSetForPassInternal(
+            const arda::FArdaShaderParameterMetadata& ShaderParameters,
+            arda::IArdaRHIBindingLayout* BindingLayout) const;
+        [[nodiscard]] arda::FArdaRHIBindingSetRef CreateBindingSetForPassInternal(
             FARDGPassHandle Pass,
-            const backend::FArdaShaderParameterMetadata* ShaderParameters,
-            rhi::IArdaRHIBindingLayout* BindingLayout) const;
+            const arda::FArdaShaderParameterMetadata* ShaderParameters,
+            arda::IArdaRHIBindingLayout* BindingLayout) const;
 
         /** Propagates optional status returns without changing void callback support. */
         template <typename ExecuteType, typename... ArgumentTypes>
@@ -879,7 +879,7 @@ namespace arda::render_graph
             ArgumentTypes&&... Arguments)
         {
             if constexpr (eastl::is_same_v<eastl::invoke_result_t<ExecuteType&, ArgumentTypes...>,
-                rhi::FArdaRHIStatus>)
+                arda::FArdaRHIStatus>)
                 Context.ReportStatus(Execute(eastl::forward<ArgumentTypes>(Arguments)...));
             else
                 Execute(eastl::forward<ArgumentTypes>(Arguments)...);
@@ -907,7 +907,7 @@ namespace arda::render_graph
             }
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
-                                   rhi::IArdaRHICommandList&,
+                                   arda::IArdaRHICommandList&,
                                    const ParameterType&>)
             {
                 InvokeCallback(Context, Execute, Context.mUnsafeRawCommandList, Parameters);
@@ -915,7 +915,7 @@ namespace arda::render_graph
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
                                    const ParameterType&,
-                                   rhi::IArdaRHICommandList&>)
+                                   arda::IArdaRHICommandList&>)
             {
                 InvokeCallback(Context, Execute, Parameters, Context.mUnsafeRawCommandList);
             }
@@ -927,7 +927,7 @@ namespace arda::render_graph
             }
             else if constexpr (eastl::is_invocable_v<
                                    ExecuteType&,
-                                   rhi::IArdaRHICommandList&>)
+                                   arda::IArdaRHICommandList&>)
             {
                 InvokeCallback(Context, Execute, Context.mUnsafeRawCommandList);
             }
@@ -956,7 +956,7 @@ namespace arda::render_graph
             {
                 InvokeCallback(Context, Execute, Context);
             }
-            else if constexpr (eastl::is_invocable_v<ExecuteType&, rhi::IArdaRHICommandList&>)
+            else if constexpr (eastl::is_invocable_v<ExecuteType&, arda::IArdaRHICommandList&>)
             {
                 InvokeCallback(Context, Execute, Context.mUnsafeRawCommandList);
             }

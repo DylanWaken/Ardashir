@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-namespace arda::rhi
+namespace arda
 {
     /** Representation the qualified allocation can supply to a CUDA kernel. */
     enum class EArdaCudaRepresentation : uint8_t
@@ -28,8 +28,8 @@ namespace arda::rhi
         /** Both representations exist and refer to the same native allocation. */
         GraphicsAndCuda
     };
-    /** Representation availability is not permission for concurrent access. All current
-     * CUDA launches are ordered in the graphics API's command stream. */
+    /** Representation availability is not permission for concurrent access. Native CUDA launches use the graphics
+     * command stream; ordinary-context launches execute between completed graphics segments. */
     struct FArdaCudaResourceInfo
     {
         /** Allocation/device-qualified representation, not a promise for every resource of this type. */

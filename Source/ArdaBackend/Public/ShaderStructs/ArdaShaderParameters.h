@@ -13,7 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace arda::backend
+namespace arda
 {
     /** Identifies the semantic kind of a shader parameter member. */
     enum class EArdaShaderParameterKind : uint8_t
@@ -71,7 +71,7 @@ namespace arda::backend
         /** Semantic shader parameter kind. */
         EArdaShaderParameterKind mKind = EArdaShaderParameterKind::Value;
         /** RHI binding type used for resource members. */
-        rhi::EArdaRHIBindingType mBindingType = rhi::EArdaRHIBindingType::TextureSRV;
+        arda::EArdaRHIBindingType mBindingType = arda::EArdaRHIBindingType::TextureSRV;
         /** Shader register slot. */
         uint32_t mSlot = 0;
         /** Shader register space. */
@@ -85,7 +85,7 @@ namespace arda::backend
         /** Byte stride between array elements. */
         size_t mElementStride = 0;
         /** Shader stages that can access the member. */
-        rhi::EArdaRHIShaderStage mVisibility = rhi::EArdaRHIShaderStage::None;
+        arda::EArdaRHIShaderStage mVisibility = arda::EArdaRHIShaderStage::None;
         /** Metadata for a nested parameter struct, or null. */
         const FArdaShaderParameterMetadata* mNestedMetadata = nullptr;
     };
@@ -170,7 +170,7 @@ namespace arda::backend
          * @return Layout generation status.
          */
         [[nodiscard]] FArdaShaderStructStatus BuildBindingLayoutDescs(
-            eastl::vector<rhi::FArdaRHIBindingLayoutDesc>& OutDescs) const;
+            eastl::vector<arda::FArdaRHIBindingLayoutDesc>& OutDescs) const;
 
         /**
          * Builds direct RHI binding descriptors from an instance containing RHI refs.
@@ -181,8 +181,8 @@ namespace arda::backend
          */
         [[nodiscard]] FArdaShaderStructStatus BuildBindingSetDesc(
             const void* Parameters,
-            const rhi::FArdaRHIBindingLayoutRef& Layout,
-            rhi::FArdaRHIBindingSetDesc& OutDesc) const;
+            const arda::FArdaRHIBindingLayoutRef& Layout,
+            arda::FArdaRHIBindingSetDesc& OutDesc) const;
 
         /**
          * Builds and creates a direct binding set from concrete RHI-ref members.
@@ -193,10 +193,10 @@ namespace arda::backend
          * @return Binding-set creation status.
          */
         [[nodiscard]] FArdaShaderStructStatus CreateBindingSet(
-            rhi::IArdaRHIDevice& Device,
+            arda::IArdaRHIDevice& Device,
             const void* Parameters,
-            const rhi::FArdaRHIBindingLayoutRef& Layout,
-            rhi::FArdaRHIBindingSetRef& OutBindingSet) const;
+            const arda::FArdaRHIBindingLayoutRef& Layout,
+            arda::FArdaRHIBindingSetRef& OutBindingSet) const;
 
         /**
          * Applies this layout's concrete push-constant block from a parameter instance.
@@ -206,9 +206,9 @@ namespace arda::backend
          * @return Push-constant application status.
          */
         [[nodiscard]] FArdaShaderStructStatus ApplyPushConstants(
-            rhi::IArdaRHICommandList& CommandList,
+            arda::IArdaRHICommandList& CommandList,
             const void* Parameters,
-            const rhi::FArdaRHIBindingLayoutDesc& Layout) const;
+            const arda::FArdaRHIBindingLayoutDesc& Layout) const;
 
         /**
          * Resolves the concrete byte range consumed by ApplyPushConstants.
@@ -220,7 +220,7 @@ namespace arda::backend
          */
         [[nodiscard]] FArdaShaderStructStatus GetPushConstantData(
             const void* Parameters,
-            const rhi::FArdaRHIBindingLayoutDesc& Layout,
+            const arda::FArdaRHIBindingLayoutDesc& Layout,
             const void*& OutData,
             size_t& OutSize) const;
 
@@ -252,9 +252,9 @@ namespace arda::backend
      */
     template <typename ParameterType>
     [[nodiscard]] FArdaShaderStructStatus ApplyShaderPushConstants(
-        rhi::IArdaRHICommandList& CommandList,
+        arda::IArdaRHICommandList& CommandList,
         const ParameterType& Parameters,
-        const rhi::FArdaRHIBindingLayoutDesc& Layout)
+        const arda::FArdaRHIBindingLayoutDesc& Layout)
     {
         return ParameterType::GetStaticMetadata().ApplyPushConstants(
             CommandList,
@@ -275,7 +275,7 @@ namespace arda::backend
         /** Appends metadata for the generated shader parameter array. */                                       \
         static void FArdaAppendShaderMembers(                                                                   \
             FArdaShaderNextMemberId##MemberName,                                                                \
-            eastl::vector<::arda::backend::FArdaShaderParameterMember>& Members)                               \
+            eastl::vector<::arda::FArdaShaderParameterMember>& Members)                               \
         {                                                                                                       \
             FArdaAppendShaderMembers(FArdaShaderMemberId##MemberName{}, Members);                              \
             Members.push_back({                                                                                 \
@@ -296,7 +296,7 @@ namespace arda::backend
         /** Appends metadata for the generated shader parameter member. */                                      \
         static void FArdaAppendShaderMembers(                                                                    \
             FArdaShaderNextMemberId##MemberName,                                                                 \
-            eastl::vector<::arda::backend::FArdaShaderParameterMember>& Members)                                \
+            eastl::vector<::arda::FArdaShaderParameterMember>& Members)                                \
         {                                                                                                        \
             FArdaAppendShaderMembers(FArdaShaderMemberId##MemberName{}, Members);                               \
             Members.push_back({                                                                                  \
@@ -324,7 +324,7 @@ namespace arda::backend
         /** Initializes recursive metadata collection for the generated struct. */                              \
         static void FArdaAppendShaderMembers(                                                                    \
             FArdaShaderFirstMemberId,                                                                            \
-            eastl::vector<::arda::backend::FArdaShaderParameterMember>&) {}                                     \
+            eastl::vector<::arda::FArdaShaderParameterMember>&) {}                                     \
         typedef FArdaShaderFirstMemberId
 
 /** Ends a shader parameter struct and defines its static metadata accessor. */
@@ -332,15 +332,15 @@ namespace arda::backend
         FArdaShaderLastMemberId;                                                                                 \
     public:                                                                                                      \
         /** @return Immutable metadata for this shader parameter struct. */                                     \
-        static const ::arda::backend::FArdaShaderParameterMetadata& GetStaticMetadata()                         \
+        static const ::arda::FArdaShaderParameterMetadata& GetStaticMetadata()                         \
         {                                                                                                        \
             static_assert(eastl::is_standard_layout_v<FArdaShaderThisStruct>,                                   \
                 "Shader parameter structs must use standard layout.");                                          \
-            static const ::arda::backend::FArdaShaderParameterMetadata Metadata = []                            \
+            static const ::arda::FArdaShaderParameterMetadata Metadata = []                            \
             {                                                                                                    \
-                eastl::vector<::arda::backend::FArdaShaderParameterMember> Members;                             \
+                eastl::vector<::arda::FArdaShaderParameterMember> Members;                             \
                 FArdaAppendShaderMembers(FArdaShaderLastMemberId{}, Members);                                    \
-                return ::arda::backend::FArdaShaderParameterMetadata(                                           \
+                return ::arda::FArdaShaderParameterMetadata(                                           \
                     FArdaShaderStructName, sizeof(FArdaShaderThisStruct), alignof(FArdaShaderThisStruct),       \
                     eastl::move(Members));                                                                        \
             }();                                                                                                 \
@@ -355,99 +355,99 @@ namespace arda::backend
  */
 #define ARDA_SHADER_PARAMETER_VALUE(CppType, MemberName)                                                        \
     ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(                                                                       \
-        ::arda::backend::EArdaShaderParameterKind::Value,                                                       \
-        ::arda::rhi::EArdaRHIBindingType::TextureSRV, CppType, MemberName, 0, 0,                               \
-        ::arda::rhi::EArdaRHIShaderStage::None)
+        ::arda::EArdaShaderParameterKind::Value,                                                       \
+        ::arda::EArdaRHIBindingType::TextureSRV, CppType, MemberName, 0, 0,                               \
+        ::arda::EArdaRHIShaderStage::None)
 
 /** Declares a texture SRV member with the specified name, slot, space, and visibility. */
 #define ARDA_SHADER_TEXTURE_SRV(MemberName, Slot, Space, Visibility)                                            \
     ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(                                                                       \
-        ::arda::backend::EArdaShaderParameterKind::TextureSRV,                                                 \
-        ::arda::rhi::EArdaRHIBindingType::TextureSRV, ::arda::rhi::FArdaRHITextureRef,                         \
+        ::arda::EArdaShaderParameterKind::TextureSRV,                                                 \
+        ::arda::EArdaRHIBindingType::TextureSRV, ::arda::FArdaRHITextureRef,                         \
         MemberName, Slot, Space, Visibility)
 /** Declares a texture UAV member with the specified name, slot, space, and visibility. */
 #define ARDA_SHADER_TEXTURE_UAV(MemberName, Slot, Space, Visibility)                                            \
     ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(                                                                       \
-        ::arda::backend::EArdaShaderParameterKind::TextureUAV,                                                 \
-        ::arda::rhi::EArdaRHIBindingType::TextureUAV, ::arda::rhi::FArdaRHITextureRef,                         \
+        ::arda::EArdaShaderParameterKind::TextureUAV,                                                 \
+        ::arda::EArdaRHIBindingType::TextureUAV, ::arda::FArdaRHITextureRef,                         \
         MemberName, Slot, Space, Visibility)
 /** Declares a structured-buffer SRV member with the specified binding. */
 #define ARDA_SHADER_BUFFER_SRV(MemberName, Slot, Space, Visibility)                                             \
     ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(                                                                       \
-        ::arda::backend::EArdaShaderParameterKind::BufferSRV,                                                  \
-        ::arda::rhi::EArdaRHIBindingType::StructuredBufferSRV, ::arda::rhi::FArdaRHIBufferRef,                 \
+        ::arda::EArdaShaderParameterKind::BufferSRV,                                                  \
+        ::arda::EArdaRHIBindingType::StructuredBufferSRV, ::arda::FArdaRHIBufferRef,                 \
         MemberName, Slot, Space, Visibility)
 /** Declares a structured-buffer UAV member with the specified binding. */
 #define ARDA_SHADER_BUFFER_UAV(MemberName, Slot, Space, Visibility)                                             \
     ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(                                                                       \
-        ::arda::backend::EArdaShaderParameterKind::BufferUAV,                                                  \
-        ::arda::rhi::EArdaRHIBindingType::StructuredBufferUAV, ::arda::rhi::FArdaRHIBufferRef,                 \
+        ::arda::EArdaShaderParameterKind::BufferUAV,                                                  \
+        ::arda::EArdaRHIBindingType::StructuredBufferUAV, ::arda::FArdaRHIBufferRef,                 \
         MemberName, Slot, Space, Visibility)
 /** Declares a constant-buffer member with the specified binding. */
 #define ARDA_SHADER_CONSTANT_BUFFER(MemberName, Slot, Space, Visibility)                                        \
     ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(                                                                       \
-        ::arda::backend::EArdaShaderParameterKind::ConstantBuffer,                                             \
-        ::arda::rhi::EArdaRHIBindingType::ConstantBuffer, ::arda::rhi::FArdaRHIBufferRef,                      \
+        ::arda::EArdaShaderParameterKind::ConstantBuffer,                                             \
+        ::arda::EArdaRHIBindingType::ConstantBuffer, ::arda::FArdaRHIBufferRef,                      \
         MemberName, Slot, Space, Visibility)
 /** Declares a typed uniform-buffer member with the specified binding. */
 #define ARDA_SHADER_UNIFORM_BUFFER(MemberName, Slot, Space, Visibility)                                         \
     ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(                                                                       \
-        ::arda::backend::EArdaShaderParameterKind::UniformBuffer,                                              \
-        ::arda::rhi::EArdaRHIBindingType::ConstantBuffer, ::arda::rhi::FArdaRHIUniformBufferRef,               \
+        ::arda::EArdaShaderParameterKind::UniformBuffer,                                              \
+        ::arda::EArdaRHIBindingType::ConstantBuffer, ::arda::FArdaRHIUniformBufferRef,               \
         MemberName, Slot, Space, Visibility)
 /** Declares a sampler member with the specified binding. */
 #define ARDA_SHADER_SAMPLER(MemberName, Slot, Space, Visibility)                                                \
     ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(                                                                       \
-        ::arda::backend::EArdaShaderParameterKind::Sampler,                                                    \
-        ::arda::rhi::EArdaRHIBindingType::Sampler, ::arda::rhi::FArdaRHISamplerRef,                            \
+        ::arda::EArdaShaderParameterKind::Sampler,                                                    \
+        ::arda::EArdaRHIBindingType::Sampler, ::arda::FArdaRHISamplerRef,                            \
         MemberName, Slot, Space, Visibility)
 /** Declares a ray-tracing acceleration-structure member with the specified binding. */
 #define ARDA_SHADER_ACCELERATION_STRUCTURE(MemberName, Slot, Space, Visibility)                                 \
     ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(                                                                       \
-        ::arda::backend::EArdaShaderParameterKind::AccelerationStructure,                                      \
-        ::arda::rhi::EArdaRHIBindingType::RayTracingAccelStruct, ::arda::rhi::FArdaRHIAccelStructRef,          \
+        ::arda::EArdaShaderParameterKind::AccelerationStructure,                                      \
+        ::arda::EArdaRHIBindingType::RayTracingAccelStruct, ::arda::FArdaRHIAccelStructRef,          \
         MemberName, Slot, Space, Visibility)
 /** Declares a fixed-size texture SRV array with the specified binding and count. */
 #define ARDA_SHADER_TEXTURE_SRV_ARRAY(MemberName, Slot, Space, Count, Visibility)                               \
     ARDA_INTERNAL_SHADER_PARAMETER(                                                                              \
-        ::arda::backend::EArdaShaderParameterKind::TextureSRV,                                                 \
-        ::arda::rhi::EArdaRHIBindingType::TextureSRV, ::arda::rhi::FArdaRHITextureRef,                         \
+        ::arda::EArdaShaderParameterKind::TextureSRV,                                                 \
+        ::arda::EArdaRHIBindingType::TextureSRV, ::arda::FArdaRHITextureRef,                         \
         MemberName, Slot, Space, Count, Visibility)
 /** Declares a fixed-size texture UAV array with the specified binding and count. */
 #define ARDA_SHADER_TEXTURE_UAV_ARRAY(MemberName, Slot, Space, Count, Visibility)                               \
     ARDA_INTERNAL_SHADER_PARAMETER(                                                                              \
-        ::arda::backend::EArdaShaderParameterKind::TextureUAV,                                                 \
-        ::arda::rhi::EArdaRHIBindingType::TextureUAV, ::arda::rhi::FArdaRHITextureRef,                         \
+        ::arda::EArdaShaderParameterKind::TextureUAV,                                                 \
+        ::arda::EArdaRHIBindingType::TextureUAV, ::arda::FArdaRHITextureRef,                         \
         MemberName, Slot, Space, Count, Visibility)
 /** Declares a fixed-size structured-buffer SRV array with the specified binding and count. */
 #define ARDA_SHADER_BUFFER_SRV_ARRAY(MemberName, Slot, Space, Count, Visibility)                                \
     ARDA_INTERNAL_SHADER_PARAMETER(                                                                              \
-        ::arda::backend::EArdaShaderParameterKind::BufferSRV,                                                  \
-        ::arda::rhi::EArdaRHIBindingType::StructuredBufferSRV, ::arda::rhi::FArdaRHIBufferRef,                 \
+        ::arda::EArdaShaderParameterKind::BufferSRV,                                                  \
+        ::arda::EArdaRHIBindingType::StructuredBufferSRV, ::arda::FArdaRHIBufferRef,                 \
         MemberName, Slot, Space, Count, Visibility)
 /** Declares a fixed-size structured-buffer UAV array with the specified binding and count. */
 #define ARDA_SHADER_BUFFER_UAV_ARRAY(MemberName, Slot, Space, Count, Visibility)                                \
     ARDA_INTERNAL_SHADER_PARAMETER(                                                                              \
-        ::arda::backend::EArdaShaderParameterKind::BufferUAV,                                                  \
-        ::arda::rhi::EArdaRHIBindingType::StructuredBufferUAV, ::arda::rhi::FArdaRHIBufferRef,                 \
+        ::arda::EArdaShaderParameterKind::BufferUAV,                                                  \
+        ::arda::EArdaRHIBindingType::StructuredBufferUAV, ::arda::FArdaRHIBufferRef,                 \
         MemberName, Slot, Space, Count, Visibility)
 /** Declares a fixed-size sampler array with the specified binding and count. */
 #define ARDA_SHADER_SAMPLER_ARRAY(MemberName, Slot, Space, Count, Visibility)                                   \
     ARDA_INTERNAL_SHADER_PARAMETER(                                                                              \
-        ::arda::backend::EArdaShaderParameterKind::Sampler,                                                    \
-        ::arda::rhi::EArdaRHIBindingType::Sampler, ::arda::rhi::FArdaRHISamplerRef,                            \
+        ::arda::EArdaShaderParameterKind::Sampler,                                                    \
+        ::arda::EArdaRHIBindingType::Sampler, ::arda::FArdaRHISamplerRef,                            \
         MemberName, Slot, Space, Count, Visibility)
 /** Declares a fixed-size acceleration-structure array with the specified binding and count. */
 #define ARDA_SHADER_ACCELERATION_STRUCTURE_ARRAY(MemberName, Slot, Space, Count, Visibility)                    \
     ARDA_INTERNAL_SHADER_PARAMETER(                                                                              \
-        ::arda::backend::EArdaShaderParameterKind::AccelerationStructure,                                      \
-        ::arda::rhi::EArdaRHIBindingType::RayTracingAccelStruct, ::arda::rhi::FArdaRHIAccelStructRef,          \
+        ::arda::EArdaShaderParameterKind::AccelerationStructure,                                      \
+        ::arda::EArdaRHIBindingType::RayTracingAccelStruct, ::arda::FArdaRHIAccelStructRef,          \
         MemberName, Slot, Space, Count, Visibility)
 /** Declares a typed push-constant block with the specified binding and visibility. */
 #define ARDA_SHADER_PUSH_CONSTANTS(CppType, MemberName, Slot, Space, Visibility)                                \
     ARDA_INTERNAL_SHADER_PARAMETER_SCALAR(                                                                       \
-        ::arda::backend::EArdaShaderParameterKind::PushConstants,                                              \
-        ::arda::rhi::EArdaRHIBindingType::PushConstants, CppType, MemberName, Slot, Space, Visibility)
+        ::arda::EArdaShaderParameterKind::PushConstants,                                              \
+        ::arda::EArdaRHIBindingType::PushConstants, CppType, MemberName, Slot, Space, Visibility)
 
 /**
  * Declares a nested shader parameter struct member.
@@ -464,12 +464,12 @@ namespace arda::backend
         /** Appends metadata for the generated nested shader parameter member. */                               \
         static void FArdaAppendShaderMembers(                                                                    \
             FArdaShaderNextMemberId##MemberName,                                                                 \
-            eastl::vector<::arda::backend::FArdaShaderParameterMember>& Members)                                \
+            eastl::vector<::arda::FArdaShaderParameterMember>& Members)                                \
         {                                                                                                        \
             FArdaAppendShaderMembers(FArdaShaderMemberId##MemberName{}, Members);                               \
-            Members.push_back({#MemberName, ::arda::backend::EArdaShaderParameterKind::NestedStruct,           \
-                ::arda::rhi::EArdaRHIBindingType::TextureSRV, 0, 0, 1,                                         \
+            Members.push_back({#MemberName, ::arda::EArdaShaderParameterKind::NestedStruct,           \
+                ::arda::EArdaRHIBindingType::TextureSRV, 0, 0, 1,                                         \
                 offsetof(FArdaShaderThisStruct, MemberName), sizeof(StructType), sizeof(StructType),            \
-                ::arda::rhi::EArdaRHIShaderStage::None, &StructType::GetStaticMetadata()});                     \
+                ::arda::EArdaRHIShaderStage::None, &StructType::GetStaticMetadata()});                     \
         }                                                                                                        \
         typedef FArdaShaderNextMemberId##MemberName

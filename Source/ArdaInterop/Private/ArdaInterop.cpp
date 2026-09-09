@@ -2,9 +2,9 @@
 
 #include "ArdaInterop.h"
 
-namespace arda::interop
+namespace arda
 {
-    const char* GetModuleName() noexcept
+    const char* GetInteropModuleName() noexcept
     {
         return "ArdaInterop";
     }

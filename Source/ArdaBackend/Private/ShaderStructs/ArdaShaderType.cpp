@@ -13,7 +13,7 @@
 #include <mutex>
 #include <string>
 
-namespace arda::backend
+namespace arda
 {
     namespace
     {
@@ -34,18 +34,18 @@ namespace arda::backend
 
         uint64_t HashIdentity(const FArdaShaderType& Type)
         {
-            uint64_t Hash = private_api::ArdaFnv1a64OffsetBasis;
+            uint64_t Hash = arda::ArdaFnv1a64OffsetBasis;
             const auto Append = [&Hash](const char* Text)
             {
                 if (Text == nullptr)
                     return;
                 while (*Text != '\0')
                 {
-                    private_api::AppendFnv1a64(Hash, Text, 1);
+                    AppendArdaFnv1a64(Hash, Text, 1);
                     ++Text;
                 }
                 const uint8_t Delimiter = 0xffu;
-                private_api::AppendFnv1a64(
+                AppendArdaFnv1a64(
                     Hash, &Delimiter, sizeof(Delimiter));
             };
             Append(Type.GetSourceStem());
@@ -53,7 +53,7 @@ namespace arda::backend
             Append(Type.GetEntryPoint());
             const auto AppendUint32 = [&Hash](uint32_t Value)
             {
-                private_api::AppendFnv1a64LittleEndian(
+                AppendArdaFnv1a64LittleEndian(
                     Hash, Value, sizeof(Value));
             };
             AppendUint32(static_cast<uint32_t>(Type.GetStage()));
@@ -184,7 +184,7 @@ namespace arda::backend
         const char* SourceStem,
         const char* OutputStem,
         const char* EntryPoint,
-        rhi::EArdaRHIShaderStage Stage,
+        arda::EArdaRHIShaderStage Stage,
         FArdaShaderType::FParameterMetadataFunction ParameterMetadataFunction,
         uint32_t PermutationCount,
         FArdaShaderType::FShouldCompilePermutationFunction
@@ -287,7 +287,7 @@ namespace arda::backend
                 const FArdaShaderType* Type = Candidate.get();
                 if (*Type->GetName() == '\0' || *Type->GetSourceStem() == '\0' ||
                     *Type->GetEntryPoint() == '\0' ||
-                    Type->GetStage() == rhi::EArdaRHIShaderStage::None ||
+                    Type->GetStage() == arda::EArdaRHIShaderStage::None ||
                     !IsPortableArtifactStem(Type->GetOutputStem()))
                 {
                     return Error(
@@ -336,7 +336,7 @@ namespace arda::backend
                 }
                 if (Metadata != nullptr)
                 {
-                    eastl::vector<rhi::FArdaRHIBindingLayoutDesc> Layouts;
+                    eastl::vector<arda::FArdaRHIBindingLayoutDesc> Layouts;
                     const FArdaShaderStructStatus LayoutStatus =
                         Metadata->BuildBindingLayoutDescs(Layouts);
                     if (!LayoutStatus)

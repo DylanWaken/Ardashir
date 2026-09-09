@@ -27,9 +27,9 @@
 
 namespace
 {
-    arda::backend::IArdaBackendModule* FindLinkedTestBackendModule()
+    arda::IArdaBackendModule* FindLinkedTestBackendModule()
     {
-        using namespace arda::backend;
+        using namespace arda;
         if (IArdaBackendModule* Module = FindDefaultBackendModule())
         {
             return Module;
@@ -45,30 +45,30 @@ namespace
     public:
         ~FExternalTestCleanup()
         {
-            arda::backend::ShutdownBackend();
+            arda::ShutdownBackend();
             for (auto It = mResourceProviders.rbegin();
                 It != mResourceProviders.rend(); ++It)
             {
                 static_cast<void>(
-                    arda::backend::UnregisterExternalResourceProvider(**It));
+                    arda::UnregisterExternalResourceProvider(**It));
             }
             for (auto It = mDeviceProviders.rbegin();
                 It != mDeviceProviders.rend(); ++It)
             {
                 static_cast<void>(
-                    arda::backend::UnregisterExternalDeviceProvider(**It));
+                    arda::UnregisterExternalDeviceProvider(**It));
             }
             // ConfigureBackend(backend/name) deliberately preserves the rest
             // of the current configuration. Restore defaults before any
             // stack-owned diagnostic callback or provider is destroyed so a
             // later test cannot inherit an expired non-owning pointer.
-            static_cast<void>(arda::backend::ConfigureBackend(
-                arda::backend::FArdaBackendConfiguration{}));
+            static_cast<void>(arda::ConfigureBackend(
+                arda::FArdaBackendConfiguration{}));
         }
 
-        bool Register(arda::backend::IArdaExternalDeviceProvider& Provider)
+        bool Register(arda::IArdaExternalDeviceProvider& Provider)
         {
-            if (!arda::backend::RegisterExternalDeviceProvider(Provider))
+            if (!arda::RegisterExternalDeviceProvider(Provider))
                 return false;
             for (const auto* Existing : mDeviceProviders)
                 if (Existing == &Provider)
@@ -77,9 +77,9 @@ namespace
             return true;
         }
 
-        bool Register(arda::backend::IArdaExternalResourceProvider& Provider)
+        bool Register(arda::IArdaExternalResourceProvider& Provider)
         {
-            if (!arda::backend::RegisterExternalResourceProvider(Provider))
+            if (!arda::RegisterExternalResourceProvider(Provider))
                 return false;
             for (const auto* Existing : mResourceProviders)
                 if (Existing == &Provider)
@@ -89,20 +89,20 @@ namespace
         }
 
     private:
-        std::vector<arda::backend::IArdaExternalDeviceProvider*> mDeviceProviders;
-        std::vector<arda::backend::IArdaExternalResourceProvider*> mResourceProviders;
+        std::vector<arda::IArdaExternalDeviceProvider*> mDeviceProviders;
+        std::vector<arda::IArdaExternalResourceProvider*> mResourceProviders;
     };
 
     class FCollectingDiagnosticCallback final
-        : public arda::backend::IArdaDiagnosticCallback
+        : public arda::IArdaDiagnosticCallback
     {
     public:
         void Message(
-            arda::backend::EArdaDiagnosticSeverity Severity,
+            arda::EArdaDiagnosticSeverity Severity,
             const char*) override
         {
-            if (Severity == arda::backend::EArdaDiagnosticSeverity::Error ||
-                Severity == arda::backend::EArdaDiagnosticSeverity::Fatal)
+            if (Severity == arda::EArdaDiagnosticSeverity::Error ||
+                Severity == arda::EArdaDiagnosticSeverity::Fatal)
                 mErrors.fetch_add(1, std::memory_order_relaxed);
         }
 
@@ -116,13 +116,13 @@ namespace
     };
 
     class FTestDeviceProvider final
-        : public arda::backend::IArdaExternalDeviceProvider
+        : public arda::IArdaExternalDeviceProvider
     {
     public:
         const char* mBackendName = "native-vulkan";
         eastl::shared_ptr<void> mToken;
 #if defined(_WIN32)
-        arda::backend::FArdaExternalDeviceDesc mExternal;
+        arda::FArdaExternalDeviceDesc mExternal;
         bool mbSupplyD3D12 = false;
 #endif
 
@@ -132,7 +132,7 @@ namespace
         }
 #if defined(_WIN32)
         bool GetExternalDeviceDesc(
-            arda::backend::FArdaExternalDeviceDesc& OutDesc) const override
+            arda::FArdaExternalDeviceDesc& OutDesc) const override
         {
             OutDesc = mExternal;
             return mbSupplyD3D12;
@@ -145,17 +145,17 @@ namespace
     };
 
     class FTestResourceProvider final
-        : public arda::backend::IArdaExternalResourceProvider
+        : public arda::IArdaExternalResourceProvider
     {
     public:
         const char* mName = "test.resources";
         const char* mBackendName = "native-vulkan";
-        arda::rhi::FArdaRHIStatus mTextureStatus =
-            arda::rhi::FArdaRHIStatus::Success();
-        arda::rhi::FArdaRHIStatus mBufferStatus =
-            arda::rhi::FArdaRHIStatus::Success();
-        arda::rhi::FArdaRHINativeTextureImportDesc mTexture;
-        arda::rhi::FArdaRHINativeBufferImportDesc mBuffer;
+        arda::FArdaRHIStatus mTextureStatus =
+            arda::FArdaRHIStatus::Success();
+        arda::FArdaRHIStatus mBufferStatus =
+            arda::FArdaRHIStatus::Success();
+        arda::FArdaRHINativeTextureImportDesc mTexture;
+        arda::FArdaRHINativeBufferImportDesc mBuffer;
         uint64_t mLastTextureId = 0;
         uint64_t mLastBufferId = 0;
 
@@ -164,17 +164,17 @@ namespace
         {
             return mBackendName;
         }
-        arda::rhi::FArdaRHIStatus ResolveNativeTexture(
+        arda::FArdaRHIStatus ResolveNativeTexture(
             uint64_t Id,
-            arda::rhi::FArdaRHINativeTextureImportDesc& OutDesc) override
+            arda::FArdaRHINativeTextureImportDesc& OutDesc) override
         {
             mLastTextureId = Id;
             OutDesc = mTexture;
             return mTextureStatus;
         }
-        arda::rhi::FArdaRHIStatus ResolveNativeBuffer(
+        arda::FArdaRHIStatus ResolveNativeBuffer(
             uint64_t Id,
-            arda::rhi::FArdaRHINativeBufferImportDesc& OutDesc) override
+            arda::FArdaRHINativeBufferImportDesc& OutDesc) override
         {
             mLastBufferId = Id;
             OutDesc = mBuffer;
@@ -182,61 +182,61 @@ namespace
         }
     };
 
-    class FTestBackendModule final : public arda::backend::IArdaBackendModule
+    class FTestBackendModule final : public arda::IArdaBackendModule
     {
     public:
-        arda::backend::EArdaInitializeResult mCreateResult =
-            arda::backend::EArdaInitializeResult::Failure;
+        arda::EArdaInitializeResult mCreateResult =
+            arda::EArdaInitializeResult::Failure;
 
         explicit FTestBackendModule(const char* Name)
         {
             mDescriptor.mName = Name;
             mDescriptor.mDisplayName = "Test backend";
             mDescriptor.mShaderBinaryFormat =
-                arda::backend::EArdaShaderBinaryFormat::BackendDefined;
+                arda::EArdaShaderBinaryFormat::BackendDefined;
             mDescriptor.mShaderArtifactExtension = ".testbin";
             mDescriptor.mbSupportsOwnedDevice = true;
         }
 
-        const arda::backend::FArdaBackendModuleDescriptor&
+        const arda::FArdaBackendModuleDescriptor&
         GetDescriptor() const noexcept override
         {
             return mDescriptor;
         }
 
-        arda::backend::FArdaBackendDeviceCreateResult CreateDevice(
-            const arda::backend::FArdaBackendConfiguration&,
-            arda::backend::IArdaWindowSurface*,
-            const arda::backend::IArdaExternalDeviceProvider*) override
+        arda::FArdaBackendDeviceCreateResult CreateDevice(
+            const arda::FArdaBackendConfiguration&,
+            arda::IArdaWindowSurface*,
+            const arda::IArdaExternalDeviceProvider*) override
         {
-            arda::backend::FArdaBackendDeviceCreateResult Result;
+            arda::FArdaBackendDeviceCreateResult Result;
             Result.mResult = mCreateResult;
             Result.mError = "Test device initialization result";
             return Result;
         }
 
-        arda::rhi::FArdaRHIStatus ConfigureShaderCompileInvocation(
-            arda::backend::FArdaBackendShaderCompileInvocation&) const override
+        arda::FArdaRHIStatus ConfigureShaderCompileInvocation(
+            arda::FArdaBackendShaderCompileInvocation&) const override
         {
-            return arda::rhi::FArdaRHIStatus::Success();
+            return arda::FArdaRHIStatus::Success();
         }
 
     private:
-        arda::backend::FArdaBackendModuleDescriptor mDescriptor;
+        arda::FArdaBackendModuleDescriptor mDescriptor;
     };
 }
 
 TEST(ArdaBackendPrivateUtilities, Fnv1aUsesTheCanonical64BitDefinition)
 {
-    uint64_t Hash = arda::private_api::ArdaFnv1a64OffsetBasis;
+    uint64_t Hash = arda::ArdaFnv1a64OffsetBasis;
     constexpr char Value[] = "hello";
-    arda::private_api::AppendFnv1a64(Hash, Value, sizeof(Value) - 1);
+    arda::AppendArdaFnv1a64(Hash, Value, sizeof(Value) - 1);
     EXPECT_EQ(Hash, 0xa430d84680aabd0bull);
 }
 
 TEST(ArdaBackend, LinkableBackendRegistrySelectsStableNamedModules)
 {
-    using namespace arda::backend;
+    using namespace arda;
     ShutdownBackend();
     const FArdaBackendConfiguration Original = GetBackendConfiguration();
     FTestBackendModule Module("test-custom-rhi");
@@ -268,7 +268,7 @@ TEST(ArdaBackend, LinkableBackendRegistrySelectsStableNamedModules)
 
 TEST(ArdaBackend, InitializationDistinguishesMissingValidationFromDeviceFailure)
 {
-    using namespace arda::backend;
+    using namespace arda;
     ShutdownBackend();
     const FArdaBackendConfiguration Original = GetBackendConfiguration();
     FTestBackendModule Module("test-initialization-result");
@@ -294,7 +294,7 @@ TEST(ArdaBackend, InitializationDistinguishesMissingValidationFromDeviceFailure)
 
 TEST(ArdaBackend, NativeApisAreRegisteredAsSeparateBackendModules)
 {
-    using namespace arda::backend;
+    using namespace arda;
     IArdaBackendModule* Vulkan = FindBackendModule("native-vulkan");
 #if defined(ARDA_TEST_NATIVE_VULKAN)
     ASSERT_NE(Vulkan, nullptr);
@@ -315,7 +315,7 @@ TEST(ArdaBackend, NativeApisAreRegisteredAsSeparateBackendModules)
 
 TEST(ArdaBackend, ExternalDeviceProviderRegistrationIsDeterministic)
 {
-    using namespace arda::backend;
+    using namespace arda;
     ShutdownBackend();
     FTestDeviceProvider First;
     FTestDeviceProvider Collision;
@@ -336,7 +336,7 @@ TEST(ArdaBackend, ExternalDeviceProviderRegistrationIsDeterministic)
 
 TEST(ArdaBackend, ExternalDeviceSourceReportsMissingAndMismatchedProviders)
 {
-    using namespace arda::backend;
+    using namespace arda;
     ShutdownBackend();
     FTestDeviceProvider Provider;
     FExternalTestCleanup Cleanup;
@@ -361,7 +361,7 @@ TEST(ArdaBackend, ExternalDeviceSourceReportsMissingAndMismatchedProviders)
 
 TEST(ArdaBackend, NamedExternalResourceProviderRegistryIsDeterministic)
 {
-    using namespace arda::backend;
+    using namespace arda;
     ShutdownBackend();
     FTestResourceProvider Empty;
     Empty.mName = "";
@@ -387,21 +387,20 @@ TEST(ArdaBackend, NamedExternalResourceProviderRegistryIsDeterministic)
 TEST(ArdaBackend, NamedExternalResourceImportFailsCleanly)
 {
     using namespace arda;
-    using namespace backend;
     ShutdownBackend();
     FTestResourceProvider Provider;
     FExternalTestCleanup Cleanup;
 
     auto Missing = ImportExternalBuffer("missing.resources", 11);
     EXPECT_FALSE(Missing);
-    EXPECT_EQ(Missing.mStatus.mCode, rhi::EArdaRHIResult::InvalidArgument);
+    EXPECT_EQ(Missing.mStatus.mCode, arda::EArdaRHIResult::InvalidArgument);
 
     ASSERT_TRUE(Cleanup.Register(Provider));
     auto Uninitialized = ImportExternalBuffer(Provider.mName, 12);
     EXPECT_FALSE(Uninitialized);
     EXPECT_EQ(
         Uninitialized.mStatus.mCode,
-        rhi::EArdaRHIResult::InvalidState);
+        arda::EArdaRHIResult::InvalidState);
 
     IArdaBackendModule* Module = FindLinkedTestBackendModule();
     ASSERT_NE(Module, nullptr);
@@ -415,30 +414,30 @@ TEST(ArdaBackend, NamedExternalResourceImportFailsCleanly)
     Provider.mBackendName = "not-the-configured-module";
     auto WrongBackend = ImportExternalBuffer(Provider.mName, 13);
     EXPECT_FALSE(WrongBackend);
-    EXPECT_EQ(WrongBackend.mStatus.mCode, rhi::EArdaRHIResult::WrongDevice);
+    EXPECT_EQ(WrongBackend.mStatus.mCode, arda::EArdaRHIResult::WrongDevice);
 
     Provider.mBackendName = Module->GetDescriptor().mName.c_str();
-    Provider.mBufferStatus = rhi::FArdaRHIStatus::Error(
-        rhi::EArdaRHIResult::BackendFailure,
+    Provider.mBufferStatus = arda::FArdaRHIStatus::Error(
+        arda::EArdaRHIResult::BackendFailure,
         "provider-specific buffer failure");
     auto ProviderFailure = ImportExternalBuffer(Provider.mName, 14);
     EXPECT_FALSE(ProviderFailure);
     EXPECT_EQ(
         ProviderFailure.mStatus.mCode,
-        rhi::EArdaRHIResult::BackendFailure);
+        arda::EArdaRHIResult::BackendFailure);
     EXPECT_STREQ(
         ProviderFailure.mStatus.mMessage.c_str(),
         "provider-specific buffer failure");
     EXPECT_EQ(Provider.mLastBufferId, 14u);
 
-    Provider.mTextureStatus = rhi::FArdaRHIStatus::Error(
-        rhi::EArdaRHIResult::InvalidArgument,
+    Provider.mTextureStatus = arda::FArdaRHIStatus::Error(
+        arda::EArdaRHIResult::InvalidArgument,
         "provider-specific texture failure");
     auto TextureFailure = ImportExternalTexture(Provider.mName, 15);
     EXPECT_FALSE(TextureFailure);
     EXPECT_EQ(
         TextureFailure.mStatus.mCode,
-        rhi::EArdaRHIResult::InvalidArgument);
+        arda::EArdaRHIResult::InvalidArgument);
     EXPECT_STREQ(
         TextureFailure.mStatus.mMessage.c_str(),
         "provider-specific texture failure");
@@ -447,7 +446,7 @@ TEST(ArdaBackend, NamedExternalResourceImportFailsCleanly)
 
 TEST(ArdaBackend, ExposesSingleProcessWideConfigurationAndDevice)
 {
-    using namespace arda::backend;
+    using namespace arda;
 
     ShutdownBackend();
     ASSERT_TRUE(ConfigureBackend(FArdaBackendConfiguration{}));
@@ -455,12 +454,12 @@ TEST(ArdaBackend, ExposesSingleProcessWideConfigurationAndDevice)
     EXPECT_FALSE(GetBackendConfiguration().mBackendName.empty());
     EXPECT_FALSE(IsBackendInitialized());
     EXPECT_EQ(GetDevice(), nullptr);
-    EXPECT_STREQ(GetModuleName(), "ArdaBackend");
+    EXPECT_STREQ(GetBackendModuleName(), "ArdaBackend");
 }
 
 TEST(ArdaBackend, ValidatesAndResolvesShaderCacheConfiguration)
 {
-    using namespace arda::backend;
+    using namespace arda;
 
     ShutdownBackend();
     FArdaBackendConfiguration Configuration;
@@ -514,19 +513,19 @@ TEST(ArdaBackend, ValidatesAndResolvesShaderCacheConfiguration)
 
 TEST(ArdaBackend, ReportsQueueAvailabilityByArdaQueueType)
 {
-    arda::rhi::FArdaRHIQueueCapabilities Capabilities;
+    arda::FArdaRHIQueueCapabilities Capabilities;
     Capabilities.mbGraphics = true;
     Capabilities.mbCopy = true;
 
-    EXPECT_TRUE(Capabilities.IsSupported(arda::rhi::EArdaRHIQueueType::Graphics));
-    EXPECT_FALSE(Capabilities.IsSupported(arda::rhi::EArdaRHIQueueType::Compute));
-    EXPECT_TRUE(Capabilities.IsSupported(arda::rhi::EArdaRHIQueueType::Copy));
+    EXPECT_TRUE(Capabilities.IsSupported(arda::EArdaRHIQueueType::Graphics));
+    EXPECT_FALSE(Capabilities.IsSupported(arda::EArdaRHIQueueType::Compute));
+    EXPECT_TRUE(Capabilities.IsSupported(arda::EArdaRHIQueueType::Copy));
 }
 
 TEST(ArdaBackend, EmptyOpaqueDeviceReferencesAreSafe)
 {
-    arda::rhi::FArdaRHIDeviceRef First;
-    arda::rhi::FArdaRHIDeviceRef Second = First;
+    arda::FArdaRHIDeviceRef First;
+    arda::FArdaRHIDeviceRef Second = First;
     EXPECT_FALSE(First);
     EXPECT_FALSE(Second);
 }
@@ -535,8 +534,6 @@ TEST(ArdaBackend, EmptyOpaqueDeviceReferencesAreSafe)
 TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
     ShutdownBackend();
 
     Microsoft::WRL::ComPtr<ID3D12Device> NativeDevice;
@@ -567,9 +564,9 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
     DeviceProvider.mExternal.mNativeApi = "d3d12";
     DeviceProvider.mExternal.mDevice = FArdaNativeObject(NativeDevice.Get());
     DeviceProvider.mExternal.mQueues = {
-        { rhi::EArdaRHIQueueType::Graphics, FArdaNativeObject(GraphicsQueue.Get()) },
-        { rhi::EArdaRHIQueueType::Compute, FArdaNativeObject(ComputeQueue.Get()) },
-        { rhi::EArdaRHIQueueType::Copy, FArdaNativeObject(CopyQueue.Get()) }
+        { arda::EArdaRHIQueueType::Graphics, FArdaNativeObject(GraphicsQueue.Get()) },
+        { arda::EArdaRHIQueueType::Compute, FArdaNativeObject(ComputeQueue.Get()) },
+        { arda::EArdaRHIQueueType::Copy, FArdaNativeObject(CopyQueue.Get()) }
     };
 
     FTestResourceProvider ResourceProvider;
@@ -702,7 +699,7 @@ TEST(ArdaBackend, AdoptsRealExternalD3D12DeviceAndResources)
 
 TEST(ArdaBackend, InvalidExternalD3D12DescriptorsReportErrors)
 {
-    using namespace arda::backend;
+    using namespace arda;
     ShutdownBackend();
     Microsoft::WRL::ComPtr<ID3D12Device> NativeDevice;
     if (FAILED(D3D12CreateDevice(
@@ -739,7 +736,7 @@ TEST(ArdaBackend, InvalidExternalD3D12DescriptorsReportErrors)
 
     ASSERT_TRUE(UnregisterExternalDeviceProvider(Provider));
     Provider.mExternal.mQueues = {
-        { arda::rhi::EArdaRHIQueueType::Graphics, FArdaNativeObject(CopyQueue.Get()) }
+        { arda::EArdaRHIQueueType::Graphics, FArdaNativeObject(CopyQueue.Get()) }
     };
     ASSERT_TRUE(RegisterExternalDeviceProvider(Provider));
     const bool bInitialized = InitializeBackend();
@@ -752,8 +749,6 @@ TEST(ArdaBackend, InvalidExternalD3D12DescriptorsReportErrors)
 TEST(ArdaBackend, BorrowedD3D12TextureImportDeduplicatesAndReleases)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     ShutdownBackend();
     FArdaBackendConfiguration Configuration;
@@ -862,28 +857,28 @@ namespace
         return Result;
     }
 
-    arda::rhi::TArdaRHIResult<arda::rhi::FArdaRHIShaderRef>
+    arda::TArdaRHIResult<arda::FArdaRHIShaderRef>
     CreateArtifactShader(
-        arda::rhi::IArdaRHIDevice& Device,
+        arda::IArdaRHIDevice& Device,
         const char* BackendName,
         const char* Artifact,
         const char* EntryPoint,
-        arda::rhi::EArdaRHIShaderStage Stage)
+        arda::EArdaRHIShaderStage Stage)
     {
         using namespace arda;
         const eastl::string FileName = eastl::string(Artifact) +
-            backend::GetShaderArtifactExtension(BackendName);
+            arda::GetShaderArtifactExtension(BackendName);
         const auto Bytecode = LoadTestBinary(FileName.c_str());
         if (Bytecode.empty())
         {
             return {
                 {},
-                rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidState,
+                arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::InvalidState,
                     "A required backend test shader artifact is missing.")
             };
         }
-        rhi::FArdaRHIShaderDesc Desc;
+        arda::FArdaRHIShaderDesc Desc;
         Desc.mStage = Stage;
         Desc.mBytecode = Bytecode.data();
         Desc.mBytecodeSize = Bytecode.size();
@@ -892,9 +887,9 @@ namespace
         return Device.CreateShader(Desc);
     }
 
-    void VerifyAdvancedResources(arda::rhi::IArdaRHIDevice& Device)
+    void VerifyAdvancedResources(arda::IArdaRHIDevice& Device)
     {
-        using namespace arda::rhi;
+        using namespace arda;
 
         const auto& Capabilities = Device.GetCapabilities();
         const bool bWorkGraphs =
@@ -978,12 +973,12 @@ namespace
 
         if (Capabilities.mRayTracing.mbPipelineShaders)
         {
-            const arda::backend::IArdaBackendModule* ActiveModule =
-                arda::backend::GetActiveBackendModule();
+            const arda::IArdaBackendModule* ActiveModule =
+                arda::GetActiveBackendModule();
             ASSERT_NE(ActiveModule, nullptr);
             const bool bLibraryBytecode =
                 ActiveModule->GetDescriptor().mShaderBinaryFormat ==
-                arda::backend::EArdaShaderBinaryFormat::Dxil;
+                arda::EArdaShaderBinaryFormat::Dxil;
             const auto Bytecode = LoadTestBinary(
                 bLibraryBytecode
                     ? "ArdaRayTracingTest.dxil"
@@ -1075,7 +1070,7 @@ namespace
         const char* BackendName,
         bool bRequireComputeAndCopy)
     {
-        using namespace arda::backend;
+        using namespace arda;
 
         ShutdownBackend();
         ASSERT_TRUE(ConfigureBackend(BackendName));
@@ -1088,7 +1083,7 @@ namespace
         EXPECT_NE(GetDevice(), nullptr);
         EXPECT_EQ(GetBackendConfiguration().mBackendName, BackendName);
 
-        arda::rhi::FArdaRHIDeviceRef Device = GetDevice();
+        arda::FArdaRHIDeviceRef Device = GetDevice();
         const auto& Capabilities = Device->GetCapabilities().mQueues;
         EXPECT_TRUE(Capabilities.mbGraphics);
         EXPECT_EQ(
@@ -1103,15 +1098,15 @@ namespace
             EXPECT_TRUE(Capabilities.mbCopy);
         }
 
-        arda::rhi::FArdaRHIDeviceRef SharedDevice = Device;
+        arda::FArdaRHIDeviceRef SharedDevice = Device;
         EXPECT_EQ(SharedDevice.Get(), Device.Get());
 
-        constexpr arda::rhi::EArdaRHIQueueType Queues[] = {
-            arda::rhi::EArdaRHIQueueType::Graphics,
-            arda::rhi::EArdaRHIQueueType::Compute,
-            arda::rhi::EArdaRHIQueueType::Copy
+        constexpr arda::EArdaRHIQueueType Queues[] = {
+            arda::EArdaRHIQueueType::Graphics,
+            arda::EArdaRHIQueueType::Compute,
+            arda::EArdaRHIQueueType::Copy
         };
-        for (const arda::rhi::EArdaRHIQueueType Queue : Queues)
+        for (const arda::EArdaRHIQueueType Queue : Queues)
         {
             if (!Capabilities.IsSupported(Queue))
             {
@@ -1136,7 +1131,7 @@ namespace
         ShutdownBackend();
         EXPECT_TRUE(SharedDevice);
         EXPECT_TRUE(SharedDevice->GetCapabilities().mQueues.mbGraphics);
-        arda::rhi::FArdaRHISamplerDesc PostShutdownSampler;
+        arda::FArdaRHISamplerDesc PostShutdownSampler;
         EXPECT_TRUE(SharedDevice->CreateSampler(PostShutdownSampler));
         EXPECT_FALSE(IsBackendInitialized());
         EXPECT_EQ(GetDevice(), nullptr);
@@ -1146,7 +1141,7 @@ namespace
 #if defined(_WIN32) && defined(ARDA_TEST_NATIVE_D3D12)
 TEST(ArdaBackend, D3D12ValidationInitializationAllowsDxgiDebugFallback)
 {
-    using namespace arda::backend;
+    using namespace arda;
     ShutdownBackend();
     FExternalTestCleanup Cleanup;
     IArdaBackendModule* Module = FindBackendModule("native-d3d12");
@@ -1164,8 +1159,6 @@ TEST(ArdaBackend, D3D12ValidationInitializationAllowsDxgiDebugFallback)
 TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     FExternalTestCleanup Cleanup;
     size_t TestedBackends = 0;
@@ -1423,8 +1416,6 @@ TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
 TEST(ArdaBackend, NativeHostDeviceCopiesSupportBlockingAndAsyncReadback)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     FExternalTestCleanup Cleanup;
     size_t TestedBackends = 0;
@@ -1538,8 +1529,6 @@ TEST(ArdaBackend, NativeHostDeviceCopiesSupportBlockingAndAsyncReadback)
 TEST(ArdaBackend, VulkanMergesStageLayoutsThatShareARegisterSpace)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     ShutdownBackend();
     FCollectingDiagnosticCallback Diagnostics;
@@ -1688,8 +1677,6 @@ TEST(ArdaBackend, VulkanMergesStageLayoutsThatShareARegisterSpace)
 TEST(ArdaBackend, VulkanPreservesPerMipLayoutsAcrossClearAndCompute)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     ShutdownBackend();
     FCollectingDiagnosticCallback Diagnostics;

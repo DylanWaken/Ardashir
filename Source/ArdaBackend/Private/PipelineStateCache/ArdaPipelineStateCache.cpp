@@ -7,11 +7,11 @@
 #include <mutex>
 #include <type_traits>
 
-namespace arda::backend
+namespace arda
 {
     namespace
     {
-        using namespace rhi;
+
 
         FArdaRHIStatus Invalid(const char* Message)
         {
@@ -36,19 +36,19 @@ namespace arda::backend
             void AddString(const eastl::string& Value) noexcept
             {
                 Add(Value.size());
-                private_api::AppendFnv1a64(
+                AppendArdaFnv1a64(
                     mHash, Value.data(), Value.size());
             }
             uint64_t Finish() const noexcept
             {
-                return private_api::FinishPersistentHash(mHash);
+                return FinishArdaPersistentHash(mHash);
             }
         private:
             void AddUnsigned(uint64_t Value) noexcept
             {
-                private_api::AppendFnv1a64LittleEndian(mHash, Value);
+                AppendArdaFnv1a64LittleEndian(mHash, Value);
             }
-            uint64_t mHash = private_api::ArdaFnv1a64OffsetBasis;
+            uint64_t mHash = arda::ArdaFnv1a64OffsetBasis;
         };
 
         void HashShader(
@@ -358,19 +358,19 @@ namespace arda::backend
             bool mbInFlight = false;
         };
 
-        using FComputeEntry = TEntry<rhi::FArdaRHIComputePipelineDesc,
-            rhi::FArdaRHIComputePipelineRef>;
-        using FGraphicsEntry = TEntry<rhi::FArdaRHIGraphicsPipelineDesc,
-            rhi::FArdaRHIGraphicsPipelineRef>;
-        using FMeshletEntry = TEntry<rhi::FArdaRHIMeshletPipelineDesc,
-            rhi::FArdaRHIMeshletPipelineRef>;
-        using FRayTracingEntry = TEntry<rhi::FArdaRHIRayTracingPipelineDesc,
-            rhi::FArdaRHIRayTracingPipelineRef>;
-        using FWorkGraphEntry = TEntry<rhi::FArdaRHIWorkGraphPipelineDesc,
-            rhi::FArdaRHIWorkGraphPipelineRef>;
+        using FComputeEntry = TEntry<arda::FArdaRHIComputePipelineDesc,
+            arda::FArdaRHIComputePipelineRef>;
+        using FGraphicsEntry = TEntry<arda::FArdaRHIGraphicsPipelineDesc,
+            arda::FArdaRHIGraphicsPipelineRef>;
+        using FMeshletEntry = TEntry<arda::FArdaRHIMeshletPipelineDesc,
+            arda::FArdaRHIMeshletPipelineRef>;
+        using FRayTracingEntry = TEntry<arda::FArdaRHIRayTracingPipelineDesc,
+            arda::FArdaRHIRayTracingPipelineRef>;
+        using FWorkGraphEntry = TEntry<arda::FArdaRHIWorkGraphPipelineDesc,
+            arda::FArdaRHIWorkGraphPipelineRef>;
 
         explicit FImpl(
-            rhi::FArdaRHIDeviceRef InDevice,
+            arda::FArdaRHIDeviceRef InDevice,
             FArdaPipelineStateCacheConfiguration InConfiguration)
             : mDevice(eastl::move(InDevice)), mConfiguration(InConfiguration)
         {
@@ -397,7 +397,7 @@ namespace arda::backend
 
         void AddDiagnostic(
             EArdaPipelineStateKind Kind,
-            const rhi::FArdaRHIStatus& Status,
+            const arda::FArdaRHIStatus& Status,
             size_t Hash,
             const eastl::string& DebugName)
         {
@@ -409,24 +409,24 @@ namespace arda::backend
                 { Kind, Status.mCode, Hash, DebugName, Status.mMessage });
         }
 
-        rhi::FArdaRHIStatus CheckDevice(
-            const rhi::IArdaRHIDevice* RequestingDevice,
+        arda::FArdaRHIStatus CheckDevice(
+            const arda::IArdaRHIDevice* RequestingDevice,
             EArdaPipelineStateKind Kind,
             size_t Hash,
             const eastl::string& DebugName)
         {
             if (!mDevice)
             {
-                auto Status = rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidState,
+                auto Status = arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::InvalidState,
                     "Pipeline state cache has no device.");
                 AddDiagnostic(Kind, Status, Hash, DebugName);
                 return Status;
             }
             if (RequestingDevice != nullptr && RequestingDevice != mDevice.Get())
             {
-                auto Status = rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::WrongDevice,
+                auto Status = arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::WrongDevice,
                     "Pipeline state cache was used with a different device.");
                 AddDiagnostic(Kind, Status, Hash, DebugName);
                 return Status;
@@ -435,17 +435,17 @@ namespace arda::backend
         }
 
         template <typename Entry, typename Desc, typename Pipeline>
-        rhi::FArdaRHIStatus GetOrCreate(
+        arda::FArdaRHIStatus GetOrCreate(
             eastl::vector<Entry>& Entries,
             const Desc& CanonicalDesc,
-            const rhi::FArdaRHIStatus& PreparationStatus,
+            const arda::FArdaRHIStatus& PreparationStatus,
             EArdaPipelineStateKind Kind,
             size_t Capacity,
             Pipeline& OutPipeline,
-            const rhi::IArdaRHIDevice* RequestingDevice)
+            const arda::IArdaRHIDevice* RequestingDevice)
         {
             OutPipeline.Reset();
-            const size_t Hash = rhi::HashValue(CanonicalDesc);
+            const size_t Hash = arda::HashValue(CanonicalDesc);
             std::unique_lock<std::mutex> Lock(mMutex);
             if (auto Status = CheckDevice(
                     RequestingDevice, Kind, Hash,
@@ -534,7 +534,7 @@ namespace arda::backend
             return {};
         }
 
-        rhi::FArdaRHIDeviceRef mDevice;
+        arda::FArdaRHIDeviceRef mDevice;
         FArdaPipelineStateCacheConfiguration mConfiguration;
         mutable std::mutex mMutex;
         std::condition_variable mChanged;
@@ -553,7 +553,7 @@ namespace arda::backend
     };
 
     FArdaPipelineStateCache::FArdaPipelineStateCache(
-        rhi::FArdaRHIDeviceRef Device,
+        arda::FArdaRHIDeviceRef Device,
         FArdaPipelineStateCacheConfiguration Configuration)
         : mImpl(std::make_unique<FImpl>(eastl::move(Device), Configuration))
     {
@@ -561,28 +561,28 @@ namespace arda::backend
 
     FArdaPipelineStateCache::~FArdaPipelineStateCache() = default;
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateCompute(
+    arda::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateCompute(
         const FArdaComputePipelineStateInitializer& Initializer,
-        rhi::FArdaRHIComputePipelineRef& OutPipeline,
-        const rhi::IArdaRHIDevice* RequestingDevice)
+        arda::FArdaRHIComputePipelineRef& OutPipeline,
+        const arda::IArdaRHIDevice* RequestingDevice)
     {
         return mImpl->GetOrCreate(
             mImpl->mCompute,
             Initializer.mDesc,
-            rhi::FArdaRHIStatus::Success(),
+            arda::FArdaRHIStatus::Success(),
             EArdaPipelineStateKind::Compute,
             mImpl->mConfiguration.mMaxComputeEntries,
             OutPipeline,
             RequestingDevice);
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateGraphics(
+    arda::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateGraphics(
         const FArdaGraphicsPipelineStateInitializer& Initializer,
-        const rhi::FArdaRHIFramebufferRef& Framebuffer,
-        rhi::FArdaRHIGraphicsPipelineRef& OutPipeline,
-        const rhi::IArdaRHIDevice* RequestingDevice)
+        const arda::FArdaRHIFramebufferRef& Framebuffer,
+        arda::FArdaRHIGraphicsPipelineRef& OutPipeline,
+        const arda::IArdaRHIDevice* RequestingDevice)
     {
-        rhi::FArdaRHIGraphicsPipelineDesc Completed;
+        arda::FArdaRHIGraphicsPipelineDesc Completed;
         auto CompletionStatus = CompleteFramebufferDesc(
             Initializer.mDesc, Framebuffer, Completed);
         if (!CompletionStatus)
@@ -597,13 +597,13 @@ namespace arda::backend
             RequestingDevice);
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateMeshlet(
+    arda::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateMeshlet(
         const FArdaMeshletPipelineStateInitializer& Initializer,
-        const rhi::FArdaRHIFramebufferRef& Framebuffer,
-        rhi::FArdaRHIMeshletPipelineRef& OutPipeline,
-        const rhi::IArdaRHIDevice* RequestingDevice)
+        const arda::FArdaRHIFramebufferRef& Framebuffer,
+        arda::FArdaRHIMeshletPipelineRef& OutPipeline,
+        const arda::IArdaRHIDevice* RequestingDevice)
     {
-        rhi::FArdaRHIMeshletPipelineDesc Completed;
+        arda::FArdaRHIMeshletPipelineDesc Completed;
         auto CompletionStatus = CompleteFramebufferDesc(
             Initializer.mDesc, Framebuffer, Completed);
         if (!CompletionStatus)
@@ -618,96 +618,96 @@ namespace arda::backend
             RequestingDevice);
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateRayTracing(
+    arda::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateRayTracing(
         const FArdaRayTracingPipelineStateInitializer& Initializer,
-        rhi::FArdaRHIRayTracingPipelineRef& OutPipeline,
-        const rhi::IArdaRHIDevice* RequestingDevice)
+        arda::FArdaRHIRayTracingPipelineRef& OutPipeline,
+        const arda::IArdaRHIDevice* RequestingDevice)
     {
         return mImpl->GetOrCreate(
             mImpl->mRayTracing,
             Initializer.mDesc,
-            rhi::FArdaRHIStatus::Success(),
+            arda::FArdaRHIStatus::Success(),
             EArdaPipelineStateKind::RayTracing,
             mImpl->mConfiguration.mMaxRayTracingEntries,
             OutPipeline,
             RequestingDevice);
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateWorkGraph(
+    arda::FArdaRHIStatus FArdaPipelineStateCache::GetOrCreateWorkGraph(
         const FArdaWorkGraphPipelineStateInitializer& Initializer,
-        rhi::FArdaRHIWorkGraphPipelineRef& OutPipeline,
-        const rhi::IArdaRHIDevice* RequestingDevice)
+        arda::FArdaRHIWorkGraphPipelineRef& OutPipeline,
+        const arda::IArdaRHIDevice* RequestingDevice)
     {
         return mImpl->GetOrCreate(
             mImpl->mWorkGraph,
             Initializer.mDesc,
-            rhi::FArdaRHIStatus::Success(),
+            arda::FArdaRHIStatus::Success(),
             EArdaPipelineStateKind::WorkGraph,
             mImpl->mConfiguration.mMaxWorkGraphEntries,
             OutPipeline,
             RequestingDevice);
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::PrecacheCompute(
+    arda::FArdaRHIStatus FArdaPipelineStateCache::PrecacheCompute(
         const FArdaComputePipelineStateInitializer& Initializer,
-        const rhi::IArdaRHIDevice* RequestingDevice)
+        const arda::IArdaRHIDevice* RequestingDevice)
     {
-        rhi::FArdaRHIComputePipelineRef Pipeline;
+        arda::FArdaRHIComputePipelineRef Pipeline;
         return GetOrCreateCompute(Initializer, Pipeline, RequestingDevice);
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::PrecacheGraphics(
+    arda::FArdaRHIStatus FArdaPipelineStateCache::PrecacheGraphics(
         const FArdaGraphicsPipelineStateInitializer& Initializer,
-        const rhi::FArdaRHIFramebufferRef& Framebuffer,
-        const rhi::IArdaRHIDevice* RequestingDevice)
+        const arda::FArdaRHIFramebufferRef& Framebuffer,
+        const arda::IArdaRHIDevice* RequestingDevice)
     {
-        rhi::FArdaRHIGraphicsPipelineRef Pipeline;
+        arda::FArdaRHIGraphicsPipelineRef Pipeline;
         return GetOrCreateGraphics(
             Initializer, Framebuffer, Pipeline, RequestingDevice);
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::PrecacheMeshlet(
+    arda::FArdaRHIStatus FArdaPipelineStateCache::PrecacheMeshlet(
         const FArdaMeshletPipelineStateInitializer& Initializer,
-        const rhi::FArdaRHIFramebufferRef& Framebuffer,
-        const rhi::IArdaRHIDevice* RequestingDevice)
+        const arda::FArdaRHIFramebufferRef& Framebuffer,
+        const arda::IArdaRHIDevice* RequestingDevice)
     {
-        rhi::FArdaRHIMeshletPipelineRef Pipeline;
+        arda::FArdaRHIMeshletPipelineRef Pipeline;
         return GetOrCreateMeshlet(
             Initializer, Framebuffer, Pipeline, RequestingDevice);
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::PrecacheRayTracing(
+    arda::FArdaRHIStatus FArdaPipelineStateCache::PrecacheRayTracing(
         const FArdaRayTracingPipelineStateInitializer& Initializer,
-        const rhi::IArdaRHIDevice* RequestingDevice)
+        const arda::IArdaRHIDevice* RequestingDevice)
     {
-        rhi::FArdaRHIRayTracingPipelineRef Pipeline;
+        arda::FArdaRHIRayTracingPipelineRef Pipeline;
         return GetOrCreateRayTracing(
             Initializer, Pipeline, RequestingDevice);
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::PrecacheWorkGraph(
+    arda::FArdaRHIStatus FArdaPipelineStateCache::PrecacheWorkGraph(
         const FArdaWorkGraphPipelineStateInitializer& Initializer,
-        const rhi::IArdaRHIDevice* RequestingDevice)
+        const arda::IArdaRHIDevice* RequestingDevice)
     {
-        rhi::FArdaRHIWorkGraphPipelineRef Pipeline;
+        arda::FArdaRHIWorkGraphPipelineRef Pipeline;
         return GetOrCreateWorkGraph(
             Initializer, Pipeline, RequestingDevice);
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::SetComputePipelineState(
-        rhi::IArdaRHICommandList& CommandList,
+    arda::FArdaRHIStatus FArdaPipelineStateCache::SetComputePipelineState(
+        arda::IArdaRHICommandList& CommandList,
         const FArdaComputePipelineStateInitializer& Initializer,
-        rhi::FArdaRHIComputeState State)
+        arda::FArdaRHIComputeState State)
     {
         auto Status = GetOrCreateCompute(
             Initializer, State.mPipeline, CommandList.GetDevice());
         return Status ? CommandList.SetComputeState(State) : Status;
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::SetGraphicsPipelineState(
-        rhi::IArdaRHICommandList& CommandList,
+    arda::FArdaRHIStatus FArdaPipelineStateCache::SetGraphicsPipelineState(
+        arda::IArdaRHICommandList& CommandList,
         const FArdaGraphicsPipelineStateInitializer& Initializer,
-        rhi::FArdaRHIGraphicsState State)
+        arda::FArdaRHIGraphicsState State)
     {
         auto Status = GetOrCreateGraphics(
             Initializer, State.mFramebuffer, State.mPipeline,
@@ -715,10 +715,10 @@ namespace arda::backend
         return Status ? CommandList.SetGraphicsState(State) : Status;
     }
 
-    rhi::FArdaRHIStatus FArdaPipelineStateCache::SetMeshletPipelineState(
-        rhi::IArdaRHICommandList& CommandList,
+    arda::FArdaRHIStatus FArdaPipelineStateCache::SetMeshletPipelineState(
+        arda::IArdaRHICommandList& CommandList,
         const FArdaMeshletPipelineStateInitializer& Initializer,
-        rhi::FArdaRHIMeshletState State)
+        arda::FArdaRHIMeshletState State)
     {
         auto Status = GetOrCreateMeshlet(
             Initializer, State.mFramebuffer, State.mPipeline,
@@ -799,7 +799,7 @@ namespace arda::backend
         return mImpl->mDiagnostics;
     }
 
-    const rhi::IArdaRHIDevice* FArdaPipelineStateCache::GetDevice() const noexcept
+    const arda::IArdaRHIDevice* FArdaPipelineStateCache::GetDevice() const noexcept
     {
         return mImpl->mDevice.Get();
     }

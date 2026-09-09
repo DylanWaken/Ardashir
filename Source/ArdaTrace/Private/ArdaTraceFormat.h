@@ -3,7 +3,7 @@
 #include <EASTL/array.h>
 #include <cstdint>
 
-namespace arda::trace::detail
+namespace arda
 {
     inline constexpr eastl::array<char, 8> TraceMagic = {'A', 'R', 'D', 'A', 'T', 'R', 'C', '1'};
     inline constexpr std::uint32_t TraceVersion = 1;

@@ -101,15 +101,15 @@ ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
 namespace
 {
     class FExtendedDiagnosticCallback final
-        : public arda::backend::IArdaDiagnosticCallback
+        : public arda::IArdaDiagnosticCallback
     {
     public:
         void Message(
-            arda::backend::EArdaDiagnosticSeverity Severity,
+            arda::EArdaDiagnosticSeverity Severity,
             const char* Message) override
         {
-            if (Severity == arda::backend::EArdaDiagnosticSeverity::Error ||
-                Severity == arda::backend::EArdaDiagnosticSeverity::Fatal)
+            if (Severity == arda::EArdaDiagnosticSeverity::Error ||
+                Severity == arda::EArdaDiagnosticSeverity::Fatal)
             {
                 mErrorCount.fetch_add(1, std::memory_order_relaxed);
                 if (Message)
@@ -132,16 +132,16 @@ namespace
     public:
         ~FExtendedBackendCleanup()
         {
-            arda::backend::ShutdownBackend();
+            arda::ShutdownBackend();
             // Configuration borrows the diagnostic sink. Clear it before the
             // enclosing scope destroys that sink or another test initializes.
-            static_cast&lt;void&gt;(arda::backend::ConfigureBackend(
-                arda::backend::FArdaBackendConfiguration{}));
+            static_cast&lt;void&gt;(arda::ConfigureBackend(
+                arda::FArdaBackendConfiguration{}));
         }
     };
 
 #if defined(_WIN32)
-    class FWin32TestSurface final : public arda::backend::IArdaWindowSurface
+    class FWin32TestSurface final : public arda::IArdaWindowSurface
     {
     public:
         FWin32TestSurface()
@@ -159,10 +159,10 @@ namespace
 
         [[nodiscard]] bool IsValid() const noexcept { return mWindow != nullptr; }
 
-        [[nodiscard]] arda::backend::FArdaNativeObject
+        [[nodiscard]] arda::FArdaNativeObject
             GetD3D12WindowHandle() const noexcept override
         {
-            return arda::backend::FArdaNativeObject(mWindow);
+            return arda::FArdaNativeObject(mWindow);
         }
 
         [[nodiscard]] eastl::vector&lt;const char*&gt;
@@ -178,8 +178,8 @@ namespace
 #endif
         }
 
-        [[nodiscard]] arda::backend::FArdaNativeObject CreateVulkanSurface(
-            arda::backend::FArdaNativeObject NativeInstance,
+        [[nodiscard]] arda::FArdaNativeObject CreateVulkanSurface(
+            arda::FArdaNativeObject NativeInstance,
             eastl::string&amp; OutError) override
         {
 #if defined(ARDA_TEST_NATIVE_VULKAN)
@@ -215,7 +215,7 @@ namespace
                 return {};
             }
             OutError.clear();
-            return arda::backend::FArdaNativeObject(
+            return arda::FArdaNativeObject(
                 reinterpret_cast&lt;uintptr_t&gt;(Surface));
 #else
             static_cast&lt;void&gt;(NativeInstance);
@@ -228,7 +228,7 @@ namespace
         HWND mWindow = nullptr;
     };
 
-    class FCustomPresentTracker final : public arda::backend::IArdaCustomPresent
+    class FCustomPresentTracker final : public arda::IArdaCustomPresent
     {
     public:
         void OnBackBufferResize(uint32_t Width, uint32_t Height) override
@@ -244,7 +244,7 @@ namespace
         }
 
         [[nodiscard]] bool Present(
-            arda::backend::FArdaNativeObject BackBuffer,
+            arda::FArdaNativeObject BackBuffer,
             uint32_t Width,
             uint32_t Height) override
         {
@@ -262,7 +262,7 @@ namespace
         uint32_t mPostPresentCount = 0;
         uint32_t mWidth = 0;
         uint32_t mHeight = 0;
-        arda::backend::FArdaNativeObject mBackBuffer;
+        arda::FArdaNativeObject mBackBuffer;
     };
 #endif
 
@@ -282,29 +282,29 @@ namespace
         return Result;
     }
 
-    arda::rhi::TArdaRHIResult&lt;arda::rhi::FArdaRHIShaderRef&gt;
+    arda::TArdaRHIResult&lt;arda::FArdaRHIShaderRef&gt;
     CreateExtendedShader(
-        arda::rhi::IArdaRHIDevice&amp; Device,
+        arda::IArdaRHIDevice&amp; Device,
         const char* BackendName,
         const char* Artifact,
         const char* EntryPoint,
-        arda::rhi::EArdaRHIShaderStage Stage)
+        arda::EArdaRHIShaderStage Stage)
     {
         using namespace arda;
         const eastl::string FileName = eastl::string(Artifact) +
-            backend::GetShaderArtifactExtension(BackendName);
+            arda::GetShaderArtifactExtension(BackendName);
         const std::vector&lt;uint8_t&gt; Bytecode =
             LoadExtendedShaderArtifact(FileName.c_str());
         if (Bytecode.empty())
         {
             return {
                 {},
-                rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidState,
+                arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::InvalidState,
                     &quot;The indirect conformance shader artifact is missing.&quot;)
             };
         }
-        rhi::FArdaRHIShaderDesc Desc;
+        arda::FArdaRHIShaderDesc Desc;
         Desc.mStage = Stage;
         Desc.mBytecode = Bytecode.data();
         Desc.mBytecodeSize = Bytecode.size();
@@ -313,9 +313,9 @@ namespace
         return Device.CreateShader(Desc);
     }
 
-    arda::rhi::TArdaRHIResult&lt;arda::rhi::FArdaRHIShaderRef&gt;
+    arda::TArdaRHIResult&lt;arda::FArdaRHIShaderRef&gt;
     CreateExtendedComputeShader(
-        arda::rhi::IArdaRHIDevice&amp; Device,
+        arda::IArdaRHIDevice&amp; Device,
         const char* BackendName)
     {
         return CreateExtendedShader(
@@ -323,14 +323,14 @@ namespace
             BackendName,
             &quot;ArdaShaderStructTest&quot;,
             &quot;ShaderStructTestCS&quot;,
-            arda::rhi::EArdaRHIShaderStage::Compute);
+            arda::EArdaRHIShaderStage::Compute);
     }
 
     void ExpectTextureState(
-        arda::rhi::IArdaRHICommandList&amp; Commands,
-        arda::rhi::IArdaRHITexture&amp; Texture,
-        const arda::rhi::FArdaRHITextureSubresourceRange&amp; Range,
-        arda::rhi::EArdaRHIResourceState Expected)
+        arda::IArdaRHICommandList&amp; Commands,
+        arda::IArdaRHITexture&amp; Texture,
+        const arda::FArdaRHITextureSubresourceRange&amp; Range,
+        arda::EArdaRHIResourceState Expected)
     {
         const auto Snapshot = Commands.QueryTextureState(Texture, Range);
         ASSERT_TRUE(Snapshot) &lt;&lt; Snapshot.mStatus.mMessage.c_str();
@@ -341,9 +341,9 @@ namespace
     }
 
     void ExpectBufferState(
-        arda::rhi::IArdaRHICommandList&amp; Commands,
-        arda::rhi::IArdaRHIBuffer&amp; Buffer,
-        arda::rhi::EArdaRHIResourceState Expected)
+        arda::IArdaRHICommandList&amp; Commands,
+        arda::IArdaRHIBuffer&amp; Buffer,
+        arda::EArdaRHIResourceState Expected)
     {
         const auto Snapshot = Commands.QueryBufferState(Buffer);
         ASSERT_TRUE(Snapshot) &lt;&lt; Snapshot.mStatus.mMessage.c_str();
@@ -354,9 +354,9 @@ namespace
     }
 
     void ExpectSamplerFeedbackState(
-        arda::rhi::IArdaRHICommandList&amp; Commands,
-        arda::rhi::IArdaRHISamplerFeedbackTexture&amp; Texture,
-        arda::rhi::EArdaRHIResourceState Expected)
+        arda::IArdaRHICommandList&amp; Commands,
+        arda::IArdaRHISamplerFeedbackTexture&amp; Texture,
+        arda::EArdaRHIResourceState Expected)
     {
         const auto Snapshot =
             Commands.QuerySamplerFeedbackTextureState(Texture);
@@ -660,16 +660,16 @@ float4 BindingSpacePS() : SV_Target
 namespace
 {
     void EnableLocalRecords(
-        const arda::backend::FArdaShaderPermutationParameters&amp;,
-        arda::backend::FArdaShaderCompileEnvironment&amp; Environment)
+        const arda::FArdaShaderPermutationParameters&amp;,
+        arda::FArdaShaderCompileEnvironment&amp; Environment)
     {
         (void)Environment.SetDefine(&quot;ARDA_LOCAL_RECORDS&quot;, true);
     }
     bool CompileOnlyForD3D12(
-        const arda::backend::FArdaShaderPermutationParameters&amp; Parameters)
+        const arda::FArdaShaderPermutationParameters&amp; Parameters)
     {
         return Parameters.mBinaryFormat ==
-            arda::backend::EArdaShaderBinaryFormat::Dxil;
+            arda::EArdaShaderBinaryFormat::Dxil;
     }
 
     class FArdaRuntimeShaderEnvironment final : public testing::Environment
@@ -678,8 +678,7 @@ namespace
         void SetUp() override
         {
             using namespace arda;
-            using namespace backend;
-            using Stage = rhi::EArdaRHIShaderStage;
+            using Stage = arda::EArdaRHIShaderStage;
 
             const std::filesystem::path SourceDirectory =
                 ARDA_BACKEND_TEST_SHADER_SOURCE_DIR;
@@ -845,8 +844,7 @@ int main(int ArgumentCount, char** Arguments)
 <section id="VerifyExtendedCommands"><h2>VerifyExtendedCommands</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyExtendedCommands(
     const char* BackendName)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -1160,8 +1158,6 @@ int main(int ArgumentCount, char** Arguments)
 <section id="NativeTransientResourcesAndDescriptorsReturnToBaseline"><h2>NativeTransientResourcesAndDescriptorsReturnToBaseline</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaBackendTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
 
     FExternalTestCleanup Cleanup;
     size_t TestedBackends = 0;
@@ -1418,8 +1414,7 @@ int main(int ArgumentCount, char** Arguments)
 <section id="VerifyExplicitHeapAliasing"><h2>VerifyExplicitHeapAliasing</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyExplicitHeapAliasing(
     const char* BackendName)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -1536,8 +1531,7 @@ int main(int ArgumentCount, char** Arguments)
 <section id="VerifyQueryExecution"><h2>VerifyQueryExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyQueryExecution(
     const char* BackendName)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -1616,29 +1610,29 @@ int main(int ArgumentCount, char** Arguments)
     EXPECT_FALSE(Device-&gt;PollGpuFence(Fence.mValue).mValue);
     EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="CreateExtendedShader"><h2>CreateExtendedShader</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">arda::rhi::TArdaRHIResult&lt;arda::rhi::FArdaRHIShaderRef&gt;
+<section id="CreateExtendedShader"><h2>CreateExtendedShader</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">arda::TArdaRHIResult&lt;arda::FArdaRHIShaderRef&gt;
 CreateExtendedShader(
-    arda::rhi::IArdaRHIDevice&amp; Device,
+    arda::IArdaRHIDevice&amp; Device,
     const char* BackendName,
     const char* Artifact,
     const char* EntryPoint,
-    arda::rhi::EArdaRHIShaderStage Stage)
+    arda::EArdaRHIShaderStage Stage)
 {
     using namespace arda;
     const eastl::string FileName = eastl::string(Artifact) +
-        backend::GetShaderArtifactExtension(BackendName);
+        arda::GetShaderArtifactExtension(BackendName);
     const std::vector&lt;uint8_t&gt; Bytecode =
         LoadExtendedShaderArtifact(FileName.c_str());
     if (Bytecode.empty())
     {
         return {
             {},
-            rhi::FArdaRHIStatus::Error(
-                rhi::EArdaRHIResult::InvalidState,
+            arda::FArdaRHIStatus::Error(
+                arda::EArdaRHIResult::InvalidState,
                 &quot;The indirect conformance shader artifact is missing.&quot;)
         };
     }
-    rhi::FArdaRHIShaderDesc Desc;
+    arda::FArdaRHIShaderDesc Desc;
     Desc.mStage = Stage;
     Desc.mBytecode = Bytecode.data();
     Desc.mBytecodeSize = Bytecode.size();
@@ -1649,8 +1643,7 @@ CreateExtendedShader(
 <section id="VerifyShaderLibraryExecution"><h2>VerifyShaderLibraryExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyShaderLibraryExecution(
     const char* BackendName, const std::filesystem::path&amp; CacheDirectory = {})
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -1736,8 +1729,7 @@ CreateExtendedShader(
     bool bDirectHeapIndexing = false,
     bool bDescriptorBuffer = false)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -1854,8 +1846,7 @@ CreateExtendedShader(
 <section id="VerifyExpandedDescriptorsAndResourceCollections"><h2>VerifyExpandedDescriptorsAndResourceCollections</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyExpandedDescriptorsAndResourceCollections(
     const char* BackendName)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
     FExtendedBackendCleanup Cleanup;
@@ -1995,8 +1986,7 @@ CreateExtendedShader(
 <section id="VerifyMeshPipelineCapabilityAndExecution"><h2>VerifyMeshPipelineCapabilityAndExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyMeshPipelineCapabilityAndExecution(
     const char* BackendName, bool bBundle = false)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -2195,8 +2185,7 @@ CreateExtendedShader(
 <section id="VerifyAccelerationStructureLifecycleAndStateParity"><h2>VerifyAccelerationStructureLifecycleAndStateParity</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyAccelerationStructureLifecycleAndStateParity(
     const char* BackendName)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -2360,8 +2349,7 @@ CreateExtendedShader(
 <section id="VerifyRayTracingPipelineCapabilityAndExecution"><h2>VerifyRayTracingPipelineCapabilityAndExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRayTracingPipelineCapabilityAndExecution(
     const char* BackendName, bool bLocalDescriptors = false)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -2519,8 +2507,7 @@ CreateExtendedShader(
 <section id="VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect"><h2>VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(
     const char* BackendName, bool bInlineQuery = false, bool bInstanceBuffer = false)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -2853,8 +2840,7 @@ CreateExtendedShader(
 }</code></pre></details></section>
 <section id="VerifyD3D12WorkGraphExecution"><h2>VerifyD3D12WorkGraphExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyD3D12WorkGraphExecution()
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
     FExtendedBackendCleanup Cleanup;
@@ -2937,8 +2923,7 @@ CreateExtendedShader(
 <section id="VerifyShaderBundleExecution"><h2>VerifyShaderBundleExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyShaderBundleExecution(
     const char* BackendName)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
     FExtendedBackendCleanup Cleanup;
@@ -3044,8 +3029,7 @@ CreateExtendedShader(
 }</code></pre></details></section>
 <section id="VerifySamplerFeedbackStateParity"><h2>VerifySamplerFeedbackStateParity</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifySamplerFeedbackStateParity(bool bMipRegionUsed = false)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -3267,8 +3251,7 @@ CreateExtendedShader(
 }</code></pre></details></section>
 <section id="VerifyVulkanOpacityMicromapLifecycleAndStateParity"><h2>VerifyVulkanOpacityMicromapLifecycleAndStateParity</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyVulkanOpacityMicromapLifecycleAndStateParity()
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -3577,8 +3560,7 @@ CreateExtendedShader(
 }</code></pre></details></section>
 <section id="VerifyRuntimeDescriptorVersions"><h2>VerifyRuntimeDescriptorVersions</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRuntimeDescriptorVersions(const char* BackendName)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
     FExtendedBackendCleanup Cleanup;
@@ -3678,8 +3660,7 @@ CreateExtendedShader(
 <section id="VerifyDirectResourceAndSamplerHeapIndexing"><h2>VerifyDirectResourceAndSamplerHeapIndexing</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyDirectResourceAndSamplerHeapIndexing(
     const char* BackendName, bool bDescriptorBuffer = false)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -3828,8 +3809,7 @@ CreateExtendedShader(
 <section id="VerifyQueueBreadth"><h2>VerifyQueueBreadth</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyQueueBreadth(
     const char* BackendName)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -4024,8 +4004,7 @@ CreateExtendedShader(
 <section id="VerifySparseResidencyAndStreamingBudget"><h2>VerifySparseResidencyAndStreamingBudget</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifySparseResidencyAndStreamingBudget(
     const char* BackendName)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
     FExtendedBackendCleanup Cleanup;
@@ -4222,8 +4201,7 @@ CreateExtendedShader(
 <section id="VerifyStreamingBudgetExecution"><h2>VerifyStreamingBudgetExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyStreamingBudgetExecution(
     const char* BackendName)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
@@ -4252,8 +4230,7 @@ CreateExtendedShader(
 }</code></pre></details></section>
 <section id="VerifyComputeArithmetic"><h2>VerifyComputeArithmetic</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyComputeArithmetic(const char* BackendName, const char* Artifact, const char* Entry)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;
     FExtendedBackendCleanup Cleanup;
@@ -4340,8 +4317,7 @@ CreateExtendedShader(
 }</code></pre></details></section>
 <section id="VerifyD3D12CustomPresentExecution"><h2>VerifyD3D12CustomPresentExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyD3D12CustomPresentExecution()
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedBackendCleanup Cleanup;
@@ -4409,9 +4385,9 @@ CreateExtendedShader(
     EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
 <section id="VerifyCapabilityInvariants"><h2>VerifyCapabilityInvariants</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyCapabilityInvariants(
-    const arda::rhi::FArdaRHICapabilities&amp; Caps)
+    const arda::FArdaRHICapabilities&amp; Caps)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     const auto&amp; Ray = Caps.mRayTracing;
     if (Ray.mbHardwareAccelerated)
         EXPECT_TRUE(Ray.mbInfrastructure);
@@ -4475,8 +4451,7 @@ CreateExtendedShader(
 <section id="VerifyResolveAndPlaneTracking"><h2>VerifyResolveAndPlaneTracking</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyResolveAndPlaneTracking(
     const char* BackendName)
 {
-    using namespace arda::backend;
-    using namespace arda::rhi;
+    using namespace arda;
 
     ShutdownBackend();
     FExtendedDiagnosticCallback Diagnostics;

@@ -4,7 +4,7 @@
 
 #include <EASTL/shared_ptr.h>
 
-namespace arda::tests::cornell_box
+namespace arda
 {
     namespace
     {
@@ -52,16 +52,16 @@ namespace arda::tests::cornell_box
             "Cornell material layout must match HLSL.");
 
         class FGenerateCornellGeometryShader final :
-            public backend::FArdaGlobalShader
+            public arda::FArdaGlobalShader
         {
         public:
             ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
                 ARDA_SHADER_BUFFER_UAV(
-                    mVertices, 0, 0, rhi::EArdaRHIShaderStage::Compute)
+                    mVertices, 0, 0, arda::EArdaRHIShaderStage::Compute)
                 ARDA_SHADER_BUFFER_UAV(
-                    mIndices, 1, 0, rhi::EArdaRHIShaderStage::Compute)
+                    mIndices, 1, 0, arda::EArdaRHIShaderStage::Compute)
                 ARDA_SHADER_BUFFER_UAV(
-                    mMaterials, 2, 0, rhi::EArdaRHIShaderStage::Compute)
+                    mMaterials, 2, 0, arda::EArdaRHIShaderStage::Compute)
             ARDA_END_SHADER_PARAMETER_STRUCT()
             ARDA_DECLARE_GLOBAL_SHADER(FGenerateCornellGeometryShader);
         };
@@ -69,34 +69,34 @@ namespace arda::tests::cornell_box
 #define ARDA_CORNELL_RAY_PARAMETERS()                                                  \
             ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)                           \
                 ARDA_SHADER_ACCELERATION_STRUCTURE(                                    \
-                    mScene, 0, 0, rhi::EArdaRHIShaderStage::AllRayTracing)             \
+                    mScene, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)             \
                 ARDA_SHADER_BUFFER_SRV(                                                \
-                    mVertices, 1, 0, rhi::EArdaRHIShaderStage::AllRayTracing)          \
+                    mVertices, 1, 0, arda::EArdaRHIShaderStage::AllRayTracing)          \
                 ARDA_SHADER_BUFFER_SRV(                                                \
-                    mIndices, 2, 0, rhi::EArdaRHIShaderStage::AllRayTracing)           \
+                    mIndices, 2, 0, arda::EArdaRHIShaderStage::AllRayTracing)           \
                 ARDA_SHADER_BUFFER_SRV(                                                \
-                    mMaterials, 3, 0, rhi::EArdaRHIShaderStage::AllRayTracing)         \
+                    mMaterials, 3, 0, arda::EArdaRHIShaderStage::AllRayTracing)         \
                 ARDA_SHADER_BUFFER_UAV(                                                \
-                    mSampleRadiance, 0, 0, rhi::EArdaRHIShaderStage::AllRayTracing)    \
+                    mSampleRadiance, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)    \
                 ARDA_SHADER_UNIFORM_BUFFER(                                            \
-                    mFrame, 0, 0, rhi::EArdaRHIShaderStage::AllRayTracing)             \
+                    mFrame, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)             \
             ARDA_END_SHADER_PARAMETER_STRUCT()
 
-        class FCornellRayGenerationShader final : public backend::FArdaGlobalShader
+        class FCornellRayGenerationShader final : public arda::FArdaGlobalShader
         {
         public:
             ARDA_CORNELL_RAY_PARAMETERS()
             ARDA_DECLARE_GLOBAL_SHADER(FCornellRayGenerationShader);
         };
 
-        class FCornellMissShader final : public backend::FArdaGlobalShader
+        class FCornellMissShader final : public arda::FArdaGlobalShader
         {
         public:
             ARDA_CORNELL_RAY_PARAMETERS()
             ARDA_DECLARE_GLOBAL_SHADER(FCornellMissShader);
         };
 
-        class FCornellClosestHitShader final : public backend::FArdaGlobalShader
+        class FCornellClosestHitShader final : public arda::FArdaGlobalShader
         {
         public:
             ARDA_CORNELL_RAY_PARAMETERS()
@@ -105,34 +105,34 @@ namespace arda::tests::cornell_box
 #undef ARDA_CORNELL_RAY_PARAMETERS
 
         class FAccumulateCornellSamplesShader final :
-            public backend::FArdaGlobalShader
+            public arda::FArdaGlobalShader
         {
         public:
             ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
                 ARDA_SHADER_BUFFER_SRV(
-                    mSampleRadiance, 0, 0, rhi::EArdaRHIShaderStage::Compute)
+                    mSampleRadiance, 0, 0, arda::EArdaRHIShaderStage::Compute)
                 ARDA_SHADER_TEXTURE_UAV(
-                    mAccumulation, 0, 0, rhi::EArdaRHIShaderStage::Compute)
+                    mAccumulation, 0, 0, arda::EArdaRHIShaderStage::Compute)
                 ARDA_SHADER_UNIFORM_BUFFER(
-                    mFrame, 0, 0, rhi::EArdaRHIShaderStage::Compute)
+                    mFrame, 0, 0, arda::EArdaRHIShaderStage::Compute)
             ARDA_END_SHADER_PARAMETER_STRUCT()
             ARDA_DECLARE_GLOBAL_SHADER(FAccumulateCornellSamplesShader);
         };
 
-        class FCornellPresentVertexShader final : public backend::FArdaGlobalShader
+        class FCornellPresentVertexShader final : public arda::FArdaGlobalShader
         {
         public:
             ARDA_DECLARE_GLOBAL_SHADER(FCornellPresentVertexShader);
         };
 
-        class FCornellPresentPixelShader final : public backend::FArdaGlobalShader
+        class FCornellPresentPixelShader final : public arda::FArdaGlobalShader
         {
         public:
             ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
                 ARDA_SHADER_TEXTURE_SRV(
-                    mAccumulation, 0, 0, rhi::EArdaRHIShaderStage::Pixel)
+                    mAccumulation, 0, 0, arda::EArdaRHIShaderStage::Pixel)
                 ARDA_SHADER_UNIFORM_BUFFER(
-                    mFrame, 0, 0, rhi::EArdaRHIShaderStage::Pixel)
+                    mFrame, 0, 0, arda::EArdaRHIShaderStage::Pixel)
             ARDA_END_SHADER_PARAMETER_STRUCT()
             ARDA_DECLARE_GLOBAL_SHADER(FCornellPresentPixelShader);
         };
@@ -218,7 +218,7 @@ namespace arda::tests::cornell_box
 
         template <typename T>
         bool TakeResult(
-            rhi::TArdaRHIResult<T>& Result,
+            arda::TArdaRHIResult<T>& Result,
             T& Output,
             eastl::string& Error)
         {
@@ -231,29 +231,29 @@ namespace arda::tests::cornell_box
             return true;
         }
 
-        rhi::FArdaRHIRayTracingGeometryDesc MakeGeometryDesc(
-            const rhi::FArdaRHIBufferRef& Vertices,
-            const rhi::FArdaRHIBufferRef& Indices)
+        arda::FArdaRHIRayTracingGeometryDesc MakeGeometryDesc(
+            const arda::FArdaRHIBufferRef& Vertices,
+            const arda::FArdaRHIBufferRef& Indices)
         {
-            rhi::FArdaRHIRayTracingGeometryDesc Geometry;
-            Geometry.mType = rhi::EArdaRHIRayTracingGeometryType::Triangles;
-            Geometry.mFlags = rhi::EArdaRHIRayTracingGeometryFlags::Opaque;
+            arda::FArdaRHIRayTracingGeometryDesc Geometry;
+            Geometry.mType = arda::EArdaRHIRayTracingGeometryType::Triangles;
+            Geometry.mFlags = arda::EArdaRHIRayTracingGeometryFlags::Opaque;
             Geometry.mVertexOrAABBBuffer = Vertices;
             Geometry.mIndexBuffer = Indices;
-            Geometry.mVertexFormat = rhi::EArdaRHIFormat::RGB32Float;
-            Geometry.mIndexFormat = rhi::EArdaRHIFormat::R32UInt;
+            Geometry.mVertexFormat = arda::EArdaRHIFormat::RGB32Float;
+            Geometry.mIndexFormat = arda::EArdaRHIFormat::R32UInt;
             Geometry.mVertexOrAABBCount = VertexCount;
             Geometry.mIndexCount = IndexCount;
             Geometry.mStride = sizeof(FCornellVertex);
             return Geometry;
         }
 
-        rhi::EArdaRHIAccelStructBuildFlags GetStaticBuildFlags(bool bCompact)
+        arda::EArdaRHIAccelStructBuildFlags GetStaticBuildFlags(bool bCompact)
         {
-            rhi::EArdaRHIAccelStructBuildFlags Flags =
-                rhi::EArdaRHIAccelStructBuildFlags::PreferFastTrace;
+            arda::EArdaRHIAccelStructBuildFlags Flags =
+                arda::EArdaRHIAccelStructBuildFlags::PreferFastTrace;
             if (bCompact)
-                Flags |= rhi::EArdaRHIAccelStructBuildFlags::AllowCompaction;
+                Flags |= arda::EArdaRHIAccelStructBuildFlags::AllowCompaction;
             return Flags;
         }
     }
@@ -263,47 +263,47 @@ namespace arda::tests::cornell_box
         "/ArdaTests/CornellBox/CornellGeometry.hlsl",
         "CornellGeometryCS",
         "GenerateCornellGeometryCS",
-        rhi::EArdaRHIShaderStage::Compute)
+        arda::EArdaRHIShaderStage::Compute)
     ARDA_IMPLEMENT_GLOBAL_SHADER(
         FCornellRayGenerationShader,
         "/ArdaTests/CornellBox/CornellPathTracer.hlsl",
         "CornellRayGen",
         "CornellRayGen",
-        rhi::EArdaRHIShaderStage::RayGeneration)
+        arda::EArdaRHIShaderStage::RayGeneration)
     ARDA_IMPLEMENT_GLOBAL_SHADER(
         FCornellMissShader,
         "/ArdaTests/CornellBox/CornellPathTracer.hlsl",
         "CornellMiss",
         "CornellMiss",
-        rhi::EArdaRHIShaderStage::Miss)
+        arda::EArdaRHIShaderStage::Miss)
     ARDA_IMPLEMENT_GLOBAL_SHADER(
         FCornellClosestHitShader,
         "/ArdaTests/CornellBox/CornellPathTracer.hlsl",
         "CornellClosestHit",
         "CornellClosestHit",
-        rhi::EArdaRHIShaderStage::ClosestHit)
+        arda::EArdaRHIShaderStage::ClosestHit)
     ARDA_IMPLEMENT_GLOBAL_SHADER(
         FAccumulateCornellSamplesShader,
         "/ArdaTests/CornellBox/CornellAccumulate.hlsl",
         "CornellAccumulateCS",
         "CornellAccumulateCS",
-        rhi::EArdaRHIShaderStage::Compute)
+        arda::EArdaRHIShaderStage::Compute)
     ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(
         FCornellPresentVertexShader,
         "/ArdaTests/CornellBox/CornellPresent.hlsl",
         "CornellPresentVS",
         "CornellPresentVS",
-        rhi::EArdaRHIShaderStage::Vertex)
+        arda::EArdaRHIShaderStage::Vertex)
     ARDA_IMPLEMENT_GLOBAL_SHADER(
         FCornellPresentPixelShader,
         "/ArdaTests/CornellBox/CornellPresent.hlsl",
         "CornellPresentPS",
         "CornellPresentPS",
-        rhi::EArdaRHIShaderStage::Pixel)
+        arda::EArdaRHIShaderStage::Pixel)
 
     bool FArdaCornellBoxRenderer::Initialize(
-        rhi::FArdaRHIDeviceRef Device,
-        rhi::EArdaRHIFormat SwapChainFormat,
+        arda::FArdaRHIDeviceRef Device,
+        arda::EArdaRHIFormat SwapChainFormat,
         const FArdaCornellBoxSettings& Settings)
     {
         mDevice = eastl::move(Device);
@@ -314,7 +314,7 @@ namespace arda::tests::cornell_box
             return false;
         }
 
-        const rhi::FArdaRHIRayTracingCapabilities& RayTracing =
+        const arda::FArdaRHIRayTracingCapabilities& RayTracing =
             mDevice->GetCapabilities().mRayTracing;
         if (!RayTracing.mbHardwareAccelerated ||
             !RayTracing.mbPipelineShaders ||
@@ -332,7 +332,7 @@ namespace arda::tests::cornell_box
         }
 
         mPipelineStateCache =
-            std::make_unique<backend::FArdaPipelineStateCache>(mDevice);
+            std::make_unique<arda::FArdaPipelineStateCache>(mDevice);
         if (!CreateShadersAndPipelines(SwapChainFormat) ||
             !GenerateSceneGeometry() ||
             !BuildSceneAccelerationStructures())
@@ -346,7 +346,7 @@ namespace arda::tests::cornell_box
     }
 
     bool FArdaCornellBoxRenderer::CreateShadersAndPipelines(
-        rhi::EArdaRHIFormat SwapChainFormat)
+        arda::EArdaRHIFormat SwapChainFormat)
     {
         static_cast<void>(SwapChainFormat);
         if (!mShaderMap.Initialize(mDevice))
@@ -382,20 +382,20 @@ namespace arda::tests::cornell_box
         }
 
         mGenerateGeometryPipelineInitializer =
-            backend::FArdaComputePipelineStateInitializer::FromGlobalShader(
+            arda::FArdaComputePipelineStateInitializer::FromGlobalShader(
                 *mGenerateGeometryShader, "Cornell geometry generation");
         mAccumulatePipelineInitializer =
-            backend::FArdaComputePipelineStateInitializer::FromGlobalShader(
+            arda::FArdaComputePipelineStateInitializer::FromGlobalShader(
                 *mAccumulateShader, "Cornell sample reduction");
 
-        rhi::FArdaRHIGraphicsPipelineDesc PresentFixedState;
-        PresentFixedState.mRasterState.mCullMode = rhi::EArdaRHICullMode::None;
+        arda::FArdaRHIGraphicsPipelineDesc PresentFixedState;
+        PresentFixedState.mRasterState.mCullMode = arda::EArdaRHICullMode::None;
         PresentFixedState.mDepthStencilState.mbDepthTest = false;
         PresentFixedState.mDepthStencilState.mbDepthWrite = false;
         PresentFixedState.mSampleCount = 0;
         PresentFixedState.mDebugName = "Cornell tone-map presentation";
         mPresentPipelineInitializer =
-            backend::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
+            arda::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
                 *mPresentVertexShader,
                 mPresentPixelShader,
                 {},
@@ -406,13 +406,13 @@ namespace arda::tests::cornell_box
             mError = "The Cornell ray-generation shader has no global binding layout.";
             return false;
         }
-        rhi::FArdaRHIRayTracingPipelineDesc PipelineDesc;
+        arda::FArdaRHIRayTracingPipelineDesc PipelineDesc;
         PipelineDesc.mDebugName = "Cornell Monte Carlo path tracer";
         PipelineDesc.mShaders.push_back({
             "CornellRayGen", mRayGenerationShader->GetShader(), {}});
         PipelineDesc.mShaders.push_back({
             "CornellMiss", mMissShader->GetShader(), {}});
-        rhi::FArdaRHIRayTracingHitGroupDesc HitGroup;
+        arda::FArdaRHIRayTracingHitGroupDesc HitGroup;
         HitGroup.mExportName = "CornellHitGroup";
         HitGroup.mClosestHitShader = mClosestHitShader->GetShader();
         PipelineDesc.mHitGroups.push_back(eastl::move(HitGroup));
@@ -427,14 +427,14 @@ namespace arda::tests::cornell_box
         if (!TakeResult(Pipeline, mRayTracingPipeline, mError))
             return false;
 
-        rhi::FArdaRHIShaderTableDesc TableDesc;
+        arda::FArdaRHIShaderTableDesc TableDesc;
         TableDesc.mMaxEntries = 3;
         TableDesc.mbPersistent = true;
         TableDesc.mDebugName = "Cornell persistent shader table";
         auto Table = mDevice->CreateShaderTable(mRayTracingPipeline, TableDesc);
         if (!TakeResult(Table, mShaderTable, mError))
             return false;
-        rhi::FArdaRHIStatus Status = mDevice->SetShaderTableRayGeneration(
+        arda::FArdaRHIStatus Status = mDevice->SetShaderTableRayGeneration(
             mShaderTable, "CornellRayGen");
         if (!Status)
         {
@@ -465,45 +465,45 @@ namespace arda::tests::cornell_box
 
     bool FArdaCornellBoxRenderer::GenerateSceneGeometry()
     {
-        render_graph::FARDGBuilder Graph(CreateGraphContext());
+        arda::FARDGBuilder Graph(CreateGraphContext());
 
-        rhi::FArdaRHIBufferDesc VertexDesc;
+        arda::FArdaRHIBufferDesc VertexDesc;
         VertexDesc.mDebugName = "Cornell GPU-generated vertices";
         VertexDesc.mByteSize = uint64_t(VertexCount) * sizeof(FCornellVertex);
         VertexDesc.mStructureStride = sizeof(FCornellVertex);
-        VertexDesc.mUsage = rhi::EArdaRHIBufferUsage::Structured |
-            rhi::EArdaRHIBufferUsage::ShaderResource |
-            rhi::EArdaRHIBufferUsage::UnorderedAccess |
-            rhi::EArdaRHIBufferUsage::Vertex |
-            rhi::EArdaRHIBufferUsage::AccelStructBuildInput;
+        VertexDesc.mUsage = arda::EArdaRHIBufferUsage::Structured |
+            arda::EArdaRHIBufferUsage::ShaderResource |
+            arda::EArdaRHIBufferUsage::UnorderedAccess |
+            arda::EArdaRHIBufferUsage::Vertex |
+            arda::EArdaRHIBufferUsage::AccelStructBuildInput;
         auto* Vertices = Graph.CreateBuffer(VertexDesc);
 
-        rhi::FArdaRHIBufferDesc IndexDesc;
+        arda::FArdaRHIBufferDesc IndexDesc;
         IndexDesc.mDebugName = "Cornell GPU-generated indices";
         IndexDesc.mByteSize = uint64_t(IndexCount) * sizeof(uint32_t);
         IndexDesc.mStructureStride = sizeof(uint32_t);
-        IndexDesc.mFormat = rhi::EArdaRHIFormat::R32UInt;
-        IndexDesc.mUsage = rhi::EArdaRHIBufferUsage::Structured |
-            rhi::EArdaRHIBufferUsage::ShaderResource |
-            rhi::EArdaRHIBufferUsage::UnorderedAccess |
-            rhi::EArdaRHIBufferUsage::Index |
-            rhi::EArdaRHIBufferUsage::AccelStructBuildInput;
+        IndexDesc.mFormat = arda::EArdaRHIFormat::R32UInt;
+        IndexDesc.mUsage = arda::EArdaRHIBufferUsage::Structured |
+            arda::EArdaRHIBufferUsage::ShaderResource |
+            arda::EArdaRHIBufferUsage::UnorderedAccess |
+            arda::EArdaRHIBufferUsage::Index |
+            arda::EArdaRHIBufferUsage::AccelStructBuildInput;
         auto* Indices = Graph.CreateBuffer(IndexDesc);
 
-        rhi::FArdaRHIBufferDesc MaterialDesc;
+        arda::FArdaRHIBufferDesc MaterialDesc;
         MaterialDesc.mDebugName = "Cornell GPU-generated materials";
         MaterialDesc.mByteSize = uint64_t(MaterialCount) * sizeof(FCornellMaterial);
         MaterialDesc.mStructureStride = sizeof(FCornellMaterial);
-        MaterialDesc.mUsage = rhi::EArdaRHIBufferUsage::Structured |
-            rhi::EArdaRHIBufferUsage::ShaderResource |
-            rhi::EArdaRHIBufferUsage::UnorderedAccess;
+        MaterialDesc.mUsage = arda::EArdaRHIBufferUsage::Structured |
+            arda::EArdaRHIBufferUsage::ShaderResource |
+            arda::EArdaRHIBufferUsage::UnorderedAccess;
         auto* Materials = Graph.CreateBuffer(MaterialDesc);
 
-        render_graph::FARDGBufferViewDesc VertexView;
+        arda::FARDGBufferViewDesc VertexView;
         VertexView.mBuffer = Vertices->GetHandle();
-        render_graph::FARDGBufferViewDesc IndexView;
+        arda::FARDGBufferViewDesc IndexView;
         IndexView.mBuffer = Indices->GetHandle();
-        render_graph::FARDGBufferViewDesc MaterialView;
+        arda::FARDGBufferViewDesc MaterialView;
         MaterialView.mBuffer = Materials->GetHandle();
 
         FGenerateGeometryParameters Parameters;
@@ -519,13 +519,13 @@ namespace arda::tests::cornell_box
             &Parameters,
             {(TriangleCount + 63) / 64, 1, 1},
             [this, Errors](
-                render_graph::FARDGPassExecutionContext& Context,
+                arda::FARDGPassExecutionContext& Context,
                 const FGenerateGeometryParameters&)
             {
-                rhi::FArdaRHIComputeState State;
+                arda::FArdaRHIComputeState State;
                 State.mBindings.push_back(
                     Context.CreateBindingSet(*mGenerateGeometryShader));
-                const rhi::FArdaRHIStatus Status =
+                const arda::FArdaRHIStatus Status =
                     mPipelineStateCache->SetComputePipelineState(
                         Context.mUnsafeRawCommandList,
                         mGenerateGeometryPipelineInitializer,
@@ -533,18 +533,18 @@ namespace arda::tests::cornell_box
                 if (!Status)
                     Errors->Record("GenerateCornellGeometry bind failed", Status.mMessage);
             },
-            render_graph::EARDGPassFlags::Compute |
-                render_graph::EARDGPassFlags::NeverParallel);
+            arda::EARDGPassFlags::Compute |
+                arda::EARDGPassFlags::NeverParallel);
 
         Graph.QueueBufferExtraction(
             Vertices, mVertexBuffer,
-            rhi::EArdaRHIResourceState::AccelStructBuildInput);
+            arda::EArdaRHIResourceState::AccelStructBuildInput);
         Graph.QueueBufferExtraction(
             Indices, mIndexBuffer,
-            rhi::EArdaRHIResourceState::AccelStructBuildInput);
+            arda::EArdaRHIResourceState::AccelStructBuildInput);
         Graph.QueueBufferExtraction(
             Materials, mMaterialBuffer,
-            rhi::EArdaRHIResourceState::ShaderResource);
+            arda::EArdaRHIResourceState::ShaderResource);
 
         if (!ExecuteGraph(Graph, "Cornell geometry generation"))
             return false;
@@ -562,7 +562,7 @@ namespace arda::tests::cornell_box
         if (!bCanCompact)
             return mTlas != nullptr;
 
-        rhi::FArdaRHIStatus Idle = mDevice->WaitForIdle();
+        arda::FArdaRHIStatus Idle = mDevice->WaitForIdle();
         if (!Idle)
         {
             mError = Idle.mMessage;
@@ -581,44 +581,44 @@ namespace arda::tests::cornell_box
     {
         const bool bCompact = mSettings.mbCompactStaticBlas &&
             mDevice->GetCapabilities().mRayTracing.mbCompaction;
-        render_graph::FARDGBuilder Graph(CreateGraphContext());
+        arda::FARDGBuilder Graph(CreateGraphContext());
         auto* Vertices = Graph.RegisterExternalBuffer(
-            mVertexBuffer, rhi::EArdaRHIResourceState::AccelStructBuildInput,
+            mVertexBuffer, arda::EArdaRHIResourceState::AccelStructBuildInput,
             "Cornell vertices");
         auto* Indices = Graph.RegisterExternalBuffer(
-            mIndexBuffer, rhi::EArdaRHIResourceState::AccelStructBuildInput,
+            mIndexBuffer, arda::EArdaRHIResourceState::AccelStructBuildInput,
             "Cornell indices");
 
-        const rhi::FArdaRHIRayTracingGeometryDesc Geometry =
+        const arda::FArdaRHIRayTracingGeometryDesc Geometry =
             MakeGeometryDesc(mVertexBuffer, mIndexBuffer);
-        rhi::FArdaRHIAccelStructDesc BlasDesc;
+        arda::FArdaRHIAccelStructDesc BlasDesc;
         BlasDesc.mBottomLevelGeometries.push_back(Geometry);
         BlasDesc.mBuildFlags = GetStaticBuildFlags(bCompact);
         BlasDesc.mDebugName = "Cornell static triangle BLAS";
         auto* Blas = Graph.CreateAccelStruct(BlasDesc);
         Graph.QueueAccelStructExtraction(
-            Blas, mBlas, rhi::EArdaRHIResourceState::AccelStructRead);
+            Blas, mBlas, arda::EArdaRHIResourceState::AccelStructRead);
 
         FBuildBlasParameters BlasParameters;
         BlasParameters.mVertices = {
-            Vertices, rhi::EArdaRHIResourceState::AccelStructBuildInput, {}};
+            Vertices, arda::EArdaRHIResourceState::AccelStructBuildInput, {}};
         BlasParameters.mIndices = {
-            Indices, rhi::EArdaRHIResourceState::AccelStructBuildInput, {}};
+            Indices, arda::EArdaRHIResourceState::AccelStructBuildInput, {}};
         BlasParameters.mBlas = {
-            Blas, rhi::EArdaRHIResourceState::AccelStructWrite};
+            Blas, arda::EArdaRHIResourceState::AccelStructWrite};
         auto Errors = eastl::make_shared<FPassErrors>();
-        const render_graph::FARDGPassHandle BuildBlas = Graph.AddPass(
+        const arda::FARDGPassHandle BuildBlas = Graph.AddPass(
             "BuildCornellBLAS",
             &BlasParameters,
-            render_graph::EARDGPassFlags::Compute |
-                render_graph::EARDGPassFlags::NeverParallel,
+            arda::EARDGPassFlags::Compute |
+                arda::EARDGPassFlags::NeverParallel,
             [Geometry, Flags = BlasDesc.mBuildFlags, Errors](
-                render_graph::FARDGPassExecutionContext& Context,
+                arda::FARDGPassExecutionContext& Context,
                 const FBuildBlasParameters& Frozen)
             {
-                eastl::vector<rhi::FArdaRHIRayTracingGeometryDesc> Geometries;
+                eastl::vector<arda::FArdaRHIRayTracingGeometryDesc> Geometries;
                 Geometries.push_back(Geometry);
-                const rhi::FArdaRHIStatus Status =
+                const arda::FArdaRHIStatus Status =
                     Context.mUnsafeRawCommandList.BuildBottomLevelAccelStruct(
                         *Context.GetAccelStruct(Frozen.mBlas.mAccelStruct),
                         Geometries,
@@ -629,36 +629,36 @@ namespace arda::tests::cornell_box
 
         if (!bCompact)
         {
-            rhi::FArdaRHIAccelStructDesc TlasDesc;
+            arda::FArdaRHIAccelStructDesc TlasDesc;
             TlasDesc.mbTopLevel = true;
             TlasDesc.mTopLevelMaxInstances = 1;
             TlasDesc.mBuildFlags =
-                rhi::EArdaRHIAccelStructBuildFlags::PreferFastTrace;
+                arda::EArdaRHIAccelStructBuildFlags::PreferFastTrace;
             TlasDesc.mDebugName = "Cornell TLAS";
             auto* Tlas = Graph.CreateAccelStruct(TlasDesc);
             Graph.QueueAccelStructExtraction(
-                Tlas, mTlas, rhi::EArdaRHIResourceState::AccelStructRead);
+                Tlas, mTlas, arda::EArdaRHIResourceState::AccelStructRead);
 
             FBuildTlasParameters TlasParameters;
             TlasParameters.mBlas = {
-                Blas, rhi::EArdaRHIResourceState::AccelStructRead};
+                Blas, arda::EArdaRHIResourceState::AccelStructRead};
             TlasParameters.mTlas = {
-                Tlas, rhi::EArdaRHIResourceState::AccelStructWrite};
-            const render_graph::FARDGPassHandle BuildTlas = Graph.AddPass(
+                Tlas, arda::EArdaRHIResourceState::AccelStructWrite};
+            const arda::FARDGPassHandle BuildTlas = Graph.AddPass(
                 "BuildCornellTLAS",
                 &TlasParameters,
-                render_graph::EARDGPassFlags::Compute |
-                    render_graph::EARDGPassFlags::NeverParallel,
+                arda::EARDGPassFlags::Compute |
+                    arda::EARDGPassFlags::NeverParallel,
                 [Flags = TlasDesc.mBuildFlags, Errors](
-                    render_graph::FARDGPassExecutionContext& Context,
+                    arda::FARDGPassExecutionContext& Context,
                     const FBuildTlasParameters& Frozen)
                 {
-                    rhi::FArdaRHIRayTracingInstanceDesc Instance;
+                    arda::FArdaRHIRayTracingInstanceDesc Instance;
                     Instance.mBottomLevelAccelStruct.Reset(
                         Context.GetAccelStruct(Frozen.mBlas.mAccelStruct));
-                    eastl::vector<rhi::FArdaRHIRayTracingInstanceDesc> Instances;
+                    eastl::vector<arda::FArdaRHIRayTracingInstanceDesc> Instances;
                     Instances.push_back(eastl::move(Instance));
-                    const rhi::FArdaRHIStatus Status =
+                    const arda::FArdaRHIStatus Status =
                         Context.mUnsafeRawCommandList.BuildTopLevelAccelStruct(
                             *Context.GetAccelStruct(Frozen.mTlas.mAccelStruct),
                             Instances,
@@ -677,12 +677,12 @@ namespace arda::tests::cornell_box
 
     bool FArdaCornellBoxRenderer::CompactBlasAndBuildTlas(uint64_t CompactedSize)
     {
-        render_graph::FARDGBuilder Graph(CreateGraphContext());
+        arda::FARDGBuilder Graph(CreateGraphContext());
         auto* SourceBlas = Graph.RegisterExternalAccelStruct(
-            mBlas, rhi::EArdaRHIResourceState::AccelStructRead,
+            mBlas, arda::EArdaRHIResourceState::AccelStructRead,
             "Cornell uncompacted BLAS");
 
-        rhi::FArdaRHIAccelStructDesc CompactDesc;
+        arda::FArdaRHIAccelStructDesc CompactDesc;
         CompactDesc.mBottomLevelGeometries.push_back(
             MakeGeometryDesc(mVertexBuffer, mIndexBuffer));
         CompactDesc.mBuildFlags = GetStaticBuildFlags(true);
@@ -690,34 +690,34 @@ namespace arda::tests::cornell_box
         CompactDesc.mDebugName = "Cornell compacted static BLAS";
         auto* CompactBlas = Graph.CreateAccelStruct(CompactDesc);
         Graph.QueueAccelStructExtraction(
-            CompactBlas, mBlas, rhi::EArdaRHIResourceState::AccelStructRead);
+            CompactBlas, mBlas, arda::EArdaRHIResourceState::AccelStructRead);
 
-        rhi::FArdaRHIAccelStructDesc TlasDesc;
+        arda::FArdaRHIAccelStructDesc TlasDesc;
         TlasDesc.mbTopLevel = true;
         TlasDesc.mTopLevelMaxInstances = 1;
         TlasDesc.mBuildFlags =
-            rhi::EArdaRHIAccelStructBuildFlags::PreferFastTrace;
+            arda::EArdaRHIAccelStructBuildFlags::PreferFastTrace;
         TlasDesc.mDebugName = "Cornell TLAS";
         auto* Tlas = Graph.CreateAccelStruct(TlasDesc);
         Graph.QueueAccelStructExtraction(
-            Tlas, mTlas, rhi::EArdaRHIResourceState::AccelStructRead);
+            Tlas, mTlas, arda::EArdaRHIResourceState::AccelStructRead);
 
         auto Errors = eastl::make_shared<FPassErrors>();
         FCompactBlasParameters CompactParameters;
         CompactParameters.mSource = {
-            SourceBlas, rhi::EArdaRHIResourceState::AccelStructRead};
+            SourceBlas, arda::EArdaRHIResourceState::AccelStructRead};
         CompactParameters.mDestination = {
-            CompactBlas, rhi::EArdaRHIResourceState::AccelStructWrite};
-        const render_graph::FARDGPassHandle Compact = Graph.AddPass(
+            CompactBlas, arda::EArdaRHIResourceState::AccelStructWrite};
+        const arda::FARDGPassHandle Compact = Graph.AddPass(
             "CompactCornellBLAS",
             &CompactParameters,
-            render_graph::EARDGPassFlags::Compute |
-                render_graph::EARDGPassFlags::NeverParallel,
+            arda::EARDGPassFlags::Compute |
+                arda::EARDGPassFlags::NeverParallel,
             [Errors](
-                render_graph::FARDGPassExecutionContext& Context,
+                arda::FARDGPassExecutionContext& Context,
                 const FCompactBlasParameters& Frozen)
             {
-                const rhi::FArdaRHIStatus Status =
+                const arda::FArdaRHIStatus Status =
                     Context.mUnsafeRawCommandList.CompactAccelStruct(
                         *Context.GetAccelStruct(Frozen.mDestination.mAccelStruct),
                         *Context.GetAccelStruct(Frozen.mSource.mAccelStruct));
@@ -727,24 +727,24 @@ namespace arda::tests::cornell_box
 
         FBuildTlasParameters TlasParameters;
         TlasParameters.mBlas = {
-            CompactBlas, rhi::EArdaRHIResourceState::AccelStructRead};
+            CompactBlas, arda::EArdaRHIResourceState::AccelStructRead};
         TlasParameters.mTlas = {
-            Tlas, rhi::EArdaRHIResourceState::AccelStructWrite};
-        const render_graph::FARDGPassHandle BuildTlas = Graph.AddPass(
+            Tlas, arda::EArdaRHIResourceState::AccelStructWrite};
+        const arda::FARDGPassHandle BuildTlas = Graph.AddPass(
             "BuildCornellTLASFromCompactedBLAS",
             &TlasParameters,
-            render_graph::EARDGPassFlags::Compute |
-                render_graph::EARDGPassFlags::NeverParallel,
+            arda::EARDGPassFlags::Compute |
+                arda::EARDGPassFlags::NeverParallel,
             [Flags = TlasDesc.mBuildFlags, Errors](
-                render_graph::FARDGPassExecutionContext& Context,
+                arda::FARDGPassExecutionContext& Context,
                 const FBuildTlasParameters& Frozen)
             {
-                rhi::FArdaRHIRayTracingInstanceDesc Instance;
+                arda::FArdaRHIRayTracingInstanceDesc Instance;
                 Instance.mBottomLevelAccelStruct.Reset(
                     Context.GetAccelStruct(Frozen.mBlas.mAccelStruct));
-                eastl::vector<rhi::FArdaRHIRayTracingInstanceDesc> Instances;
+                eastl::vector<arda::FArdaRHIRayTracingInstanceDesc> Instances;
                 Instances.push_back(eastl::move(Instance));
-                const rhi::FArdaRHIStatus Status =
+                const arda::FArdaRHIStatus Status =
                     Context.mUnsafeRawCommandList.BuildTopLevelAccelStruct(
                         *Context.GetAccelStruct(Frozen.mTlas.mAccelStruct),
                         Instances,
@@ -761,10 +761,10 @@ namespace arda::tests::cornell_box
     }
 
     bool FArdaCornellBoxRenderer::ExecuteGraph(
-        render_graph::FARDGBuilder& Graph,
+        arda::FARDGBuilder& Graph,
         const char* Description)
     {
-        const render_graph::FARDGExecutionResult& Result = Graph.Execute();
+        const arda::FARDGExecutionResult& Result = Graph.Execute();
         if (!Result.mStatus)
         {
             mError = Description ? Description : "Cornell graph";
@@ -837,7 +837,7 @@ namespace arda::tests::cornell_box
     }
 
     bool FArdaCornellBoxRenderer::RenderFrame(
-        backend::IArdaSwapChain& SwapChain)
+        arda::IArdaSwapChain& SwapChain)
     {
         if (!mbSceneReady)
         {
@@ -845,7 +845,7 @@ namespace arda::tests::cornell_box
             return false;
         }
 
-        rhi::FArdaRHIFramebufferRef Framebuffer;
+        arda::FArdaRHIFramebufferRef Framebuffer;
         if (!SwapChain.AcquireFrame(Framebuffer))
         {
             mError = SwapChain.GetError();
@@ -893,65 +893,65 @@ namespace arda::tests::cornell_box
             return false;
         }
 
-        render_graph::FARDGBuilder Graph(CreateGraphContext());
+        arda::FARDGBuilder Graph(CreateGraphContext());
         auto* BackBuffer = Graph.RegisterExternalTexture(
             ColorAttachment.mTexture,
-            rhi::EArdaRHIResourceState::Present,
+            arda::EArdaRHIResourceState::Present,
             "Cornell back buffer");
         auto* Vertices = Graph.RegisterExternalBuffer(
             mVertexBuffer,
-            rhi::EArdaRHIResourceState::AccelStructBuildInput,
+            arda::EArdaRHIResourceState::AccelStructBuildInput,
             "Cornell vertices");
         auto* Indices = Graph.RegisterExternalBuffer(
             mIndexBuffer,
-            rhi::EArdaRHIResourceState::AccelStructBuildInput,
+            arda::EArdaRHIResourceState::AccelStructBuildInput,
             "Cornell indices");
         auto* Materials = Graph.RegisterExternalBuffer(
             mMaterialBuffer,
-            rhi::EArdaRHIResourceState::ShaderResource,
+            arda::EArdaRHIResourceState::ShaderResource,
             "Cornell materials");
         auto* Tlas = Graph.RegisterExternalAccelStruct(
             mTlas,
-            rhi::EArdaRHIResourceState::AccelStructRead,
+            arda::EArdaRHIResourceState::AccelStructRead,
             "Cornell TLAS");
 
-        render_graph::FARDGTextureRef Accumulation = nullptr;
+        arda::FARDGTextureRef Accumulation = nullptr;
         const bool bCreateAccumulation = !mAccumulationTexture ||
             mAccumulationTexture->GetDesc().mWidth != Width ||
             mAccumulationTexture->GetDesc().mHeight != Height;
         if (bCreateAccumulation)
         {
-            rhi::FArdaRHITextureDesc Desc;
+            arda::FArdaRHITextureDesc Desc;
             Desc.mDebugName = "Cornell progressive accumulation";
             Desc.mWidth = Width;
             Desc.mHeight = Height;
-            Desc.mFormat = rhi::EArdaRHIFormat::RGBA32Float;
-            Desc.mUsage = rhi::EArdaRHITextureUsage::ShaderResource |
-                rhi::EArdaRHITextureUsage::UnorderedAccess;
+            Desc.mFormat = arda::EArdaRHIFormat::RGBA32Float;
+            Desc.mUsage = arda::EArdaRHITextureUsage::ShaderResource |
+                arda::EArdaRHITextureUsage::UnorderedAccess;
             Accumulation = Graph.CreateTexture(Desc);
             Graph.QueueTextureExtraction(
                 Accumulation,
                 mAccumulationTexture,
-                rhi::EArdaRHIResourceState::ShaderResource);
+                arda::EArdaRHIResourceState::ShaderResource);
             mAccumulatedSamples = 0;
         }
         else
         {
             Accumulation = Graph.RegisterExternalTexture(
                 mAccumulationTexture,
-                rhi::EArdaRHIResourceState::ShaderResource,
+                arda::EArdaRHIResourceState::ShaderResource,
                 "Cornell progressive accumulation");
         }
 
-        render_graph::FARDGBufferViewDesc VertexView;
+        arda::FARDGBufferViewDesc VertexView;
         VertexView.mBuffer = Vertices->GetHandle();
-        render_graph::FARDGBufferViewDesc IndexView;
+        arda::FARDGBufferViewDesc IndexView;
         IndexView.mBuffer = Indices->GetHandle();
-        render_graph::FARDGBufferViewDesc MaterialView;
+        arda::FARDGBufferViewDesc MaterialView;
         MaterialView.mBuffer = Materials->GetHandle();
-        render_graph::FARDGTextureViewDesc AccumulationView;
+        arda::FARDGTextureViewDesc AccumulationView;
         AccumulationView.mTexture = Accumulation->GetHandle();
-        AccumulationView.mFormat = rhi::EArdaRHIFormat::RGBA32Float;
+        AccumulationView.mFormat = arda::EArdaRHIFormat::RGBA32Float;
 
         auto* VertexSrv = Graph.CreateBufferSRV(
             "Cornell vertices SRV", VertexView);
@@ -964,22 +964,22 @@ namespace arda::tests::cornell_box
         auto* AccumulationSrv = Graph.CreateTextureSRV(
             "Cornell accumulation SRV", AccumulationView);
 
-        render_graph::FARDGBufferUAVRef SampleRadianceUav = nullptr;
-        render_graph::FARDGBufferSRVRef SampleRadianceSrv = nullptr;
+        arda::FARDGBufferUAVRef SampleRadianceUav = nullptr;
+        arda::FARDGBufferSRVRef SampleRadianceSrv = nullptr;
         if (DispatchSamples > 0)
         {
-            rhi::FArdaRHIBufferDesc SampleRadianceDesc;
+            arda::FArdaRHIBufferDesc SampleRadianceDesc;
             SampleRadianceDesc.mDebugName =
                 "Cornell parallel sample radiance";
             SampleRadianceDesc.mByteSize =
                 BytesPerSample * DispatchSamples;
             SampleRadianceDesc.mStructureStride = sizeof(float) * 4;
             SampleRadianceDesc.mUsage =
-                rhi::EArdaRHIBufferUsage::Structured |
-                rhi::EArdaRHIBufferUsage::ShaderResource |
-                rhi::EArdaRHIBufferUsage::UnorderedAccess;
+                arda::EArdaRHIBufferUsage::Structured |
+                arda::EArdaRHIBufferUsage::ShaderResource |
+                arda::EArdaRHIBufferUsage::UnorderedAccess;
             auto* SampleRadiance = Graph.CreateBuffer(SampleRadianceDesc);
-            render_graph::FARDGBufferViewDesc SampleRadianceView;
+            arda::FARDGBufferViewDesc SampleRadianceView;
             SampleRadianceView.mBuffer = SampleRadiance->GetHandle();
             SampleRadianceUav = Graph.CreateBufferUAV(
                 "Cornell parallel sample radiance UAV", SampleRadianceView);
@@ -1024,7 +1024,7 @@ namespace arda::tests::cornell_box
         {
             FPathTraceParameters TraceParameters;
             TraceParameters.mScene = {
-                Tlas, rhi::EArdaRHIResourceState::AccelStructRead};
+                Tlas, arda::EArdaRHIResourceState::AccelStructRead};
             TraceParameters.mVertices = VertexSrv;
             TraceParameters.mIndices = IndexSrv;
             TraceParameters.mMaterials = MaterialSrv;
@@ -1035,20 +1035,20 @@ namespace arda::tests::cornell_box
                 &TraceParameters,
                 {Width, Height, DispatchSamples},
                 [this, Errors](
-                    render_graph::FARDGPassExecutionContext& Context,
+                    arda::FARDGPassExecutionContext& Context,
                     const FPathTraceParameters&)
                 {
-                    rhi::FArdaRHIRayTracingState State;
+                    arda::FArdaRHIRayTracingState State;
                     State.mShaderTable = mShaderTable;
                     State.mBindings.push_back(
                         Context.CreateBindingSet(*mRayGenerationShader));
-                    const rhi::FArdaRHIStatus Status =
+                    const arda::FArdaRHIStatus Status =
                         Context.mUnsafeRawCommandList.SetRayTracingState(State);
                     if (!Status)
                         Errors->Record("PathTraceCornellBox bind failed", Status.mMessage);
                 },
-                render_graph::EARDGPassFlags::Compute |
-                    render_graph::EARDGPassFlags::NeverParallel);
+                arda::EARDGPassFlags::Compute |
+                    arda::EARDGPassFlags::NeverParallel);
 
             FAccumulateParameters AccumulateParameters;
             AccumulateParameters.mSampleRadiance = SampleRadianceSrv;
@@ -1059,13 +1059,13 @@ namespace arda::tests::cornell_box
                 &AccumulateParameters,
                 {(Width + 7) / 8, (Height + 7) / 8, 1},
                 [this, Errors](
-                    render_graph::FARDGPassExecutionContext& Context,
+                    arda::FARDGPassExecutionContext& Context,
                     const FAccumulateParameters&)
                 {
-                    rhi::FArdaRHIComputeState State;
+                    arda::FArdaRHIComputeState State;
                     State.mBindings.push_back(
                         Context.CreateBindingSet(*mAccumulateShader));
-                    const rhi::FArdaRHIStatus Status =
+                    const arda::FArdaRHIStatus Status =
                         mPipelineStateCache->SetComputePipelineState(
                             Context.mUnsafeRawCommandList,
                             mAccumulatePipelineInitializer,
@@ -1077,8 +1077,8 @@ namespace arda::tests::cornell_box
                             Status.mMessage);
                     }
                 },
-                render_graph::EARDGPassFlags::Compute |
-                    render_graph::EARDGPassFlags::NeverParallel);
+                arda::EARDGPassFlags::Compute |
+                    arda::EARDGPassFlags::NeverParallel);
         }
 
         FPresentParameters PresentParameters;
@@ -1089,14 +1089,14 @@ namespace arda::tests::cornell_box
         (void)Graph.AddPass(
             "ToneMapAndPresentCornellBox",
             &PresentParameters,
-            render_graph::EARDGPassFlags::Raster |
-                render_graph::EARDGPassFlags::NeverParallel,
+            arda::EARDGPassFlags::Raster |
+                arda::EARDGPassFlags::NeverParallel,
             [this, Framebuffer, Width, Height, Errors](
-                render_graph::FARDGPassExecutionContext& Context,
+                arda::FARDGPassExecutionContext& Context,
                 const FPresentParameters& Frozen)
             {
                 (void)Context.GetTexture(Frozen.mTargets.mColor[0].mTexture);
-                rhi::FArdaRHIGraphicsState State;
+                arda::FArdaRHIGraphicsState State;
                 State.mFramebuffer = Framebuffer;
                 State.mBindings.push_back(
                     Context.CreateBindingSet(*mPresentPixelShader));
@@ -1106,7 +1106,7 @@ namespace arda::tests::cornell_box
                 State.mScissors.push_back({
                     0, static_cast<int32_t>(Width),
                     0, static_cast<int32_t>(Height)});
-                const rhi::FArdaRHIStatus Status =
+                const arda::FArdaRHIStatus Status =
                     mPipelineStateCache->SetGraphicsPipelineState(
                         Context.mUnsafeRawCommandList,
                         mPresentPipelineInitializer,
@@ -1138,9 +1138,9 @@ namespace arda::tests::cornell_box
         return true;
     }
 
-    render_graph::FARDGRenderGraphContext
+    arda::FARDGRenderGraphContext
     FArdaCornellBoxRenderer::CreateGraphContext() const
     {
-        return render_graph::MakeRenderGraphContext(mDevice);
+        return arda::MakeRenderGraphContext(mDevice);
     }
 }

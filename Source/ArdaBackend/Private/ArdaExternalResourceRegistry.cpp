@@ -2,7 +2,7 @@
 
 #include "ArdaExternalInterop.h"
 
-namespace arda::backend
+namespace arda
 {
     void SetBackendError(const char* Error);
 
@@ -27,7 +27,7 @@ namespace arda::backend
         }
 
         template <typename Ref, typename Desc, typename Resolver, typename Importer>
-        rhi::TArdaRHIResult<Ref> ImportExternalResource(
+        arda::TArdaRHIResult<Ref> ImportExternalResource(
             const char* ProviderName,
             uint64_t Id,
             Resolver Resolve,
@@ -35,8 +35,8 @@ namespace arda::backend
         {
             if (!ProviderName || !ProviderName[0])
             {
-                return { {}, rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidArgument,
+                return { {}, arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::InvalidArgument,
                     "External resource provider name must be non-empty.") };
             }
 
@@ -53,14 +53,14 @@ namespace arda::backend
             }
             if (!Provider)
             {
-                return { {}, rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidArgument,
+                return { {}, arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::InvalidArgument,
                     "External resource provider is not registered.") };
             }
             if (!IsBackendInitialized())
             {
-                return { {}, rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidState,
+                return { {}, arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::InvalidState,
                     "External resources require an initialized backend.") };
             }
             const FArdaBackendConfiguration& Configuration =
@@ -69,22 +69,22 @@ namespace arda::backend
             if (!RequiredBackendName || !RequiredBackendName[0] ||
                 Configuration.mBackendName != RequiredBackendName)
             {
-                return { {}, rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::WrongDevice,
+                return { {}, arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::WrongDevice,
                     "External resource provider module does not match the active device.") };
             }
 
             Desc Description;
-            rhi::FArdaRHIStatus Status = (Provider->*Resolve)(Id, Description);
+            arda::FArdaRHIStatus Status = (Provider->*Resolve)(Id, Description);
             if (!Status)
             {
                 return { {}, eastl::move(Status) };
             }
-            rhi::FArdaRHIDeviceRef Device = GetDevice();
+            arda::FArdaRHIDeviceRef Device = GetDevice();
             if (!Device)
             {
-                return { {}, rhi::FArdaRHIStatus::Error(
-                    rhi::EArdaRHIResult::InvalidState,
+                return { {}, arda::FArdaRHIStatus::Error(
+                    arda::EArdaRHIResult::InvalidState,
                     "The active backend has no RHI device.") };
             }
             return (Device.Get()->*Import)(Description);
@@ -169,29 +169,29 @@ namespace arda::backend
         return nullptr;
     }
 
-    rhi::TArdaRHIResult<rhi::FArdaRHITextureRef> ImportExternalTexture(
+    arda::TArdaRHIResult<arda::FArdaRHITextureRef> ImportExternalTexture(
         const char* ProviderName,
         uint64_t Id)
     {
         return ImportExternalResource<
-            rhi::FArdaRHITextureRef,
-            rhi::FArdaRHINativeTextureImportDesc>(
+            arda::FArdaRHITextureRef,
+            arda::FArdaRHINativeTextureImportDesc>(
             ProviderName,
             Id,
             &IArdaExternalResourceProvider::ResolveNativeTexture,
-            &rhi::IArdaRHIDevice::ImportNativeTexture);
+            &arda::IArdaRHIDevice::ImportNativeTexture);
     }
 
-    rhi::TArdaRHIResult<rhi::FArdaRHIBufferRef> ImportExternalBuffer(
+    arda::TArdaRHIResult<arda::FArdaRHIBufferRef> ImportExternalBuffer(
         const char* ProviderName,
         uint64_t Id)
     {
         return ImportExternalResource<
-            rhi::FArdaRHIBufferRef,
-            rhi::FArdaRHINativeBufferImportDesc>(
+            arda::FArdaRHIBufferRef,
+            arda::FArdaRHINativeBufferImportDesc>(
             ProviderName,
             Id,
             &IArdaExternalResourceProvider::ResolveNativeBuffer,
-            &rhi::IArdaRHIDevice::ImportNativeBuffer);
+            &arda::IArdaRHIDevice::ImportNativeBuffer);
     }
 }

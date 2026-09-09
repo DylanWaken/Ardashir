@@ -1,10 +1,11 @@
 #include "ArdaBackendCorePch.h"
 
 #include "ArdaLog.h"
+#include "ArdaStringFormat.h"
 
 #include <cstdarg>
 
-namespace arda::backend
+namespace arda
 {
     namespace
     {
@@ -47,46 +48,7 @@ namespace arda::backend
             output(Record, userData);
         }
 
-        eastl::string FormatLogMessage(
-            const char* Format,
-            std::va_list Arguments)
-        {
-            if (!Format)
-            {
-                return {};
-            }
 
-            std::va_list countArguments;
-            va_copy(countArguments, Arguments);
-            const int requiredLength =
-                std::vsnprintf(nullptr, 0, Format, countArguments);
-            va_end(countArguments);
-
-            if (requiredLength < 0)
-            {
-                return "Log message formatting failed.";
-            }
-
-            eastl::string message(
-                static_cast<std::size_t>(requiredLength) + 1,
-                '\0');
-            std::va_list formatArguments;
-            va_copy(formatArguments, Arguments);
-            const int writtenLength = std::vsnprintf(
-                message.data(),
-                message.size(),
-                Format,
-                formatArguments);
-            va_end(formatArguments);
-
-            if (writtenLength < 0)
-            {
-                return "Log message formatting failed.";
-            }
-
-            message.resize(static_cast<std::size_t>(writtenLength));
-            return message;
-        }
     }
 
     FArdaLogCategory::FArdaLogCategory(
@@ -176,7 +138,7 @@ namespace arda::backend
 
         std::va_list arguments;
         va_start(arguments, format);
-        const eastl::string message = FormatLogMessage(format, arguments);
+        const eastl::string message = FormatArdaMessage(format, arguments, "Log message formatting failed.");
         va_end(arguments);
 
         const FArdaLogRecord record{

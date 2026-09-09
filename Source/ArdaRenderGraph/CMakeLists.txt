@@ -1,24 +1,7 @@
-file(GLOB_RECURSE ARDA_RENDER_GRAPH_SOURCES CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/Public/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Private/*.cpp"
-)
-
-add_library(ArdaRenderGraph STATIC ${ARDA_RENDER_GRAPH_SOURCES})
-add_library(Ardashir::ArdaRenderGraph ALIAS ArdaRenderGraph)
-
-target_compile_features(ArdaRenderGraph PUBLIC cxx_std_17)
-target_include_directories(ArdaRenderGraph
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Public"
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private"
-)
+ardashir_add_module(ArdaRenderGraph Private/ArdaRenderGraphPch.h)
 target_link_libraries(ArdaRenderGraph
-    PUBLIC Ardashir::ArdaBackend Ardashir::EASTL
-    PRIVATE Ardashir::ArdaTrace
-)
-target_precompile_headers(ArdaRenderGraph PRIVATE Private/ArdaRenderGraphPch.h)
-
-set_target_properties(ArdaRenderGraph PROPERTIES FOLDER "Ardashir")
+    PUBLIC Ardashir::ArdaBackend
+    PRIVATE Ardashir::ArdaTrace)
 
 if(ARDASHIR_BUILD_TESTS)
     file(GLOB_RECURSE ARDA_RENDER_GRAPH_TEST_SOURCES CONFIGURE_DEPENDS

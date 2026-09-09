@@ -10,7 +10,7 @@
 
 ARDA_DEFINE_LOG_CATEGORY_NAMED(LogCornellBox, "CornellBox", Log);
 
-namespace arda::tests::cornell_box
+namespace arda
 {
     namespace
     {
@@ -25,30 +25,30 @@ namespace arda::tests::cornell_box
             uint32_t mWindowHeight = 720;
             bool mbHidden = false;
             bool mbFullscreen = false;
-            backend::EArdaShaderCompilationMode mShaderMode =
-                backend::EArdaShaderCompilationMode::OnDemand;
+            arda::EArdaShaderCompilationMode mShaderMode =
+                arda::EArdaShaderCompilationMode::OnDemand;
             std::filesystem::path mShaderCacheDirectory;
             std::filesystem::path mShaderSourceDirectory;
         };
 
-        class FArdaMessageCallback final : public backend::IArdaDiagnosticCallback
+        class FArdaMessageCallback final : public arda::IArdaDiagnosticCallback
         {
         public:
             void Message(
-                backend::EArdaDiagnosticSeverity Severity,
+                arda::EArdaDiagnosticSeverity Severity,
                 const char* MessageText) override
             {
                 const char* Text = MessageText ? MessageText : "";
                 switch (Severity)
                 {
-                case backend::EArdaDiagnosticSeverity::Warning:
+                case arda::EArdaDiagnosticSeverity::Warning:
                     ARDA_LOG(LogCornellBox, Warning, "%s", Text);
                     break;
-                case backend::EArdaDiagnosticSeverity::Error:
+                case arda::EArdaDiagnosticSeverity::Error:
                     ++mErrorCount;
                     ARDA_LOG(LogCornellBox, Error, "%s", Text);
                     break;
-                case backend::EArdaDiagnosticSeverity::Fatal:
+                case arda::EArdaDiagnosticSeverity::Fatal:
                     ++mErrorCount;
                     ARDA_LOG(LogCornellBox, Fatal, "%s", Text);
                     break;
@@ -71,7 +71,7 @@ namespace arda::tests::cornell_box
         {
         public:
             explicit FBackendShutdownGuard(
-                eastl::unique_ptr<backend::IArdaSwapChain>& SwapChain)
+                eastl::unique_ptr<arda::IArdaSwapChain>& SwapChain)
                 : mSwapChain(SwapChain)
             {
             }
@@ -83,12 +83,12 @@ namespace arda::tests::cornell_box
                     mSwapChain->WaitForIdle();
                     mSwapChain.reset();
                 }
-                if (backend::IsBackendInitialized())
-                    backend::ShutdownBackend();
+                if (arda::IsBackendInitialized())
+                    arda::ShutdownBackend();
             }
 
         private:
-            eastl::unique_ptr<backend::IArdaSwapChain>& mSwapChain;
+            eastl::unique_ptr<arda::IArdaSwapChain>& mSwapChain;
         };
 
         bool ParseUInt(
@@ -140,13 +140,13 @@ namespace arda::tests::cornell_box
                     const eastl::string_view Value(Arguments[++Index]);
                     if (Value == "startup")
                         Options.mShaderMode =
-                            backend::EArdaShaderCompilationMode::Startup;
+                            arda::EArdaShaderCompilationMode::Startup;
                     else if (Value == "ondemand")
                         Options.mShaderMode =
-                            backend::EArdaShaderCompilationMode::OnDemand;
+                            arda::EArdaShaderCompilationMode::OnDemand;
                     else if (Value == "load-only")
                         Options.mShaderMode =
-                            backend::EArdaShaderCompilationMode::LoadOnly;
+                            arda::EArdaShaderCompilationMode::LoadOnly;
                     else
                     {
                         Error = "--shader-mode must be startup, ondemand, or load-only.";
@@ -264,8 +264,8 @@ namespace arda::tests::cornell_box
                 Options.mShaderSourceDirectory =
                     GArdaCornellBoxShaderSourceDirectory;
             }
-            const backend::FArdaShaderDirectoryStatus DirectoryStatus =
-                backend::AddShaderSourceDirectoryMapping(
+            const arda::FArdaShaderDirectoryStatus DirectoryStatus =
+                arda::AddShaderSourceDirectoryMapping(
                     "/ArdaTests/CornellBox",
                     Options.mShaderSourceDirectory);
             if (!DirectoryStatus)
@@ -277,7 +277,7 @@ namespace arda::tests::cornell_box
             }
 
             FArdaMessageCallback Messages;
-            backend::FArdaBackendConfiguration Configuration;
+            arda::FArdaBackendConfiguration Configuration;
             Configuration.mBackendName = Options.mBackendName;
             Configuration.mbEnableValidation = true;
             Configuration.mMessageCallback = &Messages;
@@ -286,11 +286,11 @@ namespace arda::tests::cornell_box
             Configuration.mRequiredFeatures.mbRequireHardwareRayTracing = true;
             Configuration.mRequiredFeatures.mbRequireRayTracingPipelines = true;
             Configuration.mRequiredFeatures.mbRequireAccelerationStructures = true;
-            if (!backend::ConfigureBackend(Configuration))
+            if (!arda::ConfigureBackend(Configuration))
             {
                 ARDA_LOG(
                     LogCornellBox, Error, "%s",
-                    backend::GetBackendError().c_str());
+                    arda::GetBackendError().c_str());
                 return EXIT_FAILURE;
             }
 
@@ -307,27 +307,27 @@ namespace arda::tests::cornell_box
                 return Options.mbHidden ? SkippedExitCode : EXIT_FAILURE;
             }
 
-            eastl::unique_ptr<backend::IArdaSwapChain> SwapChain;
+            eastl::unique_ptr<arda::IArdaSwapChain> SwapChain;
             FBackendShutdownGuard Shutdown(SwapChain);
-            const backend::EArdaInitializeResult InitializeResult =
-                backend::InitializeBackendForPresentation(
+            const arda::EArdaInitializeResult InitializeResult =
+                arda::InitializeBackendForPresentation(
                     Window,
                     Window.GetWidth(),
                     Window.GetHeight(),
                     SwapChain);
-            if (InitializeResult != backend::EArdaInitializeResult::Success)
+            if (InitializeResult != arda::EArdaInitializeResult::Success)
             {
                 ARDA_LOG(
                     LogCornellBox, Error, "%s",
-                    backend::GetBackendError().c_str());
-                return InitializeResult == backend::EArdaInitializeResult::Unavailable ||
-                    InitializeResult == backend::EArdaInitializeResult::ValidationUnavailable
+                    arda::GetBackendError().c_str());
+                return InitializeResult == arda::EArdaInitializeResult::Unavailable ||
+                    InitializeResult == arda::EArdaInitializeResult::ValidationUnavailable
                     ? SkippedExitCode : EXIT_FAILURE;
             }
 
             FArdaCornellBoxRenderer Renderer;
             if (!Renderer.Initialize(
-                    backend::GetDevice(),
+                    arda::GetDevice(),
                     SwapChain->GetFormat(),
                     Options.mRenderer))
             {
@@ -391,5 +391,5 @@ namespace arda::tests::cornell_box
 
 int main(int ArgumentCount, char** Arguments)
 {
-    return arda::tests::cornell_box::Run(ArgumentCount, Arguments);
+    return arda::Run(ArgumentCount, Arguments);
 }

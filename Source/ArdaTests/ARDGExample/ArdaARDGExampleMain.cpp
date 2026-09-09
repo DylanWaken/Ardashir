@@ -13,7 +13,7 @@
 
 ARDA_DEFINE_LOG_CATEGORY_NAMED(LogARDGExample, "ARDGExample", Log);
 
-namespace arda::tests::ardg_example
+namespace arda
 {
     namespace
     {
@@ -28,30 +28,30 @@ namespace arda::tests::ardg_example
             bool mbHidden = false;
             bool mbFullscreen = false;
             std::filesystem::path mShaderCookOutputDirectory;
-            backend::EArdaShaderCompilationMode mShaderMode =
-                backend::EArdaShaderCompilationMode::OnDemand;
+            arda::EArdaShaderCompilationMode mShaderMode =
+                arda::EArdaShaderCompilationMode::OnDemand;
             std::filesystem::path mShaderCacheDirectory;
             std::filesystem::path mShaderSourceDirectory;
         };
 
-        class FArdaMessageCallback final : public backend::IArdaDiagnosticCallback
+        class FArdaMessageCallback final : public arda::IArdaDiagnosticCallback
         {
         public:
             void Message(
-                backend::EArdaDiagnosticSeverity severity,
+                arda::EArdaDiagnosticSeverity severity,
                 const char* messageText) override
             {
                 const char* text = messageText ? messageText : "";
                 switch (severity)
                 {
-                case backend::EArdaDiagnosticSeverity::Warning:
+                case arda::EArdaDiagnosticSeverity::Warning:
                     ARDA_LOG(LogARDGExample, Warning, "%s", text);
                     break;
-                case backend::EArdaDiagnosticSeverity::Error:
+                case arda::EArdaDiagnosticSeverity::Error:
                     ++mErrorCount;
                     ARDA_LOG(LogARDGExample, Error, "%s", text);
                     break;
-                case backend::EArdaDiagnosticSeverity::Fatal:
+                case arda::EArdaDiagnosticSeverity::Fatal:
                     ++mErrorCount;
                     ARDA_LOG(LogARDGExample, Fatal, "%s", text);
                     break;
@@ -71,7 +71,7 @@ namespace arda::tests::ardg_example
         {
         public:
             explicit FArdaBackendShutdownGuard(
-                eastl::unique_ptr<backend::IArdaSwapChain>& swapChain)
+                eastl::unique_ptr<arda::IArdaSwapChain>& swapChain)
                 : mSwapChain(swapChain)
             {
             }
@@ -83,14 +83,14 @@ namespace arda::tests::ardg_example
                     mSwapChain->WaitForIdle();
                     mSwapChain.reset();
                 }
-                if (backend::IsBackendInitialized())
+                if (arda::IsBackendInitialized())
                 {
-                    backend::ShutdownBackend();
+                    arda::ShutdownBackend();
                 }
             }
 
         private:
-            eastl::unique_ptr<backend::IArdaSwapChain>& mSwapChain;
+            eastl::unique_ptr<arda::IArdaSwapChain>& mSwapChain;
         };
 
         bool ParseOptions(
@@ -144,13 +144,13 @@ namespace arda::tests::ardg_example
                     const eastl::string_view mode(arguments[++index]);
                     if (mode == "startup")
                         options.mShaderMode =
-                            backend::EArdaShaderCompilationMode::Startup;
+                            arda::EArdaShaderCompilationMode::Startup;
                     else if (mode == "ondemand")
                         options.mShaderMode =
-                            backend::EArdaShaderCompilationMode::OnDemand;
+                            arda::EArdaShaderCompilationMode::OnDemand;
                     else if (mode == "load-only")
                         options.mShaderMode =
-                            backend::EArdaShaderCompilationMode::LoadOnly;
+                            arda::EArdaShaderCompilationMode::LoadOnly;
                     else
                     {
                         error =
@@ -226,8 +226,8 @@ namespace arda::tests::ardg_example
 
         int CookRegisteredShaders(const std::filesystem::path& outputDirectory)
         {
-            const backend::FArdaShaderDirectoryStatus scanStatus =
-                backend::ScanAndFreezeShaderSourceDirectories();
+            const arda::FArdaShaderDirectoryStatus scanStatus =
+                arda::ScanAndFreezeShaderSourceDirectories();
             if (!scanStatus)
             {
                 ARDA_LOG(
@@ -239,17 +239,17 @@ namespace arda::tests::ardg_example
             }
 
             eastl::vector<eastl::string> backends;
-            for (const backend::FArdaBackendModuleDescriptor& module :
-                 backend::EnumerateBackendModules())
+            for (const arda::FArdaBackendModuleDescriptor& module :
+                 arda::EnumerateBackendModules())
             {
                 if (!module.mShaderArtifactExtension.empty())
                     backends.push_back(module.mName);
             }
-            const backend::FArdaShaderCompileResult result =
-                backend::CompileRegisteredShaderArtifacts(
+            const arda::FArdaShaderCompileResult result =
+                arda::CompileRegisteredShaderArtifacts(
                     outputDirectory,
                     backends);
-            for (const backend::FArdaShaderCompileDiagnostic& diagnostic :
+            for (const arda::FArdaShaderCompileDiagnostic& diagnostic :
                  result.mDiagnostics)
             {
                 const std::string sourcePath = diagnostic.mSourcePath.string();
@@ -304,8 +304,8 @@ namespace arda::tests::ardg_example
             if (options.mShaderSourceDirectory.empty())
                 options.mShaderSourceDirectory = GArdaARDGShaderSourceDirectory;
 
-            const backend::FArdaShaderDirectoryStatus shaderDirectoryStatus =
-                backend::AddShaderSourceDirectoryMapping(
+            const arda::FArdaShaderDirectoryStatus shaderDirectoryStatus =
+                arda::AddShaderSourceDirectoryMapping(
                     "/ArdaTests/ARDGExample",
                     options.mShaderSourceDirectory);
             if (!shaderDirectoryStatus)
@@ -325,19 +325,19 @@ namespace arda::tests::ardg_example
             }
 
             FArdaMessageCallback messageCallback;
-            backend::FArdaBackendConfiguration configuration;
+            arda::FArdaBackendConfiguration configuration;
             configuration.mBackendName = options.mBackendName;
             configuration.mbEnableValidation = true;
             configuration.mMessageCallback = &messageCallback;
             configuration.mShaderCompilationMode = options.mShaderMode;
             configuration.mShaderCacheDirectory = options.mShaderCacheDirectory;
-            if (!backend::ConfigureBackend(configuration))
+            if (!arda::ConfigureBackend(configuration))
             {
                 ARDA_LOG(
                     LogARDGExample,
                     Error,
                     "%s",
-                    backend::GetBackendError().c_str());
+                    arda::GetBackendError().c_str());
                 return EXIT_FAILURE;
             }
 
@@ -357,30 +357,30 @@ namespace arda::tests::ardg_example
                 return options.mbHidden ? SkippedExitCode : EXIT_FAILURE;
             }
 
-            eastl::unique_ptr<backend::IArdaSwapChain> swapChain;
+            eastl::unique_ptr<arda::IArdaSwapChain> swapChain;
             FArdaBackendShutdownGuard shutdownGuard(swapChain);
-            const backend::EArdaInitializeResult result =
-                backend::InitializeBackendForPresentation(
+            const arda::EArdaInitializeResult result =
+                arda::InitializeBackendForPresentation(
                     window,
                     window.GetWidth(),
                     window.GetHeight(),
                     swapChain);
-            if (result != backend::EArdaInitializeResult::Success)
+            if (result != arda::EArdaInitializeResult::Success)
             {
                 ARDA_LOG(
                     LogARDGExample,
                     Error,
                     "%s",
-                    backend::GetBackendError().c_str());
-                return result == backend::EArdaInitializeResult::Unavailable ||
-                    result == backend::EArdaInitializeResult::ValidationUnavailable
+                    arda::GetBackendError().c_str());
+                return result == arda::EArdaInitializeResult::Unavailable ||
+                    result == arda::EArdaInitializeResult::ValidationUnavailable
                     ? SkippedExitCode
                     : EXIT_FAILURE;
             }
 
             FArdaTerrainRenderer renderer;
             if (!renderer.Initialize(
-                    backend::GetDevice(),
+                    arda::GetDevice(),
                     swapChain->GetFormat()))
             {
                 ARDA_LOG(
@@ -448,5 +448,5 @@ namespace arda::tests::ardg_example
 
 int main(int argumentCount, char** arguments)
 {
-    return arda::tests::ardg_example::Run(argumentCount, arguments);
+    return arda::Run(argumentCount, arguments);
 }

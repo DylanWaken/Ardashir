@@ -12,21 +12,21 @@
 namespace
 {
     bool ConfigureLinkedBackend(
-        arda::backend::FArdaBackendConfiguration& Configuration)
+        arda::FArdaBackendConfiguration& Configuration)
     {
-        const auto Modules = arda::backend::EnumerateBackendModules();
+        const auto Modules = arda::EnumerateBackendModules();
         if (Modules.empty())
             return false;
         Configuration.mBackendName = Modules.front().mName;
-        return arda::backend::ConfigureBackend(Configuration);
+        return arda::ConfigureBackend(Configuration);
     }
 
     struct FBackendShutdownGuard
     {
-        ~FBackendShutdownGuard() { arda::backend::ShutdownBackend(); }
+        ~FBackendShutdownGuard() { arda::ShutdownBackend(); }
     };
 
-    class FFakeResource final : public arda::rhi::IArdaRHIResource
+    class FFakeResource final : public arda::IArdaRHIResource
     {
     public:
         explicit FFakeResource(std::atomic<int>& Destructions)
@@ -38,9 +38,9 @@ namespace
             if (--mReferences == 0)
                 delete this;
         }
-        arda::rhi::EArdaRHIResourceType GetResourceType() const noexcept override
+        arda::EArdaRHIResourceType GetResourceType() const noexcept override
         {
-            return arda::rhi::EArdaRHIResourceType::Buffer;
+            return arda::EArdaRHIResourceType::Buffer;
         }
         const char* GetDebugName() const noexcept override { return "Fake"; }
 
@@ -53,7 +53,7 @@ namespace
 
 TEST(ArdaRHI, IntrusiveReferencesCopyMoveAndRelease)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     std::atomic<int> Destructions{ 0 };
 
     TArdaRHIRef<IArdaRHIResource> A(new FFakeResource(Destructions));
@@ -72,7 +72,7 @@ TEST(ArdaRHI, IntrusiveReferencesCopyMoveAndRelease)
 
 TEST(ArdaRHI, DescriptorEqualityAndHashAreStable)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     FArdaRHITextureDesc A;
     A.mWidth = 128;
     A.mHeight = 64;
@@ -91,7 +91,7 @@ TEST(ArdaRHI, DescriptorEqualityAndHashAreStable)
 
 TEST(ArdaRHI, FormatStorageMetadataCoversEveryKnownFormat)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     for (uint32_t Value = 1;
          Value < static_cast<uint32_t>(EArdaRHIFormat::Count);
          ++Value)
@@ -120,7 +120,7 @@ TEST(ArdaRHI, FormatStorageMetadataCoversEveryKnownFormat)
 
 TEST(ArdaRHI, QueueIndexAndShaderStageClassificationHaveOneMapping)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     static_assert(ArdaRHIQueueTypeCount == 3);
     EXPECT_EQ(GetArdaRHIQueueIndex(EArdaRHIQueueType::Graphics), 0u);
     EXPECT_EQ(GetArdaRHIQueueIndex(EArdaRHIQueueType::Compute), 1u);
@@ -136,7 +136,7 @@ TEST(ArdaRHI, QueueIndexAndShaderStageClassificationHaveOneMapping)
 
 TEST(ArdaRHI, RayTracingTierIsDerivedFromAbilities)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     FArdaRHIRayTracingCapabilities Capabilities;
     EXPECT_EQ(Capabilities.GetTier(), EArdaRHIRayTracingTier::None);
 
@@ -163,7 +163,7 @@ TEST(ArdaRHI, RayTracingTierIsDerivedFromAbilities)
 
 TEST(ArdaRHI, TextureCopyAndResolveUseCentralRegionPolicy)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     FArdaRHITextureDesc Source;
     Source.mWidth = 16;
     Source.mHeight = 8;
@@ -227,7 +227,7 @@ TEST(ArdaRHI, TextureCopyAndResolveUseCentralRegionPolicy)
 
 TEST(ArdaRHI, InputLayoutIdentityContainsOnlyVertexAttributes)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     FArdaRHIInputLayoutDesc First;
     First.mAttributes.push_back(
         {"POSITION", EArdaRHIFormat::RGB32Float, 1, 0, 0, 12, false});
@@ -243,7 +243,7 @@ TEST(ArdaRHI, InputLayoutIdentityContainsOnlyVertexAttributes)
 
 TEST(ArdaRHI, NativeImportDescriptorEqualityIncludesLifetimeTokenIdentity)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     auto FirstToken = eastl::make_shared<int>(1);
     auto SecondToken = eastl::make_shared<int>(1);
 
@@ -272,7 +272,7 @@ TEST(ArdaRHI, NativeImportDescriptorEqualityIncludesLifetimeTokenIdentity)
 
 TEST(ArdaRHI, CacheKeyDescriptorsIgnoreDebugLabels)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     FArdaRHISamplerDesc A;
     A.mDebugName = "First";
     FArdaRHISamplerDesc B = A;
@@ -293,33 +293,33 @@ TEST(ArdaRHI, CacheKeyDescriptorsIgnoreDebugLabels)
 TEST(ArdaRHI, SamplerCacheReusesEvictsAndTrims)
 {
     using namespace arda;
-    backend::ShutdownBackend();
-    backend::FArdaBackendConfiguration Configuration;
+    arda::ShutdownBackend();
+    arda::FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureLinkedBackend(Configuration));
-    if (!backend::InitializeBackend())
-        GTEST_SKIP() << backend::GetBackendError().c_str();
+    if (!arda::InitializeBackend())
+        GTEST_SKIP() << arda::GetBackendError().c_str();
 
-    rhi::FArdaRHIDeviceRef Device = backend::GetDevice();
+    arda::FArdaRHIDeviceRef Device = arda::GetDevice();
     ASSERT_TRUE(Device);
-    rhi::FArdaRHISamplerDesc Desc;
+    arda::FArdaRHISamplerDesc Desc;
     auto First = Device->CreateSampler(Desc);
     auto Reused = Device->CreateSampler(Desc);
     ASSERT_TRUE(First);
     ASSERT_TRUE(Reused);
     EXPECT_EQ(First.mValue.Get(), Reused.mValue.Get());
 
-    rhi::FArdaRHIBindingLayoutDesc LayoutDesc;
-    LayoutDesc.mVisibility = rhi::EArdaRHIShaderStage::Pixel;
+    arda::FArdaRHIBindingLayoutDesc LayoutDesc;
+    LayoutDesc.mVisibility = arda::EArdaRHIShaderStage::Pixel;
     LayoutDesc.mItems.push_back(
-        { 0, 1, rhi::EArdaRHIBindingType::Sampler });
+        { 0, 1, arda::EArdaRHIBindingType::Sampler });
     auto LayoutA = Device->CreateBindingLayout(LayoutDesc);
     auto LayoutB = Device->CreateBindingLayout(LayoutDesc);
     ASSERT_TRUE(LayoutA);
     ASSERT_TRUE(LayoutB);
     EXPECT_EQ(LayoutA.mValue.Get(), LayoutB.mValue.Get());
 
-    rhi::FArdaRHIRasterState RasterDesc;
+    arda::FArdaRHIRasterState RasterDesc;
     auto RasterA = Device->CreateRasterState(RasterDesc);
     auto RasterB = Device->CreateRasterState(RasterDesc);
     ASSERT_TRUE(RasterA);
@@ -332,7 +332,7 @@ TEST(ArdaRHI, SamplerCacheReusesEvictsAndTrims)
 
     for (uint32_t Index = 1; Index <= 64; ++Index)
     {
-        rhi::FArdaRHISamplerDesc Unique = Desc;
+        arda::FArdaRHISamplerDesc Unique = Desc;
         Unique.mMipBias = static_cast<float>(Index);
         ASSERT_TRUE(Device->CreateSampler(Unique));
     }
@@ -356,62 +356,62 @@ TEST(ArdaRHI, SamplerCacheReusesEvictsAndTrims)
     RasterB.mValue = nullptr;
     TextureReference.mValue = nullptr;
     Device = nullptr;
-    backend::ShutdownBackend();
+    arda::ShutdownBackend();
 }
 
 TEST(ArdaRHI, NativeImportRejectsNonPortableTransferredOwnership)
 {
     using namespace arda;
-    backend::ShutdownBackend();
-    backend::FArdaBackendConfiguration Configuration;
+    arda::ShutdownBackend();
+    arda::FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureLinkedBackend(Configuration));
-    if (!backend::InitializeBackend())
-        GTEST_SKIP() << backend::GetBackendError().c_str();
+    if (!arda::InitializeBackend())
+        GTEST_SKIP() << arda::GetBackendError().c_str();
 
-    rhi::FArdaRHINativeTextureImportDesc Desc;
+    arda::FArdaRHINativeTextureImportDesc Desc;
     Desc.mNativeObject = 1;
-    Desc.mOwnership = rhi::EArdaRHINativeOwnership::Transferred;
-    Desc.mTexture.mFormat = rhi::EArdaRHIFormat::RGBA8UNorm;
-    const auto Result = backend::GetDevice()->ImportNativeTexture(Desc);
+    Desc.mOwnership = arda::EArdaRHINativeOwnership::Transferred;
+    Desc.mTexture.mFormat = arda::EArdaRHIFormat::RGBA8UNorm;
+    const auto Result = arda::GetDevice()->ImportNativeTexture(Desc);
     EXPECT_FALSE(Result);
-    EXPECT_EQ(Result.mStatus.mCode, rhi::EArdaRHIResult::Unsupported);
-    backend::ShutdownBackend();
+    EXPECT_EQ(Result.mStatus.mCode, arda::EArdaRHIResult::Unsupported);
+    arda::ShutdownBackend();
 }
 
 TEST(ArdaRHI, NativeBufferImportValidationIsDeterministic)
 {
     using namespace arda;
-    backend::ShutdownBackend();
+    arda::ShutdownBackend();
     FBackendShutdownGuard Shutdown;
-    backend::FArdaBackendConfiguration Configuration;
+    arda::FArdaBackendConfiguration Configuration;
     Configuration.mbEnableValidation = false;
     ASSERT_TRUE(ConfigureLinkedBackend(Configuration));
-    if (!backend::InitializeBackend())
-        GTEST_SKIP() << backend::GetBackendError().c_str();
+    if (!arda::InitializeBackend())
+        GTEST_SKIP() << arda::GetBackendError().c_str();
 
-    const rhi::FArdaRHIDeviceRef Device = backend::GetDevice();
+    const arda::FArdaRHIDeviceRef Device = arda::GetDevice();
     ASSERT_TRUE(Device);
 
-    rhi::FArdaRHINativeBufferImportDesc Null;
+    arda::FArdaRHINativeBufferImportDesc Null;
     Null.mBuffer.mByteSize = 64;
     auto NullResult = Device->ImportNativeBuffer(Null);
     EXPECT_FALSE(NullResult);
     EXPECT_EQ(
         NullResult.mStatus.mCode,
-        rhi::EArdaRHIResult::InvalidArgument);
+        arda::EArdaRHIResult::InvalidArgument);
     EXPECT_NE(
         NullResult.mStatus.mMessage.find("null"),
         eastl::string::npos);
 
     auto Transferred = Null;
     Transferred.mNativeObject = 1;
-    Transferred.mOwnership = rhi::EArdaRHINativeOwnership::Transferred;
+    Transferred.mOwnership = arda::EArdaRHINativeOwnership::Transferred;
     auto TransferredResult = Device->ImportNativeBuffer(Transferred);
     EXPECT_FALSE(TransferredResult);
     EXPECT_EQ(
         TransferredResult.mStatus.mCode,
-        rhi::EArdaRHIResult::Unsupported);
+        arda::EArdaRHIResult::Unsupported);
 
     auto InvalidDescriptor = Null;
     InvalidDescriptor.mNativeObject = 1;
@@ -421,19 +421,19 @@ TEST(ArdaRHI, NativeBufferImportValidationIsDeterministic)
     EXPECT_FALSE(InvalidDescriptorResult);
     EXPECT_EQ(
         InvalidDescriptorResult.mStatus.mCode,
-        rhi::EArdaRHIResult::InvalidArgument);
+        arda::EArdaRHIResult::InvalidArgument);
 
     auto WrongType = Null;
     WrongType.mNativeObject = 1;
     WrongType.mNativeType =
-        backend::GetBackendConfiguration().mBackendName == "native-d3d12"
-        ? rhi::EArdaRHINativeResourceType::VulkanBuffer
-        : rhi::EArdaRHINativeResourceType::D3D12Resource;
+        arda::GetBackendConfiguration().mBackendName == "native-d3d12"
+        ? arda::EArdaRHINativeResourceType::VulkanBuffer
+        : arda::EArdaRHINativeResourceType::D3D12Resource;
     auto WrongTypeResult = Device->ImportNativeBuffer(WrongType);
     EXPECT_FALSE(WrongTypeResult);
     EXPECT_EQ(
         WrongTypeResult.mStatus.mCode,
-        rhi::EArdaRHIResult::Unsupported);
+        arda::EArdaRHIResult::Unsupported);
     EXPECT_NE(
         WrongTypeResult.mStatus.mMessage.find("does not match"),
         eastl::string::npos);
@@ -441,7 +441,7 @@ TEST(ArdaRHI, NativeBufferImportValidationIsDeterministic)
 
 TEST(ArdaRHI, BindingItemsRetainTheirResources)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     std::atomic<int> Destructions{ 0 };
     TArdaRHIRef<IArdaRHIResource> Resource(new FFakeResource(Destructions));
 
@@ -457,18 +457,18 @@ TEST(ArdaRHI, BindingItemsRetainTheirResources)
 
 TEST(ArdaRHI, QueueCapabilitiesUseArdaQueueTypes)
 {
-    arda::rhi::FArdaRHICapabilities Capabilities;
+    arda::FArdaRHICapabilities Capabilities;
     Capabilities.mQueues.mbCompute = true;
 
-    EXPECT_TRUE(Capabilities.IsQueueSupported(arda::rhi::EArdaRHIQueueType::Graphics));
-    EXPECT_TRUE(Capabilities.IsQueueSupported(arda::rhi::EArdaRHIQueueType::Compute));
-    EXPECT_FALSE(Capabilities.IsQueueSupported(arda::rhi::EArdaRHIQueueType::Copy));
+    EXPECT_TRUE(Capabilities.IsQueueSupported(arda::EArdaRHIQueueType::Graphics));
+    EXPECT_TRUE(Capabilities.IsQueueSupported(arda::EArdaRHIQueueType::Compute));
+    EXPECT_FALSE(Capabilities.IsQueueSupported(arda::EArdaRHIQueueType::Copy));
     EXPECT_TRUE(Capabilities.mQueues.mbCompute);
 }
 
 TEST(ArdaRHI, AdvancedResourceDescriptorsRemainBackendOpaque)
 {
-    using namespace arda::rhi;
+    using namespace arda;
 
     FArdaRHIAccelStructDesc AccelStruct;
     AccelStruct.mbTopLevel = true;
@@ -497,7 +497,7 @@ TEST(ArdaRHI, AdvancedResourceDescriptorsRemainBackendOpaque)
 
 TEST(ArdaRHI, CapabilityAdmissionReportsEveryMissingAdvancedAbility)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     FArdaRHIFeatureRequirements Requirements;
     Requirements.mbRequireRayTracingInfrastructure = true;
     Requirements.mbRequireHardwareRayTracing = true;
@@ -563,7 +563,7 @@ TEST(ArdaRHI, CapabilityAdmissionReportsEveryMissingAdvancedAbility)
 
 TEST(ArdaRHI, CapabilityAdmissionAcceptsCompleteAdvancedDesktopProfile)
 {
-    using namespace arda::rhi;
+    using namespace arda;
     FArdaRHICapabilities Capabilities;
     Capabilities.mRayTracing.mbInfrastructure = true;
     Capabilities.mRayTracing.mbHardwareAccelerated = true;

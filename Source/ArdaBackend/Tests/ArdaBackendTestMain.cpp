@@ -9,16 +9,16 @@
 namespace
 {
     void EnableLocalRecords(
-        const arda::backend::FArdaShaderPermutationParameters&,
-        arda::backend::FArdaShaderCompileEnvironment& Environment)
+        const arda::FArdaShaderPermutationParameters&,
+        arda::FArdaShaderCompileEnvironment& Environment)
     {
         (void)Environment.SetDefine("ARDA_LOCAL_RECORDS", true);
     }
     bool CompileOnlyForD3D12(
-        const arda::backend::FArdaShaderPermutationParameters& Parameters)
+        const arda::FArdaShaderPermutationParameters& Parameters)
     {
         return Parameters.mBinaryFormat ==
-            arda::backend::EArdaShaderBinaryFormat::Dxil;
+            arda::EArdaShaderBinaryFormat::Dxil;
     }
 
     class FArdaRuntimeShaderEnvironment final : public testing::Environment
@@ -27,8 +27,7 @@ namespace
         void SetUp() override
         {
             using namespace arda;
-            using namespace backend;
-            using Stage = rhi::EArdaRHIShaderStage;
+            using Stage = arda::EArdaRHIShaderStage;
 
             const std::filesystem::path SourceDirectory =
                 ARDA_BACKEND_TEST_SHADER_SOURCE_DIR;

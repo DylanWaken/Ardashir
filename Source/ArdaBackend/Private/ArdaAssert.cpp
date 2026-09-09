@@ -1,6 +1,7 @@
 #include "ArdaBackendCorePch.h"
 
 #include "ArdaAssert.h"
+#include "ArdaStringFormat.h"
 
 #include <EASTL/atomic.h>
 #include <cstdarg>
@@ -16,7 +17,7 @@
 
 ARDA_DEFINE_LOG_CATEGORY(LogArdaAssert, Error);
 
-namespace arda::backend
+namespace arda
 {
     namespace
     {
@@ -43,46 +44,24 @@ namespace arda::backend
             std::abort();
         }
 
-        eastl::string FormatAssertMessage(
-            const char* format,
-            std::va_list arguments)
+        bool ReportAssertionFailure(
+            bool bFatal, const char* Expression, const char* File,
+            uint32_t Line, const char* Function, const char* Message = nullptr) noexcept
         {
-            if (!format)
-            {
-                return {};
-            }
-
-            std::va_list countArguments;
-            va_copy(countArguments, arguments);
-            const int requiredLength =
-                std::vsnprintf(nullptr, 0, format, countArguments);
-            va_end(countArguments);
-
-            if (requiredLength < 0)
-            {
-                return "Assertion message formatting failed.";
-            }
-
-            eastl::string message(
-                static_cast<std::size_t>(requiredLength) + 1,
-                '\0');
-            std::va_list formatArguments;
-            va_copy(formatArguments, arguments);
-            const int writtenLength = std::vsnprintf(
-                message.data(),
-                message.size(),
-                format,
-                formatArguments);
-            va_end(formatArguments);
-
-            if (writtenLength < 0)
-            {
-                return "Assertion message formatting failed.";
-            }
-
-            message.resize(static_cast<std::size_t>(writtenLength));
-            return message;
+            const auto Verbosity = bFatal ? EArdaLogVerbosity::Fatal : EArdaLogVerbosity::Error;
+            Logf(LogArdaAssert, Verbosity, File, Line, Function, "%s failed: %s",
+                 bFatal ? "Assertion" : "Ensure", Expression ? Expression : "<unknown>");
+            if (Message)
+                Logf(LogArdaAssert, Verbosity, File, Line, Function, "  %s", Message);
+            Logf(LogArdaAssert, Verbosity, File, Line, Function, "  at %s (%s:%u)",
+                 Function ? Function : "<unknown>", File ? File : "<unknown>", Line);
+            if (bFatal || GetEnsureBehavior() == EArdaEnsureBehavior::Break)
+                DebugBreakIfAttached();
+            if (bFatal)
+                TerminateProcess();
+            return false;
         }
+
     }
 
     void SetEnsureBehavior(EArdaEnsureBehavior behavior) noexcept
@@ -101,20 +80,7 @@ namespace arda::backend
         std::uint32_t line,
         const char* function) noexcept
     {
-        ARDA_LOG(
-            LogArdaAssert,
-            Fatal,
-            "Assertion failed: %s",
-            expression ? expression : "<unknown>");
-        ARDA_LOG(
-            LogArdaAssert,
-            Fatal,
-            "  at %s (%s:%u)",
-            function ? function : "<unknown>",
-            file ? file : "<unknown>",
-            line);
-        DebugBreakIfAttached();
-        TerminateProcess();
+        ReportAssertionFailure(true, expression, file, line, function);
     }
 
     void ReportFatalCheckf(
@@ -127,28 +93,10 @@ namespace arda::backend
     {
         std::va_list arguments;
         va_start(arguments, format);
-        const eastl::string message = FormatAssertMessage(format, arguments);
+        const eastl::string message = FormatArdaMessage(format, arguments, "Assertion message formatting failed.");
         va_end(arguments);
 
-        ARDA_LOG(
-            LogArdaAssert,
-            Fatal,
-            "Assertion failed: %s",
-            expression ? expression : "<unknown>");
-        ARDA_LOG(
-            LogArdaAssert,
-            Fatal,
-            "  %s",
-            message.c_str());
-        ARDA_LOG(
-            LogArdaAssert,
-            Fatal,
-            "  at %s (%s:%u)",
-            function ? function : "<unknown>",
-            file ? file : "<unknown>",
-            line);
-        DebugBreakIfAttached();
-        TerminateProcess();
+        ReportAssertionFailure(true, expression, file, line, function, message.c_str());
     }
 
     bool ReportEnsureFailure(
@@ -157,25 +105,7 @@ namespace arda::backend
         std::uint32_t line,
         const char* function) noexcept
     {
-        ARDA_LOG(
-            LogArdaAssert,
-            Error,
-            "Ensure failed: %s",
-            expression ? expression : "<unknown>");
-        ARDA_LOG(
-            LogArdaAssert,
-            Error,
-            "  at %s (%s:%u)",
-            function ? function : "<unknown>",
-            file ? file : "<unknown>",
-            line);
-
-        if (GetEnsureBehavior() == EArdaEnsureBehavior::Break)
-        {
-            DebugBreakIfAttached();
-        }
-
-        return false;
+        return ReportAssertionFailure(false, expression, file, line, function);
     }
 
     bool ReportEnsureFailuref(
@@ -188,32 +118,9 @@ namespace arda::backend
     {
         std::va_list arguments;
         va_start(arguments, format);
-        const eastl::string message = FormatAssertMessage(format, arguments);
+        const eastl::string message = FormatArdaMessage(format, arguments, "Assertion message formatting failed.");
         va_end(arguments);
 
-        ARDA_LOG(
-            LogArdaAssert,
-            Error,
-            "Ensure failed: %s",
-            expression ? expression : "<unknown>");
-        ARDA_LOG(
-            LogArdaAssert,
-            Error,
-            "  %s",
-            message.c_str());
-        ARDA_LOG(
-            LogArdaAssert,
-            Error,
-            "  at %s (%s:%u)",
-            function ? function : "<unknown>",
-            file ? file : "<unknown>",
-            line);
-
-        if (GetEnsureBehavior() == EArdaEnsureBehavior::Break)
-        {
-            DebugBreakIfAttached();
-        }
-
-        return false;
+        return ReportAssertionFailure(false, expression, file, line, function, message.c_str());
     }
 }

@@ -6,7 +6,7 @@
 #include <EASTL/atomic.h>
 #include <cstdint>
 
-namespace arda::backend
+namespace arda
 {
     /** Controls the importance and filtering of a log record. */
     enum class EArdaLogVerbosity : std::uint8_t
@@ -125,7 +125,7 @@ namespace arda::backend
 
 /** Declares an externally defined log category. */
 #define ARDA_DECLARE_LOG_CATEGORY_EXTERN(CategoryName) \
-    extern ::arda::backend::FArdaLogCategory CategoryName
+    extern ::arda::FArdaLogCategory CategoryName
 
 /**
  * Defines a log category whose emitted name matches its symbol.
@@ -133,9 +133,9 @@ namespace arda::backend
  * @param DefaultVerbosity Initial minimum verbosity enumerator.
  */
 #define ARDA_DEFINE_LOG_CATEGORY(CategoryName, DefaultVerbosity) \
-    ::arda::backend::FArdaLogCategory CategoryName( \
+    ::arda::FArdaLogCategory CategoryName( \
         #CategoryName, \
-        ::arda::backend::EArdaLogVerbosity::DefaultVerbosity)
+        ::arda::EArdaLogVerbosity::DefaultVerbosity)
 
 /**
  * Defines a log category with an explicit emitted scope name.
@@ -144,9 +144,9 @@ namespace arda::backend
  * @param DefaultVerbosity Initial minimum verbosity enumerator.
  */
 #define ARDA_DEFINE_LOG_CATEGORY_NAMED(CategoryName, ScopeName, DefaultVerbosity) \
-    ::arda::backend::FArdaLogCategory CategoryName( \
+    ::arda::FArdaLogCategory CategoryName( \
         ScopeName, \
-        ::arda::backend::EArdaLogVerbosity::DefaultVerbosity)
+        ::arda::EArdaLogVerbosity::DefaultVerbosity)
 
 /**
  * Emits a formatted log record when the category permits the verbosity.
@@ -158,10 +158,10 @@ namespace arda::backend
     { \
         const auto& ArdaLogCategory = (CategoryName); \
         constexpr auto ArdaLogVerbosity = \
-            ::arda::backend::EArdaLogVerbosity::Verbosity; \
+            ::arda::EArdaLogVerbosity::Verbosity; \
         if (ArdaLogCategory.IsEnabled(ArdaLogVerbosity)) \
         { \
-            ::arda::backend::Logf( \
+            ::arda::Logf( \
                 ArdaLogCategory, \
                 ArdaLogVerbosity, \
                 __FILE__, \

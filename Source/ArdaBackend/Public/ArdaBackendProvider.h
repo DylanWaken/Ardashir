@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <filesystem>
 
-namespace arda::backend
+namespace arda
 {
     class IArdaExternalDeviceProvider;
 
@@ -104,7 +104,7 @@ namespace arda::backend
         /** Shader entry point; empty for library profiles. */
         eastl::string mEntryPoint;
         /** Backend-neutral shader stage requested by the registered shader type. */
-        rhi::EArdaRHIShaderStage mStage = rhi::EArdaRHIShaderStage::None;
+        arda::EArdaRHIShaderStage mStage = arda::EArdaRHIShaderStage::None;
         /** Backend compiler profile, such as cs_6_0 or lib_6_3. */
         eastl::string mProfile;
         /** Complete argument list excluding the executable. */
@@ -142,7 +142,7 @@ namespace arda::backend
         [[nodiscard]] virtual FArdaSwapChainCreateResult CreateSwapChain(
             uint32_t Width,
             uint32_t Height,
-            rhi::FArdaRHIDeviceRef Device) = 0;
+            arda::FArdaRHIDeviceRef Device) = 0;
     };
 
     /** Result of atomically creating and initializing a backend device. */
@@ -153,7 +153,7 @@ namespace arda::backend
         /** Module-private runtime and lifetime owner. Empty unless initialization succeeded. */
         eastl::unique_ptr<IArdaBackendRuntime> mBackendRuntime;
         /** Provider implementation wrapped by ArdaBackend's concrete RHI device. */
-        eastl::shared_ptr<rhi::provider::IArdaRHIProviderDevice> mProviderDevice;
+        eastl::shared_ptr<arda::IArdaRHIProviderDevice> mProviderDevice;
         /** Failure diagnostic. Empty on success. */
         eastl::string mError;
 
@@ -194,7 +194,7 @@ namespace arda::backend
          * @param Invocation Mutable, self-contained compiler invocation.
          * @return Status describing whether the invocation can proceed.
          */
-        [[nodiscard]] virtual rhi::FArdaRHIStatus ConfigureShaderCompileInvocation(
+        [[nodiscard]] virtual arda::FArdaRHIStatus ConfigureShaderCompileInvocation(
             FArdaBackendShaderCompileInvocation& Invocation) const = 0;
 
         /**

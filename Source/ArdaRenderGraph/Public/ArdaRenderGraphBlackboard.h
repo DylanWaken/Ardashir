@@ -8,7 +8,7 @@
 #include <EASTL/unordered_map.h>
 #include <EASTL/utility.h>
 
-namespace arda::render_graph
+namespace arda
 {
     struct FARDGTypeIndexHash
     {

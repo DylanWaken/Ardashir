@@ -13,7 +13,7 @@
 #include <string>
 #include <type_traits>
 
-namespace arda::backend
+namespace arda
 {
     class FArdaShaderType;
 
@@ -266,7 +266,7 @@ namespace arda::backend
         { return Value ? 1u : 0u; }                                                         \
         /** Adds this dimension's definition to Environment. */                             \
         static void AddDefine(                                                               \
-            ::arda::backend::FArdaShaderCompileEnvironment& Environment,                    \
+            ::arda::FArdaShaderCompileEnvironment& Environment,                    \
             ValueType Value)                                                                 \
         { Environment.SetDefine(DefineName, Value); }                                       \
     }
@@ -291,7 +291,7 @@ namespace arda::backend
         static constexpr uint32_t Encode(ValueType Value) noexcept { return Value; }        \
         /** Adds this dimension's definition to Environment. */                             \
         static void AddDefine(                                                               \
-            ::arda::backend::FArdaShaderCompileEnvironment& Environment,                    \
+            ::arda::FArdaShaderCompileEnvironment& Environment,                    \
             ValueType Value)                                                                 \
         { Environment.SetDefine(DefineName, static_cast<uint64_t>(Value)); }                \
     }

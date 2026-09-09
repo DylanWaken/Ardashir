@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <string>
 
-namespace arda::backend
+namespace arda
 {
     /** Canonical conversion at the backend's EASTL/std string boundary. */
     [[nodiscard]] inline eastl::string ToEastl(const std::string& Value)

@@ -6,16 +6,16 @@
 #include <filesystem>
 #include <EASTL/string.h>
 
-namespace arda::tests::rhi_test
+namespace arda
 {
     class FArdaTriangleRenderer
     {
     public:
         bool Initialize(
-            rhi::FArdaRHIDeviceRef device,
-            rhi::EArdaRHIFormat swapChainFormat,
+            arda::FArdaRHIDeviceRef device,
+            arda::EArdaRHIFormat swapChainFormat,
             const std::filesystem::path& shaderDirectory);
-        bool RenderFrame(backend::IArdaSwapChain& swapChain);
+        bool RenderFrame(arda::IArdaSwapChain& swapChain);
 
         [[nodiscard]] const eastl::string& GetError() const { return mError; }
 
@@ -24,15 +24,15 @@ namespace arda::tests::rhi_test
             const std::filesystem::path& path,
             eastl::vector<uint8_t>& binary,
             eastl::string& error);
-        [[nodiscard]] render_graph::FARDGRenderGraphContext CreateGraphContext() const;
+        [[nodiscard]] arda::FARDGRenderGraphContext CreateGraphContext() const;
 
-        rhi::FArdaRHIDeviceRef mDevice;
-        rhi::FArdaRHIShaderRef mVertexShader;
-        rhi::FArdaRHIShaderRef mPixelShader;
-        rhi::FArdaRHIInputLayoutRef mInputLayout;
-        rhi::FArdaRHIGraphicsPipelineRef mPipeline;
-        rhi::FArdaRHIBufferRef mVertexBuffer;
-        rhi::FArdaRHIBufferRef mIndexBuffer;
+        arda::FArdaRHIDeviceRef mDevice;
+        arda::FArdaRHIShaderRef mVertexShader;
+        arda::FArdaRHIShaderRef mPixelShader;
+        arda::FArdaRHIInputLayoutRef mInputLayout;
+        arda::FArdaRHIGraphicsPipelineRef mPipeline;
+        arda::FArdaRHIBufferRef mVertexBuffer;
+        arda::FArdaRHIBufferRef mIndexBuffer;
         eastl::string mError;
     };
 }

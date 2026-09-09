@@ -22,9 +22,9 @@
 namespace
 {
     bool ResolveLinkedTestShaderTarget(
-        arda::backend::FArdaShaderTarget& OutTarget)
+        arda::FArdaShaderTarget& OutTarget)
     {
-        using namespace arda::backend;
+        using namespace arda;
         if (ResolveDefaultShaderTarget(OutTarget))
             return true;
         const auto Modules = EnumerateBackendModules();
@@ -147,7 +147,7 @@ namespace
 
 namespace
 {
-    using Stage = arda::rhi::EArdaRHIShaderStage;
+    using Stage = arda::EArdaRHIShaderStage;
 
     ARDA_SHADER_PERMUTATION_BOOL(FUseFeature, "USE_FEATURE");
     ARDA_SHADER_PERMUTATION_INT(FQualityLevel, "QUALITY_LEVEL", 3);
@@ -155,24 +155,24 @@ namespace
     struct FPermutationShaderPolicy
     {
         using FPermutationDomain =
-            arda::backend::TArdaShaderPermutationDomain<
+            arda::TArdaShaderPermutationDomain<
                 FUseFeature,
                 FQualityLevel>;
 
         static bool ShouldCompilePermutation(
-            const arda::backend::FArdaShaderPermutationParameters& Parameters)
+            const arda::FArdaShaderPermutationParameters& Parameters)
         {
             return (Parameters.mPermutationId % 2u) == 0;
         }
 
         static void ModifyCompilationEnvironment(
-            const arda::backend::FArdaShaderPermutationParameters& Parameters,
-            arda::backend::FArdaShaderCompileEnvironment& Environment)
+            const arda::FArdaShaderPermutationParameters& Parameters,
+            arda::FArdaShaderCompileEnvironment& Environment)
         {
             Environment.SetDefine(
                 "BINARY_IS_SPIRV",
                 Parameters.mBinaryFormat ==
-                    arda::backend::EArdaShaderBinaryFormat::Spirv);
+                    arda::EArdaShaderBinaryFormat::Spirv);
             Environment.SetDefine("CUSTOM_VALUE", uint64_t{ 17 });
         }
     };
@@ -182,47 +182,47 @@ namespace
         ARDA_DECLARE_GLOBAL_SHADER(FMacroStyleShader);
 
         using FPermutationDomain =
-            arda::backend::TArdaShaderPermutationDomain<FUseFeature>;
+            arda::TArdaShaderPermutationDomain<FUseFeature>;
 
         static bool ShouldCompilePermutation(
-            const arda::backend::FArdaShaderPermutationParameters&)
+            const arda::FArdaShaderPermutationParameters&)
         {
             return true;
         }
 
         static void ModifyCompilationEnvironment(
-            const arda::backend::FArdaShaderPermutationParameters&,
-            arda::backend::FArdaShaderCompileEnvironment& Environment)
+            const arda::FArdaShaderPermutationParameters&,
+            arda::FArdaShaderCompileEnvironment& Environment)
         {
             Environment.SetDefine("MACRO_STYLE_HOOK", true);
         }
     };
 
     static_assert(
-        arda::backend::detail::TShaderPermutationDomain<
+        arda::TArdaShaderPermutationTraits<
             FMacroStyleShader>::PermutationCount == 2);
     static_assert(
-        arda::backend::detail::THasShouldCompilePermutation<
+        arda::TArdaHasShouldCompilePermutation<
             FMacroStyleShader>::value);
     static_assert(
-        arda::backend::detail::THasModifyCompilationEnvironment<
+        arda::TArdaHasModifyCompilationEnvironment<
             FMacroStyleShader>::value);
 
     struct FWrongHookSignatureShader
     {
         using FPermutationDomain =
-            arda::backend::TArdaShaderPermutationDomain<FUseFeature>;
+            arda::TArdaShaderPermutationDomain<FUseFeature>;
         static void ShouldCompilePermutation(
-            const arda::backend::FArdaShaderPermutationParameters&)
+            const arda::FArdaShaderPermutationParameters&)
         {
         }
     };
 
     static_assert(
-        arda::backend::detail::THasNamedShouldCompilePermutation<
+        arda::TArdaHasNamedShouldCompilePermutation<
             FWrongHookSignatureShader>::value);
     static_assert(
-        !arda::backend::detail::THasShouldCompilePermutation<
+        !arda::TArdaHasShouldCompilePermutation<
             FWrongHookSignatureShader>::value);
 
     ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FNestedValues)
@@ -262,7 +262,7 @@ namespace
             FPushPayload, mPush, 0, 0, Stage::Compute)
     ARDA_END_SHADER_PARAMETER_STRUCT()
 
-    const arda::backend::FArdaShaderParameterMetadata* DirectMetadata()
+    const arda::FArdaShaderParameterMetadata* DirectMetadata()
     {
         return &FDirectParameters::GetStaticMetadata();
     }
@@ -271,7 +271,7 @@ namespace
     {
         ~FShaderCompilerConfigurationGuard()
         {
-            arda::backend::ResetShaderCompilerConfiguration();
+            arda::ResetShaderCompilerConfiguration();
         }
     };
 
@@ -286,7 +286,7 @@ namespace
 
 TEST(ArdaShaderStructs, EncodesCartesianPermutationDomainsAndSortedDefines)
 {
-    using namespace arda::backend;
+    using namespace arda;
     using Domain = FPermutationShaderPolicy::FPermutationDomain;
     static_assert(Domain::PermutationCount == 6);
 
@@ -328,15 +328,15 @@ TEST(ArdaShaderStructs, EncodesCartesianPermutationDomainsAndSortedDefines)
 
 TEST(ArdaShaderStructs, DetectsHooksDeclaredAfterGlobalShaderMacro)
 {
-    using namespace arda::backend;
+    using namespace arda;
     FArdaShaderCompileEnvironment Environment;
     FArdaShaderPermutationParameters Parameters;
     Parameters.mPermutationId = 1;
     Parameters.mBackendName = "test-module";
     Parameters.mBinaryFormat = EArdaShaderBinaryFormat::Spirv;
     EXPECT_TRUE(
-        detail::ShouldCompileShaderPermutation<FMacroStyleShader>(Parameters));
-    detail::BuildShaderCompilationEnvironment<FMacroStyleShader>(
+        arda::ShouldCompileShaderPermutation<FMacroStyleShader>(Parameters));
+    arda::BuildShaderCompilationEnvironment<FMacroStyleShader>(
         Parameters, Environment);
     ASSERT_EQ(Environment.GetDefines().size(), 2u);
     EXPECT_EQ(Environment.GetDefines()[0].mName, "MACRO_STYLE_HOOK");
@@ -345,7 +345,7 @@ TEST(ArdaShaderStructs, DetectsHooksDeclaredAfterGlobalShaderMacro)
 
 TEST(ArdaShaderStructs, RegistersOptionalPermutationPoliciesAndArtifactStems)
 {
-    using namespace arda::backend;
+    using namespace arda;
     FArdaShaderTypeRegistration::ResetForTests();
     FArdaShaderTypeRegistration Registration(
         "PermutationPolicy",
@@ -354,10 +354,10 @@ TEST(ArdaShaderStructs, RegistersOptionalPermutationPoliciesAndArtifactStems)
         "Main",
         Stage::Compute,
         nullptr,
-        detail::TShaderPermutationDomain<
+        arda::TArdaShaderPermutationTraits<
             FPermutationShaderPolicy>::PermutationCount,
-        &detail::ShouldCompileShaderPermutation<FPermutationShaderPolicy>,
-        &detail::BuildShaderCompilationEnvironment<FPermutationShaderPolicy>);
+        &arda::ShouldCompileShaderPermutation<FPermutationShaderPolicy>,
+        &arda::BuildShaderCompilationEnvironment<FPermutationShaderPolicy>);
 
     ASSERT_TRUE(FArdaShaderTypeRegistration::CommitAll());
     const FArdaShaderType& Type = Registration.GetType();
@@ -392,7 +392,7 @@ TEST(ArdaShaderStructs, RegistersOptionalPermutationPoliciesAndArtifactStems)
 
 TEST(ArdaShaderStructs, ValidatesPermutationRegistrationAndStemCollisions)
 {
-    using namespace arda::backend;
+    using namespace arda;
     FArdaShaderTypeRegistration::ResetForTests();
     {
         FArdaShaderTypeRegistration Invalid(
@@ -413,8 +413,8 @@ TEST(ArdaShaderStructs, ValidatesPermutationRegistrationAndStemCollisions)
     {
         FArdaShaderTypeRegistration Variant(
             "Variant", "SourceA", "Shared", "Main", Stage::Compute, nullptr, 6,
-            &detail::ShouldCompileShaderPermutation<FPermutationShaderPolicy>,
-            &detail::BuildShaderCompilationEnvironment<FPermutationShaderPolicy>);
+            &arda::ShouldCompileShaderPermutation<FPermutationShaderPolicy>,
+            &arda::BuildShaderCompilationEnvironment<FPermutationShaderPolicy>);
         FArdaShaderTypeRegistration CollidingBase(
             "CollidingBase", "SourceB", "Shared_P2", "Main",
             Stage::Compute, nullptr);
@@ -426,7 +426,7 @@ TEST(ArdaShaderStructs, ValidatesPermutationRegistrationAndStemCollisions)
 
 TEST(ArdaShaderStructs, RejectsUnsafeAndCaseCollidingArtifactStems)
 {
-    using namespace arda::backend;
+    using namespace arda;
     for (const char* Stem :
          { "", ".hidden", "../escape", "folder/name", "folder\\name",
            "drive:name", "two..dots", "-leading-dash" })
@@ -455,7 +455,7 @@ TEST(ArdaShaderStructs, RejectsUnsafeAndCaseCollidingArtifactStems)
 
 TEST(ArdaShaderStructs, CommitsInDeterministicOrderAndSupportsLookup)
 {
-    using namespace arda::backend;
+    using namespace arda;
     FArdaShaderTypeRegistration::ResetForTests();
     FArdaShaderTypeRegistration Second(
         "ZSecond", "Source", "Second", "Main", Stage::Compute, nullptr);
@@ -472,7 +472,7 @@ TEST(ArdaShaderStructs, CommitsInDeterministicOrderAndSupportsLookup)
 
 TEST(ArdaShaderStructs, RejectsDuplicateNamesAndArtifactIdentities)
 {
-    using namespace arda::backend;
+    using namespace arda;
     FArdaShaderTypeRegistration::ResetForTests();
     {
         FArdaShaderTypeRegistration One(
@@ -504,7 +504,7 @@ TEST(ArdaShaderStructs, EnumeratesMetadataAndGeneratesStableLayout)
     ASSERT_NE(Metadata.FindMember("mTextures"), nullptr);
     EXPECT_EQ(Metadata.FindMember("mTextures")->mArrayCount, 2u);
 
-    eastl::vector<rhi::FArdaRHIBindingLayoutDesc> Layouts;
+    eastl::vector<arda::FArdaRHIBindingLayoutDesc> Layouts;
     ASSERT_TRUE(Metadata.BuildBindingLayoutDescs(Layouts));
     ASSERT_EQ(Layouts.size(), 1u);
     EXPECT_EQ(Layouts[0].mVisibility, Stage::Compute);
@@ -512,7 +512,7 @@ TEST(ArdaShaderStructs, EnumeratesMetadataAndGeneratesStableLayout)
     ASSERT_EQ(Layouts[0].mItems.size(), 3u);
     EXPECT_EQ(Layouts[0].mItems[0].mSlot, 2u);
     EXPECT_EQ(Layouts[0].mItems[0].mArraySize, 2u);
-    EXPECT_EQ(Layouts[0].mItems[1].mType, rhi::EArdaRHIBindingType::StructuredBufferUAV);
+    EXPECT_EQ(Layouts[0].mItems[1].mType, arda::EArdaRHIBindingType::StructuredBufferUAV);
 
     const auto& Nested = FNestedResourceRoot::GetStaticMetadata();
     size_t NestedOffset = 0;
@@ -525,7 +525,7 @@ TEST(ArdaShaderStructs, EnumeratesMetadataAndGeneratesStableLayout)
         NestedOffset,
         offsetof(FNestedResourceRoot, mResources) +
             offsetof(FNestedResources, mNestedTexture));
-    eastl::vector<backend::FArdaFlattenedShaderParameterMember> Flattened;
+    eastl::vector<arda::FArdaFlattenedShaderParameterMember> Flattened;
     Nested.GetFlattenedMembers(Flattened);
     ASSERT_EQ(Flattened.size(), 2u);
     EXPECT_EQ(Flattened[1].mPath, "mResources.mNestedTexture");
@@ -534,14 +534,13 @@ TEST(ArdaShaderStructs, EnumeratesMetadataAndGeneratesStableLayout)
 TEST(ArdaShaderStructs, ValidatesRegistersVisibilityAndPushConstants)
 {
     using namespace arda;
-    using namespace backend;
     eastl::vector<FArdaShaderParameterMember> Duplicate = {
-        { "A", EArdaShaderParameterKind::TextureSRV, rhi::EArdaRHIBindingType::TextureSRV,
-          0, 0, 1, 0, sizeof(rhi::FArdaRHITextureRef), sizeof(rhi::FArdaRHITextureRef),
+        { "A", EArdaShaderParameterKind::TextureSRV, arda::EArdaRHIBindingType::TextureSRV,
+          0, 0, 1, 0, sizeof(arda::FArdaRHITextureRef), sizeof(arda::FArdaRHITextureRef),
           Stage::Compute, nullptr },
-        { "B", EArdaShaderParameterKind::BufferSRV, rhi::EArdaRHIBindingType::StructuredBufferSRV,
-          0, 0, 1, sizeof(rhi::FArdaRHITextureRef), sizeof(rhi::FArdaRHIBufferRef),
-          sizeof(rhi::FArdaRHIBufferRef), Stage::Compute, nullptr }
+        { "B", EArdaShaderParameterKind::BufferSRV, arda::EArdaRHIBindingType::StructuredBufferSRV,
+          0, 0, 1, sizeof(arda::FArdaRHITextureRef), sizeof(arda::FArdaRHIBufferRef),
+          sizeof(arda::FArdaRHIBufferRef), Stage::Compute, nullptr }
     };
     FArdaShaderParameterMetadata DuplicateMetadata(
         "Duplicate", 64, alignof(void*), eastl::move(Duplicate));
@@ -551,36 +550,36 @@ TEST(ArdaShaderStructs, ValidatesRegistersVisibilityAndPushConstants)
 
     eastl::vector<FArdaShaderParameterMember> Disjoint = {
         { "VertexTexture", EArdaShaderParameterKind::TextureSRV,
-          rhi::EArdaRHIBindingType::TextureSRV, 0, 0, 1, 0,
-          sizeof(rhi::FArdaRHITextureRef), sizeof(rhi::FArdaRHITextureRef),
+          arda::EArdaRHIBindingType::TextureSRV, 0, 0, 1, 0,
+          sizeof(arda::FArdaRHITextureRef), sizeof(arda::FArdaRHITextureRef),
           Stage::Vertex, nullptr },
         { "PixelTexture", EArdaShaderParameterKind::TextureSRV,
-          rhi::EArdaRHIBindingType::TextureSRV, 0, 0, 1,
-          sizeof(rhi::FArdaRHITextureRef), sizeof(rhi::FArdaRHITextureRef),
-          sizeof(rhi::FArdaRHITextureRef), Stage::Pixel, nullptr },
+          arda::EArdaRHIBindingType::TextureSRV, 0, 0, 1,
+          sizeof(arda::FArdaRHITextureRef), sizeof(arda::FArdaRHITextureRef),
+          sizeof(arda::FArdaRHITextureRef), Stage::Pixel, nullptr },
         { "Constants", EArdaShaderParameterKind::ConstantBuffer,
-          rhi::EArdaRHIBindingType::ConstantBuffer, 0, 0, 1, 32,
-          sizeof(rhi::FArdaRHIBufferRef), sizeof(rhi::FArdaRHIBufferRef),
+          arda::EArdaRHIBindingType::ConstantBuffer, 0, 0, 1, 32,
+          sizeof(arda::FArdaRHIBufferRef), sizeof(arda::FArdaRHIBufferRef),
           Stage::Compute, nullptr },
         { "Push", EArdaShaderParameterKind::PushConstants,
-          rhi::EArdaRHIBindingType::PushConstants, 0, 0, 1, 48, 8, 8,
+          arda::EArdaRHIBindingType::PushConstants, 0, 0, 1, 48, 8, 8,
           Stage::Compute, nullptr }
     };
     FArdaShaderParameterMetadata DisjointMetadata(
         "Disjoint", 64, alignof(void*), eastl::move(Disjoint));
     EXPECT_TRUE(DisjointMetadata.GetStatus());
-    eastl::vector<rhi::FArdaRHIBindingLayoutDesc> DisjointLayouts;
+    eastl::vector<arda::FArdaRHIBindingLayoutDesc> DisjointLayouts;
     EXPECT_TRUE(DisjointMetadata.BuildBindingLayoutDescs(DisjointLayouts));
 
     eastl::vector<FArdaShaderParameterMember> Overlapping = {
         { "VertexTexture", EArdaShaderParameterKind::TextureSRV,
-          rhi::EArdaRHIBindingType::TextureSRV, 0, 0, 1, 0,
-          sizeof(rhi::FArdaRHITextureRef), sizeof(rhi::FArdaRHITextureRef),
+          arda::EArdaRHIBindingType::TextureSRV, 0, 0, 1, 0,
+          sizeof(arda::FArdaRHITextureRef), sizeof(arda::FArdaRHITextureRef),
           Stage::Vertex, nullptr },
         { "SharedTexture", EArdaShaderParameterKind::TextureSRV,
-          rhi::EArdaRHIBindingType::TextureSRV, 0, 0, 1,
-          sizeof(rhi::FArdaRHITextureRef), sizeof(rhi::FArdaRHITextureRef),
-          sizeof(rhi::FArdaRHITextureRef), Stage::Vertex | Stage::Pixel, nullptr }
+          arda::EArdaRHIBindingType::TextureSRV, 0, 0, 1,
+          sizeof(arda::FArdaRHITextureRef), sizeof(arda::FArdaRHITextureRef),
+          sizeof(arda::FArdaRHITextureRef), Stage::Vertex | Stage::Pixel, nullptr }
     };
     FArdaShaderParameterMetadata OverlapMetadata(
         "Overlap", 32, alignof(void*), eastl::move(Overlapping));
@@ -589,8 +588,8 @@ TEST(ArdaShaderStructs, ValidatesRegistersVisibilityAndPushConstants)
         EArdaShaderStructError::DuplicateRegister);
 
     eastl::vector<FArdaShaderParameterMember> Invisible = {
-        { "Texture", EArdaShaderParameterKind::TextureSRV, rhi::EArdaRHIBindingType::TextureSRV,
-          0, 0, 1, 0, sizeof(rhi::FArdaRHITextureRef), sizeof(rhi::FArdaRHITextureRef),
+        { "Texture", EArdaShaderParameterKind::TextureSRV, arda::EArdaRHIBindingType::TextureSRV,
+          0, 0, 1, 0, sizeof(arda::FArdaRHITextureRef), sizeof(arda::FArdaRHITextureRef),
           Stage::None, nullptr }
     };
     FArdaShaderParameterMetadata InvisibleMetadata(
@@ -600,8 +599,8 @@ TEST(ArdaShaderStructs, ValidatesRegistersVisibilityAndPushConstants)
         EArdaShaderStructError::IncompatibleVisibility);
 
     eastl::vector<FArdaShaderParameterMember> Array = {
-        { "Array", EArdaShaderParameterKind::TextureSRV, rhi::EArdaRHIBindingType::TextureSRV,
-          0, 0, 0, 0, sizeof(rhi::FArdaRHITextureRef), sizeof(rhi::FArdaRHITextureRef),
+        { "Array", EArdaShaderParameterKind::TextureSRV, arda::EArdaRHIBindingType::TextureSRV,
+          0, 0, 0, 0, sizeof(arda::FArdaRHITextureRef), sizeof(arda::FArdaRHITextureRef),
           Stage::Compute, nullptr }
     };
     FArdaShaderParameterMetadata ArrayMetadata(
@@ -611,7 +610,7 @@ TEST(ArdaShaderStructs, ValidatesRegistersVisibilityAndPushConstants)
         EArdaShaderStructError::MalformedArray);
 
     eastl::vector<FArdaShaderParameterMember> Push = {
-        { "Push", EArdaShaderParameterKind::PushConstants, rhi::EArdaRHIBindingType::PushConstants,
+        { "Push", EArdaShaderParameterKind::PushConstants, arda::EArdaRHIBindingType::PushConstants,
           0, 0, 1, 0, 6, 6, Stage::Compute, nullptr }
     };
     FArdaShaderParameterMetadata PushMetadata(
@@ -622,16 +621,16 @@ TEST(ArdaShaderStructs, ValidatesRegistersVisibilityAndPushConstants)
 
     eastl::vector<FArdaShaderParameterMember> MultiplePush = {
         { "First", EArdaShaderParameterKind::PushConstants,
-          rhi::EArdaRHIBindingType::PushConstants, 0, 0, 1, 0, 8, 8,
+          arda::EArdaRHIBindingType::PushConstants, 0, 0, 1, 0, 8, 8,
           Stage::Compute, nullptr },
         { "Second", EArdaShaderParameterKind::PushConstants,
-          rhi::EArdaRHIBindingType::PushConstants, 1, 0, 1, 8, 8, 8,
+          arda::EArdaRHIBindingType::PushConstants, 1, 0, 1, 8, 8, 8,
           Stage::Compute, nullptr }
     };
     FArdaShaderParameterMetadata MultiplePushMetadata(
         "MultiplePush", 16, alignof(uint32_t), eastl::move(MultiplePush));
     ASSERT_TRUE(MultiplePushMetadata.GetStatus());
-    eastl::vector<rhi::FArdaRHIBindingLayoutDesc> PushLayouts;
+    eastl::vector<arda::FArdaRHIBindingLayoutDesc> PushLayouts;
     EXPECT_EQ(
         MultiplePushMetadata.BuildBindingLayoutDescs(PushLayouts).mCode,
         EArdaShaderStructError::MalformedPushConstants);
@@ -639,7 +638,7 @@ TEST(ArdaShaderStructs, ValidatesRegistersVisibilityAndPushConstants)
 
 TEST(ArdaShaderStructs, SelectsExtensionsAndReportsMissingBytecode)
 {
-    using namespace arda::backend;
+    using namespace arda;
     EXPECT_STREQ(
         GetShaderArtifactExtension("native-d3d12"),
         FindBackendModule("native-d3d12") ? ".dxil" : "");
@@ -655,7 +654,7 @@ TEST(ArdaShaderStructs, SelectsExtensionsAndReportsMissingBytecode)
 
 TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
 {
-    using namespace arda::backend;
+    using namespace arda;
     FShaderCompilerConfigurationGuard ConfigurationGuard;
     ResetShaderCompilerConfiguration();
     FArdaShaderCompilerConfiguration FakeCompilerConfiguration =
@@ -700,10 +699,10 @@ TEST(ArdaShaderStructs, BuildsAndCooksRegistrationDrivenShaderJobs)
         "Main",
         Stage::Compute,
         nullptr,
-        detail::TShaderPermutationDomain<
+        arda::TArdaShaderPermutationTraits<
             FPermutationShaderPolicy>::PermutationCount,
-        &detail::ShouldCompileShaderPermutation<FPermutationShaderPolicy>,
-        &detail::BuildShaderCompilationEnvironment<FPermutationShaderPolicy>);
+        &arda::ShouldCompileShaderPermutation<FPermutationShaderPolicy>,
+        &arda::BuildShaderCompilationEnvironment<FPermutationShaderPolicy>);
 
     const bool bHasD3D12 = FindBackendModule("native-d3d12") != nullptr;
     const bool bHasVulkan = FindBackendModule("native-vulkan") != nullptr;
@@ -1000,14 +999,14 @@ TEST(ArdaShaderStructs, ResolvesConcretePushConstantBytes)
     Parameters.mPrefix = 17;
     Parameters.mPush.mFirst = 23;
     Parameters.mPush.mSecond = 42;
-    eastl::vector<rhi::FArdaRHIBindingLayoutDesc> Layouts;
+    eastl::vector<arda::FArdaRHIBindingLayoutDesc> Layouts;
     const auto& Metadata = FPushParameters::GetStaticMetadata();
     ASSERT_TRUE(Metadata.BuildBindingLayoutDescs(Layouts));
     ASSERT_EQ(Layouts.size(), 1u);
     ASSERT_EQ(Layouts[0].mItems.size(), 1u);
     EXPECT_EQ(
         Layouts[0].mItems[0].mType,
-        rhi::EArdaRHIBindingType::PushConstants);
+        arda::EArdaRHIBindingType::PushConstants);
 
     const void* Data = nullptr;
     size_t Size = 0;
@@ -1023,7 +1022,7 @@ TEST(ArdaShaderStructs, ResolvesConcretePushConstantBytes)
 
 TEST(ArdaShaderStructs, RegistrationDestructionPreservesUnrelatedTypes)
 {
-    using namespace arda::backend;
+    using namespace arda;
     FArdaShaderTypeRegistration::ResetForTests();
     FArdaShaderTypeRegistration First(
         "LifetimeFirst", "Source", "First", "Main", Stage::Compute, nullptr);
@@ -1052,7 +1051,7 @@ TEST(ArdaShaderStructs, RegistrationDestructionPreservesUnrelatedTypes)
 
 TEST(ArdaShaderStructs, CompileJobsOwnDescriptorsAfterRegistrationDestruction)
 {
-    using namespace arda::backend;
+    using namespace arda;
     FArdaShaderTarget Target;
     ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
     FShaderCompilerConfigurationGuard ConfigurationGuard;
@@ -1097,7 +1096,7 @@ TEST(ArdaShaderStructs, CompileJobsOwnDescriptorsAfterRegistrationDestruction)
 
 TEST(ArdaShaderStructs, StartupModePersistsAndReusesRegisteredShaderCache)
 {
-    using namespace arda::backend;
+    using namespace arda;
     FArdaShaderTarget Target;
     ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
 
@@ -1160,7 +1159,7 @@ TEST(ArdaShaderStructs, StartupModePersistsAndReusesRegisteredShaderCache)
 
 TEST(ArdaShaderStructs, StartupModePropagatesCompilerFailureBeforeDevice)
 {
-    using namespace arda::backend;
+    using namespace arda;
     FArdaShaderTarget Target;
     ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
 
@@ -1202,7 +1201,6 @@ TEST(ArdaShaderStructs, StartupModePropagatesCompilerFailureBeforeDevice)
 TEST(ArdaShaderStructs, GlobalMapIndexesOnlyCompiledPermutations)
 {
     using namespace arda;
-    using namespace backend;
     FArdaShaderTarget Target;
     ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
 
@@ -1223,10 +1221,10 @@ TEST(ArdaShaderStructs, GlobalMapIndexesOnlyCompiledPermutations)
         "ShaderStructTestCS",
         Stage::Compute,
         nullptr,
-        detail::TShaderPermutationDomain<
+        arda::TArdaShaderPermutationTraits<
             FPermutationShaderPolicy>::PermutationCount,
-        &detail::ShouldCompileShaderPermutation<FPermutationShaderPolicy>,
-        &detail::BuildShaderCompilationEnvironment<FPermutationShaderPolicy>);
+        &arda::ShouldCompileShaderPermutation<FPermutationShaderPolicy>,
+        &arda::BuildShaderCompilationEnvironment<FPermutationShaderPolicy>);
 
     const std::filesystem::path SourceDirectory =
         ARDA_BACKEND_TEST_SHADER_DIR;
@@ -1267,7 +1265,7 @@ TEST(ArdaShaderStructs, GlobalMapIndexesOnlyCompiledPermutations)
 
 TEST(ArdaShaderStructs, OnDemandMapDefersMissingArtifactAndHonorsOverride)
 {
-    using namespace arda::backend;
+    using namespace arda;
     FArdaShaderTarget Target;
     ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
 
@@ -1357,8 +1355,6 @@ TEST(ArdaShaderStructs, OnDemandMapDefersMissingArtifactAndHonorsOverride)
 TEST(ArdaShaderStructs, LoadsGlobalMapIdempotentlyAndBuildsDirectBindings)
 {
     using namespace arda;
-    using namespace backend;
-    using namespace rhi;
     FArdaShaderTarget Target;
     ASSERT_TRUE(ResolveLinkedTestShaderTarget(Target));
 
@@ -1421,8 +1417,8 @@ TEST(ArdaShaderStructs, LoadsGlobalMapIdempotentlyAndBuildsDirectBindings)
         EXPECT_EQ(NoParameterShader->GetParameterMetadata(), nullptr);
         EXPECT_TRUE(NoParameterShader->GetBindingLayouts().empty());
         IArdaRHIShader* ShaderIdentity = First->GetShader().Get();
-        const rhi::FArdaRHIBindingLayoutRef* ArrayLayout = nullptr;
-        for (const rhi::FArdaRHIBindingLayoutRef& Layout :
+        const arda::FArdaRHIBindingLayoutRef* ArrayLayout = nullptr;
+        for (const arda::FArdaRHIBindingLayoutRef& Layout :
              First->GetBindingLayouts())
         {
             if (Layout->GetDesc().mRegisterSpace == 3)

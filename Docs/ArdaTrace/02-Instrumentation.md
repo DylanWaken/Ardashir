@@ -91,7 +91,7 @@ Name each participating thread from that thread:
 ```cpp
 void RenderThreadMain()
 {
-    arda::trace::SetCurrentTraceThreadName("Render Thread");
+    arda::SetCurrentTraceThreadName("Render Thread");
     ARDA_NAMED_SCOPE_TIMER("Render Thread Loop");
     // ...
 }
@@ -130,8 +130,8 @@ Macros are preferred because they create one static `FArdaTraceName` per call
 site. Code that needs a reusable registered name can call the API directly:
 
 ```cpp
-static const arda::trace::FArdaTraceName QueueDepthName("Queue Depth");
-arda::trace::RecordTraceCounter(QueueDepthName, QueueDepth);
+static const arda::FArdaTraceName QueueDepthName("Queue Depth");
+arda::RecordTraceCounter(QueueDepthName, QueueDepth);
 ```
 
 `FArdaTraceName` labels must remain valid for the process lifetime. String

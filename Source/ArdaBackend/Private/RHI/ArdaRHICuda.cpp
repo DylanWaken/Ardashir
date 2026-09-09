@@ -3,8 +3,9 @@
  * These checks constrain bindings and launch metadata, not arbitrary PTX memory accesses.
  */
 #include "RHI/ArdaRHICuda.h"
+#include "ArdaRHICudaValidation.h"
 
-namespace arda::rhi
+namespace arda
 {
     FArdaRHIStatus ValidateArdaCudaBuffer(const FArdaRHIBufferDesc& D)
     {
@@ -73,24 +74,14 @@ namespace arda::rhi
         if (Kernels.empty()) return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA dispatch has no kernels.");
         for (const auto& K : Kernels)
         {
-            if (K.mPtx.empty() || K.mEntryPoint.empty() || K.mPtx.find('\0') != eastl::string::npos ||
-                K.mEntryPoint.find('\0') != eastl::string::npos ||
-                K.mSharedMemoryBytes > C.mMaxSharedMemoryBytes)
-                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA code, entry point or shared-memory requirement is invalid.");
-            uint64_t Threads = 1;
-            for (uint32_t Axis = 0; Axis < 3; ++Axis)
+            if (K.mPtx.empty() || K.mPtx.find('\0') != eastl::string::npos)
             {
-                if (!K.mGridSize[Axis] || K.mGridSize[Axis] > C.mMaxGridSize[Axis] ||
-                    !K.mBlockSize[Axis] || K.mBlockSize[Axis] > C.mMaxBlockSize[Axis])
-                    return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA launch dimensions exceed the device limits.");
-                Threads *= K.mBlockSize[Axis];
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA code is empty or contains NULs.");
             }
-            if (Threads > C.mMaxThreadsPerBlock)
-                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA block has too many threads.");
-            for (const auto& A : K.mArguments)
-                if ((A.mBindingIndex == UINT32_MAX && A.mValue.empty()) ||
-                    (A.mBindingIndex != UINT32_MAX && (A.mBindingIndex >= BindingCount || !A.mValue.empty())))
-                    return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA argument must reference a binding or contain owned value bytes.");
+            if (auto Status = ValidateArdaCudaLaunch(K, BindingCount, C); !Status)
+            {
+                return Status;
+            }
         }
         return {};
     }

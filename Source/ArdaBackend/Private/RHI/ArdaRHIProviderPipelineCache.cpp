@@ -15,7 +15,7 @@
 #include <unistd.h>
 #endif
 
-namespace arda::rhi::provider::pipeline_cache
+namespace arda
 {
     namespace
     {
@@ -35,8 +35,8 @@ namespace arda::rhi::provider::pipeline_cache
 
         uint64_t StableNameHash(const eastl::string& Name) noexcept
         {
-            uint64_t Hash = private_api::ArdaFnv1a64OffsetBasis;
-            private_api::AppendFnv1a64(Hash, Name.data(), Name.size());
+            uint64_t Hash = arda::ArdaFnv1a64OffsetBasis;
+            AppendArdaFnv1a64(Hash, Name.data(), Name.size());
             return Hash;
         }
 
@@ -50,16 +50,16 @@ namespace arda::rhi::provider::pipeline_cache
         }
     }
 
-    void Message(
-        backend::IArdaDiagnosticCallback* Callback,
-        backend::EArdaDiagnosticSeverity Severity,
+    void LogArdaPipelineCacheMessage(
+        arda::IArdaDiagnosticCallback* Callback,
+        arda::EArdaDiagnosticSeverity Severity,
         const char* Text) noexcept
     {
         if (Callback)
             Callback->Message(Severity, Text);
     }
 
-    std::filesystem::path MakePath(
+    std::filesystem::path MakeArdaPipelineCachePath(
         const std::filesystem::path& Directory,
         const eastl::string& BackendName)
     {
@@ -78,7 +78,7 @@ namespace arda::rhi::provider::pipeline_cache
         return Directory / Filename;
     }
 
-    bool ReadBlob(
+    bool ReadArdaPipelineCacheBlob(
         const std::filesystem::path& Path,
         const eastl::string& BackendName,
         std::vector<uint8_t>& Payload)
@@ -87,7 +87,7 @@ namespace arda::rhi::provider::pipeline_cache
         std::error_code Error;
         const uintmax_t FileSize = std::filesystem::file_size(Path, Error);
         if (Error || FileSize < sizeof(FBlobHeader) ||
-            FileSize > sizeof(FBlobHeader) + MaxPayloadSize)
+            FileSize > sizeof(FBlobHeader) + ArdaProviderPipelineCacheMaxPayloadSize)
             return false;
 
         std::ifstream Input(Path, std::ios::binary);
@@ -96,7 +96,7 @@ namespace arda::rhi::provider::pipeline_cache
         if (!Input || Header.mMagic != Magic || Header.mSchema != Schema ||
             Header.mReserved != 0 ||
             Header.mBackendHash != StableNameHash(BackendName) ||
-            Header.mPayloadSize > MaxPayloadSize ||
+            Header.mPayloadSize > ArdaProviderPipelineCacheMaxPayloadSize ||
             FileSize != sizeof(Header) + Header.mPayloadSize)
             return false;
 
@@ -114,12 +114,12 @@ namespace arda::rhi::provider::pipeline_cache
         return true;
     }
 
-    bool WriteBlob(
+    bool WriteArdaPipelineCacheBlob(
         const std::filesystem::path& Path,
         const eastl::string& BackendName,
         const std::vector<uint8_t>& Payload)
     {
-        if (Payload.size() > MaxPayloadSize || Path.empty())
+        if (Payload.size() > ArdaProviderPipelineCacheMaxPayloadSize || Path.empty())
             return false;
 
         std::error_code Error;

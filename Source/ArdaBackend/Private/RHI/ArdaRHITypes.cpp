@@ -4,15 +4,8 @@
 
 #include <EASTL/algorithm.h>
 
-namespace arda::rhi
+namespace arda
 {
-    namespace
-    {
-        using private_api::FloatBits;
-        using private_api::HashCombine;
-        using private_api::HashString;
-    }
-
     FArdaRHITextureSubresourceRange FArdaRHITextureSubresourceRange::Resolve(
         const FArdaRHITextureDesc& Desc) const noexcept
     {
@@ -365,49 +358,49 @@ namespace arda::rhi
     size_t HashValue(const FArdaRHITextureSubresourceRange& V) noexcept
     {
         size_t H = 0;
-        HashCombine(H, V.mBaseMipLevel); HashCombine(H, V.mMipLevelCount);
-        HashCombine(H, V.mBaseArraySlice); HashCombine(H, V.mArraySliceCount);
-        HashCombine(H, V.mBasePlane); HashCombine(H, V.mPlaneCount);
+        ArdaHashCombine(H, V.mBaseMipLevel); ArdaHashCombine(H, V.mMipLevelCount);
+        ArdaHashCombine(H, V.mBaseArraySlice); ArdaHashCombine(H, V.mArraySliceCount);
+        ArdaHashCombine(H, V.mBasePlane); ArdaHashCombine(H, V.mPlaneCount);
         return H;
     }
 
     size_t HashValue(const FArdaRHIBufferRange& V) noexcept
     {
-        size_t H = 0; HashCombine(H, V.mByteOffset); HashCombine(H, V.mByteSize); return H;
+        size_t H = 0; ArdaHashCombine(H, V.mByteOffset); ArdaHashCombine(H, V.mByteSize); return H;
     }
 
     size_t HashValue(const FArdaRHITextureDesc& V) noexcept
     {
         size_t H = 0;
-        HashCombine(H, V.mWidth); HashCombine(H, V.mHeight); HashCombine(H, V.mDepth);
-        HashCombine(H, V.mArraySize); HashCombine(H, V.mMipLevels); HashCombine(H, V.mSampleCount);
-        HashCombine(H, static_cast<uint8_t>(V.mFormat)); HashCombine(H, static_cast<uint8_t>(V.mDimension));
-        HashCombine(H, static_cast<uint16_t>(V.mUsage)); HashCombine(H, static_cast<uint32_t>(V.mInitialState));
-        HashCombine(H, V.mbKeepInitialState); HashCombine(H, V.mbVirtual); HashCombine(H, V.mbTiled); HashCombine(H, FloatBits(V.mClearValue.mR));
-        HashCombine(H, FloatBits(V.mClearValue.mG)); HashCombine(H, FloatBits(V.mClearValue.mB));
-        HashCombine(H, FloatBits(V.mClearValue.mA)); HashCombine(H, V.mbUseClearValue); HashString(H, V.mDebugName);
+        ArdaHashCombine(H, V.mWidth); ArdaHashCombine(H, V.mHeight); ArdaHashCombine(H, V.mDepth);
+        ArdaHashCombine(H, V.mArraySize); ArdaHashCombine(H, V.mMipLevels); ArdaHashCombine(H, V.mSampleCount);
+        ArdaHashCombine(H, static_cast<uint8_t>(V.mFormat)); ArdaHashCombine(H, static_cast<uint8_t>(V.mDimension));
+        ArdaHashCombine(H, static_cast<uint16_t>(V.mUsage)); ArdaHashCombine(H, static_cast<uint32_t>(V.mInitialState));
+        ArdaHashCombine(H, V.mbKeepInitialState); ArdaHashCombine(H, V.mbVirtual); ArdaHashCombine(H, V.mbTiled); ArdaHashCombine(H, ArdaFloatBits(V.mClearValue.mR));
+        ArdaHashCombine(H, ArdaFloatBits(V.mClearValue.mG)); ArdaHashCombine(H, ArdaFloatBits(V.mClearValue.mB));
+        ArdaHashCombine(H, ArdaFloatBits(V.mClearValue.mA)); ArdaHashCombine(H, V.mbUseClearValue); ArdaHashString(H, V.mDebugName);
         return H;
     }
 
     size_t HashValue(const FArdaRHIBufferDesc& V) noexcept
     {
         size_t H = 0;
-        HashCombine(H, V.mByteSize); HashCombine(H, V.mStructureStride); HashCombine(H, V.mMaxVersions);
-        HashCombine(H, static_cast<uint8_t>(V.mFormat)); HashCombine(H, static_cast<uint16_t>(V.mUsage));
-        HashCombine(H, static_cast<uint8_t>(V.mCpuAccess)); HashCombine(H, static_cast<uint32_t>(V.mInitialState));
-        HashCombine(H, V.mbKeepInitialState); HashCombine(H, V.mbVirtual);
-        HashCombine(H, V.mbTiled); HashString(H, V.mDebugName); return H;
+        ArdaHashCombine(H, V.mByteSize); ArdaHashCombine(H, V.mStructureStride); ArdaHashCombine(H, V.mMaxVersions);
+        ArdaHashCombine(H, static_cast<uint8_t>(V.mFormat)); ArdaHashCombine(H, static_cast<uint16_t>(V.mUsage));
+        ArdaHashCombine(H, static_cast<uint8_t>(V.mCpuAccess)); ArdaHashCombine(H, static_cast<uint32_t>(V.mInitialState));
+        ArdaHashCombine(H, V.mbKeepInitialState); ArdaHashCombine(H, V.mbVirtual);
+        ArdaHashCombine(H, V.mbTiled); ArdaHashString(H, V.mDebugName); return H;
     }
 
     size_t HashValue(const FArdaRHISamplerDesc& V) noexcept
     {
         size_t H = 0;
-        HashCombine(H, FloatBits(V.mBorderColor.mR)); HashCombine(H, FloatBits(V.mBorderColor.mG));
-        HashCombine(H, FloatBits(V.mBorderColor.mB)); HashCombine(H, FloatBits(V.mBorderColor.mA));
-        HashCombine(H, FloatBits(V.mMaxAnisotropy)); HashCombine(H, FloatBits(V.mMipBias));
-        HashCombine(H, V.mbMinFilter); HashCombine(H, V.mbMagFilter); HashCombine(H, V.mbMipFilter);
-        HashCombine(H, static_cast<uint8_t>(V.mAddressU)); HashCombine(H, static_cast<uint8_t>(V.mAddressV));
-        HashCombine(H, static_cast<uint8_t>(V.mAddressW)); HashCombine(H, static_cast<uint8_t>(V.mReduction));
+        ArdaHashCombine(H, ArdaFloatBits(V.mBorderColor.mR)); ArdaHashCombine(H, ArdaFloatBits(V.mBorderColor.mG));
+        ArdaHashCombine(H, ArdaFloatBits(V.mBorderColor.mB)); ArdaHashCombine(H, ArdaFloatBits(V.mBorderColor.mA));
+        ArdaHashCombine(H, ArdaFloatBits(V.mMaxAnisotropy)); ArdaHashCombine(H, ArdaFloatBits(V.mMipBias));
+        ArdaHashCombine(H, V.mbMinFilter); ArdaHashCombine(H, V.mbMagFilter); ArdaHashCombine(H, V.mbMipFilter);
+        ArdaHashCombine(H, static_cast<uint8_t>(V.mAddressU)); ArdaHashCombine(H, static_cast<uint8_t>(V.mAddressV));
+        ArdaHashCombine(H, static_cast<uint8_t>(V.mAddressW)); ArdaHashCombine(H, static_cast<uint8_t>(V.mReduction));
         return H;
     }
 }

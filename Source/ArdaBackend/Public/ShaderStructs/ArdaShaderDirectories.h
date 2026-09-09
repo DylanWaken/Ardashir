@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <filesystem>
 
-namespace arda::backend
+namespace arda
 {
     /** Identifies shader-source directory registry failures. */
     enum class EArdaShaderDirectoryError : uint8_t

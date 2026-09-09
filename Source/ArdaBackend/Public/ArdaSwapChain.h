@@ -11,7 +11,7 @@
 #include <EASTL/string.h>
 #include <EASTL/vector.h>
 
-namespace arda::backend
+namespace arda
 {
     /** Application callback that can replace or augment native presentation. */
     class IArdaCustomPresent
@@ -78,7 +78,7 @@ namespace arda::backend
          * @param OutFramebuffer Receives the acquired framebuffer.
          * @return True when a frame was acquired successfully.
          */
-        [[nodiscard]] virtual bool AcquireFrame(rhi::FArdaRHIFramebufferRef& OutFramebuffer) = 0;
+        [[nodiscard]] virtual bool AcquireFrame(arda::FArdaRHIFramebufferRef& OutFramebuffer) = 0;
         /** Transitions the acquired frame for queue submission. */
         virtual void PrepareSubmit() = 0;
         /** @return True when the submitted frame was presented successfully. */
@@ -92,7 +92,7 @@ namespace arda::backend
         virtual void WaitForIdle() noexcept = 0;
 
         /** @return The pixel format used by presentation images. */
-        [[nodiscard]] virtual rhi::EArdaRHIFormat GetFormat() const noexcept = 0;
+        [[nodiscard]] virtual arda::EArdaRHIFormat GetFormat() const noexcept = 0;
         /** @return The current presentation width in pixels. */
         [[nodiscard]] virtual uint32_t GetWidth() const noexcept = 0;
         /** @return The current presentation height in pixels. */

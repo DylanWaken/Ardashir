@@ -10,7 +10,7 @@ ARDA_DECLARE_LOG_CATEGORY_EXTERN(LogARDGExample);
     #include <GLFW/glfw3native.h>
 #endif
 
-namespace arda::tests::ardg_example
+namespace arda
 {
     FArdaGlfwWindow::~FArdaGlfwWindow()
     {
@@ -184,12 +184,12 @@ namespace arda::tests::ardg_example
         return true;
     }
 
-    backend::FArdaNativeObject FArdaGlfwWindow::GetD3D12WindowHandle() const noexcept
+    arda::FArdaNativeObject FArdaGlfwWindow::GetD3D12WindowHandle() const noexcept
     {
 #if defined(_WIN32)
-        return backend::FArdaNativeObject(mWindow ? glfwGetWin32Window(mWindow) : nullptr);
+        return arda::FArdaNativeObject(mWindow ? glfwGetWin32Window(mWindow) : nullptr);
 #else
-        return backend::FArdaNativeObject(nullptr);
+        return arda::FArdaNativeObject(nullptr);
 #endif
     }
 
@@ -210,8 +210,8 @@ namespace arda::tests::ardg_example
 #endif
     }
 
-    backend::FArdaNativeObject FArdaGlfwWindow::CreateVulkanSurface(
-        backend::FArdaNativeObject vulkanInstance,
+    arda::FArdaNativeObject FArdaGlfwWindow::CreateVulkanSurface(
+        arda::FArdaNativeObject vulkanInstance,
         eastl::string& outError)
     {
 #if defined(ARDA_TEST_WITH_VULKAN)
@@ -219,14 +219,14 @@ namespace arda::tests::ardg_example
         if (!mWindow)
         {
             outError = "GLFW cannot create a Vulkan surface without a window.";
-            return backend::FArdaNativeObject(nullptr);
+            return arda::FArdaNativeObject(nullptr);
         }
 
         const VkInstance instance = vulkanInstance.As<VkInstance>();
         if (instance == VK_NULL_HANDLE)
         {
             outError = "GLFW received a null Vulkan instance.";
-            return backend::FArdaNativeObject(nullptr);
+            return arda::FArdaNativeObject(nullptr);
         }
 
         VkSurfaceKHR surface = VK_NULL_HANDLE;
@@ -249,18 +249,18 @@ namespace arda::tests::ardg_example
                 outError += ": ";
                 outError += glfwError;
             }
-            return backend::FArdaNativeObject(nullptr);
+            return arda::FArdaNativeObject(nullptr);
         }
 
 #if VK_USE_64_BIT_PTR_DEFINES
-        return backend::FArdaNativeObject(surface);
+        return arda::FArdaNativeObject(surface);
 #else
-        return backend::FArdaNativeObject(static_cast<uintptr_t>(surface));
+        return arda::FArdaNativeObject(static_cast<uintptr_t>(surface));
 #endif
 #else
         static_cast<void>(vulkanInstance);
         outError = "The Vulkan backend module is not linked.";
-        return backend::FArdaNativeObject(nullptr);
+        return arda::FArdaNativeObject(nullptr);
 #endif
     }
 

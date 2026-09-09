@@ -11,7 +11,7 @@
 #include <filesystem>
 #include <vector>
 
-namespace arda::backend
+namespace arda
 {
     /**
      * Identifies failures from development/cook shader compilation.

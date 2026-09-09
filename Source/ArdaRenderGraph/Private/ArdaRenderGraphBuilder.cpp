@@ -12,7 +12,7 @@
 #include <string>
 #include <EASTL/unordered_set.h>
 
-namespace arda::render_graph
+namespace arda
 {
     namespace
     {
@@ -76,35 +76,35 @@ namespace arda::render_graph
         /** Returns whether a layout item can represent one parameter descriptor. */
         [[nodiscard]] bool IsCompatibleBindingType(
             EARDGParameterType ParameterType,
-            rhi::EArdaRHIBindingType LayoutType) noexcept
+            arda::EArdaRHIBindingType LayoutType) noexcept
         {
             switch (ParameterType)
             {
             case EARDGParameterType::Texture:
             case EARDGParameterType::TextureShaderResourceView:
-                return LayoutType == rhi::EArdaRHIBindingType::TextureSRV;
+                return LayoutType == arda::EArdaRHIBindingType::TextureSRV;
 
             case EARDGParameterType::TextureUnorderedAccessView:
-                return LayoutType == rhi::EArdaRHIBindingType::TextureUAV;
+                return LayoutType == arda::EArdaRHIBindingType::TextureUAV;
 
             case EARDGParameterType::Buffer:
             case EARDGParameterType::BufferShaderResourceView:
-                return LayoutType == rhi::EArdaRHIBindingType::TypedBufferSRV ||
-                    LayoutType == rhi::EArdaRHIBindingType::StructuredBufferSRV ||
-                    LayoutType == rhi::EArdaRHIBindingType::RawBufferSRV;
+                return LayoutType == arda::EArdaRHIBindingType::TypedBufferSRV ||
+                    LayoutType == arda::EArdaRHIBindingType::StructuredBufferSRV ||
+                    LayoutType == arda::EArdaRHIBindingType::RawBufferSRV;
 
             case EARDGParameterType::BufferUnorderedAccessView:
-                return LayoutType == rhi::EArdaRHIBindingType::TypedBufferUAV ||
-                    LayoutType == rhi::EArdaRHIBindingType::StructuredBufferUAV ||
-                    LayoutType == rhi::EArdaRHIBindingType::RawBufferUAV;
+                return LayoutType == arda::EArdaRHIBindingType::TypedBufferUAV ||
+                    LayoutType == arda::EArdaRHIBindingType::StructuredBufferUAV ||
+                    LayoutType == arda::EArdaRHIBindingType::RawBufferUAV;
 
             case EARDGParameterType::UniformBuffer:
-                return LayoutType == rhi::EArdaRHIBindingType::ConstantBuffer ||
-                    LayoutType == rhi::EArdaRHIBindingType::VolatileConstantBuffer;
+                return LayoutType == arda::EArdaRHIBindingType::ConstantBuffer ||
+                    LayoutType == arda::EArdaRHIBindingType::VolatileConstantBuffer;
 
             case EARDGParameterType::AccelStructAccess:
                 return LayoutType ==
-                    rhi::EArdaRHIBindingType::RayTracingAccelStruct;
+                    arda::EArdaRHIBindingType::RayTracingAccelStruct;
 
             case EARDGParameterType::Value:
             case EARDGParameterType::TextureAccess:
@@ -142,7 +142,7 @@ namespace arda::render_graph
          */
         void AppendStateName(
             std::ostream& Stream,
-            rhi::EArdaRHIResourceState State)
+            arda::EArdaRHIResourceState State)
         {
             struct FStateName
             {
@@ -150,29 +150,29 @@ namespace arda::render_graph
                  * Single RHI state bit matched while formatting a diagnostic
                  * state mask.
                  */
-                rhi::EArdaRHIResourceState mState;
+                arda::EArdaRHIResourceState mState;
 
                 /** Non-owning, static-lifetime label emitted when mState is present. */
                 const char* mName;
             };
             static constexpr FStateName Names[] = {
-                {rhi::EArdaRHIResourceState::Common, "Common"},
-                {rhi::EArdaRHIResourceState::ConstantBuffer, "ConstantBuffer"},
-                {rhi::EArdaRHIResourceState::VertexBuffer, "VertexBuffer"},
-                {rhi::EArdaRHIResourceState::IndexBuffer, "IndexBuffer"},
-                {rhi::EArdaRHIResourceState::IndirectArgument, "IndirectArgument"},
-                {rhi::EArdaRHIResourceState::PixelShaderResource, "PixelSRV"},
-                {rhi::EArdaRHIResourceState::NonPixelShaderResource, "NonPixelSRV"},
-                {rhi::EArdaRHIResourceState::UnorderedAccess, "UAV"},
-                {rhi::EArdaRHIResourceState::RenderTarget, "RenderTarget"},
-                {rhi::EArdaRHIResourceState::DepthWrite, "DepthWrite"},
-                {rhi::EArdaRHIResourceState::DepthRead, "DepthRead"},
-                {rhi::EArdaRHIResourceState::CopyDest, "CopyDest"},
-                {rhi::EArdaRHIResourceState::CopySource, "CopySource"},
-                {rhi::EArdaRHIResourceState::ResolveDest, "ResolveDest"},
-                {rhi::EArdaRHIResourceState::ResolveSource, "ResolveSource"},
-                {rhi::EArdaRHIResourceState::Present, "Present"}};
-            if (State == rhi::EArdaRHIResourceState::Unknown)
+                {arda::EArdaRHIResourceState::Common, "Common"},
+                {arda::EArdaRHIResourceState::ConstantBuffer, "ConstantBuffer"},
+                {arda::EArdaRHIResourceState::VertexBuffer, "VertexBuffer"},
+                {arda::EArdaRHIResourceState::IndexBuffer, "IndexBuffer"},
+                {arda::EArdaRHIResourceState::IndirectArgument, "IndirectArgument"},
+                {arda::EArdaRHIResourceState::PixelShaderResource, "PixelSRV"},
+                {arda::EArdaRHIResourceState::NonPixelShaderResource, "NonPixelSRV"},
+                {arda::EArdaRHIResourceState::UnorderedAccess, "UAV"},
+                {arda::EArdaRHIResourceState::RenderTarget, "RenderTarget"},
+                {arda::EArdaRHIResourceState::DepthWrite, "DepthWrite"},
+                {arda::EArdaRHIResourceState::DepthRead, "DepthRead"},
+                {arda::EArdaRHIResourceState::CopyDest, "CopyDest"},
+                {arda::EArdaRHIResourceState::CopySource, "CopySource"},
+                {arda::EArdaRHIResourceState::ResolveDest, "ResolveDest"},
+                {arda::EArdaRHIResourceState::ResolveSource, "ResolveSource"},
+                {arda::EArdaRHIResourceState::Present, "Present"}};
+            if (State == arda::EArdaRHIResourceState::Unknown)
             {
                 Stream << "Unknown";
                 return;
@@ -290,8 +290,8 @@ namespace arda::render_graph
              */
             void AddTexture(
                 FARDGTextureRef Texture,
-                rhi::EArdaRHIResourceState State,
-                rhi::FArdaRHITextureSubresourceRange Subresources = {})
+                arda::EArdaRHIResourceState State,
+                arda::FArdaRHITextureSubresourceRange Subresources = {})
             {
                 if (Texture == nullptr)
                 {
@@ -302,7 +302,7 @@ namespace arda::render_graph
                     ARDA_CHECK_MSG(
                         "A pass references a texture owned by another render graph.");
                 }
-                if (State == rhi::EArdaRHIResourceState::Unknown)
+                if (State == arda::EArdaRHIResourceState::Unknown)
                 {
                     ARDA_CHECK_MSG(
                         "A pass declares a texture access with an unknown state.");
@@ -342,8 +342,8 @@ namespace arda::render_graph
              */
             void AddBuffer(
                 FARDGBufferRef Buffer,
-                rhi::EArdaRHIResourceState State,
-                rhi::FArdaRHIBufferRange Range = {})
+                arda::EArdaRHIResourceState State,
+                arda::FArdaRHIBufferRange Range = {})
             {
                 if (Buffer == nullptr)
                 {
@@ -354,7 +354,7 @@ namespace arda::render_graph
                     ARDA_CHECK_MSG(
                         "A pass references a buffer owned by another render graph.");
                 }
-                if (State == rhi::EArdaRHIResourceState::Unknown)
+                if (State == arda::EArdaRHIResourceState::Unknown)
                 {
                     ARDA_CHECK_MSG(
                         "A pass declares a buffer access with an unknown state.");
@@ -385,7 +385,7 @@ namespace arda::render_graph
 
             void AddAccelStruct(
                 FARDGAccelStructRef AccelStruct,
-                rhi::EArdaRHIResourceState State)
+                arda::EArdaRHIResourceState State)
             {
                 if (AccelStruct == nullptr)
                 {
@@ -396,7 +396,7 @@ namespace arda::render_graph
                     ARDA_CHECK_MSG(
                         "A pass references an acceleration structure owned by another render graph.");
                 }
-                if (State == rhi::EArdaRHIResourceState::Unknown)
+                if (State == arda::EArdaRHIResourceState::Unknown)
                 {
                     ARDA_CHECK_MSG(
                         "A pass declares acceleration-structure access with an unknown state.");
@@ -626,7 +626,7 @@ namespace arda::render_graph
                                         Binding.mSubresources;
                                     AddTexture(
                                         Binding.mTexture,
-                                        rhi::EArdaRHIResourceState::RenderTarget,
+                                        arda::EArdaRHIResourceState::RenderTarget,
                                         Binding.mSubresources);
                                 }
                             }
@@ -640,7 +640,7 @@ namespace arda::render_graph
                                     Bindings.mDepthStencil.mSubresources;
                                 AddTexture(
                                     Bindings.mDepthStencil.mTexture,
-                                    rhi::EArdaRHIResourceState::DepthWrite,
+                                    arda::EArdaRHIResourceState::DepthWrite,
                                     Bindings.mDepthStencil.mSubresources);
                             }
                             break;
@@ -714,7 +714,7 @@ namespace arda::render_graph
     FARDGPassExecutionContext::FARDGPassExecutionContext(
         FARDGBuilder& Graph,
         FARDGPassHandle Pass,
-        rhi::IArdaRHICommandList& CommandList,
+        arda::IArdaRHICommandList& CommandList,
         EARDGPipeline Pipeline)
         : mUnsafeRawCommandList(CommandList)
         , mCommandList(CommandList)
@@ -739,77 +739,77 @@ namespace arda::render_graph
     }
 
     /** Resolves a directly declared logical texture during pass recording. */
-    rhi::IArdaRHITexture* FARDGPassExecutionContext::GetTexture(
+    arda::IArdaRHITexture* FARDGPassExecutionContext::GetTexture(
         FARDGTexture* Texture) const
     {
         return mGraph.ResolveTextureForPass(mPass, Texture);
     }
 
     /** Resolves the parent physical texture of a declared logical SRV. */
-    rhi::IArdaRHITexture* FARDGPassExecutionContext::GetTexture(
+    arda::IArdaRHITexture* FARDGPassExecutionContext::GetTexture(
         FARDGTextureSRV* View) const
     {
         return mGraph.ResolveTextureViewForPass(mPass, View);
     }
 
     /** Resolves the parent physical texture of a declared logical UAV. */
-    rhi::IArdaRHITexture* FARDGPassExecutionContext::GetTexture(
+    arda::IArdaRHITexture* FARDGPassExecutionContext::GetTexture(
         FARDGTextureUAV* View) const
     {
         return mGraph.ResolveTextureViewForPass(mPass, View);
     }
 
     /** Resolves a directly declared logical buffer during pass recording. */
-    rhi::IArdaRHIBuffer* FARDGPassExecutionContext::GetBuffer(
+    arda::IArdaRHIBuffer* FARDGPassExecutionContext::GetBuffer(
         FARDGBuffer* Buffer) const
     {
         return mGraph.ResolveBufferForPass(mPass, Buffer);
     }
 
     /** Resolves the parent physical buffer of a declared logical SRV. */
-    rhi::IArdaRHIBuffer* FARDGPassExecutionContext::GetBuffer(
+    arda::IArdaRHIBuffer* FARDGPassExecutionContext::GetBuffer(
         FARDGBufferSRV* View) const
     {
         return mGraph.ResolveBufferViewForPass(mPass, View);
     }
 
     /** Resolves the parent physical buffer of a declared logical UAV. */
-    rhi::IArdaRHIBuffer* FARDGPassExecutionContext::GetBuffer(
+    arda::IArdaRHIBuffer* FARDGPassExecutionContext::GetBuffer(
         FARDGBufferUAV* View) const
     {
         return mGraph.ResolveBufferViewForPass(mPass, View);
     }
 
     /** Resolves a declared logical uniform buffer's physical constant buffer. */
-    rhi::IArdaRHIBuffer* FARDGPassExecutionContext::GetUniformBuffer(
+    arda::IArdaRHIBuffer* FARDGPassExecutionContext::GetUniformBuffer(
         FARDGUniformBuffer* UniformBuffer) const
     {
         return mGraph.ResolveUniformBufferForPass(mPass, UniformBuffer);
     }
 
-    rhi::IArdaRHIAccelStruct* FARDGPassExecutionContext::GetAccelStruct(
+    arda::IArdaRHIAccelStruct* FARDGPassExecutionContext::GetAccelStruct(
         FARDGAccelStruct* AccelStruct) const
     {
         return mGraph.ResolveAccelStructForPass(mPass, AccelStruct);
     }
 
     /** Builds a binding set directly from the active pass parameter descriptors. */
-    rhi::FArdaRHIBindingSetRef FARDGPassExecutionContext::CreateBindingSet(
-        rhi::IArdaRHIBindingLayout* BindingLayout) const
+    arda::FArdaRHIBindingSetRef FARDGPassExecutionContext::CreateBindingSet(
+        arda::IArdaRHIBindingLayout* BindingLayout) const
     {
         return mGraph.CreateBindingSetForPass(mPass, BindingLayout);
     }
 
-    rhi::FArdaRHIBindingSetRef FARDGPassExecutionContext::CreateBindingSet(
-        const backend::FArdaShaderParameterMetadata& ShaderParameters,
-        rhi::IArdaRHIBindingLayout* BindingLayout) const
+    arda::FArdaRHIBindingSetRef FARDGPassExecutionContext::CreateBindingSet(
+        const arda::FArdaShaderParameterMetadata& ShaderParameters,
+        arda::IArdaRHIBindingLayout* BindingLayout) const
     {
         if (BindingLayout == nullptr)
         {
             ARDA_CHECK_MSG("A registered shader binding layout is null.");
         }
-        eastl::vector<rhi::FArdaRHIBindingLayoutDesc> Generated;
-        const backend::FArdaShaderStructStatus Status =
+        eastl::vector<arda::FArdaRHIBindingLayoutDesc> Generated;
+        const arda::FArdaShaderStructStatus Status =
             ShaderParameters.BuildBindingLayoutDescs(Generated);
         if (!Status)
         {
@@ -818,7 +818,7 @@ namespace arda::render_graph
         const bool bMatches = eastl::any_of(
             Generated.begin(),
             Generated.end(),
-            [BindingLayout](const rhi::FArdaRHIBindingLayoutDesc& Desc)
+            [BindingLayout](const arda::FArdaRHIBindingLayoutDesc& Desc)
             {
                 return Desc == BindingLayout->GetDesc();
             });
@@ -833,11 +833,11 @@ namespace arda::render_graph
             BindingLayout);
     }
 
-    rhi::FArdaRHIBindingSetRef FARDGPassExecutionContext::CreateBindingSet(
-        const backend::FArdaGlobalShaderInstance& Shader,
+    arda::FArdaRHIBindingSetRef FARDGPassExecutionContext::CreateBindingSet(
+        const arda::FArdaGlobalShaderInstance& Shader,
         size_t LayoutIndex) const
     {
-        const backend::FArdaShaderParameterMetadata* Metadata =
+        const arda::FArdaShaderParameterMetadata* Metadata =
             Shader.GetParameterMetadata();
         if (Metadata == nullptr ||
             LayoutIndex >= Shader.GetBindingLayouts().size())
@@ -850,11 +850,11 @@ namespace arda::render_graph
             Shader.GetBindingLayouts()[LayoutIndex].Get());
     }
 
-    eastl::vector<rhi::FArdaRHIBindingSetRef>
+    eastl::vector<arda::FArdaRHIBindingSetRef>
     FARDGPassExecutionContext::CreateBindingSets(
-        const backend::FArdaGlobalShaderInstance& Shader) const
+        const arda::FArdaGlobalShaderInstance& Shader) const
     {
-        eastl::vector<rhi::FArdaRHIBindingSetRef> Result;
+        eastl::vector<arda::FArdaRHIBindingSetRef> Result;
         Result.reserve(Shader.GetBindingLayouts().size());
         for (size_t LayoutIndex = 0;
              LayoutIndex < Shader.GetBindingLayouts().size();
@@ -904,7 +904,7 @@ namespace arda::render_graph
      * Ownership, active-pass scope, physical availability, and declaration membership
      * are all checked under the access mutex before the raw pointer is returned.
      */
-    rhi::IArdaRHITexture* FARDGBuilder::ResolveTextureForPass(
+    arda::IArdaRHITexture* FARDGBuilder::ResolveTextureForPass(
         FARDGPassHandle Pass,
         FARDGTexture* Texture) const
     {
@@ -943,7 +943,7 @@ namespace arda::render_graph
      * View identity is checked separately from parent access so a pass cannot use a
      * different subresource/format declaration merely because the parent was present.
      */
-    rhi::IArdaRHITexture* FARDGBuilder::ResolveTextureViewForPass(
+    arda::IArdaRHITexture* FARDGBuilder::ResolveTextureViewForPass(
         FARDGPassHandle Pass,
         FARDGView* View) const
     {
@@ -995,7 +995,7 @@ namespace arda::render_graph
      * The same gated ownership and declaration checks used for textures protect
      * parallel pass callbacks from undeclared or cross-graph physical access.
      */
-    rhi::IArdaRHIBuffer* FARDGBuilder::ResolveBufferForPass(
+    arda::IArdaRHIBuffer* FARDGBuilder::ResolveBufferForPass(
         FARDGPassHandle Pass,
         FARDGBuffer* Buffer) const
     {
@@ -1028,7 +1028,7 @@ namespace arda::render_graph
         return Buffer->GetBuffer().Get();
     }
 
-    rhi::IArdaRHIAccelStruct* FARDGBuilder::ResolveAccelStructForPass(
+    arda::IArdaRHIAccelStruct* FARDGBuilder::ResolveAccelStructForPass(
         FARDGPassHandle Pass,
         FARDGAccelStruct* AccelStruct) const
     {
@@ -1065,7 +1065,7 @@ namespace arda::render_graph
      * This preserves the selected range/format declaration as part of pass identity
      * while returning the parent RHI buffer used to build binding items.
      */
-    rhi::IArdaRHIBuffer* FARDGBuilder::ResolveBufferViewForPass(
+    arda::IArdaRHIBuffer* FARDGBuilder::ResolveBufferViewForPass(
         FARDGPassHandle Pass,
         FARDGView* View) const
     {
@@ -1117,7 +1117,7 @@ namespace arda::render_graph
      * The buffer must belong to this graph, be materialized, appear in the pass's
      * uniform-buffer declarations, and be requested while that pass gate is active.
      */
-    rhi::IArdaRHIBuffer* FARDGBuilder::ResolveUniformBufferForPass(
+    arda::IArdaRHIBuffer* FARDGBuilder::ResolveUniformBufferForPass(
         FARDGPassHandle Pass,
         FARDGUniformBuffer* UniformBuffer) const
     {
@@ -1155,17 +1155,17 @@ namespace arda::render_graph
      * subset belonging to that binding set and supplies the concrete buffer-view
      * flavor (typed, structured, or raw).
      */
-    rhi::FArdaRHIBindingSetRef FARDGBuilder::CreateBindingSetForPass(
+    arda::FArdaRHIBindingSetRef FARDGBuilder::CreateBindingSetForPass(
         FARDGPassHandle Pass,
-        rhi::IArdaRHIBindingLayout* BindingLayout) const
+        arda::IArdaRHIBindingLayout* BindingLayout) const
     {
         return CreateBindingSetForPassInternal(Pass, nullptr, BindingLayout);
     }
 
-    rhi::FArdaRHIBindingSetRef FARDGBuilder::CreateBindingSetForPass(
+    arda::FArdaRHIBindingSetRef FARDGBuilder::CreateBindingSetForPass(
         FARDGPassHandle Pass,
-        const backend::FArdaShaderParameterMetadata& ShaderParameters,
-        rhi::IArdaRHIBindingLayout* BindingLayout) const
+        const arda::FArdaShaderParameterMetadata& ShaderParameters,
+        arda::IArdaRHIBindingLayout* BindingLayout) const
     {
         return CreateBindingSetForPassInternal(
             Pass,
@@ -1173,10 +1173,10 @@ namespace arda::render_graph
             BindingLayout);
     }
 
-    rhi::FArdaRHIBindingSetRef FARDGBuilder::CreateBindingSetForPassInternal(
+    arda::FArdaRHIBindingSetRef FARDGBuilder::CreateBindingSetForPassInternal(
         FARDGPassHandle Pass,
-        const backend::FArdaShaderParameterMetadata* ShaderParameters,
-        rhi::IArdaRHIBindingLayout* BindingLayout) const
+        const arda::FArdaShaderParameterMetadata* ShaderParameters,
+        arda::IArdaRHIBindingLayout* BindingLayout) const
     {
         if (BindingLayout == nullptr)
         {
@@ -1185,7 +1185,7 @@ namespace arda::render_graph
         }
 
         const FARDGPass* PassRecord = nullptr;
-        rhi::IArdaRHIDevice* Device = nullptr;
+        arda::IArdaRHIDevice* Device = nullptr;
         {
             std::lock_guard<std::mutex> Lock(mImpl->mPassAccessMutex);
             PassRecord = mImpl->mPasses.TryGet(Pass);
@@ -1202,29 +1202,29 @@ namespace arda::render_graph
             }
         }
 
-        const rhi::FArdaRHIBindingLayoutDesc& LayoutDesc = BindingLayout->GetDesc();
+        const arda::FArdaRHIBindingLayoutDesc& LayoutDesc = BindingLayout->GetDesc();
 
         auto MakeBufferItem =
-            [](rhi::EArdaRHIBindingType Type,
+            [](arda::EArdaRHIBindingType Type,
                uint32_t Slot,
-               rhi::IArdaRHIBuffer* Buffer,
-               rhi::EArdaRHIFormat Format,
-               rhi::FArdaRHIBufferRange Range)
+               arda::IArdaRHIBuffer* Buffer,
+               arda::EArdaRHIFormat Format,
+               arda::FArdaRHIBufferRange Range)
             {
-                rhi::FArdaRHIBindingItem Item;
+                arda::FArdaRHIBindingItem Item;
                 Item.mSlot = Slot;
                 Item.mType = Type;
-                Item.mResource = rhi::TArdaRHIRef<rhi::IArdaRHIResource>(Buffer);
+                Item.mResource = arda::TArdaRHIRef<arda::IArdaRHIResource>(Buffer);
                 Item.mView.mFormat = Format;
                 Item.mView.mBufferRange = Range;
                 switch (Type)
                 {
-                case rhi::EArdaRHIBindingType::TypedBufferSRV:
-                case rhi::EArdaRHIBindingType::TypedBufferUAV:
-                case rhi::EArdaRHIBindingType::StructuredBufferSRV:
-                case rhi::EArdaRHIBindingType::StructuredBufferUAV:
-                case rhi::EArdaRHIBindingType::RawBufferSRV:
-                case rhi::EArdaRHIBindingType::RawBufferUAV:
+                case arda::EArdaRHIBindingType::TypedBufferSRV:
+                case arda::EArdaRHIBindingType::TypedBufferUAV:
+                case arda::EArdaRHIBindingType::StructuredBufferSRV:
+                case arda::EArdaRHIBindingType::StructuredBufferUAV:
+                case arda::EArdaRHIBindingType::RawBufferSRV:
+                case arda::EArdaRHIBindingType::RawBufferUAV:
                     return Item;
                 default:
                     ARDA_CHECK_MSG(
@@ -1233,8 +1233,8 @@ namespace arda::render_graph
                 }
             };
 
-        rhi::FArdaRHIBindingSetDesc BindingDesc;
-        BindingDesc.mLayout = rhi::FArdaRHIBindingLayoutRef(BindingLayout);
+        arda::FArdaRHIBindingSetDesc BindingDesc;
+        BindingDesc.mLayout = arda::FArdaRHIBindingLayoutRef(BindingLayout);
         eastl::vector<uint32_t> MatchedElements(
             LayoutDesc.mItems.size(),
             0u);
@@ -1243,11 +1243,11 @@ namespace arda::render_graph
         {
             eastl::string mParameterPath;
             size_t mParameterArrayIndex = 0;
-            const backend::FArdaShaderParameterMember* mShaderMember = nullptr;
+            const arda::FArdaShaderParameterMember* mShaderMember = nullptr;
             uint32_t mShaderArrayElement = 0;
         };
         eastl::vector<FShaderAssignment> ShaderAssignments;
-        eastl::vector<backend::FArdaFlattenedShaderParameterMember>
+        eastl::vector<arda::FArdaFlattenedShaderParameterMember>
             FlattenedShaderMembers;
         if (ShaderParameters != nullptr)
         {
@@ -1265,14 +1265,14 @@ namespace arda::render_graph
                 });
 
             size_t NextParameter = 0;
-            for (const backend::FArdaFlattenedShaderParameterMember& Resolved :
+            for (const arda::FArdaFlattenedShaderParameterMember& Resolved :
                  FlattenedShaderMembers)
             {
-                const backend::FArdaShaderParameterMember& Member =
+                const arda::FArdaShaderParameterMember& Member =
                     *Resolved.mMember;
-                if (Member.mKind == backend::EArdaShaderParameterKind::Value ||
-                    Member.mKind == backend::EArdaShaderParameterKind::NestedStruct ||
-                    Member.mKind == backend::EArdaShaderParameterKind::PushConstants)
+                if (Member.mKind == arda::EArdaShaderParameterKind::Value ||
+                    Member.mKind == arda::EArdaShaderParameterKind::NestedStruct ||
+                    Member.mKind == arda::EArdaShaderParameterKind::PushConstants)
                 {
                     continue;
                 }
@@ -1323,7 +1323,7 @@ namespace arda::render_graph
                 uint32_t Slot = 0;
                 uint32_t ArrayElement =
                     static_cast<uint32_t>(Parameter.mArrayIndex);
-                const backend::FArdaShaderParameterMember* ShaderMember = nullptr;
+                const arda::FArdaShaderParameterMember* ShaderMember = nullptr;
                 if (ShaderParameters != nullptr)
                 {
                     const auto Assignment = eastl::find_if(
@@ -1376,7 +1376,7 @@ namespace arda::render_graph
                      Index < LayoutDesc.mItems.size();
                      ++Index)
                 {
-                    const rhi::FArdaRHIBindingLayoutItem& Candidate =
+                    const arda::FArdaRHIBindingLayoutItem& Candidate =
                         LayoutDesc.mItems[Index];
                     if (Candidate.mSlot == Slot &&
                         IsCompatibleBindingType(ParameterType, Candidate.mType) &&
@@ -1392,7 +1392,7 @@ namespace arda::render_graph
                     return;
                 }
 
-                const rhi::FArdaRHIBindingLayoutItem& LayoutBinding =
+                const arda::FArdaRHIBindingLayoutItem& LayoutBinding =
                     LayoutDesc.mItems[LayoutIndex];
                 if (ArrayElement >= LayoutBinding.mArraySize)
                 {
@@ -1400,13 +1400,13 @@ namespace arda::render_graph
                         "A pass parameter array exceeds its binding layout.");
                 }
 
-                rhi::FArdaRHIBindingItem Item;
+                arda::FArdaRHIBindingItem Item;
                 Item.mSlot = Slot;
                 Item.mType = LayoutBinding.mType;
                 switch (ParameterType)
                 {
                 case EARDGParameterType::Texture:
-                    Item.mResource = rhi::TArdaRHIRef<rhi::IArdaRHIResource>(
+                    Item.mResource = arda::TArdaRHIRef<arda::IArdaRHIResource>(
                         ResolveTextureForPass(Pass, Parameter.GetValue<FARDGTextureRef>()));
                     break;
 
@@ -1414,7 +1414,7 @@ namespace arda::render_graph
                 {
                     const FARDGTextureSRVRef View =
                         Parameter.GetValue<FARDGTextureSRVRef>();
-                    Item.mResource = rhi::TArdaRHIRef<rhi::IArdaRHIResource>(
+                    Item.mResource = arda::TArdaRHIRef<arda::IArdaRHIResource>(
                         ResolveTextureViewForPass(Pass, View));
                     Item.mView.mFormat = View->GetDesc().mFormat;
                     Item.mView.mTextureRange = View->GetDesc().mSubresources;
@@ -1426,7 +1426,7 @@ namespace arda::render_graph
                 {
                     const FARDGTextureUAVRef View =
                         Parameter.GetValue<FARDGTextureUAVRef>();
-                    Item.mResource = rhi::TArdaRHIRef<rhi::IArdaRHIResource>(
+                    Item.mResource = arda::TArdaRHIRef<arda::IArdaRHIResource>(
                         ResolveTextureViewForPass(Pass, View));
                     Item.mView.mFormat = View->GetDesc().mFormat;
                     Item.mView.mTextureRange = View->GetDesc().mSubresources;
@@ -1438,7 +1438,7 @@ namespace arda::render_graph
                 {
                     const FARDGBufferRef Buffer =
                         Parameter.GetValue<FARDGBufferRef>();
-                    rhi::IArdaRHIBuffer* Physical =
+                    arda::IArdaRHIBuffer* Physical =
                         ResolveBufferForPass(Pass, Buffer);
                     Item = MakeBufferItem(
                         LayoutBinding.mType,
@@ -1476,7 +1476,7 @@ namespace arda::render_graph
                 }
 
                 case EARDGParameterType::UniformBuffer:
-                    Item.mResource = rhi::TArdaRHIRef<rhi::IArdaRHIResource>(
+                    Item.mResource = arda::TArdaRHIRef<arda::IArdaRHIResource>(
                         ResolveUniformBufferForPass(
                             Pass, Parameter.GetValue<FARDGUniformBufferRef>()));
                     break;
@@ -1485,7 +1485,7 @@ namespace arda::render_graph
                 {
                     const FARDGAccelStructAccess& Access =
                         Parameter.GetValue<FARDGAccelStructAccess>();
-                    Item.mResource = rhi::TArdaRHIRef<rhi::IArdaRHIResource>(
+                    Item.mResource = arda::TArdaRHIRef<arda::IArdaRHIResource>(
                         ResolveAccelStructForPass(Pass, Access.mAccelStruct));
                     break;
                 }
@@ -1511,13 +1511,13 @@ namespace arda::render_graph
 
         if (ShaderParameters != nullptr)
         {
-            for (const backend::FArdaFlattenedShaderParameterMember& Resolved :
+            for (const arda::FArdaFlattenedShaderParameterMember& Resolved :
                  FlattenedShaderMembers)
             {
-                const backend::FArdaShaderParameterMember& Member =
+                const arda::FArdaShaderParameterMember& Member =
                     *Resolved.mMember;
                 if (Member.mKind !=
-                        backend::EArdaShaderParameterKind::PushConstants ||
+                        arda::EArdaShaderParameterKind::PushConstants ||
                     Member.mRegisterSpace != LayoutDesc.mRegisterSpace ||
                     Member.mVisibility != LayoutDesc.mVisibility)
                 {
@@ -1527,16 +1527,16 @@ namespace arda::render_graph
                      Index < LayoutDesc.mItems.size();
                      ++Index)
                 {
-                    const rhi::FArdaRHIBindingLayoutItem& LayoutItem =
+                    const arda::FArdaRHIBindingLayoutItem& LayoutItem =
                         LayoutDesc.mItems[Index];
                     if (LayoutItem.mSlot == Member.mSlot &&
                         LayoutItem.mType ==
-                            rhi::EArdaRHIBindingType::PushConstants)
+                            arda::EArdaRHIBindingType::PushConstants)
                     {
-                        rhi::FArdaRHIBindingItem Item;
+                        arda::FArdaRHIBindingItem Item;
                         Item.mSlot = Member.mSlot;
                         Item.mType =
-                            rhi::EArdaRHIBindingType::PushConstants;
+                            arda::EArdaRHIBindingType::PushConstants;
                         Item.mView.mBufferRange.mByteSize = Member.mSize;
                         BindingDesc.mItems.push_back(eastl::move(Item));
                         ++MatchedElements[Index];
@@ -1613,7 +1613,7 @@ namespace arda::render_graph
      * is validated and retained for compile checks and execution materialization.
      */
     FARDGTextureRef FARDGBuilder::CreateTexture(
-        rhi::FArdaRHITextureDesc Desc,
+        arda::FArdaRHITextureDesc Desc,
         EARDGResourceFlags Flags)
     {
         if (!IsBuilding(*mImpl))
@@ -1643,7 +1643,7 @@ namespace arda::render_graph
      * record; no RHI buffer is allocated until execution materializes live work.
      */
     FARDGBufferRef FARDGBuilder::CreateBuffer(
-        rhi::FArdaRHIBufferDesc Desc,
+        arda::FArdaRHIBufferDesc Desc,
         EARDGResourceFlags Flags)
     {
         if (!IsBuilding(*mImpl))
@@ -1663,7 +1663,7 @@ namespace arda::render_graph
     }
 
     FARDGAccelStructRef FARDGBuilder::CreateAccelStruct(
-        rhi::FArdaRHIAccelStructDesc Desc,
+        arda::FArdaRHIAccelStructDesc Desc,
         EARDGResourceFlags Flags)
     {
         if (!IsBuilding(*mImpl) || Desc.mDebugName.empty() ||
@@ -1769,15 +1769,15 @@ namespace arda::render_graph
      * the same RHI object deduplicates to one logical record when states agree.
      */
     FARDGTextureRef FARDGBuilder::RegisterExternalTexture(
-        rhi::FArdaRHITextureRef Texture,
-        rhi::EArdaRHIResourceState InitialState,
+        arda::FArdaRHITextureRef Texture,
+        arda::EArdaRHIResourceState InitialState,
         eastl::string Name)
     {
         if (!IsBuilding(*mImpl))
         {
             ARDA_CHECK_MSG("Cannot import a texture after graph compilation.");
         }
-        if (!Texture || InitialState == rhi::EArdaRHIResourceState::Unknown)
+        if (!Texture || InitialState == arda::EArdaRHIResourceState::Unknown)
         {
             ARDA_CHECK_MSG(
                 "An external RHI texture requires a reference and known initial state.");
@@ -1793,7 +1793,7 @@ namespace arda::render_graph
             return Existing->second;
         }
 
-        rhi::FArdaRHITextureDesc Desc = Texture->GetDesc();
+        arda::FArdaRHITextureDesc Desc = Texture->GetDesc();
         if (!Name.empty())
         {
             Desc.mDebugName = Name;
@@ -1820,15 +1820,15 @@ namespace arda::render_graph
      * prologue producer history makes the pre-graph contents available to first use.
      */
     FARDGBufferRef FARDGBuilder::RegisterExternalBuffer(
-        rhi::FArdaRHIBufferRef Buffer,
-        rhi::EArdaRHIResourceState InitialState,
+        arda::FArdaRHIBufferRef Buffer,
+        arda::EArdaRHIResourceState InitialState,
         eastl::string Name)
     {
         if (!IsBuilding(*mImpl))
         {
             ARDA_CHECK_MSG("Cannot import a buffer after graph compilation.");
         }
-        if (!Buffer || InitialState == rhi::EArdaRHIResourceState::Unknown)
+        if (!Buffer || InitialState == arda::EArdaRHIResourceState::Unknown)
         {
             ARDA_CHECK_MSG(
                 "An external RHI buffer requires a reference and known initial state.");
@@ -1844,7 +1844,7 @@ namespace arda::render_graph
             return Existing->second;
         }
 
-        rhi::FArdaRHIBufferDesc Desc = Buffer->GetDesc();
+        arda::FArdaRHIBufferDesc Desc = Buffer->GetDesc();
         if (!Name.empty())
         {
             Desc.mDebugName = Name;
@@ -1865,12 +1865,12 @@ namespace arda::render_graph
     }
 
     FARDGAccelStructRef FARDGBuilder::RegisterExternalAccelStruct(
-        rhi::FArdaRHIAccelStructRef AccelStruct,
-        rhi::EArdaRHIResourceState InitialState,
+        arda::FArdaRHIAccelStructRef AccelStruct,
+        arda::EArdaRHIResourceState InitialState,
         eastl::string Name)
     {
         if (!IsBuilding(*mImpl) || !AccelStruct ||
-            InitialState == rhi::EArdaRHIResourceState::Unknown)
+            InitialState == arda::EArdaRHIResourceState::Unknown)
         {
             ARDA_CHECK_MSG(
                 "An external acceleration structure requires a reference and known initial state.");
@@ -1891,7 +1891,7 @@ namespace arda::render_graph
             }
             return Existing->second;
         }
-        rhi::FArdaRHIAccelStructDesc Desc = AccelStruct->GetDesc();
+        arda::FArdaRHIAccelStructDesc Desc = AccelStruct->GetDesc();
         if (!Name.empty()) Desc.mDebugName = Name;
         if (Desc.mDebugName.empty()) Desc.mDebugName = "ExternalAccelStruct";
         const FARDGAccelStructHandle Handle = mImpl->mAccelStructs.Emplace(
@@ -1921,11 +1921,11 @@ namespace arda::render_graph
         {
             ARDA_CHECK_MSG("Invalid logical uniform-buffer declaration.");
         }
-        rhi::FArdaRHIBufferDesc Desc;
+        arda::FArdaRHIBufferDesc Desc;
         Desc.mDebugName = Name;
         Desc.mByteSize = ByteSize;
-        Desc.mUsage = rhi::EArdaRHIBufferUsage::Constant;
-        Desc.mInitialState = rhi::EArdaRHIResourceState::ConstantBuffer;
+        Desc.mUsage = arda::EArdaRHIBufferUsage::Constant;
+        Desc.mInitialState = arda::EArdaRHIResourceState::ConstantBuffer;
         const FARDGUniformBufferHandle Handle = mImpl->mUniformBuffers.Emplace(
             Name,
             eastl::move(Desc),
@@ -1942,14 +1942,14 @@ namespace arda::render_graph
      */
     void FARDGBuilder::QueueTextureExtraction(
         FARDGTextureRef Texture,
-        rhi::FArdaRHITextureRef* Output,
-        rhi::EArdaRHIResourceState FinalState)
+        arda::FArdaRHITextureRef* Output,
+        arda::EArdaRHIResourceState FinalState)
     {
         if (!IsBuilding(*mImpl) ||
             Texture == nullptr ||
             Output == nullptr ||
             mImpl->mTextures.TryGet(Texture->GetHandle()) != Texture ||
-            FinalState == rhi::EArdaRHIResourceState::Unknown)
+            FinalState == arda::EArdaRHIResourceState::Unknown)
         {
             ARDA_CHECK_MSG("Invalid logical texture extraction.");
         }
@@ -1981,14 +1981,14 @@ namespace arda::render_graph
      */
     void FARDGBuilder::QueueBufferExtraction(
         FARDGBufferRef Buffer,
-        rhi::FArdaRHIBufferRef* Output,
-        rhi::EArdaRHIResourceState FinalState)
+        arda::FArdaRHIBufferRef* Output,
+        arda::EArdaRHIResourceState FinalState)
     {
         if (!IsBuilding(*mImpl) ||
             Buffer == nullptr ||
             Output == nullptr ||
             mImpl->mBuffers.TryGet(Buffer->GetHandle()) != Buffer ||
-            FinalState == rhi::EArdaRHIResourceState::Unknown)
+            FinalState == arda::EArdaRHIResourceState::Unknown)
         {
             ARDA_CHECK_MSG("Invalid logical buffer extraction.");
         }
@@ -2015,15 +2015,15 @@ namespace arda::render_graph
     /** Publishes a graph-created acceleration structure for later graphs. */
     void FARDGBuilder::QueueAccelStructExtraction(
         FARDGAccelStructRef AccelStruct,
-        rhi::FArdaRHIAccelStructRef* Output,
-        rhi::EArdaRHIResourceState FinalState)
+        arda::FArdaRHIAccelStructRef* Output,
+        arda::EArdaRHIResourceState FinalState)
     {
         if (!IsBuilding(*mImpl) ||
             AccelStruct == nullptr ||
             Output == nullptr ||
             mImpl->mAccelStructs.TryGet(AccelStruct->GetHandle()) !=
                 AccelStruct ||
-            FinalState == rhi::EArdaRHIResourceState::Unknown)
+            FinalState == arda::EArdaRHIResourceState::Unknown)
         {
             ARDA_CHECK_MSG("Invalid logical acceleration-structure extraction.");
         }
@@ -2063,7 +2063,7 @@ namespace arda::render_graph
         FARDGHostToDeviceCopyParameters Parameters;
         Parameters.mDestination = {
             Destination,
-            rhi::EArdaRHIResourceState::CopyDest,
+            arda::EArdaRHIResourceState::CopyDest,
             { DestinationOffset, Size }};
         return AddPass(
             eastl::move(Name), &Parameters,
@@ -2083,7 +2083,7 @@ namespace arda::render_graph
         FARDGBufferRef Destination,
         const void* SourceData,
         size_t Size,
-        rhi::FArdaRHIHostToDeviceCopyCallback Completion,
+        arda::FArdaRHIHostToDeviceCopyCallback Completion,
         uint64_t DestinationOffset,
         eastl::string Name)
     {
@@ -2097,7 +2097,7 @@ namespace arda::render_graph
         FARDGHostToDeviceCopyParameters Parameters;
         Parameters.mDestination = {
             Destination,
-            rhi::EArdaRHIResourceState::CopyDest,
+            arda::EArdaRHIResourceState::CopyDest,
             { DestinationOffset, Size }};
         return AddPass(
             eastl::move(Name), &Parameters,
@@ -2127,7 +2127,7 @@ namespace arda::render_graph
     {
         if (!Source || SourceOffset > Source->GetDesc().mByteSize)
             ARDA_CHECK_MSG("Invalid device-to-host render-graph copy offset.");
-        const uint64_t ResolvedSize = Size == rhi::ArdaRHIWholeBuffer
+        const uint64_t ResolvedSize = Size == arda::ArdaRHIWholeBuffer
             ? Source->GetDesc().mByteSize - SourceOffset : Size;
         if (ResolvedSize == 0 ||
             ResolvedSize > Source->GetDesc().mByteSize - SourceOffset)
@@ -2136,7 +2136,7 @@ namespace arda::render_graph
         FARDGDeviceToHostCopyParameters Parameters;
         Parameters.mSource = {
             Source,
-            rhi::EArdaRHIResourceState::CopySource,
+            arda::EArdaRHIResourceState::CopySource,
             { SourceOffset, ResolvedSize }};
         return AddPass(
             eastl::move(Name), &Parameters,
@@ -2156,7 +2156,7 @@ namespace arda::render_graph
 
     FARDGPassHandle FARDGBuilder::AddDeviceToHostCopyPassAsync(
         FARDGBufferRef Source,
-        rhi::FArdaRHIDeviceToHostCopyCallback Completion,
+        arda::FArdaRHIDeviceToHostCopyCallback Completion,
         uint64_t SourceOffset,
         uint64_t Size,
         eastl::string Name)
@@ -2164,7 +2164,7 @@ namespace arda::render_graph
         if (!Source || !Completion ||
             SourceOffset > Source->GetDesc().mByteSize)
             ARDA_CHECK_MSG("Invalid asynchronous device-to-host render-graph copy.");
-        const uint64_t ResolvedSize = Size == rhi::ArdaRHIWholeBuffer
+        const uint64_t ResolvedSize = Size == arda::ArdaRHIWholeBuffer
             ? Source->GetDesc().mByteSize - SourceOffset : Size;
         if (ResolvedSize == 0 ||
             ResolvedSize > Source->GetDesc().mByteSize - SourceOffset)
@@ -2173,7 +2173,7 @@ namespace arda::render_graph
         FARDGDeviceToHostCopyParameters Parameters;
         Parameters.mSource = {
             Source,
-            rhi::EArdaRHIResourceState::CopySource,
+            arda::EArdaRHIResourceState::CopySource,
             { SourceOffset, ResolvedSize }};
         return AddPass(
             eastl::move(Name), &Parameters,

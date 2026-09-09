@@ -11,7 +11,7 @@
 
 #include <cstdint>
 
-namespace arda::backend
+namespace arda
 {
     /** Names a backend-specific native object carried by an external device. */
     struct FArdaExternalNativeObject
@@ -35,7 +35,7 @@ namespace arda::backend
     struct FArdaExternalQueueDesc
     {
         /** Arda queue role represented by this native queue. */
-        rhi::EArdaRHIQueueType mType = rhi::EArdaRHIQueueType::Graphics;
+        arda::EArdaRHIQueueType mType = arda::EArdaRHIQueueType::Graphics;
         /** Opaque native queue handle or engine-RHI queue object. */
         FArdaNativeObject mQueue;
         /** Native queue-family identifier when the API uses families. */
@@ -51,6 +51,14 @@ namespace arda::backend
      * fields. Engine integrations place objects such as FRHIDevice,
      * IDynamicRHI, Unity interfaces, or Godot RenderingDevice pointers in
      * mAdditionalObjects under names documented by their backend module.
+     * native-vulkan requires instance, adapter, device and a graphics queue, plus
+     * vulkan.api-version=1.3 (or 1.4). Report each enabled feature as a repeated
+     * vulkan.enabled-feature property using its Vulkan member name; dynamicRendering,
+     * synchronization2 and timelineSemaphore are required. Report enabled device
+     * extensions as repeated vulkan.device-extension properties. Validation requests
+     * require vulkan.validation=enabled; the host owns validation setup and diagnostics.
+     * The host must serialize access to borrowed queues with Arda submission/presentation
+     * and retain all raw handles until every Arda child and submission has retired.
      */
     struct FArdaExternalDeviceDesc
     {
@@ -148,16 +156,16 @@ namespace arda::backend
          * @param OutDesc Receives the complete native texture import descriptor.
          * @return Success or a provider-specific failure status.
          */
-        [[nodiscard]] virtual rhi::FArdaRHIStatus ResolveNativeTexture(
-            uint64_t Id, rhi::FArdaRHINativeTextureImportDesc& OutDesc) = 0;
+        [[nodiscard]] virtual arda::FArdaRHIStatus ResolveNativeTexture(
+            uint64_t Id, arda::FArdaRHINativeTextureImportDesc& OutDesc) = 0;
         /**
          * Resolves a stable buffer identifier.
          * @param Id Provider-defined stable identifier.
          * @param OutDesc Receives the complete native buffer import descriptor.
          * @return Success or a provider-specific failure status.
          */
-        [[nodiscard]] virtual rhi::FArdaRHIStatus ResolveNativeBuffer(
-            uint64_t Id, rhi::FArdaRHINativeBufferImportDesc& OutDesc) = 0;
+        [[nodiscard]] virtual arda::FArdaRHIStatus ResolveNativeBuffer(
+            uint64_t Id, arda::FArdaRHINativeBufferImportDesc& OutDesc) = 0;
     };
 
     /**
@@ -187,7 +195,7 @@ namespace arda::backend
      * @param Id Provider-defined texture identifier.
      * @return Imported texture and status using normal RHI result conventions.
      */
-    [[nodiscard]] rhi::TArdaRHIResult<rhi::FArdaRHITextureRef> ImportExternalTexture(
+    [[nodiscard]] arda::TArdaRHIResult<arda::FArdaRHITextureRef> ImportExternalTexture(
         const char* ProviderName, uint64_t Id);
     /**
      * Resolves and imports an external buffer into the active RHI device.
@@ -195,6 +203,6 @@ namespace arda::backend
      * @param Id Provider-defined buffer identifier.
      * @return Imported buffer and status using normal RHI result conventions.
      */
-    [[nodiscard]] rhi::TArdaRHIResult<rhi::FArdaRHIBufferRef> ImportExternalBuffer(
+    [[nodiscard]] arda::TArdaRHIResult<arda::FArdaRHIBufferRef> ImportExternalBuffer(
         const char* ProviderName, uint64_t Id);
 }

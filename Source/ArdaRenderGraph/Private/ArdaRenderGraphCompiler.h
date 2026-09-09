@@ -2,7 +2,7 @@
 
 #include "ArdaRenderGraphBuilder.h"
 
-namespace arda::render_graph
+namespace arda
 {
     /**
      * Runs the device-independent compilation stages for a completed render graph.

@@ -7,7 +7,7 @@
 #include <EASTL/numeric_limits.h>
 #include <EASTL/sort.h>
 
-namespace arda::render_graph
+namespace arda
 {
     namespace
     {

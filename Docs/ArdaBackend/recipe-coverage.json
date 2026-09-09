@@ -144,7 +144,7 @@
     },
     "RayTracingTier": {
       "name": "RayTracingTier",
-      "expression": "C.mRayTracing.GetTier() != arda::rhi::EArdaRHIRayTracingTier::None",
+      "expression": "C.mRayTracing.GetTier() != arda::EArdaRHIRayTracingTier::None",
       "probe": "AccelerationStructure",
       "page": "capability-recipes.html#feature-accelerationstructure",
       "example": "gpu-examples.html#VerifyAccelerationStructureLifecycleAndStateParity"
@@ -347,21 +347,21 @@
     },
     "GraphicsQueueFamilyIndex": {
       "name": "GraphicsQueueFamilyIndex",
-      "expression": "C.mQueues.mGraphicsFamily != arda::rhi::ArdaRHIInvalidQueueFamily",
+      "expression": "C.mQueues.mGraphicsFamily != arda::ArdaRHIInvalidQueueFamily",
       "probe": "QueueBreadth",
       "page": "capability-recipes.html#feature-queuebreadth",
       "example": "gpu-examples.html#VerifyQueueBreadth"
     },
     "ComputeQueueFamilyIndex": {
       "name": "ComputeQueueFamilyIndex",
-      "expression": "C.mQueues.mComputeFamily != arda::rhi::ArdaRHIInvalidQueueFamily",
+      "expression": "C.mQueues.mComputeFamily != arda::ArdaRHIInvalidQueueFamily",
       "probe": "QueueBreadth",
       "page": "capability-recipes.html#feature-queuebreadth",
       "example": "gpu-examples.html#VerifyQueueBreadth"
     },
     "CopyQueueFamilyIndex": {
       "name": "CopyQueueFamilyIndex",
-      "expression": "C.mQueues.mCopyFamily != arda::rhi::ArdaRHIInvalidQueueFamily",
+      "expression": "C.mQueues.mCopyFamily != arda::ArdaRHIInvalidQueueFamily",
       "probe": "QueueBreadth",
       "page": "capability-recipes.html#feature-queuebreadth",
       "example": "gpu-examples.html#VerifyQueueBreadth"
@@ -473,21 +473,21 @@
     },
     "MeshShaders": {
       "name": "MeshShaders",
-      "expression": "C.mMeshShaderTier != arda::rhi::EArdaRHIMeshShaderTier::None",
+      "expression": "C.mMeshShaderTier != arda::EArdaRHIMeshShaderTier::None",
       "probe": "MeshShader",
       "page": "capability-recipes.html#feature-meshshader",
       "example": "gpu-examples.html#VerifyMeshPipelineCapabilityAndExecution"
     },
     "WorkGraphs": {
       "name": "WorkGraphs",
-      "expression": "C.mWorkGraphTier != arda::rhi::EArdaRHIWorkGraphTier::None",
+      "expression": "C.mWorkGraphTier != arda::EArdaRHIWorkGraphTier::None",
       "probe": "WorkGraph",
       "page": "capability-recipes.html#feature-workgraph",
       "example": "gpu-examples.html#VerifyD3D12WorkGraphExecution"
     },
     "SamplerFeedback": {
       "name": "SamplerFeedback",
-      "expression": "C.mSamplerFeedbackTier != arda::rhi::EArdaRHISamplerFeedbackTier::None",
+      "expression": "C.mSamplerFeedbackTier != arda::EArdaRHISamplerFeedbackTier::None",
       "probe": "SamplerFeedback",
       "page": "capability-recipes.html#feature-samplerfeedback",
       "example": "gpu-examples.html#VerifySamplerFeedbackStateParity"

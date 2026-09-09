@@ -1,6 +1,6 @@
 #include "ArdaARDGExampleConfig.h"
 
-namespace arda::tests::ardg_example
+namespace arda
 {
     // Raw string preserves absolute CMake source paths containing spaces.
     extern const char* const GArdaARDGShaderSourceDirectory =

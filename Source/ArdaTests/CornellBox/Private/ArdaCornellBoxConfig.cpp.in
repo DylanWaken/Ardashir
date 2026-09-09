@@ -1,6 +1,6 @@
 #include "ArdaCornellBoxConfig.h"
 
-namespace arda::tests::cornell_box
+namespace arda
 {
     extern const char* const GArdaCornellBoxShaderSourceDirectory =
         R"ARDA(@CMAKE_CURRENT_SOURCE_DIR@/Shaders)ARDA";

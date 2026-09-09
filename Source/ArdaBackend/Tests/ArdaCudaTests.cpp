@@ -2,6 +2,7 @@
 #include "ArdaBackend.h"
 #include "ArdaBackendProvider.h"
 #include "Compute/ArdaComputeOperand.h"
+#include "Compute/ArdaCudaCompiler.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 #include <gtest/gtest.h>
 #include <cstdio>
@@ -10,11 +11,12 @@
 #include <fstream>
 #include <filesystem>
 #include <future>
+#include <cstdlib>
+#include <iterator>
 
 namespace
 {
-    using namespace arda::rhi;
-    using namespace arda::backend;
+    using namespace arda;
 
     // PTX is the sample's source, not a second handwritten copy of a CUDA C kernel.
     const char* AddPtx = R"ptx(.version 8.0
@@ -49,9 +51,19 @@ done: ret;
         void SetUp() override
         {
             ShutdownBackend();
-            if (!FindBackendModule(GetParam())) GTEST_SKIP() << "Backend not built";
             FArdaBackendConfiguration C;
             C.mBackendName = GetParam();
+            if (C.mBackendName == "d3d12-context" || C.mBackendName == "vulkan-context")
+            {
+                C.mBackendName = C.mBackendName == "d3d12-context" ? "native-d3d12" : "native-vulkan";
+                C.mCudaExecutionMode = EArdaCudaExecutionMode::ContextSwitch;
+            }
+            else if (C.mBackendName == "d3d12-cig")
+            {
+                C.mBackendName = "native-d3d12";
+                C.mCudaExecutionMode = EArdaCudaExecutionMode::GraphicsQueue;
+            }
+            if (!FindBackendModule(C.mBackendName.c_str())) GTEST_SKIP() << "Backend not built";
             C.mbEnableValidation = true;
             C.mMessageCallback = &mDiagnostics;
             C.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
@@ -129,6 +141,223 @@ done: ret;
         { return mbInvalidSelection ? SIZE_MAX : Eligible.back(); }
     };
 
+    size_t SelectArdaAddKernel(const FArdaComputeInvocation& Invocation, const FArdaCudaCapabilities&,
+        const eastl::vector<size_t>& Eligible)
+    {
+        const size_t Preferred = Invocation.mBindingDimensions[0][1] <= 64 ? 0 : 1;
+        for (const size_t Index : Eligible)
+        {
+            if (Index == Preferred)
+            {
+                return Index;
+            }
+        }
+        return Eligible.front();
+    }
+
+    TArdaRHIResult<eastl::vector<FArdaComputeCudaLaunch>> InvokeArdaAddKernel(
+        const FArdaComputeInvocation& Invocation, uint32_t BlockSize)
+    {
+        const auto& Dimensions = Invocation.mBindingDimensions[0];
+        const uint32_t Count = static_cast<uint32_t>(Dimensions[0] * Dimensions[1]);
+        FArdaComputeCudaLaunch First;
+        First.mEntryPoint = "add_values";
+        First.mBlockSize[0] = BlockSize;
+        First.mGridSize[0] = 1 + (Count - 1) / BlockSize;
+        First.mArguments = {FArdaCudaArgument::Binding(0), FArdaCudaArgument::Binding(1),
+            FArdaCudaArgument::Value(Count), FArdaCudaArgument::Value(7u)};
+        auto Second = First;
+        Second.mArguments[0] = FArdaCudaArgument::Binding(1);
+        Second.mArguments[3] = FArdaCudaArgument::Value(11u);
+        return {{First, Second}, {}};
+    }
+
+    class FArdaDimensionAddOperand final : public FArdaComputeOperand
+    {
+    public:
+        explicit FArdaDimensionAddOperand(eastl::shared_ptr<const FArdaCudaModule> Module,
+            FArdaComputeShaderDispatch Fallback = {})
+            : FArdaComputeOperand("sample.dimension_add", {
+                {"input", EArdaComputeBindingType::Buffer, EArdaComputeAccess::Read, 4, 4},
+                {"output", EArdaComputeBindingType::Buffer, EArdaComputeAccess::ReadWrite, 4, 4}},
+                SelectArdaAddKernel)
+        {
+            EXPECT_TRUE(RegisterCuda("cuda.small", 70, UINT32_MAX,
+                FArdaComputeCudaImplementation{{Module}, [](const auto& Invocation, const auto&)
+                {
+                    return InvokeArdaAddKernel(Invocation, 32);
+                }}, [](const auto& Invocation, const auto&)
+                {
+                    return Invocation.mBindingDimensions[0][1] <= 64;
+                }));
+            EXPECT_TRUE(RegisterCuda("cuda.large", 70, UINT32_MAX,
+                FArdaComputeCudaImplementation{{Module}, [](const auto& Invocation, const auto&)
+                {
+                    return InvokeArdaAddKernel(Invocation, 128);
+                }}));
+            if (Fallback)
+            {
+                EXPECT_TRUE(RegisterGraphics("graphics.add", eastl::move(Fallback)));
+            }
+        }
+
+        FArdaRHIStatus ValidateInvocation(const FArdaComputeInvocation& Invocation) const override
+        {
+            if (Invocation.mBindingDimensions.size() != 2 || Invocation.mBindingDimensions[0].size() != 2 ||
+                Invocation.mBindingDimensions[0] != Invocation.mBindingDimensions[1])
+            {
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Add requires matching rank-two shapes.");
+            }
+            const auto& Shape = Invocation.mBindingDimensions[0];
+            if (Shape[0] > UINT32_MAX / Shape[1])
+            {
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Add element count exceeds its uint32 ABI.");
+            }
+            for (const auto& Binding : Invocation.mBindings)
+            {
+                const auto* Buffer = dynamic_cast<IArdaRHIBuffer*>(Binding.mResource.Get());
+                if (Binding.mBufferRange.Resolve(Buffer->GetDesc()).mByteSize != Shape[0] * Shape[1] * 4)
+                {
+                    return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Add shape does not match the buffer view.");
+                }
+            }
+            return {};
+        }
+    };
+
+    eastl::string ReadArdaCudaOperandSource(const char* Name)
+    {
+        const auto Path = std::filesystem::path(ARDA_BACKEND_TEST_SHADER_SOURCE_DIR) / Name;
+        std::ifstream File(Path, std::ios::binary);
+        EXPECT_TRUE(File.is_open());
+        const std::string Text{std::istreambuf_iterator<char>(File), std::istreambuf_iterator<char>()};
+        return {Text.data(), Text.size()};
+    }
+
+    TEST_P(ArdaCudaGpu, ModularCppOperandSelectsByInputDimensionsAndCachesCompilation)
+    {
+        const auto Capabilities = mDevice->GetCudaCapabilities();
+        if (!Capabilities)
+        {
+            GTEST_SKIP() << Capabilities.mUnavailableReason.c_str();
+        }
+        const char* LibraryPath = std::getenv("ARDA_TEST_NVRTC_LIBRARY");
+        if (!LibraryPath)
+        {
+            GTEST_SKIP() << "Set ARDA_TEST_NVRTC_LIBRARY to exercise CUDA C++ compilation.";
+        }
+        auto Compiler = CreateArdaNvrtcCompiler(LibraryPath);
+        ASSERT_TRUE(Compiler) << Compiler.mStatus.mMessage.c_str();
+        uint32_t Compilations = 0;
+        auto Module = FArdaCudaModule::Create({"ArdaCudaOperand.cu", ReadArdaCudaOperandSource("ArdaCudaOperand.cu"),
+            EArdaCudaSourceLanguage::CudaCpp,
+            {{"ArdaCudaOperandValue.h", ReadArdaCudaOperandSource("ArdaCudaOperandValue.h")}}, {"--std=c++17"}},
+            [&, Compile = Compiler.mValue](const auto& Source, uint32_t Architecture)
+            {
+                ++Compilations;
+                return Compile(Source, Architecture);
+            });
+        ASSERT_TRUE(Module);
+        FArdaDimensionAddOperand Operand(Module.mValue);
+        auto Source = mDevice->CreateBuffer(BufferDesc(128 * 4));
+        auto Output = mDevice->CreateBuffer(BufferDesc(128 * 4));
+        ASSERT_TRUE(Source);
+        ASSERT_TRUE(Output);
+        FArdaComputeInvocation Invocation;
+        Invocation.mExtent[0] = 128;
+        Invocation.mBindings = {{Source.mValue}, {Output.mValue}};
+        for (const uint64_t Columns : {32u, 128u})
+        {
+            auto Commands = mDevice->CreateCommandList(EArdaRHIQueueType::Graphics);
+            ASSERT_TRUE(Commands);
+            ASSERT_TRUE(Commands.mValue->Open());
+            eastl::vector<uint32_t> Values(128);
+            for (uint32_t Index = 0; Index < Values.size(); ++Index)
+            {
+                Values[Index] = Index * 3;
+            }
+            ASSERT_TRUE(Commands.mValue->WriteBuffer(*Source.mValue, Values.data(), Values.size() * 4));
+            Invocation.mBindingDimensions = {{128 / Columns, Columns}, {128 / Columns, Columns}};
+            const auto Selected = Operand.Dispatch(*Commands.mValue, Invocation, EArdaComputePolicy::RequireCuda);
+            ASSERT_TRUE(Selected) << Selected.mStatus.mMessage.c_str();
+            EXPECT_EQ(Selected.mValue, Columns == 32 ? "cuda.small" : "cuda.large");
+            EXPECT_EQ(Invocation.mBindings[1].mAccess, EArdaComputeAccess::Read);
+            EXPECT_EQ(Compilations, 1u);
+            eastl::vector<uint8_t> Bytes;
+            ASSERT_TRUE(Commands.mValue->CopyBufferDeviceToHost(*Output.mValue, Bytes));
+            ASSERT_TRUE(Commands.mValue->Close());
+            ASSERT_TRUE(mDevice->ExecuteCommandList(Commands.mValue));
+            ASSERT_TRUE(mDevice->WaitForIdle());
+            ASSERT_EQ(Bytes.size(), Values.size() * 4);
+            for (uint32_t Index = 0; Index < Values.size(); ++Index)
+            {
+                uint32_t Value = 0;
+                std::memcpy(&Value, Bytes.data() + Index * 4, 4);
+                ASSERT_EQ(Value, Values[Index] + 18);
+            }
+        }
+    }
+
+    TEST_P(ArdaCudaGpu, ModularEligibilityAndShapeErrorsNeverCompileOrRecord)
+    {
+        uint32_t Compilations = 0;
+        uint32_t GraphicsCalls = 0;
+        auto Module = FArdaCudaModule::Create({"ArdaUnavailable.cu", "invalid CUDA C++"},
+            [&](const auto&, uint32_t) -> TArdaRHIResult<eastl::string>
+            {
+                ++Compilations;
+                return {{}, FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "compile failed")};
+            });
+        ASSERT_TRUE(Module);
+        FArdaDimensionAddOperand Operand(Module.mValue, [&](auto&, const auto&)
+        {
+            ++GraphicsCalls;
+            return FArdaRHIStatus{};
+        });
+        auto Buffer = mDevice->CreateBuffer(BufferDesc(512, false));
+        ASSERT_TRUE(Buffer);
+        auto Commands = mDevice->CreateCommandList(EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(Commands);
+        ASSERT_TRUE(Commands.mValue->Open());
+        FArdaComputeInvocation Invocation;
+        Invocation.mBindings = {{Buffer.mValue}, {Buffer.mValue}};
+        Invocation.mBindingDimensions = {{1, 128}, {1, 128}};
+        auto Selected = Operand.Dispatch(*Commands.mValue, Invocation);
+        ASSERT_TRUE(Selected);
+        EXPECT_EQ(Selected.mValue, "graphics.add");
+        EXPECT_EQ(Operand.Dispatch(*Commands.mValue, Invocation, EArdaComputePolicy::RequireCuda).mStatus.mCode,
+            EArdaRHIResult::Unsupported);
+        Invocation.mBindingDimensions = {{1, 0}, {1, 0}};
+        EXPECT_FALSE(Operand.Dispatch(*Commands.mValue, Invocation));
+        Invocation.mBindingDimensions = {{1, 128}};
+        EXPECT_FALSE(Operand.Dispatch(*Commands.mValue, Invocation));
+        Invocation.mBindingDimensions = {{1, 128}, {2, 64}};
+        EXPECT_FALSE(Operand.Dispatch(*Commands.mValue, Invocation));
+        Invocation.mBindingDimensions = {{UINT64_MAX, UINT64_MAX}, {UINT64_MAX, UINT64_MAX}};
+        EXPECT_FALSE(Operand.Dispatch(*Commands.mValue, Invocation));
+        EXPECT_EQ(GraphicsCalls, 1u);
+        EXPECT_EQ(Compilations, 0u);
+        if (mDevice->GetCudaCapabilities())
+        {
+            auto Shared = mDevice->CreateBuffer(BufferDesc(512));
+            ASSERT_TRUE(Shared);
+            Invocation.mBindings = {{Shared.mValue}, {Shared.mValue}};
+            Invocation.mBindingDimensions = {{1, 128}, {1, 128}};
+            EXPECT_EQ(Operand.Dispatch(*Commands.mValue, Invocation, EArdaComputePolicy::Auto, "cuda.small").mStatus.mCode,
+                EArdaRHIResult::Unsupported);
+            EXPECT_EQ(Compilations, 0u);
+            EXPECT_EQ(Operand.Dispatch(*Commands.mValue, Invocation, EArdaComputePolicy::RequireGraphics).mValue, "graphics.add");
+            EXPECT_EQ(Compilations, 0u);
+            const auto Failed = Operand.Dispatch(*Commands.mValue, Invocation);
+            EXPECT_EQ(Failed.mStatus.mCode, EArdaRHIResult::BackendFailure);
+            EXPECT_EQ(Failed.mStatus.mMessage, "compile failed");
+            EXPECT_EQ(Compilations, 1u);
+            EXPECT_EQ(GraphicsCalls, 2u);
+        }
+        ASSERT_TRUE(Commands.mValue->Close());
+        ASSERT_TRUE(mDevice->ExecuteCommandList(Commands.mValue));
+    }
+
     TEST_P(ArdaCudaGpu, CapabilityAndResourceRejections)
     {
         const auto C = mDevice->GetCudaCapabilities();
@@ -188,7 +417,8 @@ done: ret;
         std::memcpy(Output.data(), Readback.data(), Readback.size());
         for (uint32_t J = 0; J < Count; ++J) ASSERT_EQ(Output[J+4], Input[J]+18) << "element " << J;
         for (uint32_t J : {0u,1u,2u,3u,Count+4,Count+5,Count+6,Count+7}) EXPECT_EQ(Output[J], 0xdeadbeefu);
-        if (C.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG) EXPECT_FALSE(mDevice->ExecuteCommandList(Cmd.mValue));
+        if (C.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG || C.mLaunchMode == EArdaCudaLaunchMode::ContextSwitch)
+            EXPECT_FALSE(mDevice->ExecuteCommandList(Cmd.mValue));
     }
 
     TEST_P(ArdaCudaGpu, SurfaceWritesReachGraphicsReadbackAtSelectedMip)
@@ -273,6 +503,13 @@ done: ret;
                 D.mArraySize = Dimension == EArdaRHITextureDimension::Texture1DArray || Dimension == EArdaRHITextureDimension::Texture2DArray ? 3 : 1;
                 D.mFormat = Format; D.mUsage = EArdaRHITextureUsage::UnorderedAccess;
                 auto T = mDevice->CreateTexture(D);
+                if ((Dimension == EArdaRHITextureDimension::Texture1DArray || Dimension == EArdaRHITextureDimension::Texture2DArray) &&
+                    !mDevice->GetCudaCapabilities().mbLayeredSurfaceAccess)
+                {
+                    EXPECT_FALSE(T);
+                    EXPECT_EQ(T.mStatus.mCode, EArdaRHIResult::Unsupported);
+                    continue;
+                }
                 ASSERT_TRUE(T) << "format=" << F << " dimension=" << uint32_t(Dimension) << " " << T.mStatus.mMessage.c_str();
                 SCOPED_TRACE(testing::Message() << "format=" << F << " dimension=" << uint32_t(Dimension));
                 const char* Geometry = "2d"; const char* Coordinates = "{x,y}";
@@ -327,9 +564,10 @@ done: ret;
                 }
                 ASSERT_TRUE(Cmd.mValue->Close()); ASSERT_TRUE(mDevice->ExecuteCommandList(Cmd.mValue)); ASSERT_TRUE(mDevice->WaitForIdle());
                 ASSERT_EQ(CudaBytes.size(), uint64_t(RowBytes) * Height * Depth * D.mArraySize);
-                for (auto Byte : CudaBytes) EXPECT_EQ(Byte, 90u);
+                for (auto Byte : CudaBytes) ASSERT_EQ(Byte, 90u);
                 for (uint32_t Layer = 0; Layer < D.mArraySize; ++Layer)
                 {
+                    SCOPED_TRACE(testing::Message() << "layer=" << Layer);
                     FArdaRHITextureSlice Slice; Slice.mMipLevel = 1; Slice.mArraySlice = Layer;
                     auto M = mDevice->MapStagingTexture(Readback.mValue, Slice, EArdaRHICpuAccess::Read); ASSERT_TRUE(M);
                     for (uint32_t Z = 0; Z < Depth; ++Z)
@@ -346,7 +584,7 @@ done: ret;
     TEST_P(ArdaCudaGpu, GraphicsFallbackAndMixedShaderCudaSequence)
     {
         const auto Path = std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR) /
-            (std::string("ArdaCudaFallback") + GetShaderArtifactExtension(GetParam()));
+            (std::string("ArdaCudaFallback") + GetShaderArtifactExtension(GetBackendConfiguration().mBackendName.c_str()));
         std::ifstream File(Path, std::ios::binary | std::ios::ate);
         ASSERT_TRUE(File);
         eastl::vector<uint8_t> Bytes(static_cast<size_t>(File.tellg()));
@@ -502,5 +740,48 @@ done: ret;
         }
     }
 
-    INSTANTIATE_TEST_SUITE_P(Native, ArdaCudaGpu, testing::Values("native-d3d12", "native-vulkan"));
+    TEST_P(ArdaCudaGpu, ContextSwitchDefersDiscardedWorkAndAllowsIndependentRecordings)
+    {
+        if (mDevice->GetCudaCapabilities().mLaunchMode != EArdaCudaLaunchMode::ContextSwitch) GTEST_SKIP();
+        auto Buffer = mDevice->CreateBuffer(BufferDesc(4)); ASSERT_TRUE(Buffer);
+        auto Initial = mDevice->CreateCommandList(EArdaRHIQueueType::Graphics); ASSERT_TRUE(Initial);
+        ASSERT_TRUE(Initial.mValue->Open());
+        const uint32_t Zero = 0;
+        ASSERT_TRUE(Initial.mValue->WriteBuffer(*Buffer.mValue, &Zero, 4, 0));
+        ASSERT_TRUE(Initial.mValue->SetBufferState(*Buffer.mValue, EArdaRHIResourceState::UnorderedAccess));
+        ASSERT_TRUE(Initial.mValue->Close()); ASSERT_TRUE(mDevice->ExecuteCommandList(Initial.mValue));
+        ASSERT_TRUE(mDevice->WaitForIdle());
+        auto First = mDevice->CreateCommandList(EArdaRHIQueueType::Graphics);
+        auto Second = mDevice->CreateCommandList(EArdaRHIQueueType::Compute);
+        auto Discarded = mDevice->CreateCommandList(EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(First); ASSERT_TRUE(Second); ASSERT_TRUE(Discarded);
+        const auto Record = [&](const FArdaRHICommandListRef& Commands, uint32_t Bias)
+        {
+            ASSERT_TRUE(Commands->Open());
+            FArdaCudaKernel Kernel;
+            Kernel.mPtx = AddPtx; Kernel.mEntryPoint = "add_values";
+            Kernel.mArguments = {FArdaCudaArgument::Binding(0), FArdaCudaArgument::Binding(0),
+                FArdaCudaArgument::Value(1u), FArdaCudaArgument::Value(Bias)};
+            FArdaCudaBinding Binding; Binding.mResource = Buffer.mValue; Binding.mAccess = EArdaComputeAccess::ReadWrite;
+            ASSERT_TRUE(Commands->DispatchCuda({{Binding}, {Kernel}}));
+            ASSERT_TRUE(Commands->Close());
+        };
+        Record(First.mValue, 1); Record(Second.mValue, 2); Record(Discarded.mValue, 100);
+        ASSERT_TRUE(Discarded.mValue->Reset()); ASSERT_TRUE(Discarded.mValue->Close());
+        ASSERT_TRUE(mDevice->ExecuteCommandList(Discarded.mValue));
+        ASSERT_TRUE(mDevice->ExecuteCommandList(First.mValue));
+        ASSERT_TRUE(mDevice->ExecuteCommandList(Second.mValue));
+        ASSERT_TRUE(mDevice->WaitForIdle());
+        auto Read = mDevice->CreateCommandList(EArdaRHIQueueType::Graphics); ASSERT_TRUE(Read);
+        ASSERT_TRUE(Read.mValue->Open());
+        eastl::vector<uint8_t> Bytes;
+        ASSERT_TRUE(Read.mValue->CopyBufferDeviceToHost(*Buffer.mValue, Bytes));
+        ASSERT_TRUE(Read.mValue->Close()); ASSERT_TRUE(mDevice->ExecuteCommandList(Read.mValue));
+        ASSERT_EQ(Bytes.size(), 4u);
+        uint32_t Value = 0; std::memcpy(&Value, Bytes.data(), 4);
+        EXPECT_EQ(Value, 3u);
+    }
+
+    INSTANTIATE_TEST_SUITE_P(Native, ArdaCudaGpu, testing::Values(
+        "native-d3d12", "native-vulkan", "d3d12-context", "vulkan-context", "d3d12-cig"));
 }

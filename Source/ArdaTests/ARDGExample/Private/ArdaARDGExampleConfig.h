@@ -1,6 +1,6 @@
 #pragma once
 
-namespace arda::tests::ardg_example
+namespace arda
 {
     extern const char* const GArdaARDGShaderSourceDirectory;
 }

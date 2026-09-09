@@ -2,9 +2,9 @@
 
 #include "ArdaDL.h"
 
-namespace arda::dl
+namespace arda
 {
-    const char* GetModuleName() noexcept
+    const char* GetDLModuleName() noexcept
     {
         return "ArdaDL";
     }

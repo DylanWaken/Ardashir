@@ -8,7 +8,7 @@
 #include <EASTL/string.h>
 #include <memory>
 
-namespace arda::tests::cornell_box
+namespace arda
 {
     struct FArdaCornellBoxSettings
     {
@@ -25,8 +25,8 @@ namespace arda::tests::cornell_box
     {
     public:
         bool Initialize(
-            rhi::FArdaRHIDeviceRef Device,
-            rhi::EArdaRHIFormat SwapChainFormat,
+            arda::FArdaRHIDeviceRef Device,
+            arda::EArdaRHIFormat SwapChainFormat,
             const FArdaCornellBoxSettings& Settings);
 
         /** Updates the free-flight camera and resets progressive accumulation on motion. */
@@ -40,7 +40,7 @@ namespace arda::tests::cornell_box
         /** Invalidates resolution-dependent progressive state after swap-chain resize. */
         void NotifyResize();
 
-        bool RenderFrame(backend::IArdaSwapChain& SwapChain);
+        bool RenderFrame(arda::IArdaSwapChain& SwapChain);
 
         [[nodiscard]] const eastl::string& GetError() const noexcept
         {
@@ -53,44 +53,44 @@ namespace arda::tests::cornell_box
         }
 
     private:
-        bool CreateShadersAndPipelines(rhi::EArdaRHIFormat SwapChainFormat);
+        bool CreateShadersAndPipelines(arda::EArdaRHIFormat SwapChainFormat);
         bool GenerateSceneGeometry();
         bool BuildSceneAccelerationStructures();
         bool BuildUncompactedSceneAccelerationStructures();
         bool CompactBlasAndBuildTlas(uint64_t CompactedSize);
         bool ExecuteGraph(
-            render_graph::FARDGBuilder& Graph,
+            arda::FARDGBuilder& Graph,
             const char* Description);
-        [[nodiscard]] render_graph::FARDGRenderGraphContext
+        [[nodiscard]] arda::FARDGRenderGraphContext
         CreateGraphContext() const;
         void ResetAccumulation();
 
-        rhi::FArdaRHIDeviceRef mDevice;
-        backend::FArdaGlobalShaderMap mShaderMap;
-        std::unique_ptr<backend::FArdaPipelineStateCache> mPipelineStateCache;
+        arda::FArdaRHIDeviceRef mDevice;
+        arda::FArdaGlobalShaderMap mShaderMap;
+        std::unique_ptr<arda::FArdaPipelineStateCache> mPipelineStateCache;
 
-        const backend::FArdaGlobalShaderInstance* mGenerateGeometryShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mRayGenerationShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mMissShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mClosestHitShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mAccumulateShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mPresentVertexShader = nullptr;
-        const backend::FArdaGlobalShaderInstance* mPresentPixelShader = nullptr;
-        backend::FArdaComputePipelineStateInitializer
+        const arda::FArdaGlobalShaderInstance* mGenerateGeometryShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mRayGenerationShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mMissShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mClosestHitShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mAccumulateShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mPresentVertexShader = nullptr;
+        const arda::FArdaGlobalShaderInstance* mPresentPixelShader = nullptr;
+        arda::FArdaComputePipelineStateInitializer
             mGenerateGeometryPipelineInitializer;
-        backend::FArdaComputePipelineStateInitializer
+        arda::FArdaComputePipelineStateInitializer
             mAccumulatePipelineInitializer;
-        backend::FArdaGraphicsPipelineStateInitializer
+        arda::FArdaGraphicsPipelineStateInitializer
             mPresentPipelineInitializer;
-        rhi::FArdaRHIRayTracingPipelineRef mRayTracingPipeline;
-        rhi::FArdaRHIShaderTableRef mShaderTable;
+        arda::FArdaRHIRayTracingPipelineRef mRayTracingPipeline;
+        arda::FArdaRHIShaderTableRef mShaderTable;
 
-        rhi::FArdaRHIBufferRef mVertexBuffer;
-        rhi::FArdaRHIBufferRef mIndexBuffer;
-        rhi::FArdaRHIBufferRef mMaterialBuffer;
-        rhi::FArdaRHIAccelStructRef mBlas;
-        rhi::FArdaRHIAccelStructRef mTlas;
-        rhi::FArdaRHITextureRef mAccumulationTexture;
+        arda::FArdaRHIBufferRef mVertexBuffer;
+        arda::FArdaRHIBufferRef mIndexBuffer;
+        arda::FArdaRHIBufferRef mMaterialBuffer;
+        arda::FArdaRHIAccelStructRef mBlas;
+        arda::FArdaRHIAccelStructRef mTlas;
+        arda::FArdaRHITextureRef mAccumulationTexture;
 
         FArdaCornellBoxSettings mSettings;
         float mCameraPosition[3] = {0.0f, -2.65f, 1.0f};

@@ -44,6 +44,25 @@ Both guides demonstrate startup, compute, raster, submission, and presentation.
 Their capability-gated hardware ray-tracing path is synthesized from implemented
 and tested API components; it is not a checked-in end-to-end RT sample.
 
+## Public API naming
+
+Public APIs share one `arda` namespace: use `arda::FArdaBackendConfiguration`,
+`arda::FArdaRHIDeviceRef`, and `arda::FARDGBuilder`, or place `using namespace arda;`
+in application code. Module names remain in descriptive type/function names,
+following Unreal's RHI/RenderGraph convention. This is a source/ABI change: remove
+the former `backend`, `rhi`, `render_graph`, and `trace` namespace qualifiers and
+rebuild consumers. Provider APIs, shared implementation helpers, tests, samples, and
+generated-source templates now follow the same flat namespace. Module-name helpers are now `GetBackendModuleName`,
+`GetRenderGraphModuleName`, etc. Provider types use descriptive names such as
+`arda::IArdaRHIProviderDevice`; pipeline-cache helpers include
+`arda::ReadArdaPipelineCacheBlob`. The `ArdaNamespaceBoundary` build/CTest check
+rejects nested project namespaces and Arda namespace aliases.
+
+Host-owned Vulkan devices are supported by `native-vulkan`; see the
+[enabled-feature and lifetime contract](Docs/ArdaBackend/external-interop.html#vulkan).
+CUDA supports automatic fallback to serialized ordinary-context execution; see
+[execution modes and qualification limits](Docs/ArdaBackend/cuda-interop.html#context-switch).
+
 ## Dependencies
 
 - [GoogleTest](https://github.com/google/googletest) for module tests
@@ -101,13 +120,13 @@ Set `ARDASHIR_ENABLE_TRACE=OFF` to compile trace instrumentation to no-ops.
 Include `ArdaScopeTimer.h` and `ArdaTrace.h`, then bracket the work to capture:
 
 ```cpp
-arda::trace::StartTraceCapture("frame.ardatrace");
+arda::StartTraceCapture("frame.ardatrace");
 {
     ARDA_NAMED_SCOPE_TIMER("Rendering");
     ARDA_TRACE_COUNTER("Visible Objects", VisibleObjectCount);
     RenderFrame();
 }
-arda::trace::StopTraceCapture();
+arda::StopTraceCapture();
 ```
 
 Install Flask and launch the local offline viewer:

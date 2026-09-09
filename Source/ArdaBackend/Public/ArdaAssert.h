@@ -9,7 +9,7 @@
 
 ARDA_DECLARE_LOG_CATEGORY_EXTERN(LogArdaAssert);
 
-namespace arda::backend
+namespace arda
 {
     /** Controls how failed ensure assertions are handled at runtime. */
     enum class EArdaEnsureBehavior : std::uint8_t
@@ -105,7 +105,7 @@ namespace arda::backend
         { \
             if (!(Condition)) \
             { \
-                ::arda::backend::ReportFatalCheck( \
+                ::arda::ReportFatalCheck( \
                     #Condition, \
                     __FILE__, \
                     static_cast<std::uint32_t>(__LINE__), \
@@ -123,7 +123,7 @@ namespace arda::backend
         { \
             if (!(Condition)) \
             { \
-                ::arda::backend::ReportFatalCheckf( \
+                ::arda::ReportFatalCheckf( \
                     #Condition, \
                     __FILE__, \
                     static_cast<std::uint32_t>(__LINE__), \
@@ -140,7 +140,7 @@ namespace arda::backend
      */
     #define ARDA_VERIFY(Condition) \
         (!!(Condition) || \
-            (::arda::backend::ReportFatalCheck( \
+            (::arda::ReportFatalCheck( \
                  #Condition, \
                  __FILE__, \
                  static_cast<std::uint32_t>(__LINE__), \
@@ -155,7 +155,7 @@ namespace arda::backend
      */
     #define ARDA_VERIFYF(Condition, Format, ...) \
         (!!(Condition) || \
-            (::arda::backend::ReportFatalCheckf( \
+            (::arda::ReportFatalCheckf( \
                  #Condition, \
                  __FILE__, \
                  static_cast<std::uint32_t>(__LINE__), \
@@ -191,7 +191,7 @@ namespace arda::backend
  */
 #define ARDA_ENSURE(Condition) \
     (!!(Condition) || \
-        ::arda::backend::ReportEnsureFailure( \
+        ::arda::ReportEnsureFailure( \
             #Condition, \
             __FILE__, \
             static_cast<std::uint32_t>(__LINE__), \
@@ -205,7 +205,7 @@ namespace arda::backend
  */
 #define ARDA_ENSURE_MSGF(Condition, Format, ...) \
     (!!(Condition) || \
-        ::arda::backend::ReportEnsureFailuref( \
+        ::arda::ReportEnsureFailuref( \
             #Condition, \
             __FILE__, \
             static_cast<std::uint32_t>(__LINE__), \

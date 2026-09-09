@@ -8,7 +8,7 @@
 #include <EASTL/numeric_limits.h>
 #include <EASTL/unordered_set.h>
 
-namespace arda::trace
+namespace arda
 {
     namespace
     {
@@ -115,7 +115,7 @@ namespace arda::trace
             return false;
         }
 
-        eastl::array<char, detail::TraceMagic.size()> Magic = {};
+        eastl::array<char, arda::TraceMagic.size()> Magic = {};
         std::uint32_t Version = 0;
         std::uint32_t EndianMarker = 0;
         FArdaTraceSession Session;
@@ -127,17 +127,17 @@ namespace arda::trace
             OutError = "The trace capture header is truncated.";
             return false;
         }
-        if (Magic != detail::TraceMagic)
+        if (Magic != arda::TraceMagic)
         {
             OutError = "The file is not an Arda trace capture.";
             return false;
         }
-        if (Version != detail::TraceVersion)
+        if (Version != arda::TraceVersion)
         {
             OutError = "The trace capture version is unsupported.";
             return false;
         }
-        if (EndianMarker != detail::TraceEndianMarker)
+        if (EndianMarker != arda::TraceEndianMarker)
         {
             OutError = "The trace capture byte order is unsupported.";
             return false;
@@ -146,7 +146,7 @@ namespace arda::trace
         bool bFoundCaptureEnd = false;
         while (!bFoundCaptureEnd)
         {
-            detail::EArdaTraceRecordType Type;
+            arda::EArdaTraceRecordType Type;
             if (!ReadValue(Stream, Type))
             {
                 OutError = "The trace capture ended before its completion record.";
@@ -155,7 +155,7 @@ namespace arda::trace
 
             switch (Type)
             {
-            case detail::EArdaTraceRecordType::Name:
+            case arda::EArdaTraceRecordType::Name:
             {
                 std::uint32_t NameId = 0;
                 eastl::string Name;
@@ -171,7 +171,7 @@ namespace arda::trace
                 }
                 break;
             }
-            case detail::EArdaTraceRecordType::Thread:
+            case arda::EArdaTraceRecordType::Thread:
             {
                 std::uint32_t ThreadId = 0;
                 eastl::string Name;
@@ -183,7 +183,7 @@ namespace arda::trace
                 Session.mThreads[ThreadId] = eastl::move(Name);
                 break;
             }
-            case detail::EArdaTraceRecordType::Scope:
+            case arda::EArdaTraceRecordType::Scope:
             {
                 FArdaTraceScope Scope;
                 if (!ReadValue(Stream, Scope.mThreadId)
@@ -199,7 +199,7 @@ namespace arda::trace
                 Session.mScopes.push_back(Scope);
                 break;
             }
-            case detail::EArdaTraceRecordType::Counter:
+            case arda::EArdaTraceRecordType::Counter:
             {
                 FArdaTraceCounter Counter;
                 if (!ReadValue(Stream, Counter.mThreadId)
@@ -213,7 +213,7 @@ namespace arda::trace
                 Session.mCounters.push_back(Counter);
                 break;
             }
-            case detail::EArdaTraceRecordType::Marker:
+            case arda::EArdaTraceRecordType::Marker:
             {
                 FArdaTraceMarker Marker;
                 if (!ReadValue(Stream, Marker.mThreadId)
@@ -226,7 +226,7 @@ namespace arda::trace
                 Session.mMarkers.push_back(Marker);
                 break;
             }
-            case detail::EArdaTraceRecordType::CaptureEnd:
+            case arda::EArdaTraceRecordType::CaptureEnd:
                 bFoundCaptureEnd = true;
                 break;
             default:

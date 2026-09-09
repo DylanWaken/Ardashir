@@ -110,7 +110,7 @@
           <h3>Ardashir/application audience</h3>
           <p>Application and renderer code uses <code>ArdaBackend.h</code>, the RHI headers, shader APIs, and optional external-provider APIs. It may select a module by stable name with <a href="api-reference.html#api-arda-backend-configurebackend-42d0f49a"><code>ConfigureBackend(const char*)</code></a>, or leave <code>mBackendName</code> empty and select the highest-priority module compatible with <code>mBackend</code>.</p>
           <h3>Backend implementer audience</h3>
-          <p>A backend library includes <code>ArdaBackendProvider.h</code> and implements <a href="api-reference.html#api-arda-backend-iardabackendmodule-83673c0b"><code>IArdaBackendModule</code></a> plus <a href="api-reference.html#api-arda-backend-iardabackendruntime-0f27896c"><code>IArdaBackendRuntime</code></a>. Native SDK or engine headers belong in that library. Do not add their types to <code>Source/ArdaBackend/Public</code>; carry them as <code>FArdaNativeObject</code>, stable named objects, or module-owned private state.</p>
+          <p>A backend library includes <code>ArdaBackendProvider.h</code> and implements <a href="api-reference.html#api-arda-backend-iardabackendmodule-83673c0b"><code>IArdaBackendModule</code></a> plus <a href="api-reference.html#api-arda-iardabackendruntime-b02a9dac"><code>IArdaBackendRuntime</code></a>. Native SDK or engine headers belong in that library. Do not add their types to <code>Source/ArdaBackend/Public</code>; carry them as <code>FArdaNativeObject</code>, stable named objects, or module-owned private state.</p>
           <p>This keeps the public binary and include boundary independent of Vulkan, D3D12, Unreal, Unity, and Godot. It also makes an implementation replaceable by changing build options and linked registration functions rather than rewriting Ardashir call sites.</p>
         </section>
 
@@ -125,12 +125,12 @@
             <dt>Device-source flags</dt><dd><code>mbSupportsOwnedDevice</code> and <code>mbSupportsExternalDevice</code> must truthfully match what <code>CreateDevice</code> can construct.</dd>
             <dt><code>mPriority</code></dt><dd>Selects the default among all registered modules. Stable-name selection ignores priority.</dd>
           </dl>
-          <p>The checked-in implementation publishes separate descriptors for <code>native-vulkan</code> and <code>native-d3d12</code>. They implement the public <code>rhi::provider</code> SPI, while the provider-neutral facade and shared pipeline-cache persistence live in the compiled <code>ArdaBackend</code> module. The providers remain independently registered and independently linkable.</p>
+          <p>The checked-in implementation publishes separate descriptors for <code>native-vulkan</code> and <code>native-d3d12</code>. They implement the public <code>arda</code> SPI, while the provider-neutral facade and shared pipeline-cache persistence live in the compiled <code>ArdaBackend</code> module. The providers remain independently registered and independently linkable. Shared persistence uses <a href="api-reference.html#api-arda-makeardapipelinecachepath-72263dd0"><code>MakeArdaPipelineCachePath</code></a> for the backend-specific path, then <a href="api-reference.html#api-arda-readardapipelinecacheblob-e6ec20cb"><code>ReadArdaPipelineCacheBlob</code></a> and <a href="api-reference.html#api-arda-writeardapipelinecacheblob-9fb32a57"><code>WriteArdaPipelineCacheBlob</code></a> for the common file contract. Provider authors use the same single <code>arda</code> namespace as application callers.</p>
         </section>
 
         <section id="device-contract">
           <h2>The backend runtime contract</h2>
-          <p><code>IArdaBackendModule::CreateDevice</code> performs provider initialization atomically from the selected configuration, optional presentation surface, and optional external provider. Success returns both a unique <code>IArdaBackendRuntime</code> for module-private lifetime and presentation state and a shared <code>IArdaRHIProviderDevice</code> implementing the public provider SPI. Core validates that pair and constructs the only backend-neutral device, <code>FArdaRHIDeviceRef</code>.</p>
+          <p><code>IArdaBackendModule::CreateDevice</code> performs provider initialization atomically from the selected configuration, optional presentation surface, and optional external provider. Success returns both a unique <code>IArdaBackendRuntime</code> for module-private lifetime and presentation state and a shared <a href="api-reference.html#api-arda-iardarhiproviderdevice-034a7e6a"><code>IArdaRHIProviderDevice</code></a> implementing the public provider SPI. Core validates that pair and constructs the only backend-neutral device, <code>FArdaRHIDeviceRef</code>.</p>
           <p><code>CreateSwapChain</code> receives that core-owned RHI facade and may return an error when presentation is unsupported or invalid for the chosen device source. Queue capabilities, waiting, submissions, and resource operations have one source of truth: the provider device consumed by the facade.</p>
           <p>Core owns the backend-runtime unique pointer and the RHI facade owns the shared provider device. Copied RHI references can outlive the global backend state, so provider code and its backing library must remain loaded until all copies are gone. Unloading an engine plugin while one of its virtual objects or deleters is reachable is undefined behavior.</p>
         </section>
@@ -145,7 +145,7 @@
             <li>After success, <code>GetBackendConfiguration().mBackendName</code> records the actual implementation and <code>GetActiveBackendModule</code> exposes a non-owning diagnostic view.</li>
           </ol>
           <p><a href="api-reference.html#api-arda-backend-enumeratebackendmodules-d128b5cd"><code>EnumerateBackendModules</code></a> returns copied descriptors in stable-name order, suitable for configuration UIs and startup logs. Do not cache raw module pointers across registration changes.</p>
-          <pre><code>for (const auto&amp; module : arda::backend::EnumerateBackendModules())
+          <pre><code>for (const auto&amp; module : arda::EnumerateBackendModules())
 {
     Log("%s: owned=%d external=%d",
         module.mName.c_str(),
@@ -153,12 +153,12 @@
         module.mbSupportsExternalDevice);
 }
 
-arda::backend::FArdaBackendConfiguration config;
+arda::FArdaBackendConfiguration config;
 config.mBackendName = "native-vulkan"; // Exact implementation identity.
-if (!arda::backend::ConfigureBackend(config) ||
-    !arda::backend::InitializeBackend())
+if (!arda::ConfigureBackend(config) ||
+    !arda::InitializeBackend())
 {
-    Fail(arda::backend::GetBackendError());
+    Fail(arda::GetBackendError());
 }</code></pre>
         </section>
 
@@ -171,7 +171,7 @@ if (!arda::backend::ConfigureBackend(config) ||
             <li><code>ARDASHIR_BACKEND_D3D12</code> does the same for <code>Ardashir::ArdaBackendD3D12</code> on Windows; and</li>
             <li><code>Ardashir::ArdaBackend</code> contains the shared concrete RHI facade, provider contract, and persistence utilities. There is no additional common/native target.</li>
           </ul>
-          <p>A custom module supplies a CMake target and an unqualified registration function in namespace <code>arda::backend</code>. In a parent project, create the target before adding Ardashir so <code>Source/ArdaBackend</code> can resolve it:</p>
+          <p>A custom module supplies a CMake target and an unqualified registration function in namespace <code>arda</code>. In a parent project, create the target before adding Ardashir so <code>Source/ArdaBackend</code> can resolve it:</p>
           <pre><code># Parent CMakeLists.txt
 add_library(MyEngineArdaBackend STATIC
     MyEngineArdaBackend.cpp
@@ -232,7 +232,7 @@ add_subdirectory(path/to/Ardashir)</code></pre>
         <section id="platform-notes">
           <h2>Platform and engine integration notes</h2>
           <h3>Native Vulkan</h3>
-          <p>Available when its CMake option is enabled. It consumes SPIR-V, dynamically loads the platform Vulkan loader, targets Vulkan 1.4 headers, and requires Vulkan 1.3 dynamic rendering and synchronization2 support at runtime. The current module creates and owns its Vulkan device and persists validated <code>VkPipelineCache</code> data; external Vulkan device adoption is not yet advertised.</p>
+          <p>Available when its CMake option is enabled. It consumes SPIR-V, dynamically loads the platform Vulkan loader, targets Vulkan 1.4 headers, and requires Vulkan 1.3 dynamic rendering and synchronization2 support at runtime. The module creates a native device or adopts a host-owned device with an explicit enabled-feature contract. It persists validated <code>VkPipelineCache</code> data; see <a href="external-interop.html#vulkan">Vulkan device adoption</a> for queue synchronization and lifetime requirements.</p>
           <h3>Native D3D12</h3>
           <p>Available on Windows when enabled. It consumes DXIL and selects the retail Direct3D 12 Agility SDK 1.619.5 runtime through the application-local <code>D3D12</code> directory. It creates graphics and compute queues, can adopt an external <code>ID3D12Device</code> with direct graphics and optional compute queues, and persists stable-keyed <code>ID3D12PipelineLibrary</code> data.</p>
           <h3>Unreal, Unity, Godot, and other hosts</h3>
@@ -242,7 +242,7 @@ add_subdirectory(path/to/Ardashir)</code></pre>
         <section id="worked-example">
           <h2>Worked example: minimal custom module</h2>
           <p>This skeleton shows responsibility placement. Native details intentionally remain in the module library.</p>
-          <pre><code>namespace arda::backend
+          <pre><code>namespace arda
 {
 class FMyRuntime final : public IArdaBackendRuntime
 {
@@ -250,12 +250,12 @@ public:
     FArdaSwapChainCreateResult CreateSwapChain(
         uint32_t width,
         uint32_t height,
-        rhi::FArdaRHIDeviceRef device) override;
+        arda::FArdaRHIDeviceRef device) override;
 };
 
 // The provider implements the public backend SPI; ArdaBackend supplies the
 // concrete IArdaRHIDevice facade around it.
-class FMyProviderDevice final : public rhi::provider::IArdaRHIProviderDevice
+class FMyProviderDevice final : public arda::IArdaRHIProviderDevice
 {
     // Implement the provider operations required by the backend contract.
 };
@@ -268,7 +268,7 @@ public:
         const FArdaBackendConfiguration&amp; config,
         IArdaWindowSurface* surface,
         const IArdaExternalDeviceProvider* provider) override;
-    rhi::FArdaRHIStatus ConfigureShaderCompileInvocation(
+    arda::FArdaRHIStatus ConfigureShaderCompileInvocation(
         FArdaBackendShaderCompileInvocation&amp; invocation) const override;
 };
 
@@ -277,7 +277,7 @@ bool RegisterMyEngineArdaBackend()
     static FMyModule module; // Library lifetime must cover all uses.
     return RegisterBackendModule(module);
 }
-} // namespace arda::backend</code></pre>
+} // namespace arda</code></pre>
           <p><code>CreateDevice</code> validates the exact external schema or creates native state, then returns a provider device plus its backend runtime. ArdaBackend wraps the provider as the public <code>FArdaRHIDeviceRef</code>. That RHI object validates backend-defined resource type names and payloads in its import methods. Partial failure must release module-owned objects, leave host-owned objects untouched, and retain an error message. Shutdown waits for Arda submissions, releases core-owned objects in dependency order, and only then permits module unregistration or library unload.</p>
         </section>
 

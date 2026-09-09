@@ -149,26 +149,26 @@
           </ol>
           <pre><code>struct FRenderer
 {
-    rhi::FArdaRHIDeviceRef mDevice;
-    render_graph::FARDGQueueCapabilities mQueues;
-    backend::FArdaGlobalShaderMap mShaderMap;
-    std::unique_ptr&lt;backend::FArdaPipelineStateCache&gt; mPSOCache;
+    arda::FArdaRHIDeviceRef mDevice;
+    arda::FARDGQueueCapabilities mQueues;
+    arda::FArdaGlobalShaderMap mShaderMap;
+    std::unique_ptr&lt;arda::FArdaPipelineStateCache&gt; mPSOCache;
 
     // Persistent shaders and initializers used by compute/raster callbacks.
-    const backend::FArdaGlobalShaderInstance* mComputeShader = nullptr;
-    const backend::FArdaGlobalShaderInstance* mCompositeShader = nullptr;
-    backend::FArdaComputePipelineStateInitializer mComputePSO;
-    backend::FArdaGraphicsPipelineStateInitializer mCompositePSO;
+    const arda::FArdaGlobalShaderInstance* mComputeShader = nullptr;
+    const arda::FArdaGlobalShaderInstance* mCompositeShader = nullptr;
+    arda::FArdaComputePipelineStateInitializer mComputePSO;
+    arda::FArdaGraphicsPipelineStateInitializer mCompositePSO;
 
     // Optional RT objects, created only after capability checks.
-    rhi::FArdaRHIRayTracingPipelineRef mRTPipeline;
-    rhi::FArdaRHIShaderTableRef mShaderTable;
-    rhi::FArdaRHIAccelStructRef mBLAS;
-    rhi::FArdaRHIAccelStructRef mTLAS;
+    arda::FArdaRHIRayTracingPipelineRef mRTPipeline;
+    arda::FArdaRHIShaderTableRef mShaderTable;
+    arda::FArdaRHIAccelStructRef mBLAS;
+    arda::FArdaRHIAccelStructRef mTLAS;
 };</code></pre>
           <aside class="callout warning">
             <h3>RT has a different pipeline path</h3>
-            <p><strong>TESTED API PATH.</strong> Compute and raster use the Backend pipeline-state cache in <code>ARDGExample</code>. Ray tracing uses direct device <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createraytracingpipeline-0e50b396"><code>CreateRayTracingPipeline()</code></a> and <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createshadertable-eb4966a3"><code>CreateShaderTable()</code></a>. ARDG provides <a href="api-reference.html#api-arda-render-graph-fardgbuilder-addraydispatchpass-537bf94c"><code>AddRayDispatchPass</code></a> for declared ray dispatch. <code>FArdaPipelineStateCache</code> provides no renderer-facing RT initializer/cache path.</p>
+            <p><strong>TESTED API PATH.</strong> Compute and raster use the Backend pipeline-state cache in <code>ARDGExample</code>. Ray tracing uses direct device <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createraytracingpipeline-0e50b396"><code>CreateRayTracingPipeline()</code></a> and <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createshadertable-eb4966a3"><code>CreateShaderTable()</code></a>. ARDG provides <a href="api-reference.html#api-arda-fardgbuilder-addraydispatchpass-5cf34761"><code>AddRayDispatchPass</code></a> for declared ray dispatch. <code>FArdaPipelineStateCache</code> provides no renderer-facing RT initializer/cache path.</p>
           </aside>
         </section>
 
@@ -193,8 +193,8 @@ ARDG_END_PARAMETER_STRUCT()
 
 // Shader contract: physical descriptor slots seen by the compute shader.
 ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
-    ARDA_SHADER_BUFFER_SRV(mInput, 0, 0, rhi::EArdaRHIShaderStage::Compute)
-    ARDA_SHADER_TEXTURE_UAV(mOutput, 0, 0, rhi::EArdaRHIShaderStage::Compute)
+    ARDA_SHADER_BUFFER_SRV(mInput, 0, 0, arda::EArdaRHIShaderStage::Compute)
+    ARDA_SHADER_TEXTURE_UAV(mOutput, 0, 0, arda::EArdaRHIShaderStage::Compute)
 ARDA_END_SHADER_PARAMETER_STRUCT()</code></pre>
           <p><strong>Rule:</strong> every graph resource used by a callback must appear in that pass's ARDG parameters even if it is also retained by the renderer or named in shader metadata. The compiler does not inspect commands inside callbacks.</p>
         </section>
@@ -216,7 +216,7 @@ ARDA_END_SHADER_PARAMETER_STRUCT()</code></pre>
 
         <section id="recipes">
           <h2>Small copyable recipes</h2>
-          <p>These recipes report status-returning operations through the active execution context. Return the status from a callback or call <a href="api-reference.html#api-arda-render-graph-fardgpassexecutioncontext-reportstatus-ba2ad5cc"><code>ReportStatus</code></a>, then skip dependent commands after failure. The graph retains the first failure in its execution result.</p>
+          <p>These recipes report status-returning operations through the active execution context. Return the status from a callback or call <a href="api-reference.html#api-arda-fardgpassexecutioncontext-reportstatus-3c8856c0"><code>ReportStatus</code></a>, then skip dependent commands after failure. The graph retains the first failure in its execution result.</p>
 
           <h3>Compute: bind, then auto-dispatch</h3>
           <p><strong>DEMONSTRATED.</strong> <a href="api-reference.html#api-arda-rdg-fardgbuilder-adddispatchpass-4e159d83"><code>AddDispatchPass()</code></a> forces the Compute category, invokes the setup lambda, then automatically calls <code>Dispatch(groupX, groupY, groupZ)</code>. Do not dispatch again inside the setup callback.</p>
@@ -226,15 +226,15 @@ compute.mOutput = outputUAV;
 
 graph.AddDispatchPass(
     "ComputeOutput", &amp;compute, {groupX, groupY, 1},
-    [this](render_graph::FARDGPassExecutionContext&amp; context)
+    [this](arda::FARDGPassExecutionContext&amp; context)
     {
-        rhi::FArdaRHIComputeState state;
+        arda::FArdaRHIComputeState state;
         state.mBindings = context.CreateBindingSets(*mComputeShader);
         context.ReportStatus(
             mPSOCache-&gt;SetComputePipelineState(
                 context.mUnsafeRawCommandList, mComputePSO, eastl::move(state)));
     },
-    render_graph::EARDGPassFlags::AsyncCompute);</code></pre>
+    arda::EARDGPassFlags::AsyncCompute);</code></pre>
 
           <h3>Copy: declare both ends and use a copy pass</h3>
           <p><strong>DEMONSTRATED.</strong> Copy queues accept only copy-compatible declarations. If no copy queue exists, the graph falls back to graphics.</p>
@@ -244,12 +244,12 @@ graph.AddDispatchPass(
 ARDG_END_PARAMETER_STRUCT()
 
 FCopyParameters copy;
-copy.mSource = {source, rhi::EArdaRHIResourceState::CopySource, {}};
-copy.mDestination = {destination, rhi::EArdaRHIResourceState::CopyDest, {}};
+copy.mSource = {source, arda::EArdaRHIResourceState::CopySource, {}};
+copy.mDestination = {destination, arda::EArdaRHIResourceState::CopyDest, {}};
 graph.AddPass(
-    "CopyPayload", &amp;copy, render_graph::EARDGPassFlags::Copy,
+    "CopyPayload", &amp;copy, arda::EARDGPassFlags::Copy,
     [byteCount](
-        render_graph::FARDGPassExecutionContext&amp; context,
+        arda::FARDGPassExecutionContext&amp; context,
         const FCopyParameters&amp; p)
     {
         context.ReportStatus(
@@ -269,25 +269,25 @@ ARDG_END_PARAMETER_STRUCT()
 
 FRasterParameters raster;
 raster.mLighting = lightingSRV;
-raster.mVertices = {vertices, rhi::EArdaRHIResourceState::VertexBuffer, {}};
-raster.mIndices = {indices, rhi::EArdaRHIResourceState::IndexBuffer, {}};
+raster.mVertices = {vertices, arda::EArdaRHIResourceState::VertexBuffer, {}};
+raster.mIndices = {indices, arda::EArdaRHIResourceState::IndexBuffer, {}};
 raster.mTargets.mColor[0] = {backBuffer, acquiredSubresources};
 const uint32_t indexCount = meshIndexCount; // PLACEHOLDER: actual uploaded R32 index count.
 
 graph.AddPass(
-    "Composite", &amp;raster, render_graph::EARDGPassFlags::Raster,
+    "Composite", &amp;raster, arda::EARDGPassFlags::Raster,
     [this, framebuffer, width, height, indexCount](
-        render_graph::FARDGPassExecutionContext&amp; context,
+        arda::FARDGPassExecutionContext&amp; context,
         const FRasterParameters&amp; p)
     {
         (void)context.GetTexture(p.mTargets.mColor[0].mTexture);
-        rhi::FArdaRHIGraphicsState state;
+        arda::FArdaRHIGraphicsState state;
         state.mFramebuffer = framebuffer;
         state.mBindings = context.CreateBindingSets(*mCompositeShader);
         state.mVertexBuffers.push_back({
-            rhi::FArdaRHIBufferRef(context.GetBuffer(p.mVertices.mBuffer)), 0, 0});
+            arda::FArdaRHIBufferRef(context.GetBuffer(p.mVertices.mBuffer)), 0, 0});
         state.mIndexBuffer.Reset(context.GetBuffer(p.mIndices.mBuffer));
-        state.mIndexFormat = rhi::EArdaRHIFormat::R32UInt;
+        state.mIndexFormat = arda::EArdaRHIFormat::R32UInt;
         state.mViewports.push_back(
             {0.f, float(width), 0.f, float(height), 0.f, 1.f});
         state.mScissors.push_back(
@@ -309,7 +309,7 @@ graph.AddPass(
           </aside>
 
           <h3>Gate setup before creating any RT-only object</h3>
-          <p><strong>TESTED API PATH.</strong> Query <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-getcapabilities-0ed4a202"><code>GetCapabilities()</code></a>. <a href="../ArdaBackend/api-reference.html#api-arda-rhi-fardarhiraytracingcapabilities-mbaccelerationstructures"><code>mRayTracing.mbAccelerationStructures</code></a> gates acceleration-structure creation; full pipeline/shader-table/dispatch setup requires <a href="../ArdaBackend/api-reference.html#api-arda-rhi-fardarhiraytracingcapabilities-mbpipelineshaders"><code>mRayTracing.mbPipelineShaders</code></a>. Use the raster/compute fallback if either capability needed by your chosen path is false.</p>
+          <p><strong>TESTED API PATH.</strong> Query <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-getcapabilities-0ed4a202"><code>GetCapabilities()</code></a>. <a href="../ArdaBackend/api-reference.html#api-arda-fardarhiraytracingcapabilities-mbaccelerationstructures"><code>mRayTracing.mbAccelerationStructures</code></a> gates acceleration-structure creation; full pipeline/shader-table/dispatch setup requires <a href="../ArdaBackend/api-reference.html#api-arda-fardarhiraytracingcapabilities-mbpipelineshaders"><code>mRayTracing.mbPipelineShaders</code></a>. Use the raster/compute fallback if either capability needed by your chosen path is false.</p>
 
           <h3>Persistent RT device setup</h3>
           <ol>
@@ -337,7 +337,7 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
           <p>Set geometry buffers to <code>AccelStructBuildInput</code>, BLAS/TLAS build destinations to <code>AccelStructWrite</code>, and acceleration structures consumed by TLAS construction or tracing to <code>AccelStructRead</code>. <a href="api-reference.html#api-arda-rdg-ardg-accel-struct-access-5d3edb29"><code>ARDG_ACCEL_STRUCT_ACCESS</code></a> is direct access; the state is mandatory and must not remain <code>Unknown</code>.</p>
 
           <h3>Use generic Compute passes and the unsafe escape hatch narrowly</h3>
-          <p>Use <a href="api-reference.html#api-arda-render-graph-fardgbuilder-addraydispatchpass-537bf94c"><code>AddRayDispatchPass</code></a> to run setup and dispatch only after successful setup. Generic <code>AddPass(..., EARDGPassFlags::Compute, ...)</code> also supports custom RT sequences, as shown here. Inside that generic callback:</p>
+          <p>Use <a href="api-reference.html#api-arda-fardgbuilder-addraydispatchpass-5cf34761"><code>AddRayDispatchPass</code></a> to run setup and dispatch only after successful setup. Generic <code>AddPass(..., EARDGPassFlags::Compute, ...)</code> also supports custom RT sequences, as shown here. Inside that generic callback:</p>
           <ul>
             <li>resolve graph resources through <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-getbuffer-7bf14520"><code>GetBuffer()</code></a>, <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-gettexture-835f8625"><code>GetTexture()</code></a>, and <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-getaccelstruct-63040d05"><code>GetAccelStruct()</code></a>;</li>
             <li>populate geometry/instance descriptors from those resolved physical objects;</li>
@@ -353,11 +353,11 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
             <h3>Truthful placeholders</h3>
             <p><strong>DEMONSTRATED:</strong> acquisition, imports, copy, auto-dispatch compute, raster, submission, and presentation. <strong>TESTED API PATH:</strong> acceleration-structure imports and declared transitions. <strong>INTEGRATION SKETCH / TESTED RT SAMPLE AVAILABLE:</strong> descriptor population, BLAS/TLAS commands, RT binding/SBT, and dispatch. Functions named <code>Make*</code> and <code>Bind*</code> below are application placeholders. Each callback reports status through its own execution context; graph execution combines failures before submission.</p>
           </aside>
-          <pre><code>bool FRenderer::RenderFrame(backend::IArdaSwapChain&amp; swapChain)
+          <pre><code>bool FRenderer::RenderFrame(arda::IArdaSwapChain&amp; swapChain)
 {
-    using namespace render_graph;
+    using namespace arda;
 
-    rhi::FArdaRHIFramebufferRef acquiredFramebuffer;
+    arda::FArdaRHIFramebufferRef acquiredFramebuffer;
     if (!swapChain.AcquireFrame(acquiredFramebuffer))
         return Fail(swapChain.GetError());
 
@@ -368,24 +368,24 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
     const auto color = acquiredDesc.mColorAttachments[0];
 
     // One builder for this frame only.
-    FARDGBuilder graph(MakeRenderGraphContext(backend::GetDeviceContext()));
+    FARDGBuilder graph(MakeRenderGraphContext(arda::GetDeviceContext()));
 
     auto* backBuffer = graph.RegisterExternalTexture(
-        color.mTexture, rhi::EArdaRHIResourceState::Present, "BackBuffer");
+        color.mTexture, arda::EArdaRHIResourceState::Present, "BackBuffer");
     auto* upload = graph.RegisterExternalBuffer(
-        mUploadBuffer, rhi::EArdaRHIResourceState::CopySource, "Upload");
+        mUploadBuffer, arda::EArdaRHIResourceState::CopySource, "Upload");
     auto* vertices = graph.RegisterExternalBuffer(
-        mVertexBuffer, rhi::EArdaRHIResourceState::AccelStructBuildInput,
+        mVertexBuffer, arda::EArdaRHIResourceState::AccelStructBuildInput,
         "RT vertices");
     auto* indices = graph.RegisterExternalBuffer(
-        mIndexBuffer, rhi::EArdaRHIResourceState::AccelStructBuildInput,
+        mIndexBuffer, arda::EArdaRHIResourceState::AccelStructBuildInput,
         "RT indices");
 
-    rhi::FArdaRHIBufferDesc workDesc = MakeWorkBufferDesc();
+    arda::FArdaRHIBufferDesc workDesc = MakeWorkBufferDesc();
     workDesc.mDebugName = "Frame.Work";
     auto* work = graph.CreateBuffer(workDesc);
 
-    rhi::FArdaRHITextureDesc lightingDesc = MakeLightingTextureDesc(
+    arda::FArdaRHITextureDesc lightingDesc = MakeLightingTextureDesc(
         swapChain.GetWidth(), swapChain.GetHeight());
     lightingDesc.mDebugName = "Frame.Lighting";
     auto* lighting = graph.CreateTexture(lightingDesc);
@@ -398,8 +398,8 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
 
     // DEMONSTRATED copy path: CopySource -&gt; CopyDest.
     FCopyParameters copy;
-    copy.mSource = {upload, rhi::EArdaRHIResourceState::CopySource, {}};
-    copy.mDestination = {work, rhi::EArdaRHIResourceState::CopyDest, {}};
+    copy.mSource = {upload, arda::EArdaRHIResourceState::CopySource, {}};
+    copy.mDestination = {work, arda::EArdaRHIResourceState::CopyDest, {}};
     graph.AddPass("UploadFrameData", &amp;copy, EARDGPassFlags::Copy,
         [bytes = workDesc.mByteSize](
             FARDGPassExecutionContext&amp; c, const FCopyParameters&amp; p)
@@ -423,7 +423,7 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
          DivideRoundUp(lightingDesc.mHeight, 8), 1},
         [this](FARDGPassExecutionContext&amp; c)
         {
-            rhi::FArdaRHIComputeState state;
+            arda::FArdaRHIComputeState state;
             state.mBindings = c.CreateBindingSets(*mComputeShader);
             c.ReportStatus(
                 mPSOCache-&gt;SetComputePipelineState(
@@ -440,17 +440,17 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
     {
         // TESTED API PATH: external AS import and state transitions.
         auto* blas = graph.RegisterExternalAccelStruct(
-            mBLAS, rhi::EArdaRHIResourceState::AccelStructRead);
+            mBLAS, arda::EArdaRHIResourceState::AccelStructRead);
         auto* tlas = graph.RegisterExternalAccelStruct(
-            mTLAS, rhi::EArdaRHIResourceState::AccelStructRead);
+            mTLAS, arda::EArdaRHIResourceState::AccelStructRead);
 
         FBuildBLASParameters buildBLAS;
         buildBLAS.mVertices = {
-            vertices, rhi::EArdaRHIResourceState::AccelStructBuildInput, {}};
+            vertices, arda::EArdaRHIResourceState::AccelStructBuildInput, {}};
         buildBLAS.mIndices = {
-            indices, rhi::EArdaRHIResourceState::AccelStructBuildInput, {}};
+            indices, arda::EArdaRHIResourceState::AccelStructBuildInput, {}};
         buildBLAS.mBLAS = {
-            blas, rhi::EArdaRHIResourceState::AccelStructWrite};
+            blas, arda::EArdaRHIResourceState::AccelStructWrite};
         graph.AddPass(
             "BuildBLAS", &amp;buildBLAS, EARDGPassFlags::Compute,
             [](FARDGPassExecutionContext&amp; c,
@@ -464,14 +464,14 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
                     c.mUnsafeRawCommandList.BuildBottomLevelAccelStruct(
                         *c.GetAccelStruct(p.mBLAS.mAccelStruct),
                         {geometry},
-                        rhi::EArdaRHIAccelStructBuildFlags::PreferFastTrace));
+                        arda::EArdaRHIAccelStructBuildFlags::PreferFastTrace));
             });
 
         FBuildTLASParameters buildTLAS;
         buildTLAS.mBLAS = {
-            blas, rhi::EArdaRHIResourceState::AccelStructRead};
+            blas, arda::EArdaRHIResourceState::AccelStructRead};
         buildTLAS.mTLAS = {
-            tlas, rhi::EArdaRHIResourceState::AccelStructWrite};
+            tlas, arda::EArdaRHIResourceState::AccelStructWrite};
         graph.AddPass(
             "BuildTLAS", &amp;buildTLAS, EARDGPassFlags::Compute,
             [](FARDGPassExecutionContext&amp; c,
@@ -484,12 +484,12 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
                     c.mUnsafeRawCommandList.BuildTopLevelAccelStruct(
                         *c.GetAccelStruct(p.mTLAS.mAccelStruct),
                         {instance},
-                        rhi::EArdaRHIAccelStructBuildFlags::PreferFastTrace));
+                        arda::EArdaRHIAccelStructBuildFlags::PreferFastTrace));
             });
 
         FTraceParameters trace;
         trace.mTLAS = {
-            tlas, rhi::EArdaRHIResourceState::AccelStructRead};
+            tlas, arda::EArdaRHIResourceState::AccelStructRead};
         trace.mOutput = lightingUAV; // UAV write after compute UAV write.
         graph.AddPass(
             "TraceReflections", &amp;trace, EARDGPassFlags::Compute,
@@ -500,7 +500,7 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
                 auto* physicalOutput = c.GetTexture(p.mOutput);
                 // SYNTHESIZED: BindRTResources must bind these validated
                 // objects consistently with the persistent RT pipeline/SBT.
-                rhi::FArdaRHIRayTracingState state;
+                arda::FArdaRHIRayTracingState state;
                 state.mShaderTable = mShaderTable;
                 state.mBindings = BindRTResources(
                     *mDevice, *physicalTLAS, *physicalOutput);
@@ -516,9 +516,9 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
     FRasterParameters raster;
     raster.mLighting = lightingSRV;
     raster.mVertices = {
-        vertices, rhi::EArdaRHIResourceState::VertexBuffer, {}};
+        vertices, arda::EArdaRHIResourceState::VertexBuffer, {}};
     raster.mIndices = {
-        indices, rhi::EArdaRHIResourceState::IndexBuffer, {}};
+        indices, arda::EArdaRHIResourceState::IndexBuffer, {}};
     raster.mTargets.mColor[0] = {
         backBuffer, color.mAttachment.mSubresources};
     const uint32_t indexCount = mIndexCount; // Actual uploaded R32 index count.
@@ -534,13 +534,13 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
                 c.mUnsafeRawCommandList.ClearTexture(
                     *target, p.mTargets.mColor[0].mSubresources,
                     {0.02f, 0.03f, 0.05f, 1.0f}));
-            rhi::FArdaRHIGraphicsState state =
+            arda::FArdaRHIGraphicsState state =
                 MakeCompositeState(acquiredFramebuffer, width, height);
             state.mBindings = c.CreateBindingSets(*mCompositeShader);
             state.mVertexBuffers.push_back({
-                rhi::FArdaRHIBufferRef(c.GetBuffer(p.mVertices.mBuffer)), 0, 0});
+                arda::FArdaRHIBufferRef(c.GetBuffer(p.mVertices.mBuffer)), 0, 0});
             state.mIndexBuffer.Reset(c.GetBuffer(p.mIndices.mBuffer));
-            state.mIndexFormat = rhi::EArdaRHIFormat::R32UInt;
+            state.mIndexFormat = arda::EArdaRHIFormat::R32UInt;
             c.ReportStatus(
                 mPSOCache-&gt;SetGraphicsPipelineState(
                     c.mUnsafeRawCommandList, mCompositePSO, eastl::move(state)));
@@ -548,7 +548,7 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
                 c.mUnsafeRawCommandList.DrawIndexed({indexCount});
         });
 
-    backBuffer-&gt;SetFinalState(rhi::EArdaRHIResourceState::Present);
+    backBuffer-&gt;SetFinalState(arda::EArdaRHIResourceState::Present);
     swapChain.PrepareSubmit();
     const FARDGExecutionResult&amp; submitted = graph.Execute();
     if (!submitted.mStatus)
@@ -588,7 +588,7 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
           <h2>PrepareSubmit → Execute → Present</h2>
           <p><strong>DEMONSTRATED.</strong> The order is exact:</p>
           <pre><code>swapChain.PrepareSubmit();
-const render_graph::FARDGExecutionResult&amp; result = graph.Execute();
+const arda::FARDGExecutionResult&amp; result = graph.Execute();
 if (!result.mStatus)
     return Fail(result.mStatus.mMessage);
 if (!swapChain.Present())
@@ -677,7 +677,7 @@ if (!swapChain.Present())
 
           <h3>Capability-gated ray tracing</h3>
           <ol>
-            <li><a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-getcapabilities-0ed4a202"><code>GetCapabilities</code></a> → check <a href="../ArdaBackend/api-reference.html#api-arda-rhi-fardarhiraytracingcapabilities-mbaccelerationstructures"><code>mRayTracing.mbAccelerationStructures</code></a> and <a href="../ArdaBackend/api-reference.html#api-arda-rhi-fardarhiraytracingcapabilities-mbpipelineshaders"><code>mRayTracing.mbPipelineShaders</code></a></li>
+            <li><a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-getcapabilities-0ed4a202"><code>GetCapabilities</code></a> → check <a href="../ArdaBackend/api-reference.html#api-arda-fardarhiraytracingcapabilities-mbaccelerationstructures"><code>mRayTracing.mbAccelerationStructures</code></a> and <a href="../ArdaBackend/api-reference.html#api-arda-fardarhiraytracingcapabilities-mbpipelineshaders"><code>mRayTracing.mbPipelineShaders</code></a></li>
             <li><a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createaccelstruct-fed6b987"><code>CreateAccelStruct</code></a> → <a href="api-reference.html#api-arda-rdg-fardgbuilder-registerexternalaccelstruct-96cf924d"><code>RegisterExternalAccelStruct</code></a></li>
             <li><a href="api-reference.html#api-arda-rdg-ardg-accel-struct-access-5d3edb29"><code>ARDG_ACCEL_STRUCT_ACCESS</code></a> plus buffer <code>AccelStructBuildInput</code> declarations</li>
             <li>generic Compute <a href="api-reference.html#api-arda-rdg-fardgbuilder-addpass-eb5f83be"><code>AddPass</code></a> → validated context getters → <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-buildbottomlevelaccelstruct-ec03355a"><code>BuildBottomLevelAccelStruct</code></a> / <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-buildtoplevelaccelstruct-65604af5"><code>BuildTopLevelAccelStruct</code></a></li>

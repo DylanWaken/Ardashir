@@ -10,7 +10,7 @@
 
 #include <EASTL/vector.h>
 
-namespace arda::rhi
+namespace arda
 {
     /** Interface for texture. */
     class IArdaRHITexture : public virtual IArdaRHIResource
