@@ -2,13 +2,41 @@
 
 Completed on 2026-09-09 against the Unreal 5.8.1 atlas, source commit `71fe36aac5a8df5ccd66c763ffc902b29b6a9c43`.
 
-## Method and outcome
+## Current revision: actual primitive inheritance
+
+The scene explorer was corrected after the user clarified that its structure must follow actual class definitions. It now contains **371 primitive class definitions and 369 declared inheritance edges**, rooted at `UPrimitiveComponent` and `FPrimitiveSceneProxy`. Components comprise 244 definitions and proxies 127. GPU storage appears in a separate inspector with **31 reviewed family profiles**, 90 direct mappings and 281 explicitly labeled base-context mappings. The flat general class reference remains available.
+
+The same independent subagent was given a new fifteen-question exam, restricted to files in `Docs/Unreal`. It did not read engine source, scripts or the web. It also inspected `tree-model.js`, `tree.js` and the HTML. **All fifteen questions passed with no material contradiction found.** This tests recoverability and internal consistency of the documented information, not compiler-complete coverage or verified storage layouts for every plugin.
+
+Answers recovered from [primitive-reference.md](primitive-reference.md), `primitives.js`, `primitive-storage.js` and [reference.md](reference.md):
+
+1. HISM follows `UPrimitiveComponent → UMeshComponent → UStaticMeshComponent → UInstancedStaticMeshComponent → UHierarchicalInstancedStaticMeshComponent`; foliage and grass components extend HISM.
+2. Niagara follows `UPrimitiveComponent → UFXSystemComponent → UNiagaraComponent`. Emitter renderer cooperation with its proxy is an association, not proxy inheritance.
+3. Nanite static and skinned proxies are siblings beneath `Nanite::FSceneProxyBase`, which derives `FPrimitiveSceneProxy`.
+4. The global `FSplineMeshSceneProxy` in `SplineMeshSceneProxy.h:141` has static-mesh/helper bases; the local definition in `SplineComponent.cpp:3409` directly derives `FPrimitiveSceneProxy`. Distinct IDs and source tags preserve both.
+5. Conventional and Nanite Geometry Collection proxies share the `FGeometryCollectionSceneProxyBase` mixin but have different primitive ancestry; current/previous piece transforms accompany their selected geometry representation.
+6. Static meshes share geometry streams; instancing adds instance records/payloads. CPU LOD/resource wrappers and `FInstanceSceneDataBuffers` are distinguished from GPU allocations.
+7. Skeletal geometry uses skin weights/bone transforms and optional deformation buffers; Geometry Cache streams time-sampled mesh buffers, including paired positions.
+8. Niagara separates float, half and integer GPU attribute streams and ID-to-index lookup; CPU and GPU simulation paths differ.
+9. Sparse volumes use page-table/physical-tile textures; CPU sparse data and texture-reference wrappers prepare/manage those resources.
+10. Groom strands, cards/mesh LODs and Nanite groom proxies use distinct representations; their resources do not all exist together.
+11. Conventional Landscape, Nanite Landscape and static-mesh Landscape proxies occupy separate declared branches, with the section-info mixin retained.
+12. Water-body controllers directly derive `UPrimitiveComponent`; water mesh components derive `UMeshComponent`; water-body mesh components derive `UStaticMeshComponent`.
+13. Collision sphere/capsule data does not imply a persistent visible mesh. Debug geometry and `EPrimitiveType` draw topology are separate concepts.
+14. Inherited storage profiles are explicitly base context, not verified subclass layouts. The lexical discovery includes runtime/plugins and optional/local/conditional definitions but discloses unsupported aliases/macros and build-configuration limits.
+15. Pipeline dependencies still distinguish Nanite visibility from GBuffer material evaluation, cached Lumen scene lighting before the main base pass, later async gather/reflections, direct lights and composition. Source call order and timeline spacing are not serial GPU timings.
+
+The audit confirmed that the model creates edges only from uniquely resolved declared bases. Filters retain actual ancestors; storage profiles, ownership and module groups never construct hierarchy edges. Multiple applicable bases are retained, and the class reference is flat.
+
+Correction verification: eleven Python checks and six Node tests cover extraction/resolution, real chains, every node's reachability, edge provenance, duplicate spline definitions, multiple/ambiguous bases, filters retaining ancestry, source-anchored storage associations and pipeline contracts. Deterministic regeneration checks and the repository documentation validator passed. Browser checks covered HISM/Nanite/Niagara chains, duplicate spline source tags, module filtering, empty results, keyboard expansion, expand/collapse, storage explanations and existing pipeline-to-class links. Page bounds fit the available browser viewport; no exhaustive visual/device or engine-rendering claim is made.
+
+## Original publication: method and outcome
 
 After both interactive pages and their [text reference](reference.md) were implemented, a separate subagent with no inherited conversation history answered 20 detailed questions. Its allowed evidence was restricted to `Docs/Unreal`; it was explicitly prohibited from reading Unreal source, authoring scripts, other project docs or the web. It supplied answers with document section/type/stage citations and identified unsupported details. The implementing agent checked the answers against its source research, corrected findings, then requested a second closed-docs retest of the affected areas.
 
 The retest passed the reported architecture-integrity issues. This establishes that the documented architecture and its important distinctions can be recovered from the docs. It is not proof of equivalence to every Unreal configuration, a complete compiler-verified type inventory, or an implemented/benchmarked renderer.
 
-Final scope: **9,512 indexed declarations in 2,485 files; 147 authored type explanations; 21 rendering stages; 89 proposed implementation operations**.
+Original publication scope: **9,512 indexed declarations in 2,485 files; 147 authored type explanations; 21 rendering stages; 89 proposed implementation operations**. The sections below record that earlier audit; its grouped-tree UI was subsequently replaced by the actual inheritance trees described above.
 
 ## Findings corrected before publication
 

@@ -4,11 +4,17 @@ from pathlib import Path
 
 from BuildUnrealCatalog import base_clauses, extract, split_bases
 from BuildUnrealGuide import load_js
+from BuildUnrealPrimitives import resolve
 
 DOCS = Path(__file__).resolve().parents[2] / "Docs/Unreal"
 
 
 class ExtractorTests(unittest.TestCase):
+    def test_absolute_bases_do_not_resolve_to_a_namespace_shadow(self):
+        nodes = extract("class Base {}; namespace Inner { class Base {}; class Child : ::Base {}; }", "fixture.h", "Fixture")
+        resolve(nodes)
+        self.assertEqual(nodes[-1]["baseLinks"][0]["targets"], [nodes[0]["id"]])
+
     def test_comments_strings_and_forward_declarations_are_not_types(self):
         source = '''// class Fake {};
         /* struct AlsoFake {}; */
