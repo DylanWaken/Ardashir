@@ -2,7 +2,41 @@
 
 Completed on 2026-09-09 against the Unreal 5.8.1 atlas, source commit `71fe36aac5a8df5ccd66c763ffc902b29b6a9c43`.
 
-## Current revision: actual primitive inheritance
+## Current revision: scene requirements and stage operation flows
+
+The class-tree page has been replaced by a scene ingestion guide: **10 sections, 38 requirements, 18 geometry families and 5 source-extracted classification enums**. The deferred page now has **21 Functions & flow tabs, 92 clickable key operations and 94 selected function references**. The earlier inheritance inventory remains a reference appendix.
+
+An independent subagent answered a fresh seventeen-question exam using only `Docs/Unreal`, including the generated text/data and page code. It did not read engine source, authoring scripts or the web. Initial result: **15 pass, 2 partial**. After corrections, the affected questions were retested and the agent reported **17/17 pass**, with no new contradiction found. This checks recoverable explanations and internal consistency; source anchors were separately verified by the builders against the pinned checkout.
+
+Questions and recovered answers from [scene-reference.md](scene-reference.md), [stage-functions.md](stage-functions.md) and [reference.md](reference.md):
+
+1. **Integration boundary.** Copied export carries bytes/formats/dependencies; borrowed resources require a compatible device, leases, subresource ranges, fences and queue/state handoff. Neither supplies a portable Unreal material shader ABI.
+2. **Geometry coverage.** Eighteen families cover static and instanced triangles, Nanite, skinning, spline/terrain, procedural/dynamic meshes, collections/caches, particles, hair, volumes, water, points, UI surfaces and plugin producers. Each has a conversion, approximation or unsupported-report policy; collision geometry is not automatically render geometry.
+3. **Material behavior.** Domain, blend, shading-model and translucency-lighting enums are distinct. Aliases retain their source values. Parent/permutation/parameter resolution, WPO/PDO, coverage and Substrate closures require executable behavior or an explicit limited conversion; a few baked maps cannot reproduce arbitrary material graphs.
+4. **Placements and bindings.** Shared geometry is separate from stable primitive/instance identity, current/previous transforms, section bindings, custom values and per-view/shadow/ray visibility flags. Mesh submission descriptors are not neutral serialized scene records.
+5. **Resources.** Formats, pitch, mip/residency state, color interpretation, sampler and buffer-view contracts accompany data. Dynamic textures have producers; borrowing requires readiness and retirement synchronization.
+6. **Coordinates and motion.** The adapter records axes/units, high-precision origins, tangent/winding and mirrored-scale policy. Motion needs previous evaluated deformation as well as previous camera matrices; cuts and incompatible histories trigger invalidation.
+7. **Lighting and environment.** Preserve light shape/units, channels, sky/captures, baked-light decode/associations and atmosphere/media semantics. Choose imported baked/cached terms versus relighting to avoid double counting.
+8. **Updates and fidelity.** Versioned snapshots/change batches handle add/remove, dirty categories, topology, streaming and origin changes. Report exact, converted, approximated, omitted and unavailable features with the affected object/feature and reason.
+9. **Scene updates.** `FSceneRenderer::OnRenderBegin`, `FScene::Update` and `FGPUScene::{Update,UpdateInternal,UploadGeneral}` distinguish CPU ownership/setup from later shader consumption of uploaded tables.
+10. **Visibility and Nanite repair.** View relevance/gather/draw setup precedes the relevant consumers. Nanite main cull/raster can use valid previous HZB, then conditionally build current HZB and recover rejected work; the chart has an explicit bypass when two-pass recovery is not active.
+11. **Lumen representations.** Card Surface Cache material/lighting updates, reusable world-space Radiance Cache probes and view-dependent screen probes are separate. Named update, trace, filter and integration helpers identify their responsibilities.
+12. **Tracing and hit lighting.** Software distance-field coverage and hardware triangle/AS preparation are separate alternatives. Screen traces cannot supply arbitrary off-screen geometry; hardware traversal does not imply Hit Lighting or an automatic software GDF trace afterward.
+13. **Depth, VSM and late work.** Water/front-layer receiver depth supplies VSM marking. Conventional early-shadow scheduling is distinct. Late decal/AO/velocity work and the earlier async-dispatch site retain their conditional placement.
+14. **Composition.** Earlier indirect/AO work at `DeferredShadingRenderer.cpp:3429` is separate from direct `RenderLights:3467`. Async indirect outputs and direct-lit scene color feed the regular indirect composite at `3518`, followed by reflection/sky composition.
+15. **Media and post.** Water's underwater subset, ordinary translucency, cloud alternatives and final media composition remain distinct. Enabled diaphragm DOF precedes the selected TSR/TAA/third-party temporal upscaler; later motion blur/bloom and tone/output conversion follow their main-path positions.
+16. **RDG execution.** Pass declaration differs from callback execution. `FRDGBuilder::Execute`, `CollectPassBarriers` and `ExecutePass` identify resource scheduling, prologue/callback/epilogue work and retained backing resources. CPU return does not prove GPU completion.
+17. **Diagram meaning.** Arrows are selected control/data prerequisites, not exhaustive C++ call stacks or serial GPU timings. Inactive feature paths remain inspectable; configuration controls are illustrative.
+
+Corrections found by this audit:
+
+- The “Direct-lit scene ready” operation originally pointed to the earlier indirect/AO call. It now references the actual `RenderLights` producer, and a separate earlier-indirect node makes the join explicit.
+- The original post flow grouped DOF with later effects after temporal reconstruction. It now places pre-upscale DOF first and names `DiaphragmDOF::AddPasses`, `AddMainTemporalSuperResolutionPasses`, `AddGen4MainTemporalAAPasses` and `AddThirdPartyTemporalUpscalerPasses` at checked call sites.
+- Added the actual late `RenderVolumetricCloud` reference, with earlier async/volumetric-target alternatives clearly scoped.
+
+Verification: all six builders passed `--check`; eleven Python and twelve Node tests passed, including graph layout/branch semantics and the two corrected relationships. The repository documentation validator passed with zero errors. Browser checks exercised every one of the 92 operation buttons, function-reference expansion, keyboard tab navigation, tracing/shadow alternatives, disabled Nanite/Lumen explanations, checklist persistence and restoration, and all scene section expand/collapse controls. The page fit the available 830-pixel viewport without document-level horizontal overflow; diagrams scroll within their own containers. Runtime error/warning checks were empty. No cross-device visual, compiled-renderer or complete shader/ABI equivalence claim is made.
+
+## Previous revision: actual primitive inheritance (superseded page)
 
 The scene explorer was corrected after the user clarified that its structure must follow actual class definitions. It now contains **371 primitive class definitions and 369 declared inheritance edges**, rooted at `UPrimitiveComponent` and `FPrimitiveSceneProxy`. Components comprise 244 definitions and proxies 127. GPU storage appears in a separate inspector with **31 reviewed family profiles**, 90 direct mappings and 281 explicitly labeled base-context mappings. The flat general class reference remains available.
 
@@ -36,7 +70,7 @@ After both interactive pages and their [text reference](reference.md) were imple
 
 The retest passed the reported architecture-integrity issues. This establishes that the documented architecture and its important distinctions can be recovered from the docs. It is not proof of equivalence to every Unreal configuration, a complete compiler-verified type inventory, or an implemented/benchmarked renderer.
 
-Original publication scope: **9,512 indexed declarations in 2,485 files; 147 authored type explanations; 21 rendering stages; 89 proposed implementation operations**. The sections below record that earlier audit; its grouped-tree UI was subsequently replaced by the actual inheritance trees described above.
+Original publication scope: **9,512 indexed declarations in 2,485 files; 147 authored type explanations; 21 rendering stages; 89 proposed implementation operations**. The sections below record that earlier audit. Its grouped-tree UI was replaced first by actual inheritance trees and then by the current scene requirements guide; these historical sections do not describe the current page layout.
 
 ## Findings corrected before publication
 

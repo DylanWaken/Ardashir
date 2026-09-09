@@ -2,6 +2,9 @@
   "use strict";
   const {data, escape:e, list, sourceMarkup, colors} = window.Atlas;
   const stages = data.stages;
+  const stageDetails = window.UnrealStageDetails.stages;
+  const tabs = [["explain","How it works"],["flow","Functions & flow"],["operations","Operations to implement"],["verify","Correctness & source"]];
+  const sceneLabels = {contract:"Scene input contract",geometry:"Geometry representations",materials:"Material behavior",textures:"Textures & buffers",instances:"Placements & visibility",lighting:"Lights & baked lighting",environment:"Atmosphere & effects",views:"Views & final image",updates:"Updates & lifetime",fidelity:"Fidelity & derived resources"};
   const byId = new Map(stages.map(stage => [stage.id, stage]));
   const timeline = document.getElementById("timeline");
   const scroll = document.getElementById("timeline-scroll");
@@ -105,15 +108,18 @@
   }
   function renderDetail() {
     const stage = byId.get(selected);
+    const extra = stageDetails[stage.id];
     const index = stages.indexOf(stage);
     const types = stage.typeIds.map(id => data.types.find(node => node.id === id));
     detail.innerHTML = `<div class="stage-title-row"><div><div class="badges"><span class="badge">${e(data.lanes.find(lane => lane.id === stage.lane).label)}</span><span class="badge neutral">${number(stage.id)} / ${stages.length}</span>${stage.asyncCapable ? '<span class="badge neutral">Conditional async opportunity</span>' : ""}</div><h2 id="detail-title">${e(stage.title)}</h2></div><div class="toolbar"><button type="button" data-stage="${stages[Math.max(0,index-1)].id}" ${index === 0 ? "disabled" : ""} aria-label="Previous stage">← Previous</button><button type="button" data-stage="${stages[Math.min(stages.length-1,index+1)].id}" ${index === stages.length-1 ? "disabled" : ""} aria-label="Next stage">Next →</button></div></div>
       <p class="detail-lede">${e(stage.summary)}</p><div class="fallback-note">${e(selectedConfiguration(stage))}</div>
-      <div class="stage-tabs" role="tablist" aria-label="Stage details">${[["explain","How it works"],["operations","Operations to implement"],["verify","Correctness & source"]].map(([id,title]) => `<button type="button" role="tab" id="tab-${id}" aria-controls="panel-${id}" data-tab="${id}" aria-selected="${currentTab === id}" tabindex="${currentTab === id ? 0 : -1}">${title}</button>`).join("")}</div>
+      <div class="stage-tabs" role="tablist" aria-label="Stage details">${tabs.map(([id,title]) => `<button type="button" role="tab" id="tab-${id}" aria-controls="panel-${id}" data-tab="${id}" aria-selected="${currentTab === id}" tabindex="${currentTab === id ? 0 : -1}">${title}</button>`).join("")}</div>
       <section class="tab-panel" role="tabpanel" tabindex="0" id="panel-explain" aria-labelledby="tab-explain" ${currentTab === "explain" ? "" : "hidden"}><div class="io-grid"><div><h3>Inputs</h3>${list(stage.inputs)}</div><div><h3>Outputs</h3>${list(stage.outputs)}</div></div><h3>The work inside this stage</h3>${list(stage.steps, true, "method-steps")}
-      ${stage.caveat ? `<div class="notice"><strong>Configuration & ordering.</strong> ${e(stage.caveat)}</div>` : ""}<h4>Major prerequisites</h4><div class="relation-list">${dependencies(stage).length ? dependencies(stage).map(stageLink).join("") : '<span class="section-note">Queued frame inputs and persistent scene state</span>'}</div><h4>Types involved</h4><div class="relation-list">${types.map(node => `<a href="scene-types.html#${node.id}">${e(node.qualified)} ↗</a>`).join("")}</div></section>
+      <div class="flow-preview"><p>${e(extra.overview)}</p><button type="button" data-open-flow>Explore ${extra.flow.nodes.length} key operations & ${extra.calls.length} function references →</button></div>${stage.caveat ? `<div class="notice"><strong>Configuration & ordering.</strong> ${e(stage.caveat)}</div>` : ""}<h4>Major prerequisites</h4><div class="relation-list">${dependencies(stage).length ? dependencies(stage).map(stageLink).join("") : '<span class="section-note">Queued frame inputs and persistent scene state</span>'}</div><h4>Relevant scene inputs</h4><div class="relation-list">${extra.sceneSections.map(id => `<a href="scene-types.html#${id}">${e(sceneLabels[id])} ↗</a>`).join("")}</div><p class="section-note">Unreal types: ${types.map(node => `<code>${e(node.qualified)}</code>`).join(", ")}.</p></section>
+      <section class="tab-panel" role="tabpanel" tabindex="0" id="panel-flow" aria-labelledby="tab-flow" ${currentTab === "flow" ? "" : "hidden"}></section>
       <section class="tab-panel" role="tabpanel" tabindex="0" id="panel-operations" aria-labelledby="tab-operations" ${currentTab === "operations" ? "" : "hidden"}><h3>Implementation operation checklist</h3><p class="section-note">An inferred breakdown of the required responsibilities. Check items to plan your own implementation; this does not indicate existing Ardashir support.</p><ul class="checklist">${stage.operations.map((operation,index) => { const key=`${stage.id}:${index}`; return `<li><label><input type="checkbox" data-operation="${key}" ${completed.has(key) ? "checked" : ""}><span>${e(operation)}</span></label></li>`; }).join("")}</ul><p class="checklist-status" data-progress></p><a href="#roadmap">See the phased implementation roadmap ↓</a></section>
       <section class="tab-panel" role="tabpanel" tabindex="0" id="panel-verify" aria-labelledby="tab-verify" ${currentTab === "verify" ? "" : "hidden"}><h3>Proposed correctness checks</h3><p class="section-note">Run these on a renderer you build. They are test criteria, not reports of an implemented Unreal-equivalent renderer.</p>${list(stage.validation)}${stage.caveat ? `<div class="notice">${e(stage.caveat)}</div>` : ""}${sourceMarkup(stage.sources)}</section>`;
+    window.UnrealOperationFlow.render(document.getElementById("panel-flow"), stage.id, extra, enabled(stage), config());
     updateProgress();
   }
   function choose(id, moveTimeline = true, hash = true) {
@@ -137,6 +143,7 @@
     detail.querySelectorAll("[role=tabpanel]").forEach(panel => { panel.hidden = panel.id !== `panel-${id}`; });
   }
   document.addEventListener("click", event => {
+    if (event.target.closest("[data-open-flow]")) { selectTab("flow", true); return; }
     const stageButton = event.target.closest("[data-stage]");
     if (stageButton) { choose(stageButton.dataset.stage); return; }
     const tab = event.target.closest("[data-tab]"); if (tab) selectTab(tab.dataset.tab);
@@ -144,8 +151,8 @@
   detail.addEventListener("keydown", event => {
     const tab = event.target.closest("[data-tab]");
     if (!tab || !["ArrowRight","ArrowLeft","Home","End"].includes(event.key)) return;
-    const ids = ["explain","operations","verify"], index = ids.indexOf(tab.dataset.tab);
-    const next = event.key === "Home" ? 0 : event.key === "End" ? 2 : (index + (event.key === "ArrowRight" ? 1 : 2)) % 3;
+    const ids = tabs.map(([id]) => id), index = ids.indexOf(tab.dataset.tab);
+    const next = event.key === "Home" ? 0 : event.key === "End" ? ids.length-1 : (index + (event.key === "ArrowRight" ? 1 : ids.length-1)) % ids.length;
     event.preventDefault(); selectTab(ids[next], true);
   });
   detail.addEventListener("change", event => { if (event.target.matches("[data-operation]")) { const key=event.target.dataset.operation; if (event.target.checked) completed.add(key); else completed.delete(key); saveProgress(); } });
