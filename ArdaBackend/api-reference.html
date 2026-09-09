@@ -138,16 +138,15 @@
 <li><a href="#api-arda-backend-fardabackendshadercompileinvocation-ea095f1f">arda::FArdaBackendShaderCompileInvocation <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-backend-fardashadertarget">arda::FArdaShaderTarget <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-fardaswapchaincreateresult-fe42ce79">arda::FArdaSwapChainCreateResult <span class="api-kind">struct</span></a></li>
-<li><a href="#api-arda-fardacomputecudainvocation-e19f4155">arda::FArdaComputeCudaInvocation <span class="api-kind">alias</span></a></li>
-<li><a href="#api-arda-fardacomputekernelbuilder-860027ef">arda::FArdaComputeKernelBuilder <span class="api-kind">alias</span></a></li>
-<li><a href="#api-arda-fardacomputekernelselector-77561f0f">arda::FArdaComputeKernelSelector <span class="api-kind">alias</span></a></li>
-<li><a href="#api-arda-fardacomputeshaderdispatch-ab59cc09">arda::FArdaComputeShaderDispatch <span class="api-kind">alias</span></a></li>
-<li><a href="#api-arda-fardacomputevariantsupport-e2ba2187">arda::FArdaComputeVariantSupport <span class="api-kind">alias</span></a></li>
+<li><a href="#api-arda-fardacomputeparametervisitor-17d3bb8b">arda::FArdaComputeParameterVisitor <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-fardacudamodulecompiler-6671eae1">arda::FArdaCudaModuleCompiler <span class="api-kind">alias</span></a></li>
+<li><a href="#api-arda-tardacomputeoperand-fparameters-e7e28412">arda::TArdaComputeOperand::FParameters <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-fardacomputeoperand-3c458666">arda::FArdaComputeOperand <span class="api-kind">class</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermetadata-f2a80e39">arda::FArdaComputeParameterMetadata <span class="api-kind">class</span></a></li>
 <li><a href="#api-arda-fardacudamodule-9e64307d">arda::FArdaCudaModule <span class="api-kind">class</span></a></li>
 <li><a href="#api-arda-backend-iardadiagnosticcallback-f00c8ba0">arda::IArdaDiagnosticCallback <span class="api-kind">class</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-fardacomputeoperand-e687fe77">arda::FArdaComputeOperand::FArdaComputeOperand <span class="api-kind">constructor</span></a></li>
+<li><a href="#api-arda-tardacomputeoperand-a9365ece">arda::TArdaComputeOperand <span class="api-kind">class</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermetadata-fardacomputeparametermetadata-473c2bca">arda::FArdaComputeParameterMetadata::FArdaComputeParameterMetadata <span class="api-kind">constructor</span></a></li>
 <li><a href="#api-arda-backend-fardanativeobject-fardanativeobject-8336a48c">arda::FArdaNativeObject::FArdaNativeObject <span class="api-kind">constructor</span></a></li>
 <li><a href="#api-arda-backend-fardanativeobject-fardanativeobject-7db4201d">arda::FArdaNativeObject::FArdaNativeObject <span class="api-kind">constructor</span></a></li>
 <li><a href="#api-arda-backend-fardanativeobject-fardanativeobject-3066aab7">arda::FArdaNativeObject::FArdaNativeObject <span class="api-kind">constructor</span></a></li>
@@ -155,16 +154,17 @@
 <li><a href="#api-arda-fardacomputeoperand-fardacomputeoperand-7cabe42a">arda::FArdaComputeOperand::~FArdaComputeOperand <span class="api-kind">destructor</span></a></li>
 <li><a href="#api-arda-fardacudamodule-fardacudamodule-4bcab677">arda::FArdaCudaModule::~FArdaCudaModule <span class="api-kind">destructor</span></a></li>
 <li><a href="#api-arda-backend-iardadiagnosticcallback-iardadiagnosticcallback-84665374">arda::IArdaDiagnosticCallback::~IArdaDiagnosticCallback <span class="api-kind">destructor</span></a></li>
-<li><a href="#api-arda-eardacomputepolicy-bfbd2e5b">arda::EArdaComputePolicy <span class="api-kind">enum</span></a></li>
+<li><a href="#api-arda-eardacomputeparameterkind-dd17fa5d">arda::EArdaComputeParameterKind <span class="api-kind">enum</span></a></li>
 <li><a href="#api-arda-eardacudasourcelanguage-fa07094a">arda::EArdaCudaSourceLanguage <span class="api-kind">enum</span></a></li>
 <li><a href="#api-arda-backend-eardadevicesource-3877d02f">arda::EArdaDeviceSource <span class="api-kind">enum</span></a></li>
 <li><a href="#api-arda-backend-eardadiagnosticseverity-b5d591a2">arda::EArdaDiagnosticSeverity <span class="api-kind">enum</span></a></li>
 <li><a href="#api-arda-backend-eardainitializeresult-2bf6fe00">arda::EArdaInitializeResult <span class="api-kind">enum</span></a></li>
 <li><a href="#api-arda-eardarhideviceprofile">arda::EArdaRHIDeviceProfile <span class="api-kind">enum</span></a></li>
 <li><a href="#api-arda-backend-eardashadercompilationmode-828f76f3">arda::EArdaShaderCompilationMode <span class="api-kind">enum</span></a></li>
-<li><a href="#api-arda-eardacomputepolicy-auto-26f11578">arda::EArdaComputePolicy::Auto <span class="api-kind">enumerator</span></a></li>
-<li><a href="#api-arda-eardacomputepolicy-requirecuda-cf7b3a8f">arda::EArdaComputePolicy::RequireCuda <span class="api-kind">enumerator</span></a></li>
-<li><a href="#api-arda-eardacomputepolicy-requiregraphics-a2bbd6a4">arda::EArdaComputePolicy::RequireGraphics <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardacomputeparameterkind-buffer-92304182">arda::EArdaComputeParameterKind::Buffer <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardacomputeparameterkind-nestedstruct-38990613">arda::EArdaComputeParameterKind::NestedStruct <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardacomputeparameterkind-texture-570afd81">arda::EArdaComputeParameterKind::Texture <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardacomputeparameterkind-value-003d5bb3">arda::EArdaComputeParameterKind::Value <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-eardacudasourcelanguage-cudacpp-a13b847b">arda::EArdaCudaSourceLanguage::CudaCpp <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-eardacudasourcelanguage-ptx-2adce36c">arda::EArdaCudaSourceLanguage::Ptx <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-backend-eardadevicesource-ardacreated-adcedeb8">arda::EArdaDeviceSource::ArdaCreated <span class="api-kind">enumerator</span></a></li>
@@ -183,7 +183,6 @@
 <li><a href="#api-arda-backend-eardashadercompilationmode-loadonly-d87fccb7">arda::EArdaShaderCompilationMode::LoadOnly <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-backend-eardashadercompilationmode-ondemand-08e4508f">arda::EArdaShaderCompilationMode::OnDemand <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-backend-eardashadercompilationmode-startup-360fb861">arda::EArdaShaderCompilationMode::Startup <span class="api-kind">enumerator</span></a></li>
-<li><a href="#api-arda-buildardacomputecudakernels-bb288024">arda::BuildArdaComputeCudaKernels <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-backend-configurebackend-ee733417">arda::ConfigureBackend <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-backend-configurebackend-42d0f49a">arda::ConfigureBackend <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-createardanvrtccompiler-1d53f457">arda::CreateArdaNvrtcCompiler <span class="api-kind">function</span></a></li>
@@ -199,6 +198,16 @@
 <li><a href="#api-arda-backend-initializebackend-eef579c0">arda::InitializeBackend <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-backend-isbackendinitialized-d99926a4">arda::IsBackendInitialized <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-backend-shutdownbackend-f4d11995">arda::ShutdownBackend <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-arda-begin-compute-parameter-struct-596541f1">arda::ARDA_BEGIN_COMPUTE_PARAMETER_STRUCT <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-compute-buffer-78089946">arda::ARDA_COMPUTE_BUFFER <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-compute-buffer-array-a6d4ab42">arda::ARDA_COMPUTE_BUFFER_ARRAY <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-compute-parameter-f89067dd">arda::ARDA_COMPUTE_PARAMETER <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-compute-parameter-array-f9f3f038">arda::ARDA_COMPUTE_PARAMETER_ARRAY <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-compute-parameter-struct-a93dff6f">arda::ARDA_COMPUTE_PARAMETER_STRUCT <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-compute-parameter-struct-array-18badc35">arda::ARDA_COMPUTE_PARAMETER_STRUCT_ARRAY <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-compute-texture-4a520ee8">arda::ARDA_COMPUTE_TEXTURE <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-arda-compute-texture-array-a895169d">arda::ARDA_COMPUTE_TEXTURE_ARRAY <span class="api-kind">macro</span></a></li>
+<li><a href="#api-arda-structtype-arda-end-compute-parameter-struct-59d9c5d3">arda::StructType::ARDA_END_COMPUTE_PARAMETER_STRUCT <span class="api-kind">macro</span></a></li>
 <li><a href="#api-arda-backend-fardabackendconfiguration-mbackendname-42640a67">arda::FArdaBackendConfiguration::mBackendName <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardabackendconfiguration-mcudaexecutionmode-0f63e71d">arda::FArdaBackendConfiguration::mCudaExecutionMode <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-backend-fardabackendconfiguration-mdevicesource-ef35d91b">arda::FArdaBackendConfiguration::mDeviceSource <span class="api-kind">member variable</span></a></li>
@@ -209,25 +218,30 @@
 <li><a href="#api-arda-backend-fardabackendconfiguration-mshadercachedirectory-9ee5136b">arda::FArdaBackendConfiguration::mShaderCacheDirectory <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-backend-fardabackendconfiguration-mshadercompilationmode-31cfe4da">arda::FArdaBackendConfiguration::mShaderCompilationMode <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-backend-fardabackendconfiguration-mbenablevalidation-2f50a50d">arda::FArdaBackendConfiguration::mbEnableValidation <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputecudaimplementation-minvoke-38aaae05">arda::FArdaComputeCudaImplementation::mInvoke <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputecudaimplementation-mmodules-22b2e524">arda::FArdaComputeCudaImplementation::mModules <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputecudalaunch-marguments-4ca95ebb">arda::FArdaComputeCudaLaunch::mArguments <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputecudalaunch-mblocksize-987093f9">arda::FArdaComputeCudaLaunch::mBlockSize <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputecudalaunch-mentrypoint-97a7d623">arda::FArdaComputeCudaLaunch::mEntryPoint <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputecudalaunch-mgridsize-7fd1d341">arda::FArdaComputeCudaLaunch::mGridSize <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputecudalaunch-mmoduleindex-d569d0b0">arda::FArdaComputeCudaLaunch::mModuleIndex <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputecudalaunch-msharedmemorybytes-6e65b948">arda::FArdaComputeCudaLaunch::mSharedMemoryBytes <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeinvocation-mbindingdimensions-c34eb9f4">arda::FArdaComputeInvocation::mBindingDimensions <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeinvocation-mbindings-dc5be941">arda::FArdaComputeInvocation::mBindings <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeinvocation-mextent-bcfd1391">arda::FArdaComputeInvocation::mExtent <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeinvocation-mparameters-fd03eb78">arda::FArdaComputeInvocation::mParameters <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeport-maccess-7de7bef6">arda::FArdaComputePort::mAccess <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeport-malignment-f6a5f48a">arda::FArdaComputePort::mAlignment <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeport-mminimumbytes-09b33e43">arda::FArdaComputePort::mMinimumBytes <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeport-mname-e710fc4a">arda::FArdaComputePort::mName <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeport-mtexturedimension-027da7fa">arda::FArdaComputePort::mTextureDimension <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeport-mtextureformat-6296bcce">arda::FArdaComputePort::mTextureFormat <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeport-mtype-bd7ae974">arda::FArdaComputePort::mType <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputebufferparameter-mbuffer-c76e536f">arda::FArdaComputeBufferParameter::mBuffer <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputebufferparameter-mrange-559463ca">arda::FArdaComputeBufferParameter::mRange <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparameter-mabsoluteoffset-e18367bc">arda::FArdaComputeParameter::mAbsoluteOffset <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparameter-mmember-cef9b5b5">arda::FArdaComputeParameter::mMember <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparameter-mpath-39ea0b45">arda::FArdaComputeParameter::mPath <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparameter-mvalue-53dd6158">arda::FArdaComputeParameter::mValue <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermember-maccess-9637a7d8">arda::FArdaComputeParameterMember::mAccess <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermember-malignment-78ac45fd">arda::FArdaComputeParameterMember::mAlignment <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermember-mcpptype-0d01cea5">arda::FArdaComputeParameterMember::mCppType <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermember-melementcount-fafcc05b">arda::FArdaComputeParameterMember::mElementCount <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermember-melementstride-5bebb8f6">arda::FArdaComputeParameterMember::mElementStride <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermember-mkind-5c448c81">arda::FArdaComputeParameterMember::mKind <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermember-mname-c32d7e8a">arda::FArdaComputeParameterMember::mName <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermember-mnestedmetadata-b25fbafe">arda::FArdaComputeParameterMember::mNestedMetadata <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermember-moffset-2b680a70">arda::FArdaComputeParameterMember::mOffset <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermember-msize-f02a9d9d">arda::FArdaComputeParameterMember::mSize <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeresourceaccess-maccess-dbc5dee9">arda::FArdaComputeResourceAccess::mAccess <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeresourceaccess-mbufferrange-d679b0db">arda::FArdaComputeResourceAccess::mBufferRange <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeresourceaccess-mkind-9b81378b">arda::FArdaComputeResourceAccess::mKind <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeresourceaccess-mpath-07c2a918">arda::FArdaComputeResourceAccess::mPath <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeresourceaccess-mresource-1c670ed3">arda::FArdaComputeResourceAccess::mResource <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputeresourceaccess-mtexturerange-3f2315c5">arda::FArdaComputeResourceAccess::mTextureRange <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputetextureparameter-mrange-ba3c59a0">arda::FArdaComputeTextureParameter::mRange <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardacomputetextureparameter-mtexture-f36841b7">arda::FArdaComputeTextureParameter::mTexture <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardacudamodulesource-mcode-5feca246">arda::FArdaCudaModuleSource::mCode <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardacudamodulesource-mcompileoptions-3cf45879">arda::FArdaCudaModuleSource::mCompileOptions <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardacudamodulesource-mheaders-399c6de4">arda::FArdaCudaModuleSource::mHeaders <span class="api-kind">member variable</span></a></li>
@@ -243,36 +257,33 @@
 <li><a href="#api-arda-backend-fardaqueuecapabilities-mbcompute-deed6ab0">arda::FArdaQueueCapabilities::mbCompute <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-backend-fardaqueuecapabilities-mbcopy-00a231b1">arda::FArdaQueueCapabilities::mbCopy <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-backend-fardaqueuecapabilities-mbgraphics-fc662f9c">arda::FArdaQueueCapabilities::mbGraphics <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fvariant-mcuda-3f6a7992">arda::FVariant::mCuda <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fvariant-mcudaimplementation-97237a82">arda::FVariant::mCudaImplementation <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fvariant-mgraphics-0d43acbd">arda::FVariant::mGraphics <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fvariant-mmaximumarchitecture-833ba6c6">arda::FVariant::mMaximumArchitecture <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fvariant-mminimumarchitecture-7ae824f5">arda::FVariant::mMinimumArchitecture <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fvariant-mname-4fcf23a5">arda::FVariant::mName <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fvariant-msupports-a3757d8a">arda::FVariant::mSupports <span class="api-kind">member variable</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-dispatch-e881d16d">arda::FArdaComputeOperand::Dispatch <span class="api-kind">method</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-getname-5105cf45">arda::FArdaComputeOperand::GetName <span class="api-kind">method</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-getports-3c799fea">arda::FArdaComputeOperand::GetPorts <span class="api-kind">method</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-getvariants-65336dd6">arda::FArdaComputeOperand::GetVariants <span class="api-kind">method</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-registercuda-aaf1eff2">arda::FArdaComputeOperand::RegisterCuda <span class="api-kind">method</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-registercuda-25991cb3">arda::FArdaComputeOperand::RegisterCuda <span class="api-kind">method</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-registergraphics-cf3c8895">arda::FArdaComputeOperand::RegisterGraphics <span class="api-kind">method</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-selectvariant-b8fe78c4">arda::FArdaComputeOperand::SelectVariant <span class="api-kind">method</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-validateinvocation-cd311c68">arda::FArdaComputeOperand::ValidateInvocation <span class="api-kind">method</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-mname-0702fc53">arda::FArdaComputeOperand::mName <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacomputeoperand-getname-0dae12a2">arda::FArdaComputeOperand::GetName <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacomputeoperand-getoperandsupport-5ad00903">arda::FArdaComputeOperand::GetOperandSupport <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacomputeoperand-getparametermetadata-801b7ce4">arda::FArdaComputeOperand::GetParameterMetadata <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermetadata-enumerate-ad7daeb6">arda::FArdaComputeParameterMetadata::Enumerate <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermetadata-findmember-18c8b0f9">arda::FArdaComputeParameterMetadata::FindMember <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermetadata-getalignment-2a5ce96f">arda::FArdaComputeParameterMetadata::GetAlignment <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermetadata-getmembers-90f6d130">arda::FArdaComputeParameterMetadata::GetMembers <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermetadata-getname-625e1c1c">arda::FArdaComputeParameterMetadata::GetName <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermetadata-getresourceaccesses-4796e61c">arda::FArdaComputeParameterMetadata::GetResourceAccesses <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermetadata-getsize-7e3bccec">arda::FArdaComputeParameterMetadata::GetSize <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermetadata-getstatus-e00152af">arda::FArdaComputeParameterMetadata::GetStatus <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardacudamodule-create-9a63dddc">arda::FArdaCudaModule::Create <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardacudamodule-getptx-a84e4ac2">arda::FArdaCudaModule::GetPtx <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardacudamodule-getsource-77fd25ea">arda::FArdaCudaModule::GetSource <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-fardanativeobject-as-1875d034">arda::FArdaNativeObject::As <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-fardaqueuecapabilities-isqueueavailable-2aa584f8">arda::FArdaQueueCapabilities::IsQueueAvailable <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-iardadiagnosticcallback-message-8978c656">arda::IArdaDiagnosticCallback::Message <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-tardacomputeoperand-dispatch-dd686ad4">arda::TArdaComputeOperand::Dispatch <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-tardacomputeoperand-dispatchdeferred-9b204775">arda::TArdaComputeOperand::DispatchDeferred <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-tardacomputeoperand-getparametermetadata-cb358e4d">arda::TArdaComputeOperand::GetParameterMetadata <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-fardanativeobject-operator-bool-60a39567">arda::FArdaNativeObject::operator bool <span class="api-kind">operator</span></a></li>
 <li><a href="#api-arda-backend-fardabackendconfiguration-b6f71e2e">arda::FArdaBackendConfiguration <span class="api-kind">struct</span></a></li>
-<li><a href="#api-arda-fardacomputecudaimplementation-adaf049b">arda::FArdaComputeCudaImplementation <span class="api-kind">struct</span></a></li>
-<li><a href="#api-arda-fardacomputecudalaunch-571ca947">arda::FArdaComputeCudaLaunch <span class="api-kind">struct</span></a></li>
-<li><a href="#api-arda-fardacomputeinvocation-c7b8ca0c">arda::FArdaComputeInvocation <span class="api-kind">struct</span></a></li>
-<li><a href="#api-arda-fardacomputeoperand-fvariant-1fccc389">arda::FArdaComputeOperand::FVariant <span class="api-kind">struct</span></a></li>
-<li><a href="#api-arda-fardacomputeport-c8616647">arda::FArdaComputePort <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardacomputebufferparameter-61dd3245">arda::FArdaComputeBufferParameter <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardacomputeparameter-aea6cdac">arda::FArdaComputeParameter <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardacomputeparametermember-f60284f6">arda::FArdaComputeParameterMember <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardacomputeresourceaccess-9d47a130">arda::FArdaComputeResourceAccess <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardacomputetextureparameter-83cd889f">arda::FArdaComputeTextureParameter <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-fardacudamodulesource-6d56bc6d">arda::FArdaCudaModuleSource <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-fardacudasourceheader-d6254b34">arda::FArdaCudaSourceHeader <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-backend-fardadevicecontext-ceb32bdc">arda::FArdaDeviceContext <span class="api-kind">struct</span></a></li>
@@ -3169,40 +3180,12 @@
 </section>
 <section class="api-group" id="api-component-core"><h3>Core and initialization</h3>
 <section class="api-kind-group"><h4>alias</h4>
-<section class="api-entry" id="api-arda-fardacomputecudainvocation-e19f4155" tabindex="-1"><h5>arda::FArdaComputeCudaInvocation</h5><pre><code>using FArdaComputeCudaInvocation = eastl::function&lt;TArdaRHIResult&lt; eastl::vector&lt;FArdaComputeCudaLaunch&gt;&gt;(const FArdaComputeInvocation&amp;, const FArdaCudaCapabilities&amp;)&gt;</code></pre><p>Host invocation entry point: packs arguments and returns an ordered launch sequence. Receives validated shapes and device limits; must not launch GPU work or retain input references.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametervisitor-17d3bb8b" tabindex="-1"><h5>arda::FArdaComputeParameterVisitor</h5><pre><code>using FArdaComputeParameterVisitor = eastl::function&lt;void(const FArdaComputeParameter&amp;)&gt;</code></pre><p>Receives each borrowed leaf; do not retain its value address.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fardacomputekernelbuilder-860027ef" tabindex="-1"><h5>arda::FArdaComputeKernelBuilder</h5><pre><code>using FArdaComputeKernelBuilder = eastl::function&lt;arda::TArdaRHIResult&lt; eastl::vector&lt;arda::FArdaCudaKernel&gt;&gt;(const FArdaComputeInvocation&amp;)&gt;</code></pre><p>Builds an ordered PTX launch sequence without recording or mutating live resources.</p>
-<dl>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fardacomputekernelselector-77561f0f" tabindex="-1"><h5>arda::FArdaComputeKernelSelector</h5><pre><code>using FArdaComputeKernelSelector = eastl::function&lt;size_t( const FArdaComputeInvocation&amp;, const FArdaCudaCapabilities&amp;, const eastl::vector&lt;size_t&gt;&amp;)&gt;</code></pre><p>Selects an eligible registration index from validated dimensions, parameters and device facts. Must not record work or benchmark live inputs. Returning an ineligible index is rejected.</p>
-<dl>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fardacomputeshaderdispatch-ab59cc09" tabindex="-1"><h5>arda::FArdaComputeShaderDispatch</h5><pre><code>using FArdaComputeShaderDispatch = eastl::function&lt;arda::FArdaRHIStatus( arda::IArdaRHICommandList&amp;, const FArdaComputeInvocation&amp;)&gt;</code></pre><p>Records the graphics alternative, including its transitions, pipeline and resource bindings.</p>
-<dl>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fardacomputevariantsupport-e2ba2187" tabindex="-1"><h5>arda::FArdaComputeVariantSupport</h5><pre><code>using FArdaComputeVariantSupport = eastl::function&lt;bool( const FArdaComputeInvocation&amp;, const FArdaCudaCapabilities&amp;)&gt;</code></pre><p>Pure shape/parameter admission check, called only after family/device/resource filtering.</p>
-<dl>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-fardacudamodulecompiler-6671eae1" tabindex="-1"><h5>arda::FArdaCudaModuleCompiler</h5><pre><code>using FArdaCudaModuleCompiler = eastl::function&lt;TArdaRHIResult&lt;eastl::string&gt;( const FArdaCudaModuleSource&amp;, uint32_t)&gt;</code></pre><p>Translates a source unit to owned PTX without a trailing NUL, or returns compiler diagnostics. The target is major * 10 + minor. Use an NVRTC adapter or an offline artifact lookup. Results must depend only on the immutable source/options and target; resources are unavailable. Calls are serialized per module. A compiler shared by several modules must support concurrency.</p>
 <dl>
@@ -3211,14 +3194,28 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaCudaModule.h</dd>
 </dl></section>
-</section>
-<section class="api-kind-group"><h4>class</h4>
-<section class="api-entry" id="api-arda-fardacomputeoperand-3c458666" tabindex="-1"><h5>arda::FArdaComputeOperand</h5><pre><code>class FArdaComputeOperand</code></pre><p>Inherit to define an operand. Ports are the single binding contract for all variants. Registration occurs in the derived constructor; dispatch is read-only and thread-safe if the supplied callbacks are. Selection must not benchmark or mutate live inputs.</p>
+<section class="api-entry" id="api-arda-tardacomputeoperand-fparameters-e7e28412" tabindex="-1"><h5>arda::TArdaComputeOperand::FParameters</h5><pre><code>using FParameters = ParameterType</code></pre><p>User-defined C++ parameter type accepted by both hooks.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>class</h4>
+<section class="api-entry" id="api-arda-fardacomputeoperand-3c458666" tabindex="-1"><h5>arda::FArdaComputeOperand</h5><pre><code>class FArdaComputeOperand</code></pre><p>Common identity and parameter contract for user-implemented operands. Implementations own their device/runtime dependencies. The base does not own source files, register kernels, select variants, tune, or choose fallback paths.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacomputeparametermetadata-f2a80e39" tabindex="-1"><h5>arda::FArdaComputeParameterMetadata</h5><pre><code>class FArdaComputeParameterMetadata final</code></pre><p>Immutable C++ layout metadata, with no compilation or GPU execution.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-fardacudamodule-9e64307d" tabindex="-1"><h5>arda::FArdaCudaModule</h5><pre><code>class FArdaCudaModule final</code></pre><p>Reusable source and thread-safe PTX cache, with no native CUDA context ownership.</p>
 <dl>
@@ -3232,14 +3229,21 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/ArdaBackend.h</dd>
 </dl></section>
-</section>
-<section class="api-kind-group"><h4>constructor</h4>
-<section class="api-entry" id="api-arda-fardacomputeoperand-fardacomputeoperand-e687fe77" tabindex="-1"><h5>arda::FArdaComputeOperand::FArdaComputeOperand</h5><pre><code>FArdaComputeOperand(eastl::string Name, eastl::vector&lt;FArdaComputePort&gt; Ports, FArdaComputeKernelSelector Selector = {}) : mName(eastl::move(Name)), mPorts(eastl::move(Ports)), mSelector(eastl::move(Selector))</code></pre><p>Stores ports and an optional dimension-based selector; register variants before publishing. The operand owns value captures; reference captures must outlive every dispatch.</p>
+<section class="api-entry" id="api-arda-tardacomputeoperand-a9365ece" tabindex="-1"><h5>arda::TArdaComputeOperand</h5><pre><code>class TArdaComputeOperand : public FArdaComputeOperand</code></pre><p>Derive using an application-defined compute parameter struct and override either or both dispatch hooks. The implementation performs support/input checks and owns CPU logic, algorithm selection, tuning, kernel launches and native library calls. Copy parameters as their actual C++ type: resources and host values can be nontrivial.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>constructor</h4>
+<section class="api-entry" id="api-arda-fardacomputeparametermetadata-fardacomputeparametermetadata-473c2bca" tabindex="-1"><h5>arda::FArdaComputeParameterMetadata::FArdaComputeParameterMetadata</h5><pre><code>FArdaComputeParameterMetadata(const char* Name, size_t Size, size_t Alignment, eastl::vector&lt;FArdaComputeParameterMember&gt; Members)</code></pre><p>Builds/validates metadata; names and nested metadata must outlive this object.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-backend-fardanativeobject-fardanativeobject-8336a48c" tabindex="-1"><h5>arda::FArdaNativeObject::FArdaNativeObject</h5><pre><code>constexpr FArdaNativeObject() noexcept = default</code></pre><p>Creates an empty native object.</p>
 <p>Creates an empty native object. The operation is declared noexcept and must not propagate exceptions. The operation does not mutate the observable state of the object through this interface.</p>
@@ -3267,7 +3271,7 @@
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>destructor</h4>
-<section class="api-entry" id="api-arda-fardacomputeoperand-fardacomputeoperand-7cabe42a" tabindex="-1"><h5>arda::FArdaComputeOperand::~FArdaComputeOperand</h5><pre><code>virtual ~FArdaComputeOperand() = default</code></pre><p>Releases registrations; callers must finish concurrent dispatch callbacks first.</p>
+<section class="api-entry" id="api-arda-fardacomputeoperand-fardacomputeoperand-7cabe42a" tabindex="-1"><h5>arda::FArdaComputeOperand::~FArdaComputeOperand</h5><pre><code>virtual ~FArdaComputeOperand() = default</code></pre><p>Destroy only after callbacks using this operand have finished.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
@@ -3288,12 +3292,12 @@
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>enum</h4>
-<section class="api-entry" id="api-arda-eardacomputepolicy-bfbd2e5b" tabindex="-1"><h5>arda::EArdaComputePolicy</h5><pre><code>enum class EArdaComputePolicy : uint8_t</code></pre><p>Filters implementation families before tuning or kernel-building callbacks run.</p>
+<section class="api-entry" id="api-arda-eardacomputeparameterkind-dd17fa5d" tabindex="-1"><h5>arda::EArdaComputeParameterKind</h5><pre><code>enum class EArdaComputeParameterKind : uint8_t</code></pre><p>Value members are host data; Buffer/Texture members declare external dependencies.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-eardacudasourcelanguage-fa07094a" tabindex="-1"><h5>arda::EArdaCudaSourceLanguage</h5><pre><code>enum class EArdaCudaSourceLanguage : uint8_t</code></pre><p>Language accepted by a CUDA source module.</p>
 <dl>
@@ -3335,26 +3339,33 @@
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>enumerator</h4>
-<section class="api-entry" id="api-arda-eardacomputepolicy-auto-26f11578" tabindex="-1"><h5>arda::EArdaComputePolicy::Auto</h5><pre><code>Auto</code></pre><p>Admit either family; the default selector chooses the first eligible registration.</p>
+<section class="api-entry" id="api-arda-eardacomputeparameterkind-buffer-92304182" tabindex="-1"><h5>arda::EArdaComputeParameterKind::Buffer</h5><pre><code>Buffer</code></pre><p>Retained buffer view and declared access.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-eardacomputepolicy-requirecuda-cf7b3a8f" tabindex="-1"><h5>arda::EArdaComputePolicy::RequireCuda</h5><pre><code>RequireCuda</code></pre><p>Exclude graphics alternatives; unavailable CUDA yields Unsupported.</p>
+<section class="api-entry" id="api-arda-eardacomputeparameterkind-nestedstruct-38990613" tabindex="-1"><h5>arda::EArdaComputeParameterKind::NestedStruct</h5><pre><code>NestedStruct</code></pre><p>Recursively described parameter struct.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-eardacomputepolicy-requiregraphics-a2bbd6a4" tabindex="-1"><h5>arda::EArdaComputePolicy::RequireGraphics</h5><pre><code>RequireGraphics</code></pre><p>Exclude CUDA alternatives even when the device supports them.</p>
+<section class="api-entry" id="api-arda-eardacomputeparameterkind-texture-570afd81" tabindex="-1"><h5>arda::EArdaComputeParameterKind::Texture</h5><pre><code>Texture</code></pre><p>Retained texture subresources and declared access.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardacomputeparameterkind-value-003d5bb3" tabindex="-1"><h5>arda::EArdaComputeParameterKind::Value</h5><pre><code>Value</code></pre><p>Arbitrary host data, never marshaled automatically.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-eardacudasourcelanguage-cudacpp-a13b847b" tabindex="-1"><h5>arda::EArdaCudaSourceLanguage::CudaCpp</h5><pre><code>CudaCpp</code></pre><p>CUDA C++ translated to PTX by the module&#x27;s compiler callback.</p>
 <dl>
@@ -3477,14 +3488,6 @@
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>function</h4>
-<section class="api-entry" id="api-arda-buildardacomputecudakernels-bb288024" tabindex="-1"><h5>arda::BuildArdaComputeCudaKernels</h5><pre><code>[[nodiscard]] TArdaRHIResult&lt;eastl::vector&lt;FArdaCudaKernel&gt;&gt; BuildArdaComputeCudaKernels( const FArdaComputeCudaImplementation&amp; Implementation, const FArdaComputeInvocation&amp; Invocation, const FArdaCudaCapabilities&amp; Capabilities)</code></pre><p>Prepares and validates a modular implementation without recording GPU work. Checks the whole launch sequence before compiling only the referenced modules. Errors propagate without trying another implementation. Direct callers must first validate their operand inputs.</p>
-<dl>
-<dt>Returns</dt><dd>See the declared result and status contract.</dd>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
 <section class="api-entry" id="api-arda-backend-configurebackend-ee733417" tabindex="-1"><h5>arda::ConfigureBackend</h5><pre><code>[[nodiscard]] bool ConfigureBackend(const FArdaBackendConfiguration&amp; configuration)</code></pre><p>Replaces the backend configuration before initialization.</p>
 <p>Replaces either the complete process-wide configuration or only the selected backend before initialization. The change is accepted only while lifecycle state permits reconfiguration; the remaining configuration is preserved by the backend-only overload.</p>
 <dl>
@@ -3612,6 +3615,78 @@
 <dt>Source</dt><dd>Source/ArdaBackend/Public/ArdaBackend.h</dd>
 </dl></section>
 </section>
+<section class="api-kind-group"><h4>macro</h4>
+<section class="api-entry" id="api-arda-arda-begin-compute-parameter-struct-596541f1" tabindex="-1"><h5>arda::ARDA_BEGIN_COMPUTE_PARAMETER_STRUCT</h5><pre><code>#define ARDA_BEGIN_COMPUTE_PARAMETER_STRUCT(StructType)</code></pre><p>Begins a user-defined parameter struct.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-arda-compute-buffer-78089946" tabindex="-1"><h5>arda::ARDA_COMPUTE_BUFFER</h5><pre><code>#define ARDA_COMPUTE_BUFFER(MemberName, Access)</code></pre><p>Declares a buffer view with author-defined access.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-arda-compute-buffer-array-a6d4ab42" tabindex="-1"><h5>arda::ARDA_COMPUTE_BUFFER_ARRAY</h5><pre><code>#define ARDA_COMPUTE_BUFFER_ARRAY(MemberName, Count, Access)</code></pre><p>Declares a fixed buffer-view array.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-arda-compute-parameter-f89067dd" tabindex="-1"><h5>arda::ARDA_COMPUTE_PARAMETER</h5><pre><code>#define ARDA_COMPUTE_PARAMETER(CppType, MemberName)</code></pre><p>Declares arbitrary host data; it is not packed into kernel arguments automatically.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-arda-compute-parameter-array-f9f3f038" tabindex="-1"><h5>arda::ARDA_COMPUTE_PARAMETER_ARRAY</h5><pre><code>#define ARDA_COMPUTE_PARAMETER_ARRAY(CppType, MemberName, Count)</code></pre><p>Declares a fixed host-value array.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-arda-compute-parameter-struct-a93dff6f" tabindex="-1"><h5>arda::ARDA_COMPUTE_PARAMETER_STRUCT</h5><pre><code>#define ARDA_COMPUTE_PARAMETER_STRUCT(StructType, MemberName)</code></pre><p>Declares recursively inspected nested parameters.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-arda-compute-parameter-struct-array-18badc35" tabindex="-1"><h5>arda::ARDA_COMPUTE_PARAMETER_STRUCT_ARRAY</h5><pre><code>#define ARDA_COMPUTE_PARAMETER_STRUCT_ARRAY(StructType, MemberName, Count)</code></pre><p>Declares a fixed array of recursively inspected parameter structs.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-arda-compute-texture-4a520ee8" tabindex="-1"><h5>arda::ARDA_COMPUTE_TEXTURE</h5><pre><code>#define ARDA_COMPUTE_TEXTURE(MemberName, Access)</code></pre><p>Declares a texture view with author-defined access.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-arda-compute-texture-array-a895169d" tabindex="-1"><h5>arda::ARDA_COMPUTE_TEXTURE_ARRAY</h5><pre><code>#define ARDA_COMPUTE_TEXTURE_ARRAY(MemberName, Count, Access)</code></pre><p>Declares a fixed texture-view array.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-structtype-arda-end-compute-parameter-struct-59d9c5d3" tabindex="-1"><h5>arda::StructType::ARDA_END_COMPUTE_PARAMETER_STRUCT</h5><pre><code>#define ARDA_END_COMPUTE_PARAMETER_STRUCT()</code></pre><p>Ends a parameter struct and exposes its static metadata.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+</section>
 <section class="api-kind-group"><h4>member variable</h4>
 <section class="api-entry" id="api-arda-backend-fardabackendconfiguration-mbackendname-42640a67" tabindex="-1"><h5>arda::FArdaBackendConfiguration::mBackendName</h5><pre><code>eastl::string mBackendName</code></pre><p>Declares arda::FArdaBackendConfiguration::mBackendName in the current public backend API.</p>
 <p>The declaration participates in registered shader compilation, permutation selection, lazy global-shader loading, or persistent backend-native pipeline caching as specified by its source contract.</p>
@@ -3684,138 +3759,173 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/ArdaBackend.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputecudaimplementation-minvoke-38aaae05" tabindex="-1"><h5>arda::FArdaComputeCudaImplementation::mInvoke</h5><pre><code>FArdaComputeCudaInvocation mInvoke</code></pre><p>Required invocation entry point, run only after this implementation is selected.</p>
+<section class="api-entry" id="api-arda-fardacomputebufferparameter-mbuffer-c76e536f" tabindex="-1"><h5>arda::FArdaComputeBufferParameter::mBuffer</h5><pre><code>FArdaRHIBufferRef mBuffer</code></pre><p>Referenced buffer; null can denote an unused optional input.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputecudaimplementation-mmodules-22b2e524" tabindex="-1"><h5>arda::FArdaComputeCudaImplementation::mModules</h5><pre><code>eastl::vector&lt;eastl::shared_ptr&lt;const FArdaCudaModule&gt;&gt; mModules</code></pre><p>Nonempty retained modules; several variants may share one module and its compilation cache.</p>
+<section class="api-entry" id="api-arda-fardacomputebufferparameter-mrange-559463ca" tabindex="-1"><h5>arda::FArdaComputeBufferParameter::mRange</h5><pre><code>FArdaRHIBufferRange mRange</code></pre><p>Byte range used by the operation.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputecudalaunch-marguments-4ca95ebb" tabindex="-1"><h5>arda::FArdaComputeCudaLaunch::mArguments</h5><pre><code>eastl::vector&lt;FArdaCudaArgument&gt; mArguments</code></pre><p>Ordered resource indices and owned value bytes matching the exported symbol&#x27;s ABI.</p>
+<section class="api-entry" id="api-arda-fardacomputeparameter-mabsoluteoffset-e18367bc" tabindex="-1"><h5>arda::FArdaComputeParameter::mAbsoluteOffset</h5><pre><code>size_t mAbsoluteOffset = 0</code></pre><p>Offset from the root parameter instance.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputecudalaunch-mblocksize-987093f9" tabindex="-1"><h5>arda::FArdaComputeCudaLaunch::mBlockSize</h5><pre><code>uint32_t mBlockSize[3] = {1, 1, 1}</code></pre><p>Nonzero threads per axis, subject to device axis and product limits.</p>
+<section class="api-entry" id="api-arda-fardacomputeparameter-mmember-cef9b5b5" tabindex="-1"><h5>arda::FArdaComputeParameter::mMember</h5><pre><code>const FArdaComputeParameterMember* mMember = nullptr</code></pre><p>Static leaf metadata.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputecudalaunch-mentrypoint-97a7d623" tabindex="-1"><h5>arda::FArdaComputeCudaLaunch::mEntryPoint</h5><pre><code>eastl::string mEntryPoint</code></pre><p>Exported PTX symbol, normally an extern &quot;C&quot; CUDA C++ kernel name.</p>
+<section class="api-entry" id="api-arda-fardacomputeparameter-mpath-39ea0b45" tabindex="-1"><h5>arda::FArdaComputeParameter::mPath</h5><pre><code>eastl::string mPath</code></pre><p>Dotted path with fixed-array indices.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputecudalaunch-mgridsize-7fd1d341" tabindex="-1"><h5>arda::FArdaComputeCudaLaunch::mGridSize</h5><pre><code>uint32_t mGridSize[3] = {1, 1, 1}</code></pre><p>Nonzero block count per axis, chosen from invocation dimensions.</p>
+<section class="api-entry" id="api-arda-fardacomputeparameter-mvalue-53dd6158" tabindex="-1"><h5>arda::FArdaComputeParameter::mValue</h5><pre><code>const void* mValue = nullptr</code></pre><p>Leaf value address, valid only while the parameter instance lives.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputecudalaunch-mmoduleindex-d569d0b0" tabindex="-1"><h5>arda::FArdaComputeCudaLaunch::mModuleIndex</h5><pre><code>uint32_t mModuleIndex = 0</code></pre><p>Index into the selected implementation&#x27;s mModules.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermember-maccess-9637a7d8" tabindex="-1"><h5>arda::FArdaComputeParameterMember::mAccess</h5><pre><code>EArdaComputeAccess mAccess = EArdaComputeAccess::Read</code></pre><p>Author-declared resource access; ignored for ordinary values.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputecudalaunch-msharedmemorybytes-6e65b948" tabindex="-1"><h5>arda::FArdaComputeCudaLaunch::mSharedMemoryBytes</h5><pre><code>uint32_t mSharedMemoryBytes = 0</code></pre><p>Dynamic shared-memory bytes per block.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermember-malignment-78ac45fd" tabindex="-1"><h5>arda::FArdaComputeParameterMember::mAlignment</h5><pre><code>size_t mAlignment = 1</code></pre><p>Required element alignment.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeinvocation-mbindingdimensions-c34eb9f4" tabindex="-1"><h5>arda::FArdaComputeInvocation::mBindingDimensions</h5><pre><code>eastl::vector&lt;eastl::vector&lt;uint64_t&gt;&gt; mBindingDimensions</code></pre><p>Optional tensor dimensions per binding, in port order, independent of launch extent. Empty outer vector omits shapes; otherwise provide one shape per binding. Each axis must be nonzero; an empty inner vector denotes a scalar. ValidateInvocation must check operand-specific rank, dtype/layout parameters and storage bounds before selection.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermember-mcpptype-0d01cea5" tabindex="-1"><h5>arda::FArdaComputeParameterMember::mCppType</h5><pre><code>const char* mCppType = nullptr</code></pre><p>Diagnostic C++ type spelling, not a serialization or kernel ABI.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeinvocation-mbindings-dc5be941" tabindex="-1"><h5>arda::FArdaComputeInvocation::mBindings</h5><pre><code>eastl::vector&lt;arda::FArdaCudaBinding&gt; mBindings</code></pre><p>Exactly one retained binding per port, in declaration order.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermember-melementcount-fafcc05b" tabindex="-1"><h5>arda::FArdaComputeParameterMember::mElementCount</h5><pre><code>size_t mElementCount = 1</code></pre><p>Fixed element count; scalar members have count one.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeinvocation-mextent-bcfd1391" tabindex="-1"><h5>arda::FArdaComputeInvocation::mExtent</h5><pre><code>uint32_t mExtent[3] = {1, 1, 1}</code></pre><p>Logical work size; the selected implementation chooses its own grid/block tiling.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermember-melementstride-5bebb8f6" tabindex="-1"><h5>arda::FArdaComputeParameterMember::mElementStride</h5><pre><code>size_t mElementStride = 0</code></pre><p>Byte stride of one element.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeinvocation-mparameters-fd03eb78" tabindex="-1"><h5>arda::FArdaComputeInvocation::mParameters</h5><pre><code>eastl::vector&lt;eastl::vector&lt;uint8_t&gt;&gt; mParameters</code></pre><p>Owned operand parameters. The derived operand defines and validates their schema.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermember-mkind-5c448c81" tabindex="-1"><h5>arda::FArdaComputeParameterMember::mKind</h5><pre><code>EArdaComputeParameterKind mKind = EArdaComputeParameterKind::Value</code></pre><p>Host value, resource or nested struct.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeport-maccess-7de7bef6" tabindex="-1"><h5>arda::FArdaComputePort::mAccess</h5><pre><code>arda::EArdaComputeAccess mAccess = arda::EArdaComputeAccess::Read</code></pre><p>Authoritative read/write declaration, applied to the caller&#x27;s binding copy.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermember-mname-c32d7e8a" tabindex="-1"><h5>arda::FArdaComputeParameterMember::mName</h5><pre><code>const char* mName = nullptr</code></pre><p>Declared member name with static lifetime.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeport-malignment-f6a5f48a" tabindex="-1"><h5>arda::FArdaComputePort::mAlignment</h5><pre><code>uint32_t mAlignment = 1</code></pre><p>Required buffer byte-offset alignment; must be nonzero.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermember-mnestedmetadata-b25fbafe" tabindex="-1"><h5>arda::FArdaComputeParameterMember::mNestedMetadata</h5><pre><code>const FArdaComputeParameterMetadata* mNestedMetadata = nullptr</code></pre><p>Static nested metadata, or null for a leaf.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeport-mminimumbytes-09b33e43" tabindex="-1"><h5>arda::FArdaComputePort::mMinimumBytes</h5><pre><code>uint64_t mMinimumBytes = 1</code></pre><p>Minimum resolved byte count for a buffer port.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermember-moffset-2b680a70" tabindex="-1"><h5>arda::FArdaComputeParameterMember::mOffset</h5><pre><code>size_t mOffset = 0</code></pre><p>Offset from the containing struct.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeport-mname-e710fc4a" tabindex="-1"><h5>arda::FArdaComputePort::mName</h5><pre><code>eastl::string mName</code></pre><p>Unique, nonempty name for diagnostics and application binding conventions.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermember-msize-f02a9d9d" tabindex="-1"><h5>arda::FArdaComputeParameterMember::mSize</h5><pre><code>size_t mSize = 0</code></pre><p>Total member size including array elements.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeport-mtexturedimension-027da7fa" tabindex="-1"><h5>arda::FArdaComputePort::mTextureDimension</h5><pre><code>arda::EArdaRHITextureDimension mTextureDimension = arda::EArdaRHITextureDimension::Unknown</code></pre><p>Required surface dimension, or Unknown to accept any dimension.</p>
+<section class="api-entry" id="api-arda-fardacomputeresourceaccess-maccess-dbc5dee9" tabindex="-1"><h5>arda::FArdaComputeResourceAccess::mAccess</h5><pre><code>EArdaComputeAccess mAccess = EArdaComputeAccess::Read</code></pre><p>Read, Write or ReadWrite as declared by the author.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeport-mtextureformat-6296bcce" tabindex="-1"><h5>arda::FArdaComputePort::mTextureFormat</h5><pre><code>arda::EArdaRHIFormat mTextureFormat = arda::EArdaRHIFormat::Unknown</code></pre><p>Required surface storage format, or Unknown to accept any format.</p>
+<section class="api-entry" id="api-arda-fardacomputeresourceaccess-mbufferrange-d679b0db" tabindex="-1"><h5>arda::FArdaComputeResourceAccess::mBufferRange</h5><pre><code>FArdaRHIBufferRange mBufferRange</code></pre><p>Original buffer range; whole-buffer sentinel is preserved.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeport-mtype-bd7ae974" tabindex="-1"><h5>arda::FArdaComputePort::mType</h5><pre><code>arda::EArdaComputeBindingType mType = arda::EArdaComputeBindingType::Buffer</code></pre><p>Buffer range or texture surface expected at this port&#x27;s index.</p>
+<section class="api-entry" id="api-arda-fardacomputeresourceaccess-mkind-9b81378b" tabindex="-1"><h5>arda::FArdaComputeResourceAccess::mKind</h5><pre><code>EArdaComputeParameterKind mKind = EArdaComputeParameterKind::Buffer</code></pre><p>Buffer or Texture.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacomputeresourceaccess-mpath-07c2a918" tabindex="-1"><h5>arda::FArdaComputeResourceAccess::mPath</h5><pre><code>eastl::string mPath</code></pre><p>Full parameter path.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacomputeresourceaccess-mresource-1c670ed3" tabindex="-1"><h5>arda::FArdaComputeResourceAccess::mResource</h5><pre><code>FArdaRHIResourceRef mResource</code></pre><p>Retains the resource, or null for an optional/unbound field.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacomputeresourceaccess-mtexturerange-3f2315c5" tabindex="-1"><h5>arda::FArdaComputeResourceAccess::mTextureRange</h5><pre><code>FArdaRHITextureSubresourceRange mTextureRange</code></pre><p>Original texture subresource range.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacomputetextureparameter-mrange-ba3c59a0" tabindex="-1"><h5>arda::FArdaComputeTextureParameter::mRange</h5><pre><code>FArdaRHITextureSubresourceRange mRange</code></pre><p>Mips and array slices used by the operation.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacomputetextureparameter-mtexture-f36841b7" tabindex="-1"><h5>arda::FArdaComputeTextureParameter::mTexture</h5><pre><code>FArdaRHITextureRef mTexture</code></pre><p>Referenced texture; null can denote an unused optional input.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-fardacudamodulesource-mcode-5feca246" tabindex="-1"><h5>arda::FArdaCudaModuleSource::mCode</h5><pre><code>eastl::string mCode</code></pre><p>Owned source contents, loaded from a .cu/.ptx file or embedded by the application.</p>
 <dl>
@@ -3911,70 +4021,9 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/ArdaBackend.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fvariant-mcuda-3f6a7992" tabindex="-1"><h5>arda::FVariant::mCuda</h5><pre><code>FArdaComputeKernelBuilder mCuda</code></pre><p>CUDA builder, populated only for CUDA variants.</p>
-<dl>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fvariant-mcudaimplementation-97237a82" tabindex="-1"><h5>arda::FVariant::mCudaImplementation</h5><pre><code>FArdaComputeCudaImplementation mCudaImplementation</code></pre><p>Modular CUDA source and invocation, mutually exclusive with legacy CUDA and graphics.</p>
-<dl>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fvariant-mgraphics-0d43acbd" tabindex="-1"><h5>arda::FVariant::mGraphics</h5><pre><code>FArdaComputeShaderDispatch mGraphics</code></pre><p>Graphics recorder, populated only for graphics variants.</p>
-<dl>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fvariant-mmaximumarchitecture-833ba6c6" tabindex="-1"><h5>arda::FVariant::mMaximumArchitecture</h5><pre><code>uint32_t mMaximumArchitecture = UINT32_MAX</code></pre><p>Inclusive CUDA SM upper bound; UINT32_MAX leaves it unbounded.</p>
-<dl>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fvariant-mminimumarchitecture-7ae824f5" tabindex="-1"><h5>arda::FVariant::mMinimumArchitecture</h5><pre><code>uint32_t mMinimumArchitecture = 0</code></pre><p>Inclusive CUDA SM lower bound, encoded as major * 10 + minor.</p>
-<dl>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fvariant-mname-4fcf23a5" tabindex="-1"><h5>arda::FVariant::mName</h5><pre><code>eastl::string mName</code></pre><p>Unique variant name used by pinning and tuning caches.</p>
-<dl>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fvariant-msupports-a3757d8a" tabindex="-1"><h5>arda::FVariant::mSupports</h5><pre><code>FArdaComputeVariantSupport mSupports</code></pre><p>Optional shape/parameter filter, applied before selection and compilation.</p>
-<dl>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
 </section>
 <section class="api-kind-group"><h4>method</h4>
-<section class="api-entry" id="api-arda-fardacomputeoperand-dispatch-e881d16d" tabindex="-1"><h5>arda::FArdaComputeOperand::Dispatch</h5><pre><code>[[nodiscard]] arda::TArdaRHIResult&lt;eastl::string&gt; Dispatch( arda::IArdaRHICommandList&amp; Commands, const FArdaComputeInvocation&amp; Invocation, EArdaComputePolicy Policy = EArdaComputePolicy::Auto, const char* PinnedVariant = nullptr) const</code></pre><p>Validates ports and selects one implementation for an open command list.</p>
-<dl>
-<dt>Commands</dt><dd>Command list on this invocation&#x27;s device; recording is caller-serialized.</dd>
-<dt>Invocation</dt><dd>Resources and parameters; access declarations are copied from ports.</dd>
-<dt>Policy</dt><dd>Eligible implementation family; Auto preserves registration preference.</dd>
-<dt>PinnedVariant</dt><dd>Optional exact registration name; pinning never bypasses eligibility.</dd>
-<dt>Returns</dt><dd>Selected name on success, InvalidArgument for malformed input/selection, or Unsupported when no variant qualifies. A recording failure is propagated without retry.</dd>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fardacomputeoperand-getname-5105cf45" tabindex="-1"><h5>arda::FArdaComputeOperand::GetName</h5><pre><code>[[nodiscard]] const eastl::string&amp; GetName() const noexcept</code></pre><p>Returns the stable operation name supplied by the derived constructor.</p>
+<section class="api-entry" id="api-arda-fardacomputeoperand-getname-0dae12a2" tabindex="-1"><h5>arda::FArdaComputeOperand::GetName</h5><pre><code>[[nodiscard]] virtual const char* GetName() const noexcept = 0</code></pre><p>Returns an implementation-owned stable diagnostic name.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -3982,7 +4031,15 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeoperand-getports-3c799fea" tabindex="-1"><h5>arda::FArdaComputeOperand::GetPorts</h5><pre><code>[[nodiscard]] const eastl::vector&lt;FArdaComputePort&gt;&amp; GetPorts() const noexcept</code></pre><p>Returns the immutable ordered binding contract.</p>
+<section class="api-entry" id="api-arda-fardacomputeoperand-getoperandsupport-5ad00903" tabindex="-1"><h5>arda::FArdaComputeOperand::GetOperandSupport</h5><pre><code>[[nodiscard]] virtual FArdaRHIStatus GetOperandSupport() const = 0</code></pre><p>User-defined support query for the bound device, architecture and runtime. Return Unsupported with a reason when execution is unavailable. This query must not launch work; shape-specific validation belongs in dispatch.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>The implementation defines synchronization of its bound runtime state.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacomputeoperand-getparametermetadata-801b7ce4" tabindex="-1"><h5>arda::FArdaComputeOperand::GetParameterMetadata</h5><pre><code>[[nodiscard]] virtual const FArdaComputeParameterMetadata&amp; GetParameterMetadata() const = 0</code></pre><p>Returns static metadata for the concrete typed dispatch parameters.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -3990,70 +4047,69 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeoperand-getvariants-65336dd6" tabindex="-1"><h5>arda::FArdaComputeOperand::GetVariants</h5><pre><code>[[nodiscard]] const eastl::vector&lt;FVariant&gt;&amp; GetVariants() const noexcept</code></pre><p>Read-only variant metadata; indices correspond to SelectVariant&#x27;s eligible indices.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermetadata-enumerate-ad7daeb6" tabindex="-1"><h5>arda::FArdaComputeParameterMetadata::Enumerate</h5><pre><code>[[nodiscard]] FArdaRHIStatus Enumerate(const void* Parameters, const FArdaComputeParameterVisitor&amp; Visitor) const</code></pre><p>Recursively visits leaf elements. Parameters must be a live instance of this exact type. Null/misaligned input or an empty visitor returns InvalidArgument. Value members are not searched for hidden pointers/resources; declare dependencies explicitly.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Borrows the parameter instance and its leaf addresses during visitation.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Metadata is immutable; callers keep the visited instance stable.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacomputeparametermetadata-findmember-18c8b0f9" tabindex="-1"><h5>arda::FArdaComputeParameterMetadata::FindMember</h5><pre><code>[[nodiscard]] const FArdaComputeParameterMember* FindMember(const char* Name) const noexcept</code></pre><p>Finds a direct member by name, or returns null.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeoperand-registercuda-aaf1eff2" tabindex="-1"><h5>arda::FArdaComputeOperand::RegisterCuda</h5><pre><code>[[nodiscard]] arda::FArdaRHIStatus RegisterCuda(eastl::string Name, uint32_t MinimumArchitecture, uint32_t MaximumArchitecture, FArdaComputeKernelBuilder Builder, FArdaComputeVariantSupport Supports = {})</code></pre><p>Registers a CUDA builder without invoking it or requiring a CUDA-enabled device.</p>
-<dl>
-<dt>Name</dt><dd>Nonempty variant name, unique across CUDA and graphics registrations.</dd>
-<dt>MinimumArchitecture</dt><dd>Inclusive SM lower bound, encoded as major * 10 + minor.</dd>
-<dt>MaximumArchitecture</dt><dd>Inclusive SM upper bound; UINT32_MAX removes the upper bound.</dd>
-<dt>Builder</dt><dd>Nonempty callback that builds ordered kernels from a validated invocation.</dd>
-<dt>Supports</dt><dd>Optional pure shape/parameter admission check before selection.</dd>
-<dt>Returns</dt><dd>Success after storage; InvalidArgument for an empty/duplicate name, empty callback, or MinimumArchitecture greater than MaximumArchitecture. Rejection adds nothing.</dd>
-<dt>Ownership</dt><dd>The callback is moved into the operand. Value captures live until operand destruction; reference captures must outlive every dispatch. The invocation is borrowed only for the callback duration and must not be retained by reference.</dd>
-<dt>Errors</dt><dd>Registration validates metadata only; PTX and native launch failures occur at dispatch.</dd>
-<dt>Threading</dt><dd>Register during construction before publishing the operand. Registration must not race with registration, selection or dispatch; callbacks must support any concurrent dispatches the application permits, on separately serialized command lists.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fardacomputeoperand-registercuda-25991cb3" tabindex="-1"><h5>arda::FArdaComputeOperand::RegisterCuda</h5><pre><code>[[nodiscard]] arda::FArdaRHIStatus RegisterCuda(eastl::string Name, uint32_t MinimumArchitecture, uint32_t MaximumArchitecture, FArdaComputeCudaImplementation Implementation, FArdaComputeVariantSupport Supports = {})</code></pre><p>Registers reusable source modules and a separate host invocation entry point. Names/SM limits follow the builder overload. Modules and mInvoke must be nonempty. Supports optionally filters input dimensions before selection; pinning never bypasses it. Registration retains modules/callbacks without compiling. Only the selected invocation runs; its whole launch sequence is validated and compiled before command recording. Register before publication; callbacks must support concurrent dispatches on separate command lists. Reference captures must outlive dispatch; modules own their source/cache.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermetadata-getalignment-2a5ce96f" tabindex="-1"><h5>arda::FArdaComputeParameterMetadata::GetAlignment</h5><pre><code>[[nodiscard]] size_t GetAlignment() const noexcept</code></pre><p>Returns C++ alignment.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeoperand-registergraphics-cf3c8895" tabindex="-1"><h5>arda::FArdaComputeOperand::RegisterGraphics</h5><pre><code>[[nodiscard]] arda::FArdaRHIStatus RegisterGraphics(eastl::string Name, FArdaComputeShaderDispatch Dispatch, FArdaComputeVariantSupport Supports = {})</code></pre><p>Registers a compute-shader alternative usable without CUDA.</p>
-<dl>
-<dt>Name</dt><dd>Nonempty variant name, unique across both implementation families.</dd>
-<dt>Dispatch</dt><dd>Nonempty callback responsible for transitions, pipeline/binding setup and recording.</dd>
-<dt>Supports</dt><dd>Optional pure shape/parameter admission check before selection.</dd>
-<dt>Returns</dt><dd>Success after storage; InvalidArgument for an empty/duplicate name or empty callback.</dd>
-<dt>Ownership</dt><dd>The operand owns the moved callback and its value captures. Reference captures must outlive its dispatches; recorded GPU dependencies must survive queue completion.</dd>
-<dt>Errors</dt><dd>Callback failure is propagated by Dispatch without trying another implementation.</dd>
-<dt>Threading</dt><dd>Register before publishing; do not race registration with dispatch. Callback code must support the application&#x27;s concurrency and serialize each command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
-</dl></section>
-<section class="api-entry" id="api-arda-fardacomputeoperand-selectvariant-b8fe78c4" tabindex="-1"><h5>arda::FArdaComputeOperand::SelectVariant</h5><pre><code>virtual size_t SelectVariant(const FArdaComputeInvocation&amp; Invocation, const arda::FArdaCudaCapabilities&amp; Capabilities, const eastl::vector&lt;size_t&gt;&amp; Eligible) const</code></pre><p>Override for shape-based selection or an external tuning cache. The default calls the constructor&#x27;s selector, or preserves registration order if absent. Returning an ineligible index is rejected even when a registration name was pinned.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermetadata-getmembers-90f6d130" tabindex="-1"><h5>arda::FArdaComputeParameterMetadata::GetMembers</h5><pre><code>[[nodiscard]] const eastl::vector&lt;FArdaComputeParameterMember&gt;&amp; GetMembers() const noexcept</code></pre><p>Direct members in declaration order.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeoperand-validateinvocation-cd311c68" tabindex="-1"><h5>arda::FArdaComputeOperand::ValidateInvocation</h5><pre><code>virtual arda::FArdaRHIStatus ValidateInvocation(const FArdaComputeInvocation&amp;) const</code></pre><p>Check operation-specific shapes and parameters before either implementation runs.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermetadata-getname-625e1c1c" tabindex="-1"><h5>arda::FArdaComputeParameterMetadata::GetName</h5><pre><code>[[nodiscard]] const char* GetName() const noexcept</code></pre><p>Returns the struct name.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeoperand-mname-0702fc53" tabindex="-1"><h5>arda::FArdaComputeOperand::mName</h5><pre><code>) : mName(eastl::move(Name)), mPorts(eastl::move(Ports)), mSelector(eastl::move(Selector))</code></pre><p>Performs name through the public backend and RHI contract.</p>
-<p>Performs name through the public backend and RHI contract. The signature is generated from the current public header.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermetadata-getresourceaccesses-4796e61c" tabindex="-1"><h5>arda::FArdaComputeParameterMetadata::GetResourceAccesses</h5><pre><code>[[nodiscard]] FArdaRHIStatus GetResourceAccesses(const void* Parameters, eastl::vector&lt;FArdaComputeResourceAccess&gt;&amp; OutAccesses) const</code></pre><p>Replaces OutAccesses with retained resource declarations, including null optional fields; preserves ranges and aliases without merging. Failure leaves output unchanged. This does not validate required inputs, ranges, device or CUDA sharing: dispatch owns those checks. It does not register an RDG pass or automatically marshal kernel arguments.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Output retains resource references independently of the parameter object.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Metadata is immutable; synchronize parameter mutations and output access.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacomputeparametermetadata-getsize-7e3bccec" tabindex="-1"><h5>arda::FArdaComputeParameterMetadata::GetSize</h5><pre><code>[[nodiscard]] size_t GetSize() const noexcept</code></pre><p>Returns C++ object size, not serialized size.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacomputeparametermetadata-getstatus-e00152af" tabindex="-1"><h5>arda::FArdaComputeParameterMetadata::GetStatus</h5><pre><code>[[nodiscard]] const FArdaRHIStatus&amp; GetStatus() const noexcept</code></pre><p>Invalid metadata is never traversed.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-fardacudamodule-create-9a63dddc" tabindex="-1"><h5>arda::FArdaCudaModule::Create</h5><pre><code>[[nodiscard]] static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaCudaModule&gt;&gt; Create( FArdaCudaModuleSource Source, FArdaCudaModuleCompiler Compiler = {})</code></pre><p>Validates and owns source/compiler without compiling or requiring a CUDA device. CudaCpp requires a compiler; Ptx rejects compiler callbacks, headers and options. Reference captures must outlive the module; callbacks must not reenter this module.</p>
 <dl>
@@ -4102,6 +4158,30 @@
 <dt>Ownership</dt><dd>Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/ArdaBackend.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-tardacomputeoperand-dispatch-dd686ad4" tabindex="-1"><h5>arda::TArdaComputeOperand::Dispatch</h5><pre><code>[[nodiscard]] virtual FArdaRHIStatus Dispatch(const ParameterType&amp;)</code></pre><p>Executes host code now; it may directly launch kernels or call a native runtime. Implementation helpers may span any number of .cpp/.cu/.cuh files; no PTX or launch-list result is required. Parameters are borrowed for this call only. Retain dependencies of asynchronous work and document stream/completion ownership: success is not a GPU fence. Default: Unsupported without side effects.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>The author synchronizes mutable state, runtime calls and in-flight storage.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-tardacomputeoperand-dispatchdeferred-9b204775" tabindex="-1"><h5>arda::TArdaComputeOperand::DispatchDeferred</h5><pre><code>[[nodiscard]] virtual FArdaRHIStatus DispatchDeferred(IArdaRHICommandList&amp;, const ParameterType&amp;)</code></pre><p>Runs recording logic now and appends work to a caller-owned open command list. The implementation may record several CUDA/shader operations with host logic and tuning between them. It must not close/submit the list or launch unordered external work. Native libraries need an explicit compatible submission adapter for this hook. Borrow parameters only during recording; retain dependencies through execution and propagate recording errors without retrying partial writes. Default: Unsupported; it never silently calls immediate Dispatch. RDG scheduling is future integration.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Serialize the caller&#x27;s command list and any mutable operand state.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-tardacomputeoperand-getparametermetadata-cb358e4d" tabindex="-1"><h5>arda::TArdaComputeOperand::GetParameterMetadata</h5><pre><code>[[nodiscard]] const FArdaComputeParameterMetadata&amp; GetParameterMetadata() const final</code></pre><p>Returns the parameter type&#x27;s metadata without executing user dispatch code.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+</dl></section>
 </section>
 <section class="api-kind-group"><h4>operator</h4>
 <section class="api-entry" id="api-arda-backend-fardanativeobject-operator-bool-60a39567" tabindex="-1"><h5>arda::FArdaNativeObject::operator bool</h5><pre><code>[[nodiscard]] explicit constexpr operator bool() const noexcept</code></pre><p>True when the encoded native handle is nonzero.</p>
@@ -4117,40 +4197,40 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/ArdaBackend.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputecudaimplementation-adaf049b" tabindex="-1"><h5>arda::FArdaComputeCudaImplementation</h5><pre><code>struct FArdaComputeCudaImplementation</code></pre><p>Modular CUDA implementation: source ownership and host invocation are independent.</p>
+<section class="api-entry" id="api-arda-fardacomputebufferparameter-61dd3245" tabindex="-1"><h5>arda::FArdaComputeBufferParameter</h5><pre><code>struct FArdaComputeBufferParameter</code></pre><p>Retained buffer view; shapes and dtype/layout are application-defined value parameters.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputecudalaunch-571ca947" tabindex="-1"><h5>arda::FArdaComputeCudaLaunch</h5><pre><code>struct FArdaComputeCudaLaunch</code></pre><p>One invocation of an exported symbol in a reusable CUDA module.</p>
+<section class="api-entry" id="api-arda-fardacomputeparameter-aea6cdac" tabindex="-1"><h5>arda::FArdaComputeParameter</h5><pre><code>struct FArdaComputeParameter</code></pre><p>Resolved leaf element, borrowed from a live C++ parameter instance.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeinvocation-c7b8ca0c" tabindex="-1"><h5>arda::FArdaComputeInvocation</h5><pre><code>struct FArdaComputeInvocation</code></pre><p>Per-call resources, application-defined parameter bytes and nonzero logical work extent.</p>
+<section class="api-entry" id="api-arda-fardacomputeparametermember-f60284f6" tabindex="-1"><h5>arda::FArdaComputeParameterMember</h5><pre><code>struct FArdaComputeParameterMember</code></pre><p>Static description of one direct member, including fixed arrays and nested structs.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeoperand-fvariant-1fccc389" tabindex="-1"><h5>arda::FArdaComputeOperand::FVariant</h5><pre><code>struct FVariant</code></pre><p>Immutable registration visible to custom tuning selectors after construction.</p>
+<section class="api-entry" id="api-arda-fardacomputeresourceaccess-9d47a130" tabindex="-1"><h5>arda::FArdaComputeResourceAccess</h5><pre><code>struct FArdaComputeResourceAccess</code></pre><p>Retained dependency declaration for a future graph import/resolve adapter.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacomputeport-c8616647" tabindex="-1"><h5>arda::FArdaComputePort</h5><pre><code>struct FArdaComputePort</code></pre><p>Ordered input/output declaration shared by every implementation of an operand.</p>
+<section class="api-entry" id="api-arda-fardacomputetextureparameter-83cd889f" tabindex="-1"><h5>arda::FArdaComputeTextureParameter</h5><pre><code>struct FArdaComputeTextureParameter</code></pre><p>Retained texture view without assuming CUDA surface or shader binding semantics.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
-<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-fardacudamodulesource-6d56bc6d" tabindex="-1"><h5>arda::FArdaCudaModuleSource</h5><pre><code>struct FArdaCudaModuleSource</code></pre><p>Immutable translation unit shared by any number of operand implementations.</p>
 <dl>
@@ -10414,7 +10494,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHICuda.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-eardacomputebindingtype-f2eadd2b" tabindex="-1"><h5>arda::EArdaComputeBindingType</h5><pre><code>enum class EArdaComputeBindingType : uint8_t</code></pre><p>Shader-independent shape of one operand port.</p>
+<section class="api-entry" id="api-arda-eardacomputebindingtype-f2eadd2b" tabindex="-1"><h5>arda::EArdaComputeBindingType</h5><pre><code>enum class EArdaComputeBindingType : uint8_t</code></pre><p>Shader-independent kind of a CUDA resource binding.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
@@ -11100,7 +11180,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHICuda.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudabinding-maccess-224336b2" tabindex="-1"><h5>arda::FArdaCudaBinding::mAccess</h5><pre><code>EArdaComputeAccess mAccess = EArdaComputeAccess::Read</code></pre><p>Access declaration; FArdaComputeOperand replaces this with its port&#x27;s declaration.</p>
+<section class="api-entry" id="api-arda-fardacudabinding-maccess-224336b2" tabindex="-1"><h5>arda::FArdaCudaBinding::mAccess</h5><pre><code>EArdaComputeAccess mAccess = EArdaComputeAccess::Read</code></pre><p>Access declaration supplied by the dispatch implementation, matching its parameter contract.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>

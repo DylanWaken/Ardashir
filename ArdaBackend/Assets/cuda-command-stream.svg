@@ -1,28 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="430" viewBox="0 0 1000 430" role="img" aria-labelledby="title desc">
-  <title id="title">Shared allocation and CUDA work in a graphics command stream</title>
-  <desc id="desc">A single native allocation supplies a graphics view and a qualified CUDA buffer or surface view. Graphics writes precede a dependency barrier, two ordered CUDA kernels, another barrier and graphics reads. Submission retains the allocation and executable modules until the graphics fence completes. Representation availability does not transfer queue ownership.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="440" viewBox="0 0 1000 440" role="img" aria-labelledby="title desc">
+  <title id="title">Typed parameters feed two explicit execution hooks</title>
+  <desc id="desc">A typed parameter object supplies host values and resource views. Static metadata exposes retained dependencies to a future RDG adapter without launching anything. User Dispatch can immediately call kernels or libraries and owns completion. User DispatchDeferred records into a caller's command list; the caller submits and waits for completion. Both hooks own support checks, shape policy and arbitrary source implementations.</desc>
   <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#334155"/></marker></defs>
-  <rect width="1000" height="430" rx="12" fill="#f8fafc"/>
+  <rect width="1000" height="440" rx="12" fill="#f8fafc"/>
   <g font-family="system-ui,sans-serif" font-size="16" fill="#0f172a">
-    <text x="28" y="33" font-size="20" font-weight="700">One allocation; two representations; one ordered submission</text>
-    <rect x="28" y="62" width="280" height="66" rx="8" fill="#dbeafe" stroke="#2563eb"/>
-    <text x="48" y="89" font-weight="700">Native buffer or image allocation</text><text x="48" y="112">Created with CUDA sharing enabled</text>
-    <path d="M308 83H372M308 112H610" stroke="#334155" fill="none" marker-end="url(#arrow)"/>
-    <rect x="375" y="62" width="205" height="66" rx="8" fill="#e0e7ff" stroke="#6366f1"/>
-    <text x="395" y="89" font-weight="700">Graphics representation</text><text x="395" y="112">RHI resource + views</text>
-    <rect x="615" y="62" width="355" height="66" rx="8" fill="#dcfce7" stroke="#15803d"/>
-    <text x="635" y="89" font-weight="700">Qualified CUDA representation</text><text x="635" y="112">Buffer address or selected-mip surface</text>
-    <text x="28" y="175" font-weight="700">Recorded graphics API command stream</text>
-    <g stroke="#334155" fill="none" marker-end="url(#arrow)">
-      <path d="M188 230H225"/><path d="M315 230H352"/><path d="M497 230H533"/><path d="M678 230H715"/><path d="M805 230H842"/>
-    </g>
-    <g fill="#e0e7ff" stroke="#6366f1"><rect x="28" y="197" width="160" height="66" rx="8"/><rect x="845" y="197" width="125" height="66" rx="8"/></g>
-    <g fill="#fef3c7" stroke="#a16207"><rect x="228" y="197" width="87" height="66" rx="8"/><rect x="718" y="197" width="87" height="66" rx="8"/></g>
-    <g fill="#dcfce7" stroke="#15803d"><rect x="355" y="197" width="142" height="66" rx="8"/><rect x="536" y="197" width="142" height="66" rx="8"/></g>
-    <text x="43" y="235">Graphics writes</text><text x="244" y="235">Barrier</text><text x="370" y="224">CUDA kernel 1</text><text x="370" y="247">input → output</text><text x="550" y="224">CUDA kernel 2</text><text x="550" y="247">in-place update</text><text x="734" y="235">Barrier</text><text x="857" y="224">Graphics</text><text x="857" y="247">reads</text>
-    <path d="M28 290V307H970V290" stroke="#334155" stroke-width="2" fill="none"/>
-    <text x="115" y="337">Submission retains resources, mappings, streams and modules until graphics-fence completion</text>
-    <text x="28" y="377" font-weight="700">D3D12 CiG:</text><text x="148" y="377">graphics queue; captured list is single-use; submit or discard before the next capture</text>
-    <text x="28" y="406" font-weight="700">Vulkan:</text><text x="110" y="406">graphics/compute command buffer; native CUDA kernel launch; copy queues excluded</text>
+    <text x="28" y="34" font-size="21" font-weight="700">The author owns execution; metadata describes dependencies</text>
+    <rect x="28" y="62" width="250" height="84" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="45" y="87" font-weight="700">User parameter struct</text><text x="45" y="111">Host values + retained views</text><text x="45" y="134">Shapes, ranges, access</text>
+    <rect x="363" y="62" width="250" height="84" rx="8" fill="#fef3c7" stroke="#a16207"/>
+    <text x="380" y="87" font-weight="700">Static metadata</text><text x="380" y="111">Enumerate dependencies</text><text x="380" y="134">No GPU work is scheduled</text>
+    <rect x="698" y="62" width="275" height="84" rx="8" fill="#fff" stroke="#64748b" stroke-dasharray="6 4"/>
+    <text x="715" y="87" font-weight="700">Future RDG adapter</text><text x="715" y="111">Import views + resolve aliases</text><text x="715" y="134">Not implemented yet</text>
+    <g stroke="#334155" fill="none" marker-end="url(#arrow)"><path d="M278 103H359"/><path d="M613 103H694" stroke-dasharray="6 4"/><path d="M153 146V192H215V214"/><path d="M153 192H716V214"/></g>
+    <text x="292" y="93" font-size="14">inspect</text><text x="627" y="93" font-size="14">future</text>
+    <rect x="28" y="219" width="430" height="115" rx="8" fill="#dcfce7" stroke="#15803d"/>
+    <text x="45" y="246" font-weight="700">User Dispatch(params)</text><text x="45" y="272">CPU logic → native kernels / library calls</text><text x="45" y="296">Own context, stream, tuning and lifetime</text><text x="45" y="320">Implementation defines completion</text>
+    <rect x="543" y="219" width="430" height="115" rx="8" fill="#e0e7ff" stroke="#6366f1"/>
+    <text x="560" y="246" font-weight="700">User DispatchDeferred(commands, params)</text><text x="560" y="272">CPU logic → record ordered GPU operations</text><text x="560" y="296">Caller closes and submits the command list</text><text x="560" y="320">Submission retains dependencies to completion</text>
+    <text x="28" y="375" font-weight="700">Both hooks:</text><text x="133" y="375">user support/input checks; any number of .cpp / .cu / .cuh files</text>
+    <text x="28" y="408">Default hooks return Unsupported. Deferred never invokes immediate work implicitly.</text>
   </g>
 </svg>
