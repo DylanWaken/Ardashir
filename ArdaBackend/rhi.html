@@ -263,42 +263,42 @@ if (caps.mbTiledTextures &amp;&amp; caps.mbHeaps)
           <h2>Worked example: offscreen color with mip-specific views</h2>
           <pre><code>using namespace arda;
 
-rhi::FArdaRHITextureDesc textureDesc;
+arda::FArdaRHITextureDesc textureDesc;
 textureDesc.mWidth = 1920;
 textureDesc.mHeight = 1080;
 textureDesc.mMipLevels = 5;
-textureDesc.mFormat = rhi::EArdaRHIFormat::RGBA16Float;
-textureDesc.mDimension = rhi::EArdaRHITextureDimension::Texture2D;
-textureDesc.mUsage = rhi::EArdaRHITextureUsage::RenderTarget |
-                     rhi::EArdaRHITextureUsage::ShaderResource |
-                     rhi::EArdaRHITextureUsage::UnorderedAccess;
-textureDesc.mInitialState = rhi::EArdaRHIResourceState::RenderTarget;
+textureDesc.mFormat = arda::EArdaRHIFormat::RGBA16Float;
+textureDesc.mDimension = arda::EArdaRHITextureDimension::Texture2D;
+textureDesc.mUsage = arda::EArdaRHITextureUsage::RenderTarget |
+                     arda::EArdaRHITextureUsage::ShaderResource |
+                     arda::EArdaRHITextureUsage::UnorderedAccess;
+textureDesc.mInitialState = arda::EArdaRHIResourceState::RenderTarget;
 textureDesc.mDebugName = "SceneColor";
 
 auto textureResult = device-&gt;CreateTexture(textureDesc);
 if (!textureResult)
     return textureResult.mStatus;
-rhi::FArdaRHITextureRef texture = eastl::move(textureResult.mValue);
+arda::FArdaRHITextureRef texture = eastl::move(textureResult.mValue);
 
-rhi::FArdaRHIViewDesc srvDesc;
+arda::FArdaRHIViewDesc srvDesc;
 srvDesc.mFormat = textureDesc.mFormat;
 srvDesc.mDimension = textureDesc.mDimension;
 srvDesc.mTextureRange = {0, textureDesc.mMipLevels, 0, 1};
 auto srv = device-&gt;CreateShaderResourceView(texture, srvDesc);
 
-rhi::FArdaRHIViewDesc mipOneUavDesc = srvDesc;
+arda::FArdaRHIViewDesc mipOneUavDesc = srvDesc;
 mipOneUavDesc.mTextureRange = {1, 1, 0, 1};
 auto mipOneUav = device-&gt;CreateUnorderedAccessView(texture, mipOneUavDesc);
 
-rhi::FArdaRHIFramebufferDesc framebufferDesc;
+arda::FArdaRHIFramebufferDesc framebufferDesc;
 framebufferDesc.mColorAttachments.push_back(
     {texture, {{0, 1, 0, 1}, textureDesc.mFormat, false}});
 framebufferDesc.mDebugName = "SceneColorMip0";
 auto framebuffer = device-&gt;CreateFramebuffer(framebufferDesc);
 
 if (!srv || !mipOneUav || !framebuffer)
-    return rhi::FArdaRHIStatus::Error(
-        rhi::EArdaRHIResult::BackendFailure,
+    return arda::FArdaRHIStatus::Error(
+        arda::EArdaRHIResult::BackendFailure,
         "Failed to create SceneColor interpretations.");</code></pre>
           <p>The texture owns one allocation and permits three roles. The SRV spans the chain, the UAV isolates mip one, and the framebuffer attaches mip zero. Commands must still transition the relevant ranges before rendering, mip generation, and sampling.</p>
         </section>

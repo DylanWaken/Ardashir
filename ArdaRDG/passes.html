@@ -275,7 +275,7 @@
             <h3>Illustrative pseudocode</h3>
             <p>This example emphasizes graph declarations and dependency flow. It omits app-specific shader objects, pipeline-state cache and initializer setup, graphics state and framebuffer construction, swap-chain acquisition, dispatch dimensions, and draw arguments.</p>
           </aside>
-          <pre><code>using namespace arda::render_graph;
+          <pre><code>using namespace arda;
 
 ARDG_BEGIN_PARAMETER_STRUCT(FLightingParameters)
     ARDG_TEXTURE_UAV(Output)
@@ -293,7 +293,7 @@ FARDGTextureSRVRef lightingSRV = graph.CreateTextureSRV(
     "Lighting.SRV", {lighting-&gt;GetHandle(), {0, 1, 0, 1}});
 FARDGTextureRef backBuffer = graph.RegisterExternalTexture(
     swapchainTexture,
-    rhi::EArdaRHIResourceState::Present,
+    arda::EArdaRHIResourceState::Present,
     "BackBuffer");
 
 auto* lightingParameters = graph.AllocateParameters&lt;FLightingParameters&gt;();
@@ -307,7 +307,7 @@ graph.AddDispatchPass(
         FARDGPassExecutionContext&amp; context,
         const FLightingParameters&amp;)
     {
-        rhi::FArdaRHIComputeState state;
+        arda::FArdaRHIComputeState state;
         state.mBindings = context.CreateBindingSets(lightingShader);
         return pipelineStateCache.SetComputePipelineState(
             context.mUnsafeRawCommandList,

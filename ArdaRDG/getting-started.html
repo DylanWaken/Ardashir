@@ -89,7 +89,7 @@
 
         <section id="prerequisites">
           <h2>Prerequisites</h2>
-          <p>Read the <a href="index.html">overview</a> and complete ArdaBackend <a href="../ArdaBackend/getting-started.html">initialization</a>. You need a valid <code>backend::FArdaDeviceContext</code> whose device remains alive through graph execution. Review <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a>, <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command lists</a>, <a class="term" data-term="queue" href="../glossary.html#term-queue">queues</a>, <a class="term" data-term="resource-state" href="../glossary.html#term-resource-state">resource states</a>, and <a class="term" data-term="extraction" href="../glossary.html#term-extraction">extraction</a>.</p>
+          <p>Read the <a href="index.html">overview</a> and complete ArdaBackend <a href="../ArdaBackend/getting-started.html">initialization</a>. You need a valid <code>arda::FArdaDeviceContext</code> whose device remains alive through graph execution. Review <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a>, <a class="term" data-term="command-list" href="../glossary.html#term-command-list">command lists</a>, <a class="term" data-term="queue" href="../glossary.html#term-queue">queues</a>, <a class="term" data-term="resource-state" href="../glossary.html#term-resource-state">resource states</a>, and <a class="term" data-term="extraction" href="../glossary.html#term-extraction">extraction</a>.</p>
           <p>At build time, link the <code>ArdaRenderGraph</code> target and its ArdaBackend dependency. The public include directory is <code>Source/ArdaRenderGraph/Public</code>; consumers normally include the aggregate header rather than private compiler or executor headers.</p>
         </section>
 
@@ -113,11 +113,11 @@
 
 using namespace arda;
 
-const backend::FArdaDeviceContext&amp; deviceContext =
-    backend::GetDeviceContext();
+const arda::FArdaDeviceContext&amp; deviceContext =
+    arda::GetDeviceContext();
 
-render_graph::FARDGRenderGraphContext graphContext =
-    render_graph::MakeRenderGraphContext(deviceContext);</code></pre>
+arda::FARDGRenderGraphContext graphContext =
+    arda::MakeRenderGraphContext(deviceContext);</code></pre>
 
           <p>The resulting <a href="api-reference.html#api-arda-rdg-fardgrendergraphcontext-0e7e7f3f"><code>FARDGRenderGraphContext</code></a> retains the RHI device. It also stores queue capabilities and optional debug behavior. Do not hard-code compute or copy support: the compiler uses these bits to decide whether eligible passes remain on a specialized queue or fall back to graphics.</p>
 
@@ -131,7 +131,7 @@ render_graph::FARDGRenderGraphContext graphContext =
           <h2>Step 2: create one builder and assign ownership</h2>
           <p>Construct <a href="api-reference.html#api-arda-rdg-fardgbuilder-e0fc26d2"><code>FARDGBuilder</code></a> after all long-lived objects captured by pass callbacks exist. The builder is non-copyable and non-movable because its private arena, registries, stable pointers, mutex, and execution state have one identity.</p>
 
-          <pre><code>render_graph::FARDGBuilder graph(graphContext);</code></pre>
+          <pre><code>arda::FARDGBuilder graph(graphContext);</code></pre>
 
           <dl>
             <dt>Builder-owned</dt>
@@ -160,15 +160,15 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
           <p><a href="api-reference.html#api-arda-rdg-ardg-buffer-access-ea7e7a74"><code>ARDG_BUFFER_ACCESS</code></a> uses <a href="api-reference.html#api-arda-rdg-fardgbufferaccess-919444b2"><code>FARDGBufferAccess</code></a>, so setup supplies both the logical buffer and its required state. Direct access is appropriate when the pass operates on the parent buffer and does not need a logical SRV or UAV descriptor.</p>
 
           <h3>Create a graph-owned logical resource</h3>
-          <pre><code>rhi::FArdaRHIBufferDesc outputDesc;
+          <pre><code>arda::FArdaRHIBufferDesc outputDesc;
 outputDesc.mDebugName = "GettingStarted.Output";
 outputDesc.mByteSize = 1024;
 outputDesc.mStructureStride = sizeof(uint32_t);
 outputDesc.mUsage =
-    rhi::EArdaRHIBufferUsage::Structured |
-    rhi::EArdaRHIBufferUsage::UnorderedAccess;
+    arda::EArdaRHIBufferUsage::Structured |
+    arda::EArdaRHIBufferUsage::UnorderedAccess;
 
-render_graph::FARDGBufferRef output =
+arda::FARDGBufferRef output =
     graph.CreateBuffer(outputDesc);</code></pre>
 
           <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-createbuffer-3391cbe2"><code>CreateBuffer()</code></a> validates a non-empty name and nonzero size, appends a logical record to the buffer registry, and returns a raw graph-owned pointer. The default resource flag is transient. The call does not create an RHI buffer; materialization happens only for live resources during execution.</p>
@@ -178,7 +178,7 @@ render_graph::FARDGBufferRef output =
     graph.AllocateParameters&lt;FClearParameters&gt;();
 parameters-&gt;mOutput.mBuffer = output;
 parameters-&gt;mOutput.mState =
-    rhi::EArdaRHIResourceState::UnorderedAccess;</code></pre>
+    arda::EArdaRHIResourceState::UnorderedAccess;</code></pre>
 
           <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-allocateparameters-de82be20"><code>AllocateParameters()</code></a> constructs the object in graph arena storage and registers a destructor when needed. Passing a stack parameter object to <code>AddPass</code> is also supported. The private <code>FreezeParameters</code> implementation helper is invoked automatically by <code>AddPass</code> and <code>CreateUniformBuffer</code> to copy caller-owned parameters into immutable arena storage when needed; it is never a user-callable step. Later mutations to the original stack object do not change the pass.</p>
         </section>
@@ -190,11 +190,11 @@ parameters-&gt;mOutput.mState =
           <pre><code>graph.AddPass(
     "ClearOutput",
     parameters,
-    render_graph::EARDGPassFlags::Compute,
-    [](render_graph::FARDGPassExecutionContext&amp; context,
+    arda::EARDGPassFlags::Compute,
+    [](arda::FARDGPassExecutionContext&amp; context,
        const FClearParameters&amp; frozen)
     {
-        rhi::IArdaRHIBuffer* physical =
+        arda::IArdaRHIBuffer* physical =
             context.GetBuffer(frozen.mOutput.mBuffer);
         return context.mUnsafeRawCommandList.ClearBufferUInt(
             *physical,
@@ -216,21 +216,21 @@ parameters-&gt;mOutput.mState =
           <h3>Workflow A: extract a graph-created result</h3>
           <p>Extraction makes a graph-created resource observable, keeps it live through the epilogue, removes transient eligibility, requests a known final state, and assigns a retained RHI reference after submission.</p>
 
-          <pre><code>rhi::FArdaRHIBufferRef extractedOutput;
+          <pre><code>arda::FArdaRHIBufferRef extractedOutput;
 graph.QueueBufferExtraction(
     output,
     extractedOutput,
-    rhi::EArdaRHIResourceState::CopySource);</code></pre>
+    arda::EArdaRHIResourceState::CopySource);</code></pre>
 
           <p>The address of <code>extractedOutput</code> is stored until execution. It must remain valid and uniquely associated with this extraction. <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuebufferextraction-54e67cf9"><code>QueueBufferExtraction()</code></a> rejects nulls, foreign graph records, unknown final states, duplicate resources, and duplicate output addresses with fatal checks.</p>
 
           <h3>Workflow B: render to an external presentable image</h3>
           <p>A swap-chain image is already physical and externally owned. Register it with its truthful current state—normally <code>Present</code> at graph entry—then declare it in a raster pass and leave its final state as <code>Present</code>:</p>
 
-          <pre><code>render_graph::FARDGTextureRef backBuffer =
+          <pre><code>arda::FARDGTextureRef backBuffer =
     graph.RegisterExternalTexture(
         acquiredTexture,
-        rhi::EArdaRHIResourceState::Present,
+        arda::EArdaRHIResourceState::Present,
         "BackBuffer");
 
 // In a raster parameter struct:
@@ -238,7 +238,7 @@ graph.QueueBufferExtraction(
 // parameters-&gt;mRenderTargets.mColor[0].mTexture = backBuffer;
 
 backBuffer-&gt;SetFinalState(
-    rhi::EArdaRHIResourceState::Present);</code></pre>
+    arda::EArdaRHIResourceState::Present);</code></pre>
 
           <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-registerexternaltexture-4853552d"><code>RegisterExternalTexture()</code></a> retains the RHI texture, marks it external, sets the prologue as its initial producer, and deduplicates repeated registration by physical identity when the initial states agree. Writes to an external resource become observable through the epilogue, so they root the required producer chain. After graph submission, the application's normal swap-chain workflow presents the image; ARDG does not own acquisition, presentation, resize, or frame pacing.</p>
 
@@ -256,28 +256,27 @@ backBuffer-&gt;SetFinalState(
     ARDG_BUFFER_ACCESS(mOutput)
 ARDG_END_PARAMETER_STRUCT()
 
-arda::rhi::FArdaRHIBufferRef BuildClearGraph(
-    const arda::backend::FArdaDeviceContext&amp; deviceContext)
+arda::FArdaRHIBufferRef BuildClearGraph(
+    const arda::FArdaDeviceContext&amp; deviceContext)
 {
     using namespace arda;
-    using namespace render_graph;
 
     FARDGBuilder graph(MakeRenderGraphContext(deviceContext));
 
-    rhi::FArdaRHIBufferDesc desc;
+    arda::FArdaRHIBufferDesc desc;
     desc.mDebugName = "GettingStarted.Output";
     desc.mByteSize = 1024;
     desc.mStructureStride = sizeof(uint32_t);
     desc.mUsage =
-        rhi::EArdaRHIBufferUsage::Structured |
-        rhi::EArdaRHIBufferUsage::UnorderedAccess;
+        arda::EArdaRHIBufferUsage::Structured |
+        arda::EArdaRHIBufferUsage::UnorderedAccess;
 
     FARDGBufferRef output = graph.CreateBuffer(desc);
     FClearParameters* parameters =
         graph.AllocateParameters&lt;FClearParameters&gt;();
     parameters-&gt;mOutput = {
         output,
-        rhi::EArdaRHIResourceState::UnorderedAccess,
+        arda::EArdaRHIResourceState::UnorderedAccess,
         {}};
 
     graph.AddPass(
@@ -292,11 +291,11 @@ arda::rhi::FArdaRHIBufferRef BuildClearGraph(
                 0x12345678u);
         });
 
-    rhi::FArdaRHIBufferRef extracted;
+    arda::FArdaRHIBufferRef extracted;
     graph.QueueBufferExtraction(
         output,
         extracted,
-        rhi::EArdaRHIResourceState::CopySource);
+        arda::EArdaRHIResourceState::CopySource);
 
     FARDGExecuteOptions options;
     options.mbParallelRecording = false;
@@ -328,10 +327,10 @@ arda::rhi::FArdaRHIBufferRef BuildClearGraph(
           <h2>Step 6: compile for inspection, then execute once</h2>
           <p>You may call <a href="api-reference.html#api-arda-rdg-fardgbuilder-compile-97614587"><code>Compile()</code></a> explicitly before execution:</p>
 
-          <pre><code>const render_graph::FARDGCompileResult&amp; plan = graph.Compile();
+          <pre><code>const arda::FARDGCompileResult&amp; plan = graph.Compile();
 const eastl::string report = graph.DumpGraph();
 
-const render_graph::FARDGExecutionResult&amp; submitted =
+const arda::FARDGExecutionResult&amp; submitted =
     graph.Execute();</code></pre>
 
           <p>This is useful for deterministic diagnostics, plan inspection, and tests. Repeated compile calls return the same builder-owned result. <code>Execute()</code> calls compile automatically when needed, so explicit compilation is optional.</p>

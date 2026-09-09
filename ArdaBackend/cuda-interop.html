@@ -54,7 +54,7 @@
         ArdaBackend
       </nav>
       <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>CUDA and graphics compute</h1><p>Register reusable operands with CUDA kernels and compute-shader alternatives while preserving resource ownership and graphics submission ordering.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#model">One allocation, ordered graphics and CUDA access</a><a href="#build">Enable CUDA or build without it</a><a href="#resources">Create buffers and qualify textures</a><a href="#packing">Understand surface addressing and tensor packing</a><a href="#operand">Register one or several kernels</a><a href="#dispatch">Record, submit and check results</a><a href="#fallback">Provide the compute-shader alternative</a><a href="#tuning">Select variants without mutating live inputs</a><a href="#native">Native execution and lifetime limits</a><a href="#qualification">Verified support and failure diagnosis</a><a href="#summary">Checkpoints</a></nav>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#model">One allocation, ordered graphics and CUDA access</a><a href="#build">Enable CUDA or build without it</a><a href="#resources">Create buffers and qualify textures</a><a href="#packing">Understand surface addressing and tensor packing</a><a href="#operand">Register one or several kernels</a><a href="#dispatch">Record, submit and check results</a><a href="#fallback">Provide the compute-shader alternative</a><a href="#tuning">Select variants without mutating live inputs</a><a href="#context-switch">Choose the execution mode</a><a href="#native">Native execution and lifetime limits</a><a href="#qualification">Verified support and failure diagnosis</a><a href="#summary">Checkpoints</a></nav>
 <section id="objectives"><h2>How to use these examples</h2>
 <p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
 <p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
@@ -62,12 +62,12 @@
 <p>Short snippets are literal excerpts from compiled GoogleTest workloads. They use ASSERT_TRUE/EXPECT_EQ to make failures visible. Adapt those checks to your application's status handling. Variables and helpers are initialized in each linked complete example; snippets are not separate standalone programs. The complete examples show allocation, binding, execution, readback assertions and cleanup.</p>
 <pre><code class="language-shell">cmake --build build --config Debug --target ArdaBackendTests
 ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
-<p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="model"><h2>One allocation, ordered graphics and CUDA access</h2><p>A CUDA-compatible buffer or texture can have two API representations of the same allocation. Representation availability is an allocation fact. Read/write states and queue ordering are separate facts. All current CUDA work is recorded in the graphics API command stream; there is no CUDA-only queue owner to toggle.</p><p>Buffers supply a private linear device address, with view offset already applied. Textures supply a surface handle for one mip, including its array layers or depth. The public API deliberately supplies neither a general CUDA-runtime pointer conversion nor an OptiX handle conversion.</p><p>Start with <a href="api-reference.html#api-arda-rhi-fardacudacapabilities-720f24fa"><code>FArdaCudaCapabilities</code></a> and inspect <a href="api-reference.html#api-arda-rhi-fardacudaresourceinfo-13af3eca"><code>FArdaCudaResourceInfo</code></a> for each resource. CUDA device support does not imply that an ordinary graphics allocation was created for sharing.</p><pre><code class="language-cpp">const auto Cuda = Device-&gt;GetCudaCapabilities();
+<p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="model"><h2>One allocation, ordered graphics and CUDA access</h2><p>A CUDA-compatible buffer or texture can have two API representations of the same allocation. Representation availability is an allocation fact. Read/write states and queue ordering are separate facts. All CUDA work uses the same public command-list recording sequence. Native modes embed launches in the graphics API command stream; <a href="#context-switch">context-switching mode</a> retains CUDA batches for separate execution between completed graphics segments. Applications do not toggle a CUDA-only queue owner.</p><p>Buffers supply a private linear device address, with view offset already applied. Textures supply a surface handle for one mip, including its array layers or depth. The public API deliberately supplies neither a general CUDA-runtime pointer conversion nor an OptiX handle conversion.</p><p>Start with <a href="api-reference.html#api-arda-fardacudacapabilities-2b4d1813"><code>FArdaCudaCapabilities</code></a> and inspect <a href="api-reference.html#api-arda-fardacudaresourceinfo-b4743248"><code>FArdaCudaResourceInfo</code></a> for each resource. CUDA device support does not imply that an ordinary graphics allocation was created for sharing.</p><pre><code class="language-cpp">const auto Cuda = Device-&gt;GetCudaCapabilities();
 const auto Representation = Buffer-&gt;GetCudaResourceInfo();
 if (!Cuda || !Representation.mbSharingEnabled) {
     // Choose a registered graphics implementation or report Unsupported.
 }</code></pre></section>
-<section id="build"><h2>Enable CUDA or build without it</h2><p>The default build excludes the CUDA provider. To enable D3D12 CiG, supply CUDA 13.3 or newer headers. Driver loading remains dynamic; installing headers does not prove that the running adapter supports CiG. Vulkan native kernel launch uses Vulkan extension declarations, not a CUDA runtime library.</p><pre><code class="language-shell">cmake -S . -B build/cuda-on -DARDASHIR_ENABLE_CUDA=ON -DARDASHIR_CUDA_INCLUDE_DIR=&quot;C:/CUDA/include&quot;
+<section id="build"><h2>Enable CUDA or build without it</h2><p>The default build excludes the CUDA provider. Supply CUDA 12.0 or newer headers for ordinary-context execution; CUDA 13.3 or newer also enables D3D12 CiG capture. Driver loading remains dynamic; installing headers does not prove that the running adapter supports CiG. Vulkan native kernel launch uses Vulkan extension declarations, not a CUDA runtime library.</p><pre><code class="language-shell">cmake -S . -B build/cuda-on -DARDASHIR_ENABLE_CUDA=ON -DARDASHIR_CUDA_INCLUDE_DIR=&quot;C:/CUDA/include&quot;
 cmake --build build/cuda-on --config Debug --target ArdaBackendTests
 cmake -S . -B build/cuda-off -DARDASHIR_ENABLE_CUDA=OFF</code></pre><p>Use actual local SDK/build paths. Public RHI headers compile with either setting. An enabled build with missing/old required headers fails explicitly; an unavailable runtime device reports its reason through GetCudaCapabilities. A CUDA-only operand then returns Unsupported. Registered graphics alternatives remain usable in both builds.</p></section>
 <section id="resources"><h2>Create buffers and qualify textures</h2><p>Set mByteSize and usage before allocating a buffer, then set mbCudaInterop=true to request sharing. A request can fail: do not allocate an ordinary buffer and later change a flag. Both providers admit dedicated, nonempty device-local buffers. CPU-visible, sparse/tiled, virtual/placed, versioned and acceleration-structure storage buffers are rejected.</p><pre><code class="language-cpp">FArdaRHIBufferDesc Desc;
@@ -77,7 +77,7 @@ Desc.mbCudaInterop = true;
 auto Shared = Device-&gt;CreateBuffer(Desc);
 if (!Shared) {
     // Inspect Shared.mStatus; choose a graphics allocation/alternative if appropriate.
-}</code></pre><p>Surfaces support raw R/RG/RGBA integer channels at 8/16/32 bits and floating-point channels at 16/32 bits: 24 formats. Qualified dimensions are 1D, 1D array, 2D, 2D array and 3D. Normalized/sRGB/BGRA/packed/compressed/depth, cubemap and multisample images are rejected. Native imports cannot request sharing without provider-owned export/mapping lifetime. All other <a href="resource-recipes.html">resource kinds</a>, including views, AS, micromaps, feedback objects, samplers and pipelines, remain non-CUDA objects.</p></section>
+}</code></pre><p>Surfaces support raw R/RG/RGBA integer channels at 8/16/32 bits and floating-point channels at 16/32 bits: 24 formats. Qualified dimensions depend on the selected launch mode: ordinary D3D12 contexts and native Vulkan support 1D, 1D array, 2D, 2D array and 3D. Vulkan context-switching supports 1D, 2D and 3D; layered surfaces are rejected. Check the <a href="#context-switch">selected mode and layered-surface capability</a> before creation. Normalized/sRGB/BGRA/packed/compressed/depth, cubemap and multisample images are rejected. Native imports cannot request sharing without provider-owned export/mapping lifetime. All other <a href="resource-recipes.html">resource kinds</a>, including views, AS, micromaps, feedback objects, samplers and pipelines, remain non-CUDA objects.</p></section>
 <section id="packing"><h2>Understand surface addressing and tensor packing</h2><p>Surface instructions access typed storage; they do not sample/filter a texture and do not perform normalization, swizzling, sRGB conversion or tensor layout conversion. Use byte offsets in the surface x coordinate where the PTX instruction requires them. Mip dimensions, array layer indexing and 3D depth must match the selected binding.</p><p>A kernel expecting contiguous NCHW/NHWC tensors cannot consume an opaque tiled image as a flat pointer. Use an explicit surface-to-buffer packing operator and record it before the tensor operator. Keep format/layout conversion in that operator so the generic binding contract stays independent of the tensor library.</p><p>The source-backed surface example below writes a nonzero mip and checks it through graphics readback:</p><details><summary>Surface kernel, binding and readback example</summary><pre><code class="language-cpp">TEST_P(ArdaCudaGpu, SurfaceWritesReachGraphicsReadbackAtSelectedMip)
     {
         const auto C = mDevice-&gt;GetCudaCapabilities();
@@ -130,7 +130,112 @@ done: ret;
         }
         mDevice-&gt;UnmapStagingTexture(Readback.mValue);
     }</code></pre></details></section>
-<section id="operand"><h2>Register one or several kernels</h2><p>Inherit <a href="api-reference.html#api-arda-backend-fardacomputeoperand-68d2be21"><code>FArdaComputeOperand</code></a>. Declare ordered named ports once, including buffer/surface kind, access, minimum buffer size and offset alignment. Optional surface constraints select format/dimension. The base class applies the port access to a copy of each invocation, then validates it before calling either implementation.</p><p>The sample registers two ordered CUDA launches with <a href="api-reference.html#api-arda-backend-fardacomputeoperand-registercuda-0694f62f"><code>FArdaComputeOperand::RegisterCuda</code></a>. The first adds 7 to the input; the second adds 11 in place, so the result is input + 18. The builder owns PTX and copied argument bytes. Its SM bounds use major × 10 + minor; SM 12.0 is 120. Register preferred implementations first.</p><pre><code class="language-cpp">class FAddOperand final : public FArdaComputeOperand
+<section id="source-modules"><h2>Separate source, invocation and selection</h2>
+<p>A CUDA operand can own reusable CUDA C++ source and select implementations from input dimensions. <code>FArdaCudaModule</code> owns a translation unit, include contents and compiler options; successful PTX compilation is cached per SM architecture. Multiple implementations can retain the same module. Use <code>EArdaCudaSourceLanguage::Ptx</code> for an already compiled module.</p>
+<p><code>FArdaComputeCudaImplementation::mInvoke</code> is the host invocation entry point. It packs resource/scalar arguments and returns ordered <code>FArdaComputeCudaLaunch</code> records referencing module indices and exported kernel symbols. Registration and selection never compile or launch candidate kernels. After selection, the whole launch sequence is checked, only referenced modules compile, and the RHI records the prepared work.</p>
+<p>Provide one shape per port in <code>FArdaComputeInvocation::mBindingDimensions</code>. Shapes may have arbitrary rank and are independent of logical extent and GPU tiling. An empty outer vector keeps extent-only calls compatible; an empty inner vector denotes a scalar. Axes must be nonzero. The operand validates rank, matching dimensions, dtype/layout parameters, overflow and storage bounds. An optional registration <code>Supports</code> function filters incompatible shapes before the constructor's <code>FArdaComputeKernelSelector</code> or overridden <code>SelectVariant</code> runs. Pinned variants must pass the same checks.</p>
+<p>The compiled example shares this source across small and large implementations, invokes two ordered additions, and selects by the input's column dimension. The GPU test changes shapes from [4, 32] to [1, 128] while keeping extent and element count fixed; it checks the selected implementation, every output value and one shared compilation.</p>
+<details><summary>Reusable CUDA C++ translation unit</summary><pre><code class="language-cpp">// One translation unit shared by several shape-specific operand implementations.
+#include &quot;ArdaCudaOperandValue.h&quot;
+
+extern &quot;C&quot; __global__ void add_values(const unsigned int* Input, unsigned int* Output,
+    unsigned int Count, unsigned int Bias)
+{
+    const unsigned int Index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (Index &lt; Count)
+    {
+        Output[Index] = AddArdaOperandValue(Input[Index], Bias);
+    }
+}
+</code></pre></details>
+<details><summary>Complete dimension-based operand, invocation and selector</summary><pre><code class="language-cpp">size_t SelectArdaAddKernel(const FArdaComputeInvocation&amp; Invocation, const FArdaCudaCapabilities&amp;,
+    const eastl::vector&lt;size_t&gt;&amp; Eligible)
+{
+    const size_t Preferred = Invocation.mBindingDimensions[0][1] &lt;= 64 ? 0 : 1;
+    for (const size_t Index : Eligible)
+    {
+        if (Index == Preferred)
+        {
+            return Index;
+        }
+    }
+    return Eligible.front();
+}
+
+TArdaRHIResult&lt;eastl::vector&lt;FArdaComputeCudaLaunch&gt;&gt; InvokeArdaAddKernel(
+    const FArdaComputeInvocation&amp; Invocation, uint32_t BlockSize)
+{
+    const auto&amp; Dimensions = Invocation.mBindingDimensions[0];
+    const uint32_t Count = static_cast&lt;uint32_t&gt;(Dimensions[0] * Dimensions[1]);
+    FArdaComputeCudaLaunch First;
+    First.mEntryPoint = &quot;add_values&quot;;
+    First.mBlockSize[0] = BlockSize;
+    First.mGridSize[0] = 1 + (Count - 1) / BlockSize;
+    First.mArguments = {FArdaCudaArgument::Binding(0), FArdaCudaArgument::Binding(1),
+        FArdaCudaArgument::Value(Count), FArdaCudaArgument::Value(7u)};
+    auto Second = First;
+    Second.mArguments[0] = FArdaCudaArgument::Binding(1);
+    Second.mArguments[3] = FArdaCudaArgument::Value(11u);
+    return {{First, Second}, {}};
+}
+
+class FArdaDimensionAddOperand final : public FArdaComputeOperand
+{
+public:
+    explicit FArdaDimensionAddOperand(eastl::shared_ptr&lt;const FArdaCudaModule&gt; Module,
+        FArdaComputeShaderDispatch Fallback = {})
+        : FArdaComputeOperand(&quot;sample.dimension_add&quot;, {
+            {&quot;input&quot;, EArdaComputeBindingType::Buffer, EArdaComputeAccess::Read, 4, 4},
+            {&quot;output&quot;, EArdaComputeBindingType::Buffer, EArdaComputeAccess::ReadWrite, 4, 4}},
+            SelectArdaAddKernel)
+    {
+        EXPECT_TRUE(RegisterCuda(&quot;cuda.small&quot;, 70, UINT32_MAX,
+            FArdaComputeCudaImplementation{{Module}, [](const auto&amp; Invocation, const auto&amp;)
+            {
+                return InvokeArdaAddKernel(Invocation, 32);
+            }}, [](const auto&amp; Invocation, const auto&amp;)
+            {
+                return Invocation.mBindingDimensions[0][1] &lt;= 64;
+            }));
+        EXPECT_TRUE(RegisterCuda(&quot;cuda.large&quot;, 70, UINT32_MAX,
+            FArdaComputeCudaImplementation{{Module}, [](const auto&amp; Invocation, const auto&amp;)
+            {
+                return InvokeArdaAddKernel(Invocation, 128);
+            }}));
+        if (Fallback)
+        {
+            EXPECT_TRUE(RegisterGraphics(&quot;graphics.add&quot;, eastl::move(Fallback)));
+        }
+    }
+
+    FArdaRHIStatus ValidateInvocation(const FArdaComputeInvocation&amp; Invocation) const override
+    {
+        if (Invocation.mBindingDimensions.size() != 2 || Invocation.mBindingDimensions[0].size() != 2 ||
+            Invocation.mBindingDimensions[0] != Invocation.mBindingDimensions[1])
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Add requires matching rank-two shapes.&quot;);
+        }
+        const auto&amp; Shape = Invocation.mBindingDimensions[0];
+        if (Shape[0] &gt; UINT32_MAX / Shape[1])
+        {
+            return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Add element count exceeds its uint32 ABI.&quot;);
+        }
+        for (const auto&amp; Binding : Invocation.mBindings)
+        {
+            const auto* Buffer = dynamic_cast&lt;IArdaRHIBuffer*&gt;(Binding.mResource.Get());
+            if (Binding.mBufferRange.Resolve(Buffer-&gt;GetDesc()).mByteSize != Shape[0] * Shape[1] * 4)
+            {
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Add shape does not match the buffer view.&quot;);
+            }
+        }
+        return {};
+    }
+};</code></pre></details>
+<h3>Compile CUDA C++ with the optional NVRTC adapter</h3>
+<p>Configure <code>ARDASHIR_NVRTC_INCLUDE_DIR</code> with a directory containing <code>nvrtc.h</code>, link <code>Ardashir::ArdaCudaCompiler</code>, and call <code>CreateArdaNvrtcCompiler(absoluteLibraryPath)</code>. Pass the returned callback to <code>FArdaCudaModule::Create</code> together with the owned source, include contents and options. The adapter targets compute_&lt;SM&gt;, retains the dynamic library and propagates compiler diagnostics. Export kernel symbols with <code>extern "C"</code>; template name lowering and device linking require a custom compiler callback. Target architecture options cannot override the module's requested SM.</p>
+<p>Deploy NVRTC and its matching builtins library on the process library search path (PATH on Windows). Set <code>ARDA_TEST_NVRTC_LIBRARY</code> to the absolute library path to enable the compiler and source GPU tests. PTX operands and custom compiler callbacks need no NVRTC build dependency. Missing adapter build support returns Unsupported. The source cache is per immutable module: recreate it when source, external includes, options or compiler policy changes. Native CUDA streams and direct cuBLAS/PyTorch calls are outside this recording interface.</p>
+<p>See <a href="CUDA-Backend-Plan.md#registering-a-custom-operand">the module contracts and test instructions</a> and <a href="https://docs.nvidia.com/cuda/nvrtc/index.html#compilation">NVIDIA's NVRTC compilation API</a>.</p></section>
+<section id="operand"><h2>Register one or several kernels</h2><p>Inherit <a href="api-reference.html#api-arda-fardacomputeoperand-3c458666"><code>FArdaComputeOperand</code></a>. Declare ordered named ports once, including buffer/surface kind, access, minimum buffer size and offset alignment. Optional surface constraints select format/dimension. The base class applies the port access to a copy of each invocation, then validates it before calling either implementation.</p><p>The sample registers two ordered CUDA launches with <a href="api-reference.html#api-arda-fardacomputeoperand-registercuda-aaf1eff2"><code>FArdaComputeOperand::RegisterCuda</code></a>. The first adds 7 to the input; the second adds 11 in place, so the result is input + 18. The builder owns PTX and copied argument bytes. Its SM bounds use major × 10 + minor; SM 12.0 is 120. Register preferred implementations first.</p><pre><code class="language-cpp">class FAddOperand final : public FArdaComputeOperand
 {
 public:
     FAddOperand(FArdaComputeShaderDispatch Fallback = {}) : FArdaComputeOperand(&quot;sample.add_twice&quot;, {
@@ -172,7 +277,7 @@ public:
  ld.global.u32 r5,[a3]; add.u32 r5,r5,r1; st.global.u32 [a4],r5;
 done: ret;
 })ptx&quot;;</code></pre></details><p>The resource parameters are 64-bit binding values; scalar parameters must have exactly the PTX-declared size/layout. Value&lt;T&gt; copies trivially copyable bytes; it does not marshal strings, C++ objects or arbitrary library descriptors.</p></section>
-<section id="dispatch"><h2>Record, submit and check results</h2><p><a href="api-reference.html#api-arda-backend-fardacomputeinvocation-85a5f11e"><code>FArdaComputeInvocation</code></a> supplies one binding per port, logical extent and application-defined parameter byte arrays. Override ValidateInvocation for exact shape, dtype and parameter schema rules. Generic range checks cannot prove that arbitrary PTX stays inside a buffer.</p><p>Dispatch returns the selected variant name or a status. It records work on an open list; Close and ExecuteCommandList submit it. The example uses offset views, non-multiple work sizes and guard bytes, then checks each returned element:</p><pre><code class="language-cpp">TEST_P(ArdaCudaGpu, OrderedKernelsShareBufferAndPreserveGuardBytes)
+<section id="dispatch"><h2>Record, submit and check results</h2><p><a href="api-reference.html#api-arda-fardacomputeinvocation-c7b8ca0c"><code>FArdaComputeInvocation</code></a> supplies one binding per port, logical extent and application-defined parameter byte arrays. Override ValidateInvocation for exact shape, dtype and parameter schema rules. Generic range checks cannot prove that arbitrary PTX stays inside a buffer.</p><p>Dispatch returns the selected variant name or a status. It records work on an open list; Close and ExecuteCommandList submit it. The example uses offset views, non-multiple work sizes and guard bytes, then checks each returned element:</p><pre><code class="language-cpp">TEST_P(ArdaCudaGpu, OrderedKernelsShareBufferAndPreserveGuardBytes)
 {
     const auto C = mDevice-&gt;GetCudaCapabilities();
     if (!C) GTEST_SKIP() &lt;&lt; C.mUnavailableReason.c_str();
@@ -246,7 +351,7 @@ protected:
         return D;
     }
 };</code></pre></details></section>
-<section id="fallback"><h2>Provide the compute-shader alternative</h2><p><a href="api-reference.html#api-arda-backend-fardacomputeoperand-registergraphics-8c79ed52"><code>FArdaComputeOperand::RegisterGraphics</code></a> stores a callback that creates its binding set, sets resource states, binds a compute pipeline and records Dispatch. The same validated ports/parameters reach the callback. It must implement the same operation semantics as the CUDA sequence.</p><p>Auto chooses the first eligible registration. RequireGraphics excludes CUDA; RequireCuda excludes graphics. Ordinary nonshared buffers exclude CUDA even on an enabled device. A pinned variant must still satisfy architecture, resource and queue checks. An error after selecting/recording an implementation is propagated: automatic retry could duplicate partially recorded writes.</p><details><summary>Complete graphics → CUDA/graphics → graphics example</summary><pre><code class="language-cpp">TEST_P(ArdaCudaGpu, GraphicsFallbackAndMixedShaderCudaSequence)
+<section id="fallback"><h2>Provide the compute-shader alternative</h2><p><a href="api-reference.html#api-arda-fardacomputeoperand-registergraphics-cf3c8895"><code>FArdaComputeOperand::RegisterGraphics</code></a> stores a callback that creates its binding set, sets resource states, binds a compute pipeline and records Dispatch. The same validated ports/parameters reach the callback. It must implement the same operation semantics as the CUDA sequence.</p><p>Without a custom selector, Auto chooses the first eligible registration. RequireGraphics excludes CUDA; RequireCuda excludes graphics. Ordinary nonshared buffers exclude CUDA even on an enabled device. A pinned variant must still satisfy architecture, resource and queue checks. An error after selecting/recording an implementation is propagated: automatic retry could duplicate partially recorded writes.</p><details><summary>Complete graphics → CUDA/graphics → graphics example</summary><pre><code class="language-cpp">TEST_P(ArdaCudaGpu, GraphicsFallbackAndMixedShaderCudaSequence)
 {
     const auto Path = std::filesystem::path(ARDA_BACKEND_TEST_SHADER_DIR) /
         (std::string(&quot;ArdaCudaFallback&quot;) + GetShaderArtifactExtension(GetParam()));
@@ -326,7 +431,7 @@ void AddFallbackCS(uint3 Thread : SV_DispatchThreadID)
     if (Thread.x &lt; Count) Output[Thread.x] = Input[Thread.x] + 18;
 }
 </code></pre></section>
-<section id="tuning"><h2>Select variants without mutating live inputs</h2><p>Override <a href="api-reference.html#api-arda-backend-fardacomputeoperand-selectvariant-8f609299"><code>FArdaComputeOperand::SelectVariant</code></a> to choose an index from the supplied eligible list, using a device/workload tuning cache. The default preserves registration order. Out-of-set indices are rejected. Benchmark with scratch resources before normal dispatch; selection itself must not launch candidate kernels on live outputs.</p><p>Construct and register before publishing the operand. Concurrent Dispatch calls require independently synchronized command lists and thread-safe callbacks. The selection example deliberately rejects duplicate names and an invalid tuning result:</p><pre><code class="language-cpp">class FSelectionOperand final : public FArdaComputeOperand
+<section id="tuning"><h2>Select variants without mutating live inputs</h2><p>Override <a href="api-reference.html#api-arda-fardacomputeoperand-selectvariant-b8fe78c4"><code>FArdaComputeOperand::SelectVariant</code></a> to choose an index from the supplied eligible list, using a device/workload tuning cache. The default calls the constructor's selector when supplied, and otherwise preserves registration order. Out-of-set indices are rejected. Benchmark with scratch resources before normal dispatch; selection itself must not launch candidate kernels on live outputs.</p><p>Construct and register before publishing the operand. Concurrent Dispatch calls require independently synchronized command lists and thread-safe callbacks. The selection example deliberately rejects duplicate names and an invalid tuning result:</p><pre><code class="language-cpp">class FSelectionOperand final : public FArdaComputeOperand
 {
 public:
     bool mbInvalidSelection = false;
@@ -348,8 +453,24 @@ public:
         const eastl::vector&lt;size_t&gt;&amp; Eligible) const override
     { return mbInvalidSelection ? SIZE_MAX : Eligible.back(); }
 };</code></pre></section>
-<section id="native"><h2>Native execution and lifetime limits</h2><p><strong>D3D12:</strong> the provider matches the adapter LUID and CUDA device, creates a CiG context on the graphics queue, imports shared committed memory and captures kernels with cuStreamBeginCaptureToCig/cuStreamEndCaptureToCig. UAV barriers surround capture. Streams, mappings and executable modules are retained until graphics-fence retirement. Submit or discard a captured list before recording another on the same context; captured lists are single-use.</p><p><strong>Vulkan:</strong> VK_NV_cuda_kernel_launch records kernels directly on a graphics/compute command buffer. Buffer device addresses are used only by this native launch path; they are not advertised as arbitrary CUDA-runtime pointers. VK_NVX_image_view_handle supplies 64-bit storage-image surface handles. Memory barriers order kernels and graphics consumers, and existing submission retention owns resources/modules until completion. Copy queues are unsupported.</p><p>D3D12 checks kernel parameter metadata. This Vulkan path has no equivalent parameter-metadata query; custom PTX authors remain responsible for matching argument ABI. Both providers validate declared ranges, dimensions and launch limits.</p></section>
-<section id="qualification"><h2>Verified support and failure diagnosis</h2><p>Qualification used Windows, RTX PRO 6000 Blackwell (SM 120), driver 610.62 / CUDA driver 13.3 and CUDA 13.3.29 headers. Buffer kernels and mixed graphics/CUDA work passed on both APIs. Vulkan surface reads/writes passed all 24 formats × 5 dimensions, plus nonuniform 2D addressing and allocation variations.</p><p><strong>D3D12 CiG surfaces are unavailable on this tested driver:</strong> image import succeeds but mapping to a mipmapped array fails in a CiG context. The shipping provider probes this and disables surface admission with a reason; graphics texture alternatives remain usable. This is not claimed as a working D3D12 image path. Other OS/GPU/driver combinations and independent CUDA streams are not qualified by these results.</p><dl><dt>No eligible variant</dt><dd>Inspect policy/pinning, SM bounds, queue type and each allocation’s sharing state; register or choose an explicit alternative.</dd><dt>InvalidArgument before recording</dt><dd>Check port order, buffer ranges, offset alignment, extent, scalar ABI and launch dimensions.</dd><dt>Capture failure or replay rejection</dt><dd>Discard/reset the failed recording and obey CiG capture/submission order; do not retry inside the partially recorded list.</dd><dt>GPU test skipped</dt><dd>Distinguish missing validation from unavailable CUDA capability. See <a href="validation.html">validation setup</a>; a skip is not successful GPU execution.</dd></dl><p>Run <code>ArdaBackendTests --gtest_filter=*ArdaCudaGpu*</code> in CUDA-on and CUDA-off builds. RDG node registration and scheduling integration remains a separate next step.</p></section><section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>
+<section id="context-switch"><h2>Choose native or context-switching execution</h2>
+<p>Set <a href="api-reference.html#api-arda-fardabackendconfiguration-mcudaexecutionmode-0f63e71d"><code>FArdaBackendConfiguration::mCudaExecutionMode</code></a> before initialization. <code>Automatic</code> prefers the native graphics-queue path, then selects an ordinary CUDA context when that path is unavailable or D3D12 image qualification fails. <code>GraphicsQueue</code> pins native execution. <code>ContextSwitch</code> forces separate execution on both APIs.</p>
+<pre><code class="language-cpp">using namespace arda;
+FArdaBackendConfiguration Config;
+Config.mBackendName = "native-vulkan";
+Config.mCudaExecutionMode = EArdaCudaExecutionMode::ContextSwitch;
+if (!ConfigureBackend(Config)) return;
+if (!InitializeBackend()) return;
+const auto Capabilities = GetDevice()-&gt;GetCudaCapabilities();
+// Existing DispatchCuda calls now record deferred CUDA segments.
+// Inspect mLaunchMode, mFallbackReason, and the surface capability flags.</code></pre>
+<p>Recording does not execute CUDA. Submission splits mixed command lists at each CUDA dispatch, completes preceding graphics work, executes the CUDA stream to completion, and then resumes graphics. This mode blocks the submitting CPU at each boundary and prevents overlap between Arda graphics and CUDA work. The final graphics segment retains normal RHI fence completion. Recorded arguments, modules and resources remain owned through completion. Reset discards unsubmitted work; submitting the same CUDA recording twice is rejected.</p>
+<figure><div class="diagram-scroll" role="region" aria-label="Context-switching execution timeline; scroll horizontally on small screens" tabindex="0"><img src="Assets/cuda-context-switch.svg" alt="Graphics segments and ordinary CUDA batches alternate with completion waits at submission boundaries"></div><figcaption>The fallback keeps the public recording sequence while executing graphics and CUDA separately. Scroll the timeline horizontally on small screens.</figcaption></figure>
+<p>Vulkan fallback requires an enabled OS external-memory extension, dedicated exported memory, a matching CUDA UUID, and ownership release/acquire barriers. The host must serialize access to borrowed queues. CUDA 12.0 headers suffice; missing optional parameter metadata on an older driver leaves PTX argument ABI checking to the kernel author.</p>
+<p><strong>Current qualification limit:</strong> Vulkan ContextSwitch admits ordinary 1D/2D/3D surfaces but rejects layered surfaces. The layered cross-API readback oracle failed despite successful mapping; <a href="api-reference.html#api-arda-fardacudacapabilities-mblayeredsurfaceaccess-cc2b08f5"><code>mbLayeredSurfaceAccess</code></a> reports this restriction. D3D12 ordinary-context execution passes all five supported dimensions, including arrays. Native Vulkan kernels retain array support. Use a graphics texture and explicit graphics operand alternative when sharing is not qualified.</p>
+</section>
+<section id="native"><h2>Native execution and lifetime limits</h2><p><strong>D3D12:</strong> the provider matches the adapter LUID and CUDA device, creates a CiG context on the graphics queue, imports shared committed memory and captures kernels with cuStreamBeginCaptureToCig/cuStreamEndCaptureToCig. UAV barriers surround capture. Streams, mappings and executable modules are retained until graphics-fence retirement. Submit or discard a captured list before recording another on the same context; captured lists are single-use.</p><p><strong>Vulkan:</strong> VK_NV_cuda_kernel_launch records kernels directly on a graphics/compute command buffer. Buffer device addresses are used only by this native launch path; they are not advertised as arbitrary CUDA-runtime pointers. VK_NVX_image_view_handle supplies 64-bit storage-image surface handles. Memory barriers order kernels and graphics consumers, and existing submission retention owns resources/modules until completion. Copy queues are unsupported.</p><p>The shared CUDA driver bridge checks kernel parameter metadata when the driver exposes that query; older drivers leave custom PTX argument ABI validation to the caller. This Vulkan path has no equivalent parameter-metadata query; custom PTX authors remain responsible for matching argument ABI. Both providers validate declared ranges, dimensions and launch limits.</p></section>
+<section id="qualification"><h2>Verified support and failure diagnosis</h2><p>Qualification used Windows, RTX PRO 6000 Blackwell (SM 120), driver 610.62 / CUDA driver 13.3 and CUDA 13.3.29 headers. Buffer kernels and mixed graphics/CUDA work passed on both APIs. Native Vulkan surface reads/writes passed all 24 formats × 5 dimensions, plus nonuniform 2D addressing and allocation variations.</p><p><strong>D3D12 CiG surfaces are unavailable on this tested driver:</strong> image import succeeds but mapping to a mipmapped array fails in a CiG context. The provider probes this. Automatic mode selects an ordinary CUDA context; explicitly pinned GraphicsQueue mode disables surface admission with a reason. Forced native D3D12 CiG image execution remains unqualified; ordinary D3D12 context surfaces passed the format and dimension matrix. Those historical results cover native queue execution. The context-switching tests additionally verify ordinary streams, discard, replay rejection, and mixed submission on this Windows GPU; a full build against official CUDA 12.0 headers also passed the available focused GPU tests on this driver. Older installed drivers and other OS/GPU combinations remain unqualified.</p><dl><dt>No eligible variant</dt><dd>Inspect policy/pinning, SM bounds, queue type and each allocation’s sharing state; register or choose an explicit alternative.</dd><dt>InvalidArgument before recording</dt><dd>Check port order, buffer ranges, offset alignment, extent, scalar ABI and launch dimensions.</dd><dt>Capture failure or replay rejection</dt><dd>Discard/reset the failed recording and obey CiG capture/submission order; do not retry inside the partially recorded list.</dd><dt>GPU test skipped</dt><dd>Distinguish missing validation from unavailable CUDA capability. See <a href="validation.html">validation setup</a>; a skip is not successful GPU execution.</dd></dl><p>Run <code>ArdaBackendTests --gtest_filter=*ArdaCudaGpu*</code> in CUDA-on and CUDA-off builds. RDG node registration and scheduling integration remains a separate next step.</p></section><section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>
 </main>
   </div>
   <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>

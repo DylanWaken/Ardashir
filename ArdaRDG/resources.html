@@ -208,42 +208,42 @@
 
         <section id="worked-example">
           <h2>Worked example: faithful resource lifecycle</h2>
-          <pre><code>using namespace arda::render_graph;
+          <pre><code>using namespace arda;
 
 ARDG_BEGIN_PARAMETER_STRUCT(FClearOutputsParameters)
     ARDG_TEXTURE_ACCESS(Lighting)
     ARDG_TEXTURE_ACCESS(BackBuffer)
 ARDG_END_PARAMETER_STRUCT()
 
-rhi::FArdaRHITextureDesc lightingDesc;
+arda::FArdaRHITextureDesc lightingDesc;
 lightingDesc.mDebugName = "Lighting";
 lightingDesc.mWidth = width;
 lightingDesc.mHeight = height;
 lightingDesc.mDepth = 1;
 lightingDesc.mArraySize = 1;
 lightingDesc.mMipLevels = 1;
-lightingDesc.mFormat = rhi::EArdaRHIFormat::RGBA16Float;
-lightingDesc.mDimension = rhi::EArdaRHITextureDimension::Texture2D;
-lightingDesc.mUsage = rhi::EArdaRHITextureUsage::RenderTarget |
-                      rhi::EArdaRHITextureUsage::ShaderResource;
-lightingDesc.mInitialState = rhi::EArdaRHIResourceState::Common;
+lightingDesc.mFormat = arda::EArdaRHIFormat::RGBA16Float;
+lightingDesc.mDimension = arda::EArdaRHITextureDimension::Texture2D;
+lightingDesc.mUsage = arda::EArdaRHITextureUsage::RenderTarget |
+                      arda::EArdaRHITextureUsage::ShaderResource;
+lightingDesc.mInitialState = arda::EArdaRHIResourceState::Common;
 
 FARDGTextureRef lighting = graph.CreateTexture(lightingDesc);
 
 // Import retains the physical object but does not transfer its ownership.
 FARDGTextureRef backBuffer = graph.RegisterExternalTexture(
     swapchainTexture,
-    rhi::EArdaRHIResourceState::Present,
+    arda::EArdaRHIResourceState::Present,
     "BackBuffer");
 
 FClearOutputsParameters clear;
 clear.Lighting = {
     lighting,
-    rhi::EArdaRHIResourceState::RenderTarget,
+    arda::EArdaRHIResourceState::RenderTarget,
     {0, 1, 0, 1}};
 clear.BackBuffer = {
     backBuffer,
-    rhi::EArdaRHIResourceState::RenderTarget,
+    arda::EArdaRHIResourceState::RenderTarget,
     backBufferSubresources};
 
 (void)graph.AddPass(
@@ -265,11 +265,11 @@ clear.BackBuffer = {
             {0.0f, 0.0f, 0.0f, 1.0f});
     });
 
-rhi::FArdaRHITextureRef extractedLighting;
+arda::FArdaRHITextureRef extractedLighting;
 graph.QueueTextureExtraction(
     lighting,
     extractedLighting,
-    rhi::EArdaRHIResourceState::ShaderResource);
+    arda::EArdaRHIResourceState::ShaderResource);
 
 // Successful Execute materializes Lighting, records transitions, submits, then
 // assigns extractedLighting. GPU completion still requires an RHI fence/query.

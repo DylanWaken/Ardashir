@@ -108,8 +108,8 @@
 
         <section id="architecture">
           <h2>ArdaBackend pipeline architecture</h2>
-          <p><a href="api-reference.html#api-arda-backend-fardacomputepipelinestateinitializer-ec43cb04"><code>arda::backend::FArdaComputePipelineStateInitializer</code></a> and <a href="api-reference.html#api-arda-backend-fardagraphicspipelinestateinitializer-bfc2348a"><code>arda::backend::FArdaGraphicsPipelineStateInitializer</code></a> are renderer-facing descriptions, never concrete RHI pipeline objects. Each wraps an RHI descriptor. The graphics initializer adds a convention: omitted target formats and a zero sample count can be completed from the actual framebuffer. Its default constructor sets zero; the <code>FromGlobalShaders</code> factory copies the supplied fixed-state descriptor, whose own default sample count is one, so set the result back to zero when framebuffer-derived samples are intended.</p>
-          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>arda::backend::FArdaPipelineStateCache</code></a> is permanently bound to one RHI <a class="term" data-term="device" href="../glossary.html#term-device">device</a>. It owns cache entries, synchronization, statistics, and bounded diagnostics. It returns intrusive RHI references, so the cache and caller can share <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a> of a created pipeline.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardacomputepipelinestateinitializer-ec43cb04"><code>arda::FArdaComputePipelineStateInitializer</code></a> and <a href="api-reference.html#api-arda-backend-fardagraphicspipelinestateinitializer-bfc2348a"><code>arda::FArdaGraphicsPipelineStateInitializer</code></a> are renderer-facing descriptions, never concrete RHI pipeline objects. Each wraps an RHI descriptor. The graphics initializer adds a convention: omitted target formats and a zero sample count can be completed from the actual framebuffer. Its default constructor sets zero; the <code>FromGlobalShaders</code> factory copies the supplied fixed-state descriptor, whose own default sample count is one, so set the result back to zero when framebuffer-derived samples are intended.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>arda::FArdaPipelineStateCache</code></a> is permanently bound to one RHI <a class="term" data-term="device" href="../glossary.html#term-device">device</a>. It owns cache entries, synchronization, statistics, and bounded diagnostics. It returns intrusive RHI references, so the cache and caller can share <a class="term" data-term="ownership" href="../glossary.html#term-ownership">ownership</a> of a created pipeline.</p>
           <p>The device's direct <code>CreateComputePipeline</code> and <code>CreateGraphicsPipeline</code> operations remain predictable construction primitives: repeated direct calls return distinct live objects and do not populate the renderer descriptor LRU. They can still consult and extend the lower backend-native persistent cache. Renderer-level object reuse, framebuffer completion, LRU policy, and same-key coordination belong to <code>FArdaPipelineStateCache</code>.</p>
 
           <h3>Initializer, completed descriptor, cached object, command state</h3>
@@ -152,7 +152,6 @@
           <h2>What a compute PSO captures</h2>
           <p>A compute PSO is smaller: <code>FArdaRHIComputePipelineDesc</code> contains one compute shader and its binding layouts. There is no vertex assembly, rasterization, blend state, depth/stencil state, framebuffer format, or sample count. Dispatch dimensions and concrete bindings are command state.</p>
           <pre><code>using namespace arda;
-using namespace arda::backend;
 
 const FArdaGlobalShaderInstance* shader =
     shaderMap.Find(FBlurCS::GetStaticType());
@@ -164,21 +163,21 @@ auto initializer =
     FArdaComputePipelineStateInitializer::FromGlobalShader(
         *shader, "Blur compute");
 
-rhi::FArdaRHIComputePipelineRef pipeline;
+arda::FArdaRHIComputePipelineRef pipeline;
 auto status = cache.GetOrCreateCompute(initializer, pipeline);
 if (!status)
     return Report(status.mMessage);</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-fardacomputepipelinestateinitializer-fromglobalshader-cab318f7"><code>arda::backend::FArdaComputePipelineStateInitializer::FromGlobalShader</code></a> copies the global shader object's RHI reference and binding layouts and supplies the requested debug name, or the shader type name by default.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardacomputepipelinestateinitializer-fromglobalshader-cab318f7"><code>arda::FArdaComputePipelineStateInitializer::FromGlobalShader</code></a> copies the global shader object's RHI reference and binding layouts and supplies the requested debug name, or the shader type name by default.</p>
 
           <h3>Bind and dispatch</h3>
           <pre><code>auto command = GetDevice()-&gt;CreateCommandList(
-    rhi::EArdaRHIQueueType::Compute);
+    arda::EArdaRHIQueueType::Compute);
 if (!command)
     return Report(command.mStatus.mMessage);
 if (auto opened = command.mValue-&gt;Open(); !opened)
     return Report(opened.mMessage);
 
-rhi::FArdaRHIComputeState state;
+arda::FArdaRHIComputeState state;
 state.mBindings.push_back(bindingSet);
 if (auto bound = cache.SetComputePipelineState(
         *command.mValue, initializer, eastl::move(state)); !bound)
@@ -188,7 +187,7 @@ command.mValue-&gt;Dispatch(groupsX, groupsY, 1);
 if (auto closed = command.mValue-&gt;Close(); !closed)
     return Report(closed.mMessage);
 return GetDevice()-&gt;ExecuteCommandList(command.mValue).mStatus;</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-setcomputepipelinestate-5e0a55bc"><code>arda::backend::FArdaPipelineStateCache::SetComputePipelineState</code></a> resolves the pipeline into <code>state.mPipeline</code> and then calls the command list. It passes the command list's device as the requesting device, making cross-device cache use a recoverable <code>WrongDevice</code> failure.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-setcomputepipelinestate-5e0a55bc"><code>arda::FArdaPipelineStateCache::SetComputePipelineState</code></a> resolves the pipeline into <code>state.mPipeline</code> and then calls the command list. It passes the command list's device as the requesting device, making cross-device cache use a recoverable <code>WrongDevice</code> failure.</p>
         </section>
 
         <section id="compatibility">
@@ -289,7 +288,7 @@ initializer.mDesc.mDebugName = "Main pass";
 // The factory copied fixed-state sample count 1; opt into derivation.
 initializer.mDesc.mSampleCount = 0;
 
-rhi::FArdaRHIGraphicsState state;
+arda::FArdaRHIGraphicsState state;
 state.mFramebuffer = framebuffer;
 state.mBindings = passBindings;
 state.mViewports.push_back({0.f, width, 0.f, height, 0.f, 1.f});
@@ -300,7 +299,7 @@ auto status = cache.SetGraphicsPipelineState(
     *commandList, initializer, eastl::move(state));
 if (!status)
     LogPipelineFailure(status.mMessage);</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-fardagraphicspipelinestateinitializer-fromglobalshaders-4f811f06"><code>arda::backend::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders</code></a> starts from optional fixed state, then supplies the input layout, vertex shader, optional pixel shader, and their layouts. Pixel layouts already present by reference are not duplicated.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardagraphicspipelinestateinitializer-fromglobalshaders-4f811f06"><code>arda::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders</code></a> starts from optional fixed state, then supplies the input layout, vertex shader, optional pixel shader, and their layouts. Pixel layouts already present by reference are not duplicated.</p>
         </section>
 
         <section id="worked-example">
@@ -309,9 +308,8 @@ if (!status)
 
           <h3>1. Resolve long-lived shader and target inputs</h3>
           <pre><code>using namespace arda;
-using namespace arda::backend;
 
-rhi::FArdaRHIDeviceRef device = GetDevice();
+arda::FArdaRHIDeviceRef device = GetDevice();
 if (!device)
     return false;
 
@@ -324,11 +322,11 @@ if (!vertexShader || !pixelShader)
     return false;
 
 // Application helpers: omitted resource/render-target setup.
-rhi::FArdaRHIInputLayoutRef inputLayout =
+arda::FArdaRHIInputLayoutRef inputLayout =
     AcquireSceneInputLayout(*device, vertexShader-&gt;GetShader());
-rhi::FArdaRHIFramebufferRef framebuffer =
+arda::FArdaRHIFramebufferRef framebuffer =
     AcquireMainFramebuffer();
-eastl::vector&lt;rhi::FArdaRHIBindingSetRef&gt; passBindings =
+eastl::vector&lt;arda::FArdaRHIBindingSetRef&gt; passBindings =
     BuildSceneBindings(*device, *vertexShader, *pixelShader);
 if (!inputLayout || !framebuffer)
     return false;
@@ -346,16 +344,16 @@ initializer.mDesc.mSampleCount = 0;
 
 // Persist this cache across every frame that should share PSOs.
 FArdaPipelineStateCache cache(device);</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-find-5c8b97fb"><code>arda::backend::FArdaGlobalShaderMap::Find</code></a> returns borrowed pointers to <a href="api-reference.html#api-arda-backend-fardaglobalshaderinstance-ff1b9952"><code>arda::backend::FArdaGlobalShaderInstance</code></a> objects owned by the map. The instances retain their RHI shaders and binding layouts. Do not reset the global shader map while an initializer or cached PSO still depends on those objects.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-find-5c8b97fb"><code>arda::FArdaGlobalShaderMap::Find</code></a> returns borrowed pointers to <a href="api-reference.html#api-arda-backend-fardaglobalshaderinstance-ff1b9952"><code>arda::FArdaGlobalShaderInstance</code></a> objects owned by the map. The instances retain their RHI shaders and binding layouts. Do not reset the global shader map while an initializer or cached PSO still depends on those objects.</p>
 
           <h3>2. Understand the reusable initializer and cache</h3>
-          <p><a href="api-reference.html#api-arda-backend-fardagraphicspipelinestateinitializer-fromglobalshaders-4f811f06"><code>arda::backend::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders</code></a> copies RHI references for the input layout, shaders, and merged shader binding layouts into the initializer descriptor. Those references keep their objects alive. The <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>arda::backend::FArdaPipelineStateCache</code></a> then retains the device and, after a miss, the created pipeline.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardagraphicspipelinestateinitializer-fromglobalshaders-4f811f06"><code>arda::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders</code></a> copies RHI references for the input layout, shaders, and merged shader binding layouts into the initializer descriptor. Those references keep their objects alive. The <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>arda::FArdaPipelineStateCache</code></a> then retains the device and, after a miss, the created pipeline.</p>
 
           <h3>3. Record, bind, draw, and submit</h3>
-          <pre><code>auto recordAndSubmitFrame = [&amp;]() -&gt; rhi::FArdaRHIStatus
+          <pre><code>auto recordAndSubmitFrame = [&amp;]() -&gt; arda::FArdaRHIStatus
 {
     auto commandResult =
-        device-&gt;CreateCommandList(rhi::EArdaRHIQueueType::Graphics);
+        device-&gt;CreateCommandList(arda::EArdaRHIQueueType::Graphics);
     if (!commandResult)
         return commandResult.mStatus;
     auto commandList = eastl::move(commandResult.mValue);
@@ -363,7 +361,7 @@ FArdaPipelineStateCache cache(device);</code></pre>
     if (auto status = commandList-&gt;Open(); !status)
         return status;
 
-    rhi::FArdaRHIGraphicsState state;
+    arda::FArdaRHIGraphicsState state;
     state.mFramebuffer = framebuffer;
     state.mBindings = passBindings;
     state.mViewports.push_back(
@@ -385,7 +383,7 @@ FArdaPipelineStateCache cache(device);</code></pre>
     auto submission = device-&gt;ExecuteCommandList(commandList);
     return submission.mStatus;
 };</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-setgraphicspipelinestate-259a2286"><code>arda::backend::FArdaPipelineStateCache::SetGraphicsPipelineState</code></a> first resolves the PSO, places it in <code>state.mPipeline</code>, and then invokes <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setgraphicsstate-c7eb13f7"><code>arda::rhi::IArdaRHICommandList::SetGraphicsState</code></a>. Calling <code>SetGraphicsState</code> again is unnecessary. Only after that status succeeds is <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-draw-472d77cb"><code>arda::rhi::IArdaRHICommandList::Draw</code></a> safe to record.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-setgraphicspipelinestate-259a2286"><code>arda::FArdaPipelineStateCache::SetGraphicsPipelineState</code></a> first resolves the PSO, places it in <code>state.mPipeline</code>, and then invokes <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setgraphicsstate-c7eb13f7"><code>arda::IArdaRHICommandList::SetGraphicsState</code></a>. Calling <code>SetGraphicsState</code> again is unnecessary. Only after that status succeeds is <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-draw-472d77cb"><code>arda::IArdaRHICommandList::Draw</code></a> safe to record.</p>
 
           <h3>4. Derive the key and observe the second-frame hit</h3>
           <p>On frame one, resolution reads the framebuffer attachments. Each attachment's explicit view format wins over its texture format; all attachment sample counts must agree. Because the initializer left color formats empty, depth format <code>Unknown</code>, and sample count zero, those fields are copied into a temporary complete descriptor. The resulting key is the full descriptor: topology, patch count, input-layout reference, shader references, ordered binding-layout references, blend/raster/depth-stencil values, ordered color formats, depth format, and sample count. The framebuffer object itself is not part of the key.</p>
@@ -403,7 +401,7 @@ const bool observedColdMiss =
 const bool observedSecondFrameHit =
     afterSecond.mHits == afterFirst.mHits + 1;
 LogCacheObservation(observedColdMiss, observedSecondFrameHit);</code></pre>
-          <p>The first request inserts an in-flight entry, creates the native PSO, and records one miss. The second frame rebuilds dynamic <a href="api-reference.html#api-arda-rhi-fardarhigraphicsstate-38f88d04"><code>arda::rhi::FArdaRHIGraphicsState</code></a>, but completion produces the same descriptor, so equality finds the retained pipeline and records a hit. New viewport/scissor values, concrete binding sets, or another framebuffer with the same ordered formats and sample count do not change this PSO key.</p>
+          <p>The first request inserts an in-flight entry, creates the native PSO, and records one miss. The second frame rebuilds dynamic <a href="api-reference.html#api-arda-rhi-fardarhigraphicsstate-38f88d04"><code>arda::FArdaRHIGraphicsState</code></a>, but completion produces the same descriptor, so equality finds the retained pipeline and records a hit. New viewport/scissor values, concrete binding sets, or another framebuffer with the same ordered formats and sample count do not change this PSO key.</p>
 
           <h3>5. Inspect failures and clean up in ownership order</h3>
           <pre><code>for (const FArdaPipelineStateDiagnostic&amp; diagnostic :
@@ -429,7 +427,7 @@ cache.Clear();       // releases cache-owned completed PSO references
 passBindings.clear();
 framebuffer.Reset();
 inputLayout.Reset();</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-getdiagnostics-f56c2938"><code>arda::backend::FArdaPipelineStateCache::GetDiagnostics</code></a> returns bounded records for compatibility, device, and creation failures; <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-getstats-1f8e93c5"><code>arda::backend::FArdaPipelineStateCache::GetStats</code></a> returns cumulative counters and current occupancy. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-clear-56766c39"><code>arda::backend::FArdaPipelineStateCache::Clear</code></a> removes completed cache entries but does not reset statistics or diagnostics and cannot invalidate pipeline references retained elsewhere.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-getdiagnostics-f56c2938"><code>arda::FArdaPipelineStateCache::GetDiagnostics</code></a> returns bounded records for compatibility, device, and creation failures; <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-getstats-1f8e93c5"><code>arda::FArdaPipelineStateCache::GetStats</code></a> returns cumulative counters and current occupancy. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-clear-56766c39"><code>arda::FArdaPipelineStateCache::Clear</code></a> removes completed cache entries but does not reset statistics or diagnostics and cannot invalidate pipeline references retained elsewhere.</p>
 
           <h3>Errors and changes that produce a miss</h3>
           <ul>
@@ -471,7 +469,7 @@ request B: cache [A, B]
 hit A:     recency B &lt; A
 request C: create C, evict B -&gt; cache [A, C]
 request B: miss and recreate B</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-trim-5e67d209"><code>arda::backend::FArdaPipelineStateCache::Trim</code></a> waits until internal creation count reaches zero, then evicts to caller-supplied compute and graphics limits. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-clear-56766c39"><code>arda::backend::FArdaPipelineStateCache::Clear</code></a> similarly waits and removes every completed entry.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-trim-5e67d209"><code>arda::FArdaPipelineStateCache::Trim</code></a> waits until internal creation count reaches zero, then evicts to caller-supplied compute and graphics limits. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-clear-56766c39"><code>arda::FArdaPipelineStateCache::Clear</code></a> similarly waits and removes every completed entry.</p>
           <p>Eviction releases only the cache's intrusive reference. A caller-held <code>FArdaRHIComputePipelineRef</code> or <code>FArdaRHIGraphicsPipelineRef</code> keeps the object alive. Therefore eviction removes lookup reuse; it does not invalidate already recorded state or a live caller reference. Once all references are released, destruction follows the RHI object's ownership rules.</p>
           <aside class="callout">
             <h3>Capacity zero is valid but specialized</h3>
@@ -481,7 +479,7 @@ request B: miss and recreate B</code></pre>
 
         <section id="precache">
           <h2>Precaching and startup work</h2>
-          <p>Precaching calls the same get-or-create path but discards the returned local reference after the cache retains it. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-precachecompute-2608a22e"><code>arda::backend::FArdaPipelineStateCache::PrecacheCompute</code></a> requires only the compute initializer. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-precachegraphics-d7023d3d"><code>arda::backend::FArdaPipelineStateCache::PrecacheGraphics</code></a> also needs the framebuffer so its key is the same complete descriptor later used for binding.</p>
+          <p>Precaching calls the same get-or-create path but discards the returned local reference after the cache retains it. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-precachecompute-2608a22e"><code>arda::FArdaPipelineStateCache::PrecacheCompute</code></a> requires only the compute initializer. <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-precachegraphics-d7023d3d"><code>arda::FArdaPipelineStateCache::PrecacheGraphics</code></a> also needs the framebuffer so its key is the same complete descriptor later used for binding.</p>
           <pre><code>for (const auto&amp; pass : startupPasses)
 {
     auto status = cache.PrecacheGraphics(
@@ -525,7 +523,7 @@ for (const auto&amp; job : startupComputeJobs)
 
         <section id="sizing">
           <h2>Cache sizing, performance, and thrashing</h2>
-          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecacheconfiguration-e7f7a046"><code>arda::backend::FArdaPipelineStateCacheConfiguration</code></a> defaults to 128 compute entries, 128 graphics entries, and 64 diagnostics. Those are policy defaults, not universal performance targets. A deferred desktop renderer, a compute-only tool, and a memory-constrained mobile workload have different working sets.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecacheconfiguration-e7f7a046"><code>arda::FArdaPipelineStateCacheConfiguration</code></a> defaults to 128 compute entries, 128 graphics entries, and 64 diagnostics. Those are policy defaults, not universal performance targets. A deferred desktop renderer, a compute-only tool, and a memory-constrained mobile workload have different working sets.</p>
 
           <h3>Working-set reasoning</h3>
           <p>Let <var>W</var> be the number of distinct complete descriptors reused within the observation window and <var>C</var> the relevant capacity. If <code>C ≥ W</code>, compulsory misses dominate and steady-state hit rate can approach 100%. If <code>C &lt; W</code> and access cycles evenly through all <var>W</var> keys, LRU can miss every request.</p>
@@ -542,7 +540,7 @@ steady-state hit rate = 0%</code></pre>
           <p>This is cache thrashing: bounded memory is achieved by repeatedly paying the most expensive operation. Raising capacity above the active set fixes this pattern; so can reducing unnecessary descriptor variants, separating phase-specific caches, or keeping strong caller references and avoiding repeated cache lookups for very hot pipelines.</p>
 
           <h3>Measurements</h3>
-          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-getstats-1f8e93c5"><code>arda::backend::FArdaPipelineStateCache::GetStats</code></a> returns cumulative hits, misses, waits, creation failures, current in-flight count, and retained compute/graphics counts. Derive:</p>
+          <p><a href="api-reference.html#api-arda-backend-fardapipelinestatecache-getstats-1f8e93c5"><code>arda::FArdaPipelineStateCache::GetStats</code></a> returns cumulative hits, misses, waits, creation failures, current in-flight count, and retained compute/graphics counts. Derive:</p>
           <pre><code>requests = hits + misses
 hitRate = requests != 0 ? hits / requests : 0
 creationFailureRate =

@@ -104,7 +104,7 @@
           <p>These are not interchangeable. Source is reviewable and portable but cannot execute. DXIL and SPIR-V are compiler products, not source caches. An RHI shader is tied to a device and backend. A PSO is more specialized still: it captures a compatible combination of stages and state. Keeping the boundaries explicit makes invalidation tractable.</p>
 
           <h3>Source versus artifact identity</h3>
-          <p><a href="api-reference.html#api-arda-backend-fardashadertype-16467199"><code>arda::backend::FArdaShaderType</code></a> records a source path, output filename stem, entry point, stage, and optional parameter metadata. The source path answers “which authored program is this?” The output stem answers “which packaged file should runtime load?” One HLSL file can therefore produce several artifacts:</p>
+          <p><a href="api-reference.html#api-arda-backend-fardashadertype-16467199"><code>arda::FArdaShaderType</code></a> records a source path, output filename stem, entry point, stage, and optional parameter metadata. The source path answers “which authored program is this?” The output stem answers “which packaged file should runtime load?” One HLSL file can therefore produce several artifacts:</p>
           <pre><code>Source: /Project/Terrain/ArdaTerrain.hlsl
 
 Entry point                 Stage       Output stem
@@ -183,7 +183,7 @@ Vulkan package: TerrainGenerateCS.spv,  TerrainVS.spv,  TerrainPS.spv</code></pr
           <p>Developer machines, build agents, and packaged applications rarely share absolute filesystem roots. A <a class="term" data-term="virtual-shader-path" href="../glossary.html#term-virtual-shader-path">virtual shader path</a> gives source a stable project identity independent of checkout location. The directory registry scans registered physical roots and atomically freezes a deterministic manifest before shader types are committed.</p>
 
           <h3>Exclusive roots and overlays</h3>
-          <pre><code>using namespace arda::backend;
+          <pre><code>using namespace arda;
 
 auto project = AddShaderSourceDirectoryMapping(
     "/Project",
@@ -207,21 +207,21 @@ auto resolved = ResolveVirtualShaderSource(
     "/Project/Lighting/Deferred.hlsl", physical);
 if (!resolved)
     return Report(resolved.mMessage);</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-addshadersourcedirectorymapping-0a243cb3"><code>arda::backend::AddShaderSourceDirectoryMapping</code></a> grants one physical directory exclusive ownership of a root. Exact repeats are idempotent. The same root mapped elsewhere is rejected. Properly nested physical and virtual exclusive mappings are legal, and the deepest matching root wins.</p>
-          <p><a href="api-reference.html#api-arda-backend-addshadersourcedirectory-09bd6e9b"><code>arda::backend::AddShaderSourceDirectory</code></a> creates an overlay. Multiple overlays can contribute distinct files below the same root. The collision unit is the complete normalized virtual filename, not merely the root: two physical files resolving to <code>/Shared/Noise.hlsl</code> are ambiguous even if their contents match.</p>
+          <p><a href="api-reference.html#api-arda-backend-addshadersourcedirectorymapping-0a243cb3"><code>arda::AddShaderSourceDirectoryMapping</code></a> grants one physical directory exclusive ownership of a root. Exact repeats are idempotent. The same root mapped elsewhere is rejected. Properly nested physical and virtual exclusive mappings are legal, and the deepest matching root wins.</p>
+          <p><a href="api-reference.html#api-arda-backend-addshadersourcedirectory-09bd6e9b"><code>arda::AddShaderSourceDirectory</code></a> creates an overlay. Multiple overlays can contribute distinct files below the same root. The collision unit is the complete normalized virtual filename, not merely the root: two physical files resolving to <code>/Shared/Noise.hlsl</code> are ambiguous even if their contents match.</p>
 
           <h3>Why freeze?</h3>
           <p>Freezing changes path discovery from a mutable filesystem query into an immutable manifest lookup. The startup cost is a scan; the benefits are deterministic identities, early collision detection, resistance to mid-run source mutation, and diagnostics that can name both physical contenders. Portable path components are limited to ASCII letters, digits, underscore, hyphen, and period. Traversal, path escape, unsupported extensions, and case-normalized collisions are rejected before device creation.</p>
           <aside class="callout">
             <h3>Ordering contract</h3>
-            <p>Register directories before backend initialization. Initialization freezes them automatically. Add, unfreeze, and clear operations are rejected while the registry is in use or the backend is live. Use <a href="api-reference.html#api-arda-backend-getshadersourcedirectorystate-a8bb0595"><code>arda::backend::GetShaderSourceDirectoryState</code></a> when diagnosing ownership and freeze state.</p>
+            <p>Register directories before backend initialization. Initialization freezes them automatically. Add, unfreeze, and clear operations are rejected while the registry is in use or the backend is live. Use <a href="api-reference.html#api-arda-backend-getshadersourcedirectorystate-a8bb0595"><code>arda::GetShaderSourceDirectoryState</code></a> when diagnosing ownership and freeze state.</p>
           </aside>
         </section>
 
         <section id="registration">
           <h2>Deferred static registration and commit</h2>
-          <p>Global shader classes use static registration nodes so declarations can live near renderer code without requiring a manually maintained central list. Static initialization order across translation units is not a reliable publication order, so construction only appends a pending <a href="api-reference.html#api-arda-backend-fardashadertyperegistration-345ad6f5"><code>arda::backend::FArdaShaderTypeRegistration</code></a>. Publication is a separate deterministic operation.</p>
-          <pre><code>class FBlurCS final : public arda::backend::FArdaGlobalShader
+          <p>Global shader classes use static registration nodes so declarations can live near renderer code without requiring a manually maintained central list. Static initialization order across translation units is not a reliable publication order, so construction only appends a pending <a href="api-reference.html#api-arda-backend-fardashadertyperegistration-345ad6f5"><code>arda::FArdaShaderTypeRegistration</code></a>. Publication is a separate deterministic operation.</p>
+          <pre><code>class FBlurCS final : public arda::FArdaGlobalShader
 {
 public:
     using FParameters = FBlurParameters;
@@ -233,8 +233,8 @@ ARDA_IMPLEMENT_GLOBAL_SHADER(
     "/Project/Post/Blur.hlsl", // exact virtual source filename
     "BlurCS",                  // packaged artifact stem
     "BlurMain",                // bytecode entry point
-    arda::rhi::EArdaRHIShaderStage::Compute);</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-fardashadertyperegistration-commitall-8af2b7c3"><code>arda::backend::FArdaShaderTypeRegistration::CommitAll</code></a> sorts candidates by type name and identity hash, validates all candidates, then publishes the whole set. It rejects empty identities, missing virtual sources, invalid parameter metadata, duplicate class names, and duplicate artifact identities.</p>
+    arda::EArdaRHIShaderStage::Compute);</code></pre>
+          <p><a href="api-reference.html#api-arda-backend-fardashadertyperegistration-commitall-8af2b7c3"><code>arda::FArdaShaderTypeRegistration::CommitAll</code></a> sorts candidates by type name and identity hash, validates all candidates, then publishes the whole set. It rejects empty identities, missing virtual sources, invalid parameter metadata, duplicate class names, and duplicate artifact identities.</p>
           <p>The current identity hash includes source path, output stem, entry point, and stage. Parameter layout is validated during commit but is not part of that hash. Two classes that point to the same source, output, entry, and stage collide even if their C++ parameter declarations differ. That rule prevents two CPU contracts from silently claiming one executable artifact.</p>
           <figure>
             <img src="Assets/shader-registration-flow.svg" alt="Shader registration sequence from directory registration and frozen source manifest through type commit, artifact loading, layout creation, and shader creation.">
@@ -244,11 +244,11 @@ ARDA_IMPLEMENT_GLOBAL_SHADER(
 
         <section id="metadata">
           <h2>Authored parameter metadata, not binary reflection</h2>
-          <p><a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-01516b8f"><code>arda::backend::FArdaShaderParameterMetadata</code></a> describes the C++ parameter struct authored through macros. It records struct size and alignment plus each member's name, semantic kind, RHI binding type, register slot, register space, array count, byte offset, byte size, stride, visibility, and optional nested metadata.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-01516b8f"><code>arda::FArdaShaderParameterMetadata</code></a> describes the C++ parameter struct authored through macros. It records struct size and alignment plus each member's name, semantic kind, RHI binding type, register slot, register space, array count, byte offset, byte size, stride, visibility, and optional nested metadata.</p>
           <p>This resembles reflection but has a crucial direction: the C++ declaration generates metadata. ArdaBackend does not inspect DXIL or SPIR-V to infer it. Therefore metadata can build layouts without backend-specific reflection libraries and remains available in stripped builds. The tradeoff is duplicated truth: HLSL and C++ can disagree while each is internally valid.</p>
 
           <h3>Worked declaration</h3>
-          <pre><code>using Stage = arda::rhi::EArdaRHIShaderStage;
+          <pre><code>using Stage = arda::EArdaRHIShaderStage;
 
 struct alignas(16) FDispatchPushConstants
 {
@@ -272,7 +272,7 @@ ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FBlurParameters)
     ARDA_SHADER_PUSH_CONSTANTS(
         FDispatchPushConstants, mDispatch, 0, 3, Stage::Compute)
 ARDA_END_SHADER_PARAMETER_STRUCT()</code></pre>
-          <p>The nested struct flattens in declaration order. <code>mInputs.mMipInputs</code> resolves to four texture SRVs beginning at <code>t0, space1</code>; <code>mInputs.mLinearClamp</code> resolves to <code>s0, space1</code>; <code>mOutput</code> resolves to <code>u0, space2</code>; and <code>mDispatch</code> becomes a push-constant item in space 3. <a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-findflattenedmember-24aa7063"><code>arda::backend::FArdaShaderParameterMetadata::FindFlattenedMember</code></a> can return the leaf and its absolute offset from the root C++ object.</p>
+          <p>The nested struct flattens in declaration order. <code>mInputs.mMipInputs</code> resolves to four texture SRVs beginning at <code>t0, space1</code>; <code>mInputs.mLinearClamp</code> resolves to <code>s0, space1</code>; <code>mOutput</code> resolves to <code>u0, space2</code>; and <code>mDispatch</code> becomes a push-constant item in space 3. <a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-findflattenedmember-24aa7063"><code>arda::FArdaShaderParameterMetadata::FindFlattenedMember</code></a> can return the leaf and its absolute offset from the root C++ object.</p>
 
           <h3>Register classes, spaces, arrays, and overlap</h3>
           <p>HLSL register numbers are scoped by register class and space. ArdaBackend groups texture/buffer SRVs and acceleration structures as the shader-resource class, UAVs as unordered access, constant/uniform buffers as constant, samplers as sampler, and push constants as their own class. Thus <code>t0</code>, <code>u0</code>, <code>b0</code>, and <code>s0</code> can coexist in one space.</p>
@@ -322,13 +322,13 @@ overlap iff A.start &lt; B.end and B.start &lt; A.end
         <section id="bindings">
           <h2>Binding layouts versus binding sets</h2>
           <p>A binding layout is a schema: it says that a stage-visible register space contains particular slot ranges and resource kinds. A binding set is an instance: it supplies concrete textures, buffers, samplers, or acceleration structures for one layout. In database terms, the layout resembles a table definition and the set resembles a row.</p>
-          <p><a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-buildbindinglayoutdescs-b4df1d86"><code>arda::backend::FArdaShaderParameterMetadata::BuildBindingLayoutDescs</code></a> emits one descriptor for each unique <code>(register space, exact visibility mask)</code> pair. All matching members become items in that descriptor. Consequently, one shader can own multiple layouts even when it has only one parameter struct.</p>
+          <p><a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-buildbindinglayoutdescs-b4df1d86"><code>arda::FArdaShaderParameterMetadata::BuildBindingLayoutDescs</code></a> emits one descriptor for each unique <code>(register space, exact visibility mask)</code> pair. All matching members become items in that descriptor. Consequently, one shader can own multiple layouts even when it has only one parameter struct.</p>
           <pre><code>const auto&amp; metadata = FBlurParameters::GetStaticMetadata();
-eastl::vector&lt;arda::rhi::FArdaRHIBindingLayoutDesc&gt; layoutDescs;
+eastl::vector&lt;arda::FArdaRHIBindingLayoutDesc&gt; layoutDescs;
 if (auto status = metadata.BuildBindingLayoutDescs(layoutDescs); !status)
     return Report(status.mMessage);
 
-eastl::vector&lt;arda::rhi::FArdaRHIBindingLayoutRef&gt; layouts;
+eastl::vector&lt;arda::FArdaRHIBindingLayoutRef&gt; layouts;
 for (const auto&amp; desc : layoutDescs)
 {
     auto result = device-&gt;CreateBindingLayout(desc);
@@ -336,7 +336,7 @@ for (const auto&amp; desc : layoutDescs)
         return Report(result.mStatus.mMessage);
     layouts.push_back(eastl::move(result.mValue));
 }</code></pre>
-          <p>The global shader map performs that layout creation once for initialized shader instances. At use time, populate a parameter struct and call <a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-createbindingset-9f1c23fe"><code>arda::backend::FArdaShaderParameterMetadata::CreateBindingSet</code></a> for each relevant layout. It verifies that the selected layout equals one generated from the metadata, expands arrays, rejects null resources, and requires every layout item to be completely populated.</p>
+          <p>The global shader map performs that layout creation once for initialized shader instances. At use time, populate a parameter struct and call <a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-createbindingset-9f1c23fe"><code>arda::FArdaShaderParameterMetadata::CreateBindingSet</code></a> for each relevant layout. It verifies that the selected layout equals one generated from the metadata, expands arrays, rejects null resources, and requires every layout item to be completely populated.</p>
           <pre><code>FBlurParameters parameters;
 parameters.mInputs.mMipInputs[0] = mip0;
 parameters.mInputs.mMipInputs[1] = mip1;
@@ -346,7 +346,7 @@ parameters.mInputs.mLinearClamp = linearClamp;
 parameters.mOutput = outputBuffer;
 parameters.mDispatch = { width, height, radius, 0 };
 
-arda::rhi::FArdaRHIBindingSetRef set;
+arda::FArdaRHIBindingSetRef set;
 auto status = FBlurParameters::GetStaticMetadata().CreateBindingSet(
     *device, &amp;parameters, resourceLayout, set);
 if (!status)
@@ -363,26 +363,26 @@ if (!status)
     bool hasPushConstants = false;
     for (const auto&amp; item : layoutDesc.mItems)
         hasPushConstants |=
-            item.mType == arda::rhi::EArdaRHIBindingType::PushConstants;
+            item.mType == arda::EArdaRHIBindingType::PushConstants;
 
     if (hasPushConstants)
     {
-        auto status = arda::backend::ApplyShaderPushConstants(
+        auto status = arda::ApplyShaderPushConstants(
             *commandList, parameters, layoutDesc);
         if (!status)
             return Report(status.mMessage);
     }
 }</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-applyshaderpushconstants-169858c4"><code>arda::backend::ApplyShaderPushConstants</code></a> resolves the exact member bytes selected by the layout and forwards them to the command list. Apply them after opening the list and in the state context expected by the command path. Reapply when values change; a binding set does not implicitly push the bytes.</p>
+          <p><a href="api-reference.html#api-arda-backend-applyshaderpushconstants-169858c4"><code>arda::ApplyShaderPushConstants</code></a> resolves the exact member bytes selected by the layout and forwards them to the command list. Apply them after opening the list and in the state context expected by the command path. Reapply when values change; a binding set does not implicitly push the bytes.</p>
         </section>
 
         <section id="global-map">
           <h2>Global shader map modes, lifetime, and idempotence</h2>
-          <p><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-b7046fe0"><code>arda::backend::FArdaGlobalShaderMap</code></a> is the bridge from committed, backend-neutral type records to device-bound shaders and layouts. It snapshots every selected registered permutation. <code>LoadOnly</code> and <code>Startup</code> load all slots eagerly; <code>OnDemand</code> publishes unloaded slots and resolves one under the map mutex when it is first requested.</p>
-          <pre><code>arda::backend::FArdaGlobalShaderMap shaderMap;
+          <p><a href="api-reference.html#api-arda-backend-fardaglobalshadermap-b7046fe0"><code>arda::FArdaGlobalShaderMap</code></a> is the bridge from committed, backend-neutral type records to device-bound shaders and layouts. It snapshots every selected registered permutation. <code>LoadOnly</code> and <code>Startup</code> load all slots eagerly; <code>OnDemand</code> publishes unloaded slots and resolves one under the map mutex when it is first requested.</p>
+          <pre><code>arda::FArdaGlobalShaderMap shaderMap;
 if (!shaderMap.Initialize(
-        arda::backend::GetDeviceContext(),
-        arda::backend::GetBackendConfiguration().mShaderCacheDirectory))
+        arda::GetDeviceContext(),
+        arda::GetBackendConfiguration().mShaderCacheDirectory))
 {
     for (const auto&amp; diagnostic : shaderMap.GetDiagnostics())
         LogShaderFailure(diagnostic.mShaderType, diagnostic.mMessage);

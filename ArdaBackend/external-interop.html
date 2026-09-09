@@ -57,7 +57,7 @@
         <header class="page-header">
           <p class="eyebrow">Adopt host-owned devices without surrendering ownership</p>
           <h1>External devices and resources</h1>
-          <p>External interop lets an engine keep authority over its native device, queues, presentation, and resource catalog while the selected backend module creates Arda's RHI facade over selected objects. The checked-in native D3D12 module demonstrates device adoption; generic descriptors also support custom native and <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine-RHI</a> modules. The boundary remains deliberately narrow: ownership is explicit, queue access is coordinated, and native descriptions must be truthful.</p>
+          <p>External interop lets an engine keep authority over its native device, queues, presentation, and resource catalog while the selected backend module creates Arda's RHI facade over selected objects. The checked-in native D3D12 and Vulkan modules support device adoption; generic descriptors also support custom native and <a class="term" data-term="engine-rhi" href="../glossary.html#term-engine-rhi">engine-RHI</a> modules. The boundary remains deliberately narrow: ownership is explicit, queue access is coordinated, and native descriptions must be truthful.</p>
         </header>
 
         <nav class="toc" aria-label="On this page">
@@ -86,7 +86,7 @@
           <p>After this chapter, you should be able to:</p>
           <ul>
             <li>separate native ownership from RHI wrapper ownership and GPU-use lifetime;</li>
-            <li>route one universal host-owned device descriptor to an exact module, including the checked-in native D3D12 module;</li>
+            <li>route one universal host-owned device descriptor to an exact module, including the checked-in native D3D12 and Vulkan modules;</li>
             <li>register providers without introducing callback reentrancy or registry-lifetime races;</li>
             <li>resolve stable resource IDs into truthful texture and buffer import descriptions;</li>
             <li>coordinate exclusive queue intervals with an engine submission thread;</li>
@@ -128,9 +128,9 @@
 
         <section id="d3d12">
           <h2>D3D12 device adoption</h2>
-          <p><span class="status">TESTED API PATH</span> Focused backend tests exercise the D3D12 external-provider path. The host supplies one required <code>ID3D12Device*</code> and required graphics <code>ID3D12CommandQueue*</code>. Compute and copy queues are optional; absent queues are reported as unavailable capabilities. The optional factory does not enable presentation on the current external wrapper.</p>
+          <p><span class="status">TESTED API PATH</span> Focused backend tests exercise the D3D12 external-provider path. The host supplies one required <code>ID3D12Device*</code> and required graphics <code>ID3D12CommandQueue*</code>. Compute and copy queues are optional; absent queues are reported as unavailable capabilities. For Arda-managed presentation, supply a window surface and initialize the swap-chain path described in <a href="#presentation">presentation ownership</a>.</p>
           <p>The native D3D12 module retains COM references needed by its wrapper, but this never transfers host ownership to Arda. The host must still preserve device/plugin invariants and must not release or invalidate native state while any Arda wrapper or GPU submission can use it.</p>
-          <pre><code>class D3D12Provider final : public arda::backend::IArdaExternalDeviceProvider
+          <pre><code>class D3D12Provider final : public arda::IArdaExternalDeviceProvider
 {
 public:
     D3D12Provider(ID3D12Device* device,
@@ -139,10 +139,10 @@ public:
         : mLifetime(eastl::move(hostLifetime))
     {
         mDesc.mNativeApi = "d3d12";
-        mDesc.mDevice = arda::backend::FArdaNativeObject(device);
+        mDesc.mDevice = arda::FArdaNativeObject(device);
         mDesc.mQueues.push_back({
-            arda::rhi::EArdaRHIQueueType::Graphics,
-            arda::backend::FArdaNativeObject(graphics) });
+            arda::EArdaRHIQueueType::Graphics,
+            arda::FArdaNativeObject(graphics) });
     }
 
     const char* GetBackendName() const noexcept override
@@ -151,7 +151,7 @@ public:
     }
 
     bool GetExternalDeviceDesc(
-        arda::backend::FArdaExternalDeviceDesc&amp; out) const override
+        arda::FArdaExternalDeviceDesc&amp; out) const override
     {
         out = mDesc;
         return true;
@@ -160,29 +160,35 @@ public:
     eastl::shared_ptr&lt;void&gt; GetLifetimeToken() const override { return mLifetime; }
 
 private:
-    arda::backend::FArdaExternalDeviceDesc mDesc;
+    arda::FArdaExternalDeviceDesc mDesc;
     eastl::shared_ptr&lt;void&gt; mLifetime;
 };</code></pre>
           <p>The native D3D12 module requires an <code>ID3D12Device</code> and a direct graphics <code>ID3D12CommandQueue</code>. Other modules may define an additional property vocabulary; applications must not assume module-specific names are portable.</p>
         </section>
 
         <section id="vulkan">
-          <h2>Vulkan device adoption for custom modules</h2>
-          <p><span class="status">NOT IMPLEMENTED BY NATIVE-VULKAN</span> The provider contract can describe a live instance, physical device, logical device, queues, families, and enabled extensions, but the checked-in <code>native-vulkan</code> module currently creates and owns its device and rejects external-device mode. The following schema is guidance for a custom Vulkan or engine module, not a supported path in the checked-in provider.</p>
+          <h2>Adopt a host-owned Vulkan device</h2>
+          <p>The <code>native-vulkan</code> module accepts host-owned instances, physical devices, logical devices and queues. Arda creates its own descriptor pools, command pools, fences, optional presentation surface and resource allocations. It destroys only those children; the host retains ownership of its original handles.</p>
           <p>The physical/logical device contract is Vulkan 1.3 or newer with dynamic rendering, synchronization2, and timeline semaphore features enabled. Initialization can query physical-device support, but Vulkan cannot retrospectively report which feature bits the host enabled when it created <code>VkDevice</code>. The properties are therefore host assertions: report enabled state, not adapter support alone.</p>
-          <pre><code>arda::backend::FArdaExternalDeviceDesc d;
-d.mBackendName = "custom-vulkan";
+          <pre><code>arda::FArdaExternalDeviceDesc d;
+d.mBackendName = "native-vulkan";
 d.mNativeApi = "vulkan";
-d.mInstance = arda::backend::FArdaNativeObject(vkInstance);
-d.mAdapter = arda::backend::FArdaNativeObject(vkPhysicalDevice);
-d.mDevice = arda::backend::FArdaNativeObject(vkDevice);
-d.mQueues.push_back({ arda::rhi::EArdaRHIQueueType::Graphics,
-    arda::backend::FArdaNativeObject(vkGraphicsQueue), graphicsFamily, graphicsIndex });
-for (const char* name : enabledInstanceExtensions)
-    d.mProperties.push_back({ "instance-extension", name });
+d.mInstance = arda::FArdaNativeObject(vkInstance);
+d.mAdapter = arda::FArdaNativeObject(vkPhysicalDevice);
+d.mDevice = arda::FArdaNativeObject(vkDevice);
+d.mQueues.push_back({ arda::EArdaRHIQueueType::Graphics,
+    arda::FArdaNativeObject(vkGraphicsQueue), graphicsFamily, graphicsIndex });
+d.mProperties.push_back({ "vulkan.api-version", "1.3" });
+d.mProperties.push_back({ "vulkan.validation", "enabled" }); // only if the host enabled it
 for (const char* name : enabledDeviceExtensions)
-    d.mProperties.push_back({ "device-extension", name });
-d.mProperties.push_back({ "buffer-device-address", "true" });</code></pre>
+    d.mProperties.push_back({ "vulkan.device-extension", name });
+for (const char* name : { "dynamicRendering", "synchronization2", "timelineSemaphore" })
+    d.mProperties.push_back({ "vulkan.enabled-feature", name });
+// Add optional enabled feature member names, e.g. bufferDeviceAddress and rayQuery.
+// Report what vkCreateDevice enabled, not everything vkGetPhysicalDeviceFeatures2 supports.
+</code></pre>
+          <p>The required feature properties are checked before provider initialization. Optional capabilities are limited to the intersection of hardware support, enabled extension names and enabled feature member names. Unknown or omitted optional features remain unavailable. Missing compute/copy roles may use the graphics queue when its family supports the role. Duplicate roles and invalid family/index descriptions fail initialization without destroying host handles. Validation cannot be enabled retroactively: the host creates its validation messenger and supplies <code>vulkan.validation=enabled</code> when validation is requested.</p>
+          <p>The host must serialize submissions and presentation on borrowed queues with Arda. For host work that touches imported resources, supply accurate incoming states and synchronize the producer before handing the resource to Arda. Keep the lifetime token alive through all surviving RHI references, including those retained after <code>ShutdownBackend</code>. Optional Arda presentation requires the host to have enabled <code>VK_KHR_swapchain</code> and the relevant instance surface extensions.</p>
           <p>Vulkan handles are not reference-counted. Arda never destroys the supplied Vulkan instance, devices, queues, or allocation callbacks. The host and optional token must keep every raw handle, enabled-extension contract, allocation-callback object, loader contract, and queue valid through every copied Arda device/resource reference and all GPU work.</p>
         </section>
 
@@ -249,7 +255,7 @@ d.mProperties.push_back({ "buffer-device-address", "true" });</code></pre>
 
         <section id="presentation">
           <h2>Host-managed presentation</h2>
-          <p>The current external wrapper is headless/host-presented. <a href="api-reference.html#api-arda-backend-initializebackendforpresentation-57fda7b3"><code>InitializeBackendForPresentation</code></a> rejects the external-device mode. The host owns image acquisition, swap-chain recreation, present scheduling, and native acquire/render-finished synchronization.</p>
+          <p>For host-managed presentation, initialize Arda without a window surface and import the acquired image. <a href="api-reference.html#api-arda-backend-initializebackendforpresentation-57fda7b3"><code>InitializeBackendForPresentation</code></a> can instead create an Arda-managed swap chain when the borrowed device and queues satisfy the selected provider’s presentation requirements. Host-managed presentation leaves image acquisition, swap-chain recreation, present scheduling, and native acquire/render-finished synchronization with the host. For Vulkan, see the <a href="#vulkan">enabled extension and queue requirements</a>.</p>
           <p>For each frame, the host acquires its native image, resolves/imports that image as a texture, grants Arda a coordinated queue interval, records work with truthful incoming state, completes the required transition/handoff, and then presents through the host. The resolved texture description must mirror the image generation's width, height, array/mip count, sample count, format, render-target usage, and actual incoming state (normally <code>Present</code> for a swap image). D3D12 encodes the acquired <code>ID3D12Resource*</code> as <code>D3D12Resource</code>; Vulkan encodes the acquired <code>VkImage</code> as <code>VulkanImage</code>. Do not create or expect an <code>IArdaSwapChain</code> in this mode.</p>
           <p>D3D12 and Vulkan frame-image generations must be treated as changing identities. A simple provider can encode <code>(uint64_t(generation) &lt;&lt; 32) | imageIndex</code> when both values fit 32 bits, or use that pair as a key into a provider-owned table. Reject unknown generations. On resize or swap-chain recreation, retire old GPU use and all imported Arda refs before removing the old table entries, destroying native images, or allowing handles to be reused.</p>
         </section>
@@ -260,20 +266,20 @@ d.mProperties.push_back({ "buffer-device-address", "true" });</code></pre>
           <pre><code>D3D12Provider deviceProvider(nativeDevice, graphicsQueue, pluginLifetime);
 EngineResources resourceProvider(nativeDevice, pluginLifetime); // Name: "Engine"
 
-if (!arda::backend::RegisterExternalDeviceProvider(deviceProvider) ||
-    !arda::backend::RegisterExternalResourceProvider(resourceProvider))
-    return Fail(arda::backend::GetBackendError());
+if (!arda::RegisterExternalDeviceProvider(deviceProvider) ||
+    !arda::RegisterExternalResourceProvider(resourceProvider))
+    return Fail(arda::GetBackendError());
 
-arda::backend::FArdaBackendConfiguration config;
+arda::FArdaBackendConfiguration config;
 config.mBackendName = deviceProvider.GetBackendName();
-config.mDeviceSource = arda::backend::EArdaDeviceSource::ExternalProvider;
-if (!arda::backend::ConfigureBackend(config) ||
-    !arda::backend::InitializeBackend())
-    return Fail(arda::backend::GetBackendError());
+config.mDeviceSource = arda::EArdaDeviceSource::ExternalProvider;
+if (!arda::ConfigureBackend(config) ||
+    !arda::InitializeBackend())
+    return Fail(arda::GetBackendError());
 
 // Host acquires an exclusive/coordinated native queue interval first.
-auto frame = arda::backend::ImportExternalTexture("Engine", frameImageId);
-auto constants = arda::backend::ImportExternalBuffer("Engine", constantsId);
+auto frame = arda::ImportExternalTexture("Engine", frameImageId);
+auto constants = arda::ImportExternalBuffer("Engine", constantsId);
 if (!frame || !constants)
     return Fail(!frame ? frame.mStatus.mMessage : constants.mStatus.mMessage);
 
@@ -281,11 +287,11 @@ RecordSubmitAndRetireInsideHostQueueInterval(frame.mValue, constants.mValue);
 
 frame.mValue = nullptr;
 constants.mValue = nullptr;
-arda::backend::ShutdownBackend();
+arda::ShutdownBackend();
 ReleaseEveryCopiedArdaDeviceAndResourceRef();
 
-arda::backend::UnregisterExternalResourceProvider(resourceProvider);
-arda::backend::UnregisterExternalDeviceProvider(deviceProvider);</code></pre>
+arda::UnregisterExternalResourceProvider(resourceProvider);
+arda::UnregisterExternalDeviceProvider(deviceProvider);</code></pre>
           <p>The resource provider should return the same canonical token for repeated resolutions in one host lifetime domain. For a frame image, its ID should include or map through a swap-chain generation so stale IDs fail rather than silently naming a recycled handle.</p>
         </section>
 
@@ -297,7 +303,7 @@ arda::backend::UnregisterExternalDeviceProvider(deviceProvider);</code></pre>
             <dt>Provider registration fails</dt>
             <dd>Read the process error immediately. A different process-wide device provider, initialized backend, invalid resource-provider name, or resource-provider name collision is not retryable without changing lifecycle state.</dd>
             <dt>Vulkan initialization rejects features</dt>
-            <dd>Verify Vulkan 1.3, dynamic rendering, synchronization2, timeline semaphore, copied enabled-extension names, exact queue families/indices, and the buffer-device-address enabled-feature claim.</dd>
+            <dd>Verify Vulkan 1.3, dynamic rendering, synchronization2, timeline semaphore, copied enabled-extension names, exact queue families/indices, and the enabled-feature claims for any requested optional capabilities. Buffer-device-address support is optional unless the requested operation requires it.</dd>
             <dt>Import returns descriptor conflict</dt>
             <dd>The same native handle was previously imported with different metadata or shared-token ownership identity. Stop and repair canonical resource identity; do not alternate tokens or guess state.</dd>
             <dt>Import succeeds but GPU output is corrupt</dt>

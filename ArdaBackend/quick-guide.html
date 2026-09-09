@@ -159,23 +159,23 @@ endif()</code></pre>
           <p><span class="status">TESTED API PATH</span> Use this branch for compute, offscreen rendering, resource processing, or tests that do not present. It is also the minimal setup from which the remaining non-presentation recipes operate.</p>
           <pre><code>using namespace arda;
 
-backend::FArdaBackendConfiguration config;
-config.mDeviceSource = backend::EArdaDeviceSource::ArdaCreated;
+arda::FArdaBackendConfiguration config;
+config.mDeviceSource = arda::EArdaDeviceSource::ArdaCreated;
 config.mbEnableValidation = true;
 config.mMessageCallback = &amp;diagnostics; // Must outlive every retained device ref.
 config.mShaderCompilationMode =
-    backend::EArdaShaderCompilationMode::OnDemand;
+    arda::EArdaShaderCompilationMode::OnDemand;
 config.mShaderCacheDirectory = GetWritableUserCache() / "Ardashir" / "shaders";
 config.mPipelineCacheDirectory = GetWritableUserCache() / "Ardashir" / "pipelines";
 
 // Optional no-op unless the application uses the global-shader registry.
 RegisterApplicationShaderDirectoriesBeforeBackendInitialization();
 
-if (!backend::ConfigureBackend(config) || !backend::InitializeBackend())
-    return Fail(backend::GetBackendError());
+if (!arda::ConfigureBackend(config) || !arda::InitializeBackend())
+    return Fail(arda::GetBackendError());
 
-const backend::FArdaDeviceContext&amp; context = backend::GetDeviceContext();
-rhi::FArdaRHIDeviceRef device = context.mDevice;
+const arda::FArdaDeviceContext&amp; context = arda::GetDeviceContext();
+arda::FArdaRHIDeviceRef device = context.mDevice;
 if (!device || !context.mQueueCapabilities.mbGraphics)
     return Fail("The requested backend did not publish a graphics device.");</code></pre>
 
@@ -192,28 +192,28 @@ if (!device || !context.mQueueCapabilities.mbGraphics)
 
         <section id="external-interop">
           <h2>3. External device and named-resource setup</h2>
-          <p>Use this branch when an engine already owns the native device, queues, resources, and presentation. It is headless/host-presented: select the exact adapter module where possible, configure <a href="api-reference.html#api-arda-backend-eardadevicesource-3877d02f"><code>EArdaDeviceSource</code></a> for an external provider, and call <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend</code></a>, not presentation initialization. A module receives the universal external-device descriptor and performs any native translation privately. The checked-in D3D12 module supports this path; the checked-in Vulkan module is currently owned-device only. Read <a href="external-interop.html">External devices and resources</a> before integrating a production engine.</p>
+          <p>Use this branch when an engine already owns the native device, queues, resources, and presentation. It is headless/host-presented: select the exact adapter module where possible, configure <a href="api-reference.html#api-arda-backend-eardadevicesource-3877d02f"><code>EArdaDeviceSource</code></a> for an external provider, and call <a href="api-reference.html#api-arda-backend-initializebackend-eef579c0"><code>InitializeBackend</code></a>, not presentation initialization. A module receives the universal external-device descriptor and performs any native translation privately. Both checked-in native D3D12 and Vulkan modules support this host-presented path. Adopted devices can also use an Arda-managed swap chain when their native presentation requirements are met. Read <a href="external-interop.html">External devices and resources</a> before integrating a production engine.</p>
 
           <h3>D3D12 provider recipe</h3>
           <p><span class="status">TESTED API PATH</span> Focused backend tests exercise provider registration and external D3D12 initialization. Implement <a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-f1c0d75e"><code>IArdaExternalDeviceProvider</code></a> and return a copied <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> whose <code>mNativeApi</code> is <code>d3d12</code>, with a device and graphics queue. The optional token should pin the host/plugin lifetime.</p>
           <pre><code>D3D12Provider provider(device, graphicsQueue, pluginLifetime);
-if (!arda::backend::RegisterExternalDeviceProvider(provider))
-    return Fail(arda::backend::GetBackendError());
+if (!arda::RegisterExternalDeviceProvider(provider))
+    return Fail(arda::GetBackendError());
 
-arda::backend::FArdaBackendConfiguration config;
+arda::FArdaBackendConfiguration config;
 config.mBackendName = provider.GetBackendName();
-config.mDeviceSource = arda::backend::EArdaDeviceSource::ExternalProvider;
+config.mDeviceSource = arda::EArdaDeviceSource::ExternalProvider;
 RegisterApplicationShaderDirectoriesBeforeBackendInitialization(); // Optional.
-if (!arda::backend::ConfigureBackend(config) ||
-    !arda::backend::InitializeBackend())
-    return Fail(arda::backend::GetBackendError());
+if (!arda::ConfigureBackend(config) ||
+    !arda::InitializeBackend())
+    return Fail(arda::GetBackendError());
 
-arda::rhi::FArdaRHIDeviceRef device =
-    arda::backend::GetDeviceContext().mDevice;</code></pre>
+arda::FArdaRHIDeviceRef device =
+    arda::GetDeviceContext().mDevice;</code></pre>
           <p>The native D3D12 wrapper retains required COM references but never assumes host ownership. Establish an exclusive/coordinated host queue interval around every Arda submission, then release all copied Arda references before native/plugin teardown.</p>
 
           <h3>Vulkan provider recipe</h3>
-          <p><span class="status">SYNTHESIZED / CONTRACT PATH</span> Fill the same <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> with the Vulkan instance, physical and logical devices, exact graphics queue family/index, optional queues, and repeated <code>instance-extension</code>/<code>device-extension</code> properties. Vulkan 1.3 dynamic rendering, synchronization2, and timeline semaphore must be enabled. Physical-device support is validated, while enabled-feature properties remain host assertions.</p>
+          <p><span class="status">TESTED API PATH</span> Fill the same <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> with the Vulkan instance, physical and logical devices, exact graphics queue family/index, optional queues, and the exact <a href="external-interop.html#vulkan">Vulkan property vocabulary</a>: <code>vulkan.api-version</code>, repeated <code>vulkan.device-extension</code> and repeated <code>vulkan.enabled-feature</code>. Vulkan 1.3 dynamic rendering, synchronization2 and timeline semaphore must be enabled. Physical-device support is validated, while enabled-feature properties remain host assertions. Validation requests also require <code>vulkan.validation=enabled</code> and host-created diagnostics.</p>
           <pre><code>VulkanProvider provider(
     instance, physicalDevice, device,
     graphicsQueue, graphicsFamily, graphicsIndex,
@@ -227,12 +227,12 @@ RegisterAndInitializeExternal(
           <h3>Named texture and buffer recipe</h3>
           <p><span class="status">SYNTHESIZED / CONTRACT PATH</span> Implement <a href="api-reference.html#api-arda-backend-iardaexternalresourceprovider-4c32a8df"><code>IArdaExternalResourceProvider</code></a> with a stable name and generation-aware IDs. Resolution returns a truthful complete native description and canonical <a class="term" data-term="lifetime-token" href="../glossary.html#term-lifetime-token">lifetime token</a>. Register before lookup, then call <a href="api-reference.html#api-arda-backend-importexternaltexture-6d277d20"><code>ImportExternalTexture</code></a> or <a href="api-reference.html#api-arda-backend-importexternalbuffer-13f26bef"><code>ImportExternalBuffer</code></a>.</p>
           <pre><code>EngineResourceProvider resources("Engine", pluginLifetime);
-if (!arda::backend::RegisterExternalResourceProvider(resources))
-    return Fail(arda::backend::GetBackendError());
+if (!arda::RegisterExternalResourceProvider(resources))
+    return Fail(arda::GetBackendError());
 
 // Host has acquired queue serialization and supplied the real incoming states.
-auto target = arda::backend::ImportExternalTexture("Engine", targetId);
-auto data = arda::backend::ImportExternalBuffer("Engine", dataId);
+auto target = arda::ImportExternalTexture("Engine", targetId);
+auto data = arda::ImportExternalBuffer("Engine", dataId);
 if (!target || !data)
     return Fail(!target ? target.mStatus.mMessage : data.mStatus.mMessage);
 
@@ -252,15 +252,15 @@ RecordSubmitAndRetireInsideHostQueueInterval(target.mValue, data.mValue);
           <pre><code>glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 GLFWwindow* window = glfwCreateWindow(width, height, "My GPU app", nullptr, nullptr);
 
-class GlfwSurface final : public arda::backend::IArdaWindowSurface
+class GlfwSurface final : public arda::IArdaWindowSurface
 {
 public:
     explicit GlfwSurface(GLFWwindow* window) : mWindow(window) {}
 
-    arda::backend::FArdaNativeObject GetD3D12WindowHandle() const noexcept override;
+    arda::FArdaNativeObject GetD3D12WindowHandle() const noexcept override;
     eastl::vector&lt;const char*&gt; GetVulkanInstanceExtensions() const override;
-    arda::backend::FArdaNativeObject CreateVulkanSurface(
-        arda::backend::FArdaNativeObject instance,
+    arda::FArdaNativeObject CreateVulkanSurface(
+        arda::FArdaNativeObject instance,
         eastl::string&amp; outError) override;
 private:
     GLFWwindow* mWindow = nullptr; // Borrowed; window outlives swap chain.
@@ -268,18 +268,18 @@ private:
           <p>The checked-in GLFW adapters are the canonical implementation pattern. Keep extension-name storage valid through initialization, keep the GLFW window alive through swap-chain destruction, and do not destroy the Vulkan surface yourself: the backend owns the surface created through this callback.</p>
 
           <h3>Initialize the configured presentation branch</h3>
-          <pre><code>eastl::unique_ptr&lt;arda::backend::IArdaSwapChain&gt; swapChain;
-const auto init = arda::backend::InitializeBackendForPresentation(
+          <pre><code>eastl::unique_ptr&lt;arda::IArdaSwapChain&gt; swapChain;
+const auto init = arda::InitializeBackendForPresentation(
     glfwSurface, framebufferWidth, framebufferHeight, swapChain);
-if (init != arda::backend::EArdaInitializeResult::Success)
-    return Fail(arda::backend::GetBackendError());
+if (init != arda::EArdaInitializeResult::Success)
+    return Fail(arda::GetBackendError());
 
-const arda::backend::FArdaDeviceContext&amp; context =
-    arda::backend::GetDeviceContext();
-arda::rhi::FArdaRHIDeviceRef device = context.mDevice;
+const arda::FArdaDeviceContext&amp; context =
+    arda::GetDeviceContext();
+arda::FArdaRHIDeviceRef device = context.mDevice;
 if (!device || !context.mQueueCapabilities.mbGraphics)
     return Fail("A graphics queue is required for presentation.");</code></pre>
-          <p><a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> must already have selected <code>ArdaCreated</code>. Do not call headless initialization first, and do not use this function with an external provider: external engines acquire, synchronize, and present their own frame images.</p>
+          <p><a href="api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend</code></a> must already have selected the desired device source. Do not call headless initialization first. For an external provider, the host must declare the enabled presentation extensions and supply compatible queues; see <a href="external-interop.html#presentation">external presentation</a>. Keep headless initialization when the host acquires and presents its own frame images.</p>
         </section>
 
         <section id="shaders">
@@ -291,15 +291,15 @@ if (!device || !context.mQueueCapabilities.mbGraphics)
 
           <h3>Configure the external compiler and cache</h3>
           <p>Arda derives DXC profiles, entry points, permutation defines, D3D12 DXIL versus Vulkan SPIR-V arguments, and artifact names from registered shader types. Configure a concrete executable in application code, use the build default, or set <code>ARDASHIR_DXC_EXECUTABLE</code>. Do not add a manual CMake command for each registered permutation.</p>
-          <pre><code>arda::backend::FArdaShaderCompilerConfiguration compiler;
+          <pre><code>arda::FArdaShaderCompilerConfiguration compiler;
 compiler.mCompilerExecutable = FindBundledDxc(); // Existing regular file.
 compiler.mbCompileMissingArtifacts = true;
 compiler.mbCompileOutdatedArtifacts = true;
-arda::backend::ConfigureShaderCompiler(compiler);
+arda::ConfigureShaderCompiler(compiler);
 
-arda::backend::FArdaBackendConfiguration config;
+arda::FArdaBackendConfiguration config;
 config.mShaderCompilationMode =
-    arda::backend::EArdaShaderCompilationMode::OnDemand;
+    arda::EArdaShaderCompilationMode::OnDemand;
 config.mShaderCacheDirectory =
     GetWritableUserCache() / "MyApp" / "shaders";</code></pre>
           <p><code>LoadOnly</code> never launches DXC and eagerly loads deployed artifacts. <code>Startup</code> validates or compiles every selected active-backend permutation before creating the native device, then eagerly creates map objects. <code>OnDemand</code> defers ensure, file loading, and RHI creation until the first lookup of a slot. Non-debug builds default the two compiler switches to false, so set policy explicitly.</p>
@@ -309,12 +309,12 @@ config.mShaderCacheDirectory =
 
           <h3>Register virtual source and use the configured global map</h3>
           <p><span class="status">DEMONSTRATED</span> This is the <code>ARDGExample</code> path and is convenient when typed parameters and pipeline initializers should derive from registered shaders.</p>
-          <pre><code>class FMyComputeShader final : public arda::backend::FArdaGlobalShader
+          <pre><code>class FMyComputeShader final : public arda::FArdaGlobalShader
 {
 public:
     ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
         ARDA_SHADER_TEXTURE_UAV(mOutput, 0, 0,
-            arda::rhi::EArdaRHIShaderStage::Compute)
+            arda::EArdaRHIShaderStage::Compute)
     ARDA_END_SHADER_PARAMETER_STRUCT()
     ARDA_DECLARE_GLOBAL_SHADER(FMyComputeShader);
 };
@@ -323,23 +323,23 @@ ARDA_IMPLEMENT_GLOBAL_SHADER(
     FMyComputeShader,
     "/MyApp/Shaders/MyCompute.hlsl",
     "MyComputeCS", "MainCS",
-    arda::rhi::EArdaRHIShaderStage::Compute)</code></pre>
+    arda::EArdaRHIShaderStage::Compute)</code></pre>
           <p>The registration helper shown in device setup must map every virtual source root <strong>before</strong> <code>ConfigureBackend</code> and before either <code>InitializeBackend</code> or <code>InitializeBackendForPresentation</code> freezes the shader registry. Only after backend initialization has produced a device context may the global shader map be initialized and queried:</p>
           <pre><code>// Phase 1: source mappings precede all backend configuration/initialization.
-auto directoryStatus = arda::backend::AddShaderSourceDirectoryMapping(
+auto directoryStatus = arda::AddShaderSourceDirectoryMapping(
     "/MyApp/Shaders", MY_APP_SHADER_SOURCE_DIRECTORY);
 if (!directoryStatus)
     return Fail(directoryStatus.mMessage);
 
 // Configure the compiler, configure the backend, then initialize one branch.
-arda::backend::ConfigureShaderCompiler(compiler);
-if (!arda::backend::ConfigureBackend(config) ||
-    !arda::backend::InitializeBackend())
-    return Fail(arda::backend::GetBackendError());
+arda::ConfigureShaderCompiler(compiler);
+if (!arda::ConfigureBackend(config) ||
+    !arda::InitializeBackend())
+    return Fail(arda::GetBackendError());
 
 // Phase 2: the global map requires the context created above.
-arda::backend::FArdaGlobalShaderMap shaderMap;
-if (!shaderMap.Initialize(arda::backend::GetDeviceContext()))
+arda::FArdaGlobalShaderMap shaderMap;
+if (!shaderMap.Initialize(arda::GetDeviceContext()))
 {
     const auto&amp; diagnostics = shaderMap.GetDiagnostics();
     return Fail(diagnostics.empty()
@@ -360,8 +360,8 @@ if (!shader)
 
           <h3>Path B: direct bytecode</h3>
           <p><span class="status">DEMONSTRATED</span> <code>RHITest</code> loads files into byte vectors, fills <a href="api-reference.html#api-arda-rhi-fardarhishaderdesc-647dc39c"><code>FArdaRHIShaderDesc</code></a>, and calls <a href="api-reference.html#api-arda-rhi-iardarhidevice-createshader-d1c4d59c"><code>CreateShader</code></a>. The byte vector only needs to remain valid during creation.</p>
-          <pre><code>arda::rhi::FArdaRHIShaderDesc desc;
-desc.mStage = arda::rhi::EArdaRHIShaderStage::Compute;
+          <pre><code>arda::FArdaRHIShaderDesc desc;
+desc.mStage = arda::EArdaRHIShaderStage::Compute;
 desc.mBytecode = bytes.data();
 desc.mBytecodeSize = bytes.size();
 desc.mEntryPoint = "MainCS";
@@ -369,32 +369,32 @@ desc.mDebugName = "My compute shader";
 auto shaderResult = device->CreateShader(desc);
 if (!shaderResult)
     return Fail(shaderResult.mStatus.mMessage);
-arda::rhi::FArdaRHIShaderRef computeShader = eastl::move(shaderResult.mValue);</code></pre>
+arda::FArdaRHIShaderRef computeShader = eastl::move(shaderResult.mValue);</code></pre>
         </section>
 
         <section id="resources">
           <h2>6. Create persistent resources, views, and bindings</h2>
           <p><span class="status">TESTED API PATH</span> Device-created resources are intrusive references. Store persistent buffers, textures, views, layouts, sets, shaders, and pipelines in a renderer object whose device reference outlives them.</p>
           <pre><code>// Persistent structured buffer.
-arda::rhi::FArdaRHIBufferDesc bufferDesc;
+arda::FArdaRHIBufferDesc bufferDesc;
 bufferDesc.mByteSize = elementCount * sizeof(Element);
 bufferDesc.mStructureStride = sizeof(Element);
-bufferDesc.mUsage = arda::rhi::EArdaRHIBufferUsage::Structured |
-                    arda::rhi::EArdaRHIBufferUsage::ShaderResource |
-                    arda::rhi::EArdaRHIBufferUsage::UnorderedAccess;
-bufferDesc.mInitialState = arda::rhi::EArdaRHIResourceState::UnorderedAccess;
+bufferDesc.mUsage = arda::EArdaRHIBufferUsage::Structured |
+                    arda::EArdaRHIBufferUsage::ShaderResource |
+                    arda::EArdaRHIBufferUsage::UnorderedAccess;
+bufferDesc.mInitialState = arda::EArdaRHIResourceState::UnorderedAccess;
 bufferDesc.mbKeepInitialState = true;
 bufferDesc.mDebugName = "Persistent elements";
 auto buffer = device->CreateBuffer(bufferDesc);
 if (!buffer) return Fail(buffer.mStatus.mMessage);
 
 // Persistent storage texture.
-arda::rhi::FArdaRHITextureDesc textureDesc;
+arda::FArdaRHITextureDesc textureDesc;
 textureDesc.mWidth = width;
 textureDesc.mHeight = height;
-textureDesc.mFormat = arda::rhi::EArdaRHIFormat::RGBA8UNorm;
-textureDesc.mUsage = arda::rhi::EArdaRHITextureUsage::ShaderResource |
-                     arda::rhi::EArdaRHITextureUsage::UnorderedAccess;
+textureDesc.mFormat = arda::EArdaRHIFormat::RGBA8UNorm;
+textureDesc.mUsage = arda::EArdaRHITextureUsage::ShaderResource |
+                     arda::EArdaRHITextureUsage::UnorderedAccess;
 textureDesc.mDebugName = "Compute output";
 auto texture = device->CreateTexture(textureDesc);
 if (!texture) return Fail(texture.mStatus.mMessage);</code></pre>
@@ -423,19 +423,19 @@ if (!bindings)
             <img src="Assets/persistent-pso-cache.svg" alt="In-memory descriptor LRU resolving live PSO objects above a persistent backend-native disk cache, with D3D12 and Vulkan implementations and shutdown flush.">
             <figcaption>The renderer LRU reuses live objects; the backend-native disk blob reduces driver compilation across executions. They are separate cache layers.</figcaption>
           </figure>
-          <pre><code>arda::backend::FArdaPipelineStateCache psoCache(device);
+          <pre><code>arda::FArdaPipelineStateCache psoCache(device);
 
 auto computeInit =
-    arda::backend::FArdaComputePipelineStateInitializer::FromGlobalShader(
+    arda::FArdaComputePipelineStateInitializer::FromGlobalShader(
         *computeGlobalShader, "Compute pipeline");
 
-arda::rhi::FArdaRHIGraphicsPipelineDesc fixedState;
-fixedState.mRasterState.mCullMode = arda::rhi::EArdaRHICullMode::None;
+arda::FArdaRHIGraphicsPipelineDesc fixedState;
+fixedState.mRasterState.mCullMode = arda::EArdaRHICullMode::None;
 fixedState.mDepthStencilState.mbDepthTest = false;
 fixedState.mDepthStencilState.mbDepthWrite = false;
 fixedState.mDebugName = "Raster pipeline";
 auto graphicsInit =
-    arda::backend::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
+    arda::FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(
         *vertexGlobalShader, pixelGlobalShader, inputLayout, fixedState);</code></pre>
           <p>The initializer path is designed for global shaders. Direct-bytecode users may instead create <a href="api-reference.html#api-arda-rhi-fardarhicomputepipelinedesc-698735b5"><code>FArdaRHIComputePipelineDesc</code></a> or <a href="api-reference.html#api-arda-rhi-fardarhigraphicspipelinedesc-e352046e"><code>FArdaRHIGraphicsPipelineDesc</code></a> and call device creation directly. Check <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-mbpipelinecachepersistence-7dc65353"><code>mbPipelineCachePersistence</code></a> before relying on optional native pipeline-cache serialization; both checked-in native modules report it when a persistence directory is configured.</p>
         </section>
@@ -450,12 +450,12 @@ auto graphicsInit =
             <img src="Assets/swapchain-frame-timeline.svg" alt="Swap-chain frame timeline showing image acquisition, command recording, submission preparation, graphics execution, and presentation.">
             <figcaption>Prepare submission before executing the graphics command list that writes the acquired image; present only after submission succeeds.</figcaption>
           </figure>
-          <pre><code>arda::rhi::FArdaRHIFramebufferRef framebuffer;
+          <pre><code>arda::FArdaRHIFramebufferRef framebuffer;
 if (!swapChain->AcquireFrame(framebuffer))
     return Fail(swapChain->GetError());
 
 auto commandResult = device->CreateCommandList(
-    arda::rhi::EArdaRHIQueueType::Graphics);
+    arda::EArdaRHIQueueType::Graphics);
 if (!commandResult) return Fail(commandResult.mStatus.mMessage);
 auto commandList = eastl::move(commandResult.mValue);
 
@@ -478,7 +478,7 @@ if (!swapChain->Present()) return Fail(swapChain->GetError());</code></pre>
         <section id="compute">
           <h2>9. Record compute work</h2>
           <p><span class="status">DEMONSTRATED</span> <code>ARDGExample</code> creates a compute state, attaches a binding set, asks the cache to bind the compute PSO, and dispatches thread groups through render-graph dispatch passes.</p>
-          <pre><code>arda::rhi::FArdaRHIComputeState computeState;
+          <pre><code>arda::FArdaRHIComputeState computeState;
 computeState.mBindings.push_back(computeBindingSet);
 
 auto status = psoCache.SetComputePipelineState(
@@ -497,13 +497,13 @@ commandList->Dispatch(groupsX, groupsY, 1);</code></pre>
           <pre><code>const uint32_t width = swapChain->GetWidth();
 const uint32_t height = swapChain->GetHeight();
 
-arda::rhi::FArdaRHIGraphicsState graphics;
+arda::FArdaRHIGraphicsState graphics;
 graphics.mPipeline = graphicsPipeline; // Omit when cache call supplies it.
 graphics.mFramebuffer = framebuffer;
 graphics.mBindings = { cameraBindings, materialBindings };
 graphics.mVertexBuffers.push_back({ vertexBuffer, 0, 0 });
 graphics.mIndexBuffer = indexBuffer;
-graphics.mIndexFormat = arda::rhi::EArdaRHIFormat::R32UInt;
+graphics.mIndexFormat = arda::EArdaRHIFormat::R32UInt;
 graphics.mViewports.push_back(
     { 0.f, float(width), 0.f, float(height), 0.f, 1.f });
 graphics.mScissors.push_back(
@@ -525,8 +525,8 @@ commandList->DrawIndexed({ indexCount });
 
           <section id="rt-capabilities">
           <h3>11.1 Evaluate the renderer's complete profile</h3>
-          <pre><code>const auto requirements = arda::backend::GetArdaRHIProfileRequirements(
-    arda::backend::EArdaRHIDeviceProfile::RealtimeRayTracingAndML);
+          <pre><code>const auto requirements = arda::GetArdaRHIProfileRequirements(
+    arda::EArdaRHIDeviceProfile::RealtimeRayTracingAndML);
 const auto admission = device->GetCapabilities().Evaluate(requirements);
 if (!admission.IsSupported())
     return Fail(admission.ToStatus().mMessage); // Names every missing ability.</code></pre>
@@ -542,7 +542,7 @@ auto library = device->CreateShaderLibrary(
 if (!library) return Fail(library.mStatus.mMessage);
 auto rayGen = device->GetShaderFromLibrary(
     library.mValue, "RayGen",
-    arda::rhi::EArdaRHIShaderStage::RayGeneration, "RayGen");
+    arda::EArdaRHIShaderStage::RayGeneration, "RayGen");
 if (!rayGen) return Fail(rayGen.mStatus.mMessage);
 
 // Vulkan alternative: FArdaRHIShaderDesc with RayGeneration/Miss/etc.,
@@ -563,12 +563,12 @@ if (!blas) return Fail(blas.mStatus.mMessage);
 auto tlas = device->CreateAccelStruct(tlasDesc); // PLACEHOLDER descriptor
 if (!tlas) return Fail(tlas.mStatus.mMessage);
 
-eastl::vector&lt;arda::rhi::FArdaRHIRayTracingGeometryDesc&gt; geometries{geometry};
+eastl::vector&lt;arda::FArdaRHIRayTracingGeometryDesc&gt; geometries{geometry};
 auto s = commandList->BuildBottomLevelAccelStruct(
     *blas.mValue, geometries, buildFlags);
 if (!s) return Fail(s.mMessage);
 
-eastl::vector&lt;arda::rhi::FArdaRHIRayTracingInstanceDesc&gt; instances{instance};
+eastl::vector&lt;arda::FArdaRHIRayTracingInstanceDesc&gt; instances{instance};
 s = commandList->BuildTopLevelAccelStruct(
     *tlas.mValue, instances, buildFlags);
 if (!s) return Fail(s.mMessage);</code></pre>
@@ -599,7 +599,7 @@ if (!hitIndex) return Fail(hitIndex.mStatus.mMessage);</code></pre>
           <section id="rt-dispatch">
           <h3>10.5 Bind and dispatch</h3>
           <p><code>rtGlobalBindings</code> is a placeholder binding set containing the TLAS, output UAV, camera/constants, and any scene resources declared by the pipeline layouts.</p>
-          <pre><code>arda::rhi::FArdaRHIRayTracingState rtState;
+          <pre><code>arda::FArdaRHIRayTracingState rtState;
 rtState.mPipeline = pipeline.mValue;
 rtState.mShaderTable = table.mValue;
 rtState.mBindings = { rtGlobalBindings }; // PLACEHOLDER
@@ -629,7 +629,7 @@ if (window.ConsumeResize(newWidth, newHeight))
           <h2>13. Preserve diagnostics and propagate status</h2>
           <p><span class="status">DEMONSTRATED</span> Install a long-lived <a href="api-reference.html#api-arda-backend-iardadiagnosticcallback-f00c8ba0"><code>IArdaDiagnosticCallback</code></a>, enable validation in development, and turn each failed operation into the caller's error immediately.</p>
           <pre><code>template&lt;class T&gt;
-bool Take(arda::rhi::TArdaRHIResult&lt;T&gt;&amp; result, T&amp; out, eastl::string&amp; error)
+bool Take(arda::TArdaRHIResult&lt;T&gt;&amp; result, T&amp; out, eastl::string&amp; error)
 {
     if (!result)
     {
@@ -640,7 +640,7 @@ bool Take(arda::rhi::TArdaRHIResult&lt;T&gt;&amp; result, T&amp; out, eastl::str
     return true;
 }
 
-bool Check(const arda::rhi::FArdaRHIStatus&amp; status, eastl::string&amp; error)
+bool Check(const arda::FArdaRHIStatus&amp; status, eastl::string&amp; error)
 {
     if (status) return true;
     error = status.mMessage;

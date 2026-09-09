@@ -214,12 +214,12 @@
           </dl>
           <h3>Resource states</h3>
           <p><a href="api-reference.html#api-arda-rhi-eardarhiresourcestate-73bda157"><code>EArdaRHIResourceState</code></a> communicates intended access and layout: copy source/destination, render target, depth read/write, shader resource, unordered access, present, acceleration-structure roles, and more. A transition barrier reconciles previous and next state and establishes native synchronization as required.</p>
-          <pre><code>const rhi::FArdaRHITextureSubresourceRange mipZero{0, 1, 0, 1};
+          <pre><code>const arda::FArdaRHITextureSubresourceRange mipZero{0, 1, 0, 1};
 
 if (auto status = command-&gt;SetTextureState(
         *sceneColor,
         mipZero,
-        rhi::EArdaRHIResourceState::RenderTarget); !status)
+        arda::EArdaRHIResourceState::RenderTarget); !status)
     return status;
 
 command-&gt;CommitBarriers();
@@ -229,7 +229,7 @@ command-&gt;ClearTexture(*sceneColor, mipZero, {0.f, 0.f, 0.f, 1.f});
 command-&gt;SetTextureState(
     *sceneColor,
     mipZero,
-    rhi::EArdaRHIResourceState::ShaderResource);
+    arda::EArdaRHIResourceState::ShaderResource);
 command-&gt;CommitBarriers();</code></pre>
           <h3>Automatic versus explicit tracking</h3>
           <p>With automatic barriers enabled, <code>SetTextureState</code>, <code>SetBufferState</code>, and <code>SetAccelStructState</code> update tracked intent; <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-commitbarriers-86e2d913"><code>CommitBarriers</code></a> emits pending work. <code>BeginTrackingTextureState</code> and <code>BeginTrackingBufferState</code> seed externally known state.</p>
@@ -285,17 +285,17 @@ command-&gt;CommitBarriers();</code></pre>
           <h2>Worked example: copy, compute, then graphics</h2>
           <pre><code>using namespace arda;
 
-auto copyResult = device-&gt;CreateCommandList(rhi::EArdaRHIQueueType::Copy);
-auto computeResult = device-&gt;CreateCommandList(rhi::EArdaRHIQueueType::Compute);
-auto graphicsResult = device-&gt;CreateCommandList(rhi::EArdaRHIQueueType::Graphics);
+auto copyResult = device-&gt;CreateCommandList(arda::EArdaRHIQueueType::Copy);
+auto computeResult = device-&gt;CreateCommandList(arda::EArdaRHIQueueType::Compute);
+auto graphicsResult = device-&gt;CreateCommandList(arda::EArdaRHIQueueType::Graphics);
 if (!copyResult || !computeResult || !graphicsResult)
-    return rhi::FArdaRHIStatus::Error(
-        rhi::EArdaRHIResult::Unsupported,
+    return arda::FArdaRHIStatus::Error(
+        arda::EArdaRHIResult::Unsupported,
         "Required queue is unavailable.");
 
 auto copy = eastl::move(copyResult.mValue);
 copy-&gt;Open();
-copy-&gt;SetBufferState(*workBuffer, rhi::EArdaRHIResourceState::CopyDest);
+copy-&gt;SetBufferState(*workBuffer, arda::EArdaRHIResourceState::CopyDest);
 copy-&gt;CommitBarriers();
 copy-&gt;WriteBuffer(*workBuffer, uploadData, uploadBytes);
 copy-&gt;Close();
@@ -304,14 +304,14 @@ if (!copied)
     return copied.mStatus;
 
 device-&gt;QueueWait(
-    rhi::EArdaRHIQueueType::Compute,
-    rhi::EArdaRHIQueueType::Copy,
+    arda::EArdaRHIQueueType::Compute,
+    arda::EArdaRHIQueueType::Copy,
     copied.mValue);
 
 auto compute = eastl::move(computeResult.mValue);
 compute-&gt;Open();
 compute-&gt;SetBufferState(
-    *workBuffer, rhi::EArdaRHIResourceState::UnorderedAccess);
+    *workBuffer, arda::EArdaRHIResourceState::UnorderedAccess);
 compute-&gt;CommitBarriers();
 compute-&gt;SetComputeState(computeState);
 compute-&gt;Dispatch(groupCount, 1, 1);
@@ -321,14 +321,14 @@ if (!computed)
     return computed.mStatus;
 
 device-&gt;QueueWait(
-    rhi::EArdaRHIQueueType::Graphics,
-    rhi::EArdaRHIQueueType::Compute,
+    arda::EArdaRHIQueueType::Graphics,
+    arda::EArdaRHIQueueType::Compute,
     computed.mValue);
 
 auto graphics = eastl::move(graphicsResult.mValue);
 graphics-&gt;Open();
 graphics-&gt;SetBufferState(
-    *workBuffer, rhi::EArdaRHIResourceState::VertexBuffer);
+    *workBuffer, arda::EArdaRHIResourceState::VertexBuffer);
 graphics-&gt;CommitBarriers();
 graphics-&gt;SetGraphicsState(graphicsState);
 graphics-&gt;Draw(drawArguments);

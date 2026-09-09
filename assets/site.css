@@ -389,6 +389,14 @@ figure svg {
   height: auto;
 }
 
+.diagram-scroll {
+  overflow-x: auto;
+}
+
+.diagram-scroll img {
+  min-width: 56rem;
+}
+
 figcaption {
   margin-top: 0.5rem;
   color: var(--muted);

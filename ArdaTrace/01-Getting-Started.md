@@ -30,7 +30,7 @@ The disabled scope, counter, and marker macros do not record events.
 #include "ArdaTrace.h"
 ```
 
-The public API is in the `arda::trace` namespace. Instrumentation macros are
+The public API is in the `arda` namespace. Instrumentation macros are
 available globally.
 
 ## 3. Record a capture
@@ -46,7 +46,7 @@ then stop it after those threads are quiescent:
 
 int main()
 {
-    using namespace arda::trace;
+    using namespace arda;
 
     if (!StartTraceCapture("frame.ardatrace"))
     {

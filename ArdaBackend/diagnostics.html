@@ -157,7 +157,7 @@
           <h2>Validation layers and callbacks</h2>
           <p><a href="api-reference.html#api-arda-backend-fardabackendconfiguration-mbenablevalidation-2f50a50d"><code>FArdaBackendConfiguration::mbEnableValidation</code></a> defaults to true. Enable validation during development, automated graphics tests, and pre-release qualification. Validation changes timing and consumes CPU/memory, so profile performance separately with it disabled.</p>
           <pre><code>class FBackendMessages final
-    : public arda::backend::IArdaDiagnosticCallback
+    : public arda::IArdaDiagnosticCallback
 {
 public:
     void Message(EArdaDiagnosticSeverity severity,
