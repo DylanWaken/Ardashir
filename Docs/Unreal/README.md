@@ -1,10 +1,12 @@
 # Unreal rendering atlas
 
-Open [Primitive class hierarchy & GPU storage](scene-types.html) or [Deferred rendering with Nanite & Lumen](deferred-pipeline.html). Both pages work as local files and on a static HTTP server. They require no CDN, package installation or engine checkout at viewing time. The [primitive reference](primitive-reference.md) contains the actual inheritance trees, all declared bases and storage explanations; the [pipeline/resource reference](reference.md) contains the rendering walkthrough and implementation checklists without JavaScript.
+Open [Scene representation for your own renderer](scene-types.html) or [Follow a deferred frame](deferred-pipeline.html). Both pages work as local files and on a static HTTP server without a CDN or engine checkout at viewing time. The scene page is an implementation guide, organized by renderer inputs rather than a class tree: 10 sections, 38 requirements, 18 geometry families and 5 source-extracted classification enums. Each requirement lists data to carry, conversion/implementation work and source references.
 
-The source is Unreal Engine 5.8.1, commit `71fe36aac5a8df5ccd66c763ffc902b29b6a9c43`. The general catalog is a **scoped lexical inventory**; the separate primitive discovery follows declared descendants across runtime and plugin sources. Its 371 class definitions form two actual inheritance trees rooted at `UPrimitiveComponent` and `FPrimitiveSceneProxy`. Search/module filters preserve ancestors and every edge; GPU associations appear separately in 31 reviewed family profiles. Optional or unreviewed subclasses show explicit base context. This does not claim a complete compiler-generated inventory or a reviewed GPU field layout for every plugin.
+Every one of the 21 deferred-frame stages has a **Functions & flow** tab: 94 selected function references and 92 clickable key operations across the page. References distinguish call sites from helper definitions and identify shader/RDG event labels separately. Arrows show selected control/data prerequisites, not an exhaustive C++ call graph or serial GPU timing. Existing configuration controls and the 89-operation planning checklist remain available.
 
-Read the coverage explanation in the page and the file hashes in [source-manifest.json](source-manifest.json), [primitives.js](primitives.js) and [primitive-storage.js](primitive-storage.js). Source hyperlinks target Epic's access-controlled GitHub repository; “Copy path” gives the path in `D:/UnrealEngine`.
+Text equivalents: [scene requirements](scene-reference.md), [functions and operation flows](stage-functions.md), and [pipeline/resource reference](reference.md). The source is Unreal Engine 5.8.1, commit `71fe36aac5a8df5ccd66c763ffc902b29b6a9c43`. Suggested records and conversion policies are an authored design guide, not a public export ABI or claims of existing Ardashir support. New source hashes are included in [scene-guide.js](scene-guide.js) and [stage-details.js](stage-details.js). Source hyperlinks target Epic's access-controlled GitHub repository; “Copy path” gives the path in `D:/UnrealEngine`.
+
+The earlier [primitive declaration appendix](primitive-reference.md), scoped [source manifest](source-manifest.json), `primitives.js` and `primitive-storage.js` remain as source/reference inputs. They do not define the scene page's layout. The lexical inventory is not a compiler-complete API, plugin coverage guarantee or reviewed GPU ABI for every class.
 
 To preview from the repository root:
 
@@ -21,12 +23,15 @@ python Scripts/Docs/BuildUnrealCatalog.py --engine-root D:/UnrealEngine
 python Scripts/Docs/BuildUnrealGuide.py --engine-root D:/UnrealEngine
 python Scripts/Docs/BuildUnrealPrimitives.py --engine-root D:/UnrealEngine
 python Scripts/Docs/BuildUnrealPrimitiveStorage.py --engine-root D:/UnrealEngine
+python Scripts/Docs/BuildUnrealSceneGuide.py --engine-root D:/UnrealEngine
+python Scripts/Docs/BuildUnrealStageDetails.py --engine-root D:/UnrealEngine
 python -m unittest discover -s Scripts/Docs -p "test_*.py"
 node --test Scripts/Docs/test_unreal_tree.cjs
+node --test Scripts/Docs/test_unreal_flows.cjs
 python Skills/document-codebase/scripts/validate_docs.py
 ```
 
-Pass `--check` to any builder to detect stale generated output. Storage/guide builders reject missing source anchors. When changing Unreal versions, re-review the authored explanations in `Scripts/Docs/UnrealGuideContent.py` and `Scripts/Docs/UnrealPrimitiveStorage.py`, not just the line numbers. C++ inheritance is extracted; storage associations and semantic responsibilities are authored. Conditional bases retain their preprocessor conditions, and ambiguous base candidates remain explicit. The parser is intentionally not a compiler and does not evaluate build configuration. It retains source locations to distinguish same-name local classes but does not qualify their names with enclosing functions.
+Pass `--check` to any builder to detect stale generated output. Builders reject missing source anchors; pinned function/call-site lines also fail if moved. When changing Unreal versions, re-review `UnrealSceneContent.py`, `UnrealStageDetails.py`, `UnrealGuideContent.py` and `UnrealPrimitiveStorage.py` under `Scripts/Docs`, not just line numbers. Scene classifications are extracted from the named enums; requirements, function explanations and operation flows are authored from source research.
 
 Operation checklist marks are stored only in the current browser, keyed by source revision. They are personal planning state, not implementation/test results. The “Clear operation checklist” button resets them. The configuration switches illustrate alternatives and never modify Unreal settings.
 

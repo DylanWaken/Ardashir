@@ -2,7 +2,7 @@
 
 Unreal Engine 5.8.1, commit `71fe36aac5a8df5ccd66c763ffc902b29b6a9c43`.
 
-Generated from `primitives.js` and authored storage associations. The interactive page is [scene-types.html](scene-types.html).
+Historical declaration/storage appendix, generated from `primitives.js` and authored storage associations. The current [scene representation guide](scene-types.html) organizes renderer input requirements by geometry, materials and other scene data; it does not display these inheritance trees.
 
 ## What each edge means
 

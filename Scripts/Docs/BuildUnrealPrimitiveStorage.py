@@ -72,7 +72,7 @@ def reference(data, primitive):
                 children.setdefault(base["targets"][0], []).append(node["id"])
     lines = ["# Primitive classes and GPU storage", "",
         f"Unreal Engine {data['meta']['version']}, commit `{data['meta']['commit']}`.", "",
-        "Generated from `primitives.js` and authored storage associations. The interactive page is [scene-types.html](scene-types.html).", "",
+        "Historical declaration/storage appendix, generated from `primitives.js` and authored storage associations. The current [scene representation guide](scene-types.html) organizes renderer input requirements by geometry, materials and other scene data; it does not display these inheritance trees.", "",
         "## What each edge means", "",
         "Every indentation below means a direct, uniquely resolved C++ base-class relationship. The two trees start at UPrimitiveComponent and FPrimitiveSceneProxy. Creating a proxy, owning a buffer, and producing a render target are associations, never tree edges. All bases, including interfaces and mixins outside these two roots, appear in the declaration inventory below. A multiply derived class can appear under each applicable primitive base. No class is reparented to make a module group.", "",
         primitive["meta"]["primitiveScope"], "",
