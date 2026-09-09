@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explore Unreal Engine 5.8.1 scene, GPU, RHI, RDG, Nanite and Lumen types in a source-pinned interactive hierarchy.">
+  <title>Unreal scene & GPU types · Ardashir</title>
+  <link rel="stylesheet" href="atlas.css">
+  <script src="catalog.js" defer></script>
+  <script src="guide.js" defer></script>
+  <script src="atlas.js" defer></script>
+  <script src="tree.js" defer></script>
+</head>
+<body data-page="types">
+  <a class="skip" href="#main">Skip to explorer</a>
+  <header class="topbar">
+    <a class="brand" href="../index.html">Ardashir <span>/ Engineering atlas</span></a>
+    <nav aria-label="Atlas pages"><a aria-current="page" href="scene-types.html">Scene & GPU types</a><a href="deferred-pipeline.html">Rendering pipeline <span aria-hidden="true">↗</span></a></nav>
+  </header>
+  <main id="main">
+    <section class="intro">
+      <div><p class="eyebrow">UNREAL ENGINE <span data-version></span> · SOURCE ATLAS 01</p><h1>From world to GPU.</h1><p class="lede">Explore the objects that describe a scene, prepare a frame and own its GPU resources. Expand a branch; select a type to follow its responsibilities and actual C++ bases.</p></div>
+      <div class="stat" id="inventory-stat"></div>
+    </section>
+    <div class="provenance"><span data-provenance></span><a href="reference.md">Text reference</a><a href="source-manifest.json">Source manifest</a><a href="integrity-audit.md">Docs-only audit</a></div>
+    <details class="scope"><summary>Reading the hierarchy & inventory coverage</summary><div id="scope-content"></div></details>
+    <div class="type-layout">
+      <section class="explorer panel" aria-labelledby="explorer-title">
+        <div class="panel-heading"><div><p class="eyebrow">EXPLORE THE STRUCTURE</p><h2 id="explorer-title">Scene & resource hierarchy</h2></div></div>
+        <div class="tree-controls">
+          <div class="segmented" role="group" aria-label="Type collection"><button type="button" id="mode-guided" aria-pressed="true">Explained types</button><button type="button" id="mode-catalog" aria-pressed="false">Full source index</button></div>
+          <label class="search-label" for="type-search">Find a type or responsibility<input id="type-search" type="search" placeholder="Try FGPUScene, texture, reflection…" autocomplete="off"></label>
+          <label for="module-filter">Module<select id="module-filter"><option value="">All modules</option></select></label>
+          <div class="toolbar"><button type="button" id="expand-tree">Expand groups</button><button type="button" id="collapse-tree">Collapse all</button><span id="tree-count" role="status"></span></div>
+        </div>
+        <div id="tree" class="tree" aria-label="Expandable type hierarchy"></div>
+        <button id="more-types" type="button" class="load-more" hidden>Show more matches</button>
+      </section>
+      <article class="panel detail-panel" id="type-detail" aria-labelledby="detail-title" aria-live="polite"></article>
+    </div>
+    <section class="knowledge" aria-labelledby="contracts-title"><p class="eyebrow">KEEP THESE BOUNDARIES CLEAR</p><h2 id="contracts-title">One frame. Several representations.</h2><div id="contracts" class="contract-grid"></div></section>
+    <section class="knowledge" aria-labelledby="faq-title"><h2 id="faq-title">Questions worth separating</h2><div id="faq"></div></section>
+    <noscript><p class="notice">Enable JavaScript for the tree, or read the complete <a href="reference.md">text reference</a>.</p></noscript>
+  </main>
+  <footer><span>Source-pinned explanations. No engine implementation bodies reproduced.</span><a href="deferred-pipeline.html">Next: follow the frame →</a></footer>
+</body>
+</html>
