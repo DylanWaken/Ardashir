@@ -5,7 +5,7 @@ Start at [the overview](index.html). The backend guides include:
 - [Resource recipes](resource-recipes.html): every RHI resource kind, allocation and ownership, with usage examples.
 - [Capability recipes](capability-recipes.html): every predicate in the native capability conformance matrix, its guard and executable workload.
 - [How CUDA works with graphics](cuda-graphics.html): general concepts, shared memory, graphics/CUDA handoffs, execution modes, lifetime and performance.
-- [CUDA operands and both launch methods](cuda-interop.html#launch-methods): implemented PTX descriptors, an ordinary CUDA C++ host-launch example, typed operands, graphics alternatives and submission lifetime.
+- [CUDA operands and both launch methods](cuda-interop.html#launch-methods): precompiled typed variants, registered and triple-chevron launches, runtime validation, RDG scheduling and submission lifetime.
 - [GPU validation setup](validation.html): local provisioning, discovery, unavailable-layer skips and failure diagnosis.
 - [Complete examples](gpu-examples.html): compiled test helpers, shared fixtures, HLSL and artifact registrations.
 - [Canonical API reference](api-reference.html): exact symbols and contracts, readable without JavaScript; JavaScript adds search and filtering.

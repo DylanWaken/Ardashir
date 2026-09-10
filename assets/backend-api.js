@@ -18,8 +18,9 @@ window.ArdaBackendApi = {
     "Source/ArdaBackend/Public/ArdaSwapChain.h",
     "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h",
-    "Source/ArdaBackend/Public/Compute/ArdaCudaCompiler.h",
-    "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
     "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHI.h",
@@ -35713,8 +35714,8 @@ window.ArdaBackendApi = {
     "component": "core",
     "page": "api-reference.html",
     "signature": "class FArdaComputeOperand",
-    "summary": "Common identity and parameter contract for user-implemented operands. Implementations own their device/runtime dependencies. The base does not own source files, register kernels, select variants, tune, or choose fallback paths.",
-    "details": "Common identity and parameter contract for user-implemented operands. Implementations own their device/runtime dependencies. The base does not own source files, register kernels, select variants, tune, or choose fallback paths.",
+    "summary": "Common diagnostic and resource metadata interface.",
+    "details": "Common diagnostic and resource metadata interface.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "params": [],
     "returns": "",
@@ -35724,7 +35725,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 13
+    "sourceLine": 12
   },
   {
     "id": "api-arda-fardacomputeoperand-fardacomputeoperand-7cabe42a",
@@ -35734,11 +35735,53 @@ window.ArdaBackendApi = {
     "component": "core",
     "page": "api-reference.html",
     "signature": "virtual ~FArdaComputeOperand() = default",
-    "summary": "Destroy only after callbacks using this operand have finished.",
-    "details": "Destroy only after callbacks using this operand have finished.",
+    "summary": "Destroys the backend and RHI object after dependent work is released.",
+    "details": "Destroys the backend and RHI object after dependent work is released. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "params": [],
     "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaComputeOperand"
+    ],
+    "sourceLine": 15
+  },
+  {
+    "id": "api-arda-fardacomputeoperand-getname-906aa1e5",
+    "name": "GetName",
+    "qualifiedName": "arda::FArdaComputeOperand::GetName",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "virtual const char* GetName() const noexcept = 0",
+    "summary": "Performs get name through the public backend and RHI contract.",
+    "details": "Performs get name through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaComputeOperand"
+    ],
+    "sourceLine": 16
+  },
+  {
+    "id": "api-arda-fardacomputeoperand-getoperandsupport-1f1a9251",
+    "name": "GetOperandSupport",
+    "qualifiedName": "arda::FArdaComputeOperand::GetOperandSupport",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus GetOperandSupport() const = 0",
+    "summary": "Performs get operand support through the public backend and RHI contract.",
+    "details": "Performs get operand support through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
@@ -35748,57 +35791,15 @@ window.ArdaBackendApi = {
     "sourceLine": 17
   },
   {
-    "id": "api-arda-fardacomputeoperand-getname-0dae12a2",
-    "name": "GetName",
-    "qualifiedName": "arda::FArdaComputeOperand::GetName",
-    "kind": "method",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual const char* GetName() const noexcept = 0",
-    "summary": "Returns an implementation-owned stable diagnostic name.",
-    "details": "Returns an implementation-owned stable diagnostic name.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FArdaComputeOperand"
-    ],
-    "sourceLine": 19
-  },
-  {
-    "id": "api-arda-fardacomputeoperand-getoperandsupport-5ad00903",
-    "name": "GetOperandSupport",
-    "qualifiedName": "arda::FArdaComputeOperand::GetOperandSupport",
-    "kind": "method",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaRHIStatus GetOperandSupport() const = 0",
-    "summary": "User-defined support query for the bound device, architecture and runtime. Return Unsupported with a reason when execution is unavailable. This query must not launch work; shape-specific validation belongs in dispatch.",
-    "details": "User-defined support query for the bound device, architecture and runtime. Return Unsupported with a reason when execution is unavailable. This query must not launch work; shape-specific validation belongs in dispatch.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "The implementation defines synchronization of its bound runtime state.",
-    "related": [
-      "arda::FArdaComputeOperand"
-    ],
-    "sourceLine": 25
-  },
-  {
-    "id": "api-arda-fardacomputeoperand-getparametermetadata-801b7ce4",
+    "id": "api-arda-fardacomputeoperand-getparametermetadata-11165187",
     "name": "GetParameterMetadata",
     "qualifiedName": "arda::FArdaComputeOperand::GetParameterMetadata",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual const FArdaComputeParameterMetadata& GetParameterMetadata() const = 0",
-    "summary": "Returns static metadata for the concrete typed dispatch parameters.",
-    "details": "Returns static metadata for the concrete typed dispatch parameters.",
+    "signature": "virtual const FArdaComputeParameterMetadata& GetParameterMetadata() const = 0",
+    "summary": "Performs get parameter metadata through the public backend and RHI contract.",
+    "details": "Performs get parameter metadata through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -35808,18 +35809,18 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeOperand"
     ],
-    "sourceLine": 27
+    "sourceLine": 18
   },
   {
-    "id": "api-arda-tardacomputeoperand-a9365ece",
+    "id": "api-arda-tardacomputeoperand-2d0c708f",
     "name": "TArdaComputeOperand",
     "qualifiedName": "arda::TArdaComputeOperand",
     "kind": "class",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "class TArdaComputeOperand : public FArdaComputeOperand",
-    "summary": "Derive using an application-defined compute parameter struct and override either or both dispatch hooks. The implementation performs support/input checks and owns CPU logic, algorithm selection, tuning, kernel launches and native library calls. Copy parameters as their actual C++ type: resources and host values can be nontrivial.",
-    "details": "Derive using an application-defined compute parameter struct and override either or both dispatch hooks. The implementation performs support/input checks and owns CPU logic, algorithm selection, tuning, kernel launches and native library calls. Copy parameters as their actual C++ type: resources and host values can be nontrivial.",
+    "signature": "template<class ParameterType, class VariantPayload> class TArdaComputeOperand : public FArdaComputeOperand",
+    "summary": "Authors supply BindKernelVariants and SelectKernel. Dispatch cannot be overridden. Binding is synchronized once per operand. Selection must have no GPU/host side effects. Each dispatch retains its own frozen values/resources independently of the operand.",
+    "details": "Authors supply BindKernelVariants and SelectKernel. Dispatch cannot be overridden. Binding is synchronized once per operand. Selection must have no GPU/host side effects. Each dispatch retains its own frozen values/resources independently of the operand.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "params": [],
     "returns": "",
@@ -35829,7 +35830,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 36
+    "sourceLine": 25
   },
   {
     "id": "api-arda-tardacomputeoperand-fparameters-e7e28412",
@@ -35839,8 +35840,8 @@ window.ArdaBackendApi = {
     "component": "core",
     "page": "api-reference.html",
     "signature": "using FParameters = ParameterType",
-    "summary": "User-defined C++ parameter type accepted by both hooks.",
-    "details": "User-defined C++ parameter type accepted by both hooks.",
+    "summary": "Defines f parameters in the public backend and RHI contract.",
+    "details": "Defines f parameters in the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "params": [],
     "returns": "",
@@ -35850,18 +35851,123 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 40
+    "sourceLine": 28
   },
   {
-    "id": "api-arda-tardacomputeoperand-getparametermetadata-cb358e4d",
+    "id": "api-arda-tardacomputeoperand-fkernelparameters-30c48ae6",
+    "name": "FKernelParameters",
+    "qualifiedName": "arda::TArdaComputeOperand::FKernelParameters",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "using FKernelParameters = typename ParameterType::FCuda",
+    "summary": "Defines f kernel parameters in the public backend and RHI contract.",
+    "details": "Defines f kernel parameters in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 29
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-fregistry-dea98490",
+    "name": "FRegistry",
+    "qualifiedName": "arda::TArdaComputeOperand::FRegistry",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "using FRegistry = TArdaCudaKernelRegistry<ParameterType, VariantPayload>",
+    "summary": "Defines f registry in the public backend and RHI contract.",
+    "details": "Defines f registry in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 30
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-fvariants-76f17a54",
+    "name": "FVariants",
+    "qualifiedName": "arda::TArdaComputeOperand::FVariants",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "using FVariants = typename FRegistry::FVariants",
+    "summary": "Defines f variants in the public backend and RHI contract.",
+    "details": "Defines f variants in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 31
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-fplan-7df69ee3",
+    "name": "FPlan",
+    "qualifiedName": "arda::TArdaComputeOperand::FPlan",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "using FPlan = eastl::shared_ptr<const FArdaCudaDispatchPlan>",
+    "summary": "Defines f plan in the public backend and RHI contract.",
+    "details": "Defines f plan in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 32
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-tardacomputeoperand-e0c5a309",
+    "name": "TArdaComputeOperand",
+    "qualifiedName": "arda::TArdaComputeOperand::TArdaComputeOperand",
+    "kind": "constructor",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "explicit TArdaComputeOperand(FArdaRHIDeviceRef Device) : mDevice(eastl::move(Device))",
+    "summary": "Constructs the backend and RHI value from the declared inputs.",
+    "details": "Constructs the backend and RHI value from the declared inputs. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 33
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-getparametermetadata-f1cf0ff0",
     "name": "GetParameterMetadata",
     "qualifiedName": "arda::TArdaComputeOperand::GetParameterMetadata",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] const FArdaComputeParameterMetadata& GetParameterMetadata() const final",
-    "summary": "Returns the parameter type's metadata without executing user dispatch code.",
-    "details": "Returns the parameter type's metadata without executing user dispatch code.",
+    "signature": "const FArdaComputeParameterMetadata& GetParameterMetadata() const final",
+    "summary": "Performs get parameter metadata through the public backend and RHI contract.",
+    "details": "Performs get parameter metadata through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -35871,49 +35977,196 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 42
+    "sourceLine": 34
   },
   {
-    "id": "api-arda-tardacomputeoperand-dispatch-dd686ad4",
-    "name": "Dispatch",
-    "qualifiedName": "arda::TArdaComputeOperand::Dispatch",
+    "id": "api-arda-tardacomputeoperand-bindkernelvariants-42a7bd31",
+    "name": "BindKernelVariants",
+    "qualifiedName": "arda::TArdaComputeOperand::BindKernelVariants",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaRHIStatus Dispatch(const ParameterType&)",
-    "summary": "Executes host code now; it may directly launch kernels or call a native runtime. Implementation helpers may span any number of .cpp/.cu/.cuh files; no PTX or launch-list result is required. Parameters are borrowed for this call only. Retain dependencies of asynchronous work and document stream/completion ownership: success is not a GPU fence. Default: Unsupported without side effects.",
-    "details": "Executes host code now; it may directly launch kernels or call a native runtime. Implementation helpers may span any number of .cpp/.cu/.cuh files; no PTX or launch-list result is required. Parameters are borrowed for this call only. Retain dependencies of asynchronous work and document stream/completion ownership: success is not a GPU fence. Default: Unsupported without side effects.",
+    "signature": "virtual void BindKernelVariants(FRegistry& Registry) const = 0",
+    "summary": "Registers compiled symbols and payloads without calling CUDA.",
+    "details": "Registers compiled symbols and payloads without calling CUDA.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "params": [],
     "returns": "See the declared result and status contract.",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "The author synchronizes mutable state, runtime calls and in-flight storage.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 52
+    "sourceLine": 36
   },
   {
-    "id": "api-arda-tardacomputeoperand-dispatchdeferred-9b204775",
+    "id": "api-arda-tardacomputeoperand-selectkernel-b4fcaedd",
+    "name": "SelectKernel",
+    "qualifiedName": "arda::TArdaComputeOperand::SelectKernel",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "virtual TArdaRHIResult<FArdaCudaKernelSelection> SelectKernel(const FParameters& Parameters, const FArdaCudaSelectionContext& Context, const FVariants& Candidates) const = 0",
+    "summary": "Chooses one compatible kernel using host metadata; can fail or explicitly return NoWork.",
+    "details": "Chooses one compatible kernel using host metadata; can fail or explicitly return NoWork.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 38
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-getkernelvariants-1c542e64",
+    "name": "GetKernelVariants",
+    "qualifiedName": "arda::TArdaComputeOperand::GetKernelVariants",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "TArdaRHIResult<const FRegistry*> GetKernelVariants() const",
+    "summary": "Initializes and returns a read-only registry with operand lifetime.",
+    "details": "Initializes and returns a read-only registry with operand lifetime.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 41
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-getoperandsupport-6d4a80d3",
+    "name": "GetOperandSupport",
+    "qualifiedName": "arda::TArdaComputeOperand::GetOperandSupport",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIStatus GetOperandSupport() const final",
+    "summary": "Validates schema, immutable registry, device CUDA support and native target coverage. Does not validate a particular resource allocation/view or launch a kernel.",
+    "details": "Validates schema, immutable registry, device CUDA support and native target coverage. Does not validate a particular resource allocation/view or launch a kernel.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Returns the first binding error, InvalidArgument for no device, or Unsupported for missing mode/native coverage.",
+    "threading": "Safe for concurrent inspection; binding initializes once without calling CUDA.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 48
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-preparedispatch-0959e24c",
+    "name": "PrepareDispatch",
+    "qualifiedName": "arda::TArdaComputeOperand::PrepareDispatch",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "virtual TArdaRHIResult<FPlan> PrepareDispatch(const FParameters& Parameters, EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) const final",
+    "summary": "Freezes a validated launch plan. Parameters can be changed/destroyed after return.",
+    "details": "Freezes a validated launch plan. Parameters can be changed/destroyed after return.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 59
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-recordplan-0923eeba",
+    "name": "RecordPlan",
+    "qualifiedName": "arda::TArdaComputeOperand::RecordPlan",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "static FArdaRHIStatus RecordPlan(IArdaRHICommandList& Commands, const FPlan& Plan)",
+    "summary": "Records a frozen plan without submitting. Native addresses resolve in the provider.",
+    "details": "Records a frozen plan without submitting. Native addresses resolve in the provider.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 86
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-dispatchdeferred-054ad63a",
     "name": "DispatchDeferred",
     "qualifiedName": "arda::TArdaComputeOperand::DispatchDeferred",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaRHIStatus DispatchDeferred(IArdaRHICommandList&, const ParameterType&)",
-    "summary": "Runs recording logic now and appends work to a caller-owned open command list. The implementation may record several CUDA/shader operations with host logic and tuning between them. It must not close/submit the list or launch unordered external work. Native libraries need an explicit compatible submission adapter for this hook. Borrow parameters only during recording; retain dependencies through execution and propagate recording errors without retrying partial writes. Default: Unsupported; it never silently calls immediate Dispatch. RDG scheduling is future integration.",
-    "details": "Runs recording logic now and appends work to a caller-owned open command list. The implementation may record several CUDA/shader operations with host logic and tuning between them. It must not close/submit the list or launch unordered external work. Native libraries need an explicit compatible submission adapter for this hook. Borrow parameters only during recording; retain dependencies through execution and propagate recording errors without retrying partial writes. Default: Unsupported; it never silently calls immediate Dispatch. RDG scheduling is future integration.",
+    "signature": "virtual FArdaRHIStatus DispatchDeferred(IArdaRHICommandList& Commands, const FParameters& Parameters) const final",
+    "summary": "Records one selected kernel into the caller-owned list; RDG uses this path.",
+    "details": "Records one selected kernel into the caller-owned list; RDG uses this path.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "params": [],
     "returns": "See the declared result and status contract.",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Serialize the caller's command list and any mutable operand state.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 67
+    "sourceLine": 95
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-dispatch-2a87d7a8",
+    "name": "Dispatch",
+    "qualifiedName": "arda::TArdaComputeOperand::Dispatch",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "virtual TArdaRHIResult<FArdaCudaSubmission> Dispatch(const FParameters& Parameters, EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) const final",
+    "summary": "Submits the shared plan path and returns its queue completion identity.",
+    "details": "Submits the shared plan path and returns its queue completion identity.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 101
+  },
+  {
+    "id": "api-arda-tardacomputeoperand-getdevice-a6d22968",
+    "name": "GetDevice",
+    "qualifiedName": "arda::TArdaComputeOperand::GetDevice",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "const FArdaRHIDeviceRef& GetDevice() const noexcept",
+    "summary": "Performs get device through the public backend and RHI contract.",
+    "details": "Performs get device through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaComputeOperand"
+    ],
+    "sourceLine": 118
   },
   {
     "id": "api-arda-eardacomputeparameterkind-dd17fa5d",
@@ -37071,16 +37324,247 @@ window.ArdaBackendApi = {
     "sourceLine": 211
   },
   {
-    "id": "api-arda-createardanvrtccompiler-1d53f457",
-    "name": "CreateArdaNvrtcCompiler",
-    "qualifiedName": "arda::CreateArdaNvrtcCompiler",
+    "id": "api-arda-fardacudabindinghelpers-17a8e7d5",
+    "name": "FArdaCudaBindingHelpers",
+    "qualifiedName": "arda::FArdaCudaBindingHelpers",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaBindingHelpers",
+    "summary": "Defines f arda cuda binding helpers in the public backend and RHI contract.",
+    "details": "Defines f arda cuda binding helpers in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 8
+  },
+  {
+    "id": "api-arda-signature-get-dd0075ef",
+    "name": "Get",
+    "qualifiedName": "arda::Signature::Get",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "static FArdaCudaKernelSignature Get()",
+    "summary": "Performs get through the public backend and RHI contract.",
+    "details": "Performs get through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::Signature"
+    ],
+    "sourceLine": 10
+  },
+  {
+    "id": "api-arda-fardacudabindinghelpers-signature-c19cda57",
+    "name": "Signature",
+    "qualifiedName": "arda::FArdaCudaBindingHelpers::Signature",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T> struct Signature",
+    "summary": "Defines signature in the public backend and RHI contract.",
+    "details": "Defines signature in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaBindingHelpers"
+    ],
+    "sourceLine": 10
+  },
+  {
+    "id": "api-arda-fardacudabindinghelpers-signature-e763d825",
+    "name": "Signature",
+    "qualifiedName": "arda::FArdaCudaBindingHelpers::Signature",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class P> struct Signature<void(*)(P)>",
+    "summary": "Defines signature in the public backend and RHI contract.",
+    "details": "Defines signature in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaBindingHelpers"
+    ],
+    "sourceLine": 11
+  },
+  {
+    "id": "api-arda-fardacudabindinghelpers-check-e37370dc",
+    "name": "Check",
+    "qualifiedName": "arda::FArdaCudaBindingHelpers::Check",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "static FArdaRHIStatus Check(cudaError_t Error)",
+    "summary": "Performs check through the public backend and RHI contract.",
+    "details": "Performs check through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaBindingHelpers"
+    ],
+    "sourceLine": 17
+  },
+  {
+    "id": "api-arda-fardacudabindinghelpers-entry-5e774020",
+    "name": "Entry",
+    "qualifiedName": "arda::FArdaCudaBindingHelpers::Entry",
+    "kind": "class",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<auto Kernel> class Entry final : public IArdaCudaKernelEntry",
+    "summary": "Defines entry in the public backend and RHI contract.",
+    "details": "Defines entry in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaBindingHelpers"
+    ],
+    "sourceLine": 19
+  },
+  {
+    "id": "api-arda-entry-entry-83950626",
+    "name": "Entry",
+    "qualifiedName": "arda::Entry::Entry",
+    "kind": "constructor",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "explicit Entry(FArdaCudaBuildInfo Build) : mBuild(eastl::move(Build))",
+    "summary": "Constructs the backend and RHI value from the declared inputs.",
+    "details": "Constructs the backend and RHI value from the declared inputs. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::Entry"
+    ],
+    "sourceLine": 22
+  },
+  {
+    "id": "api-arda-entry-getsignature-13154bcc",
+    "name": "GetSignature",
+    "qualifiedName": "arda::Entry::GetSignature",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaCudaKernelSignature GetSignature() const noexcept override",
+    "summary": "Performs get signature through the public backend and RHI contract.",
+    "details": "Performs get signature through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::Entry"
+    ],
+    "sourceLine": 23
+  },
+  {
+    "id": "api-arda-entry-getbuildinfo-dd94429a",
+    "name": "GetBuildInfo",
+    "qualifiedName": "arda::Entry::GetBuildInfo",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "const FArdaCudaBuildInfo& GetBuildInfo() const noexcept override",
+    "summary": "Performs get build info through the public backend and RHI contract.",
+    "details": "Performs get build info through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::Entry"
+    ],
+    "sourceLine": 24
+  },
+  {
+    "id": "api-arda-entry-getlimits-668039b1",
+    "name": "GetLimits",
+    "qualifiedName": "arda::Entry::GetLimits",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "TArdaRHIResult<FArdaCudaKernelLimits> GetLimits() const override",
+    "summary": "Performs get limits through the public backend and RHI contract.",
+    "details": "Performs get limits through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::Entry"
+    ],
+    "sourceLine": 25
+  },
+  {
+    "id": "api-arda-entry-launch-84819e47",
+    "name": "Launch",
+    "qualifiedName": "arda::Entry::Launch",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIStatus Launch(void* Stream, const FArdaCudaLaunchConfig& C, const void* Parameters, size_t Size) const override",
+    "summary": "Performs launch through the public backend and RHI contract.",
+    "details": "Performs launch through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::Entry"
+    ],
+    "sourceLine": 32
+  },
+  {
+    "id": "api-arda-bindardacudakernel-0d454f59",
+    "name": "BindArdaCudaKernel",
+    "qualifiedName": "arda::BindArdaCudaKernel",
     "kind": "function",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] TArdaRHIResult<FArdaCudaModuleCompiler> CreateArdaNvrtcCompiler(const char* LibraryPath)",
-    "summary": "Loads an explicit NVRTC shared-library path and returns a retaining compiler callback. Link Ardashir::ArdaCudaCompiler and configure ARDASHIR_NVRTC_INCLUDE_DIR to enable this adapter. Missing build support, library or exports returns Unsupported without affecting PTX operands. The caller must deploy NVRTC and its matching builtins library on the runtime library search path (PATH on Windows). No CUDA driver/device is needed to create the compiler. The callback targets compute_<SM>, forwards includes/options, preserves compiler errors and returns PTX without its terminating NUL. Export kernels with extern \"C\"; template/name-expression lowering and device linking are the caller's compiler-adapter policy. LibraryPath must be an absolute, nonempty path; the library remains loaded while any callback copy is retained. Source options must not override the target architecture selected by the adapter.",
-    "details": "Loads an explicit NVRTC shared-library path and returns a retaining compiler callback. Link Ardashir::ArdaCudaCompiler and configure ARDASHIR_NVRTC_INCLUDE_DIR to enable this adapter. Missing build support, library or exports returns Unsupported without affecting PTX operands. The caller must deploy NVRTC and its matching builtins library on the runtime library search path (PATH on Windows). No CUDA driver/device is needed to create the compiler. The callback targets compute_<SM>, forwards includes/options, preserves compiler errors and returns PTX without its terminating NUL. Export kernels with extern \"C\"; template/name-expression lowering and device linking are the caller's compiler-adapter policy. LibraryPath must be an absolute, nonempty path; the library remains loaded while any callback copy is retained. Source options must not override the target architecture selected by the adapter.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaCompiler.h",
+    "signature": "template<auto Kernel, class Payload> TArdaCudaKernelVariant<Kernel, Payload> BindArdaCudaKernel(const char* Name, Payload Info, FArdaCudaBuildInfo Build, FArdaCudaKernelRequirements Requirements = {})",
+    "summary": "Binds a precompiled symbol. Registry initialization reports incompatible signatures at runtime.",
+    "details": "Binds a precompiled symbol. Registry initialization reports incompatible signatures at runtime.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
     "params": [],
     "returns": "See the declared result and status contract.",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
@@ -37089,19 +37573,19 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 21
+    "sourceLine": 49
   },
   {
-    "id": "api-arda-eardacudasourcelanguage-fa07094a",
-    "name": "EArdaCudaSourceLanguage",
-    "qualifiedName": "arda::EArdaCudaSourceLanguage",
-    "kind": "enum",
+    "id": "api-arda-fardacudakernelrequirements-e3fa97cc",
+    "name": "FArdaCudaKernelRequirements",
+    "qualifiedName": "arda::FArdaCudaKernelRequirements",
+    "kind": "struct",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "enum class EArdaCudaSourceLanguage : uint8_t",
-    "summary": "Language accepted by a CUDA source module.",
-    "details": "Language accepted by a CUDA source module.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "struct FArdaCudaKernelRequirements",
+    "summary": "Algorithm restrictions, independent of native binary coverage.",
+    "details": "Algorithm restrictions, independent of native binary coverage.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
@@ -37110,61 +37594,166 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 14
+    "sourceLine": 8
   },
   {
-    "id": "api-arda-eardacudasourcelanguage-cudacpp-a13b847b",
-    "name": "CudaCpp",
-    "qualifiedName": "arda::EArdaCudaSourceLanguage::CudaCpp",
-    "kind": "enumerator",
+    "id": "api-arda-fardacudakernelrequirements-mminimumcomputecapability-94bd3733",
+    "name": "mMinimumComputeCapability",
+    "qualifiedName": "arda::FArdaCudaKernelRequirements::mMinimumComputeCapability",
+    "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "CudaCpp",
-    "summary": "CUDA C++ translated to PTX by the module's compiler callback.",
-    "details": "CUDA C++ translated to PTX by the module's compiler callback.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "uint32_t mMinimumComputeCapability = 0",
+    "summary": "Stores minimum compute capability in this public backend and RHI value.",
+    "details": "Stores minimum compute capability in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::EArdaCudaSourceLanguage"
+      "arda::FArdaCudaKernelRequirements"
+    ],
+    "sourceLine": 10
+  },
+  {
+    "id": "api-arda-fardacudakernelrequirements-mlaunchmodes-c75e0036",
+    "name": "mLaunchModes",
+    "qualifiedName": "arda::FArdaCudaKernelRequirements::mLaunchModes",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint32_t mLaunchModes = 0",
+    "summary": "Bit mask over EArdaCudaLaunchMode; zero accepts all admitted modes.",
+    "details": "Bit mask over EArdaCudaLaunchMode; zero accepts all admitted modes.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernelRequirements"
+    ],
+    "sourceLine": 12
+  },
+  {
+    "id": "api-arda-tardacudakernelvariant-ead6eac2",
+    "name": "TArdaCudaKernelVariant",
+    "qualifiedName": "arda::TArdaCudaKernelVariant",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<auto Kernel, class Payload> struct TArdaCudaKernelVariant",
+    "summary": "Each compiled symbol has its own wrapper type and user-owned host policy payload.",
+    "details": "Each compiled symbol has its own wrapper type and user-owned host policy payload.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 15
+  },
+  {
+    "id": "api-arda-tardacudakernelvariant-mentry-cbcc75e6",
+    "name": "mEntry",
+    "qualifiedName": "arda::TArdaCudaKernelVariant::mEntry",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "eastl::shared_ptr<const IArdaCudaKernelEntry> mEntry",
+    "summary": "Stores entry in this public backend and RHI value.",
+    "details": "Stores entry in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaKernelVariant"
     ],
     "sourceLine": 17
   },
   {
-    "id": "api-arda-eardacudasourcelanguage-ptx-2adce36c",
-    "name": "Ptx",
-    "qualifiedName": "arda::EArdaCudaSourceLanguage::Ptx",
-    "kind": "enumerator",
+    "id": "api-arda-tardacudakernelvariant-mpayload-b2a35a42",
+    "name": "mPayload",
+    "qualifiedName": "arda::TArdaCudaKernelVariant::mPayload",
+    "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "Ptx",
-    "summary": "Precompiled PTX passed directly to the native launch provider.",
-    "details": "Precompiled PTX passed directly to the native launch provider.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "Payload mPayload",
+    "summary": "Stores payload in this public backend and RHI value.",
+    "details": "Stores payload in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::EArdaCudaSourceLanguage"
+      "arda::TArdaCudaKernelVariant"
+    ],
+    "sourceLine": 18
+  },
+  {
+    "id": "api-arda-tardacudakernelvariant-mname-97276ad9",
+    "name": "mName",
+    "qualifiedName": "arda::TArdaCudaKernelVariant::mName",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "eastl::string mName",
+    "summary": "Stores name in this public backend and RHI value.",
+    "details": "Stores name in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaKernelVariant"
     ],
     "sourceLine": 19
   },
   {
-    "id": "api-arda-fardacudasourceheader-d6254b34",
-    "name": "FArdaCudaSourceHeader",
-    "qualifiedName": "arda::FArdaCudaSourceHeader",
-    "kind": "struct",
+    "id": "api-arda-tardacudakernelvariant-mrequirements-bc24dc7d",
+    "name": "mRequirements",
+    "qualifiedName": "arda::TArdaCudaKernelVariant::mRequirements",
+    "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "struct FArdaCudaSourceHeader",
-    "summary": "An owned include supplied to the compiler without filesystem dependencies.",
-    "details": "An owned include supplied to the compiler without filesystem dependencies.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "FArdaCudaKernelRequirements mRequirements",
+    "summary": "Stores requirements in this public backend and RHI value.",
+    "details": "Stores requirements in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaKernelVariant"
+    ],
+    "sourceLine": 20
+  },
+  {
+    "id": "api-arda-tardacudakernelregistry-17cd772b",
+    "name": "TArdaCudaKernelRegistry",
+    "qualifiedName": "arda::TArdaCudaKernelRegistry",
+    "kind": "class",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class Parameters, class Payload> class TArdaCudaKernelRegistry",
+    "summary": "Immutable-after-binding registry; signature and resource eligibility checks occur at runtime.",
+    "details": "Immutable-after-binding registry; signature and resource eligibility checks occur at runtime.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
@@ -37176,298 +37765,1264 @@ window.ArdaBackendApi = {
     "sourceLine": 23
   },
   {
-    "id": "api-arda-fardacudasourceheader-mname-8578e655",
-    "name": "mName",
-    "qualifiedName": "arda::FArdaCudaSourceHeader::mName",
-    "kind": "member variable",
+    "id": "api-arda-tardacudakernelregistry-fvariant-9ac7dec9",
+    "name": "FVariant",
+    "qualifiedName": "arda::TArdaCudaKernelRegistry::FVariant",
+    "kind": "struct",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "eastl::string mName",
-    "summary": "Unique include name used by #include in the CUDA C++ source.",
-    "details": "Unique include name used by #include in the CUDA C++ source.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "struct FVariant",
+    "summary": "Defines f variant in the public backend and RHI contract.",
+    "details": "Defines f variant in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaSourceHeader"
+      "arda::TArdaCudaKernelRegistry"
     ],
     "sourceLine": 26
   },
   {
-    "id": "api-arda-fardacudasourceheader-mcode-7a2504a6",
-    "name": "mCode",
-    "qualifiedName": "arda::FArdaCudaSourceHeader::mCode",
+    "id": "api-arda-fvariant-mid-18d6167b",
+    "name": "mId",
+    "qualifiedName": "arda::FVariant::mId",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "eastl::string mCode",
-    "summary": "Header contents; embedded NULs are rejected.",
-    "details": "Header contents; embedded NULs are rejected.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "uint32_t mId = 0",
+    "summary": "Stores id in this public backend and RHI value.",
+    "details": "Stores id in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaSourceHeader"
+      "arda::FVariant"
     ],
     "sourceLine": 28
   },
   {
-    "id": "api-arda-fardacudamodulesource-6d56bc6d",
-    "name": "FArdaCudaModuleSource",
-    "qualifiedName": "arda::FArdaCudaModuleSource",
-    "kind": "struct",
+    "id": "api-arda-fvariant-mentry-7cce4ae7",
+    "name": "mEntry",
+    "qualifiedName": "arda::FVariant::mEntry",
+    "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "struct FArdaCudaModuleSource",
-    "summary": "Immutable translation unit shared by any number of operand implementations.",
-    "details": "Immutable translation unit shared by any number of operand implementations.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "eastl::shared_ptr<const IArdaCudaKernelEntry> mEntry",
+    "summary": "Stores entry in this public backend and RHI value.",
+    "details": "Stores entry in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda"
+      "arda::FVariant"
     ],
-    "sourceLine": 32
+    "sourceLine": 29
   },
   {
-    "id": "api-arda-fardacudamodulesource-mname-da14c1c9",
+    "id": "api-arda-fvariant-mpayload-926be985",
+    "name": "mPayload",
+    "qualifiedName": "arda::FVariant::mPayload",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "Payload mPayload",
+    "summary": "Stores payload in this public backend and RHI value.",
+    "details": "Stores payload in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FVariant"
+    ],
+    "sourceLine": 30
+  },
+  {
+    "id": "api-arda-fvariant-mname-c4cff3d0",
     "name": "mName",
-    "qualifiedName": "arda::FArdaCudaModuleSource::mName",
+    "qualifiedName": "arda::FVariant::mName",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
     "signature": "eastl::string mName",
-    "summary": "Source filename used for compiler diagnostics, for example ArdaMatmul.cu.",
-    "details": "Source filename used for compiler diagnostics, for example ArdaMatmul.cu.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "summary": "Stores name in this public backend and RHI value.",
+    "details": "Stores name in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaModuleSource"
+      "arda::FVariant"
     ],
-    "sourceLine": 35
+    "sourceLine": 31
   },
   {
-    "id": "api-arda-fardacudamodulesource-mcode-5feca246",
-    "name": "mCode",
-    "qualifiedName": "arda::FArdaCudaModuleSource::mCode",
+    "id": "api-arda-fvariant-mrequirements-591ac147",
+    "name": "mRequirements",
+    "qualifiedName": "arda::FVariant::mRequirements",
     "kind": "member variable",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "eastl::string mCode",
-    "summary": "Owned source contents, loaded from a .cu/.ptx file or embedded by the application.",
-    "details": "Owned source contents, loaded from a .cu/.ptx file or embedded by the application.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "FArdaCudaKernelRequirements mRequirements",
+    "summary": "Stores requirements in this public backend and RHI value.",
+    "details": "Stores requirements in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaModuleSource"
+      "arda::FVariant"
     ],
-    "sourceLine": 37
+    "sourceLine": 32
   },
   {
-    "id": "api-arda-fardacudamodulesource-mlanguage-8373d9bb",
-    "name": "mLanguage",
-    "qualifiedName": "arda::FArdaCudaModuleSource::mLanguage",
-    "kind": "member variable",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "EArdaCudaSourceLanguage mLanguage = EArdaCudaSourceLanguage::CudaCpp",
-    "summary": "CudaCpp requires an explicit compiler; Ptx requires no CUDA compiler or SDK.",
-    "details": "CudaCpp requires an explicit compiler; Ptx requires no CUDA compiler or SDK.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FArdaCudaModuleSource"
-    ],
-    "sourceLine": 39
-  },
-  {
-    "id": "api-arda-fardacudamodulesource-mheaders-399c6de4",
-    "name": "mHeaders",
-    "qualifiedName": "arda::FArdaCudaModuleSource::mHeaders",
-    "kind": "member variable",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "eastl::vector<FArdaCudaSourceHeader> mHeaders",
-    "summary": "CUDA C++ includes, supplied in declaration order to the compiler callback.",
-    "details": "CUDA C++ includes, supplied in declaration order to the compiler callback.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FArdaCudaModuleSource"
-    ],
-    "sourceLine": 41
-  },
-  {
-    "id": "api-arda-fardacudamodulesource-mcompileoptions-3cf45879",
-    "name": "mCompileOptions",
-    "qualifiedName": "arda::FArdaCudaModuleSource::mCompileOptions",
-    "kind": "member variable",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "eastl::vector<eastl::string> mCompileOptions",
-    "summary": "CUDA C++ compiler options; the callback must honor these and the requested SM target.",
-    "details": "CUDA C++ compiler options; the callback must honor these and the requested SM target.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FArdaCudaModuleSource"
-    ],
-    "sourceLine": 43
-  },
-  {
-    "id": "api-arda-fardacudamodulecompiler-6671eae1",
-    "name": "FArdaCudaModuleCompiler",
-    "qualifiedName": "arda::FArdaCudaModuleCompiler",
+    "id": "api-arda-tardacudakernelregistry-fvariants-a4ace94e",
+    "name": "FVariants",
+    "qualifiedName": "arda::TArdaCudaKernelRegistry::FVariants",
     "kind": "alias",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "using FArdaCudaModuleCompiler = eastl::function<TArdaRHIResult<eastl::string>( const FArdaCudaModuleSource&, uint32_t)>",
-    "summary": "Translates a source unit to owned PTX without a trailing NUL, or returns compiler diagnostics. The target is major * 10 + minor. Use an NVRTC adapter or an offline artifact lookup. Results must depend only on the immutable source/options and target; resources are unavailable. Calls are serialized per module. A compiler shared by several modules must support concurrency.",
-    "details": "Translates a source unit to owned PTX without a trailing NUL, or returns compiler diagnostics. The target is major * 10 + minor. Use an NVRTC adapter or an offline artifact lookup. Results must depend only on the immutable source/options and target; resources are unavailable. Calls are serialized per module. A compiler shared by several modules must support concurrency.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "using FVariants = eastl::vector<FVariant>",
+    "summary": "Defines f variants in the public backend and RHI contract.",
+    "details": "Defines f variants in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda"
+      "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 51
+    "sourceLine": 34
   },
   {
-    "id": "api-arda-fardacudamodule-9e64307d",
-    "name": "FArdaCudaModule",
-    "qualifiedName": "arda::FArdaCudaModule",
-    "kind": "class",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "class FArdaCudaModule final",
-    "summary": "Reusable source and thread-safe PTX cache, with no native CUDA context ownership.",
-    "details": "Reusable source and thread-safe PTX cache, with no native CUDA context ownership.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda"
-    ],
-    "sourceLine": 55
-  },
-  {
-    "id": "api-arda-fardacudamodule-create-9a63dddc",
-    "name": "Create",
-    "qualifiedName": "arda::FArdaCudaModule::Create",
+    "id": "api-arda-tardacudakernelregistry-add-2ecfa1d0",
+    "name": "Add",
+    "qualifiedName": "arda::TArdaCudaKernelRegistry::Add",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] static TArdaRHIResult<eastl::shared_ptr<const FArdaCudaModule>> Create( FArdaCudaModuleSource Source, FArdaCudaModuleCompiler Compiler = {})",
-    "summary": "Validates and owns source/compiler without compiling or requiring a CUDA device. CudaCpp requires a compiler; Ptx rejects compiler callbacks, headers and options. Reference captures must outlive the module; callbacks must not reenter this module.",
-    "details": "Validates and owns source/compiler without compiling or requiring a CUDA device. CudaCpp requires a compiler; Ptx rejects compiler callbacks, headers and options. Reference captures must outlive the module; callbacks must not reenter this module.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "template<auto Kernel> FArdaRHIStatus Add(TArdaCudaKernelVariant<Kernel, Payload> Variant)",
+    "summary": "Adds a symbol, retaining the first validation failure even if the caller ignores it.",
+    "details": "Adds a symbol, retaining the first validation failure even if the caller ignores it.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "See the declared result and status contract.",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaModule"
+      "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 62
+    "sourceLine": 36
   },
   {
-    "id": "api-arda-fardacudamodule-fardacudamodule-4bcab677",
-    "name": "~FArdaCudaModule",
-    "qualifiedName": "arda::FArdaCudaModule::~FArdaCudaModule",
-    "kind": "destructor",
+    "id": "api-arda-tardacudakernelregistry-freeze-6c728f0c",
+    "name": "Freeze",
+    "qualifiedName": "arda::TArdaCudaKernelRegistry::Freeze",
+    "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "~FArdaCudaModule()",
-    "summary": "Releases source, compiler and cached PTX after all retained module references are released.",
-    "details": "Releases source, compiler and cached PTX after all retained module references are released.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "FArdaRHIStatus Freeze()",
+    "summary": "Seals bindings without initializing CUDA.",
+    "details": "Seals bindings without initializing CUDA.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
-    "returns": "",
+    "returns": "See the declared result and status contract.",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaModule"
+      "arda::TArdaCudaKernelRegistry"
+    ],
+    "sourceLine": 58
+  },
+  {
+    "id": "api-arda-tardacudakernelregistry-getstatus-850f1b5a",
+    "name": "GetStatus",
+    "qualifiedName": "arda::TArdaCudaKernelRegistry::GetStatus",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "const FArdaRHIStatus& GetStatus() const noexcept",
+    "summary": "Performs get status through the public backend and RHI contract.",
+    "details": "Performs get status through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaKernelRegistry"
+    ],
+    "sourceLine": 64
+  },
+  {
+    "id": "api-arda-tardacudakernelregistry-getvariants-8daa90d6",
+    "name": "GetVariants",
+    "qualifiedName": "arda::TArdaCudaKernelRegistry::GetVariants",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "const FVariants& GetVariants() const noexcept",
+    "summary": "Performs get variants through the public backend and RHI contract.",
+    "details": "Performs get variants through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaKernelRegistry"
     ],
     "sourceLine": 65
   },
   {
-    "id": "api-arda-fardacudamodule-getsource-77fd25ea",
-    "name": "GetSource",
-    "qualifiedName": "arda::FArdaCudaModule::GetSource",
+    "id": "api-arda-tardacudakernelregistry-getcompatiblevariants-0dedf1de",
+    "name": "GetCompatibleVariants",
+    "qualifiedName": "arda::TArdaCudaKernelRegistry::GetCompatibleVariants",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] const FArdaCudaModuleSource& GetSource() const noexcept",
-    "summary": "Returns the immutable source, includes and compilation options.",
-    "details": "Returns the immutable source, includes and compilation options.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "FVariants GetCompatibleVariants(const FArdaCudaCapabilities& C) const",
+    "summary": "Filters native targets and execution requirements without launching work.",
+    "details": "Filters native targets and execution requirements without launching work.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "See the declared result and status contract.",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaModule"
+      "arda::TArdaCudaKernelRegistry"
     ],
     "sourceLine": 67
   },
   {
-    "id": "api-arda-fardacudamodule-getptx-a84e4ac2",
-    "name": "GetPtx",
-    "qualifiedName": "arda::FArdaCudaModule::GetPtx",
-    "kind": "method",
+    "id": "api-arda-foreachardacudapermutation-600d36a9",
+    "name": "ForEachArdaCudaPermutation",
+    "qualifiedName": "arda::ForEachArdaCudaPermutation",
+    "kind": "function",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] TArdaRHIResult<eastl::string> GetPtx(uint32_t ComputeCapability) const",
-    "summary": "Returns PTX for a nonzero SM target; successful C++ compilations are cached per SM. Failures and invalid compiler output are propagated without caching, allowing retry. This prepares code only; native module loading and GPU execution belong to the provider.",
-    "details": "Returns PTX for a nonzero SM target; successful C++ compilations are cached per SM. Failures and invalid compiler output are propagated without caching, allowing retry. This prepares code only; native module loading and GPU execution belong to the provider.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
+    "signature": "template<class T, T... Values, class Visitor> void ForEachArdaCudaPermutation(std::integer_sequence<T, Values...>, Visitor&& Visit)",
+    "summary": "Enumerates template values with a C++17 callable. Use if constexpr to prune combinations.",
+    "details": "Enumerates template values with a C++17 callable. Use if constexpr to prune combinations.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "params": [],
     "returns": "See the declared result and status contract.",
     "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaModule"
+      "arda"
     ],
-    "sourceLine": 72
+    "sourceLine": 87
+  },
+  {
+    "id": "api-arda-fardacudakernelselection-af4ca8b4",
+    "name": "FArdaCudaKernelSelection",
+    "qualifiedName": "arda::FArdaCudaKernelSelection",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaKernelSelection",
+    "summary": "One immutable selection decision.",
+    "details": "One immutable selection decision.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 90
+  },
+  {
+    "id": "api-arda-fardacudakernelselection-mvariantid-054e23fe",
+    "name": "mVariantId",
+    "qualifiedName": "arda::FArdaCudaKernelSelection::mVariantId",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint32_t mVariantId = UINT32_MAX",
+    "summary": "Stores variant id in this public backend and RHI value.",
+    "details": "Stores variant id in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernelSelection"
+    ],
+    "sourceLine": 92
+  },
+  {
+    "id": "api-arda-fardacudakernelselection-mlaunch-11154ebc",
+    "name": "mLaunch",
+    "qualifiedName": "arda::FArdaCudaKernelSelection::mLaunch",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaCudaLaunchConfig mLaunch",
+    "summary": "Stores launch in this public backend and RHI value.",
+    "details": "Stores launch in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernelSelection"
+    ],
+    "sourceLine": 93
+  },
+  {
+    "id": "api-arda-fardacudakernelselection-mbnowork-2c062b29",
+    "name": "mbNoWork",
+    "qualifiedName": "arda::FArdaCudaKernelSelection::mbNoWork",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "bool mbNoWork = false",
+    "summary": "Allowed only when the operand's mathematical contract permits an empty operation.",
+    "details": "Allowed only when the operand's mathematical contract permits an empty operation.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernelSelection"
+    ],
+    "sourceLine": 95
+  },
+  {
+    "id": "api-arda-fardacudaselectioncontext-7394dc65",
+    "name": "FArdaCudaSelectionContext",
+    "qualifiedName": "arda::FArdaCudaSelectionContext",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaSelectionContext",
+    "summary": "Host metadata available during selection; streams and addresses stay in the provider.",
+    "details": "Host metadata available during selection; streams and addresses stay in the provider.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 98
+  },
+  {
+    "id": "api-arda-fardacudaselectioncontext-mcapabilities-ebf71dac",
+    "name": "mCapabilities",
+    "qualifiedName": "arda::FArdaCudaSelectionContext::mCapabilities",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaCudaCapabilities mCapabilities",
+    "summary": "Stores capabilities in this public backend and RHI value.",
+    "details": "Stores capabilities in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSelectionContext"
+    ],
+    "sourceLine": 100
+  },
+  {
+    "id": "api-arda-fardacudaselectioncontext-mqueue-117216c2",
+    "name": "mQueue",
+    "qualifiedName": "arda::FArdaCudaSelectionContext::mQueue",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics",
+    "summary": "Stores queue in this public backend and RHI value.",
+    "details": "Stores queue in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSelectionContext"
+    ],
+    "sourceLine": 101
+  },
+  {
+    "id": "api-arda-fardacudasubmission-5f5fabac",
+    "name": "FArdaCudaSubmission",
+    "qualifiedName": "arda::FArdaCudaSubmission",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaSubmission",
+    "summary": "Queue completion identity. Zero denotes explicit NoWork.",
+    "details": "Queue completion identity. Zero denotes explicit NoWork.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 104
+  },
+  {
+    "id": "api-arda-fardacudasubmission-mdevice-8d294b61",
+    "name": "mDevice",
+    "qualifiedName": "arda::FArdaCudaSubmission::mDevice",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIDeviceRef mDevice",
+    "summary": "Stores device in this public backend and RHI value.",
+    "details": "Stores device in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSubmission"
+    ],
+    "sourceLine": 106
+  },
+  {
+    "id": "api-arda-fardacudasubmission-mqueue-8c64c3cf",
+    "name": "mQueue",
+    "qualifiedName": "arda::FArdaCudaSubmission::mQueue",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics",
+    "summary": "Stores queue in this public backend and RHI value.",
+    "details": "Stores queue in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSubmission"
+    ],
+    "sourceLine": 107
+  },
+  {
+    "id": "api-arda-fardacudasubmission-minstance-0a458bd7",
+    "name": "mInstance",
+    "qualifiedName": "arda::FArdaCudaSubmission::mInstance",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint64_t mInstance = 0",
+    "summary": "Stores instance in this public backend and RHI value.",
+    "details": "Stores instance in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSubmission"
+    ],
+    "sourceLine": 108
+  },
+  {
+    "id": "api-arda-fardacudasubmission-mselection-2fc30fea",
+    "name": "mSelection",
+    "qualifiedName": "arda::FArdaCudaSubmission::mSelection",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaCudaKernelSelection mSelection",
+    "summary": "Stores selection in this public backend and RHI value.",
+    "details": "Stores selection in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSubmission"
+    ],
+    "sourceLine": 109
+  },
+  {
+    "id": "api-arda-fardacudadispatchplan-31e70bad",
+    "name": "FArdaCudaDispatchPlan",
+    "qualifiedName": "arda::FArdaCudaDispatchPlan",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaDispatchPlan",
+    "summary": "Frozen values/resources/selection. Returned as shared_ptr<const> by operand preparation.",
+    "details": "Frozen values/resources/selection. Returned as shared_ptr<const> by operand preparation.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 112
+  },
+  {
+    "id": "api-arda-fardacudadispatchplan-mdevice-05d203af",
+    "name": "mDevice",
+    "qualifiedName": "arda::FArdaCudaDispatchPlan::mDevice",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIDeviceRef mDevice",
+    "summary": "Stores device in this public backend and RHI value.",
+    "details": "Stores device in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaDispatchPlan"
+    ],
+    "sourceLine": 114
+  },
+  {
+    "id": "api-arda-fardacudadispatchplan-mqueue-c50b1a54",
+    "name": "mQueue",
+    "qualifiedName": "arda::FArdaCudaDispatchPlan::mQueue",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics",
+    "summary": "Stores queue in this public backend and RHI value.",
+    "details": "Stores queue in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaDispatchPlan"
+    ],
+    "sourceLine": 115
+  },
+  {
+    "id": "api-arda-fardacudadispatchplan-mselection-2420b2de",
+    "name": "mSelection",
+    "qualifiedName": "arda::FArdaCudaDispatchPlan::mSelection",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaCudaKernelSelection mSelection",
+    "summary": "Stores selection in this public backend and RHI value.",
+    "details": "Stores selection in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaDispatchPlan"
+    ],
+    "sourceLine": 116
+  },
+  {
+    "id": "api-arda-fardacudadispatchplan-mdispatch-4d70e563",
+    "name": "mDispatch",
+    "qualifiedName": "arda::FArdaCudaDispatchPlan::mDispatch",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaCudaDispatch mDispatch",
+    "summary": "Stores dispatch in this public backend and RHI value.",
+    "details": "Stores dispatch in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaDispatchPlan"
+    ],
+    "sourceLine": 117
+  },
+  {
+    "id": "api-arda-isardacudasurfaceelementsupported-225b757b",
+    "name": "IsArdaCudaSurfaceElementSupported",
+    "qualifiedName": "arda::IsArdaCudaSurfaceElementSupported",
+    "kind": "function",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T> bool IsArdaCudaSurfaceElementSupported(EArdaRHIFormat Format)",
+    "summary": "Checks scalar channel interpretation, or explicit aggregate pixel storage size, at runtime. Aggregate pixel layouts are author-defined; no color, normalization or channel packing is performed.",
+    "details": "Checks scalar channel interpretation, or explicit aggregate pixel storage size, at runtime. Aggregate pixel layouts are author-defined; no color, normalization or channel packing is performed.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 15
+  },
+  {
+    "id": "api-arda-fardacudahostdomain-ffae65a7",
+    "name": "FArdaCudaHostDomain",
+    "qualifiedName": "arda::FArdaCudaHostDomain",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaHostDomain",
+    "summary": "Host representation of the shared parameter schema.",
+    "details": "Host representation of the shared parameter schema.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 29
+  },
+  {
+    "id": "api-arda-fardacudahostdomain-value-cb0f8a61",
+    "name": "Value",
+    "qualifiedName": "arda::FArdaCudaHostDomain::Value",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T> using Value = T",
+    "summary": "Defines value in the public backend and RHI contract.",
+    "details": "Defines value in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaHostDomain"
+    ],
+    "sourceLine": 31
+  },
+  {
+    "id": "api-arda-fardacudahostdomain-buffer-300c212b",
+    "name": "Buffer",
+    "qualifiedName": "arda::FArdaCudaHostDomain::Buffer",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T, EArdaComputeAccess Access> using Buffer = FArdaComputeBufferParameter",
+    "summary": "Defines buffer in the public backend and RHI contract.",
+    "details": "Defines buffer in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaHostDomain"
+    ],
+    "sourceLine": 32
+  },
+  {
+    "id": "api-arda-fardacudahostdomain-surface-6efb9cc2",
+    "name": "Surface",
+    "qualifiedName": "arda::FArdaCudaHostDomain::Surface",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T, EArdaComputeAccess Access> using Surface = FArdaComputeTextureParameter",
+    "summary": "Defines surface in the public backend and RHI contract.",
+    "details": "Defines surface in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaHostDomain"
+    ],
+    "sourceLine": 33
+  },
+  {
+    "id": "api-arda-fardacudadevicedomain-d8feaea8",
+    "name": "FArdaCudaDeviceDomain",
+    "qualifiedName": "arda::FArdaCudaDeviceDomain",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaDeviceDomain",
+    "summary": "Device representation; unsupported values receive inert storage and fail runtime validation.",
+    "details": "Device representation; unsupported values receive inert storage and fail runtime validation.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 36
+  },
+  {
+    "id": "api-arda-fardacudadevicedomain-value-0eb7af4f",
+    "name": "Value",
+    "qualifiedName": "arda::FArdaCudaDeviceDomain::Value",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T> using Value = std::conditional_t<std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>, T, uint64_t>",
+    "summary": "Defines value in the public backend and RHI contract.",
+    "details": "Defines value in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaDeviceDomain"
+    ],
+    "sourceLine": 38
+  },
+  {
+    "id": "api-arda-fardacudadevicedomain-buffer-b4932fda",
+    "name": "Buffer",
+    "qualifiedName": "arda::FArdaCudaDeviceDomain::Buffer",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T, EArdaComputeAccess Access> using Buffer = std::conditional_t<Access == EArdaComputeAccess::Read, const T*, T*>",
+    "summary": "Defines buffer in the public backend and RHI contract.",
+    "details": "Defines buffer in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaDeviceDomain"
+    ],
+    "sourceLine": 40
+  },
+  {
+    "id": "api-arda-fardacudadevicedomain-surface-1d8d5a1d",
+    "name": "Surface",
+    "qualifiedName": "arda::FArdaCudaDeviceDomain::Surface",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T, EArdaComputeAccess Access> using Surface = uint64_t",
+    "summary": "Defines surface in the public backend and RHI contract.",
+    "details": "Defines surface in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaDeviceDomain"
+    ],
+    "sourceLine": 42
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-498b8ac2",
+    "name": "FArdaCudaParameterMember",
+    "qualifiedName": "arda::FArdaCudaParameterMember",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaParameterMember",
+    "summary": "One host member and its corresponding CUDA argument location.",
+    "details": "One host member and its corresponding CUDA argument location.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 45
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-mname-e18b3462",
+    "name": "mName",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mName",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "const char* mName = nullptr",
+    "summary": "Stores name in this public backend and RHI value.",
+    "details": "Stores name in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 47
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-mkind-466c0acc",
+    "name": "mKind",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mKind",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "EArdaComputeParameterKind mKind = EArdaComputeParameterKind::Value",
+    "summary": "Stores kind in this public backend and RHI value.",
+    "details": "Stores kind in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 48
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-maccess-80a89de0",
+    "name": "mAccess",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mAccess",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "EArdaComputeAccess mAccess = EArdaComputeAccess::Read",
+    "summary": "Stores access in this public backend and RHI value.",
+    "details": "Stores access in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 49
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-mhostoffset-df659027",
+    "name": "mHostOffset",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mHostOffset",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "size_t mHostOffset = 0",
+    "summary": "Stores host offset in this public backend and RHI value.",
+    "details": "Stores host offset in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 50
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-mcudaoffset-79231a37",
+    "name": "mCudaOffset",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mCudaOffset",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "size_t mCudaOffset = 0",
+    "summary": "Stores cuda offset in this public backend and RHI value.",
+    "details": "Stores cuda offset in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 51
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-mhostsize-e7d18d7f",
+    "name": "mHostSize",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mHostSize",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "size_t mHostSize = 0",
+    "summary": "Stores host size in this public backend and RHI value.",
+    "details": "Stores host size in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 52
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-mcudasize-a0ce8d3c",
+    "name": "mCudaSize",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mCudaSize",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "size_t mCudaSize = 0",
+    "summary": "Stores cuda size in this public backend and RHI value.",
+    "details": "Stores cuda size in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 53
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-mhostalignment-641382c9",
+    "name": "mHostAlignment",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mHostAlignment",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "size_t mHostAlignment = 1",
+    "summary": "Stores host alignment in this public backend and RHI value.",
+    "details": "Stores host alignment in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 54
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-melementsize-3e165927",
+    "name": "mElementSize",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mElementSize",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "size_t mElementSize = 0",
+    "summary": "Stores element size in this public backend and RHI value.",
+    "details": "Stores element size in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 55
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-melementalignment-a0ed9a43",
+    "name": "mElementAlignment",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mElementAlignment",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "size_t mElementAlignment = 1",
+    "summary": "Stores element alignment in this public backend and RHI value.",
+    "details": "Stores element alignment in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 56
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-mformat-0ed57f01",
+    "name": "mFormat",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mFormat",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown",
+    "summary": "Stores format in this public backend and RHI value.",
+    "details": "Stores format in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 57
+  },
+  {
+    "id": "api-arda-fardacudaparametermember-mbsupported-01de9485",
+    "name": "mbSupported",
+    "qualifiedName": "arda::FArdaCudaParameterMember::mbSupported",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "bool mbSupported = false",
+    "summary": "Stores supported in this public backend and RHI value.",
+    "details": "Stores supported in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMember"
+    ],
+    "sourceLine": 58
+  },
+  {
+    "id": "api-arda-fardacudaparametermetadata-9bee218f",
+    "name": "FArdaCudaParameterMetadata",
+    "qualifiedName": "arda::FArdaCudaParameterMetadata",
+    "kind": "class",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "class FArdaCudaParameterMetadata",
+    "summary": "Immutable paired layouts and resource declarations derived from one schema.",
+    "details": "Immutable paired layouts and resource declarations derived from one schema.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 61
+  },
+  {
+    "id": "api-arda-fardacudaparametermetadata-fardacudaparametermetadata-2a28fadc",
+    "name": "FArdaCudaParameterMetadata",
+    "qualifiedName": "arda::FArdaCudaParameterMetadata::FArdaCudaParameterMetadata",
+    "kind": "constructor",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaCudaParameterMetadata(const char* Name, size_t HostSize, size_t HostAlignment, FArdaCudaKernelSignature Signature, bool HostLayoutSupported, eastl::vector<FArdaCudaParameterMember> Members)",
+    "summary": "Validates the generated layouts without accessing CUDA or a GPU.",
+    "details": "Validates the generated layouts without accessing CUDA or a GPU.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMetadata"
+    ],
+    "sourceLine": 65
+  },
+  {
+    "id": "api-arda-fardacudaparametermetadata-getstatus-0b36e565",
+    "name": "GetStatus",
+    "qualifiedName": "arda::FArdaCudaParameterMetadata::GetStatus",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "const FArdaRHIStatus& GetStatus() const noexcept",
+    "summary": "Reports unsupported host/device field types and malformed layouts at runtime.",
+    "details": "Reports unsupported host/device field types and malformed layouts at runtime.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMetadata"
+    ],
+    "sourceLine": 69
+  },
+  {
+    "id": "api-arda-fardacudaparametermetadata-gethostmetadata-525db12b",
+    "name": "GetHostMetadata",
+    "qualifiedName": "arda::FArdaCudaParameterMetadata::GetHostMetadata",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "const FArdaComputeParameterMetadata& GetHostMetadata() const noexcept",
+    "summary": "Host resource enumeration for ownership and scheduling.",
+    "details": "Host resource enumeration for ownership and scheduling.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMetadata"
+    ],
+    "sourceLine": 71
+  },
+  {
+    "id": "api-arda-fardacudaparametermetadata-getsignature-563ca9eb",
+    "name": "GetSignature",
+    "qualifiedName": "arda::FArdaCudaParameterMetadata::GetSignature",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaCudaKernelSignature GetSignature() const noexcept",
+    "summary": "Exact single-argument kernel contract.",
+    "details": "Exact single-argument kernel contract.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMetadata"
+    ],
+    "sourceLine": 73
+  },
+  {
+    "id": "api-arda-fardacudaparametermetadata-getmembers-73478663",
+    "name": "GetMembers",
+    "qualifiedName": "arda::FArdaCudaParameterMetadata::GetMembers",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "const eastl::vector<FArdaCudaParameterMember>& GetMembers() const noexcept",
+    "summary": "Paired member locations, in declaration order.",
+    "details": "Paired member locations, in declaration order.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMetadata"
+    ],
+    "sourceLine": 75
+  },
+  {
+    "id": "api-arda-fardacudaparametermetadata-prepare-d5816576",
+    "name": "Prepare",
+    "qualifiedName": "arda::FArdaCudaParameterMetadata::Prepare",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIStatus Prepare(const void* Parameters, IArdaRHIDevice& Device, FArdaCudaDispatch& Output) const",
+    "summary": "Freezes plain values and resource patches, retaining resources independently of Parameters. Checks sharing, ranges, element alignment and surface format; the RHI checks device ownership. No native addresses are resolved and no GPU work is issued. Output changes only on success.",
+    "details": "Freezes plain values and resource patches, retaining resources independently of Parameters. Checks sharing, ranges, element alignment and surface format; the RHI checks device ownership. No native addresses are resolved and no GPU work is issued. Output changes only on success.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterMetadata"
+    ],
+    "sourceLine": 80
+  },
+  {
+    "id": "api-arda-arda-cuda-parameter-struct-6ccbb61e",
+    "name": "ARDA_CUDA_PARAMETER_STRUCT",
+    "qualifiedName": "arda::ARDA_CUDA_PARAMETER_STRUCT",
+    "kind": "macro",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "#define ARDA_CUDA_PARAMETER_STRUCT(Name, Fields)",
+    "summary": "Declares a paired parameter schema. Fields is a macro accepting VALUE, BUFFER and SURFACE. BUFFER declares an element type/name/access; SURFACE also declares its exact storage format. Rebind permits a scheduler to provide logical-resource storage without changing the CUDA ABI.",
+    "details": "Declares a paired parameter schema. Fields is a macro accepting VALUE, BUFFER and SURFACE. BUFFER declares an element type/name/access; SURFACE also declares its exact storage format. Rebind permits a scheduler to provide logical-resource storage without changing the CUDA ABI.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 113
   },
   {
     "id": "api-arda-eardapipelinestatekind-64d17ed3",
@@ -38682,7 +40237,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 13
+    "sourceLine": 14
   },
   {
     "id": "api-arda-eardacudaexecutionmode-automatic-bd9b9c23",
@@ -38703,7 +40258,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaExecutionMode"
     ],
-    "sourceLine": 16
+    "sourceLine": 17
   },
   {
     "id": "api-arda-eardacudaexecutionmode-graphicsqueue-94159e71",
@@ -38724,7 +40279,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaExecutionMode"
     ],
-    "sourceLine": 18
+    "sourceLine": 19
   },
   {
     "id": "api-arda-eardacudaexecutionmode-contextswitch-2966c028",
@@ -38745,7 +40300,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaExecutionMode"
     ],
-    "sourceLine": 20
+    "sourceLine": 21
   },
   {
     "id": "api-arda-eardacudalaunchmode-3080113e",
@@ -38766,7 +40321,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 24
+    "sourceLine": 25
   },
   {
     "id": "api-arda-eardacudalaunchmode-none-b9a16eb8",
@@ -38787,7 +40342,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaLaunchMode"
     ],
-    "sourceLine": 27
+    "sourceLine": 28
   },
   {
     "id": "api-arda-eardacudalaunchmode-d3d12cig-9511c885",
@@ -38808,18 +40363,18 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaLaunchMode"
     ],
-    "sourceLine": 29
+    "sourceLine": 30
   },
   {
-    "id": "api-arda-eardacudalaunchmode-vulkankernel-160da676",
-    "name": "VulkanKernel",
-    "qualifiedName": "arda::EArdaCudaLaunchMode::VulkanKernel",
+    "id": "api-arda-eardacudalaunchmode-vulkancig-fcae90fd",
+    "name": "VulkanCiG",
+    "qualifiedName": "arda::EArdaCudaLaunchMode::VulkanCiG",
     "kind": "enumerator",
     "component": "rhi-resources",
     "page": "api-reference.html",
-    "signature": "VulkanKernel",
-    "summary": "VK_NV_cuda_kernel_launch on a Vulkan graphics or compute queue.",
-    "details": "VK_NV_cuda_kernel_launch on a Vulkan graphics or compute queue.",
+    "signature": "VulkanCiG",
+    "summary": "CUDA stream joined to a Vulkan external compute queue.",
+    "details": "CUDA stream joined to a Vulkan external compute queue.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -38829,7 +40384,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaLaunchMode"
     ],
-    "sourceLine": 31
+    "sourceLine": 32
   },
   {
     "id": "api-arda-eardacudalaunchmode-contextswitch-aee848cd",
@@ -38850,7 +40405,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaLaunchMode"
     ],
-    "sourceLine": 33
+    "sourceLine": 34
   },
   {
     "id": "api-arda-fardacudacapabilities-2b4d1813",
@@ -38871,7 +40426,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 37
+    "sourceLine": 38
   },
   {
     "id": "api-arda-fardacudacapabilities-mlaunchmode-53f37449",
@@ -38892,7 +40447,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 40
+    "sourceLine": 41
   },
   {
     "id": "api-arda-fardacudacapabilities-mfallbackreason-70fa2fb5",
@@ -38913,7 +40468,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 42
+    "sourceLine": 43
   },
   {
     "id": "api-arda-fardacudacapabilities-mcomputecapability-9fd3960c",
@@ -38934,7 +40489,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 44
+    "sourceLine": 45
   },
   {
     "id": "api-arda-fardacudacapabilities-mmaxthreadsperblock-b106474d",
@@ -38955,7 +40510,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 46
+    "sourceLine": 47
   },
   {
     "id": "api-arda-fardacudacapabilities-mmaxblocksize-5b6c6ddd",
@@ -38976,7 +40531,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 48
+    "sourceLine": 49
   },
   {
     "id": "api-arda-fardacudacapabilities-mmaxgridsize-e6045ae6",
@@ -38997,7 +40552,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 50
+    "sourceLine": 51
   },
   {
     "id": "api-arda-fardacudacapabilities-mmaxsharedmemorybytes-67d5fff8",
@@ -39018,7 +40573,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 52
+    "sourceLine": 53
   },
   {
     "id": "api-arda-fardacudacapabilities-mbsurfaceaccess-716668ea",
@@ -39039,7 +40594,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 54
+    "sourceLine": 55
   },
   {
     "id": "api-arda-fardacudacapabilities-mblayeredsurfaceaccess-cc2b08f5",
@@ -39060,7 +40615,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 56
+    "sourceLine": 57
   },
   {
     "id": "api-arda-fardacudacapabilities-msurfaceunavailablereason-328e6377",
@@ -39081,7 +40636,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 58
+    "sourceLine": 59
   },
   {
     "id": "api-arda-fardacudacapabilities-munavailablereason-fa4f51c9",
@@ -39102,7 +40657,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 60
+    "sourceLine": 61
   },
   {
     "id": "api-arda-fardacudacapabilities-operator-bool-fff48c54",
@@ -39123,7 +40678,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 62
+    "sourceLine": 63
   },
   {
     "id": "api-arda-eardacomputeaccess-6348bfa6",
@@ -39144,7 +40699,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 66
+    "sourceLine": 67
   },
   {
     "id": "api-arda-eardacomputeaccess-read-ecbdf367",
@@ -39165,7 +40720,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeAccess"
     ],
-    "sourceLine": 69
+    "sourceLine": 70
   },
   {
     "id": "api-arda-eardacomputeaccess-write-7f14efdc",
@@ -39186,7 +40741,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeAccess"
     ],
-    "sourceLine": 71
+    "sourceLine": 72
   },
   {
     "id": "api-arda-eardacomputeaccess-readwrite-8b38af4a",
@@ -39207,7 +40762,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeAccess"
     ],
-    "sourceLine": 73
+    "sourceLine": 74
   },
   {
     "id": "api-arda-eardacomputebindingtype-f2eadd2b",
@@ -39228,7 +40783,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 76
+    "sourceLine": 77
   },
   {
     "id": "api-arda-eardacomputebindingtype-buffer-3d8e5162",
@@ -39249,7 +40804,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeBindingType"
     ],
-    "sourceLine": 79
+    "sourceLine": 80
   },
   {
     "id": "api-arda-eardacomputebindingtype-surface-f8a3420d",
@@ -39270,7 +40825,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeBindingType"
     ],
-    "sourceLine": 81
+    "sourceLine": 82
   },
   {
     "id": "api-arda-eardacudascalartype-4f4964d0",
@@ -39291,7 +40846,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 84
+    "sourceLine": 85
   },
   {
     "id": "api-arda-eardacudascalartype-uint-05714f06",
@@ -39312,7 +40867,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaScalarType"
     ],
-    "sourceLine": 87
+    "sourceLine": 88
   },
   {
     "id": "api-arda-eardacudascalartype-sint-203e34f8",
@@ -39333,7 +40888,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaScalarType"
     ],
-    "sourceLine": 89
+    "sourceLine": 90
   },
   {
     "id": "api-arda-eardacudascalartype-float-2f21c531",
@@ -39354,7 +40909,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaScalarType"
     ],
-    "sourceLine": 91
+    "sourceLine": 92
   },
   {
     "id": "api-arda-fardacudaformatinfo-809af6d3",
@@ -39375,7 +40930,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 94
+    "sourceLine": 95
   },
   {
     "id": "api-arda-fardacudaformatinfo-mscalartype-1236da86",
@@ -39396,7 +40951,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaFormatInfo"
     ],
-    "sourceLine": 97
+    "sourceLine": 98
   },
   {
     "id": "api-arda-fardacudaformatinfo-mbits-95622b75",
@@ -39417,7 +40972,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaFormatInfo"
     ],
-    "sourceLine": 99
+    "sourceLine": 100
   },
   {
     "id": "api-arda-fardacudaformatinfo-mchannels-3ff88f85",
@@ -39438,7 +40993,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaFormatInfo"
     ],
-    "sourceLine": 101
+    "sourceLine": 102
   },
   {
     "id": "api-arda-getardacudaformatinfo-ca180757",
@@ -39459,7 +41014,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 104
+    "sourceLine": 105
   },
   {
     "id": "api-arda-fardacudabinding-e0fdec99",
@@ -39480,7 +41035,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 107
+    "sourceLine": 108
   },
   {
     "id": "api-arda-fardacudabinding-mresource-99707619",
@@ -39501,7 +41056,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 110
+    "sourceLine": 111
   },
   {
     "id": "api-arda-fardacudabinding-maccess-224336b2",
@@ -39522,7 +41077,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 112
+    "sourceLine": 113
   },
   {
     "id": "api-arda-fardacudabinding-mbufferrange-dca332c8",
@@ -39543,7 +41098,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 114
+    "sourceLine": 115
   },
   {
     "id": "api-arda-fardacudabinding-mmiplevel-1786fabe",
@@ -39564,18 +41119,18 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 116
+    "sourceLine": 117
   },
   {
-    "id": "api-arda-fardacudaargument-683d3f42",
-    "name": "FArdaCudaArgument",
-    "qualifiedName": "arda::FArdaCudaArgument",
+    "id": "api-arda-fardacudaarchitecture-42fc9ad1",
+    "name": "FArdaCudaArchitecture",
+    "qualifiedName": "arda::FArdaCudaArchitecture",
     "kind": "struct",
     "component": "rhi-resources",
     "page": "api-reference.html",
-    "signature": "struct FArdaCudaArgument",
-    "summary": "Either a typed resource binding or owned scalar/POD argument bytes.",
-    "details": "Either a typed resource binding or owned scalar/POD argument bytes.",
+    "signature": "struct FArdaCudaArchitecture",
+    "summary": "Native binary target emitted by the build; accelerated targets require an exact match.",
+    "details": "Native binary target emitted by the build; accelerated targets require an exact match.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -39585,18 +41140,18 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 120
+    "sourceLine": 121
   },
   {
-    "id": "api-arda-fardacudaargument-mbindingindex-4ecffd44",
-    "name": "mBindingIndex",
-    "qualifiedName": "arda::FArdaCudaArgument::mBindingIndex",
+    "id": "api-arda-fardacudaarchitecture-mcomputecapability-97b2d83c",
+    "name": "mComputeCapability",
+    "qualifiedName": "arda::FArdaCudaArchitecture::mComputeCapability",
     "kind": "member variable",
     "component": "rhi-resources",
     "page": "api-reference.html",
-    "signature": "uint32_t mBindingIndex = UINT32_MAX",
-    "summary": "Index into FArdaCudaDispatch::mBindings, or UINT32_MAX for owned value bytes.",
-    "details": "Index into FArdaCudaDispatch::mBindings, or UINT32_MAX for owned value bytes.",
+    "signature": "uint32_t mComputeCapability = 0",
+    "summary": "Major times ten plus minor.",
+    "details": "Major times ten plus minor.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -39604,20 +41159,20 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaArgument"
+      "arda::FArdaCudaArchitecture"
     ],
-    "sourceLine": 123
+    "sourceLine": 124
   },
   {
-    "id": "api-arda-fardacudaargument-mvalue-3a8f93ca",
-    "name": "mValue",
-    "qualifiedName": "arda::FArdaCudaArgument::mValue",
+    "id": "api-arda-fardacudaarchitecture-mbexact-8ba3439d",
+    "name": "mbExact",
+    "qualifiedName": "arda::FArdaCudaArchitecture::mbExact",
     "kind": "member variable",
     "component": "rhi-resources",
     "page": "api-reference.html",
-    "signature": "eastl::vector<uint8_t> mValue",
-    "summary": "Exact PTX parameter bytes; empty for a resource-binding argument.",
-    "details": "Exact PTX parameter bytes; empty for a resource-binding argument.",
+    "signature": "bool mbExact = false",
+    "summary": "Architecture/family-specific code is admitted only on its exact build target.",
+    "details": "Architecture/family-specific code is admitted only on its exact build target.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -39625,20 +41180,20 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaArgument"
+      "arda::FArdaCudaArchitecture"
     ],
-    "sourceLine": 125
+    "sourceLine": 126
   },
   {
-    "id": "api-arda-fardacudaargument-binding-c89c06a6",
-    "name": "Binding",
-    "qualifiedName": "arda::FArdaCudaArgument::Binding",
+    "id": "api-arda-fardacudaarchitecture-supports-bde826d7",
+    "name": "Supports",
+    "qualifiedName": "arda::FArdaCudaArchitecture::Supports",
     "kind": "method",
     "component": "rhi-resources",
     "page": "api-reference.html",
-    "signature": "static FArdaCudaArgument Binding(uint32_t Index)",
-    "summary": "Selects a retained binding; the provider supplies its 64-bit pointer/surface value.",
-    "details": "Selects a retained binding; the provider supplies its 64-bit pointer/surface value.",
+    "signature": "bool Supports(uint32_t DeviceCapability) const noexcept",
+    "summary": "Tests binary compatibility conservatively, without requesting driver compilation.",
+    "details": "Tests binary compatibility conservatively, without requesting driver compilation.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -39646,62 +41201,20 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaArgument"
+      "arda::FArdaCudaArchitecture"
     ],
-    "sourceLine": 127
+    "sourceLine": 128
   },
   {
-    "id": "api-arda-fardacudaargument-t-3b735679",
-    "name": "T",
-    "qualifiedName": "arda::FArdaCudaArgument::T",
-    "kind": "class",
-    "component": "rhi-resources",
-    "page": "api-reference.html",
-    "signature": "template<class T> static FArdaCudaArgument Value(const T& Value)",
-    "summary": "Copies a trivially copyable value. Its byte size/layout must match the PTX parameter ABI.",
-    "details": "Copies a trivially copyable value. Its byte size/layout must match the PTX parameter ABI.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FArdaCudaArgument"
-    ],
-    "sourceLine": 129
-  },
-  {
-    "id": "api-arda-fardacudaargument-value-7977f19f",
-    "name": "Value",
-    "qualifiedName": "arda::FArdaCudaArgument::Value",
-    "kind": "method",
-    "component": "rhi-resources",
-    "page": "api-reference.html",
-    "signature": "template<class T> static FArdaCudaArgument Value(const T& Value)",
-    "summary": "Copies a trivially copyable value. Its byte size/layout must match the PTX parameter ABI.",
-    "details": "Copies a trivially copyable value. Its byte size/layout must match the PTX parameter ABI.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FArdaCudaArgument"
-    ],
-    "sourceLine": 129
-  },
-  {
-    "id": "api-arda-fardacudakernel-a01486e1",
-    "name": "FArdaCudaKernel",
-    "qualifiedName": "arda::FArdaCudaKernel",
+    "id": "api-arda-fardacudabuildinfo-4d8ad014",
+    "name": "FArdaCudaBuildInfo",
+    "qualifiedName": "arda::FArdaCudaBuildInfo",
     "kind": "struct",
     "component": "rhi-resources",
     "page": "api-reference.html",
-    "signature": "struct FArdaCudaKernel",
-    "summary": "One PTX entry-point launch; owns code and arguments through command recording.",
-    "details": "One PTX entry-point launch; owns code and arguments through command recording.",
+    "signature": "struct FArdaCudaBuildInfo",
+    "summary": "Build-generated identity and native-code coverage for a compilation profile.",
+    "details": "Build-generated identity and native-code coverage for a compilation profile.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -39710,19 +41223,103 @@ window.ArdaBackendApi = {
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
       "arda"
+    ],
+    "sourceLine": 131
+  },
+  {
+    "id": "api-arda-fardacudabuildinfo-mname-8a9f2a87",
+    "name": "mName",
+    "qualifiedName": "arda::FArdaCudaBuildInfo::mName",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mName",
+    "summary": "Unique profile name; also isolates symbols compiled with different flags.",
+    "details": "Unique profile name; also isolates symbols compiled with different flags.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaBuildInfo"
+    ],
+    "sourceLine": 134
+  },
+  {
+    "id": "api-arda-fardacudabuildinfo-midentity-c98d85b2",
+    "name": "mIdentity",
+    "qualifiedName": "arda::FArdaCudaBuildInfo::mIdentity",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mIdentity",
+    "summary": "Compiler/options/source-build fingerprint for diagnostics and caches.",
+    "details": "Compiler/options/source-build fingerprint for diagnostics and caches.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaBuildInfo"
+    ],
+    "sourceLine": 136
+  },
+  {
+    "id": "api-arda-fardacudabuildinfo-marchitectures-6cffed24",
+    "name": "mArchitectures",
+    "qualifiedName": "arda::FArdaCudaBuildInfo::mArchitectures",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FArdaCudaArchitecture> mArchitectures",
+    "summary": "Native targets actually requested by the build.",
+    "details": "Native targets actually requested by the build.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaBuildInfo"
+    ],
+    "sourceLine": 138
+  },
+  {
+    "id": "api-arda-fardacudabuildinfo-mbfastmath-72da9a15",
+    "name": "mbFastMath",
+    "qualifiedName": "arda::FArdaCudaBuildInfo::mbFastMath",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbFastMath = false",
+    "summary": "True when the build opts into approximate floating-point operations.",
+    "details": "True when the build opts into approximate floating-point operations.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaBuildInfo"
     ],
     "sourceLine": 140
   },
   {
-    "id": "api-arda-fardacudakernel-mptx-a0dd1d0f",
-    "name": "mPtx",
-    "qualifiedName": "arda::FArdaCudaKernel::mPtx",
-    "kind": "member variable",
+    "id": "api-arda-fardacudalaunchconfig-277cad72",
+    "name": "FArdaCudaLaunchConfig",
+    "qualifiedName": "arda::FArdaCudaLaunchConfig",
+    "kind": "struct",
     "component": "rhi-resources",
     "page": "api-reference.html",
-    "signature": "eastl::string mPtx",
-    "summary": "PTX source bytes; embedded NULs are rejected. No CUDA-C compiler is invoked.",
-    "details": "PTX source bytes; embedded NULs are rejected. No CUDA-C compiler is invoked.",
+    "signature": "struct FArdaCudaLaunchConfig",
+    "summary": "Standard launch geometry. Streams, contexts and submission remain framework-owned.",
+    "details": "Standard launch geometry. Streams, contexts and submission remain framework-owned.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -39730,35 +41327,14 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaKernel"
+      "arda"
     ],
     "sourceLine": 143
   },
   {
-    "id": "api-arda-fardacudakernel-mentrypoint-dd8440b1",
-    "name": "mEntryPoint",
-    "qualifiedName": "arda::FArdaCudaKernel::mEntryPoint",
-    "kind": "member variable",
-    "component": "rhi-resources",
-    "page": "api-reference.html",
-    "signature": "eastl::string mEntryPoint",
-    "summary": "Exact exported PTX entry-point name.",
-    "details": "Exact exported PTX entry-point name.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FArdaCudaKernel"
-    ],
-    "sourceLine": 145
-  },
-  {
-    "id": "api-arda-fardacudakernel-mgridsize-1c612c53",
+    "id": "api-arda-fardacudalaunchconfig-mgridsize-e26cc179",
     "name": "mGridSize",
-    "qualifiedName": "arda::FArdaCudaKernel::mGridSize",
+    "qualifiedName": "arda::FArdaCudaLaunchConfig::mGridSize",
     "kind": "member variable",
     "component": "rhi-resources",
     "page": "api-reference.html",
@@ -39772,14 +41348,14 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaKernel"
+      "arda::FArdaCudaLaunchConfig"
     ],
-    "sourceLine": 147
+    "sourceLine": 146
   },
   {
-    "id": "api-arda-fardacudakernel-mblocksize-29bf56c5",
+    "id": "api-arda-fardacudalaunchconfig-mblocksize-cf7e48df",
     "name": "mBlockSize",
-    "qualifiedName": "arda::FArdaCudaKernel::mBlockSize",
+    "qualifiedName": "arda::FArdaCudaLaunchConfig::mBlockSize",
     "kind": "member variable",
     "component": "rhi-resources",
     "page": "api-reference.html",
@@ -39793,14 +41369,14 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaKernel"
+      "arda::FArdaCudaLaunchConfig"
     ],
-    "sourceLine": 149
+    "sourceLine": 148
   },
   {
-    "id": "api-arda-fardacudakernel-msharedmemorybytes-dd98ffb3",
+    "id": "api-arda-fardacudalaunchconfig-msharedmemorybytes-9f3757aa",
     "name": "mSharedMemoryBytes",
-    "qualifiedName": "arda::FArdaCudaKernel::mSharedMemoryBytes",
+    "qualifiedName": "arda::FArdaCudaLaunchConfig::mSharedMemoryBytes",
     "kind": "member variable",
     "component": "rhi-resources",
     "page": "api-reference.html",
@@ -39814,41 +41390,20 @@ window.ArdaBackendApi = {
     "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
     "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
     "related": [
-      "arda::FArdaCudaKernel"
+      "arda::FArdaCudaLaunchConfig"
     ],
-    "sourceLine": 151
+    "sourceLine": 150
   },
   {
-    "id": "api-arda-fardacudakernel-marguments-dd6b07e5",
-    "name": "mArguments",
-    "qualifiedName": "arda::FArdaCudaKernel::mArguments",
-    "kind": "member variable",
-    "component": "rhi-resources",
-    "page": "api-reference.html",
-    "signature": "eastl::vector<FArdaCudaArgument> mArguments",
-    "summary": "Ordered arguments matching the PTX entry point, including unused parameters.",
-    "details": "Ordered arguments matching the PTX entry point, including unused parameters.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FArdaCudaKernel"
-    ],
-    "sourceLine": 153
-  },
-  {
-    "id": "api-arda-fardacudadispatch-7832a24b",
-    "name": "FArdaCudaDispatch",
-    "qualifiedName": "arda::FArdaCudaDispatch",
+    "id": "api-arda-fardacudakernelsignature-e13b8196",
+    "name": "FArdaCudaKernelSignature",
+    "qualifiedName": "arda::FArdaCudaKernelSignature",
     "kind": "struct",
     "component": "rhi-resources",
     "page": "api-reference.html",
-    "signature": "struct FArdaCudaDispatch",
-    "summary": "Kernels execute in order; write/read dependencies between them are synchronized.",
-    "details": "Kernels execute in order; write/read dependencies between them are synchronized.",
+    "signature": "struct FArdaCudaKernelSignature",
+    "summary": "Runtime signature of the one by-value parameter accepted by a compiled entry.",
+    "details": "Runtime signature of the one by-value parameter accepted by a compiled entry.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -39858,7 +41413,490 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 157
+    "sourceLine": 153
+  },
+  {
+    "id": "api-arda-fardacudakernelsignature-mtype-88773501",
+    "name": "mType",
+    "qualifiedName": "arda::FArdaCudaKernelSignature::mType",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "const std::type_info* mType = nullptr",
+    "summary": "C++ type identity, compared at registration; null denotes an unsupported signature.",
+    "details": "C++ type identity, compared at registration; null denotes an unsupported signature.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernelSignature"
+    ],
+    "sourceLine": 156
+  },
+  {
+    "id": "api-arda-fardacudakernelsignature-msize-a07001bb",
+    "name": "mSize",
+    "qualifiedName": "arda::FArdaCudaKernelSignature::mSize",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "size_t mSize = 0",
+    "summary": "Size of the CUDA argument object.",
+    "details": "Size of the CUDA argument object.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernelSignature"
+    ],
+    "sourceLine": 158
+  },
+  {
+    "id": "api-arda-fardacudakernelsignature-malignment-2ee9d770",
+    "name": "mAlignment",
+    "qualifiedName": "arda::FArdaCudaKernelSignature::mAlignment",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "size_t mAlignment = 1",
+    "summary": "Alignment of the CUDA argument object.",
+    "details": "Alignment of the CUDA argument object.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernelSignature"
+    ],
+    "sourceLine": 160
+  },
+  {
+    "id": "api-arda-fardacudakernelsignature-mbsupported-80cc48ed",
+    "name": "mbSupported",
+    "qualifiedName": "arda::FArdaCudaKernelSignature::mbSupported",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbSupported = false",
+    "summary": "Runtime eligibility; no facade static assertion is required.",
+    "details": "Runtime eligibility; no facade static assertion is required.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernelSignature"
+    ],
+    "sourceLine": 162
+  },
+  {
+    "id": "api-arda-fardacudakernellimits-e3d2af33",
+    "name": "FArdaCudaKernelLimits",
+    "qualifiedName": "arda::FArdaCudaKernelLimits",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaKernelLimits",
+    "summary": "Kernel-specific native limits queried under the execution context.",
+    "details": "Kernel-specific native limits queried under the execution context.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 165
+  },
+  {
+    "id": "api-arda-fardacudakernellimits-mmaxthreadsperblock-eddb2620",
+    "name": "mMaxThreadsPerBlock",
+    "qualifiedName": "arda::FArdaCudaKernelLimits::mMaxThreadsPerBlock",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxThreadsPerBlock = 0",
+    "summary": "Maximum threads for this compiled function.",
+    "details": "Maximum threads for this compiled function.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernelLimits"
+    ],
+    "sourceLine": 168
+  },
+  {
+    "id": "api-arda-fardacudakernellimits-mstaticsharedmemorybytes-1c529e79",
+    "name": "mStaticSharedMemoryBytes",
+    "qualifiedName": "arda::FArdaCudaKernelLimits::mStaticSharedMemoryBytes",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint32_t mStaticSharedMemoryBytes = 0",
+    "summary": "Static shared memory used by the function.",
+    "details": "Static shared memory used by the function.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernelLimits"
+    ],
+    "sourceLine": 170
+  },
+  {
+    "id": "api-arda-fardacudakernellimits-mmaxdynamicsharedmemorybytes-405271c8",
+    "name": "mMaxDynamicSharedMemoryBytes",
+    "qualifiedName": "arda::FArdaCudaKernelLimits::mMaxDynamicSharedMemoryBytes",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxDynamicSharedMemoryBytes = 0",
+    "summary": "Maximum dynamic shared memory accepted by the function.",
+    "details": "Maximum dynamic shared memory accepted by the function.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernelLimits"
+    ],
+    "sourceLine": 172
+  },
+  {
+    "id": "api-arda-iardacudakernelentry-d81012e8",
+    "name": "IArdaCudaKernelEntry",
+    "qualifiedName": "arda::IArdaCudaKernelEntry",
+    "kind": "class",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "class IArdaCudaKernelEntry",
+    "summary": "Provider-facing compiled launch adapter. Implemented by the nvcc registration helper. The current CUDA context is supplied by the provider; the adapter never selects a device. Retain this object and its owning code module through GPU completion.",
+    "details": "Provider-facing compiled launch adapter. Implemented by the nvcc registration helper. The current CUDA context is supplied by the provider; the adapter never selects a device. Retain this object and its owning code module through GPU completion.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 178
+  },
+  {
+    "id": "api-arda-iardacudakernelentry-iardacudakernelentry-c6434efb",
+    "name": "~IArdaCudaKernelEntry",
+    "qualifiedName": "arda::IArdaCudaKernelEntry::~IArdaCudaKernelEntry",
+    "kind": "destructor",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual ~IArdaCudaKernelEntry() = default",
+    "summary": "Destroys the backend and RHI object after dependent work is released.",
+    "details": "Destroys the backend and RHI object after dependent work is released. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaKernelEntry"
+    ],
+    "sourceLine": 181
+  },
+  {
+    "id": "api-arda-iardacudakernelentry-getsignature-5789fdd3",
+    "name": "GetSignature",
+    "qualifiedName": "arda::IArdaCudaKernelEntry::GetSignature",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaCudaKernelSignature GetSignature() const noexcept = 0",
+    "summary": "Reports the registered signature without initializing CUDA.",
+    "details": "Reports the registered signature without initializing CUDA.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaKernelEntry"
+    ],
+    "sourceLine": 183
+  },
+  {
+    "id": "api-arda-iardacudakernelentry-getbuildinfo-14306c57",
+    "name": "GetBuildInfo",
+    "qualifiedName": "arda::IArdaCudaKernelEntry::GetBuildInfo",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual const FArdaCudaBuildInfo& GetBuildInfo() const noexcept = 0",
+    "summary": "Returns the immutable build manifest.",
+    "details": "Returns the immutable build manifest.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaKernelEntry"
+    ],
+    "sourceLine": 185
+  },
+  {
+    "id": "api-arda-iardacudakernelentry-getlimits-debed1c2",
+    "name": "GetLimits",
+    "qualifiedName": "arda::IArdaCudaKernelEntry::GetLimits",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual TArdaRHIResult<FArdaCudaKernelLimits> GetLimits() const = 0",
+    "summary": "Queries limits in the provider's current context; no kernel is launched.",
+    "details": "Queries limits in the provider's current context; no kernel is launched.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaKernelEntry"
+    ],
+    "sourceLine": 187
+  },
+  {
+    "id": "api-arda-iardacudakernelentry-launch-2a171925",
+    "name": "Launch",
+    "qualifiedName": "arda::IArdaCudaKernelEntry::Launch",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus Launch(void* Stream, const FArdaCudaLaunchConfig& Config, const void* Parameters, size_t ParameterSize) const = 0",
+    "summary": "Enqueues exactly one compiled kernel on the borrowed opaque CUDA stream.",
+    "details": "Enqueues exactly one compiled kernel on the borrowed opaque CUDA stream.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaKernelEntry"
+    ],
+    "sourceLine": 189
+  },
+  {
+    "id": "api-arda-fardacudaparameterpatch-2cb3939e",
+    "name": "FArdaCudaParameterPatch",
+    "qualifiedName": "arda::FArdaCudaParameterPatch",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaParameterPatch",
+    "summary": "Patches one resource address/surface into the owned CUDA parameter object.",
+    "details": "Patches one resource address/surface into the owned CUDA parameter object.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 193
+  },
+  {
+    "id": "api-arda-fardacudaparameterpatch-mbindingindex-b80a6151",
+    "name": "mBindingIndex",
+    "qualifiedName": "arda::FArdaCudaParameterPatch::mBindingIndex",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint32_t mBindingIndex = 0",
+    "summary": "Retained resource index in the dispatch.",
+    "details": "Retained resource index in the dispatch.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterPatch"
+    ],
+    "sourceLine": 196
+  },
+  {
+    "id": "api-arda-fardacudaparameterpatch-moffset-bb54d7bc",
+    "name": "mOffset",
+    "qualifiedName": "arda::FArdaCudaParameterPatch::mOffset",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "size_t mOffset = 0",
+    "summary": "Byte offset of the 64-bit CUDA resource representation.",
+    "details": "Byte offset of the 64-bit CUDA resource representation.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterPatch"
+    ],
+    "sourceLine": 198
+  },
+  {
+    "id": "api-arda-fardacudaparameterpatch-malignment-d62e79c4",
+    "name": "mAlignment",
+    "qualifiedName": "arda::FArdaCudaParameterPatch::mAlignment",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "size_t mAlignment = 1",
+    "summary": "Required native buffer address alignment. Surfaces use one.",
+    "details": "Required native buffer address alignment. Surfaces use one.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaParameterPatch"
+    ],
+    "sourceLine": 200
+  },
+  {
+    "id": "api-arda-fardacudakernel-f9242bfb",
+    "name": "FArdaCudaKernel",
+    "qualifiedName": "arda::FArdaCudaKernel",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaKernel : FArdaCudaLaunchConfig",
+    "summary": "One precompiled kernel and an owned, unresolved by-value CUDA parameter object.",
+    "details": "One precompiled kernel and an owned, unresolved by-value CUDA parameter object.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 203
+  },
+  {
+    "id": "api-arda-fardacudakernel-mentry-8f92e672",
+    "name": "mEntry",
+    "qualifiedName": "arda::FArdaCudaKernel::mEntry",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::shared_ptr<const IArdaCudaKernelEntry> mEntry",
+    "summary": "Retained compiled entry; source compilation and string entry lookup are unavailable.",
+    "details": "Retained compiled entry; source compilation and string entry lookup are unavailable.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernel"
+    ],
+    "sourceLine": 206
+  },
+  {
+    "id": "api-arda-fardacudakernel-mparameters-2eb1ad50",
+    "name": "mParameters",
+    "qualifiedName": "arda::FArdaCudaKernel::mParameters",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<uint8_t> mParameters",
+    "summary": "Frozen values; resource representations are patched by the provider.",
+    "details": "Frozen values; resource representations are patched by the provider.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernel"
+    ],
+    "sourceLine": 208
+  },
+  {
+    "id": "api-arda-fardacudakernel-mpatches-a87ea994",
+    "name": "mPatches",
+    "qualifiedName": "arda::FArdaCudaKernel::mPatches",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FArdaCudaParameterPatch> mPatches",
+    "summary": "Native resource locations inside the parameter object.",
+    "details": "Native resource locations inside the parameter object.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernel"
+    ],
+    "sourceLine": 210
+  },
+  {
+    "id": "api-arda-fardacudadispatch-7832a24b",
+    "name": "FArdaCudaDispatch",
+    "qualifiedName": "arda::FArdaCudaDispatch",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaDispatch",
+    "summary": "A single kernel dispatch; multiple operations must be recorded separately.",
+    "details": "A single kernel dispatch; multiple operations must be recorded separately.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 213
   },
   {
     "id": "api-arda-fardacudadispatch-mbindings-ef7c9d8f",
@@ -39879,7 +41917,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatch"
     ],
-    "sourceLine": 160
+    "sourceLine": 216
   },
   {
     "id": "api-arda-fardacudadispatch-mkernels-9a7d2f5f",
@@ -39889,8 +41927,8 @@ window.ArdaBackendApi = {
     "component": "rhi-resources",
     "page": "api-reference.html",
     "signature": "eastl::vector<FArdaCudaKernel> mKernels",
-    "summary": "Nonempty launch sequence recorded in this order.",
-    "details": "Nonempty launch sequence recorded in this order.",
+    "summary": "Exactly one launch. The vector preserves the provider ABI's batch representation.",
+    "details": "Exactly one launch. The vector preserves the provider ABI's batch representation.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -39900,7 +41938,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatch"
     ],
-    "sourceLine": 162
+    "sourceLine": 218
   },
   {
     "id": "api-arda-validateardacudatexture-dc3d493c",
@@ -39921,7 +41959,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 166
+    "sourceLine": 222
   },
   {
     "id": "api-arda-validateardacudabuffer-dcddcda3",
@@ -39942,7 +41980,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 168
+    "sourceLine": 224
   },
   {
     "id": "api-arda-validateardacudakernels-a5864f6f",
@@ -39963,7 +42001,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 170
+    "sourceLine": 226
   },
   {
     "id": "api-arda-fardarhibufferreadbackresult-0dc473ca",
@@ -40204,8 +42242,8 @@ window.ArdaBackendApi = {
     "component": "rhi-device",
     "page": "api-reference.html",
     "signature": "virtual FArdaRHIStatus DispatchCuda(const FArdaCudaDispatch&)",
-    "summary": "Records ordered CUDA launches on an open list; ExecuteCommandList submits the work. Bindings must belong to this device and already have qualified CUDA representations. Providers insert memory dependencies and retain bindings/modules until completion. D3D12 CiG accepts graphics lists; Vulkan and ContextSwitch accept graphics/compute lists. Copy lists are rejected. ContextSwitch records deferred segments and blocks at submission to drain graphics, execute CUDA, and complete its stream before the next graphics segment. CiG and ContextSwitch lists are single-use until reset. Execution failures are not retried as graphics work.",
-    "details": "Records ordered CUDA launches on an open list; ExecuteCommandList submits the work. Bindings must belong to this device and already have qualified CUDA representations. Providers insert memory dependencies and retain bindings/modules until completion. D3D12 CiG accepts graphics lists; Vulkan and ContextSwitch accept graphics/compute lists. Copy lists are rejected. ContextSwitch records deferred segments and blocks at submission to drain graphics, execute CUDA, and complete its stream before the next graphics segment. CiG and ContextSwitch lists are single-use until reset. Execution failures are not retried as graphics work.",
+    "summary": "Records one precompiled CUDA kernel on an open list; ExecuteCommandList submits the work. Bindings must belong to this device and already have qualified CUDA representations. Providers insert memory dependencies and retain bindings/native entries until completion. D3D12 CiG accepts graphics lists; Vulkan and ContextSwitch accept graphics/compute lists. Copy lists are rejected. ContextSwitch and Vulkan CiG record deferred segments joined by GPU fence/semaphore handoffs at submission, without per-kernel CPU waits. Final graphics completion proves CUDA completion. CUDA lists are single-use until reset. Execution failures are not retried as graphics work.",
+    "details": "Records one precompiled CUDA kernel on an open list; ExecuteCommandList submits the work. Bindings must belong to this device and already have qualified CUDA representations. Providers insert memory dependencies and retain bindings/native entries until completion. D3D12 CiG accepts graphics lists; Vulkan and ContextSwitch accept graphics/compute lists. Copy lists are rejected. ContextSwitch and Vulkan CiG record deferred segments joined by GPU fence/semaphore handoffs at submission, without per-kernel CPU waits. Final graphics completion proves CUDA completion. CUDA lists are single-use until reset. Execution failures are not retried as graphics work.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -45979,8 +48017,8 @@ window.ArdaBackendApi = {
     "component": "rhi-resources",
     "page": "api-reference.html",
     "signature": "struct FArdaCudaResourceInfo",
-    "summary": "Representation availability is not permission for concurrent access. Native CUDA launches use the graphics command stream; ordinary-context launches execute between completed graphics segments.",
-    "details": "Representation availability is not permission for concurrent access. Native CUDA launches use the graphics command stream; ordinary-context launches execute between completed graphics segments.",
+    "summary": "Representation availability is not permission for concurrent access. D3D12 CiG captures launches into the graphics command list. Vulkan CiG and ordinary contexts launch on CUDA streams ordered with graphics by GPU fence/semaphore handoffs. Retain shared storage until the final graphics consumer completes.",
+    "details": "Representation availability is not permission for concurrent access. D3D12 CiG captures launches into the graphics command list. Vulkan CiG and ordinary contexts launch on CUDA streams ordered with graphics by GPU fence/semaphore handoffs. Retain shared storage until the final graphics consumer completes.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResource.h",
     "params": [],
     "returns": "",
@@ -45990,7 +48028,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 33
+    "sourceLine": 34
   },
   {
     "id": "api-arda-fardacudaresourceinfo-msupportedrepresentation-578bf14e",
@@ -46011,7 +48049,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaResourceInfo"
     ],
-    "sourceLine": 36
+    "sourceLine": 37
   },
   {
     "id": "api-arda-fardacudaresourceinfo-mrepresentations-e478d013",
@@ -46032,7 +48070,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaResourceInfo"
     ],
-    "sourceLine": 38
+    "sourceLine": 39
   },
   {
     "id": "api-arda-fardacudaresourceinfo-mbsharingenabled-7b1df5a8",
@@ -46053,7 +48091,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaResourceInfo"
     ],
-    "sourceLine": 40
+    "sourceLine": 41
   },
   {
     "id": "api-arda-eardarhiresourcetype-46046253",
@@ -46074,7 +48112,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 44
+    "sourceLine": 45
   },
   {
     "id": "api-arda-eardarhiresourcetype-resourcecollection-69041e4e",
@@ -46095,7 +48133,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 65
+    "sourceLine": 66
   },
   {
     "id": "api-arda-eardarhiresourcetype-workgraphpipeline-76209e11",
@@ -46116,7 +48154,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 73
+    "sourceLine": 74
   },
   {
     "id": "api-arda-eardarhiresourcetype-shaderbundle-3d09e51f",
@@ -46137,7 +48175,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 74
+    "sourceLine": 75
   },
   {
     "id": "api-arda-eardarhiresourcetype-count-37ddfe4e",
@@ -46158,7 +48196,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 81
+    "sourceLine": 82
   },
   {
     "id": "api-arda-iardarhiresource-getcudaresourceinfo-4d3f9d8e",
@@ -46179,7 +48217,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIResource"
     ],
-    "sourceLine": 113
+    "sourceLine": 114
   },
   {
     "id": "api-arda-iardarhibindinglayout-getbindlessdesc-599cec89",
@@ -48424,6 +50462,27 @@ window.ArdaBackendApi = {
       "arda::FArdaRHIStatus"
     ],
     "sourceLine": 75
+  },
+  {
+    "id": "api-arda-tardarhiresult-6ee5f0b4",
+    "name": "TArdaRHIResult",
+    "qualifiedName": "arda::TArdaRHIResult",
+    "kind": "struct",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "template <typename T> struct TArdaRHIResult",
+    "summary": "Describes result.",
+    "details": "Describes result.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 83
   },
   {
     "id": "api-arda-tardarhiresult-operator-bool-edf3efc3",

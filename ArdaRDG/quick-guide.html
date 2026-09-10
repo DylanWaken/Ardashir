@@ -305,7 +305,7 @@ graph.AddPass(
           <h2>Capability-gated hardware ray tracing</h2>
           <aside class="callout warning">
             <h3>INTEGRATION SKETCH / TESTED RT SAMPLE AVAILABLE</h3>
-            <p>The CornellBox GPU smoke tests run BLAS/TLAS construction, shader-table ray dispatch, and presentation through ARDG on D3D12 and Vulkan. RDG conformance tests additionally read back a declared ray-dispatch buffer. The sketch below still uses application-specific descriptor and binding helpers; the implemented frame is in the repository at <code>Source/ArdaTests/CornellBox/Private/ArdaCornellBoxRenderer.cpp</code>.</p>
+            <p>The CornellBox GPU smoke tests run BLAS/TLAS construction, shader-table ray dispatch, and presentation through ARDG on D3D12 and Vulkan. RDG conformance tests additionally read back a declared ray-dispatch buffer. The sketch below still uses application-specific descriptor and binding helpers; the implemented frame is in the repository at <code>Source/<wbr>ArdaTests/<wbr>CornellBox/<wbr>Private/<wbr>ArdaCornellBoxRenderer.cpp</code>.</p>
           </aside>
 
           <h3>Gate setup before creating any RT-only object</h3>
@@ -560,7 +560,7 @@ ARDG_END_PARAMETER_STRUCT()</code></pre>
     return true;
 }</code></pre>
           <p>The declared chain is copy upload → compute UAV write → optional BLAS/TLAS build and RT UAV write → raster SRV read → back-buffer render-target write → final <code>Present</code>. The shared lighting texture produces the compute/RT-to-raster hazards; the AS declarations produce build/read transitions; the imported back-buffer write roots the visible chain.</p>
-          <p>Check <code>submitted.mStatus</code> before presentation. In these frame recipes, <code>Fail</code> is an application recovery boundary: it stops frame reuse, waits for whole-device completion or handles device loss, and only then releases application-owned frame state. This covers partial submission and the separate uniform upload. Reported callback failures prevent graph command-list submission and extraction; later upload, queue-wait, or submission failures can leave earlier work in flight. Repair the presentation path before another frame; skipping presentation does not cancel submitted GPU work.</p>
+          <p>Check <code>submitted.mStatus</code> before presentation. In these frame recipes, <code>Fail</code> is an application recovery boundary: it stops frame reuse, waits for whole-device completion or handles device loss, and only then releases application-owned frame state. This covers partial submission and the separate uniform upload. Ordinary recording callback failures prevent graph command-list submission. A <code>RecordAtSubmit</code> callback failure, or a later upload, queue-wait, or submission failure, can leave earlier work in flight. All execution failures prevent extraction publication. Repair the presentation path before another frame; skipping presentation does not cancel submitted GPU work.</p>
           <figure>
             <img src="Assets/rdg-hazard-edges.svg" alt="Resource reads and writes derive producer and synchronization edges, which keep observable producers live and order hazards.">
             <figcaption>Callbacks do not create graph edges. Frozen parameter declarations do. A missing RT input or output declaration can therefore produce both a transition bug and accidental culling.</figcaption>
@@ -607,7 +607,7 @@ if (!swapChain.Present())
             <dt>Acquire or present returns false</dt>
             <dd><strong>Cause:</strong> presentation/surface/resize failure. <strong>Action:</strong> read <code>swapChain.GetError()</code>, stop the frame, and repair or recreate the presentation path before building another graph.</dd>
             <dt>Backend, shader, pipeline, framebuffer, copy, build, state-bind, or dispatch status fails</dt>
-            <dd><strong>Cause:</strong> unsupported feature, invalid descriptor, incompatible state/layout, or backend error. <strong>Action:</strong> return callback status or call <code>context.ReportStatus</code>, stop draw/dispatch after failed setup, and inspect the execution result status before presentation. Callback failures prevent submission; later submission failures can leave prior work in flight.</dd>
+            <dd><strong>Cause:</strong> unsupported feature, invalid descriptor, incompatible state/layout, or backend error. <strong>Action:</strong> return callback status or call <code>context.ReportStatus</code>, stop draw/dispatch after failed setup, and inspect the execution result status before presentation. Ordinary recording callback failures prevent graph submission. <code>RecordAtSubmit</code> callback failures and later submission failures can leave prior work in flight; retain submitted instances until completion.</dd>
             <dt>Fatal check during compile</dt>
             <dd><strong>Cause:</strong> read before produce, <code>Unknown</code> direct state, conflicting same-pass access, illegal queue state, foreign logical pointer, or mutation after building. <strong>Action:</strong> fix declarations and create a fresh builder.</dd>
             <dt>Fatal check from a context getter</dt>
