@@ -36082,7 +36082,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 59
+    "sourceLine": 55
   },
   {
     "id": "api-arda-tardacomputeoperand-recordplan-0923eeba",
@@ -36103,7 +36103,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 86
+    "sourceLine": 82
   },
   {
     "id": "api-arda-tardacomputeoperand-dispatchdeferred-054ad63a",
@@ -36124,7 +36124,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 95
+    "sourceLine": 91
   },
   {
     "id": "api-arda-tardacomputeoperand-dispatch-2a87d7a8",
@@ -36145,7 +36145,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 101
+    "sourceLine": 97
   },
   {
     "id": "api-arda-tardacomputeoperand-getdevice-a6d22968",
@@ -36166,7 +36166,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 118
+    "sourceLine": 114
   },
   {
     "id": "api-arda-eardacomputeparameterkind-dd17fa5d",
@@ -37594,7 +37594,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 8
+    "sourceLine": 9
   },
   {
     "id": "api-arda-fardacudakernelrequirements-mminimumcomputecapability-94bd3733",
@@ -37615,7 +37615,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelRequirements"
     ],
-    "sourceLine": 10
+    "sourceLine": 11
   },
   {
     "id": "api-arda-fardacudakernelrequirements-mlaunchmodes-c75e0036",
@@ -37636,7 +37636,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelRequirements"
     ],
-    "sourceLine": 12
+    "sourceLine": 13
   },
   {
     "id": "api-arda-tardacudakernelvariant-ead6eac2",
@@ -37657,7 +37657,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 15
+    "sourceLine": 16
   },
   {
     "id": "api-arda-tardacudakernelvariant-mentry-cbcc75e6",
@@ -37678,7 +37678,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 17
+    "sourceLine": 18
   },
   {
     "id": "api-arda-tardacudakernelvariant-mpayload-b2a35a42",
@@ -37699,7 +37699,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 18
+    "sourceLine": 19
   },
   {
     "id": "api-arda-tardacudakernelvariant-mname-97276ad9",
@@ -37720,7 +37720,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 19
+    "sourceLine": 20
   },
   {
     "id": "api-arda-tardacudakernelvariant-mrequirements-bc24dc7d",
@@ -37741,7 +37741,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 20
+    "sourceLine": 21
   },
   {
     "id": "api-arda-tardacudakernelregistry-17cd772b",
@@ -37762,7 +37762,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 23
+    "sourceLine": 24
   },
   {
     "id": "api-arda-tardacudakernelregistry-fvariant-9ac7dec9",
@@ -37783,7 +37783,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 26
+    "sourceLine": 27
   },
   {
     "id": "api-arda-fvariant-mid-18d6167b",
@@ -37804,7 +37804,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 28
+    "sourceLine": 29
   },
   {
     "id": "api-arda-fvariant-mentry-7cce4ae7",
@@ -37825,7 +37825,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 29
+    "sourceLine": 30
   },
   {
     "id": "api-arda-fvariant-mpayload-926be985",
@@ -37846,7 +37846,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 30
+    "sourceLine": 31
   },
   {
     "id": "api-arda-fvariant-mname-c4cff3d0",
@@ -37867,7 +37867,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 31
+    "sourceLine": 32
   },
   {
     "id": "api-arda-fvariant-mrequirements-591ac147",
@@ -37888,7 +37888,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 32
+    "sourceLine": 33
   },
   {
     "id": "api-arda-tardacudakernelregistry-fvariants-a4ace94e",
@@ -37909,7 +37909,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 34
+    "sourceLine": 35
   },
   {
     "id": "api-arda-tardacudakernelregistry-add-2ecfa1d0",
@@ -37930,7 +37930,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 36
+    "sourceLine": 37
   },
   {
     "id": "api-arda-tardacudakernelregistry-freeze-6c728f0c",
@@ -37951,7 +37951,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 58
+    "sourceLine": 60
   },
   {
     "id": "api-arda-tardacudakernelregistry-getstatus-850f1b5a",
@@ -37972,7 +37972,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 64
+    "sourceLine": 66
   },
   {
     "id": "api-arda-tardacudakernelregistry-getvariants-8daa90d6",
@@ -37993,7 +37993,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 65
+    "sourceLine": 67
   },
   {
     "id": "api-arda-tardacudakernelregistry-getcompatiblevariants-0dedf1de",
@@ -38014,7 +38014,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 67
+    "sourceLine": 69
   },
   {
     "id": "api-arda-foreachardacudapermutation-600d36a9",
@@ -38035,7 +38035,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 87
+    "sourceLine": 89
   },
   {
     "id": "api-arda-fardacudakernelselection-af4ca8b4",
@@ -38056,7 +38056,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 90
+    "sourceLine": 92
   },
   {
     "id": "api-arda-fardacudakernelselection-mvariantid-054e23fe",
@@ -38077,7 +38077,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 92
+    "sourceLine": 94
   },
   {
     "id": "api-arda-fardacudakernelselection-mlaunch-11154ebc",
@@ -38098,7 +38098,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 93
+    "sourceLine": 95
   },
   {
     "id": "api-arda-fardacudakernelselection-mbnowork-2c062b29",
@@ -38119,7 +38119,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 95
+    "sourceLine": 97
   },
   {
     "id": "api-arda-fardacudaselectioncontext-7394dc65",
@@ -38140,7 +38140,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 98
+    "sourceLine": 100
   },
   {
     "id": "api-arda-fardacudaselectioncontext-mcapabilities-ebf71dac",
@@ -38161,7 +38161,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSelectionContext"
     ],
-    "sourceLine": 100
+    "sourceLine": 102
   },
   {
     "id": "api-arda-fardacudaselectioncontext-mqueue-117216c2",
@@ -38182,7 +38182,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSelectionContext"
     ],
-    "sourceLine": 101
+    "sourceLine": 103
   },
   {
     "id": "api-arda-fardacudasubmission-5f5fabac",
@@ -38203,7 +38203,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 104
+    "sourceLine": 106
   },
   {
     "id": "api-arda-fardacudasubmission-mdevice-8d294b61",
@@ -38224,7 +38224,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 106
+    "sourceLine": 108
   },
   {
     "id": "api-arda-fardacudasubmission-mqueue-8c64c3cf",
@@ -38245,7 +38245,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 107
+    "sourceLine": 109
   },
   {
     "id": "api-arda-fardacudasubmission-minstance-0a458bd7",
@@ -38266,7 +38266,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 108
+    "sourceLine": 110
   },
   {
     "id": "api-arda-fardacudasubmission-mselection-2fc30fea",
@@ -38287,7 +38287,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 109
+    "sourceLine": 111
   },
   {
     "id": "api-arda-fardacudadispatchplan-31e70bad",
@@ -38308,7 +38308,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 112
+    "sourceLine": 114
   },
   {
     "id": "api-arda-fardacudadispatchplan-mdevice-05d203af",
@@ -38329,7 +38329,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 114
+    "sourceLine": 116
   },
   {
     "id": "api-arda-fardacudadispatchplan-mqueue-c50b1a54",
@@ -38350,7 +38350,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 115
+    "sourceLine": 117
   },
   {
     "id": "api-arda-fardacudadispatchplan-mselection-2420b2de",
@@ -38371,7 +38371,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 116
+    "sourceLine": 118
   },
   {
     "id": "api-arda-fardacudadispatchplan-mdispatch-4d70e563",
@@ -38392,7 +38392,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 117
+    "sourceLine": 119
   },
   {
     "id": "api-arda-isardacudasurfaceelementsupported-225b757b",
@@ -38983,13 +38983,13 @@ window.ArdaBackendApi = {
     "sourceLine": 75
   },
   {
-    "id": "api-arda-fardacudaparametermetadata-prepare-d5816576",
+    "id": "api-arda-fardacudaparametermetadata-prepare-1a85f794",
     "name": "Prepare",
     "qualifiedName": "arda::FArdaCudaParameterMetadata::Prepare",
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "FArdaRHIStatus Prepare(const void* Parameters, IArdaRHIDevice& Device, FArdaCudaDispatch& Output) const",
+    "signature": "FArdaRHIStatus Prepare(const void* Parameters, FArdaCudaDispatch& Output) const",
     "summary": "Freezes plain values and resource patches, retaining resources independently of Parameters. Checks sharing, ranges, element alignment and surface format; the RHI checks device ownership. No native addresses are resolved and no GPU work is issued. Output changes only on success.",
     "details": "Freezes plain values and resource patches, retaining resources independently of Parameters. Checks sharing, ranges, element alignment and surface format; the RHI checks device ownership. No native addresses are resolved and no GPU work is issued. Output changes only on success.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
@@ -41906,8 +41906,8 @@ window.ArdaBackendApi = {
     "component": "rhi-resources",
     "page": "api-reference.html",
     "signature": "eastl::vector<FArdaCudaBinding> mBindings",
-    "summary": "Resource views shared by all kernels in this dispatch.",
-    "details": "Resource views shared by all kernels in this dispatch.",
+    "summary": "Resource views retained by the kernel in this dispatch.",
+    "details": "Resource views retained by the kernel in this dispatch.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
