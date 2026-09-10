@@ -4,6 +4,7 @@ target_link_libraries(ArdaRenderGraph
     PRIVATE Ardashir::ArdaTrace)
 
 if(ARDASHIR_BUILD_TESTS)
+    target_link_libraries(ArdaBackendTests PRIVATE Ardashir::ArdaRenderGraph)
     file(GLOB_RECURSE ARDA_RENDER_GRAPH_TEST_SOURCES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/Tests/*.cpp"

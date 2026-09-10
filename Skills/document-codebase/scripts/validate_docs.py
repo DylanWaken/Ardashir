@@ -133,6 +133,7 @@ MODULES = (
         required_public_headers=(
             "ArdaRenderGraph.h",
             "ArdaRenderGraphBlackboard.h",
+            "ArdaRenderGraphCuda.h",
             "ArdaRenderGraphBuilder.h",
             "ArdaRenderGraphDefinitions.h",
             "ArdaRenderGraphLog.h",
@@ -829,7 +830,7 @@ class Validator:
                     ))
         headers = sorted(
             item.resolve()
-            for item in (self.repo / module.source_public_root).rglob("*.h")
+            for item in (self.repo / module.source_public_root).rglob("*") if item.suffix in {".h", ".cuh"}
         )
         expected_sources = {
             posix(header.relative_to(self.repo)) for header in headers
@@ -1163,6 +1164,23 @@ class Validator:
             text = pattern.sub(preserve_lines, text)
         return text
 
+    @staticmethod
+    def mask_template_parameters(text: str) -> str:
+        # Template parameter declarations are not public class definitions. Preserve
+        # offsets/newlines so the canonical declarations still come from the source.
+        chars = list(text)
+        for match in re.finditer(r"\btemplate\s*<", text):
+            depth = 1
+            end = match.end()
+            while end < len(text) and depth:
+                if text[end] == "<": depth += 1
+                elif text[end] == ">": depth -= 1
+                end += 1
+            if not depth:
+                for at in range(match.start(), end):
+                    if chars[at] != "\n": chars[at] = " "
+        return "".join(chars)
+
     def extract_public_declarations(
         self, headers: Sequence[Path]
     ) -> List[Tuple[str, Path, int, str]]:
@@ -1191,6 +1209,7 @@ class Validator:
             if "@document-protected" in raw:
                 text = re.sub(r"\bprotected:", "public:   ", text)
             text = self.mask_cpp_implementation(text)
+            text = self.mask_template_parameters(text)
             for match in re.finditer(
                 r"\b(?:enum\s+class|enum|struct|class)\s+([A-Za-z_]\w*)"
                 r"(?=[^;{}]*\{)",

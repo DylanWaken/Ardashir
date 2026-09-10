@@ -1,27 +1,6 @@
 set(ARDA_BACKEND_PUBLIC_DIR
     "${PROJECT_SOURCE_DIR}/Source/ArdaBackend/Public")
 
-# Source compilation is independently optional; PTX launch providers do not load NVRTC.
-set(ARDASHIR_NVRTC_INCLUDE_DIR "" CACHE PATH "Optional directory containing nvrtc.h for the CUDA C++ module compiler")
-add_library(ArdaCudaCompiler STATIC Cuda/ArdaCudaCompiler.cpp)
-add_library(Ardashir::ArdaCudaCompiler ALIAS ArdaCudaCompiler)
-target_compile_features(ArdaCudaCompiler PUBLIC cxx_std_17)
-target_link_libraries(ArdaCudaCompiler PRIVATE Ardashir::ArdaBackend ${CMAKE_DL_LIBS})
-target_include_directories(ArdaCudaCompiler PUBLIC "${ARDA_BACKEND_PUBLIC_DIR}")
-target_link_libraries(ArdaCudaCompiler PUBLIC Ardashir::EASTL)
-target_compile_definitions(ArdaCudaCompiler PRIVATE $<$<BOOL:${WIN32}>:NOMINMAX> $<$<BOOL:${WIN32}>:WIN32_LEAN_AND_MEAN>)
-set_target_properties(ArdaCudaCompiler PROPERTIES FOLDER "Ardashir/Backends")
-if(ARDASHIR_NVRTC_INCLUDE_DIR)
-    if(NOT EXISTS "${ARDASHIR_NVRTC_INCLUDE_DIR}/nvrtc.h")
-        message(FATAL_ERROR "ARDASHIR_NVRTC_INCLUDE_DIR must contain nvrtc.h.")
-    endif()
-    target_include_directories(ArdaCudaCompiler PRIVATE "${ARDASHIR_NVRTC_INCLUDE_DIR}")
-    target_compile_definitions(ArdaCudaCompiler PRIVATE ARDA_ENABLE_NVRTC=1)
-endif()
-if(TARGET ArdaBackendTests)
-    target_link_libraries(ArdaBackendTests PRIVATE Ardashir::ArdaCudaCompiler)
-endif()
-
 add_library(ArdaBackendCuda STATIC Cuda/ArdaCudaInterop.cpp)
 target_compile_features(ArdaBackendCuda PUBLIC cxx_std_17)
 target_link_libraries(ArdaBackendCuda PRIVATE Ardashir::ArdaBackend ${CMAKE_DL_LIBS})

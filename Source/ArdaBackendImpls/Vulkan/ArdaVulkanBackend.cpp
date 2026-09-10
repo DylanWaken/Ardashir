@@ -45,9 +45,13 @@ namespace arda
 #if defined(_WIN32)
         constexpr auto VulkanCudaMemoryHandleType = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueWin32;
         constexpr const char* VulkanCudaMemoryExtension = VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME;
+        constexpr auto VulkanCudaSemaphoreHandleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32;
+        constexpr const char* VulkanCudaSemaphoreExtension = VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME;
 #else
         constexpr auto VulkanCudaMemoryHandleType = vk::ExternalMemoryHandleTypeFlagBits::eOpaqueFd;
         constexpr const char* VulkanCudaMemoryExtension = VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME;
+        constexpr auto VulkanCudaSemaphoreHandleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueFd;
+        constexpr const char* VulkanCudaSemaphoreExtension = VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME;
 #endif
 
         constexpr uint32_t ArdaVulkanHeaderVersion = VK_HEADER_VERSION;
@@ -691,6 +695,8 @@ namespace arda
                         if (Semaphore) mDevice.destroySemaphore(Semaphore);
                     if (mDescriptorPool) mDevice.destroyDescriptorPool(mDescriptorPool);
                     mCudaContext.reset();
+                    if (mExternalComputeQueue && mDestroyExternalComputeQueue)
+                        mDestroyExternalComputeQueue(mDevice, mExternalComputeQueue, nullptr);
                     if (mbOwnsDevice) mDevice.destroy();
                 }
                 if (mDebugMessenger && mInstance)
@@ -813,14 +819,10 @@ namespace arda
 #endif
                 return Mapping;
             }
-            bool mbCudaKernels = false;
-            bool mbCudaSurfaces = false;
-            PFN_vkCreateCudaModuleNV mCreateCudaModule = nullptr;
-            PFN_vkDestroyCudaModuleNV mDestroyCudaModule = nullptr;
-            PFN_vkCreateCudaFunctionNV mCreateCudaFunction = nullptr;
-            PFN_vkDestroyCudaFunctionNV mDestroyCudaFunction = nullptr;
-            PFN_vkCmdCudaLaunchKernelNV mLaunchCuda = nullptr;
-            PFN_vkGetImageViewHandle64NVX mCudaSurfaceHandle = nullptr;
+            bool mbCudaExternalQueue = false;
+            VkExternalComputeQueueNV mExternalComputeQueue = VK_NULL_HANDLE;
+            PFN_vkDestroyExternalComputeQueueNV mDestroyExternalComputeQueue = nullptr;
+            eastl::vector<uint8_t> mExternalComputeData;
             vk::PhysicalDevice mPhysicalDevice;
             vk::Device mDevice;
             vk::Queue mQueue;
@@ -880,14 +882,13 @@ namespace arda
                 mCudaMapping.reset();
                 if (mContext && mContext->mDevice)
                 {
-                    for (auto View : mCudaViews) mContext->mDevice.destroyImageView(View);
                     if (mView) mContext->mDevice.destroyImageView(mView);
                     if (mbOwned && mImage) mContext->mDevice.destroyImage(mImage);
                     if (mMemory) mContext->mDevice.freeMemory(mMemory);
                 }
             }
             FArdaCudaResourceInfo GetCudaResourceInfo() const noexcept override
-            { return (mCudaMapping || !mCudaSurfaces.empty()) ? FArdaCudaResourceInfo{EArdaCudaRepresentation::Surface,
+            { return bool(mCudaMapping) ? FArdaCudaResourceInfo{EArdaCudaRepresentation::Surface,
                 EArdaResourceRepresentations::GraphicsAndCuda, true} : FArdaCudaResourceInfo{}; }
             const void* GetIdentity() const noexcept override
             {
@@ -899,8 +900,6 @@ namespace arda
             vk::Image mImage;
             vk::DeviceMemory mMemory;
             vk::ImageView mView;
-            eastl::vector<vk::ImageView> mCudaViews;
-            eastl::vector<uint64_t> mCudaSurfaces;
             eastl::vector<vk::ImageLayout> mLayouts;
             eastl::vector<EArdaRHIResourceState> mAbstractStates;
             eastl::vector<vk::PipelineStageFlags2> mStageMasks;
@@ -1514,16 +1513,39 @@ namespace arda
             EVulkanTimerQueryState mState = EVulkanTimerQueryState::Idle;
         };
 
-        struct FVulkanCudaProgram final : IArdaProviderObject
+        struct FVulkanCudaHandoff
         {
             eastl::shared_ptr<FArdaVulkanContext> mContext;
-            VkCudaModuleNV mModule = VK_NULL_HANDLE;
-            VkCudaFunctionNV mFunction = VK_NULL_HANDLE;
-            const void* GetIdentity() const noexcept override { return this; }
-            ~FVulkanCudaProgram() override
+            vk::Semaphore mReady, mDone;
+            ~FVulkanCudaHandoff()
             {
-                if (mFunction) mContext->mDestroyCudaFunction(mContext->mDevice, mFunction, nullptr);
-                if (mModule) mContext->mDestroyCudaModule(mContext->mDevice, mModule, nullptr);
+                if (mReady) mContext->mDevice.destroySemaphore(mReady);
+                if (mDone) mContext->mDevice.destroySemaphore(mDone);
+            }
+            TArdaRHIResult<eastl::shared_ptr<IArdaCudaSemaphore>> Import(vk::Semaphore Semaphore)
+            {
+                void* Handle = nullptr;
+#if defined(_WIN32)
+                auto Export = reinterpret_cast<PFN_vkGetSemaphoreWin32HandleKHR>(mContext->mDevice.getProcAddr("vkGetSemaphoreWin32HandleKHR"));
+                if (!Export) return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Vulkan semaphore export is unavailable.")};
+                VkSemaphoreGetWin32HandleInfoKHR Info{VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR};
+                Info.semaphore = Semaphore; Info.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+                auto Result = Export(mContext->mDevice, &Info, &Handle);
+#else
+                auto Export = reinterpret_cast<PFN_vkGetSemaphoreFdKHR>(mContext->mDevice.getProcAddr("vkGetSemaphoreFdKHR"));
+                if (!Export) return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Vulkan semaphore FD export is unavailable.")};
+                VkSemaphoreGetFdInfoKHR Info{VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR};
+                Info.semaphore = Semaphore; Info.handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
+                int Fd = -1;
+                auto Result = Export(mContext->mDevice, &Info, &Fd);
+                Handle = reinterpret_cast<void*>(static_cast<intptr_t>(Fd));
+#endif
+                if (Result != VK_SUCCESS) return {{}, VulkanFailure("Export CUDA semaphore", static_cast<vk::Result>(Result))};
+                auto Imported = mContext->mCudaContext->ImportSemaphore(Handle);
+#if defined(_WIN32)
+                CloseHandle(Handle);
+#endif
+                return Imported;
             }
         };
 
@@ -1532,6 +1554,7 @@ namespace arda
             struct FSegment
             {
                 vk::CommandBuffer mGraphics;
+                eastl::shared_ptr<FVulkanCudaHandoff> mHandoff;
                 eastl::shared_ptr<IArdaCudaBatch> mCuda;
             };
             eastl::vector<FSegment> mCudaSegments;
@@ -1763,9 +1786,6 @@ namespace arda
             }
             FArdaRHIStatus Initialize();
             FArdaCudaCapabilities GetCudaCapabilities() const override { return mContext->mCudaCapabilities; }
-            TArdaRHIResult<FArdaProviderObjectRef> GetCudaProgram(const FArdaCudaKernel&);
-            std::unordered_map<std::string, FArdaProviderObjectRef> mCudaPrograms;
-            std::mutex mCudaProgramMutex;
             const FArdaRHICapabilities& GetCapabilities() const noexcept override { return mCapabilities; }
             EArdaRHINativeResourceType GetTextureImportType() const noexcept override { return EArdaRHINativeResourceType::VulkanImage; }
             EArdaRHINativeResourceType GetBufferImportType() const noexcept override { return EArdaRHINativeResourceType::VulkanBuffer; }
@@ -2327,19 +2347,6 @@ namespace arda
                     auto Mapping = mContext->ImportCudaMemory(Texture->mMemory, Requirements.size, 0, &Desc);
                     if (!Mapping) return Fail<FArdaProviderObjectRef>(Mapping.mStatus);
                     Texture->mCudaMapping = eastl::move(Mapping.mValue);
-                }
-                else if (Desc.mbCudaInterop)
-                {
-                    ViewInfo.subresourceRange.levelCount = 1;
-                    for (uint32_t Mip = 0; Mip < Desc.mMipLevels; ++Mip)
-                    {
-                        ViewInfo.subresourceRange.baseMipLevel = Mip;
-                        auto View = mContext->mDevice.createImageView(ViewInfo);
-                        Texture->mCudaViews.push_back(View);
-                        VkImageViewHandleInfoNVX Handle{VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX};
-                        Handle.imageView = View; Handle.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-                        Texture->mCudaSurfaces.push_back(mContext->mCudaSurfaceHandle(mContext->mDevice, &Handle));
-                    }
                 }
                 return { Texture, {} };
             }
@@ -5762,27 +5769,6 @@ namespace arda
             }
         }
 
-        TArdaRHIResult<FArdaProviderObjectRef> FArdaVulkanProviderDevice::GetCudaProgram(const FArdaCudaKernel& Kernel)
-        {
-            std::lock_guard<std::mutex> Lock(mCudaProgramMutex);
-            std::string Key(Kernel.mPtx.data(), Kernel.mPtx.size());
-            Key.push_back('\0'); Key.append(Kernel.mEntryPoint.data(), Kernel.mEntryPoint.size());
-            auto Found = mCudaPrograms.find(Key);
-            if (Found != mCudaPrograms.end()) return {Found->second, {}};
-            auto Program = eastl::make_shared<FVulkanCudaProgram>(); Program->mContext = mContext;
-            VkCudaModuleCreateInfoNV Module{VK_STRUCTURE_TYPE_CUDA_MODULE_CREATE_INFO_NV};
-            Module.dataSize = Kernel.mPtx.size() + 1; Module.pData = Kernel.mPtx.c_str();
-            auto Result = mContext->mCreateCudaModule(mContext->mDevice, &Module, nullptr, &Program->mModule);
-            if (Result != VK_SUCCESS) return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "Vulkan PTX compilation failed."));
-            VkCudaFunctionCreateInfoNV Function{VK_STRUCTURE_TYPE_CUDA_FUNCTION_CREATE_INFO_NV};
-            Function.module = Program->mModule; Function.pName = Kernel.mEntryPoint.c_str();
-            Result = mContext->mCreateCudaFunction(mContext->mDevice, &Function, nullptr, &Program->mFunction);
-            if (Result != VK_SUCCESS) return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, "Vulkan CUDA entry point is invalid."));
-            if (mCudaPrograms.size() >= 64) mCudaPrograms.clear();
-            mCudaPrograms.emplace(eastl::move(Key), Program);
-            return {Program, {}};
-        }
-
         FArdaRHIStatus FArdaVulkanCommandList::DispatchCuda(
             const eastl::vector<FArdaProviderCudaBinding>& Bindings, const eastl::vector<FArdaCudaKernel>& Kernels)
         {
@@ -5796,46 +5782,20 @@ namespace arda
                 for (const auto& B : Bindings)
                 {
                     if (auto* Buffer = dynamic_cast<FVulkanBuffer*>(B.mObject.get()))
-                        Values.push_back(Buffer->mCudaMapping ? Buffer->mCudaMapping->GetArgument(0, B.mBufferRange.mByteOffset) :
-                            Context->mDevice.getBufferAddress(vk::BufferDeviceAddressInfo(Buffer->mBuffer)) + B.mBufferRange.mByteOffset);
+                    {
+                        if (!Buffer->mCudaMapping) return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Buffer has no CUDA mapping.");
+                        Values.push_back(Buffer->mCudaMapping->GetArgument(0, B.mBufferRange.mByteOffset));
+                    }
                     else if (auto* Texture = dynamic_cast<FVulkanTexture*>(B.mObject.get()))
-                        Values.push_back(Texture->mCudaMapping ? Texture->mCudaMapping->GetArgument(B.mMipLevel, 0) :
-                            Texture->mCudaSurfaces.at(B.mMipLevel));
+                    {
+                        if (!Texture->mCudaMapping) return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Texture has no CUDA mapping.");
+                        Values.push_back(Texture->mCudaMapping->GetArgument(B.mMipLevel, 0));
+                    }
                     else return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Invalid Vulkan CUDA resource binding.");
                     Retain(B.mObject);
                 }
-                if (Context->mCudaContext) return RecordCudaSegment(Bindings, Kernels, Values);
-                eastl::vector<FArdaProviderObjectRef> Programs;
-                // Resolve every program before recording a launch. Retaining the
-                // resources and programs here also protects an evicted cache entry
-                // until this command-buffer submission's own fence completes.
-                for (const auto& K : Kernels)
-                {
-                    auto Program = mDevice.GetCudaProgram(K);
-                    if (!Program) return Program.mStatus;
-                    Programs.push_back(Program.mValue); Retain(Program.mValue);
-                }
-                EndRendering();
-                for (size_t I = 0; I < Kernels.size(); ++I)
-                {
-                    // CUDA shares the Vulkan command stream. Order graphics/CUDA
-                    // and in-place kernel dependencies with the same native barrier.
-                    GlobalBarrier();
-                    const auto& K = Kernels[I];
-                    eastl::vector<const void*> Arguments;
-                    for (const auto& A : K.mArguments)
-                        Arguments.push_back(A.mBindingIndex == UINT32_MAX ? static_cast<const void*>(A.mValue.data()) : static_cast<const void*>(&Values[A.mBindingIndex]));
-                    VkCudaLaunchInfoNV Launch{VK_STRUCTURE_TYPE_CUDA_LAUNCH_INFO_NV};
-                    Launch.function = static_cast<FVulkanCudaProgram*>(Programs[I].get())->mFunction;
-                    Launch.gridDimX = K.mGridSize[0]; Launch.gridDimY = K.mGridSize[1]; Launch.gridDimZ = K.mGridSize[2];
-                    Launch.blockDimX = K.mBlockSize[0]; Launch.blockDimY = K.mBlockSize[1]; Launch.blockDimZ = K.mBlockSize[2];
-                    Launch.sharedMemBytes = K.mSharedMemoryBytes;
-                    Launch.paramCount = Arguments.size(); Launch.pParams = Arguments.data();
-                    Context->mLaunchCuda(mCommandBuffer, &Launch);
-                }
-                GlobalBarrier();
-                mBoundCompute = nullptr;
-                return {};
+                if (!Context->mCudaContext) return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Vulkan has no CUDA context.");
+                return RecordCudaSegment(Bindings, Kernels, Values);
             }
             catch (const vk::SystemError& Error)
             { return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what()); }
@@ -5896,13 +5856,24 @@ namespace arda
             const auto Context = mDevice.GetContext();
             auto Batch = Context->mCudaContext->CreateBatch();
             if (auto Status = Batch->Record(nullptr, Kernels, Values); !Status) return Status;
+            auto Handoff = eastl::make_shared<FVulkanCudaHandoff>();
+            Handoff->mContext = Context;
+            vk::ExportSemaphoreCreateInfo ExportInfo(VulkanCudaSemaphoreHandleType);
+            vk::SemaphoreCreateInfo SemaphoreInfo; SemaphoreInfo.pNext = &ExportInfo;
+            Handoff->mReady = Context->mDevice.createSemaphore(SemaphoreInfo);
+            Handoff->mDone = Context->mDevice.createSemaphore(SemaphoreInfo);
+            auto Ready = Handoff->Import(Handoff->mReady);
+            if (!Ready) return Ready.mStatus;
+            auto Done = Handoff->Import(Handoff->mDone);
+            if (!Done) return Done.mStatus;
+            Batch->SetSynchronization(Ready.mValue, 0, Done.mValue, 0);
             auto Next = Context->mDevice.allocateCommandBuffers(vk::CommandBufferAllocateInfo(
                 mRecording->mCommandPool, vk::CommandBufferLevel::ePrimary, 1)).front();
             Next.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
             EndRendering();
             CudaOwnershipBarrier(Bindings, true);
             mCommandBuffer.end();
-            mRecording->mCudaSegments.push_back({mCommandBuffer, eastl::move(Batch)});
+            mRecording->mCudaSegments.push_back({mCommandBuffer, eastl::move(Handoff), eastl::move(Batch)});
             mCommandBuffer = Next;
             mRecording->mCommandBuffer = Next;
             CudaOwnershipBarrier(Bindings, false);
@@ -8533,21 +8504,32 @@ namespace arda
                         for (const auto& Segment : Recording->mCudaSegments)
                             if (auto Status = Segment.mCuda->ValidateSubmit(); !Status)
                             { mContext->mDevice.destroyFence(Fence); return Fail<uint64_t>(Status); }
-                        mContext->mDevice.waitIdle();
                         Recording->mbSubmitted = true;
+                        vk::SemaphoreSubmitInfo PreviousDone;
                         for (const auto& Segment : Recording->mCudaSegments)
                         {
                             vk::CommandBufferSubmitInfo Graphics(Segment.mGraphics);
                             vk::SubmitInfo2 GraphicsSubmit;
                             GraphicsSubmit.commandBufferInfoCount = 1;
                             GraphicsSubmit.pCommandBufferInfos = &Graphics;
+                            vk::SemaphoreSubmitInfo Ready(Segment.mHandoff->mReady, 0, vk::PipelineStageFlagBits2::eAllCommands);
+                            GraphicsSubmit.signalSemaphoreInfoCount = 1;
+                            GraphicsSubmit.pSignalSemaphoreInfos = &Ready;
+                            if (PreviousDone.semaphore)
+                            {
+                                GraphicsSubmit.waitSemaphoreInfoCount = 1;
+                                GraphicsSubmit.pWaitSemaphoreInfos = &PreviousDone;
+                            }
                             Queue.submit2(GraphicsSubmit, {});
-                            Queue.waitIdle();
                             if (auto Status = Segment.mCuda->Execute(); !Status)
                             { mContext->mDevice.destroyFence(Fence); return Fail<uint64_t>(Status); }
+                            PreviousDone = vk::SemaphoreSubmitInfo(Segment.mHandoff->mDone, 0, vk::PipelineStageFlagBits2::eAllCommands);
                         }
+                        Submit.waitSemaphoreInfoCount = 1;
+                        Submit.pWaitSemaphoreInfos = &PreviousDone;
+                        Queue.submit2(Submit, Fence);
                     }
-                    Queue.submit2(Submit, Fence);
+                    else Queue.submit2(Submit, Fence);
                 }
                 Commands->MarkTimerQueriesSubmitted();
                 Commands->CommitTrackedStates();
@@ -9472,17 +9454,19 @@ namespace arda
                             });
                     };
 
-                    VkPhysicalDeviceCudaKernelLaunchFeaturesNV CudaFeature{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUDA_KERNEL_LAUNCH_FEATURES_NV};
 #if defined(ARDA_ENABLE_CUDA)
-                    mContext->mbCudaExternalMemory = HasExtension(VulkanCudaMemoryExtension);
-                    if (Configuration.mCudaExecutionMode != EArdaCudaExecutionMode::ContextSwitch &&
-                        HasExtension(VK_NV_CUDA_KERNEL_LAUNCH_EXTENSION_NAME))
+                    mContext->mbCudaExternalMemory = HasExtension(VulkanCudaMemoryExtension) && HasExtension(VulkanCudaSemaphoreExtension);
+                    // External hosts must explicitly configure their external queue capacity;
+                    // the borrowed-device contract does not currently describe that capacity.
+                    mContext->mbCudaExternalQueue = !bExternal &&
+                        Configuration.mCudaExecutionMode != EArdaCudaExecutionMode::ContextSwitch &&
+                        HasExtension(VK_NV_EXTERNAL_COMPUTE_QUEUE_EXTENSION_NAME);
+                    if (mContext->mbCudaExternalQueue)
                     {
-                        VkPhysicalDeviceFeatures2 Query{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-                        Query.pNext = &CudaFeature;
-                        VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures2(mContext->mPhysicalDevice, &Query);
-                        mContext->mbCudaKernels = CudaFeature.cudaKernelLaunchFeatures != 0;
-                        mContext->mbCudaSurfaces = HasExtension(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME);
+                        VkPhysicalDeviceExternalComputeQueuePropertiesNV ExternalProperties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_COMPUTE_QUEUE_PROPERTIES_NV};
+                        VkPhysicalDeviceProperties2 Properties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2}; Properties.pNext = &ExternalProperties;
+                        VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceProperties2(mContext->mPhysicalDevice, &Properties);
+                        mContext->mbCudaExternalQueue = ExternalProperties.maxExternalQueues > 0 && ExternalProperties.externalDataSize > 0;
                     }
 #endif
                     vk::PhysicalDeviceVulkan13Features Supported13;
@@ -9548,7 +9532,6 @@ namespace arda
                         MaskFeature(SupportedMicromap.micromap, "micromap");
                         MaskFeature(SupportedDescriptorBuffer.descriptorBuffer, "descriptorBuffer");
                         MaskFeature(SupportedDescriptorHeap.descriptorHeap, "descriptorHeap");
-                        MaskFeature(CudaFeature.cudaKernelLaunchFeatures, "cudaKernelLaunchFeatures");
                         MaskFeature(SupportedFeatures.features.fillModeNonSolid, "fillModeNonSolid");
                         MaskFeature(SupportedFeatures.features.samplerAnisotropy, "samplerAnisotropy");
                         MaskFeature(SupportedFeatures.features.geometryShader, "geometryShader");
@@ -9558,7 +9541,6 @@ namespace arda
                         MaskFeature(SupportedFeatures.features.sparseResidencyImage2D, "sparseResidencyImage2D");
                         MaskFeature(SupportedFeatures.features.sparseResidencyImage3D, "sparseResidencyImage3D");
                         MaskFeature(SupportedFeatures.features.sparseResidencyAliased, "sparseResidencyAliased");
-                        mContext->mbCudaKernels = CudaFeature.cudaKernelLaunchFeatures != 0;
                     }
                     if (!Supported13.dynamicRendering || !Supported13.synchronization2 || !SupportedTimeline.timelineSemaphore)
                     {
@@ -9684,9 +9666,6 @@ namespace arda
                     DescriptorBuffer.pNext = &DescriptorHeap;
                     DescriptorHeap.pNext = &Precision;
                     Precision.pNext = &SeparateLayouts;
-                    if (mContext->mbCudaKernels && mContext->mbBufferDeviceAddress)
-                        SeparateLayouts.pNext = &CudaFeature;
-                    else mContext->mbCudaKernels = false;
                     const auto& Supported = mContext->mEnabledFeatures;
                     vk::PhysicalDeviceFeatures Enabled;
                     Enabled.fillModeNonSolid = Supported.fillModeNonSolid;
@@ -9712,7 +9691,8 @@ namespace arda
                     };
                     if (mContext->mSurface)
                         AddExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-                    if (mContext->mbCudaExternalMemory) AddExtension(VulkanCudaMemoryExtension);
+                    if (mContext->mbCudaExternalMemory)
+                    { AddExtension(VulkanCudaMemoryExtension); AddExtension(VulkanCudaSemaphoreExtension); }
                     if (mContext->mbAccelerationStructure)
                     {
                         AddExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
@@ -9736,13 +9716,16 @@ namespace arda
                         AddExtension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
                     if (HasExtension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME))
                         AddExtension(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-                    if (mContext->mbCudaKernels)
-                    {
-                        AddExtension(VK_NV_CUDA_KERNEL_LAUNCH_EXTENSION_NAME);
-                        if (mContext->mbCudaSurfaces) AddExtension(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME);
-                    }
                     vk::DeviceCreateInfo DeviceInfo;
                     DeviceInfo.pNext = &Vulkan13;
+                    VkExternalComputeQueueDeviceCreateInfoNV ExternalQueues{VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DEVICE_CREATE_INFO_NV};
+                    if (mContext->mbCudaExternalQueue)
+                    {
+                        AddExtension(VK_NV_EXTERNAL_COMPUTE_QUEUE_EXTENSION_NAME);
+                        ExternalQueues.reservedExternalQueues = 1;
+                        ExternalQueues.pNext = DeviceInfo.pNext;
+                        DeviceInfo.pNext = &ExternalQueues;
+                    }
                     DeviceInfo.queueCreateInfoCount =
                         static_cast<uint32_t>(QueueInfos.size());
                     DeviceInfo.pQueueCreateInfos = QueueInfos.data();
@@ -9752,61 +9735,6 @@ namespace arda
                     DeviceInfo.pEnabledFeatures = &Enabled;
                     if (!bExternal) mContext->mDevice = mContext->mPhysicalDevice.createDevice(DeviceInfo);
                     VULKAN_HPP_DEFAULT_DISPATCHER.init(mContext->mDevice);
-                    if (mContext->mbCudaKernels)
-                    {
-                        auto& C = mContext->mCudaCapabilities;
-#define ARDA_VK_CUDA_PROC(Member, Name) mContext->Member = reinterpret_cast<PFN_##Name>(mContext->mDevice.getProcAddr(#Name))
-                        ARDA_VK_CUDA_PROC(mCreateCudaModule, vkCreateCudaModuleNV);
-                        ARDA_VK_CUDA_PROC(mDestroyCudaModule, vkDestroyCudaModuleNV);
-                        ARDA_VK_CUDA_PROC(mCreateCudaFunction, vkCreateCudaFunctionNV);
-                        ARDA_VK_CUDA_PROC(mDestroyCudaFunction, vkDestroyCudaFunctionNV);
-                        ARDA_VK_CUDA_PROC(mLaunchCuda, vkCmdCudaLaunchKernelNV);
-                        if (mContext->mbCudaSurfaces) ARDA_VK_CUDA_PROC(mCudaSurfaceHandle, vkGetImageViewHandle64NVX);
-#undef ARDA_VK_CUDA_PROC
-                        if (mContext->mCreateCudaModule && mContext->mDestroyCudaModule && mContext->mCreateCudaFunction &&
-                            mContext->mDestroyCudaFunction && mContext->mLaunchCuda)
-                        {
-                            VkPhysicalDeviceCudaKernelLaunchPropertiesNV P{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUDA_KERNEL_LAUNCH_PROPERTIES_NV};
-                            VkPhysicalDeviceProperties2 Query{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2}; Query.pNext = &P;
-                            VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceProperties2(mContext->mPhysicalDevice, &Query);
-                            C.mLaunchMode = EArdaCudaLaunchMode::VulkanKernel;
-                            C.mComputeCapability = P.computeCapabilityMajor * 10 + P.computeCapabilityMinor;
-                            C.mMaxThreadsPerBlock = Query.properties.limits.maxComputeWorkGroupInvocations;
-                            C.mMaxSharedMemoryBytes = Query.properties.limits.maxComputeSharedMemorySize;
-                            for (uint32_t I = 0; I < 3; ++I)
-                            {
-                                C.mMaxGridSize[I] = Query.properties.limits.maxComputeWorkGroupCount[I];
-                                C.mMaxBlockSize[I] = Query.properties.limits.maxComputeWorkGroupSize[I];
-                            }
-                            C.mbSurfaceAccess = mContext->mCudaSurfaceHandle != nullptr;
-                            C.mbLayeredSurfaceAccess = C.mbSurfaceAccess;
-                            if (C.mbSurfaceAccess) C.mSurfaceUnavailableReason.clear();
-                            C.mUnavailableReason.clear();
-                        }
-                    }
-                    if (Configuration.mCudaExecutionMode != EArdaCudaExecutionMode::GraphicsQueue &&
-                        (!mContext->mCudaCapabilities || !mContext->mCudaCapabilities.mbSurfaceAccess))
-                    {
-                        const auto NativeCapabilities = mContext->mCudaCapabilities;
-                        if (mContext->mbCudaExternalMemory)
-                        {
-                            vk::PhysicalDeviceIDProperties Identity;
-                            vk::PhysicalDeviceProperties2 IdentityQuery;
-                            IdentityQuery.pNext = &Identity;
-                            mContext->mPhysicalDevice.getProperties2(&IdentityQuery);
-                            auto Context = CreateArdaVulkanCudaContext(Identity.deviceUUID.data());
-                            if (Context)
-                            {
-                                mContext->mCudaContext = eastl::move(Context.mValue);
-                                mContext->mCudaCapabilities = mContext->mCudaContext->GetCapabilities();
-                                if (Configuration.mCudaExecutionMode == EArdaCudaExecutionMode::Automatic)
-                                    mContext->mCudaCapabilities.mFallbackReason = "Native Vulkan CUDA kernels or surfaces are unavailable.";
-                            }
-                            else if (!NativeCapabilities) mContext->mCudaCapabilities.mUnavailableReason = Context.mStatus.mMessage;
-                        }
-                        else if (!NativeCapabilities)
-                            mContext->mCudaCapabilities.mUnavailableReason = "Vulkan CUDA fallback requires an enabled external-memory OS-handle extension.";
-                    }
                     vk::PhysicalDeviceSubgroupProperties Subgroups;
                     vk::PhysicalDeviceProperties2 ComputeProperties;
                     ComputeProperties.pNext = &Subgroups;
@@ -9839,6 +9767,39 @@ namespace arda
                         mContext->mComputeQueueFamily, ComputeQueueIndex);
                     mContext->mCopyQueue = mContext->mDevice.getQueue(
                         mContext->mCopyQueueFamily, CopyQueueIndex);
+                    }
+                    if (mContext->mbCudaExternalMemory)
+                    {
+                        if (mContext->mbCudaExternalQueue)
+                        {
+                            auto Create = reinterpret_cast<PFN_vkCreateExternalComputeQueueNV>(mContext->mDevice.getProcAddr("vkCreateExternalComputeQueueNV"));
+                            auto GetData = reinterpret_cast<PFN_vkGetExternalComputeQueueDataNV>(mContext->mDevice.getProcAddr("vkGetExternalComputeQueueDataNV"));
+                            mContext->mDestroyExternalComputeQueue = reinterpret_cast<PFN_vkDestroyExternalComputeQueueNV>(mContext->mDevice.getProcAddr("vkDestroyExternalComputeQueueNV"));
+                            if (Create && GetData && mContext->mDestroyExternalComputeQueue)
+                            {
+                                VkPhysicalDeviceExternalComputeQueuePropertiesNV Properties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_COMPUTE_QUEUE_PROPERTIES_NV};
+                                VkPhysicalDeviceProperties2 Query{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2}; Query.pNext = &Properties;
+                                VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceProperties2(mContext->mPhysicalDevice, &Query);
+                                VkExternalComputeQueueCreateInfoNV Info{VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_CREATE_INFO_NV}; Info.preferredQueue = mContext->mQueue;
+                                if (Properties.externalDataSize && Create(mContext->mDevice, &Info, nullptr, &mContext->mExternalComputeQueue) == VK_SUCCESS)
+                                {
+                                    mContext->mExternalComputeData.resize(Properties.externalDataSize);
+                                    VkExternalComputeQueueDataParamsNV Params{VK_STRUCTURE_TYPE_EXTERNAL_COMPUTE_QUEUE_DATA_PARAMS_NV};
+                                    GetData(mContext->mExternalComputeQueue, &Params, mContext->mExternalComputeData.data());
+                                }
+                            }
+                        }
+                        vk::PhysicalDeviceIDProperties Identity;
+                        vk::PhysicalDeviceProperties2 IdentityQuery; IdentityQuery.pNext = &Identity;
+                        mContext->mPhysicalDevice.getProperties2(&IdentityQuery);
+                        auto Cuda = CreateArdaVulkanCudaContext(Identity.deviceUUID.data(),
+                            mContext->mExternalComputeData.empty() ? nullptr : mContext->mExternalComputeData.data(), Configuration.mCudaExecutionMode);
+                        if (Cuda)
+                        {
+                            mContext->mCudaContext = eastl::move(Cuda.mValue);
+                            mContext->mCudaCapabilities = mContext->mCudaContext->GetCapabilities();
+                        }
+                        else mContext->mCudaCapabilities.mUnavailableReason = Cuda.mStatus.mMessage;
                     }
                     mProviderDevice = eastl::make_shared<FArdaVulkanProviderDevice>(
                         mContext, Configuration.mPipelineCacheDirectory,

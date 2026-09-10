@@ -161,6 +161,7 @@ namespace arda
                 Left.mFormat == Right.mFormat &&
                 Left.mDimension == Right.mDimension &&
                 Left.mUsage == Right.mUsage &&
+                Left.mbCudaInterop == Right.mbCudaInterop &&
                 Left.mbUseClearValue == Right.mbUseClearValue &&
                 (!Left.mbUseClearValue || Left.mClearValue == Right.mClearValue);
         }
@@ -173,6 +174,7 @@ namespace arda
             return Left.mByteSize == Right.mByteSize &&
                 Left.mStructureStride == Right.mStructureStride &&
                 Left.mMaxVersions == Right.mMaxVersions &&
+                Left.mbCudaInterop == Right.mbCudaInterop &&
                 Left.mFormat == Right.mFormat &&
                 Left.mUsage == Right.mUsage &&
                 Left.mCpuAccess == Right.mCpuAccess;
@@ -1840,6 +1842,8 @@ namespace arda
                 Pass.GetState().mRasterGroup != UINT32_MAX &&
                 Pass.GetState().mRasterGroup == Graph.mPasses.Get(Previous).GetState().mRasterGroup &&
                 !HasAllFlags(Pass.GetFlags(), EARDGPassFlags::NeverParallel) &&
+                !HasAllFlags(Pass.GetFlags(), EARDGPassFlags::RecordAtSubmit) &&
+                !HasAllFlags(Graph.mPasses.Get(Previous).GetFlags(), EARDGPassFlags::RecordAtSubmit) &&
                 !HasAllFlags(Graph.mPasses.Get(Previous).GetFlags(), EARDGPassFlags::NeverParallel);
             if (bMerge)
             {
@@ -1965,6 +1969,8 @@ namespace arda
                          .mBufferReleases.empty() ||
                     !RuntimeTransitions[Handle.GetIndex()]
                          .mAliasingResources.empty();
+                if (HasAllFlags(Pass.GetFlags(), EARDGPassFlags::RecordAtSubmit))
+                    continue;
                 if (!bHasWork)
                 {
                     continue;
@@ -2016,8 +2022,8 @@ namespace arda
             }
         }
 
-        // All recording finishes before submission. A callback failure must not
-        // leave successful-looking outputs or submit an incomplete graph.
+        // Ordinary recording completes before submission. RecordAtSubmit passes
+        // can fail later; keep extraction unpublished and report partial submission.
         for (const auto& Pass : Recorded)
         {
             if (!Pass.mStatus)
@@ -2041,6 +2047,15 @@ namespace arda
         for (FARDGPassHandle Handle : Graph.mCompileResult.mExecutionOrder)
         {
             FARDGRecordedPass& Pass = Recorded[Handle.GetIndex()];
+            if (HasAllFlags(Graph.mPasses.Get(Handle).GetFlags(), EARDGPassFlags::RecordAtSubmit))
+            {
+                RecordBatch(Handle);
+                if (!Pass.mStatus)
+                {
+                    Graph.mExecutionResult.mStatus = Pass.mStatus;
+                    break;
+                }
+            }
             if (!Pass.mCommandList)
             {
                 continue;

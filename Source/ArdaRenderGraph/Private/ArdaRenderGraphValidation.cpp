@@ -466,7 +466,8 @@ namespace arda
             static_cast<uint16_t>(EARDGPassFlags::Copy) |
             static_cast<uint16_t>(EARDGPassFlags::NeverCull) |
             static_cast<uint16_t>(EARDGPassFlags::SkipRenderPass) |
-            static_cast<uint16_t>(EARDGPassFlags::NeverParallel);
+            static_cast<uint16_t>(EARDGPassFlags::NeverParallel) |
+            static_cast<uint16_t>(EARDGPassFlags::RecordAtSubmit);
         constexpr uint8_t KnownResourceFlags =
             static_cast<uint8_t>(EARDGResourceFlags::External) |
             static_cast<uint8_t>(EARDGResourceFlags::Extracted) |

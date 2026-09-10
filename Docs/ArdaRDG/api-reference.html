@@ -205,10 +205,12 @@
 <li><a href="#api-arda-rdg-fardgtexturetransition-df763729">arda::FARDGTextureTransition <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rdg-fardgaccelstructhandle-a068b505">arda::FARDGAccelStructHandle <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-rdg-fardgbufferhandle-3025dda0">arda::FARDGBufferHandle <span class="api-kind">alias</span></a></li>
+<li><a href="#api-arda-fardgcudaparameterdomain-surface-c36500d1">arda::FARDGCudaParameterDomain::Surface <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-rdg-fardgpasshandle-db3d106a">arda::FARDGPassHandle <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-rdg-fardgtexturehandle-11d17b7a">arda::FARDGTextureHandle <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-rdg-fardguniformbufferhandle-e15097a6">arda::FARDGUniformBufferHandle <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-rdg-fardgviewhandle-6c15ae8a">arda::FARDGViewHandle <span class="api-kind">alias</span></a></li>
+<li><a href="#api-arda-tardgcudaparameters-fstorage-f2677032">arda::TARDGCudaParameters::FStorage <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-rdg-fardgblackboard-e315614c">arda::FARDGBlackboard <span class="api-kind">class</span></a></li>
 <li><a href="#api-arda-rdg-fardgbuilder-e0fc26d2">arda::FARDGBuilder <span class="api-kind">class</span></a></li>
 <li><a href="#api-arda-rdg-tardghandle-fd7e052b">arda::TARDGHandle <span class="api-kind">class</span></a></li>
@@ -239,6 +241,7 @@
 <li><a href="#api-arda-rdg-eardgpassflags-neverparallel-8aecc94b">arda::EARDGPassFlags::NeverParallel <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rdg-eardgpassflags-none-7a822727">arda::EARDGPassFlags::None <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rdg-eardgpassflags-raster-9377effa">arda::EARDGPassFlags::Raster <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardgpassflags-recordatsubmit-343f81d5">arda::EARDGPassFlags::RecordAtSubmit <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rdg-eardgpassflags-skiprenderpass-25dc8a9b">arda::EARDGPassFlags::SkipRenderPass <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rdg-eardgpipeline-asynccompute-02d5df83">arda::EARDGPipeline::AsyncCompute <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rdg-eardgpipeline-copy-b4027f5b">arda::EARDGPipeline::Copy <span class="api-kind">enumerator</span></a></li>
@@ -255,6 +258,7 @@
 <li><a href="#api-arda-rdg-eardgresourcetype-textureshaderresourceview-fd09d8c3">arda::EARDGResourceType::TextureShaderResourceView <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rdg-eardgresourcetype-textureunorderedaccessview-ffc3a511">arda::EARDGResourceType::TextureUnorderedAccessView <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rdg-eardgresourcetype-uniformbuffer-ae342e19">arda::EARDGResourceType::UniformBuffer <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-addardacudapass-86c3c9ac">arda::AddArdaCudaPass <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-rdg-getmodulename-bc83bad4">arda::GetRenderGraphModuleName <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-getrendergraphmodulename-a313b6f0">arda::GetRenderGraphModuleName <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-rdg-hasallflags-9b02d60f">arda::HasAllFlags <span class="api-kind">function</span></a></li>
@@ -273,6 +277,7 @@
 <li><a href="#api-arda-fardgexecutionresult-mqueuedependencies-d53bd245">arda::FARDGExecutionResult::mQueueDependencies <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardgexecutionresult-mtransientaliasedbytes-d7ce615f">arda::FARDGExecutionResult::mTransientAliasedBytes <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardgexecutionresult-mtransientheapbytes-2b5acefa">arda::FARDGExecutionResult::mTransientHeapBytes <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardgparametermember-mbreadonlyuav-709e6082">arda::FARDGParameterMember::mbReadOnlyUav <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rdg-fardgqueuecapabilities-mbcompute-fb0f3d64">arda::FARDGQueueCapabilities::mbCompute <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rdg-fardgqueuecapabilities-mbcopy-006aef39">arda::FARDGQueueCapabilities::mbCopy <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rdg-fardgqueuecapabilities-mbgraphics-8a28c880">arda::FARDGQueueCapabilities::mbGraphics <span class="api-kind">member variable</span></a></li>
@@ -283,6 +288,12 @@
 <li><a href="#api-arda-rdg-fardgrendergraphcontext-mdevice-fe88f8f2">arda::FARDGRenderGraphContext::mDevice <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rdg-fardgrendergraphcontext-mqueuecapabilities-f5399dc5">arda::FARDGRenderGraphContext::mQueueCapabilities <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardgrendergraphcontext-mqueuepolicy-d6f28bca">arda::FARDGRenderGraphContext::mQueuePolicy <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-metadatavisitor-mmembers-9ef633df">arda::MetadataVisitor::mMembers <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-normalizevisitor-mbytes-a2c60a96">arda::NormalizeVisitor::mBytes <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-resolvevisitor-mcontext-2319be24">arda::ResolveVisitor::mContext <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-resolvevisitor-mgraph-27702cb6">arda::ResolveVisitor::mGraph <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-resolvevisitor-mhost-a4690b40">arda::ResolveVisitor::mHost <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-resolvevisitor-mindex-023d5363">arda::ResolveVisitor::mIndex <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rdg-fardgblackboard-contains-3a6a9009">arda::FARDGBlackboard::Contains <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rdg-fardgblackboard-emplace-335bcaea">arda::FARDGBlackboard::Emplace <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rdg-fardgblackboard-get-c5c3d392">arda::FARDGBlackboard::Get <span class="api-kind">method</span></a></li>
@@ -315,6 +326,16 @@
 <li><a href="#api-arda-rdg-fardgbuilder-trygetview-a965f1ea">arda::FARDGBuilder::TryGetView <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardgpassexecutioncontext-getstatus-4a4ab6c9">arda::FARDGPassExecutionContext::GetStatus <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardgpassexecutioncontext-reportstatus-3c8856c0">arda::FARDGPassExecutionContext::ReportStatus <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-metadatavisitor-buffer-4e8fc264">arda::MetadataVisitor::Buffer <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-metadatavisitor-surface-92f5864c">arda::MetadataVisitor::Surface <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-metadatavisitor-value-29286452">arda::MetadataVisitor::Value <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-normalizevisitor-buffer-53cd309a">arda::NormalizeVisitor::Buffer <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-normalizevisitor-surface-c9c9ac33">arda::NormalizeVisitor::Surface <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-normalizevisitor-value-12b965ed">arda::NormalizeVisitor::Value <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-resolvevisitor-buffer-0d14b9f6">arda::ResolveVisitor::Buffer <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-resolvevisitor-surface-2cd87dbc">arda::ResolveVisitor::Surface <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-resolvevisitor-value-563defc0">arda::ResolveVisitor::Value <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-tardgcudaparameters-getstaticmetadata-a46f04a0">arda::TARDGCudaParameters::GetStaticMetadata <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rdg-tardghandle-getindex-be175f8d">arda::TARDGHandle::GetIndex <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rdg-tardghandle-isvalid-3aa03c33">arda::TARDGHandle::IsValid <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rdg-fardgbuilder-operator-52089ac8">arda::FARDGBuilder::operator= <span class="api-kind">operator</span></a></li>
@@ -333,6 +354,7 @@
 <li><a href="#api-arda-fardgaccelstructextraction-1e15fbf3">arda::FARDGAccelStructExtraction <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rdg-fardgaccelstructhandletag-a7a50b47">arda::FARDGAccelStructHandleTag <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rdg-fardgbufferhandletag-9fb465ea">arda::FARDGBufferHandleTag <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardgcudaparameterdomain-dbabaee2">arda::FARDGCudaParameterDomain <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rdg-fardgdebugoptions-e1513d7e">arda::FARDGDebugOptions <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rdg-fardgpasshandletag-4381c091">arda::FARDGPassHandleTag <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rdg-fardgqueuecapabilities-6104362a">arda::FARDGQueueCapabilities <span class="api-kind">struct</span></a></li>
@@ -343,6 +365,11 @@
 <li><a href="#api-arda-rdg-fardgtypeindexhash-24448533">arda::FARDGTypeIndexHash <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rdg-fardguniformbufferhandletag-70af78b6">arda::FARDGUniformBufferHandleTag <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rdg-fardgviewhandletag-8756974e">arda::FARDGViewHandleTag <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardacudagraphhelpers-30543169">arda::FArdaCudaGraphHelpers <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardacudagraphhelpers-metadatavisitor-1bc14df0">arda::FArdaCudaGraphHelpers::MetadataVisitor <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardacudagraphhelpers-normalizevisitor-36f0438c">arda::FArdaCudaGraphHelpers::NormalizeVisitor <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardacudagraphhelpers-resolvevisitor-6ebca799">arda::FArdaCudaGraphHelpers::ResolveVisitor <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-tardgcudaparameters-971d48d1">arda::TARDGCudaParameters <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rdg-tardghandlehasher-dcc0014d">arda::TARDGHandleHasher <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rdg-logardarendergraph-e99c5a26">LogArdaRenderGraph <span class="api-kind">log category</span></a></li>
 <li><a href="#api-arda-rdg-fardgbuilder-dumpgraph-c392d068">arda::FARDGBuilder::DumpGraph <span class="api-kind">method</span></a></li>
@@ -1025,6 +1052,14 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardgcudaparameterdomain-surface-c36500d1" tabindex="-1"><h5>arda::FARDGCudaParameterDomain::Surface</h5><pre><code>template&lt;class T, EArdaComputeAccess Access&gt; using Surface = FARDGTextureAccess</code></pre><p>Defines surface in the public render-graph contract.</p>
+<p>Defines surface in the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-rdg-fardgpasshandle-db3d106a" tabindex="-1"><h5>arda::FARDGPassHandle</h5><pre><code>using FARDGPassHandle = TARDGHandle&lt;FARDGPassHandleTag&gt;</code></pre><p>A stable index into the pass registry.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</dd>
@@ -1040,6 +1075,14 @@
 <section class="api-entry" id="api-arda-rdg-fardgviewhandle-6c15ae8a" tabindex="-1"><h5>arda::FARDGViewHandle</h5><pre><code>using FARDGViewHandle = TARDGHandle&lt;FARDGViewHandleTag&gt;</code></pre><p>A stable index into the logical view registry.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-tardgcudaparameters-fstorage-f2677032" tabindex="-1"><h5>arda::TARDGCudaParameters::FStorage</h5><pre><code>using FStorage = typename Parameters::template Rebind&lt;FARDGCudaParameterDomain&gt;</code></pre><p>Defines f storage in the public render-graph contract.</p>
+<p>Defines f storage in the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>class</h4>
@@ -1226,6 +1269,13 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-eardgpassflags-recordatsubmit-343f81d5" tabindex="-1"><h5>arda::EARDGPassFlags::RecordAtSubmit</h5><pre><code>RecordAtSubmit = 1u &lt;&lt; 7u</code></pre><p>Records immediately before its ordered submission (required by D3D12 CiG capture). A recording failure can occur after earlier passes have submitted; execution reports that failure.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-rdg-eardgpassflags-skiprenderpass-25dc8a9b" tabindex="-1"><h5>arda::EARDGPassFlags::SkipRenderPass</h5><pre><code>EARDGPassFlags::SkipRenderPass = 1u &lt;&lt; 5u</code></pre><p>A raster pass that manages RHI framebuffer behavior explicitly.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</dd>
@@ -1292,6 +1342,14 @@
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>function</h4>
+<section class="api-entry" id="api-arda-addardacudapass-86c3c9ac" tabindex="-1"><h5>arda::AddArdaCudaPass</h5><pre><code>template&lt;class OperandType&gt; TArdaRHIResult&lt;FARDGPassHandle&gt; AddArdaCudaPass(FARDGBuilder&amp; Graph, eastl::string Name, eastl::shared_ptr&lt;OperandType&gt; Operand, TARDGCudaParameters&lt;typename OperandType::FParameters&gt; Parameters, EARDGPassFlags Flags = EARDGPassFlags::Compute)</code></pre><p>Adds a single-kernel operand pass, deriving accesses before allocation and resolving them at execution. Retains Operand and a typed parameter copy. Runtime schema/build errors return before adding a pass; physical-resource/selection/launch failures propagate through the graph&#x27;s execution status.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-rdg-getmodulename-bc83bad4" tabindex="-1"><h5>arda::GetRenderGraphModuleName</h5><pre><code>[[nodiscard]] const char* GetModuleName() noexcept</code></pre><p>Returns the stable name of the render-graph module.</p>
 <dl>
 <dt>Returns</dt><dd>const char*</dd>
@@ -1413,6 +1471,13 @@
 <dt>Threading</dt><dd>Set options before Execute; inspect the builder-owned report after Execute returns.</dd>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardgparametermember-mbreadonlyuav-709e6082" tabindex="-1"><h5>arda::FARDGParameterMember::mbReadOnlyUav</h5><pre><code>bool mbReadOnlyUav = false</code></pre><p>CUDA read-only access may require UAV state while remaining a reader in graph hazards.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphParameters.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-rdg-fardgqueuecapabilities-mbcompute-fb0f3d64" tabindex="-1"><h5>arda::FARDGQueueCapabilities::mbCompute</h5><pre><code>bool mbCompute = false</code></pre><p>Whether asynchronous compute command execution is available.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</dd>
@@ -1464,6 +1529,54 @@
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-metadatavisitor-mmembers-9ef633df" tabindex="-1"><h5>arda::MetadataVisitor::mMembers</h5><pre><code>eastl::vector&lt;FARDGParameterMember&gt; mMembers</code></pre><p>Stores members in this public render-graph value.</p>
+<p>Stores members in this public render-graph value. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-normalizevisitor-mbytes-a2c60a96" tabindex="-1"><h5>arda::NormalizeVisitor::mBytes</h5><pre><code>uint8_t* mBytes</code></pre><p>Stores bytes in this public render-graph value.</p>
+<p>Stores bytes in this public render-graph value. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-resolvevisitor-mcontext-2319be24" tabindex="-1"><h5>arda::ResolveVisitor::mContext</h5><pre><code>FARDGPassExecutionContext&amp; mContext</code></pre><p>Stores context in this public render-graph value.</p>
+<p>Stores context in this public render-graph value. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-resolvevisitor-mgraph-27702cb6" tabindex="-1"><h5>arda::ResolveVisitor::mGraph</h5><pre><code>const uint8_t* mGraph</code></pre><p>Stores graph in this public render-graph value.</p>
+<p>Stores graph in this public render-graph value. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-resolvevisitor-mhost-a4690b40" tabindex="-1"><h5>arda::ResolveVisitor::mHost</h5><pre><code>uint8_t* mHost</code></pre><p>Stores host in this public render-graph value.</p>
+<p>Stores host in this public render-graph value. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-resolvevisitor-mindex-023d5363" tabindex="-1"><h5>arda::ResolveVisitor::mIndex</h5><pre><code>size_t mIndex = 0</code></pre><p>Stores index in this public render-graph value.</p>
+<p>Stores index in this public render-graph value. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>method</h4>
@@ -1695,13 +1808,102 @@
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-fardgpassexecutioncontext-reportstatus-3c8856c0" tabindex="-1"><h5>arda::FARDGPassExecutionContext::ReportStatus</h5><pre><code>void ReportStatus(arda::FArdaRHIStatus Status)</code></pre><p>Retains the first callback failure; failed graphs publish no extractions.</p>
-<p>Stores the first non-success callback status. Later success does not erase failure. After recording, any failed callback prevents graph command-list submission and extraction publication. Use from the active callback; the context is not shared across recording workers.</p>
+<p>Stores the first non-success callback status. Later success does not erase failure. Ordinary recording errors prevent graph submission. RecordAtSubmit callback errors may occur after earlier submissions; any failure prevents extraction publication. Use from the active callback; the context is not shared across recording workers.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-metadatavisitor-buffer-4e8fc264" tabindex="-1"><h5>arda::MetadataVisitor::Buffer</h5><pre><code>template&lt;class T, EArdaComputeAccess A&gt; void Buffer(const char* Name, size_t Offset)</code></pre><p>Performs buffer through the public render-graph contract.</p>
+<p>Performs buffer through the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-metadatavisitor-surface-92f5864c" tabindex="-1"><h5>arda::MetadataVisitor::Surface</h5><pre><code>template&lt;class T, EArdaComputeAccess A&gt; void Surface(const char* Name, size_t Offset, EArdaRHIFormat)</code></pre><p>Performs surface through the public render-graph contract.</p>
+<p>Performs surface through the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-metadatavisitor-value-29286452" tabindex="-1"><h5>arda::MetadataVisitor::Value</h5><pre><code>template&lt;class T&gt; void Value(const char* Name, size_t Offset)</code></pre><p>Performs value through the public render-graph contract.</p>
+<p>Performs value through the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-normalizevisitor-buffer-53cd309a" tabindex="-1"><h5>arda::NormalizeVisitor::Buffer</h5><pre><code>template&lt;class T, EArdaComputeAccess A&gt; void Buffer(const char*, size_t Offset)</code></pre><p>Performs buffer through the public render-graph contract.</p>
+<p>Performs buffer through the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-normalizevisitor-surface-c9c9ac33" tabindex="-1"><h5>arda::NormalizeVisitor::Surface</h5><pre><code>template&lt;class T, EArdaComputeAccess A&gt; void Surface(const char*, size_t Offset, EArdaRHIFormat Format)</code></pre><p>Performs surface through the public render-graph contract.</p>
+<p>Performs surface through the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-normalizevisitor-value-12b965ed" tabindex="-1"><h5>arda::NormalizeVisitor::Value</h5><pre><code>template&lt;class T&gt; void Value(const char*, size_t)</code></pre><p>Performs value through the public render-graph contract.</p>
+<p>Performs value through the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-resolvevisitor-buffer-0d14b9f6" tabindex="-1"><h5>arda::ResolveVisitor::Buffer</h5><pre><code>template&lt;class T, EArdaComputeAccess A&gt; void Buffer(const char*, size_t Offset)</code></pre><p>Performs buffer through the public render-graph contract.</p>
+<p>Performs buffer through the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-resolvevisitor-surface-2cd87dbc" tabindex="-1"><h5>arda::ResolveVisitor::Surface</h5><pre><code>template&lt;class T, EArdaComputeAccess A&gt; void Surface(const char*, size_t Offset, EArdaRHIFormat)</code></pre><p>Performs surface through the public render-graph contract.</p>
+<p>Performs surface through the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-resolvevisitor-value-563defc0" tabindex="-1"><h5>arda::ResolveVisitor::Value</h5><pre><code>template&lt;class T&gt; void Value(const char*, size_t Offset)</code></pre><p>Performs value through the public render-graph contract.</p>
+<p>Performs value through the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-tardgcudaparameters-getstaticmetadata-a46f04a0" tabindex="-1"><h5>arda::TARDGCudaParameters::GetStaticMetadata</h5><pre><code>static const FARDGParameterMetadata&amp; GetStaticMetadata()</code></pre><p>Graph metadata preserves schema read/write hazards even when CUDA requires UAV resource state.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rdg-tardghandle-getindex-be175f8d" tabindex="-1"><h5>arda::TARDGHandle::GetIndex</h5><pre><code>[[nodiscard]] constexpr uint32_t GetIndex() const noexcept</code></pre><p>Returns the zero-based registry index, or InvalidIndex for an invalid handle.</p>
 <dl>
@@ -1822,6 +2024,13 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardgcudaparameterdomain-dbabaee2" tabindex="-1"><h5>arda::FARDGCudaParameterDomain</h5><pre><code>struct FARDGCudaParameterDomain</code></pre><p>Logical RDG resource representation of a CUDA parameter declaration.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-rdg-fardgdebugoptions-e1513d7e" tabindex="-1"><h5>arda::FARDGDebugOptions</h5><pre><code>struct FARDGDebugOptions</code></pre><p>Selects correctness-oriented graph diagnostics and execution behavior.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</dd>
@@ -1867,6 +2076,45 @@
 <section class="api-entry" id="api-arda-rdg-fardgviewhandletag-8756974e" tabindex="-1"><h5>arda::FARDGViewHandleTag</h5><pre><code>struct FARDGViewHandleTag final</code></pre><p>Distinguishes view handles from all other typed handles.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacudagraphhelpers-30543169" tabindex="-1"><h5>arda::FArdaCudaGraphHelpers</h5><pre><code>struct FArdaCudaGraphHelpers</code></pre><p>Defines f arda cuda graph helpers in the public render-graph contract.</p>
+<p>Defines f arda cuda graph helpers in the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacudagraphhelpers-metadatavisitor-1bc14df0" tabindex="-1"><h5>arda::FArdaCudaGraphHelpers::MetadataVisitor</h5><pre><code>struct MetadataVisitor</code></pre><p>Defines metadata visitor in the public render-graph contract.</p>
+<p>Defines metadata visitor in the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacudagraphhelpers-normalizevisitor-36f0438c" tabindex="-1"><h5>arda::FArdaCudaGraphHelpers::NormalizeVisitor</h5><pre><code>struct NormalizeVisitor</code></pre><p>Defines normalize visitor in the public render-graph contract.</p>
+<p>Defines normalize visitor in the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardacudagraphhelpers-resolvevisitor-6ebca799" tabindex="-1"><h5>arda::FArdaCudaGraphHelpers::ResolveVisitor</h5><pre><code>struct ResolveVisitor</code></pre><p>Defines resolve visitor in the public render-graph contract.</p>
+<p>Defines resolve visitor in the public render-graph contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-tardgcudaparameters-971d48d1" tabindex="-1"><h5>arda::TARDGCudaParameters</h5><pre><code>template&lt;class Parameters&gt; struct TARDGCudaParameters : Parameters::template Rebind&lt;FARDGCudaParameterDomain&gt;</code></pre><p>The same named fields as Parameters, storing logical graph resources instead of physical RHI references.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rdg-tardghandlehasher-dcc0014d" tabindex="-1"><h5>arda::TARDGHandleHasher</h5><pre><code>struct TARDGHandleHasher</code></pre><p>Hashes a typed render-graph handle by its registry index.</p>
 <dl>
@@ -2197,7 +2445,7 @@
 </section>
 <section class="api-kind-group"><h4>method</h4>
 <section class="api-entry" id="api-arda-rdg-fardgbuilder-execute-462d7837" tabindex="-1"><h5>arda::FARDGBuilder::Execute</h5><pre><code>[[nodiscard]] const FARDGExecutionResult&amp; Execute( const FARDGExecuteOptions&amp; Options = {})</code></pre><p>Compiles, records, and submits the graph once.</p>
-<p>Compiles, records, and submits the graph once. Inspect mStatus: callback failures prevent graph submission and extraction publication, while later upload, queue-wait, or submission failures can leave earlier work in flight. Successful submission publishes extractions but does not imply GPU completion. Invalid graph contracts, checked resource materialization, binding-set construction, and internal transition invariants remain fatal checks. Command-list creation/open/close, reported callback errors, uniform-upload recording, queue waits, and submission failures return mStatus. A failed builder cannot retry execution.</p>
+<p>Compiles, records, and submits the graph once. Inspect mStatus: ordinary callback failures prevent graph submission, while RecordAtSubmit callbacks and later upload, queue-wait, or submission failures can leave earlier work in flight. All failures prevent extraction publication. Successful submission publishes extractions but does not imply GPU completion. Invalid graph contracts, checked resource materialization, binding-set construction, and internal transition invariants remain fatal checks. Command-list creation/open/close, reported callback errors, uniform-upload recording, queue waits, and submission failures return mStatus. A failed builder cannot retry execution.</p>
 <dl>
 <dt>Parameter</dt><dd>const FARDGExecuteOptions&amp; Options = {}</dd>
 <dt>Returns</dt><dd>const FARDGExecutionResult&amp;</dd>
@@ -2366,7 +2614,7 @@
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rdg-fardgexecutionresult-55e456b3" tabindex="-1"><h5>arda::FARDGExecutionResult</h5><pre><code>struct FARDGExecutionResult</code></pre><p>Reports one graph execution attempt, including failures.</p>
-<p>Check mStatus before using extraction results. Callback failures prevent graph command-list submission; later submission failures may leave earlier queue instances in flight. Counts and queue instances report accepted CPU submissions, not GPU completion.</p>
+<p>Check mStatus before using extraction results. Ordinary callback failures prevent graph submission; RecordAtSubmit callback errors or later submission failures may leave earlier queue instances in flight. Counts and queue instances report accepted CPU submissions, not GPU completion.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h</dd>
 </dl></section>
@@ -2779,7 +3027,7 @@
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rdg-fardgbuilder-addpass-eb5f83be" tabindex="-1"><h5>arda::FARDGBuilder::AddPass</h5><pre><code>template &lt;typename ParameterType, typename ExecuteType&gt; [[nodiscard]] FARDGPassHandle AddPass( eastl::string Name, const ParameterType* Parameters, EARDGPassFlags Flags, ExecuteType&amp;&amp; Execute)</code></pre><p>Registers a typed lambda pass and freezes its parameter storage.</p>
-<p>Registers a graph pass and its declared resource accesses. Supported callback signatures may return void or FArdaRHIStatus. A returned error or context.ReportStatus error retains the first failure and prevents graph submission after recording finishes. Skip commands that depend on failed setup. Captured state must remain valid until execution and be synchronized when recording runs concurrently.</p>
+<p>Registers a graph pass and its declared resource accesses. Supported callback signatures may return void or FArdaRHIStatus. A returned error or context.ReportStatus error retains the first failure. Ordinary recording failures prevent graph submission; RecordAtSubmit failures may follow earlier submissions. No failure publishes extractions. Skip commands that depend on failed setup. Captured state must remain valid until execution and be synchronized when recording runs concurrently.</p>
 <dl>
 <dt>Parameter</dt><dd>eastl::string Name</dd>
 <dt>Parameter</dt><dd>const ParameterType* Parameters</dd>
@@ -2792,7 +3040,7 @@
 <dt>Source</dt><dd>Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rdg-fardgbuilder-addpass-5e5f12c7" tabindex="-1"><h5>arda::FARDGBuilder::AddPass</h5><pre><code>template &lt;typename ExecuteType&gt; [[nodiscard]] FARDGPassHandle AddPass( eastl::string Name, EARDGPassFlags Flags, ExecuteType&amp;&amp; Execute)</code></pre><p>Registers a parameterless lambda pass.</p>
-<p>Registers a graph pass and its declared resource accesses. Supported callback signatures may return void or FArdaRHIStatus. A returned error or context.ReportStatus error retains the first failure and prevents graph submission after recording finishes. Skip commands that depend on failed setup. Captured state must remain valid until execution and be synchronized when recording runs concurrently.</p>
+<p>Registers a graph pass and its declared resource accesses. Supported callback signatures may return void or FArdaRHIStatus. A returned error or context.ReportStatus error retains the first failure. Ordinary recording failures prevent graph submission; RecordAtSubmit failures may follow earlier submissions. No failure publishes extractions. Skip commands that depend on failed setup. Captured state must remain valid until execution and be synchronized when recording runs concurrently.</p>
 <dl>
 <dt>Parameter</dt><dd>eastl::string Name</dd>
 <dt>Parameter</dt><dd>EARDGPassFlags Flags</dd>

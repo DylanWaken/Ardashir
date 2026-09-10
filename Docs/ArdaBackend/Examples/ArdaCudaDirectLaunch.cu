@@ -4,13 +4,19 @@
 
 namespace arda
 {
-    __global__ void AddArdaValues(const unsigned int* Input, unsigned int* Output,
-        unsigned int Count, unsigned int Bias)
+    struct FAddParameters
+    {
+        const unsigned int* Input;
+        unsigned int* Output;
+        unsigned int Count;
+        unsigned int Bias;
+    };
+    __global__ void AddArdaValues(FAddParameters P)
     {
         const unsigned int Index = blockIdx.x * blockDim.x + threadIdx.x;
-        if (Index < Count)
+        if (Index < P.Count)
         {
-            Output[Index] = Input[Index] + Bias;
+            P.Output[Index] = P.Input[Index] + P.Bias;
         }
     }
 
@@ -27,13 +33,13 @@ namespace arda
         }
         const dim3 Block(128, 1, 1);
         const dim3 Grid(1 + (Count - 1) / Block.x, 1, 1);
-        AddArdaValues<<<Grid, Block, 0, Stream>>>(Input, Output, Count, 7u);
+        AddArdaValues<<<Grid, Block, 0, Stream>>>({Input, Output, Count, 7u});
         const cudaError_t FirstStatus = cudaGetLastError();
         if (FirstStatus != cudaSuccess)
         {
             return FirstStatus;
         }
-        AddArdaValues<<<Grid, Block, 0, Stream>>>(Output, Output, Count, 11u);
+        AddArdaValues<<<Grid, Block, 0, Stream>>>({Output, Output, Count, 11u});
         return cudaGetLastError();
     }
 }

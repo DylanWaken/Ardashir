@@ -19,7 +19,7 @@ namespace arda
     class IArdaExternalDeviceProvider;
 
     /** C++ provider contract version required by this ArdaBackend build. */
-    inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 4;
+    inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 5;
 
     /** Identifies the bytecode family consumed by a backend module. */
     enum class EArdaShaderBinaryFormat : uint8_t

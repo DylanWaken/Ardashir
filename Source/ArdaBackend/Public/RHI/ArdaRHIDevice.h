@@ -84,13 +84,13 @@ namespace arda
     {
     public:
         /**
-         * Records ordered CUDA launches on an open list; ExecuteCommandList submits the work.
+         * Records one precompiled CUDA kernel on an open list; ExecuteCommandList submits the work.
          * Bindings must belong to this device and already have qualified CUDA representations.
-         * Providers insert memory dependencies and retain bindings/modules until completion.
+         * Providers insert memory dependencies and retain bindings/native entries until completion.
          * D3D12 CiG accepts graphics lists; Vulkan and ContextSwitch accept graphics/compute
-         * lists. Copy lists are rejected. ContextSwitch records deferred segments and blocks
-         * at submission to drain graphics, execute CUDA, and complete its stream before the
-         * next graphics segment. CiG and ContextSwitch lists are single-use until reset.
+         * lists. Copy lists are rejected. ContextSwitch and Vulkan CiG record deferred segments
+         * joined by GPU fence/semaphore handoffs at submission, without per-kernel CPU waits.
+         * Final graphics completion proves CUDA completion. CUDA lists are single-use until reset.
          * Execution failures are not retried as graphics work.
          */
         virtual FArdaRHIStatus DispatchCuda(const FArdaCudaDispatch&)

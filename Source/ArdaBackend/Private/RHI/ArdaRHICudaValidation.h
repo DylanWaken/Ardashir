@@ -5,16 +5,15 @@
 namespace arda
 {
     // Operand launches and prepared RHI kernels share argument/geometry rules.
-    // Code validation is separate so malformed calls never trigger compilation.
+    // Geometry and parameter patches are checked before native recording.
     template<typename LaunchType>
     FArdaRHIStatus ValidateArdaCudaLaunch(const LaunchType& Launch, size_t BindingCount,
         const FArdaCudaCapabilities& Capabilities)
     {
-        if (Launch.mEntryPoint.empty() || Launch.mEntryPoint.find('\0') != eastl::string::npos ||
-            Launch.mSharedMemoryBytes > Capabilities.mMaxSharedMemoryBytes)
+        if (Launch.mSharedMemoryBytes > Capabilities.mMaxSharedMemoryBytes)
         {
             return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-                "CUDA entry point or shared-memory requirement is invalid.");
+                "CUDA shared-memory requirement is invalid.");
         }
         uint64_t Threads = 1;
         for (uint32_t Axis = 0; Axis < 3; ++Axis)
@@ -33,15 +32,20 @@ namespace arda
             }
             Threads *= Launch.mBlockSize[Axis];
         }
-        for (const auto& Argument : Launch.mArguments)
+        for (size_t I = 0; I < Launch.mPatches.size(); ++I)
         {
-            if ((Argument.mBindingIndex == UINT32_MAX && Argument.mValue.empty()) ||
-                (Argument.mBindingIndex != UINT32_MAX &&
-                    (Argument.mBindingIndex >= BindingCount || !Argument.mValue.empty())))
+            const auto& P = Launch.mPatches[I];
+            if (P.mBindingIndex >= BindingCount || P.mOffset > Launch.mParameters.size() ||
+                sizeof(uint64_t) > Launch.mParameters.size() - P.mOffset ||
+                !P.mAlignment || (P.mAlignment & (P.mAlignment - 1)))
             {
                 return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-                    "CUDA argument must reference a binding or contain owned value bytes.");
+                    "CUDA parameter resource patch is outside the argument or has invalid alignment.");
             }
+            for (size_t J = 0; J < I; ++J)
+                if (P.mOffset < Launch.mPatches[J].mOffset + sizeof(uint64_t) &&
+                    Launch.mPatches[J].mOffset < P.mOffset + sizeof(uint64_t))
+                    return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA resource patches overlap.");
         }
         return {};
     }

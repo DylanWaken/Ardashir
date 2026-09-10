@@ -9924,7 +9924,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda"
     ],
-    "sourceLine": 31
+    "sourceLine": 32
   },
   {
     "id": "api-arda-fardgexecuteoptions-mbmergerasterpasses-03770049",
@@ -10599,6 +10599,531 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "sourceLine": 804
   },
   {
+    "id": "api-arda-fardgcudaparameterdomain-dbabaee2",
+    "name": "FARDGCudaParameterDomain",
+    "qualifiedName": "arda::FARDGCudaParameterDomain",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FARDGCudaParameterDomain",
+    "summary": "Logical RDG resource representation of a CUDA parameter declaration.",
+    "details": "Logical RDG resource representation of a CUDA parameter declaration.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 9
+  },
+  {
+    "id": "api-arda-fardgcudaparameterdomain-surface-c36500d1",
+    "name": "Surface",
+    "qualifiedName": "arda::FARDGCudaParameterDomain::Surface",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T, EArdaComputeAccess Access> using Surface = FARDGTextureAccess",
+    "summary": "Defines surface in the public render-graph contract.",
+    "details": "Defines surface in the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FARDGCudaParameterDomain"
+    ],
+    "sourceLine": 13
+  },
+  {
+    "id": "api-arda-fardacudagraphhelpers-30543169",
+    "name": "FArdaCudaGraphHelpers",
+    "qualifiedName": "arda::FArdaCudaGraphHelpers",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaGraphHelpers",
+    "summary": "Defines f arda cuda graph helpers in the public render-graph contract.",
+    "details": "Defines f arda cuda graph helpers in the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 15
+  },
+  {
+    "id": "api-arda-fardacudagraphhelpers-metadatavisitor-1bc14df0",
+    "name": "MetadataVisitor",
+    "qualifiedName": "arda::FArdaCudaGraphHelpers::MetadataVisitor",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct MetadataVisitor",
+    "summary": "Defines metadata visitor in the public render-graph contract.",
+    "details": "Defines metadata visitor in the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphHelpers"
+    ],
+    "sourceLine": 17
+  },
+  {
+    "id": "api-arda-metadatavisitor-mmembers-9ef633df",
+    "name": "mMembers",
+    "qualifiedName": "arda::MetadataVisitor::mMembers",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FARDGParameterMember> mMembers",
+    "summary": "Stores members in this public render-graph value.",
+    "details": "Stores members in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::MetadataVisitor"
+    ],
+    "sourceLine": 19
+  },
+  {
+    "id": "api-arda-metadatavisitor-value-29286452",
+    "name": "Value",
+    "qualifiedName": "arda::MetadataVisitor::Value",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T> void Value(const char* Name, size_t Offset)",
+    "summary": "Performs value through the public render-graph contract.",
+    "details": "Performs value through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::MetadataVisitor"
+    ],
+    "sourceLine": 20
+  },
+  {
+    "id": "api-arda-metadatavisitor-buffer-4e8fc264",
+    "name": "Buffer",
+    "qualifiedName": "arda::MetadataVisitor::Buffer",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T, EArdaComputeAccess A> void Buffer(const char* Name, size_t Offset)",
+    "summary": "Performs buffer through the public render-graph contract.",
+    "details": "Performs buffer through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::MetadataVisitor"
+    ],
+    "sourceLine": 22
+  },
+  {
+    "id": "api-arda-metadatavisitor-surface-92f5864c",
+    "name": "Surface",
+    "qualifiedName": "arda::MetadataVisitor::Surface",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T, EArdaComputeAccess A> void Surface(const char* Name, size_t Offset, EArdaRHIFormat)",
+    "summary": "Performs surface through the public render-graph contract.",
+    "details": "Performs surface through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::MetadataVisitor"
+    ],
+    "sourceLine": 25
+  },
+  {
+    "id": "api-arda-fardacudagraphhelpers-normalizevisitor-36f0438c",
+    "name": "NormalizeVisitor",
+    "qualifiedName": "arda::FArdaCudaGraphHelpers::NormalizeVisitor",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct NormalizeVisitor",
+    "summary": "Defines normalize visitor in the public render-graph contract.",
+    "details": "Defines normalize visitor in the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphHelpers"
+    ],
+    "sourceLine": 29
+  },
+  {
+    "id": "api-arda-normalizevisitor-mbytes-a2c60a96",
+    "name": "mBytes",
+    "qualifiedName": "arda::NormalizeVisitor::mBytes",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint8_t* mBytes",
+    "summary": "Stores bytes in this public render-graph value.",
+    "details": "Stores bytes in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::NormalizeVisitor"
+    ],
+    "sourceLine": 31
+  },
+  {
+    "id": "api-arda-normalizevisitor-value-12b965ed",
+    "name": "Value",
+    "qualifiedName": "arda::NormalizeVisitor::Value",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T> void Value(const char*, size_t)",
+    "summary": "Performs value through the public render-graph contract.",
+    "details": "Performs value through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::NormalizeVisitor"
+    ],
+    "sourceLine": 33
+  },
+  {
+    "id": "api-arda-normalizevisitor-buffer-53cd309a",
+    "name": "Buffer",
+    "qualifiedName": "arda::NormalizeVisitor::Buffer",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T, EArdaComputeAccess A> void Buffer(const char*, size_t Offset)",
+    "summary": "Performs buffer through the public render-graph contract.",
+    "details": "Performs buffer through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::NormalizeVisitor"
+    ],
+    "sourceLine": 34
+  },
+  {
+    "id": "api-arda-normalizevisitor-surface-c9c9ac33",
+    "name": "Surface",
+    "qualifiedName": "arda::NormalizeVisitor::Surface",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T, EArdaComputeAccess A> void Surface(const char*, size_t Offset, EArdaRHIFormat Format)",
+    "summary": "Performs surface through the public render-graph contract.",
+    "details": "Performs surface through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::NormalizeVisitor"
+    ],
+    "sourceLine": 43
+  },
+  {
+    "id": "api-arda-fardacudagraphhelpers-resolvevisitor-6ebca799",
+    "name": "ResolveVisitor",
+    "qualifiedName": "arda::FArdaCudaGraphHelpers::ResolveVisitor",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct ResolveVisitor",
+    "summary": "Defines resolve visitor in the public render-graph contract.",
+    "details": "Defines resolve visitor in the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphHelpers"
+    ],
+    "sourceLine": 53
+  },
+  {
+    "id": "api-arda-resolvevisitor-mgraph-27702cb6",
+    "name": "mGraph",
+    "qualifiedName": "arda::ResolveVisitor::mGraph",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "const uint8_t* mGraph",
+    "summary": "Stores graph in this public render-graph value.",
+    "details": "Stores graph in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::ResolveVisitor"
+    ],
+    "sourceLine": 55
+  },
+  {
+    "id": "api-arda-resolvevisitor-mhost-a4690b40",
+    "name": "mHost",
+    "qualifiedName": "arda::ResolveVisitor::mHost",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint8_t* mHost",
+    "summary": "Stores host in this public render-graph value.",
+    "details": "Stores host in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::ResolveVisitor"
+    ],
+    "sourceLine": 56
+  },
+  {
+    "id": "api-arda-resolvevisitor-mcontext-2319be24",
+    "name": "mContext",
+    "qualifiedName": "arda::ResolveVisitor::mContext",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FARDGPassExecutionContext& mContext",
+    "summary": "Stores context in this public render-graph value.",
+    "details": "Stores context in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::ResolveVisitor"
+    ],
+    "sourceLine": 58
+  },
+  {
+    "id": "api-arda-resolvevisitor-mindex-023d5363",
+    "name": "mIndex",
+    "qualifiedName": "arda::ResolveVisitor::mIndex",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "size_t mIndex = 0",
+    "summary": "Stores index in this public render-graph value.",
+    "details": "Stores index in this public render-graph value. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::ResolveVisitor"
+    ],
+    "sourceLine": 59
+  },
+  {
+    "id": "api-arda-resolvevisitor-value-563defc0",
+    "name": "Value",
+    "qualifiedName": "arda::ResolveVisitor::Value",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T> void Value(const char*, size_t Offset)",
+    "summary": "Performs value through the public render-graph contract.",
+    "details": "Performs value through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::ResolveVisitor"
+    ],
+    "sourceLine": 60
+  },
+  {
+    "id": "api-arda-resolvevisitor-buffer-0d14b9f6",
+    "name": "Buffer",
+    "qualifiedName": "arda::ResolveVisitor::Buffer",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T, EArdaComputeAccess A> void Buffer(const char*, size_t Offset)",
+    "summary": "Performs buffer through the public render-graph contract.",
+    "details": "Performs buffer through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::ResolveVisitor"
+    ],
+    "sourceLine": 62
+  },
+  {
+    "id": "api-arda-resolvevisitor-surface-2cd87dbc",
+    "name": "Surface",
+    "qualifiedName": "arda::ResolveVisitor::Surface",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class T, EArdaComputeAccess A> void Surface(const char*, size_t Offset, EArdaRHIFormat)",
+    "summary": "Performs surface through the public render-graph contract.",
+    "details": "Performs surface through the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::ResolveVisitor"
+    ],
+    "sourceLine": 68
+  },
+  {
+    "id": "api-arda-tardgcudaparameters-971d48d1",
+    "name": "TARDGCudaParameters",
+    "qualifiedName": "arda::TARDGCudaParameters",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class Parameters> struct TARDGCudaParameters : Parameters::template Rebind<FARDGCudaParameterDomain>",
+    "summary": "The same named fields as Parameters, storing logical graph resources instead of physical RHI references.",
+    "details": "The same named fields as Parameters, storing logical graph resources instead of physical RHI references.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 78
+  },
+  {
+    "id": "api-arda-tardgcudaparameters-fstorage-f2677032",
+    "name": "FStorage",
+    "qualifiedName": "arda::TARDGCudaParameters::FStorage",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "using FStorage = typename Parameters::template Rebind<FARDGCudaParameterDomain>",
+    "summary": "Defines f storage in the public render-graph contract.",
+    "details": "Defines f storage in the public render-graph contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TARDGCudaParameters"
+    ],
+    "sourceLine": 80
+  },
+  {
+    "id": "api-arda-tardgcudaparameters-getstaticmetadata-a46f04a0",
+    "name": "GetStaticMetadata",
+    "qualifiedName": "arda::TARDGCudaParameters::GetStaticMetadata",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "static const FARDGParameterMetadata& GetStaticMetadata()",
+    "summary": "Graph metadata preserves schema read/write hazards even when CUDA requires UAV resource state.",
+    "details": "Graph metadata preserves schema read/write hazards even when CUDA requires UAV resource state.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TARDGCudaParameters"
+    ],
+    "sourceLine": 82
+  },
+  {
+    "id": "api-arda-addardacudapass-86c3c9ac",
+    "name": "AddArdaCudaPass",
+    "qualifiedName": "arda::AddArdaCudaPass",
+    "kind": "function",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template<class OperandType> TArdaRHIResult<FARDGPassHandle> AddArdaCudaPass(FARDGBuilder& Graph, eastl::string Name, eastl::shared_ptr<OperandType> Operand, TARDGCudaParameters<typename OperandType::FParameters> Parameters, EARDGPassFlags Flags = EARDGPassFlags::Compute)",
+    "summary": "Adds a single-kernel operand pass, deriving accesses before allocation and resolving them at execution. Retains Operand and a typed parameter copy. Runtime schema/build errors return before adding a pass; physical-resource/selection/launch failures propagate through the graph's execution status.",
+    "details": "Adds a single-kernel operand pass, deriving accesses before allocation and resolving them at execution. Retains Operand and a typed parameter copy. Runtime schema/build errors return before adding a pass; physical-resource/selection/launch failures propagate through the graph's execution status.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 97
+  },
+  {
     "id": "api-arda-fardgqueuepolicy-12f238e2",
     "name": "FARDGQueuePolicy",
     "qualifiedName": "arda::FARDGQueuePolicy",
@@ -10620,6 +11145,27 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "sourceLine": 151
   },
   {
+    "id": "api-arda-eardgpassflags-recordatsubmit-343f81d5",
+    "name": "RecordAtSubmit",
+    "qualifiedName": "arda::EARDGPassFlags::RecordAtSubmit",
+    "kind": "enumerator",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "RecordAtSubmit = 1u << 7u",
+    "summary": "Records immediately before its ordered submission (required by D3D12 CiG capture). A recording failure can occur after earlier passes have submitted; execution reports that failure.",
+    "details": "Records immediately before its ordered submission (required by D3D12 CiG capture). A recording failure can occur after earlier passes have submitted; execution reports that failure.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::EARDGPassFlags"
+    ],
+    "sourceLine": 213
+  },
+  {
     "id": "api-arda-fardgrendergraphcontext-mqueuepolicy-d6f28bca",
     "name": "mQueuePolicy",
     "qualifiedName": "arda::FARDGRenderGraphContext::mQueuePolicy",
@@ -10638,7 +11184,28 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGRenderGraphContext"
     ],
-    "sourceLine": 324
+    "sourceLine": 329
+  },
+  {
+    "id": "api-arda-fardgparametermember-mbreadonlyuav-709e6082",
+    "name": "mbReadOnlyUav",
+    "qualifiedName": "arda::FARDGParameterMember::mbReadOnlyUav",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "bool mbReadOnlyUav = false",
+    "summary": "CUDA read-only access may require UAV state while remaining a reader in graph hazards.",
+    "details": "CUDA read-only access may require UAV state while remaining a reader in graph hazards.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphParameters.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FARDGParameterMember"
+    ],
+    "sourceLine": 90
   },
   {
     "id": "api-arda-fardgrasterbindingsignature-operator-9df6f9b8",
@@ -10876,11 +11443,11 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
   "arda::FARDGExecutionResult::mbUsedVirtualHeaps": "True when at least one transient compatibility group was successfully bound into an explicit heap. May be true together with committed fallback.",
   "arda::FARDGExecutionResult::mbUsedTransientAliasing": "True when an applied heap layout reuses a retired byte range. Inclusive lifetime overlap forbids reuse. Cross-queue prior uses are synchronized before activation.",
   "arda::FARDGExecutionResult::mbUsedTransientFallback": "True when any live transient candidate could not use placement, including unavailable device features, CPU-visible buffers, incompatible requirements, or heap/binding failure. Eligible groups can still use placed aliasing.",
-  "arda::FARDGPassExecutionContext::ReportStatus": "Stores the first non-success callback status. Later success does not erase failure. After recording, any failed callback prevents graph command-list submission and extraction publication. Use from the active callback; the context is not shared across recording workers.",
+  "arda::FARDGPassExecutionContext::ReportStatus": "Stores the first non-success callback status. Later success does not erase failure. Ordinary recording errors prevent graph submission. RecordAtSubmit callback errors may occur after earlier submissions; any failure prevents extraction publication. Use from the active callback; the context is not shared across recording workers.",
   "arda::FARDGPassExecutionContext::GetStatus": "Returns the first callback failure reported or returned so far, or success. The reference is borrowed from this pass context and expires with the callback scope.",
   "arda::FARDGBuilder::GetLastExecutionResult": "Returns null before the first execution attempt. After execution starts, returns the builder-owned report, including failed attempts. The reference lasts until builder destruction; it is not a GPU completion signal.",
-  "arda::FARDGBuilder::Execute": "Compiles, records, and submits the graph once. Inspect mStatus: callback failures prevent graph submission and extraction publication, while later upload, queue-wait, or submission failures can leave earlier work in flight. Successful submission publishes extractions but does not imply GPU completion. Invalid graph contracts, checked resource materialization, binding-set construction, and internal transition invariants remain fatal checks. Command-list creation/open/close, reported callback errors, uniform-upload recording, queue waits, and submission failures return mStatus. A failed builder cannot retry execution.",
-  "arda::FARDGBuilder::AddPass": "Registers a graph pass and its declared resource accesses. Supported callback signatures may return void or FArdaRHIStatus. A returned error or context.ReportStatus error retains the first failure and prevents graph submission after recording finishes. Skip commands that depend on failed setup. Captured state must remain valid until execution and be synchronized when recording runs concurrently.",
+  "arda::FARDGBuilder::Execute": "Compiles, records, and submits the graph once. Inspect mStatus: ordinary callback failures prevent graph submission, while RecordAtSubmit callbacks and later upload, queue-wait, or submission failures can leave earlier work in flight. All failures prevent extraction publication. Successful submission publishes extractions but does not imply GPU completion. Invalid graph contracts, checked resource materialization, binding-set construction, and internal transition invariants remain fatal checks. Command-list creation/open/close, reported callback errors, uniform-upload recording, queue waits, and submission failures return mStatus. A failed builder cannot retry execution.",
+  "arda::FARDGBuilder::AddPass": "Registers a graph pass and its declared resource accesses. Supported callback signatures may return void or FArdaRHIStatus. A returned error or context.ReportStatus error retains the first failure. Ordinary recording failures prevent graph submission; RecordAtSubmit failures may follow earlier submissions. No failure publishes extractions. Skip commands that depend on failed setup. Captured state must remain valid until execution and be synchronized when recording runs concurrently.",
   "arda::FARDGBuilder::AddDispatchPass": "Registers a typed compute pass, invokes setup, then dispatches only if setup succeeded. Setup may return FArdaRHIStatus or report failure through the context. Void setup callbacks remain supported.",
   "arda::FARDGBuilder::AddRayDispatchPass": "Registers a typed ray-tracing pass. Setup may return FArdaRHIStatus or report failure; failed setup suppresses dispatch. A failed native DispatchRays status is propagated into the graph result."
 };
@@ -10899,6 +11466,6 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
 for (const symbol of window.ArdaRDGApi.symbols) {
   if (symbol.qualifiedName === "arda::FARDGExecutionResult") {
     symbol.summary = "Reports one graph execution attempt, including failures.";
-    symbol.details = "Check mStatus before using extraction results. Callback failures prevent graph command-list submission; later submission failures may leave earlier queue instances in flight. Counts and queue instances report accepted CPU submissions, not GPU completion.";
+    symbol.details = "Check mStatus before using extraction results. Ordinary callback failures prevent graph submission; RecordAtSubmit callback errors or later submission failures may leave earlier queue instances in flight. Counts and queue instances report accepted CPU submissions, not GPU completion.";
   }
 }

@@ -291,7 +291,7 @@ namespace arda
             void AddTexture(
                 FARDGTextureRef Texture,
                 arda::EArdaRHIResourceState State,
-                arda::FArdaRHITextureSubresourceRange Subresources = {})
+                arda::FArdaRHITextureSubresourceRange Subresources = {}, bool bReadOnlyUav = false)
             {
                 if (Texture == nullptr)
                 {
@@ -308,7 +308,7 @@ namespace arda
                         "A pass declares a texture access with an unknown state.");
                 }
 
-                const bool bWrite = IsWriteState(State);
+                const bool bWrite = IsWriteState(State) && !bReadOnlyUav;
                 mPass.AddTextureState(
                     {Texture->GetHandle(), Subresources, State, bWrite});
                 Texture->MarkUsed(mPass.GetHandle());
@@ -343,7 +343,7 @@ namespace arda
             void AddBuffer(
                 FARDGBufferRef Buffer,
                 arda::EArdaRHIResourceState State,
-                arda::FArdaRHIBufferRange Range = {})
+                arda::FArdaRHIBufferRange Range = {}, bool bReadOnlyUav = false)
             {
                 if (Buffer == nullptr)
                 {
@@ -360,7 +360,7 @@ namespace arda
                         "A pass declares a buffer access with an unknown state.");
                 }
 
-                const bool bWrite = IsWriteState(State);
+                const bool bWrite = IsWriteState(State) && !bReadOnlyUav;
                 mPass.AddBufferState({Buffer->GetHandle(), Range, State, bWrite});
                 Buffer->MarkUsed(mPass.GetHandle());
 
@@ -583,7 +583,7 @@ namespace arda
                             AddTexture(
                                 Access.mTexture,
                                 Access.mState,
-                                Access.mSubresources);
+                                Access.mSubresources, Member.mbReadOnlyUav);
                             break;
                         }
 
@@ -591,7 +591,7 @@ namespace arda
                         {
                             const FARDGBufferAccess& Access =
                                 Parameter.GetValue<FARDGBufferAccess>();
-                            AddBuffer(Access.mBuffer, Access.mState, Access.mRange);
+                            AddBuffer(Access.mBuffer, Access.mState, Access.mRange, Member.mbReadOnlyUav);
                             break;
                         }
 
@@ -666,7 +666,8 @@ namespace arda
                 static_cast<uint16_t>(EARDGPassFlags::Copy) |
                 static_cast<uint16_t>(EARDGPassFlags::NeverCull) |
                 static_cast<uint16_t>(EARDGPassFlags::SkipRenderPass) |
-                static_cast<uint16_t>(EARDGPassFlags::NeverParallel);
+                static_cast<uint16_t>(EARDGPassFlags::NeverParallel) |
+                static_cast<uint16_t>(EARDGPassFlags::RecordAtSubmit);
             const bool bRaster = HasAllFlags(Flags, EARDGPassFlags::Raster);
             const bool bCompute = HasAllFlags(Flags, EARDGPassFlags::Compute);
             const bool bAsync = HasAllFlags(Flags, EARDGPassFlags::AsyncCompute);
@@ -1633,6 +1634,8 @@ namespace arda
         {
             ARDA_CHECK_MSG("Invalid logical texture declaration.");
         }
+        // CUDA imports require dedicated allocations rather than transient placed heaps.
+        if (Desc.mbCudaInterop) Flags = EARDGResourceFlags::None;
         return &mImpl->mTextures.Get(mImpl->mTextures.Emplace(eastl::move(Desc), Flags));
     }
 
@@ -1659,6 +1662,7 @@ namespace arda
         {
             ARDA_CHECK_MSG("Invalid logical buffer declaration.");
         }
+        if (Desc.mbCudaInterop) Flags = EARDGResourceFlags::None;
         return &mImpl->mBuffers.Get(mImpl->mBuffers.Emplace(eastl::move(Desc), Flags));
     }
 

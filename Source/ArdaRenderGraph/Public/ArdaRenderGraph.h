@@ -6,6 +6,7 @@
 #include "ArdaRenderGraphPass.h"
 #include "ArdaRenderGraphBlackboard.h"
 #include "ArdaRenderGraphBuilder.h"
+#include "ArdaRenderGraphCuda.h"
 #include "ArdaBackend.h"
 
 namespace arda

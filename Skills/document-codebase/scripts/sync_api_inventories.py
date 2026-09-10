@@ -45,8 +45,9 @@ CONTRACT_HEADERS = (
 COMPLETE_BACKEND_SOURCES = {
     "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h",
-    "Source/ArdaBackend/Public/Compute/ArdaCudaModule.h",
-    "Source/ArdaBackend/Public/Compute/ArdaCudaCompiler.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
     "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHIResource.h",
     "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
@@ -105,6 +106,7 @@ def find_matching_brace(text: str, opening: int) -> int:
 
 
 def type_ranges(text: str) -> List[Tuple[int, int, str, str]]:
+    text = Validator.mask_template_parameters(text)
     ranges: List[Tuple[int, int, str, str]] = []
     pattern = re.compile(
         r"\b(?P<kind>class|struct|enum(?:\s+class)?)\s+"
@@ -186,6 +188,10 @@ def declaration_signature(text: str, name: str, line: int, kind: str) -> str:
         return callable_signature(text, name, offset)
     if kind == "type":
         start = max(text.rfind("\n", 0, offset), text.rfind("}", 0, offset)) + 1
+        boundary = max(text.rfind(token, 0, start) for token in ";{}") + 1
+        template = re.search(r"template\s*<[^;{}]*>\s*$", text[boundary:start])
+        if template:
+            start = boundary + template.start()
         end = text.find("{", offset)
         return normalized(text[start:end] if end >= 0 else name)
     if kind == "enumerator":
@@ -202,6 +208,7 @@ def declaration_signature(text: str, name: str, line: int, kind: str) -> str:
 
 def api_kind(kind: str, name: str, signature: str, owner: str) -> str:
     if kind == "type":
+        signature = Validator.mask_template_parameters(signature).strip()
         if signature.startswith("enum"):
             return "enum"
         return "struct" if signature.startswith("struct") else "class"
@@ -243,7 +250,7 @@ def description(name: str, kind: str, domain: str) -> Tuple[str, str]:
 def backend_specs(repo: Path) -> List[Tuple[str, str, str]]:
     overrides = {item[0]: item for item in CONTRACT_HEADERS}
     specs: List[Tuple[str, str, str]] = []
-    for header in sorted((repo / "Source/ArdaBackend/Public").rglob("*.h")):
+    for header in sorted(p for p in (repo / "Source/ArdaBackend/Public").rglob("*") if p.suffix in {".h", ".cuh"}):
         source = header.relative_to(repo).as_posix()
         if source in overrides:
             specs.append(overrides[source])

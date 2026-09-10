@@ -28,8 +28,9 @@ namespace arda
         /** Both representations exist and refer to the same native allocation. */
         GraphicsAndCuda
     };
-    /** Representation availability is not permission for concurrent access. Native CUDA launches use the graphics
-     * command stream; ordinary-context launches execute between completed graphics segments. */
+    /** Representation availability is not permission for concurrent access. D3D12 CiG captures launches into
+     * the graphics command list. Vulkan CiG and ordinary contexts launch on CUDA streams ordered with graphics
+     * by GPU fence/semaphore handoffs. Retain shared storage until the final graphics consumer completes. */
     struct FArdaCudaResourceInfo
     {
         /** Allocation/device-qualified representation, not a promise for every resource of this type. */

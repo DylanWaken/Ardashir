@@ -6,6 +6,7 @@
 
 #include "ArdaRHIResources.h"
 #include <type_traits>
+#include <typeinfo>
 
 namespace arda
 {
@@ -27,8 +28,8 @@ namespace arda
         None,
         /** CUDA in Graphics capture on the D3D12 graphics queue. */
         D3D12CiG,
-        /** VK_NV_cuda_kernel_launch on a Vulkan graphics or compute queue. */
-        VulkanKernel,
+        /** CUDA stream joined to a Vulkan external compute queue. */
+        VulkanCiG,
         /** An ordinary CUDA context; graphics and CUDA segments execute separately. */
         ContextSwitch
     };
@@ -116,49 +117,104 @@ namespace arda
         uint32_t mMipLevel = 0;
     };
 
-    /** Either a typed resource binding or owned scalar/POD argument bytes. */
-    struct FArdaCudaArgument
+    /** Native binary target emitted by the build; accelerated targets require an exact match. */
+    struct FArdaCudaArchitecture
     {
-        /** Index into FArdaCudaDispatch::mBindings, or UINT32_MAX for owned value bytes. */
-        uint32_t mBindingIndex = UINT32_MAX;
-        /** Exact PTX parameter bytes; empty for a resource-binding argument. */
-        eastl::vector<uint8_t> mValue;
-        /** Selects a retained binding; the provider supplies its 64-bit pointer/surface value. */
-        static FArdaCudaArgument Binding(uint32_t Index) { return {Index, {}}; }
-        /** Copies a trivially copyable value. Its byte size/layout must match the PTX parameter ABI. */
-        template<class T> static FArdaCudaArgument Value(const T& Value)
-        {
-            static_assert(std::is_trivially_copyable_v<T>, "Kernel values must be trivially copyable.");
-            const auto* Bytes = reinterpret_cast<const uint8_t*>(&Value);
-            FArdaCudaArgument Result;
-            Result.mValue.assign(Bytes, Bytes + sizeof(T));
-            return Result;
-        }
+        /** Major times ten plus minor. */
+        uint32_t mComputeCapability = 0;
+        /** Architecture/family-specific code is admitted only on its exact build target. */
+        bool mbExact = false;
+        /** Tests binary compatibility conservatively, without requesting driver compilation. */
+        bool Supports(uint32_t DeviceCapability) const noexcept;
     };
-
-    /** One PTX entry-point launch; owns code and arguments through command recording. */
-    struct FArdaCudaKernel
+    /** Build-generated identity and native-code coverage for a compilation profile. */
+    struct FArdaCudaBuildInfo
     {
-        /** PTX source bytes; embedded NULs are rejected. No CUDA-C compiler is invoked. */
-        eastl::string mPtx;
-        /** Exact exported PTX entry-point name. */
-        eastl::string mEntryPoint;
+        /** Unique profile name; also isolates symbols compiled with different flags. */
+        eastl::string mName;
+        /** Compiler/options/source-build fingerprint for diagnostics and caches. */
+        eastl::string mIdentity;
+        /** Native targets actually requested by the build. */
+        eastl::vector<FArdaCudaArchitecture> mArchitectures;
+        /** True when the build opts into approximate floating-point operations. */
+        bool mbFastMath = false;
+    };
+    /** Standard launch geometry. Streams, contexts and submission remain framework-owned. */
+    struct FArdaCudaLaunchConfig
+    {
         /** Number of blocks in each axis; each dimension must be nonzero. */
         uint32_t mGridSize[3] = {1, 1, 1};
         /** Threads per block in each axis; per-axis and product limits both apply. */
         uint32_t mBlockSize[3] = {1, 1, 1};
         /** Dynamic shared-memory request for each block, in bytes. */
         uint32_t mSharedMemoryBytes = 0;
-        /** Ordered arguments matching the PTX entry point, including unused parameters. */
-        eastl::vector<FArdaCudaArgument> mArguments;
     };
-
-    /** Kernels execute in order; write/read dependencies between them are synchronized. */
+    /** Runtime signature of the one by-value parameter accepted by a compiled entry. */
+    struct FArdaCudaKernelSignature
+    {
+        /** C++ type identity, compared at registration; null denotes an unsupported signature. */
+        const std::type_info* mType = nullptr;
+        /** Size of the CUDA argument object. */
+        size_t mSize = 0;
+        /** Alignment of the CUDA argument object. */
+        size_t mAlignment = 1;
+        /** Runtime eligibility; no facade static assertion is required. */
+        bool mbSupported = false;
+    };
+    /** Kernel-specific native limits queried under the execution context. */
+    struct FArdaCudaKernelLimits
+    {
+        /** Maximum threads for this compiled function. */
+        uint32_t mMaxThreadsPerBlock = 0;
+        /** Static shared memory used by the function. */
+        uint32_t mStaticSharedMemoryBytes = 0;
+        /** Maximum dynamic shared memory accepted by the function. */
+        uint32_t mMaxDynamicSharedMemoryBytes = 0;
+    };
+    /** Provider-facing compiled launch adapter. Implemented by the nvcc registration helper.
+     * The current CUDA context is supplied by the provider; the adapter never selects a device.
+     * Retain this object and its owning code module through GPU completion.
+     */
+    class IArdaCudaKernelEntry
+    {
+    public:
+        virtual ~IArdaCudaKernelEntry() = default;
+        /** Reports the registered signature without initializing CUDA. */
+        virtual FArdaCudaKernelSignature GetSignature() const noexcept = 0;
+        /** Returns the immutable build manifest. */
+        virtual const FArdaCudaBuildInfo& GetBuildInfo() const noexcept = 0;
+        /** Queries limits in the provider's current context; no kernel is launched. */
+        virtual TArdaRHIResult<FArdaCudaKernelLimits> GetLimits() const = 0;
+        /** Enqueues exactly one compiled kernel on the borrowed opaque CUDA stream. */
+        virtual FArdaRHIStatus Launch(void* Stream, const FArdaCudaLaunchConfig& Config,
+            const void* Parameters, size_t ParameterSize) const = 0;
+    };
+    /** Patches one resource address/surface into the owned CUDA parameter object. */
+    struct FArdaCudaParameterPatch
+    {
+        /** Retained resource index in the dispatch. */
+        uint32_t mBindingIndex = 0;
+        /** Byte offset of the 64-bit CUDA resource representation. */
+        size_t mOffset = 0;
+        /** Required native buffer address alignment. Surfaces use one. */
+        size_t mAlignment = 1;
+    };
+    /** One precompiled kernel and an owned, unresolved by-value CUDA parameter object. */
+    struct FArdaCudaKernel : FArdaCudaLaunchConfig
+    {
+        /** Retained compiled entry; source compilation and string entry lookup are unavailable. */
+        eastl::shared_ptr<const IArdaCudaKernelEntry> mEntry;
+        /** Frozen values; resource representations are patched by the provider. */
+        eastl::vector<uint8_t> mParameters;
+        /** Native resource locations inside the parameter object. */
+        eastl::vector<FArdaCudaParameterPatch> mPatches;
+    };
+    /** A single kernel dispatch; multiple operations must be recorded separately. */
     struct FArdaCudaDispatch
     {
         /** Resource views shared by all kernels in this dispatch. */
         eastl::vector<FArdaCudaBinding> mBindings;
-        /** Nonempty launch sequence recorded in this order. */
+        /** Exactly one launch. The vector preserves the provider ABI's batch representation. */
         eastl::vector<FArdaCudaKernel> mKernels;
     };
 

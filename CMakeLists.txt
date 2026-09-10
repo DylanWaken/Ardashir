@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.24)
 
 project(Ardashir VERSION 0.1.0 LANGUAGES CXX)
 
@@ -17,6 +17,8 @@ option(ARDASHIR_BUILD_ARDG_EXAMPLE "Build the dual-backend render-graph terrain 
 option(ARDASHIR_BUILD_CORNELL_BOX "Build the RDG hardware path-traced Cornell Box application" ON)
 option(ARDASHIR_ENABLE_TRACE "Enable Ardashir CPU trace instrumentation" ON)
 option(ARDASHIR_ENABLE_CUDA "Enable native CUDA kernel launch providers (optional SDK and runtime driver)" OFF)
+option(ARDASHIR_BUILD_CUDA_KERNELS "Compile application CUDA kernel variants with nvcc during the build" ${ARDASHIR_ENABLE_CUDA})
+set(ARDASHIR_CUDA_ARCHITECTURES "80;86;89;90;100;120" CACHE STRING "Explicit native CUDA binary targets; no virtual/PTX targets")
 set(ARDASHIR_CUDA_INCLUDE_DIR "" CACHE PATH "CUDA 12.0 or newer include directory (CiG capture requires 13.3+); public RHI headers do not require it")
 option(ARDASHIR_BACKEND_VULKAN
     "Link the native Vulkan 1.4 ArdaBackend module" ON)
@@ -31,6 +33,10 @@ list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/Cmake")
 include(Platform)
 include(Dependencies)
 include(ArdaModule)
+include(ArdaCudaKernels)
+if(ARDASHIR_BUILD_CUDA_KERNELS)
+    ardashir_enable_cuda_compiler()
+endif()
 
 add_custom_target(ArdaRHISourceBoundary ALL
     COMMAND "${CMAKE_COMMAND}"

@@ -106,6 +106,16 @@ if(ARDASHIR_BUILD_TESTS)
     set_target_properties(ArdaBackendTests PROPERTIES FOLDER "Ardashir/Tests")
     gtest_discover_tests(ArdaBackendTests NO_PRETTY_VALUES)
 
+    if(ARDASHIR_BUILD_CUDA_KERNELS)
+        list(GET ARDASHIR_CUDA_ARCHITECTURES -1 ARDA_TEST_TUNED_ARCHITECTURE)
+        ardashir_add_cuda_kernels(ArdaTestCudaPortable PROFILE portable SOURCES Tests/ArdaCudaOperand.cu
+            DEPENDS Tests/ArdaCudaOperand.cuh Tests/ArdaTestComputeOperand.h)
+        ardashir_add_cuda_kernels(ArdaTestCudaTuned PROFILE tuned SOURCES Tests/ArdaCudaOperand.cu
+            DEPENDS Tests/ArdaCudaOperand.cuh Tests/ArdaTestComputeOperand.h ARCHITECTURES ${ARDA_TEST_TUNED_ARCHITECTURE} FAST_MATH)
+        target_link_libraries(ArdaBackendTests PRIVATE ArdaTestCudaPortable ArdaTestCudaTuned)
+        target_compile_definitions(ArdaBackendTests PRIVATE ARDA_TEST_PRECOMPILED_CUDA)
+    endif()
+
     add_executable(ArdaRHITests Tests/ArdaRHITests.cpp)
     ardashir_test_validation(ArdaRHITests)
     target_compile_definitions(ArdaRHITests PRIVATE ARDA_ENABLE_CHECKS)

@@ -1,73 +1,136 @@
 /** @file ArdaComputeOperand.h
- * User-defined operations with typed host parameters and inspectable resource access.
+ * Single-kernel operands with user binding/selection and framework-owned dispatch.
  */
 #pragma once
-#include "ArdaComputeParameters.h"
+#include "ArdaCudaKernelVariants.h"
+#include <mutex>
+#include <exception>
 
 namespace arda
 {
-    /** Common identity and parameter contract for user-implemented operands.
-     * Implementations own their device/runtime dependencies. The base does not own
-     * source files, register kernels, select variants, tune, or choose fallback paths.
-     */
+    /** Common diagnostic and resource metadata interface. */
     class FArdaComputeOperand
     {
     public:
-        /** Destroy only after callbacks using this operand have finished. */
         virtual ~FArdaComputeOperand() = default;
-        /** Returns an implementation-owned stable diagnostic name. */
-        [[nodiscard]] virtual const char* GetName() const noexcept = 0;
-        /** User-defined support query for the bound device, architecture and runtime.
-         * Return Unsupported with a reason when execution is unavailable. This query
-         * must not launch work; shape-specific validation belongs in dispatch.
-         * @threading The implementation defines synchronization of its bound runtime state.
-         */
-        [[nodiscard]] virtual FArdaRHIStatus GetOperandSupport() const = 0;
-        /** Returns static metadata for the concrete typed dispatch parameters. */
-        [[nodiscard]] virtual const FArdaComputeParameterMetadata& GetParameterMetadata() const = 0;
+        virtual const char* GetName() const noexcept = 0;
+        virtual FArdaRHIStatus GetOperandSupport() const = 0;
+        virtual const FArdaComputeParameterMetadata& GetParameterMetadata() const = 0;
     };
-
-    /** Derive using an application-defined compute parameter struct and override either
-     * or both dispatch hooks. The implementation performs support/input checks and owns
-     * CPU logic, algorithm selection, tuning, kernel launches and native library calls.
-     * Copy parameters as their actual C++ type: resources and host values can be nontrivial.
+    /** Authors supply BindKernelVariants and SelectKernel. Dispatch cannot be overridden.
+     * Binding is synchronized once per operand. Selection must have no GPU/host side effects.
+     * Each dispatch retains its own frozen values/resources independently of the operand.
      */
-    template<typename ParameterType>
+    template<class ParameterType, class VariantPayload>
     class TArdaComputeOperand : public FArdaComputeOperand
     {
     public:
-        /** User-defined C++ parameter type accepted by both hooks. */
         using FParameters = ParameterType;
-        /** Returns the parameter type's metadata without executing user dispatch code. */
-        [[nodiscard]] const FArdaComputeParameterMetadata& GetParameterMetadata() const final
-        { return ParameterType::GetStaticMetadata(); }
-
-        /** Executes host code now; it may directly launch kernels or call a native runtime.
-         * Implementation helpers may span any number of .cpp/.cu/.cuh files; no PTX or
-         * launch-list result is required. Parameters are borrowed for this call only.
-         * Retain dependencies of asynchronous work and document stream/completion ownership:
-         * success is not a GPU fence. Default: Unsupported without side effects.
-         * @threading The author synchronizes mutable state, runtime calls and in-flight storage.
+        using FKernelParameters = typename ParameterType::FCuda;
+        using FRegistry = TArdaCudaKernelRegistry<ParameterType, VariantPayload>;
+        using FVariants = typename FRegistry::FVariants;
+        using FPlan = eastl::shared_ptr<const FArdaCudaDispatchPlan>;
+        explicit TArdaComputeOperand(FArdaRHIDeviceRef Device) : mDevice(eastl::move(Device)) {}
+        const FArdaComputeParameterMetadata& GetParameterMetadata() const final { return ParameterType::GetStaticMetadata(); }
+        /** Registers compiled symbols and payloads without calling CUDA. */
+        virtual void BindKernelVariants(FRegistry& Registry) const = 0;
+        /** Chooses one compatible kernel using host metadata; can fail or explicitly return NoWork. */
+        virtual TArdaRHIResult<FArdaCudaKernelSelection> SelectKernel(const FParameters& Parameters,
+            const FArdaCudaSelectionContext& Context, const FVariants& Candidates) const = 0;
+        /** Initializes and returns a read-only registry with operand lifetime. */
+        TArdaRHIResult<const FRegistry*> GetKernelVariants() const
+        { auto S = EnsureBindings(); return {S ? &mRegistry : nullptr, S}; }
+        /** Validates schema, immutable registry, device CUDA support and native target coverage.
+         * Does not validate a particular resource allocation/view or launch a kernel.
+         * @errors Returns the first binding error, InvalidArgument for no device, or Unsupported for missing mode/native coverage.
+         * @threading Safe for concurrent inspection; binding initializes once without calling CUDA.
          */
-        [[nodiscard]] virtual FArdaRHIStatus Dispatch(const ParameterType&)
+        FArdaRHIStatus GetOperandSupport() const final
         {
-            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
-                "This operand does not implement immediate Dispatch.");
+            if (auto S = EnsureBindings(); !S) return S;
+            if (!mDevice) return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA operand has no device.");
+            const auto C = mDevice->GetCudaCapabilities();
+            if (!C) return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, C.mUnavailableReason.c_str());
+            if (mRegistry.GetCompatibleVariants(C).empty())
+                return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "No bound CUDA variant has compatible native code and execution requirements.");
+            return {};
         }
-
-        /** Runs recording logic now and appends work to a caller-owned open command list.
-         * The implementation may record several CUDA/shader operations with host logic and
-         * tuning between them. It must not close/submit the list or launch unordered external
-         * work. Native libraries need an explicit compatible submission adapter for this hook.
-         * Borrow parameters only during recording; retain dependencies through execution and
-         * propagate recording errors without retrying partial writes. Default: Unsupported;
-         * it never silently calls immediate Dispatch. RDG scheduling is future integration.
-         * @threading Serialize the caller's command list and any mutable operand state.
-         */
-        [[nodiscard]] virtual FArdaRHIStatus DispatchDeferred(IArdaRHICommandList&, const ParameterType&)
+        /** Freezes a validated launch plan. Parameters can be changed/destroyed after return. */
+        virtual TArdaRHIResult<FPlan> PrepareDispatch(const FParameters& Parameters,
+            EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) const final
         {
-            return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
-                "This operand does not implement deferred Dispatch.");
+            if (auto S = GetOperandSupport(); !S) return {{}, S};
+            const auto C = mDevice->GetCudaCapabilities();
+            if (Queue == EArdaRHIQueueType::Copy ||
+                (C.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG && Queue != EArdaRHIQueueType::Graphics))
+                return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "CUDA execution mode does not support this queue.")};
+            auto Plan = eastl::make_shared<FArdaCudaDispatchPlan>();
+            Plan->mDevice = mDevice; Plan->mQueue = Queue;
+            if (auto S = ParameterType::GetCudaMetadata().Prepare(&Parameters, *mDevice, Plan->mDispatch); !S) return {{}, S};
+            const auto Candidates = mRegistry.GetCompatibleVariants(C);
+            TArdaRHIResult<FArdaCudaKernelSelection> Choice;
+            try { Choice = SelectKernel(Parameters, {C, Queue}, Candidates); }
+            catch (const std::exception& E) { return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, E.what())}; }
+            catch (...) { return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA kernel selection threw an exception.")}; }
+            if (!Choice) return {{}, Choice.mStatus};
+            Plan->mSelection = Choice.mValue;
+            if (Choice.mValue.mbNoWork) { Plan->mDispatch = {}; return {Plan, {}}; }
+            auto& K = Plan->mDispatch.mKernels.front();
+            for (const auto& V : Candidates) if (V.mId == Choice.mValue.mVariantId) { K.mEntry = V.mEntry; break; }
+            if (!K.mEntry) return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "SelectKernel returned an unregistered or incompatible variant.")};
+            static_cast<FArdaCudaLaunchConfig&>(K) = Choice.mValue.mLaunch;
+            if (auto S = ValidateArdaCudaKernels(Plan->mDispatch.mKernels, Plan->mDispatch.mBindings.size(), C); !S) return {{}, S};
+            return {Plan, {}};
         }
+        /** Records a frozen plan without submitting. Native addresses resolve in the provider. */
+        static FArdaRHIStatus RecordPlan(IArdaRHICommandList& Commands, const FPlan& Plan)
+        {
+            if (!Plan || Commands.GetDevice() != Plan->mDevice.Get())
+                return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice, "CUDA plan belongs to another device.");
+            if (Commands.GetQueueType() != Plan->mQueue)
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA plan belongs to another queue type.");
+            return Plan->mSelection.mbNoWork ? FArdaRHIStatus{} : Commands.DispatchCuda(Plan->mDispatch);
+        }
+        /** Records one selected kernel into the caller-owned list; RDG uses this path. */
+        virtual FArdaRHIStatus DispatchDeferred(IArdaRHICommandList& Commands, const FParameters& Parameters) const final
+        {
+            auto Plan = PrepareDispatch(Parameters, Commands.GetQueueType());
+            return Plan ? RecordPlan(Commands, Plan.mValue) : Plan.mStatus;
+        }
+        /** Submits the shared plan path and returns its queue completion identity. */
+        virtual TArdaRHIResult<FArdaCudaSubmission> Dispatch(const FParameters& Parameters,
+            EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) const final
+        {
+            auto Plan = PrepareDispatch(Parameters, Queue);
+            if (!Plan) return {{}, Plan.mStatus};
+            FArdaCudaSubmission Result{mDevice, Queue, 0, Plan.mValue->mSelection};
+            if (Plan.mValue->mSelection.mbNoWork) return {Result, {}};
+            auto Commands = mDevice->CreateCommandList(Queue);
+            if (!Commands) return {{}, Commands.mStatus};
+            if (auto S = Commands.mValue->Open(); !S) return {{}, S};
+            if (auto S = RecordPlan(*Commands.mValue, Plan.mValue); !S) return {{}, S};
+            if (auto S = Commands.mValue->Close(); !S) return {{}, S};
+            auto Submitted = mDevice->ExecuteCommandList(Commands.mValue);
+            if (!Submitted) return {{}, Submitted.mStatus};
+            Result.mInstance = Submitted.mValue;
+            return {Result, {}};
+        }
+        const FArdaRHIDeviceRef& GetDevice() const noexcept { return mDevice; }
+    private:
+        FArdaRHIStatus EnsureBindings() const
+        {
+            std::call_once(mBindOnce, [&] {
+                mBindingStatus = ParameterType::GetCudaMetadata().GetStatus();
+                if (!mBindingStatus) return;
+                try { BindKernelVariants(mRegistry); mBindingStatus = mRegistry.Freeze(); }
+                catch (const std::exception& E) { mBindingStatus = FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, E.what()); }
+                catch (...) { mBindingStatus = FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA variant binding threw an exception."); }
+            });
+            return mBindingStatus;
+        }
+        FArdaRHIDeviceRef mDevice;
+        mutable std::once_flag mBindOnce;
+        mutable FRegistry mRegistry;
+        mutable FArdaRHIStatus mBindingStatus;
     };
 }

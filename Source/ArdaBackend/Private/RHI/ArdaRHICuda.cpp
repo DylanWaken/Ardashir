@@ -1,12 +1,18 @@
 /** @file ArdaRHICuda.cpp
  * Shared descriptor, channel-layout and launch checks for native CUDA providers.
- * These checks constrain bindings and launch metadata, not arbitrary PTX memory accesses.
+ * These checks constrain bindings and launch metadata, not arbitrary kernel memory accesses.
  */
 #include "RHI/ArdaRHICuda.h"
 #include "ArdaRHICudaValidation.h"
 
 namespace arda
 {
+    bool FArdaCudaArchitecture::Supports(uint32_t DeviceCapability) const noexcept
+    {
+        if (!mComputeCapability) return false;
+        if (mbExact || mComputeCapability >= 100) return mComputeCapability == DeviceCapability;
+        return mComputeCapability / 10 == DeviceCapability / 10 && mComputeCapability <= DeviceCapability;
+    }
     FArdaRHIStatus ValidateArdaCudaBuffer(const FArdaRHIBufferDesc& D)
     {
         if (!D.mByteSize || D.mbVirtual || D.mbTiled || D.mMaxVersions ||
@@ -71,13 +77,18 @@ namespace arda
         size_t BindingCount, const FArdaCudaCapabilities& C)
     {
         if (!C) return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, C.mUnavailableReason.c_str());
-        if (Kernels.empty()) return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA dispatch has no kernels.");
+        if (Kernels.size() != 1) return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Each CUDA dispatch must contain exactly one kernel.");
         for (const auto& K : Kernels)
         {
-            if (K.mPtx.empty() || K.mPtx.find('\0') != eastl::string::npos)
-            {
-                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA code is empty or contains NULs.");
-            }
+            if (!K.mEntry) return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA dispatch has no compiled entry.");
+            const auto Signature = K.mEntry->GetSignature();
+            if (!Signature.mbSupported || !Signature.mType || Signature.mSize != K.mParameters.size() ||
+                !Signature.mSize || !Signature.mAlignment || (Signature.mAlignment & (Signature.mAlignment - 1)))
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA parameter signature or size is invalid.");
+            bool Supported = false;
+            for (const auto& A : K.mEntry->GetBuildInfo().mArchitectures)
+                Supported |= A.Supports(C.mComputeCapability);
+            if (!Supported) return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "No precompiled native kernel image supports this CUDA architecture.");
             if (auto Status = ValidateArdaCudaLaunch(K, BindingCount, C); !Status)
             {
                 return Status;

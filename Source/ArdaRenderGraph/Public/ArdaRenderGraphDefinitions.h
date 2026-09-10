@@ -205,7 +205,12 @@ namespace arda
         SkipRenderPass = 1u << 5u,
 
         /** A pass that must not be recorded in parallel. */
-        NeverParallel = 1u << 6u
+        NeverParallel = 1u << 6u,
+
+        /** Records immediately before its ordered submission (required by D3D12 CiG capture).
+         * A recording failure can occur after earlier passes have submitted; execution reports that failure.
+         */
+        RecordAtSubmit = 1u << 7u
     };
 
     /** Combines pass flags. */

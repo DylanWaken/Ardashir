@@ -939,6 +939,7 @@ namespace arda
             const void* GetIdentity() const noexcept override { return this; }
             ComPtr<ID3D12CommandAllocator> mAllocator;
             ComPtr<ID3D12GraphicsCommandList> mCommands;
+            ComPtr<ID3D12Fence> mHandoff;
             eastl::shared_ptr<IArdaCudaBatch> mCudaBatch;
         };
 
@@ -4655,6 +4656,15 @@ namespace arda
         {
             auto Segment = eastl::make_shared<FArdaD3D12CudaSegment>();
             Segment->mCudaBatch = mDevice.mCudaContext->CreateBatch();
+            auto FenceResult = mDevice.GetDevice().CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&Segment->mHandoff));
+            if (FAILED(FenceResult)) return D3D12Failure("Create CUDA handoff fence", FenceResult);
+            HANDLE SharedHandle = nullptr;
+            FenceResult = mDevice.GetDevice().CreateSharedHandle(Segment->mHandoff.Get(), nullptr, GENERIC_ALL, nullptr, &SharedHandle);
+            if (FAILED(FenceResult)) return D3D12Failure("Export CUDA handoff fence", FenceResult);
+            auto Imported = mDevice.mCudaContext->ImportSemaphore(SharedHandle);
+            CloseHandle(SharedHandle);
+            if (!Imported) return Imported.mStatus;
+            Segment->mCudaBatch->SetSynchronization(Imported.mValue, 1, Imported.mValue, 2);
             if (auto Status = Segment->mCudaBatch->Record(nullptr, Kernels, Arguments); !Status) return Status;
             ComPtr<ID3D12CommandAllocator> Allocator;
             ComPtr<ID3D12GraphicsCommandList> Commands;
@@ -7113,14 +7123,16 @@ namespace arda
                     return Fail<uint64_t>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "Context-switching CUDA lists are single-use."));
                 for (const auto& Segment : Native->mCudaSegments)
                     if (auto Status = Segment->mCudaBatch->ValidateSubmit(); !Status) return Fail<uint64_t>(Status);
-                if (auto Status = WaitForIdle(); !Status) return Fail<uint64_t>(Status);
                 Native->mbContextSubmitted = true;
                 for (const auto& Segment : Native->mCudaSegments)
                 {
                     ID3D12CommandList* Graphics[] = {Segment->mCommands.Get()};
                     Queue->ExecuteCommandLists(1, Graphics);
-                    if (auto Status = WaitForIdle(); !Status) return Fail<uint64_t>(Status);
+                    auto HandoffResult = Queue->Signal(Segment->mHandoff.Get(), 1);
+                    if (FAILED(HandoffResult)) return Fail<uint64_t>(D3D12Failure("Signal graphics to CUDA", HandoffResult));
                     if (auto Status = Segment->mCudaBatch->Execute(); !Status) return Fail<uint64_t>(Status);
+                    HandoffResult = Queue->Wait(Segment->mHandoff.Get(), 2);
+                    if (FAILED(HandoffResult)) return Fail<uint64_t>(D3D12Failure("Wait for CUDA completion", HandoffResult));
                 }
             }
             ID3D12CommandList* Lists[] = { Native->GetSubmitList() };

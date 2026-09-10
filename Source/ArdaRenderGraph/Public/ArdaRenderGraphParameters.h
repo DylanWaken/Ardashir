@@ -86,6 +86,8 @@ namespace arda
 
         /** Metadata for a nested parameter struct, or null for a leaf member. */
         const FARDGParameterMetadata* mNestedMetadata = nullptr;
+        /** CUDA read-only access may require UAV state while remaining a reader in graph hazards. */
+        bool mbReadOnlyUav = false;
     };
 
     /** A member resolved against a particular parameter-struct instance. */

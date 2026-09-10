@@ -7,6 +7,13 @@
 
 namespace arda
 {
+    /** Imported graphics synchronization primitive; retained until the CUDA stream completes. */
+    class IArdaCudaSemaphore
+    {
+    public:
+        virtual ~IArdaCudaSemaphore() = default;
+        virtual void* GetNativeHandle() const = 0;
+    };
     /** Owns imported external memory and all derived CUDA pointers/arrays/surfaces. */
     class IArdaCudaMapping
     {
@@ -28,17 +35,22 @@ namespace arda
         virtual FArdaRHIStatus ValidateSubmit() const = 0;
         /** Advances the context's capture-order gate after native submission succeeds. */
         virtual void MarkSubmitted() = 0;
-        /** Executes a deferred batch after graphics completion and waits for its CUDA stream. */
+        /** Configures a GPU wait and signal before submission. Zero values select binary semaphore semantics. */
+        virtual void SetSynchronization(eastl::shared_ptr<IArdaCudaSemaphore> Wait, uint64_t WaitValue,
+            eastl::shared_ptr<IArdaCudaSemaphore> Signal, uint64_t SignalValue) = 0;
+        /** Enqueues a deferred batch with configured GPU synchronization; unconfigured batches drain on the CPU. */
         virtual FArdaRHIStatus Execute() = 0;
     };
-    /** Owns the matched CUDA context, module cache, and any required native lifetime token. */
+    /** Owns the matched CUDA context, entry-limit cache, and any required native lifetime token. */
     class IArdaCudaContext
     {
     public:
-        /** Destroys cached modules before the CUDA context and native lifetime owner. */
+        /** Destroys cached entries before the CUDA context and native lifetime owner. */
         virtual ~IArdaCudaContext() = default;
         /** Returns qualified device limits; surface support may be independently unavailable. */
         virtual FArdaCudaCapabilities GetCapabilities() const = 0;
+        /** Imports a borrowed D3D12 fence or Vulkan binary semaphore OS handle. Consumes Vulkan FDs. */
+        virtual TArdaRHIResult<eastl::shared_ptr<IArdaCudaSemaphore>> ImportSemaphore(void* Handle) = 0;
         /** Imports a borrowed NT handle or consumes an opaque Vulkan FD (including on failure).
          * Texture selects an array mapping; null selects BufferSize bytes. */
         virtual TArdaRHIResult<eastl::shared_ptr<IArdaCudaMapping>> ImportMemory(
@@ -53,5 +65,6 @@ namespace arda
         void* Queue, const void* Luid, eastl::shared_ptr<void> Lifetime,
         EArdaCudaExecutionMode Mode);
     /** Matches the Vulkan physical-device UUID and imports dedicated opaque OS handles. */
-    TArdaRHIResult<eastl::shared_ptr<IArdaCudaContext>> CreateArdaVulkanCudaContext(const void* DeviceUuid);
+    TArdaRHIResult<eastl::shared_ptr<IArdaCudaContext>> CreateArdaVulkanCudaContext(
+        const void* DeviceUuid, void* ExternalQueueData, EArdaCudaExecutionMode Mode);
 }

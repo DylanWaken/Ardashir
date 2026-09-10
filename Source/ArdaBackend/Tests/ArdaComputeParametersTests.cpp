@@ -132,47 +132,4 @@ namespace
         EXPECT_FALSE(Good.Enumerate(reinterpret_cast<const uint8_t*>(&P) + 1, [](const auto&) {}));
     }
 
-    // Stand-in for an application runtime: the base neither owns nor interrogates it.
-    class FHostRuntimeOperand final : public TArdaComputeOperand<FScalarOperandParameters>
-    {
-    public:
-        bool mbAvailable = true;
-        uint32_t mCalls = 0, mResult = 0;
-        const char* GetName() const noexcept override { return "user.runtime-sequence"; }
-        FArdaRHIStatus GetOperandSupport() const override
-        { return mbAvailable ? FArdaRHIStatus{} : FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "runtime unavailable"); }
-        FArdaRHIStatus Dispatch(const FScalarOperandParameters& P) override
-        {
-            if (auto S = GetOperandSupport(); !S) return S;
-            ++mCalls;
-            // Arbitrary host logic and library/kernel-sequence calls belong right here.
-            mResult = P.mValue > 8 ? P.mValue * 2 : P.mValue + 3;
-            return {};
-        }
-    };
-    class FUnsupportedOperand final : public TArdaComputeOperand<FScalarOperandParameters>
-    {
-    public:
-        const char* GetName() const noexcept override { return "user.unsupported"; }
-        FArdaRHIStatus GetOperandSupport() const override
-        { return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "unsupported architecture"); }
-    };
-
-    TEST(ArdaComputeOperand, TypedVirtualDispatchOwnsHostPolicyAndSupportWithoutCuda)
-    {
-        static_assert(std::is_abstract_v<FArdaComputeOperand>);
-        FHostRuntimeOperand Operand;
-        TArdaComputeOperand<FScalarOperandParameters>& Base = Operand;
-        FArdaComputeOperand& Identity = Operand;
-        EXPECT_EQ(&Identity.GetParameterMetadata(), &FScalarOperandParameters::GetStaticMetadata());
-        FScalarOperandParameters P;
-        P.mValue = 4; ASSERT_TRUE(Base.Dispatch(P)); EXPECT_EQ(Operand.mResult, 7u);
-        P.mValue = 12; ASSERT_TRUE(Base.Dispatch(P)); EXPECT_EQ(Operand.mResult, 24u);
-        Operand.mbAvailable = false;
-        EXPECT_EQ(Identity.GetOperandSupport().mMessage, "runtime unavailable");
-        EXPECT_FALSE(Base.Dispatch(P)); EXPECT_EQ(Operand.mCalls, 2u);
-        FUnsupportedOperand Unsupported;
-        EXPECT_EQ(Unsupported.GetOperandSupport().mMessage, "unsupported architecture");
-        EXPECT_EQ(Unsupported.Dispatch(P).mCode, EArdaRHIResult::Unsupported);
-    }
 }

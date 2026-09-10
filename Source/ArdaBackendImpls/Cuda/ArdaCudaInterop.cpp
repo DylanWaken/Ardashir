@@ -1,6 +1,6 @@
 /** @file ArdaCudaInterop.cpp
- * Loads the CUDA driver dynamically for D3D12 CiG or deferred ordinary-context PTX launches.
- * Shared D3D12/Vulkan imports, cached modules and streams follow graphics-fence lifetime.
+ * Loads the CUDA driver dynamically for D3D12 CiG or precompiled CUDA entry launches.
+ * Shared D3D12/Vulkan imports, compiled entries and streams follow graphics-fence lifetime.
  */
 #include "ArdaCudaInterop.h"
 
@@ -59,14 +59,10 @@ namespace arda
             ARDA_CUDA_FUNCTION(cuStreamEndCaptureToCig, "cuStreamEndCaptureToCig");
 #endif
             ARDA_CUDA_FUNCTION(cuStreamSynchronize, "cuStreamSynchronize");
-            ARDA_CUDA_FUNCTION(cuModuleLoadDataEx, "cuModuleLoadDataEx");
-            ARDA_CUDA_FUNCTION(cuModuleUnload, "cuModuleUnload");
-            ARDA_CUDA_FUNCTION(cuModuleGetFunction, "cuModuleGetFunction");
-            // Parameter metadata is optional on older CUDA drivers/SDKs.
-            using FArdaCudaGetParamInfo = CUresult (CUDAAPI*)(CUfunction, size_t, size_t*, size_t*);
-            FArdaCudaGetParamInfo cuFuncGetParamInfo = mLibrary ? reinterpret_cast<FArdaCudaGetParamInfo>(GetSymbol("cuFuncGetParamInfo")) : nullptr;
-            ARDA_CUDA_FUNCTION(cuFuncGetAttribute, "cuFuncGetAttribute");
-            ARDA_CUDA_FUNCTION(cuLaunchKernel, "cuLaunchKernel");
+            ARDA_CUDA_FUNCTION(cuImportExternalSemaphore, "cuImportExternalSemaphore");
+            ARDA_CUDA_FUNCTION(cuDestroyExternalSemaphore, "cuDestroyExternalSemaphore");
+            ARDA_CUDA_FUNCTION(cuWaitExternalSemaphoresAsync, "cuWaitExternalSemaphoresAsync");
+            ARDA_CUDA_FUNCTION(cuSignalExternalSemaphoresAsync, "cuSignalExternalSemaphoresAsync");
             ARDA_CUDA_FUNCTION(cuImportExternalMemory, "cuImportExternalMemory");
             ARDA_CUDA_FUNCTION(cuExternalMemoryGetMappedBuffer, "cuExternalMemoryGetMappedBuffer");
             ARDA_CUDA_FUNCTION(cuExternalMemoryGetMappedMipmappedArray, "cuExternalMemoryGetMappedMipmappedArray");
@@ -92,8 +88,8 @@ namespace arda
                 return cuInit && cuDeviceGetCount && cuDeviceGet && cuDeviceGetUuid && cuDeviceGetAttribute &&
                     mCreateContext && cuCtxDestroy && cuCtxPushCurrent && cuCtxPopCurrent && cuCtxGetLimit &&
                     cuStreamCreate && cuStreamDestroy && cuStreamSynchronize &&
-                    cuModuleLoadDataEx && cuModuleUnload && cuModuleGetFunction && cuFuncGetAttribute &&
-                    cuLaunchKernel && cuImportExternalMemory && cuExternalMemoryGetMappedBuffer &&
+                    cuImportExternalSemaphore && cuDestroyExternalSemaphore && cuWaitExternalSemaphoresAsync && cuSignalExternalSemaphoresAsync &&
+                    cuImportExternalMemory && cuExternalMemoryGetMappedBuffer &&
                     cuExternalMemoryGetMappedMipmappedArray && cuMipmappedArrayGetLevel && cuSurfObjectCreate &&
                     cuSurfObjectDestroy && cuMemFree && cuMipmappedArrayDestroy && cuDestroyExternalMemory && cuGetErrorName;
             }
@@ -131,19 +127,7 @@ namespace arda
             { return mBuffer ? mBuffer + Offset : mSurfaces.at(Mip); }
         };
 
-        struct FArdaCudaModule
-        {
-            eastl::shared_ptr<FArdaCudaDriver> mDriver;
-            CUcontext mContext = nullptr;
-            CUmodule mModule = nullptr;
-            ~FArdaCudaModule()
-            {
-                FArdaCudaScope Scope(*mDriver, mContext);
-                if (Scope.mResult == CUDA_SUCCESS && mModule) mDriver->cuModuleUnload(mModule);
-            }
-        };
-
-        // Stream and module references survive recording and are retired with the submitted list.
+        // Stream and entry references survive recording and are retired with the submitted list.
         struct FArdaCudaBatch final : IArdaCudaBatch
         {
             explicit FArdaCudaBatch(eastl::shared_ptr<FArdaCudaContext> Context) : mContext(eastl::move(Context)) {}
@@ -153,18 +137,20 @@ namespace arda
             FArdaRHIStatus ValidateSubmit() const override;
             void MarkSubmitted() override;
             FArdaRHIStatus Execute() override;
-            FArdaRHIStatus Launch(const eastl::vector<FArdaCudaKernel>&, const eastl::vector<CUfunction>&,
-                const eastl::vector<uint64_t>&);
+            void SetSynchronization(eastl::shared_ptr<IArdaCudaSemaphore> Wait, uint64_t WaitValue,
+                eastl::shared_ptr<IArdaCudaSemaphore> Signal, uint64_t SignalValue) override
+            { mWait = eastl::move(Wait); mSignal = eastl::move(Signal); mWaitValue = WaitValue; mSignalValue = SignalValue; }
+            eastl::shared_ptr<IArdaCudaSemaphore> mWait, mSignal;
+            uint64_t mWaitValue = 0, mSignalValue = 0;
+            FArdaRHIStatus Launch(const eastl::vector<FArdaCudaKernel>&, const eastl::vector<uint64_t>&);
             struct FArdaCudaLaunch
             {
                 eastl::vector<FArdaCudaKernel> mKernels;
-                eastl::vector<CUfunction> mFunctions;
                 eastl::vector<uint64_t> mBindings;
             };
             eastl::vector<FArdaCudaLaunch> mLaunches;
             eastl::shared_ptr<FArdaCudaContext> mContext;
             CUstream mStream = nullptr;
-            eastl::vector<eastl::shared_ptr<FArdaCudaModule>> mModules;
             bool mbSubmitted = false;
             bool mbFailed = false;
         };
@@ -179,16 +165,52 @@ namespace arda
             mutable std::mutex mMutex;
             // CiG permits only one captured-but-unsubmitted batch per context in this backend.
             FArdaCudaBatch* mRecording = nullptr;
-            std::unordered_map<std::string, eastl::shared_ptr<FArdaCudaModule>> mModuleCache;
+            std::unordered_map<const IArdaCudaKernelEntry*,
+                eastl::pair<eastl::shared_ptr<const IArdaCudaKernelEntry>, FArdaCudaKernelLimits>> mKernelCache;
             ~FArdaCudaContext() override
             {
-                mModuleCache.clear();
+                mKernelCache.clear();
                 if (mContext) mDriver->cuCtxDestroy(mContext);
             }
             FArdaCudaCapabilities GetCapabilities() const override { return mCapabilities; }
+            TArdaRHIResult<eastl::shared_ptr<IArdaCudaSemaphore>> ImportSemaphore(void*) override;
             TArdaRHIResult<eastl::shared_ptr<IArdaCudaMapping>> ImportMemory(void*, uint64_t, uint64_t, const FArdaRHITextureDesc*) override;
             eastl::shared_ptr<IArdaCudaBatch> CreateBatch() override { return eastl::make_shared<FArdaCudaBatch>(shared_from_this()); }
         };
+
+        struct FArdaCudaSemaphore final : IArdaCudaSemaphore
+        {
+            eastl::shared_ptr<FArdaCudaContext> mContext;
+            CUexternalSemaphore mSemaphore = nullptr;
+            void* GetNativeHandle() const override { return mSemaphore; }
+            ~FArdaCudaSemaphore() override
+            {
+                FArdaCudaScope Scope(*mContext->mDriver, mContext->mContext);
+                if (mSemaphore && Scope.mResult == CUDA_SUCCESS) mContext->mDriver->cuDestroyExternalSemaphore(mSemaphore);
+            }
+        };
+
+        TArdaRHIResult<eastl::shared_ptr<IArdaCudaSemaphore>> FArdaCudaContext::ImportSemaphore(void* Handle)
+        {
+            auto Semaphore = eastl::make_shared<FArdaCudaSemaphore>();
+            Semaphore->mContext = shared_from_this();
+            auto& D = *mDriver;
+            FArdaCudaScope Scope(D, mContext);
+            CUDA_EXTERNAL_SEMAPHORE_HANDLE_DESC Desc{};
+#if defined(_WIN32)
+            Desc.type = mbVulkan ? CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32 : CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_D3D12_FENCE;
+            Desc.handle.win32.handle = Handle;
+#else
+            Desc.type = CU_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD;
+            Desc.handle.fd = static_cast<int>(reinterpret_cast<intptr_t>(Handle));
+#endif
+            auto Result = Scope.mResult == CUDA_SUCCESS ? D.cuImportExternalSemaphore(&Semaphore->mSemaphore, &Desc) : Scope.mResult;
+#if !defined(_WIN32)
+            if (Result != CUDA_SUCCESS) close(Desc.handle.fd);
+#endif
+            if (auto S = D.Check(Result, "Import graphics semaphore"); !S) return {{}, S};
+            return {Semaphore, {}};
+        }
 
         FArdaCudaMapping::~FArdaCudaMapping()
         {
@@ -279,7 +301,12 @@ namespace arda
             std::lock_guard<std::mutex> Lock(mContext->mMutex);
             if (mContext->mRecording == this) mContext->mRecording = nullptr;
             FArdaCudaScope Scope(*mContext->mDriver, mContext->mContext);
-            if (mStream && Scope.mResult == CUDA_SUCCESS) mContext->mDriver->cuStreamDestroy(mStream);
+            if (mStream && Scope.mResult == CUDA_SUCCESS)
+            {
+                // Normally retired after the graphics completion fence; also protect failed submissions.
+                if (mbSubmitted && mWait) mContext->mDriver->cuStreamSynchronize(mStream);
+                mContext->mDriver->cuStreamDestroy(mStream);
+            }
         }
 
         FArdaRHIStatus FArdaCudaBatch::ValidateSubmit() const
@@ -309,49 +336,30 @@ namespace arda
             if (auto S = D.Check(Scope.mResult, "Push CiG context"); !S) return S;
             if (!mStream)
                 if (auto S = D.Check(D.cuStreamCreate(&mStream, CU_STREAM_NON_BLOCKING), "Create CiG stream"); !S) return S;
-            eastl::vector<CUfunction> Functions;
-            // Validate every entry point and argument before beginning native capture.
+            if (auto S = ValidateArdaCudaKernels(Kernels, Bindings.size(), mContext->mCapabilities); !S) return S;
             for (const auto& K : Kernels)
             {
-                const std::string Key(K.mPtx.data(), K.mPtx.size());
-                auto Found = mContext->mModuleCache.find(Key);
-                eastl::shared_ptr<FArdaCudaModule> Module;
-                if (Found != mContext->mModuleCache.end()) Module = Found->second;
-                else
+                auto Found = mContext->mKernelCache.find(K.mEntry.get());
+                if (Found == mContext->mKernelCache.end())
                 {
-                    Module = eastl::make_shared<FArdaCudaModule>();
-                    Module->mDriver = mContext->mDriver;
-                    Module->mContext = mContext->mContext;
-                    if (auto S = D.Check(D.cuModuleLoadDataEx(&Module->mModule, K.mPtx.c_str(), 0, nullptr, nullptr), "Compile CUDA PTX"); !S) return S;
-                    // Cache eviction drops only the lookup reference. Recorded batches
-                    // retain their executable modules until the graphics work completes.
-                    if (mContext->mModuleCache.size() >= 64) mContext->mModuleCache.clear();
-                    mContext->mModuleCache.emplace(Key, Module);
+                    auto Limits = K.mEntry->GetLimits();
+                    if (!Limits) return Limits.mStatus;
+                    if (mContext->mKernelCache.size() >= 256) mContext->mKernelCache.clear();
+                    Found = mContext->mKernelCache.emplace(K.mEntry.get(),
+                        eastl::make_pair(K.mEntry, Limits.mValue)).first;
                 }
-                CUfunction Function = nullptr;
-                if (auto S = D.Check(D.cuModuleGetFunction(&Function, Module->mModule, K.mEntryPoint.c_str()), "Find CUDA kernel"); !S) return S;
-                int StaticShared = 0, MaxThreads = 0;
-                if (auto Status = D.Check(D.cuFuncGetAttribute(&StaticShared, CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, Function),
-                    "Query CUDA kernel shared memory"); !Status) return Status;
-                if (auto Status = D.Check(D.cuFuncGetAttribute(&MaxThreads, CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK, Function),
-                    "Query CUDA kernel thread limit"); !Status) return Status;
-                if (uint64_t(K.mBlockSize[0]) * K.mBlockSize[1] * K.mBlockSize[2] > uint32_t(MaxThreads) ||
-                    uint64_t(StaticShared) + K.mSharedMemoryBytes > mContext->mCapabilities.mMaxSharedMemoryBytes)
-                    return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA kernel exceeds its thread/shared-memory limit.");
-                for (size_t I = 0; D.cuFuncGetParamInfo && I <= K.mArguments.size(); ++I)
-                {
-                    size_t Offset = 0, Size = 0;
-                    const auto Result = D.cuFuncGetParamInfo(Function, I, &Offset, &Size);
-                    if (I == K.mArguments.size() ? Result != CUDA_ERROR_INVALID_VALUE :
-                        Result != CUDA_SUCCESS || Size != (K.mArguments[I].mBindingIndex == UINT32_MAX ? K.mArguments[I].mValue.size() : sizeof(uint64_t)))
-                        return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA kernel argument count or byte size does not match PTX metadata.");
-                }
-                Functions.push_back(Function);
-                mModules.push_back(eastl::move(Module));
+                const auto& Limits = Found->second.second;
+                if (uint64_t(K.mBlockSize[0]) * K.mBlockSize[1] * K.mBlockSize[2] > Limits.mMaxThreadsPerBlock ||
+                    K.mSharedMemoryBytes > Limits.mMaxDynamicSharedMemoryBytes ||
+                    uint64_t(Limits.mStaticSharedMemoryBytes) + K.mSharedMemoryBytes > mContext->mCapabilities.mMaxSharedMemoryBytes)
+                    return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Compiled CUDA kernel exceeds its thread/shared-memory limit.");
+                for (const auto& P : K.mPatches)
+                    if (!Bindings[P.mBindingIndex] || Bindings[P.mBindingIndex] % P.mAlignment)
+                        return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Resolved CUDA resource is null or misaligned.");
             }
-            if (mContext->mCapabilities.mLaunchMode == EArdaCudaLaunchMode::ContextSwitch)
+            if (mContext->mCapabilities.mLaunchMode != EArdaCudaLaunchMode::D3D12CiG)
             {
-                mLaunches.push_back({Kernels, eastl::move(Functions), Bindings});
+                mLaunches.push_back({Kernels, Bindings});
                 return {};
             }
 #if CUDA_VERSION >= 13030
@@ -359,10 +367,12 @@ namespace arda
             CUstreamCigCaptureParams Capture{&Native};
             if (auto S = D.Check(D.cuStreamBeginCaptureToCig(mStream, &Capture), "Begin CiG capture"); !S) return S;
             mContext->mRecording = this;
-            auto Status = Launch(Kernels, Functions, Bindings);
+            auto Status = Launch(Kernels, Bindings);
             auto End = D.Check(D.cuStreamEndCaptureToCig(mStream), "End CiG capture");
             if (Status && !End) Status = End;
             mbFailed = !Status;
+            // Retain compiled entry ownership until the captured list retires, independently of cache eviction.
+            mLaunches.push_back({Kernels, Bindings});
             return Status;
 #else
             return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "This SDK does not declare CiG stream capture.");
@@ -370,19 +380,14 @@ namespace arda
         }
 
         FArdaRHIStatus FArdaCudaBatch::Launch(const eastl::vector<FArdaCudaKernel>& Kernels,
-            const eastl::vector<CUfunction>& Functions, const eastl::vector<uint64_t>& Bindings)
+            const eastl::vector<uint64_t>& Bindings)
         {
-            auto& D = *mContext->mDriver;
-            for (size_t I = 0; I < Kernels.size(); ++I)
+            for (const auto& K : Kernels)
             {
-                const auto& K = Kernels[I];
-                eastl::vector<void*> Arguments;
-                for (const auto& A : K.mArguments)
-                    Arguments.push_back(A.mBindingIndex == UINT32_MAX ? static_cast<void*>(const_cast<uint8_t*>(A.mValue.data())) :
-                        static_cast<void*>(const_cast<uint64_t*>(&Bindings[A.mBindingIndex])));
-                auto Status = D.Check(D.cuLaunchKernel(Functions[I], K.mGridSize[0], K.mGridSize[1], K.mGridSize[2],
-                    K.mBlockSize[0], K.mBlockSize[1], K.mBlockSize[2], K.mSharedMemoryBytes,
-                    mStream, Arguments.data(), nullptr), "Launch CUDA kernel");
+                auto Parameters = K.mParameters;
+                for (const auto& P : K.mPatches)
+                    std::memcpy(Parameters.data() + P.mOffset, &Bindings[P.mBindingIndex], sizeof(uint64_t));
+                auto Status = K.mEntry->Launch(mStream, K, Parameters.data(), Parameters.size());
                 if (!Status) return Status;
             }
             return {};
@@ -391,20 +396,36 @@ namespace arda
         FArdaRHIStatus FArdaCudaBatch::Execute()
         {
             std::lock_guard<std::mutex> Lock(mContext->mMutex);
-            if (mbSubmitted || mbFailed || mContext->mCapabilities.mLaunchMode != EArdaCudaLaunchMode::ContextSwitch)
+            if (mbSubmitted || mbFailed || mContext->mCapabilities.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG)
                 return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "CUDA batch cannot be executed or replayed.");
             auto& D = *mContext->mDriver;
             FArdaCudaScope Scope(D, mContext->mContext);
             if (auto S = D.Check(Scope.mResult, "Push CUDA context"); !S) return S;
             FArdaRHIStatus Status;
+            if (mWait)
+            {
+                auto Semaphore = static_cast<CUexternalSemaphore>(mWait->GetNativeHandle());
+                CUDA_EXTERNAL_SEMAPHORE_WAIT_PARAMS Params{}; Params.params.fence.value = mWaitValue;
+                Status = D.Check(D.cuWaitExternalSemaphoresAsync(&Semaphore, &Params, 1, mStream), "CUDA wait for graphics");
+            }
             for (const auto& LaunchInfo : mLaunches)
             {
-                Status = Launch(LaunchInfo.mKernels, LaunchInfo.mFunctions, LaunchInfo.mBindings);
+                if (!Status) break;
+                Status = Launch(LaunchInfo.mKernels, LaunchInfo.mBindings);
                 if (!Status) break;
             }
-            // Drain even a partially failed launch before allowing resource destruction.
-            auto Completion = D.Check(D.cuStreamSynchronize(mStream), "Complete CUDA segment");
-            if (Status && !Completion) Status = Completion;
+            if (Status && mSignal)
+            {
+                auto Semaphore = static_cast<CUexternalSemaphore>(mSignal->GetNativeHandle());
+                CUDA_EXTERNAL_SEMAPHORE_SIGNAL_PARAMS Params{}; Params.params.fence.value = mSignalValue;
+                Status = D.Check(D.cuSignalExternalSemaphoresAsync(&Semaphore, &Params, 1, mStream), "CUDA signal to graphics");
+            }
+            // Drain partially failed work before releasing its inputs; success stays asynchronous.
+            if (!Status || !mSignal)
+            {
+                auto Completion = D.Check(D.cuStreamSynchronize(mStream), "Complete CUDA segment");
+                if (Status && !Completion) Status = Completion;
+            }
             mbSubmitted = true;
             mbFailed = !Status;
             return Status;
@@ -448,17 +469,19 @@ namespace arda
         C.mLaunchMode = EArdaCudaLaunchMode::ContextSwitch;
         if (Mode != EArdaCudaExecutionMode::ContextSwitch)
         {
-            C.mFallbackReason = "D3D12 CiG stream capture is unavailable in this SDK, driver, or adapter.";
+            C.mFallbackReason = bVulkan ? "Vulkan CiG external queue is unavailable in this SDK, driver, or device." :
+                "D3D12 CiG stream capture is unavailable in this SDK, driver, or adapter.";
 #if CUDA_VERSION >= 13030
-            if (D->cuCtxCreate && D->cuStreamBeginCaptureToCig && D->cuStreamEndCaptureToCig &&
-                Attribute(CU_DEVICE_ATTRIBUTE_D3D12_CIG_SUPPORTED) && Attribute(CU_DEVICE_ATTRIBUTE_D3D12_CIG_STREAMS_SUPPORTED))
+            if (D->cuCtxCreate && Queue && (bVulkan ? Attribute(CU_DEVICE_ATTRIBUTE_VULKAN_CIG_SUPPORTED) :
+                D->cuStreamBeginCaptureToCig && D->cuStreamEndCaptureToCig &&
+                Attribute(CU_DEVICE_ATTRIBUTE_D3D12_CIG_SUPPORTED) && Attribute(CU_DEVICE_ATTRIBUTE_D3D12_CIG_STREAMS_SUPPORTED)))
             {
-                CUctxCigParam Cig{CIG_DATA_TYPE_D3D12_COMMAND_QUEUE, Queue};
+                CUctxCigParam Cig{bVulkan ? CIG_DATA_TYPE_NV_BLOB : CIG_DATA_TYPE_D3D12_COMMAND_QUEUE, Queue};
                 CUctxCreateParams Params{}; Params.cigParams = &Cig;
                 auto Status = D->Check(D->cuCtxCreate(&Context->mContext, &Params, 0, Device), "Create D3D12 CiG context");
                 if (Status)
                 {
-                    C.mLaunchMode = EArdaCudaLaunchMode::D3D12CiG;
+                    C.mLaunchMode = bVulkan ? EArdaCudaLaunchMode::VulkanCiG : EArdaCudaLaunchMode::D3D12CiG;
                     C.mFallbackReason.clear();
                 }
                 else C.mFallbackReason = Status.mMessage;
@@ -501,15 +524,16 @@ namespace arda
         eastl::shared_ptr<void> Lifetime, EArdaCudaExecutionMode Mode)
     { return CreateContext(Queue, Luid, eastl::move(Lifetime), Mode, false); }
 
-    TArdaRHIResult<eastl::shared_ptr<IArdaCudaContext>> CreateArdaVulkanCudaContext(const void* DeviceUuid)
-    { return CreateContext(nullptr, DeviceUuid, {}, EArdaCudaExecutionMode::ContextSwitch, true); }
+    TArdaRHIResult<eastl::shared_ptr<IArdaCudaContext>> CreateArdaVulkanCudaContext(
+        const void* DeviceUuid, void* ExternalQueueData, EArdaCudaExecutionMode Mode)
+    { return CreateContext(ExternalQueueData, DeviceUuid, {}, Mode, true); }
 }
 #else
 namespace arda
 {
     TArdaRHIResult<eastl::shared_ptr<IArdaCudaContext>> CreateArdaD3D12CudaContext(void*, const void*, eastl::shared_ptr<void>, EArdaCudaExecutionMode)
     { return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "This build excludes the CUDA driver provider.")}; }
-    TArdaRHIResult<eastl::shared_ptr<IArdaCudaContext>> CreateArdaVulkanCudaContext(const void*)
+    TArdaRHIResult<eastl::shared_ptr<IArdaCudaContext>> CreateArdaVulkanCudaContext(const void*, void*, EArdaCudaExecutionMode)
     { return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "This build excludes the CUDA driver provider.")}; }
 }
 #endif
