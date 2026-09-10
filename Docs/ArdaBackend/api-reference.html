@@ -320,7 +320,7 @@
 <li><a href="#api-arda-fardacudaparametermetadata-getmembers-73478663">arda::FArdaCudaParameterMetadata::GetMembers <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardacudaparametermetadata-getsignature-563ca9eb">arda::FArdaCudaParameterMetadata::GetSignature <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardacudaparametermetadata-getstatus-0b36e565">arda::FArdaCudaParameterMetadata::GetStatus <span class="api-kind">method</span></a></li>
-<li><a href="#api-arda-fardacudaparametermetadata-prepare-d5816576">arda::FArdaCudaParameterMetadata::Prepare <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardacudaparametermetadata-prepare-1a85f794">arda::FArdaCudaParameterMetadata::Prepare <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-fardanativeobject-as-1875d034">arda::FArdaNativeObject::As <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-fardaqueuecapabilities-isqueueavailable-2aa584f8">arda::FArdaQueueCapabilities::IsQueueAvailable <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-iardadiagnosticcallback-message-8978c656">arda::IArdaDiagnosticCallback::Message <span class="api-kind">method</span></a></li>
@@ -4642,7 +4642,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudaparametermetadata-prepare-d5816576" tabindex="-1"><h5>arda::FArdaCudaParameterMetadata::Prepare</h5><pre><code>FArdaRHIStatus Prepare(const void* Parameters, IArdaRHIDevice&amp; Device, FArdaCudaDispatch&amp; Output) const</code></pre><p>Freezes plain values and resource patches, retaining resources independently of Parameters. Checks sharing, ranges, element alignment and surface format; the RHI checks device ownership. No native addresses are resolved and no GPU work is issued. Output changes only on success.</p>
+<section class="api-entry" id="api-arda-fardacudaparametermetadata-prepare-1a85f794" tabindex="-1"><h5>arda::FArdaCudaParameterMetadata::Prepare</h5><pre><code>FArdaRHIStatus Prepare(const void* Parameters, FArdaCudaDispatch&amp; Output) const</code></pre><p>Freezes plain values and resource patches, retaining resources independently of Parameters. Checks sharing, ranges, element alignment and surface format; the RHI checks device ownership. No native addresses are resolved and no GPU work is issued. Output changes only on success.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -12026,7 +12026,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHICuda.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudadispatch-mbindings-ef7c9d8f" tabindex="-1"><h5>arda::FArdaCudaDispatch::mBindings</h5><pre><code>eastl::vector&lt;FArdaCudaBinding&gt; mBindings</code></pre><p>Resource views shared by all kernels in this dispatch.</p>
+<section class="api-entry" id="api-arda-fardacudadispatch-mbindings-ef7c9d8f" tabindex="-1"><h5>arda::FArdaCudaDispatch::mBindings</h5><pre><code>eastl::vector&lt;FArdaCudaBinding&gt; mBindings</code></pre><p>Resource views retained by the kernel in this dispatch.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>

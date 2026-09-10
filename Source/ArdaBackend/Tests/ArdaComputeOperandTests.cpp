@@ -63,6 +63,22 @@ namespace
         EXPECT_FALSE(Missing.Add(V));
         FRegistry Duplicate; ASSERT_TRUE(Duplicate.Add(Variant())); EXPECT_FALSE(Duplicate.Add(Variant()));
     }
+    TEST(ArdaCudaParameters, FreezesValuesWithoutDeviceAndPreservesOutputOnFailure)
+    {
+        FScalarParameters Parameters;
+        Parameters.mValue = 42;
+        FArdaCudaDispatch Prepared;
+        const auto& Metadata = FScalarParameters::GetCudaMetadata();
+        ASSERT_TRUE(Metadata.Prepare(&Parameters, Prepared));
+        ASSERT_EQ(Prepared.mKernels.size(), 1u);
+        Parameters.mValue = 99;
+        FScalarParameters::FCuda Frozen;
+        std::memcpy(&Frozen, Prepared.mKernels.front().mParameters.data(), sizeof(Frozen));
+        EXPECT_EQ(Frozen.mValue, 42u);
+        const auto Before = Prepared.mKernels.front().mParameters;
+        EXPECT_FALSE(Metadata.Prepare(nullptr, Prepared));
+        EXPECT_EQ(Prepared.mKernels.front().mParameters, Before);
+    }
     TEST(ArdaCudaVariants, FiltersBinaryCoverageAndExecutionRestrictions)
     {
         FRegistry R; auto V = Variant(); V.mRequirements.mMinimumComputeCapability = 86;

@@ -212,7 +212,7 @@ namespace arda
     /** A single kernel dispatch; multiple operations must be recorded separately. */
     struct FArdaCudaDispatch
     {
-        /** Resource views shared by all kernels in this dispatch. */
+        /** Resource views retained by the kernel in this dispatch. */
         eastl::vector<FArdaCudaBinding> mBindings;
         /** Exactly one launch. The vector preserves the provider ABI's batch representation. */
         eastl::vector<FArdaCudaKernel> mKernels;

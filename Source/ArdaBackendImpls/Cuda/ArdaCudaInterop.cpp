@@ -20,7 +20,6 @@
 #include <cstring>
 #include <mutex>
 #include <unordered_map>
-#include <string>
 
 namespace arda
 {
@@ -142,11 +141,15 @@ namespace arda
             { mWait = eastl::move(Wait); mSignal = eastl::move(Signal); mWaitValue = WaitValue; mSignalValue = SignalValue; }
             eastl::shared_ptr<IArdaCudaSemaphore> mWait, mSignal;
             uint64_t mWaitValue = 0, mSignalValue = 0;
-            FArdaRHIStatus Launch(const eastl::vector<FArdaCudaKernel>&, const eastl::vector<uint64_t>&);
+            // One resolved argument copy per recorded dispatch. Binding indices and patches
+            // are consumed during recording and are not retained for submission.
             struct FArdaCudaLaunch
             {
-                eastl::vector<FArdaCudaKernel> mKernels;
-                eastl::vector<uint64_t> mBindings;
+                eastl::shared_ptr<const IArdaCudaKernelEntry> mEntry;
+                FArdaCudaLaunchConfig mConfig;
+                eastl::vector<uint8_t> mParameters;
+                FArdaRHIStatus Enqueue(CUstream Stream) const
+                { return mEntry->Launch(Stream, mConfig, mParameters.data(), mParameters.size()); }
             };
             eastl::vector<FArdaCudaLaunch> mLaunches;
             eastl::shared_ptr<FArdaCudaContext> mContext;
@@ -333,64 +336,52 @@ namespace arda
                     "Submit or discard the previous CiG command list before recording another one on this context.");
             auto& D = *mContext->mDriver;
             FArdaCudaScope Scope(D, mContext->mContext);
-            if (auto S = D.Check(Scope.mResult, "Push CiG context"); !S) return S;
+            if (auto S = D.Check(Scope.mResult, "Push CUDA context"); !S) return S;
             if (!mStream)
-                if (auto S = D.Check(D.cuStreamCreate(&mStream, CU_STREAM_NON_BLOCKING), "Create CiG stream"); !S) return S;
+                if (auto S = D.Check(D.cuStreamCreate(&mStream, CU_STREAM_NON_BLOCKING), "Create CUDA stream"); !S) return S;
             if (auto S = ValidateArdaCudaKernels(Kernels, Bindings.size(), mContext->mCapabilities); !S) return S;
-            for (const auto& K : Kernels)
+            const auto& K = Kernels.front();
+            auto Found = mContext->mKernelCache.find(K.mEntry.get());
+            if (Found == mContext->mKernelCache.end())
             {
-                auto Found = mContext->mKernelCache.find(K.mEntry.get());
-                if (Found == mContext->mKernelCache.end())
-                {
-                    auto Limits = K.mEntry->GetLimits();
-                    if (!Limits) return Limits.mStatus;
-                    if (mContext->mKernelCache.size() >= 256) mContext->mKernelCache.clear();
-                    Found = mContext->mKernelCache.emplace(K.mEntry.get(),
-                        eastl::make_pair(K.mEntry, Limits.mValue)).first;
-                }
-                const auto& Limits = Found->second.second;
-                if (uint64_t(K.mBlockSize[0]) * K.mBlockSize[1] * K.mBlockSize[2] > Limits.mMaxThreadsPerBlock ||
-                    K.mSharedMemoryBytes > Limits.mMaxDynamicSharedMemoryBytes ||
-                    uint64_t(Limits.mStaticSharedMemoryBytes) + K.mSharedMemoryBytes > mContext->mCapabilities.mMaxSharedMemoryBytes)
-                    return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Compiled CUDA kernel exceeds its thread/shared-memory limit.");
-                for (const auto& P : K.mPatches)
-                    if (!Bindings[P.mBindingIndex] || Bindings[P.mBindingIndex] % P.mAlignment)
-                        return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Resolved CUDA resource is null or misaligned.");
+                auto Limits = K.mEntry->GetLimits();
+                if (!Limits) return Limits.mStatus;
+                if (mContext->mKernelCache.size() >= 256) mContext->mKernelCache.clear();
+                Found = mContext->mKernelCache.emplace(K.mEntry.get(),
+                    eastl::make_pair(K.mEntry, Limits.mValue)).first;
             }
+            const auto& Limits = Found->second.second;
+            if (uint64_t(K.mBlockSize[0]) * K.mBlockSize[1] * K.mBlockSize[2] > Limits.mMaxThreadsPerBlock ||
+                K.mSharedMemoryBytes > Limits.mMaxDynamicSharedMemoryBytes ||
+                uint64_t(Limits.mStaticSharedMemoryBytes) + K.mSharedMemoryBytes > mContext->mCapabilities.mMaxSharedMemoryBytes)
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Compiled CUDA kernel exceeds its thread/shared-memory limit.");
+            FArdaCudaLaunch Launch{K.mEntry, K, K.mParameters};
+            for (const auto& P : K.mPatches)
+            {
+                const auto Address = Bindings[P.mBindingIndex];
+                if (!Address || Address % P.mAlignment)
+                    return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Resolved CUDA resource is null or misaligned.");
+                std::memcpy(Launch.mParameters.data() + P.mOffset, &Address, sizeof(Address));
+            }
+            // Retain the entry and patched values before any GPU launch, independently of cache eviction.
+            mLaunches.push_back(eastl::move(Launch));
             if (mContext->mCapabilities.mLaunchMode != EArdaCudaLaunchMode::D3D12CiG)
-            {
-                mLaunches.push_back({Kernels, Bindings});
                 return {};
-            }
 #if CUDA_VERSION >= 13030
             CUstreamCigParam Native{STREAM_CIG_DATA_TYPE_D3D12_COMMAND_LIST, CommandList};
             CUstreamCigCaptureParams Capture{&Native};
-            if (auto S = D.Check(D.cuStreamBeginCaptureToCig(mStream, &Capture), "Begin CiG capture"); !S) return S;
+            if (auto S = D.Check(D.cuStreamBeginCaptureToCig(mStream, &Capture), "Begin CiG capture"); !S)
+            { mLaunches.pop_back(); return S; }
             mContext->mRecording = this;
-            auto Status = Launch(Kernels, Bindings);
+            auto Status = mLaunches.back().Enqueue(mStream);
             auto End = D.Check(D.cuStreamEndCaptureToCig(mStream), "End CiG capture");
             if (Status && !End) Status = End;
             mbFailed = !Status;
-            // Retain compiled entry ownership until the captured list retires, independently of cache eviction.
-            mLaunches.push_back({Kernels, Bindings});
             return Status;
 #else
+            mLaunches.pop_back();
             return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "This SDK does not declare CiG stream capture.");
 #endif
-        }
-
-        FArdaRHIStatus FArdaCudaBatch::Launch(const eastl::vector<FArdaCudaKernel>& Kernels,
-            const eastl::vector<uint64_t>& Bindings)
-        {
-            for (const auto& K : Kernels)
-            {
-                auto Parameters = K.mParameters;
-                for (const auto& P : K.mPatches)
-                    std::memcpy(Parameters.data() + P.mOffset, &Bindings[P.mBindingIndex], sizeof(uint64_t));
-                auto Status = K.mEntry->Launch(mStream, K, Parameters.data(), Parameters.size());
-                if (!Status) return Status;
-            }
-            return {};
         }
 
         FArdaRHIStatus FArdaCudaBatch::Execute()
@@ -411,8 +402,7 @@ namespace arda
             for (const auto& LaunchInfo : mLaunches)
             {
                 if (!Status) break;
-                Status = Launch(LaunchInfo.mKernels, LaunchInfo.mBindings);
-                if (!Status) break;
+                Status = LaunchInfo.Enqueue(mStream);
             }
             if (Status && mSignal)
             {
@@ -478,7 +468,7 @@ namespace arda
             {
                 CUctxCigParam Cig{bVulkan ? CIG_DATA_TYPE_NV_BLOB : CIG_DATA_TYPE_D3D12_COMMAND_QUEUE, Queue};
                 CUctxCreateParams Params{}; Params.cigParams = &Cig;
-                auto Status = D->Check(D->cuCtxCreate(&Context->mContext, &Params, 0, Device), "Create D3D12 CiG context");
+                auto Status = D->Check(D->cuCtxCreate(&Context->mContext, &Params, 0, Device), "Create CUDA CiG context");
                 if (Status)
                 {
                     C.mLaunchMode = bVulkan ? EArdaCudaLaunchMode::VulkanCiG : EArdaCudaLaunchMode::D3D12CiG;

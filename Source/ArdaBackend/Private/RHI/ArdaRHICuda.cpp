@@ -3,7 +3,6 @@
  * These checks constrain bindings and launch metadata, not arbitrary kernel memory accesses.
  */
 #include "RHI/ArdaRHICuda.h"
-#include "ArdaRHICudaValidation.h"
 
 namespace arda
 {
@@ -78,21 +77,41 @@ namespace arda
     {
         if (!C) return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, C.mUnavailableReason.c_str());
         if (Kernels.size() != 1) return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Each CUDA dispatch must contain exactly one kernel.");
-        for (const auto& K : Kernels)
+        const auto& K = Kernels.front();
+        if (!K.mEntry) return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA dispatch has no compiled entry.");
+        const auto Signature = K.mEntry->GetSignature();
+        if (!Signature.mbSupported || !Signature.mType || Signature.mSize != K.mParameters.size() ||
+            !Signature.mSize || !Signature.mAlignment || (Signature.mAlignment & (Signature.mAlignment - 1)))
+            return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA parameter signature or size is invalid.");
+        bool Supported = false;
+        for (const auto& A : K.mEntry->GetBuildInfo().mArchitectures)
+            if (A.Supports(C.mComputeCapability)) { Supported = true; break; }
+        if (!Supported) return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "No precompiled native kernel image supports this CUDA architecture.");
+        if (K.mSharedMemoryBytes > C.mMaxSharedMemoryBytes)
+            return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA shared-memory requirement is invalid.");
+        uint64_t Threads = 1;
+        for (uint32_t Axis = 0; Axis < 3; ++Axis)
         {
-            if (!K.mEntry) return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA dispatch has no compiled entry.");
-            const auto Signature = K.mEntry->GetSignature();
-            if (!Signature.mbSupported || !Signature.mType || Signature.mSize != K.mParameters.size() ||
-                !Signature.mSize || !Signature.mAlignment || (Signature.mAlignment & (Signature.mAlignment - 1)))
-                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA parameter signature or size is invalid.");
-            bool Supported = false;
-            for (const auto& A : K.mEntry->GetBuildInfo().mArchitectures)
-                Supported |= A.Supports(C.mComputeCapability);
-            if (!Supported) return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "No precompiled native kernel image supports this CUDA architecture.");
-            if (auto Status = ValidateArdaCudaLaunch(K, BindingCount, C); !Status)
-            {
-                return Status;
-            }
+            if (!K.mGridSize[Axis] || K.mGridSize[Axis] > C.mMaxGridSize[Axis] ||
+                !K.mBlockSize[Axis] || K.mBlockSize[Axis] > C.mMaxBlockSize[Axis])
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA launch dimensions exceed the device limits.");
+            // Check before multiplying, including capabilities supplied by custom providers.
+            if (Threads > C.mMaxThreadsPerBlock / K.mBlockSize[Axis])
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA block has too many threads.");
+            Threads *= K.mBlockSize[Axis];
+        }
+        for (size_t I = 0; I < K.mPatches.size(); ++I)
+        {
+            const auto& P = K.mPatches[I];
+            if (P.mBindingIndex >= BindingCount || P.mOffset > K.mParameters.size() ||
+                sizeof(uint64_t) > K.mParameters.size() - P.mOffset ||
+                !P.mAlignment || (P.mAlignment & (P.mAlignment - 1)))
+                return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+                    "CUDA parameter resource patch is outside the argument or has invalid alignment.");
+            for (size_t J = 0; J < I; ++J)
+                if (P.mOffset < K.mPatches[J].mOffset + sizeof(uint64_t) &&
+                    K.mPatches[J].mOffset < P.mOffset + sizeof(uint64_t))
+                    return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA resource patches overlap.");
         }
         return {};
     }

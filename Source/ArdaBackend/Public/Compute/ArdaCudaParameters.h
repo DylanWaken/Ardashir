@@ -77,7 +77,7 @@ namespace arda
          * Checks sharing, ranges, element alignment and surface format; the RHI checks device ownership.
          * No native addresses are resolved and no GPU work is issued. Output changes only on success.
          */
-        FArdaRHIStatus Prepare(const void* Parameters, IArdaRHIDevice& Device, FArdaCudaDispatch& Output) const;
+        FArdaRHIStatus Prepare(const void* Parameters, FArdaCudaDispatch& Output) const;
     private:
         FArdaCudaKernelSignature mSignature;
         eastl::vector<FArdaCudaParameterMember> mMembers;

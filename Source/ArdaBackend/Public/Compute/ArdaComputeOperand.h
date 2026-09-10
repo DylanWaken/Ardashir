@@ -47,29 +47,25 @@ namespace arda
          */
         FArdaRHIStatus GetOperandSupport() const final
         {
-            if (auto S = EnsureBindings(); !S) return S;
-            if (!mDevice) return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA operand has no device.");
-            const auto C = mDevice->GetCudaCapabilities();
-            if (!C) return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, C.mUnavailableReason.c_str());
-            if (mRegistry.GetCompatibleVariants(C).empty())
-                return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "No bound CUDA variant has compatible native code and execution requirements.");
-            return {};
+            FArdaCudaSelectionContext Context;
+            FVariants Candidates;
+            return GetSelectionCandidates(Context, Candidates);
         }
         /** Freezes a validated launch plan. Parameters can be changed/destroyed after return. */
         virtual TArdaRHIResult<FPlan> PrepareDispatch(const FParameters& Parameters,
             EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) const final
         {
-            if (auto S = GetOperandSupport(); !S) return {{}, S};
-            const auto C = mDevice->GetCudaCapabilities();
+            FArdaCudaSelectionContext Context{{}, Queue};
+            FVariants Candidates;
+            if (auto S = GetSelectionCandidates(Context, Candidates); !S) return {{}, S};
             if (Queue == EArdaRHIQueueType::Copy ||
-                (C.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG && Queue != EArdaRHIQueueType::Graphics))
+                (Context.mCapabilities.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG && Queue != EArdaRHIQueueType::Graphics))
                 return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "CUDA execution mode does not support this queue.")};
             auto Plan = eastl::make_shared<FArdaCudaDispatchPlan>();
             Plan->mDevice = mDevice; Plan->mQueue = Queue;
-            if (auto S = ParameterType::GetCudaMetadata().Prepare(&Parameters, *mDevice, Plan->mDispatch); !S) return {{}, S};
-            const auto Candidates = mRegistry.GetCompatibleVariants(C);
+            if (auto S = ParameterType::GetCudaMetadata().Prepare(&Parameters, Plan->mDispatch); !S) return {{}, S};
             TArdaRHIResult<FArdaCudaKernelSelection> Choice;
-            try { Choice = SelectKernel(Parameters, {C, Queue}, Candidates); }
+            try { Choice = SelectKernel(Parameters, Context, Candidates); }
             catch (const std::exception& E) { return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, E.what())}; }
             catch (...) { return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA kernel selection threw an exception.")}; }
             if (!Choice) return {{}, Choice.mStatus};
@@ -79,7 +75,7 @@ namespace arda
             for (const auto& V : Candidates) if (V.mId == Choice.mValue.mVariantId) { K.mEntry = V.mEntry; break; }
             if (!K.mEntry) return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "SelectKernel returned an unregistered or incompatible variant.")};
             static_cast<FArdaCudaLaunchConfig&>(K) = Choice.mValue.mLaunch;
-            if (auto S = ValidateArdaCudaKernels(Plan->mDispatch.mKernels, Plan->mDispatch.mBindings.size(), C); !S) return {{}, S};
+            if (auto S = ValidateArdaCudaKernels(Plan->mDispatch.mKernels, Plan->mDispatch.mBindings.size(), Context.mCapabilities); !S) return {{}, S};
             return {Plan, {}};
         }
         /** Records a frozen plan without submitting. Native addresses resolve in the provider. */
@@ -117,6 +113,18 @@ namespace arda
         }
         const FArdaRHIDeviceRef& GetDevice() const noexcept { return mDevice; }
     private:
+        FArdaRHIStatus GetSelectionCandidates(FArdaCudaSelectionContext& Context, FVariants& Candidates) const
+        {
+            if (auto S = EnsureBindings(); !S) return S;
+            if (!mDevice) return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA operand has no device.");
+            Context.mCapabilities = mDevice->GetCudaCapabilities();
+            if (!Context.mCapabilities)
+                return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, Context.mCapabilities.mUnavailableReason.c_str());
+            Candidates = mRegistry.GetCompatibleVariants(Context.mCapabilities);
+            if (Candidates.empty())
+                return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "No bound CUDA variant has compatible native code and execution requirements.");
+            return {};
+        }
         FArdaRHIStatus EnsureBindings() const
         {
             std::call_once(mBindOnce, [&] {

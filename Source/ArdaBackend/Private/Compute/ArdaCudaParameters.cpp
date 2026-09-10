@@ -7,6 +7,7 @@ namespace arda
         eastl::vector<FArdaComputeParameterMember> HostMembers(const eastl::vector<FArdaCudaParameterMember>& Members)
         {
             eastl::vector<FArdaComputeParameterMember> Result;
+            Result.reserve(Members.size());
             for (const auto& M : Members)
                 Result.push_back({M.mName, "CUDA schema member", M.mKind, M.mAccess, M.mHostOffset,
                     M.mHostSize, M.mHostAlignment, 1, M.mHostSize, nullptr});
@@ -47,8 +48,7 @@ namespace arda
                 { Invalid("CUDA parameter fields overlap."); return; }
         }
     }
-    FArdaRHIStatus FArdaCudaParameterMetadata::Prepare(const void* Parameters,
-        IArdaRHIDevice& Device, FArdaCudaDispatch& Output) const
+    FArdaRHIStatus FArdaCudaParameterMetadata::Prepare(const void* Parameters, FArdaCudaDispatch& Output) const
     {
         if (!mStatus) return mStatus;
         if (!Parameters || reinterpret_cast<uintptr_t>(Parameters) % mHost.GetAlignment())
@@ -90,7 +90,7 @@ namespace arda
                     (Raw.mPlaneCount != ArdaRHIAllSubresources && Raw.mPlaneCount != 1))
                     return Fail("CUDA surface view has invalid mip, layer or plane bounds.");
                 const auto R = P.mRange.Resolve(D);
-                if (D.mFormat != M.mFormat || R.mBaseMipLevel >= D.mMipLevels || R.mMipLevelCount != 1 ||
+                if (D.mFormat != M.mFormat || R.mMipLevelCount != 1 ||
                     R.mBaseArraySlice != 0 || R.mArraySliceCount != D.mArraySize)
                     return Fail("CUDA surface requires its declared format, exactly one mip and all array layers.");
                 if (auto S = ValidateArdaCudaTexture(D); !S) return S;

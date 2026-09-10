@@ -2,7 +2,7 @@
  * Host parameter metadata independent of shader registers and kernel argument ABIs.
  */
 #pragma once
-#include "RHI/ArdaRHIDevice.h"
+#include "RHI/ArdaRHICuda.h"
 #include <EASTL/array.h>
 #include <EASTL/functional.h>
 #include <cstddef>

@@ -19,30 +19,40 @@ namespace arda
     TArdaRHIResult<FArdaCudaKernelSelection> FArdaAddOperand::SelectKernel(const FParameters& P,
         const FArdaCudaSelectionContext&, const FVariants& Candidates) const
     {
-        if (!P.mInput.mBuffer || !P.mOutput.mBuffer || !P.mCount || uint64_t(P.mCount) * sizeof(uint32_t) != P.mInput.mRange.Resolve(P.mInput.mBuffer->GetDesc()).mByteSize ||
-            uint64_t(P.mCount) * sizeof(uint32_t) != P.mOutput.mRange.Resolve(P.mOutput.mBuffer->GetDesc()).mByteSize)
+        if (!P.mInput.mBuffer || !P.mOutput.mBuffer || !P.mCount)
             return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Add requires a nonzero count matching both views.")};
+        const auto InputRange = P.mInput.mRange.Resolve(P.mInput.mBuffer->GetDesc());
+        const auto OutputRange = P.mOutput.mRange.Resolve(P.mOutput.mBuffer->GetDesc());
+        const auto ByteCount = uint64_t(P.mCount) * sizeof(uint32_t);
+        if (ByteCount != InputRange.mByteSize || ByteCount != OutputRange.mByteSize)
+            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Add count must match both views.")};
         if (P.mInput.mBuffer == P.mOutput.mBuffer)
         {
-            const auto A = P.mInput.mRange.Resolve(P.mInput.mBuffer->GetDesc());
-            const auto B = P.mOutput.mRange.Resolve(P.mOutput.mBuffer->GetDesc());
-            if (A.mByteOffset != B.mByteOffset && A.mByteOffset < B.mByteOffset + B.mByteSize && B.mByteOffset < A.mByteOffset + A.mByteSize)
+            if (InputRange.mByteOffset != OutputRange.mByteOffset &&
+                InputRange.mByteOffset < OutputRange.mByteOffset + OutputRange.mByteSize &&
+                OutputRange.mByteOffset < InputRange.mByteOffset + InputRange.mByteSize)
                 return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Add permits identical or disjoint views, but not partial overlap.")};
         }
         const uint32_t Block = P.mCount <= 64 ? 32 : 128;
-        for (const bool PreferredOnly : {true, false})
+        const FVariants::value_type* Selected = nullptr;
         for (const auto& V : Candidates)
-            if (V.mPayload.mBlockSize == Block &&
-                (!V.mEntry->GetBuildInfo().mbFastMath || mbPreferFastMath) &&
-                (!PreferredOnly || V.mEntry->GetBuildInfo().mbFastMath == mbPreferFastMath))
+        {
+            const bool FastMath = V.mEntry->GetBuildInfo().mbFastMath;
+            if (V.mPayload.mBlockSize != Block || (FastMath && !mbPreferFastMath)) continue;
+            if (!Selected) Selected = &V;
+            if (FastMath == mbPreferFastMath)
             {
-                FArdaCudaKernelSelection Choice;
-                Choice.mVariantId = V.mId;
-                Choice.mLaunch.mBlockSize[0] = Block;
-                Choice.mLaunch.mGridSize[0] = 1 + (P.mCount - 1) / Block;
-                return {Choice, {}};
+                Selected = &V;
+                break;
             }
-        return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "No compatible add tile was compiled.")};
+        }
+        if (!Selected)
+            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "No compatible add tile was compiled.")};
+        FArdaCudaKernelSelection Choice;
+        Choice.mVariantId = Selected->mId;
+        Choice.mLaunch.mBlockSize[0] = Block;
+        Choice.mLaunch.mGridSize[0] = 1 + (P.mCount - 1) / Block;
+        return {Choice, {}};
     }
     void FArdaSurfaceOperand::BindKernelVariants(FRegistry& Registry) const
     {

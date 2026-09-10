@@ -87,6 +87,19 @@ namespace
             if (mDevice->GetCudaCapabilities().mComputeCapability == 120)
                 EXPECT_EQ(Plan.mValue->mDispatch.mKernels.front().mEntry->GetBuildInfo().mbFastMath, Count == 128);
             EXPECT_EQ(Plan.mValue->mSelection.mLaunch.mBlockSize[0], Count == 32 ? 32u : 128u);
+            if (Count == 128)
+            {
+                const FArdaCudaSelectionContext Context{mDevice->GetCudaCapabilities()};
+                auto Registry = Operand.GetKernelVariants();
+                ASSERT_TRUE(Registry);
+                FArdaAddOperand::FVariants Portable, Fast;
+                for (const auto& V : Registry.mValue->GetCompatibleVariants(Context.mCapabilities))
+                    (V.mEntry->GetBuildInfo().mbFastMath ? Fast : Portable).push_back(V);
+                Operand.mbPreferFastMath = false;
+                EXPECT_FALSE(Operand.SelectKernel(P, Context, Fast));
+                Operand.mbPreferFastMath = true;
+                EXPECT_TRUE(Operand.SelectKernel(P, Context, Portable));
+            }
             P.mBias = 999; // Recorded plan owns a snapshot, not this mutable host object.
             auto Cmd = mDevice->CreateCommandList(EArdaRHIQueueType::Graphics);
             ASSERT_TRUE(Cmd); ASSERT_TRUE(Cmd.mValue->Open());
@@ -114,6 +127,39 @@ namespace
             ASSERT_TRUE(mDevice->WaitForIdle());
             ExpectWords(Bytes, Count, 18);
         }
+    }
+
+    TEST_P(ArdaCudaGpu, MultipleRecordedDispatchesRetainIndependentParameters)
+    {
+        constexpr uint32_t Count = 65;
+        auto Buffer = mDevice->CreateBuffer(BufferDesc(Count * sizeof(uint32_t)));
+        ASSERT_TRUE(Buffer);
+        auto Cmd = mDevice->CreateCommandList(EArdaRHIQueueType::Graphics);
+        ASSERT_TRUE(Cmd); ASSERT_TRUE(Cmd.mValue->Open());
+        eastl::vector<uint32_t> Values(Count);
+        for (uint32_t I = 0; I < Count; ++I) Values[I] = I * 3;
+        ASSERT_TRUE(Cmd.mValue->WriteBuffer(*Buffer.mValue, Values.data(), Values.size() * sizeof(uint32_t)));
+        {
+            FArdaAddOperand Operand(mDevice);
+            FArdaAddParameters P;
+            P.mInput.mBuffer = P.mOutput.mBuffer = Buffer.mValue;
+            P.mCount = Count;
+            for (uint32_t Bias : {7u, 11u})
+            {
+                P.mBias = Bias;
+                auto Recorded = Operand.DispatchDeferred(*Cmd.mValue, P);
+                ASSERT_TRUE(Recorded) << Recorded.mMessage.c_str();
+            }
+            P.mBias = 999;
+        } // Recorded entries and arguments must survive their operand and host parameters.
+        eastl::vector<uint8_t> Bytes;
+        ASSERT_TRUE(Cmd.mValue->CopyBufferDeviceToHost(*Buffer.mValue, Bytes));
+        ASSERT_TRUE(Cmd.mValue->Close());
+        auto Submitted = mDevice->ExecuteCommandList(Cmd.mValue);
+        ASSERT_TRUE(Submitted) << Submitted.mStatus.mMessage.c_str();
+        Cmd.mValue.Reset(); Buffer.mValue.Reset();
+        ASSERT_TRUE(mDevice->WaitForIdle());
+        ExpectWords(Bytes, Count, 18);
     }
 
     TEST_P(ArdaCudaGpu, ResourceChecksAreRuntimeAndBufferOffsetsPreserveGuards)

@@ -1,5 +1,6 @@
 #pragma once
 #include "ArdaCudaParameters.h"
+#include "RHI/ArdaRHIDevice.h"
 #include <utility>
 
 namespace arda
@@ -38,10 +39,11 @@ namespace arda
             if (mbFrozen) return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "CUDA registry is immutable after binding.");
             if (!mStatus) return mStatus;
             const auto Fail = [&](const char* Why) { return mStatus = FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, Why); };
-            if (!Parameters::GetCudaMetadata().GetStatus()) return mStatus = Parameters::GetCudaMetadata().GetStatus();
+            const auto& Metadata = Parameters::GetCudaMetadata();
+            if (!Metadata.GetStatus()) return mStatus = Metadata.GetStatus();
             if (!Variant.mEntry || Variant.mName.empty()) return Fail("CUDA variant requires a compiled entry and diagnostic name.");
             const auto Actual = Variant.mEntry->GetSignature();
-            const auto Expected = Parameters::GetCudaMetadata().GetSignature();
+            const auto Expected = Metadata.GetSignature();
             if (!Actual.mbSupported || !Actual.mType || *Actual.mType != *Expected.mType ||
                 Actual.mSize != Expected.mSize || Actual.mAlignment != Expected.mAlignment)
                 return Fail("All CUDA variants must accept the operand's exact CUDA parameter struct by value.");
