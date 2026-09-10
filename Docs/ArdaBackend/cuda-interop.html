@@ -40,6 +40,7 @@
         <a href="resource-recipes.html">Resource recipes</a>
         <a href="capability-recipes.html">Capability recipes</a>
         <a href="cuda-interop.html">CUDA and graphics</a>
+        <a href="cuda-graphics.html">CUDA in graphics fundamentals</a>
         <a href="validation.html">GPU validation setup</a>
         <a href="commands.html">Commands</a>
         <a href="presentation.html">Presentation</a>
@@ -53,19 +54,105 @@
         <span aria-hidden="true">/</span>
         ArdaBackend
       </nav>
-      <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>Typed compute operands and CUDA interoperability</h1><p>Implement your own typed Dispatch, describe resource dependencies, and compose CUDA sources or runtime calls with explicit execution and lifetime.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#model">Separate host execution, dependencies and device code</a><a href="#operand">Derive a typed operand and own its implementation</a><a href="#parameters">Declare dependencies without defining a kernel ABI</a><a href="#dispatch">Choose immediate execution or deferred recording</a><a href="#source-modules">Keep arbitrary CUDA source files behind Dispatch</a><a href="#tuning">Make shape and policy decisions inside dispatch</a><a href="#fallback">Choose alternatives before recording writes</a><a href="#build">Enable backend CUDA independently of the interface</a><a href="#resources">Allocate shared storage and inspect actual representations</a><a href="#packing">Make image-to-tensor layout conversion explicit</a><a href="#context-switch">Understand when recorded GPU work executes</a><a href="#native">Respect native queue ordering and object lifetime</a><a href="#qualification">Diagnose failures and reproduce the evidence</a><a href="#summary">Checkpoints</a></nav>
-<section id="objectives"><h2>How to use these examples</h2>
-<p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
-<p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
-<figure><div class="diagram-scroll" role="region" aria-label="Typed operand execution and dependency diagram; scroll horizontally" tabindex="0"><img src="Assets/cuda-command-stream.svg" alt="Typed parameters feed immediate or deferred dispatch; metadata exposes dependencies to a future graph adapter"></div><figcaption>Dispatch owns execution and completion. Metadata inspection schedules nothing. Scroll horizontally on narrow screens.</figcaption></figure>
-<p>Short snippets are literal excerpts from compiled GoogleTest workloads. They use ASSERT_TRUE/EXPECT_EQ to make failures visible. Adapt those checks to your application's status handling. Variables and helpers are initialized in each linked complete example; snippets are not separate standalone programs. The complete examples show allocation, binding, execution, readback assertions and cleanup.</p>
-<pre><code class="language-shell">cmake --build build --config Debug --target ArdaBackendTests
-ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
-<p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="model"><h2>Separate host execution, dependencies and device code</h2>
+      <article><header class="page-header"><p class="eyebrow">CUDA authoring and execution</p><h1>Typed compute operands and CUDA interoperability</h1><p>Implement your own typed Dispatch, describe resource dependencies, and compose CUDA sources or runtime calls with explicit execution and lifetime.</p></header>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">Learning objectives</a><a href="#model">Separate host execution, dependencies and device code</a><a href="#launch-methods">Two ways to launch the same CUDA computation</a><a href="#ptx-dispatch">Method 1: PTX descriptors and backend launches</a><a href="#direct-launch">Method 2: normal CUDA C++ host launches</a><a href="#operand">Derive a typed operand and own its implementation</a><a href="#parameters">Declare dependencies without defining a kernel ABI</a><a href="#dispatch">Choose immediate execution or deferred recording</a><a href="#source-modules">Keep arbitrary CUDA source files behind Dispatch</a><a href="#tuning">Make shape and policy decisions inside dispatch</a><a href="#fallback">Choose alternatives before recording writes</a><a href="#build">Enable backend CUDA independently of the interface</a><a href="#resources">Allocate shared storage and inspect actual representations</a><a href="#packing">Make image-to-tensor layout conversion explicit</a><a href="#context-switch">Understand when recorded GPU work executes</a><a href="#native">Respect native queue ordering and object lifetime</a><a href="#qualification">Diagnose failures and reproduce the evidence</a><a href="#summary">Checkpoints</a></nav>
+<section id="objectives"><h2>Learning objectives and prerequisites</h2>
+<p>Learn to distinguish PTX descriptor launches from CUDA-compiled host launches, implement a typed operand, and assign resource lifetime and synchronization to the component that actually submits work. Prerequisites: <a href="cuda-graphics.html">CUDA in graphics fundamentals</a>, <a href="commands.html">command recording</a>, and <a href="rhi.html">resources and ownership</a>.</p>
+<p><strong>Example status:</strong> the RHI descriptor excerpts and expandable tests come from compiled backend sources. The direct CUDA host helper in method 2 is a documentation example with application-owned pointer/stream prerequisites; it is not an implemented or GPU-qualified ArdaBackend adapter. Optional test .cu sources are compiled by NVRTC only when the runtime-source tests are enabled.</p>
+<figure><div class="diagram-scroll" role="region" aria-label="Typed operand execution model" tabindex="0"><img src="Assets/cuda-command-stream.svg" alt="Typed parameters feed immediate or deferred dispatch; metadata inspection schedules nothing"></div><figcaption>Dispatch defines execution and completion; parameter metadata describes dependencies.</figcaption></figure></section><section id="model"><h2>Separate host execution, dependencies and device code</h2>
 <p>Learn to implement an operand that owns its CPU logic, launch policy and GPU work; describe resource dependencies in typed parameters; and choose immediate or deferred execution with explicit lifetime and ordering. Prerequisites: <a href="shaders.html">shader parameters and compilation</a>, <a href="rhi.html">RHI recording and submission</a>, and <a href="resource-recipes.html">resource allocation</a>.</p>
 <p>A <a class="term" data-term="compute-operand" href="../glossary.html#term-compute-operand">compute operand</a> is a C++ object with a typed entry point. Its author may call several CUDA kernels, a native library, graphics compute, or a mixture. Source organization and tuning are ordinary implementation decisions. A parameter struct supplies host values and declares which resources are read or written. A command list, when used, describes work whose GPU execution happens after recording.</p>
 <p>The CPU parameter object and the GPU kernel argument layout serve different purposes. Host shape vectors can guide tiling; resource declarations expose dependencies; dispatch then constructs the exact arguments required by each chosen kernel. No reflection layer can infer hidden pointer dependencies or a library's private tensor layout.</p></section>
+<section id="launch-methods"><h2>Two ways to launch the same CUDA computation</h2>
+<p>Start with <a href="cuda-graphics.html">How CUDA works with graphics</a> for the general memory and synchronization model. Here, both methods compute Output[i] = Input[i] + 18 with two ordered launches. The way kernel code is prepared and invoked is separate from whether an operand uses immediate execution or deferred recording.</p>
+<ul><li><a href="#ptx-dispatch">Method 1: record PTX launch descriptors.</a> This is the implemented FArdaAddOperand sample. Plain C++ supplies PTX, entry-point names, dimensions and arguments to the RHI. Its .cu files are optional NVRTC inputs.</li><li><a href="#direct-launch">Method 2: compile a CUDA host helper with ordinary &lt;&lt;&lt;...&gt;&gt;&gt; calls.</a> The example below shows this authoring style. An application must provide its CUDA build/runtime and graphics interop adapter; the repository does not supply that adapter.</li></ul>
+<figure><div class="diagram-scroll" role="region" aria-label="Two CUDA compilation and launch paths" tabindex="0"><img src="Assets/cuda-launch-methods.svg" alt="RHI descriptors accept PTX from NVRTC or an offline artifact; a CUDA-compiled host helper launches linked kernels through a stream"></div><figcaption>The presence of a .cu file does not tell you which path is used. Check who compiles it, what artifact is produced, and who launches it.</figcaption></figure></section>
+<section id="ptx-dispatch"><h2>Method 1: PTX descriptors and backend launches</h2><p>The current sample creates <a href="api-reference.html#api-arda-fardacudakernel-a01486e1"><code>FArdaCudaKernel</code></a> descriptors, places them in <a href="api-reference.html#api-arda-fardacudadispatch-7832a24b"><code>FArdaCudaDispatch</code></a>, and calls <a href="api-reference.html#api-arda-iardarhicommandlist-dispatchcuda-69460b3b"><code>IArdaRHICommandList::DispatchCuda</code></a>. The excerpt below is read directly from <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaBackend/Tests/ArdaTestComputeOperand.cpp">ArdaTestComputeOperand.cpp</a>; the full helper and parameter validation appear under <a href="#source-modules">source modules</a>.</p>
+<p><strong>Why PTX is still present:</strong> First.mPtx = AddPtx selects the embedded test kernel by default, allowing launch tests to run without the optional NVRTC compiler. Supplying two modules replaces that PTX with each module's GetPtx result. A precompiled PTX artifact can also feed the same descriptor. Moving kernel text to .cu files did not change this dispatch contract.</p><pre><code class="language-cpp">const uint32_t Block = !P.mInputShape.empty() &amp;&amp; P.mInputShape[1] &lt;= 64 ? 32 : 128;
+FArdaCudaKernel First;
+First.mPtx = AddPtx;
+First.mEntryPoint = &quot;add_values&quot;;
+First.mBlockSize[0] = Block;
+First.mGridSize[0] = 1 + (P.mCount - 1) / Block;
+First.mArguments = {FArdaCudaArgument::Binding(0), FArdaCudaArgument::Binding(1),
+    FArdaCudaArgument::Value(P.mCount), FArdaCudaArgument::Value(7u)};
+auto Second = First;
+Second.mArguments[0] = FArdaCudaArgument::Binding(1);
+Second.mArguments[3] = FArdaCudaArgument::Value(11u);
+if (!mModules.empty())
+{
+    // Optional runtime compilation, not a restriction of the operand interface.
+    if (mModules.size() != 2 || !mModules[0] || !mModules[1])
+        return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;This sample expects two source modules.&quot;);
+    auto A = mModules[0]-&gt;GetPtx(C.mComputeCapability);
+    if (!A) return A.mStatus;
+    auto B = mModules[1]-&gt;GetPtx(C.mComputeCapability);
+    if (!B) return B.mStatus;
+    First.mPtx = eastl::move(A.mValue);
+    Second.mPtx = eastl::move(B.mValue);
+    Second.mEntryPoint = &quot;finish_values&quot;;
+}
+eastl::vector&lt;FArdaComputeResourceAccess&gt; Accesses;
+if (auto S = GetParameterMetadata().GetResourceAccesses(&amp;P, Accesses); !S) return S;
+FArdaCudaDispatch Work;
+for (const auto&amp; A : Accesses) Work.mBindings.push_back({A.mResource, A.mAccess, A.mBufferRange});
+Work.mKernels = {eastl::move(First), eastl::move(Second)};
+// The RHI validates/records this sequence; it retains submitted dependencies.
+// A library-backed implementation can use its own direct Dispatch instead.
+auto Status = Commands.DispatchCuda(Work);</code></pre>
+<p>mGridSize is the number of blocks; mBlockSize is threads per block; mSharedMemoryBytes is dynamic shared memory per block; mArguments follows the kernel parameter order. Binding(0/1) resolves retained resource views to provider-owned native values, while Value copies scalar bytes. These fields carry the information a &lt;&lt;&lt;Grid, Block, SharedBytes, Stream&gt;&gt;&gt; launch would otherwise supply, with the provider choosing the stream or graphics command buffer.</p>
+<p>The <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaBackendImpls/Cuda/ArdaCudaInterop.cpp">CUDA driver bridge</a> loads PTX with cuModuleLoadDataEx, finds the entry with cuModuleGetFunction, and executes cuLaunchKernel. The <a href="https://github.com/DylanWaken/Ardashir/blob/master/Source/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp">native Vulkan path</a> records vkCmdCudaLaunchKernelNV. ContextSwitch records batches first and launches them during submission. This provider-level path preserves declared dependencies and resource lifetime.</p>
+<p>NVRTC compiles device CUDA C++ into PTX in this adapter; it does not compile the host dispatcher containing ordinary kernel-launch syntax. An extern "C" __global__ definition supplies a stable entry name, not a linked host launch stub. See <a href="https://docs.nvidia.com/cuda/nvrtc/index.html#language">NVRTC language restrictions</a> and <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/driver-api.html">Driver API module loading and launches</a>.</p></section>
+<section id="direct-launch"><h2>Method 2: normal CUDA C++ host launches</h2>
+<p><strong>Documentation helper; no RHI adapter is implemented.</strong> The complete <a href="Examples/ArdaCudaDirectLaunch.cu">ArdaCudaDirectLaunch.cu</a> helper below runs the same +7 then +11 operation using a CUDA-compiled host function. It reuses one kernel for both stages. It is separate from the compiled backend tests and requires a CUDA-capable compiler such as nvcc plus the CUDA runtime.</p><pre><code class="language-cpp">// Documentation helper: application-owned CUDA pointers and stream are required.
+// This file is not part of ArdaBackendTests or an RHI resource/stream adapter.
+#include &lt;cuda_runtime.h&gt;
+
+namespace arda
+{
+    __global__ void AddArdaValues(const unsigned int* Input, unsigned int* Output,
+        unsigned int Count, unsigned int Bias)
+    {
+        const unsigned int Index = blockIdx.x * blockDim.x + threadIdx.x;
+        if (Index &lt; Count)
+        {
+            Output[Index] = Input[Index] + Bias;
+        }
+    }
+
+    // Input and Output cover Count elements on the current CUDA device.
+    // They may be identical; otherwise their ranges must not overlap.
+    // The caller orders graphics producers before this stream and retains
+    // allocations, mappings and Stream until all submitted work completes.
+    cudaError_t LaunchArdaAddTwice(const unsigned int* Input, unsigned int* Output,
+        unsigned int Count, cudaStream_t Stream)
+    {
+        if (!Input || !Output || !Count)
+        {
+            return cudaErrorInvalidValue;
+        }
+        const dim3 Block(128, 1, 1);
+        const dim3 Grid(1 + (Count - 1) / Block.x, 1, 1);
+        AddArdaValues&lt;&lt;&lt;Grid, Block, 0, Stream&gt;&gt;&gt;(Input, Output, Count, 7u);
+        const cudaError_t FirstStatus = cudaGetLastError();
+        if (FirstStatus != cudaSuccess)
+        {
+            return FirstStatus;
+        }
+        AddArdaValues&lt;&lt;&lt;Grid, Block, 0, Stream&gt;&gt;&gt;(Output, Output, Count, 11u);
+        return cudaGetLastError();
+    }
+}
+</code></pre>
+<p>The launch syntax is Kernel&lt;&lt;&lt;Grid, Block, DynamicSharedBytes, Stream&gt;&gt;&gt;(Arguments). __global__ marks GPU code; LaunchArdaAddTwice executes on the CPU and queues it. Here each block has 128 threads and zero dynamic shared memory. Both launches use the same stream, so the second consumes the first's output. cudaGetLastError checks launch submission; a later completion check must also detect asynchronous execution errors. See <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/intro-to-cuda-cpp.html">CUDA C++ kernel launch syntax</a> and <a href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html">stream ordering and completion</a>.</p>
+<p>A simple application target containing this file can be built with the CMake fragment below. Select an architecture supported by your toolkit and target GPU. This is an application build recipe; Ardashir's current root project enables CXX only. ARDASHIR_ENABLE_CUDA enables its native providers and does not turn its test .cu files into nvcc-compiled host objects.</p><pre><code class="language-cmake">cmake_minimum_required(VERSION 3.24)
+project(ArdaCudaExample LANGUAGES CXX CUDA)
+find_package(CUDAToolkit REQUIRED)
+add_library(ArdaCudaExample STATIC ArdaCudaDirectLaunch.cu)
+target_link_libraries(ArdaCudaExample PUBLIC CUDA::cudart)
+set_target_properties(ArdaCudaExample PROPERTIES
+    CUDA_STANDARD 17 CUDA_STANDARD_REQUIRED ON)</code></pre><p>An implementation of <a href="api-reference.html#api-arda-tardacomputeoperand-dispatch-dd686ad4"><code>TArdaComputeOperand::Dispatch</code></a> may call this helper after obtaining valid CUDA mappings, ordering the graphics producer and selecting the correct device/context. It must expose completion and retain resources until work finishes, including any successfully queued first stage when a later stage fails. For a simple blocking integration, check cudaStreamSynchronize(Stream) before returning control to graphics; an asynchronous integration needs a graphics-visible semaphore/fence handoff.</p>
+<p>The public RHI exposes neither raw CUDA mappings nor native CUDA streams. GetCudaResourceInfo reports capabilities, not an address to pass into this helper. A Vulkan device address is not an ordinary CUDA pointer. Direct launches therefore require application-owned native storage/interop or a new explicit adapter. Calling this helper from DispatchDeferred without that adapter would execute outside RHI recording and ordering; retain the descriptor path for current command-list integration.</p></section>
 <section id="operand"><h2>Derive a typed operand and own its implementation</h2><p>Derive <a href="api-reference.html#api-arda-tardacomputeoperand-a9365ece"><code>TArdaComputeOperand</code></a> with your parameter type. Implement <a href="api-reference.html#api-arda-fardacomputeoperand-getoperandsupport-5ad00903"><code>FArdaComputeOperand::GetOperandSupport</code></a> for the device/runtime you retain in your constructor, plus GetName for diagnostics. Override Dispatch for immediate execution and/or DispatchDeferred for command recording. The non-template <a href="api-reference.html#api-arda-fardacomputeoperand-3c458666"><code>FArdaComputeOperand</code></a> exposes identity, support and metadata; callers use the typed base to dispatch.</p>
 <p>Dispatch is virtual C++ code: it can validate inputs, prepare scratch storage, invoke precompiled CUDA functions from any number of translation units, call runtime libraries, or record an RHI sequence. The base owns no device, compiler, kernel registry, variant selector or fallback policy. A support query returns a status with a reason and performs no launches. Each dispatch implementation must enforce support and validate the actual shape, dtype, layout, ranges, queue and resource compatibility it requires.</p>
 <p>The compiled add example below binds its own RHI device and optional graphics implementation in the constructor. Its public parameters describe two buffer views, count and optional shapes. The separate host implementation below owns all selection and launch logic; the two CUDA files contain device logic.</p><details><summary>Read compiled example: ArdaTestComputeOperand.h</summary><pre><code class="language-cpp">#pragma once
@@ -213,8 +300,8 @@ eastl::string ReadArdaCudaOperandSource(const char* Name)
     return {Text.data(), Text.size()};
 }</code></pre></details></section>
 <section id="source-modules"><h2>Keep arbitrary CUDA source files behind Dispatch</h2>
-<p>The operand interface imposes no count or organization on .cpp, .cu or .cuh files. A build can compile/link CUDA translation units normally and expose host functions that Dispatch calls. No source-registration callback or framework kernel-selector function is needed. TensorRT engines or exported PyTorch kernel sequences can eventually use the same typed interface through implementation-owned runtime adapters; those integrations are not supplied here.</p><p>For optional runtime compilation, <a href="api-reference.html#api-arda-fardacudamodule-9e64307d"><code>FArdaCudaModule</code></a> owns one immutable source unit, named includes and compiler options, caching successful PTX per SM. Load as many units as your implementation needs, or supply precompiled PTX. This utility is independent of the operand base. Recreate a module when source, includes or compiler policy changes; failed compilations are not cached.</p>
-<p>The sample uses ArdaCudaOperand.cu plus ArdaCudaOperandFinish.cu, with a .cuh → .h include chain. Its host dispatch chooses block size and explicitly sequences the two exported kernels. This sample expects two modules because its operation has two stages; other operands may have any count. The NVRTC helper compiles each source separately; it does not device-link cross-unit symbols. Keep each unit self-contained, link ahead of time, or provide a custom compiler/linker adapter for cross-unit device calls.</p>
+<p>The operand interface imposes no count or organization on .cpp, .cu or .cuh files. A build can compile/link CUDA translation units normally and expose host functions that Dispatch calls. No source-registration callback or framework kernel-selector function is needed. TensorRT engines or exported PyTorch kernel sequences can eventually use the same typed interface through implementation-owned runtime adapters; those integrations are not supplied here.</p><p>For optional runtime compilation with <a class="term" data-term="nvrtc" href="../glossary.html#term-nvrtc">NVRTC</a>, <a href="api-reference.html#api-arda-fardacudamodule-9e64307d"><code>FArdaCudaModule</code></a> owns one immutable source unit, named includes and compiler options, caching successful PTX per SM. Load as many units as your implementation needs, or supply precompiled PTX. This utility is independent of the operand base. Recreate a module when source, includes or compiler policy changes; failed compilations are not cached.</p>
+<p>When source modules are supplied, the sample reads ArdaCudaOperand.cu plus ArdaCudaOperandFinish.cu as NVRTC input, with a .cuh → .h include chain. Without modules, it uses embedded PTX. Its host dispatch chooses block size and explicitly sequences the two exported kernels through descriptors, as shown in <a href="#ptx-dispatch">method 1</a>. This sample expects two modules because its operation has two stages; other operands may have any count. The NVRTC helper compiles each source separately; it does not device-link cross-unit symbols. Keep each unit self-contained, link ahead of time, or provide a custom compiler/linker adapter for cross-unit device calls. See <a href="#direct-launch">method 2</a> for a CUDA-compiled host function.</p>
 <p>Link the optional Ardashir::ArdaCudaCompiler target and configure ARDASHIR_NVRTC_INCLUDE_DIR. CreateArdaNvrtcCompiler takes an absolute runtime library path; deploy NVRTC and its matching builtins on the launching process's library search path (PATH on Windows). The adapter targets compute_&lt;SM&gt;, preserves diagnostics and expects exported extern "C" kernels. No SDK types or mandatory NVRTC linkage enter the core interface. Precompiled/native library implementations need no NVRTC helper.</p><details><summary>Read compiled example: ArdaTestComputeOperand.cpp</summary><pre><code class="language-cpp">#include &quot;ArdaTestComputeOperand.h&quot;
 
 namespace arda
@@ -614,8 +701,8 @@ done: ret;
 <dl><dt>Unsupported operand</dt><dd>Inspect the user implementation's support status, device/runtime and chosen path. For shared RHI work, check SM, queue and each resource's representation. Select an alternative before writes.</dd><dt>InvalidArgument</dt><dd>Check required typed parameters, shape/count consistency, range bounds, alignment, dtype/layout and kernel ABI. Metadata is not a substitute for these checks.</dd><dt>Compiler failure</dt><dd>Inspect preserved diagnostics, include names and runtime/builtins deployment. Rebuild source modules after changes. Do not retry a graphics path after partial recording.</dd><dt>Capture or replay failure</dt><dd>Discard/reset the failed recording and obey CiG submit/discard ordering. Re-record intentional repeated work.</dd><dt>Skipped GPU test</dt><dd>Distinguish missing validation, unavailable CUDA and missing optional NVRTC library. A skip is not evidence of GPU execution; see <a href="validation.html">validation setup</a>.</dd></dl>
 <p>Run ArdaBackendTests in CUDA-on and CUDA-off builds. For focused checks use the filter below, with ARDA_TEST_NVRTC_LIBRARY set to the absolute NVRTC library path and the builtins directory on PATH when the NVRTC adapter is configured. Leave that variable unset in a build without NVRTC headers; explicitly requesting compilation from an unavailable adapter is a test failure. CPU-only metadata/host dispatch tests run without that library. The GPU tests verify output values, guards, multi-file compilation caching, deferred execution, support rejection and graphics alternatives.</p><pre><code class="language-shell">ArdaBackendTests --gtest_filter=ArdaCompute*:ArdaCudaModule.*:ArdaCudaCompiler.*:*ArdaCudaGpu*</code></pre></section><section id="summary"><h2>Checkpoints and further reading</h2>
 <p>An operand author owns execution, validation and policy. Typed metadata exposes resource dependencies without dictating a kernel ABI. Deferred recording requires an ordered submission path; immediate launches require an implementation-defined completion contract.</p>
-<ol><li>Where would an immediate TensorRT enqueue and its stream ownership live?</li><li>Why can a default deferred hook not safely call an immediate hook?</li><li>How do aliasing views, null optional resources and shape vectors appear in metadata?</li><li>Why do [4, 32] and [1, 128] select different blocks while producing the same values?</li><li>What changes when a surface is unqualified or a selected compilation fails?</li></ol>
-<p>Use <a href="#dispatch">dispatch</a>, <a href="#parameters">parameters</a>, <a href="#tuning">policy</a> and <a href="#fallback">alternatives</a> to check your answers. Continue with <a href="../ArdaRDG/index.html">RDG fundamentals</a>, <a href="shaders.html">shader authoring</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>
+<ol><li>Why does the current .cu-based sample still pass PTX to DispatchCuda?</li><li>Which build, memory and synchronization responsibilities must a direct &lt;&lt;&lt;...&gt;&gt;&gt; implementation supply?</li><li>Where would an immediate TensorRT enqueue and its stream ownership live?</li><li>Why can a default deferred hook not safely call an immediate hook?</li><li>How do aliasing views, null optional resources and shape vectors appear in metadata?</li><li>Why do [4, 32] and [1, 128] select different blocks while producing the same values?</li><li>What changes when a surface is unqualified or a selected compilation fails?</li></ol>
+<p>Use <a href="#launch-methods">the two launch methods</a>, <a href="#dispatch">dispatch</a>, <a href="#parameters">parameters</a>, <a href="#tuning">policy</a> and <a href="#fallback">alternatives</a> to check your answers. Continue with <a href="cuda-graphics.html">CUDA in graphics fundamentals</a>, <a href="../ArdaRDG/index.html">RDG fundamentals</a>, <a href="shaders.html">shader authoring</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>
 </main>
   </div>
   <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>

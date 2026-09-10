@@ -208,6 +208,12 @@
           <p><strong>In Ardashir:</strong> Arda&#x27;s D3D12 provider captures onto its graphics queue and retains mappings, streams and modules until the graphics fence completes.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-cuda">CUDA</a></li><li><a href="#term-queue">Queue</a></li><li><a href="#term-lifetime">Lifetime</a></li></ul></div>
         </article>
+        <article class="glossary-entry" id="term-cuda-stream" data-glossary-entry data-category="Graphics" data-search="CUDA stream Graphics An ordered sequence of CUDA operations whose submission can return before GPU completion. The RHI provider owns streams for its driver launch paths. A direct CUDA operand must supply compatible stream ownership, resource retention and graphics synchronization.">
+          <div class="glossary-entry__meta"><h3>CUDA stream</h3><span class="category">Graphics</span></div>
+          <p>An ordered sequence of CUDA operations whose submission can return before GPU completion.</p>
+          <p><strong>In Ardashir:</strong> The RHI provider owns streams for its driver launch paths. A direct CUDA operand must supply compatible stream ownership, resource retention and graphics synchronization.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-cuda">CUDA</a></li><li><a href="#term-queue">Queue</a></li><li><a href="#term-synchronization">Synchronization</a></li><li><a href="#term-lifetime">Lifetime</a></li></ul></div>
+        </article>
         <article class="glossary-entry" id="term-culling" data-glossary-entry data-category="Computer science" data-search="Culling Computer science Removing work proven unable to affect any required output. ArdaRenderGraph removes passes not reachable through data-producer edges from observable roots; synchronization-only edges do not preserve liveness, while immediate mode keeps every pass.">
           <div class="glossary-entry__meta"><h3>Culling</h3><span class="category">Computer science</span></div>
           <p>Removing work proven unable to affect any required output.</p>
@@ -417,6 +423,12 @@
           <p>Wrapping an externally created native graphics object for use through an abstraction layer.</p>
           <p><strong>In Ardashir:</strong> ArdaBackend imports selected D3D12 or Vulkan textures and buffers from truthful descriptors, retains optional lifetime tokens, and leaves host ownership and synchronization explicit.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-d3d12">D3D12</a></li><li><a href="#term-vulkan">Vulkan</a></li><li><a href="#term-lifetime-token">Lifetime token</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-nvrtc" data-glossary-entry data-category="Graphics" data-search="NVRTC Graphics NVIDIA&#x27;s runtime compiler for device CUDA C++ code; it does not compile ordinary CPU host functions. Arda&#x27;s optional compiler adapter translates device source into PTX for RHI launch descriptors. Its test .cu inputs are not linked CUDA host launch helpers.">
+          <div class="glossary-entry__meta"><h3>NVRTC</h3><span class="category">Graphics</span></div>
+          <p>NVIDIA&#x27;s runtime compiler for device CUDA C++ code; it does not compile ordinary CPU host functions.</p>
+          <p><strong>In Ardashir:</strong> Arda&#x27;s optional compiler adapter translates device source into PTX for RHI launch descriptors. Its test .cu inputs are not linked CUDA host launch helpers.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-cuda">CUDA</a></li><li><a href="#term-ptx">PTX</a></li><li><a href="#term-compute-operand">Compute operand</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-ownership" data-glossary-entry data-category="Computer science" data-search="Ownership Computer science The responsibility for retaining, releasing, or destroying an object. ArdaBackend APIs distinguish borrowed native handles, retained wrapper references, and newly created objects.">
           <div class="glossary-entry__meta"><h3>Ownership</h3><span class="category">Computer science</span></div>

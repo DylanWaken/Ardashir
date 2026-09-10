@@ -62,6 +62,10 @@ Host-owned Vulkan devices are supported by `native-vulkan`; see the
 [enabled-feature and lifetime contract](Docs/ArdaBackend/external-interop.html#vulkan).
 CUDA supports automatic fallback to serialized ordinary-context execution; see
 [execution modes and qualification limits](Docs/ArdaBackend/cuda-interop.html#context-switch).
+Read [How CUDA works with graphics](Docs/ArdaBackend/cuda-graphics.html) for the
+general memory and synchronization model, and compare
+[PTX descriptors and ordinary CUDA C++ launches](Docs/ArdaBackend/cuda-interop.html#launch-methods)
+in the operand guide.
 
 ## Dependencies
 

@@ -140,7 +140,7 @@ def capabilities() -> list[dict]:
     return cases
 
 
-def page(title: str, intro: str, sections: list[tuple[str, str, str]], diagram: str, checkpoints: str = "") -> str:
+def page(title: str, intro: str, sections: list[tuple[str, str, str]], diagram: str, checkpoints: str = "", objectives: str = "") -> str:
     template = (DOCS / "index.html").read_text(encoding="utf-8")
     template = re.sub(r"<title>.*?</title>", f"<title>{html.escape(title)} | ArdaBackend</title>", template)
     template = re.sub(r'<meta name="description" content="[^"]*">', f'<meta name="description" content="{html.escape(intro, quote=True)}">', template)
@@ -160,6 +160,9 @@ ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
     article += '''<section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>'''
     if checkpoints:
         article = re.sub(r'<section id="summary">.*?</section>', lambda _: '<section id="summary"><h2>Checkpoints and further reading</h2>' + checkpoints + '</section>', article, flags=re.S)
+    if objectives:
+        article = re.sub(r'<section id="objectives">.*?</section>', lambda _: '<section id="objectives"><h2>Learning objectives and prerequisites</h2>' + objectives + '</section>', article, flags=re.S)
+        article = article.replace('href="#objectives">How to use these examples', 'href="#objectives">Learning objectives')
     if diagram == "diagnostic-escalation.svg":
         article = article.replace("Representations and references preserve access and lifetime; commands and fences establish order.",
             "Start with the initialization result and native diagnostic; escalate to the validation layer and GPU tooling for successfully initialized workloads.")
@@ -253,6 +256,7 @@ def generate() -> dict[Path, str]:
 
 def integration_chapters(api_link) -> dict[Path, str]:
     from cuda_recipes import cuda_chapter
+    from cuda_graphics import cuda_graphics_chapter
     def code(value: str, language: str = "cpp") -> str:
         return f'<pre><code class="language-{language}">{html.escape(value)}</code></pre>'
     cuda_page = cuda_chapter(ROOT, api_link, page)
@@ -266,6 +270,7 @@ def integration_chapters(api_link) -> dict[Path, str]:
     ]
     return {
         DOCS / "cuda-interop.html": cuda_page,
+        DOCS / "cuda-graphics.html": cuda_graphics_chapter(api_link, page),
         DOCS / "validation.html": page("GPU validation setup", "Provision debug layers locally, distinguish native layer failures and keep unavailable validation from failing unrelated tests.", validation_sections, "diagnostic-escalation.svg",
             '<p>Provisioning is best effort; the native loader determines whether validation is usable. Preserve unrelated device and workload failures.</p><ol><li>Which result permits ARDA_REQUIRE_BACKEND to skip?</li><li>Why does an explicit VK_LAYER_PATH override an automatically installed layer?</li><li>Why is a manifest whose library cannot load insufficient?</li><li>Which shader, device and resource errors must remain failures?</li></ol><p>Use <a href="#discovery">discovery</a>, <a href="#results">result handling</a> and <a href="diagnostics.html">diagnostics</a> to check your answers.</p>'),
     }

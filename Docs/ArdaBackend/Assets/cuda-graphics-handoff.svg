@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="550" viewBox="0 0 1000 550" role="img" aria-labelledby="title desc">
+  <title id="title">Shared storage and two producer-to-consumer handoffs</title>
+  <desc id="desc">Graphics and CUDA have different views of one shared allocation. On a time axis, graphics first writes it and signals dependency A. CUDA waits for A, updates the data and signals B. Graphics waits for B before consuming it. The slot is reusable only after the last graphics consumer completes. A and B are dependency labels, not prescribed semaphore values.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#334155"/></marker></defs>
+  <rect width="1000" height="550" rx="12" fill="#f8fafc"/>
+  <g font-family="system-ui,sans-serif" font-size="16" fill="#0f172a">
+    <text x="24" y="34" font-size="21" font-weight="700">Sharing storage and ordering access are separate operations</text>
+    <rect x="24" y="64" width="275" height="80" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="40" y="94" font-weight="700">Graphics representation</text><text x="40" y="122">Buffer / image + views</text>
+    <rect x="365" y="64" width="270" height="80" rx="8" fill="#fff" stroke="#64748b"/>
+    <text x="383" y="94" font-weight="700">One shared GPU allocation</text><text x="383" y="122">Both APIs access these bytes</text>
+    <rect x="701" y="64" width="275" height="80" rx="8" fill="#dcfce7" stroke="#15803d"/>
+    <text x="718" y="94" font-weight="700">CUDA representation</text><text x="718" y="122">Mapped pointer / array</text>
+    <g stroke="#334155" fill="none" marker-end="url(#arrow)"><path d="M299 104H360"/><path d="M701 104H640"/></g>
+    <text x="24" y="190" font-weight="700">GPU execution order for one dependent update</text>
+    <text x="24" y="241">Graphics</text><text x="24" y="359">CUDA</text>
+    <path d="M150 277H975M150 391H975" stroke="#94a3b8" fill="none"/>
+    <rect x="150" y="213" width="230" height="58" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="166" y="238">Write input</text><text x="166" y="259">Release → signal A</text>
+    <rect x="415" y="327" width="225" height="58" rx="8" fill="#dcfce7" stroke="#15803d"/>
+    <text x="431" y="351">Wait A → CUDA update</text><text x="431" y="373">Signal B after update</text>
+    <rect x="675" y="213" width="250" height="58" rx="8" fill="#dbeafe" stroke="#2563eb"/>
+    <text x="691" y="238">Wait B → acquire</text><text x="691" y="259">Consume CUDA output</text>
+    <g stroke="#334155" fill="none" marker-end="url(#arrow)"><path d="M380 242H397V353H410"/><path d="M640 354H657V242H670"/></g>
+    <path d="M925 271V397" stroke="#334155" stroke-dasharray="5 4" fill="none" marker-end="url(#arrow)"/>
+    <text x="732" y="421">Slot reusable after this consumer</text>
+    <path d="M150 453H975" stroke="#334155" fill="none" marker-end="url(#arrow)"/>
+    <text x="150" y="478">Time →  A/B label dependencies; exact fence/semaphore protocol is API-specific.</text>
+    <text x="24" y="520">General external-sync pattern. ArdaBackend ContextSwitch uses CPU completion waits instead.</text>
+  </g>
+</svg>
