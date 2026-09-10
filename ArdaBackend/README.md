@@ -16,7 +16,7 @@ Public header comments own the CUDA and operand contracts. Explicit ownership, e
 
 `Skills/document-codebase/scripts/backend_recipes.py` owns recipe explanations and selects literal code excerpts from compiled tests. It reads resource kinds from `ArdaRHIResource.h` and capability predicates from `ArdaExtendedRHIParityTests.cpp`, failing if any kind or predicate lacks coverage. `recipe-coverage.json` is a generated audit artifact.
 
-The generator imports `cuda_recipes.py` for the operand guide and `cuda_graphics.py` for the general CUDA/graphics chapter. Edit those sources and regenerate their HTML. `Examples/ArdaCudaDirectLaunch.cu` is a documentation-only CUDA host helper embedded literally in the operand guide; it requires application-owned CUDA mappings and a stream and is not an implemented RHI adapter or backend GPU test.
+The generator imports `cuda_recipes.py` and `cuda_build.py` for the operand/build/deployment guide and `cuda_graphics.py` for the general CUDA/graphics chapter. Edit those sources and regenerate their HTML. `Examples/ArdaCudaDirectLaunch.cu` is a documentation-only CUDA host helper embedded literally in the operand guide; it requires application-owned CUDA mappings and a stream and is not an implemented RHI adapter or backend GPU test. Its standalone `Examples/CMakeLists.txt` demonstrates build-time CUDA compiler discovery. See [nvcc lookup](cuda-interop.html#nvcc-build) and [runtime packaging](cuda-interop.html#runtime-deployment): users of a packaged application do not need nvcc installed.
 
 Run from the repository root with Python 3.10+ and Node.js on PATH:
 
