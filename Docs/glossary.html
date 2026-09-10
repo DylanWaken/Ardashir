@@ -202,6 +202,12 @@
           <p><strong>In Ardashir:</strong> Arda launches precompiled native kernels through D3D12 CiG capture, Vulkan CiG external compute queues or ordinary CUDA contexts, with provider-owned synchronization.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-cig">CUDA in Graphics (CiG)</a></li><li><a href="#term-ptx">PTX</a></li><li><a href="#term-command-list">Command list</a></li></ul></div>
         </article>
+        <article class="glossary-entry" id="term-cuda-array" data-glossary-entry data-category="Graphics" data-search="CUDA array Graphics Opaque image storage described by dimensions, channels and mip levels rather than a linear device pointer. Arda imports a compatible shared graphics texture as CUDA array storage with matching raw format and shape; this mapping performs no numerical color conversion.">
+          <div class="glossary-entry__meta"><h3>CUDA array</h3><span class="category">Graphics</span></div>
+          <p>Opaque image storage described by dimensions, channels and mip levels rather than a linear device pointer.</p>
+          <p><strong>In Ardashir:</strong> Arda imports a compatible shared graphics texture as CUDA array storage with matching raw format and shape; this mapping performs no numerical color conversion.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-cuda">CUDA</a></li><li><a href="#term-cuda-surface">CUDA surface object</a></li><li><a href="#term-resource">Resource</a></li></ul></div>
+        </article>
         <article class="glossary-entry" id="term-cig" data-glossary-entry data-category="Graphics" data-search="CUDA in Graphics (CiG) Graphics CUDA execution integrated with graphics scheduling through a graphics-associated CUDA context. D3D12 uses command-list capture; Vulkan creates a CUDA context from an external compute queue&#x27;s opaque data. Both retain resources and native entries until completion.">
           <div class="glossary-entry__meta"><h3>CUDA in Graphics (CiG)</h3><span class="category">Graphics</span></div>
           <p>CUDA execution integrated with graphics scheduling through a graphics-associated CUDA context.</p>
@@ -213,6 +219,12 @@
           <p>An ordered sequence of CUDA operations whose submission can return before GPU completion.</p>
           <p><strong>In Ardashir:</strong> The provider owns explicit streams and context selection for registered kernels, with graphics/CUDA GPU handoffs. Independent application-owned streams are outside the operand facade.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-cuda">CUDA</a></li><li><a href="#term-queue">Queue</a></li><li><a href="#term-synchronization">Synchronization</a></li><li><a href="#term-lifetime">Lifetime</a></li></ul></div>
+        </article>
+        <article class="glossary-entry" id="term-cuda-surface" data-glossary-entry data-category="Graphics" data-search="CUDA surface object Graphics A CUDA handle for reading or writing compatible array storage through surface intrinsics; it is not a graphics descriptor or raw pointer. An Arda surface parameter becomes a provider-owned surface handle for one selected mip. For 2D surface intrinsics the X coordinate is in bytes: an RGBA8 pixel at X uses X times four. Keep the imported storage and object alive through GPU completion.">
+          <div class="glossary-entry__meta"><h3>CUDA surface object</h3><span class="category">Graphics</span></div>
+          <p>A CUDA handle for reading or writing compatible array storage through surface intrinsics; it is not a graphics descriptor or raw pointer.</p>
+          <p><strong>In Ardashir:</strong> An Arda surface parameter becomes a provider-owned surface handle for one selected mip. For 2D surface intrinsics the X coordinate is in bytes: an RGBA8 pixel at X uses X times four. Keep the imported storage and object alive through GPU completion.</p>
+          <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-cuda-array">CUDA array</a></li><li><a href="#term-cuda">CUDA</a></li><li><a href="#term-lifetime">Lifetime</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-culling" data-glossary-entry data-category="Computer science" data-search="Culling Computer science Removing work proven unable to affect any required output. ArdaRenderGraph removes passes not reachable through data-producer edges from observable roots; synchronization-only edges do not preserve liveness, while immediate mode keeps every pass.">
           <div class="glossary-entry__meta"><h3>Culling</h3><span class="category">Computer science</span></div>
@@ -292,10 +304,10 @@
           <p><strong>In Ardashir:</strong> ArdaRenderGraph keeps extracted resources live through the epilogue, transitions them to their declared final state, and assigns output references after submission; extraction does not imply GPU completion.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-epilogue">Epilogue</a></li><li><a href="#term-liveness">Liveness</a></li><li><a href="#term-fence">Fence</a></li></ul></div>
         </article>
-        <article class="glossary-entry" id="term-fence" data-glossary-entry data-category="Graphics" data-search="Fence Graphics A monotonically signaled synchronization primitive commonly observed by the CPU. ArdaBackend uses fences to determine when submitted GPU work and associated resources are safe to reuse.">
+        <article class="glossary-entry" id="term-fence" data-glossary-entry data-category="Graphics" data-search="Fence Graphics A synchronization primitive the CPU can poll or wait on to observe GPU completion; native APIs provide binary and timeline forms. ArdaBackend&#x27;s GPU-fence facade tracks one outstanding signal at a time. Observe completion before reusing resources or resetting; signal again before waiting after a reset. Use a ring of fences for multiple outstanding frame slots.">
           <div class="glossary-entry__meta"><h3>Fence</h3><span class="category">Graphics</span></div>
-          <p>A monotonically signaled synchronization primitive commonly observed by the CPU.</p>
-          <p><strong>In Ardashir:</strong> ArdaBackend uses fences to determine when submitted GPU work and associated resources are safe to reuse.</p>
+          <p>A synchronization primitive the CPU can poll or wait on to observe GPU completion; native APIs provide binary and timeline forms.</p>
+          <p><strong>In Ardashir:</strong> ArdaBackend&#x27;s GPU-fence facade tracks one outstanding signal at a time. Observe completion before reusing resources or resetting; signal again before waiting after a reset. Use a ring of fences for multiple outstanding frame slots.</p>
           <div class="glossary-related"><strong>Related:</strong><ul class="related-links"><li><a href="#term-synchronization">Synchronization</a></li><li><a href="#term-queue">Queue</a></li><li><a href="#term-lifetime">Lifetime</a></li></ul></div>
         </article>
         <article class="glossary-entry" id="term-first-use-compilation" data-glossary-entry data-category="Computer science" data-search="First-use compilation Computer science Deferred compilation performed when a result is requested for the first time rather than during startup. ArdaBackend OnDemand mode ensures bytecode and creates the RHI shader and layouts on the first lookup of a registered slot.">

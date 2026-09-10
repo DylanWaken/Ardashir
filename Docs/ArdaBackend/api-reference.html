@@ -559,6 +559,7 @@
 <li><a href="#api-arda-backend-iardawindowsurface-createvulkansurface-a1c278c0">arda::IArdaWindowSurface::CreateVulkanSurface <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-iardawindowsurface-getd3d12windowhandle-dc2c7f0f">arda::IArdaWindowSurface::GetD3D12WindowHandle <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-iardawindowsurface-getvulkaninstanceextensions-45278511">arda::IArdaWindowSurface::GetVulkanInstanceExtensions <span class="api-kind">method</span></a></li>
+<li><a href="#api-pixel-sort">PixelSort <span class="api-kind">tool</span></a></li>
 <li><a href="#api-arda-fardaproviderobjectref-4039e389">arda::FArdaProviderObjectRef <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-fardaproviderobjectresult-5960fe50">arda::FArdaProviderObjectResult <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-fardarhibufferreadbackresult-0dc473ca">arda::FArdaRHIBufferReadbackResult <span class="api-kind">alias</span></a></li>
@@ -6542,6 +6543,23 @@
 <dt>Source</dt><dd>Source/ArdaBackend/Public/ArdaSwapChain.h</dd>
 </dl></section>
 </section>
+<section class="api-kind-group"><h4>tool</h4>
+<section class="api-entry" id="api-pixel-sort" tabindex="-1"><h5>PixelSort</h5><pre><code>PixelSort [--backend d3d12|vulkan] [--cuda-mode auto|context|graphics] [--width N --height N] [--channel 0|1|2 --threshold 0..255] [--frames N --hidden --verify --resize-test --validation] [--time T --capture image.png] [--help]</code></pre><p>Run the backend-only Win32 compute-noise, CUDA radix-sort and graphics-presentation example.</p>
+<p>Build target PixelSort requires Windows, ARDASHIR_ENABLE_CUDA and ARDASHIR_BUILD_CUDA_KERNELS. It links ArdaBackend and its native PixelSortKernels profile. Portrait clients select 256-thread, 1024-pixel column tiles; landscape and square clients select 128-thread, 512-pixel row tiles. Bright runs are stably sorted by one RGB channel while complete RGBA pixels move together and dark boundaries remain fixed. C cycles RGB, Space pauses time, Tab toggles original, Up/Down changes the threshold and Escape closes. The window title reports the chosen direction and execution mode.</p>
+<dl>
+<dt>--backend / --cuda-mode</dt><dd>Defaults d3d12 / auto. context forces ordinary CUDA; graphics requires capability-qualified CUDA-in-graphics.</dd>
+<dt>--width / --height</dt><dd>Requested initial client extent, 1..8192; defaults 960x1200. Win32 may constrain actual dimensions. Selection uses actual client dimensions.</dd>
+<dt>--channel / --threshold</dt><dd>RGB key 0..2 (default red/0), dark-pixel luminance threshold 0..255 (default 48). Tile edges also delimit runs.</dd>
+<dt>--frames / --hidden / --resize-test</dt><dd>Zero frames runs until closed; hidden creates an invisible native window. Resize-test cycles six extents, RGB keys and thresholds and defaults to six frames.</dd>
+<dt>--verify / --validation</dt><dd>Verify enables native validation and exact full-image comparison against a CPU stable-sort reference after GPU completion. Validation alone adds native graphics diagnostics without readback; ordinary runs need no validation layers.</dd>
+<dt>--time / --capture</dt><dd>A finite time freezes animation. Capture saves the rendered back buffer as PNG at the last bounded frame or the first indefinite frame. Parent directory must exist.</dd>
+<dt>Returns</dt><dd>0 on normal completion/help; 77 when the requested backend, validation layer, CUDA mode or surface capability is unavailable; 1 on invalid input or workload failure.</dd>
+<dt>Ownership</dt><dd>Owns its window, backend, swap chain and textures. Resize, readback and shutdown wait for GPU completion. The executable statically retains both CUDA entries. Keep deployed D3D12, Shaders and ShaderCompiler directories beside it; the graphics shader cache is writable beside the executable. No runtime CUDA compiler is used.</dd>
+<dt>Errors</dt><dd>Reports the first RHI/CUDA failure or CPU mismatch. Missing native architecture coverage requires rebuilding the kernel profile. D3D12 CiG surfaces are unavailable on the locally tested driver; automatic mode selects ordinary context execution.</dd>
+<dt>Threading</dt><dd>One application thread records and submits the graphics list. The provider orders producer, CUDA and consumer on the GPU; normal frames perform no CPU readback or device-idle wait. CUDA blocks sort independent tiles using block barriers and warp ballots.</dd>
+<dt>Source</dt><dd>Examples/PixelSort/PixelSortMain.cpp</dd>
+</dl></section>
+</section>
 </section>
 <section class="api-group" id="api-component-rhi-device"><h3>RHI device and commands</h3>
 <section class="api-kind-group"><h4>alias</h4>
@@ -9665,7 +9683,7 @@
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhidevice-resetgpufence-2c575400" tabindex="-1"><h5>arda::IArdaRHIDevice::ResetGpuFence</h5><pre><code>virtual FArdaRHIStatus ResetGpuFence(const FArdaRHIGpuFenceRef&amp; Fence) = 0</code></pre><p>Performs the reset GPU fence operation.</p>
-<p>Performs the reset GPU fence operation.  This operation coordinates queue submission or synchronization. Callers must preserve resource lifetimes until the relevant GPU work or synchronization point completes. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects. The operation does not mutate the observable state of the object through this interface.</p>
+<p>Resets the fence&#x27;s observable signal state for reuse. Complete the previously signaled GPU work before resetting; resetting does not wait for or cancel pending work. Signal the reset fence again before waiting on it. Inspect the returned status and retain dependent resources through completion.</p>
 <dl>
 <dt>Parameter</dt><dd>const FArdaRHIGpuFenceRef&amp; Fence</dd>
 <dt>Returns</dt><dd>A status describing whether the operation succeeded.</dd>
@@ -9761,7 +9779,7 @@
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhidevice-signalgpufence-fd0e7150" tabindex="-1"><h5>arda::IArdaRHIDevice::SignalGpuFence</h5><pre><code>virtual FArdaRHIStatus SignalGpuFence(const FArdaRHIGpuFenceRef&amp; Fence, EArdaRHIQueueType Queue) = 0</code></pre><p>Performs the signal GPU fence operation.</p>
-<p>Performs the signal GPU fence operation.  This operation coordinates queue submission or synchronization. Callers must preserve resource lifetimes until the relevant GPU work or synchronization point completes. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects. The operation does not mutate the observable state of the object through this interface.</p>
+<p>Places a completion signal after previously submitted work on the selected queue and updates the fence&#x27;s observable signal state. A successful call records the signal; it does not mean the GPU has completed it. Poll or wait before reusing dependent resources, and inspect every returned status.</p>
 <dl>
 <dt>Parameter</dt><dd>const FArdaRHIGpuFenceRef&amp; Fence</dd>
 <dt>Parameter</dt><dd>EArdaRHIQueueType Queue</dd>

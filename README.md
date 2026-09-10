@@ -64,8 +64,17 @@ CUDA supports automatic fallback to serialized ordinary-context execution; see
 [execution modes and qualification limits](Docs/ArdaBackend/cuda-interop.html#context-switch).
 Read [How CUDA works with graphics](Docs/ArdaBackend/cuda-graphics.html) for the
 general memory and synchronization model, and compare
-[PTX descriptors and ordinary CUDA C++ launches](Docs/ArdaBackend/cuda-interop.html#launch-methods)
+[registered native kernels and ordinary CUDA C++ launches](Docs/ArdaBackend/cuda-interop.html#launch-methods)
 in the operand guide.
+
+## Examples
+
+**[Pixel Sort](Examples/PixelSort/README.md)** is a self-contained Windows CUDA
+example that links only ArdaBackend and its compiled kernels. An HLSL compute
+shader generates animated noise, a CUDA radix kernel sorts its pixels, and a
+fullscreen graphics pass presents the result through D3D12 or Vulkan. Resizing
+switches between row and column kernel variants. See the
+[CUDA walkthrough](Docs/ArdaBackend/cuda-interop.html#pixel-sort).
 
 ## Dependencies
 
@@ -73,7 +82,7 @@ in the operand guide.
 - [GLFW](https://github.com/glfw/glfw) for cross-platform windows and surfaces
 - [Vulkan-Headers](https://github.com/KhronosGroup/Vulkan-Headers) 1.4.357
 - Direct3D 12 Agility SDK 1.619.5 on Windows
-- CMake 3.16 or newer
+- CMake 3.24 or newer
 - A C++17 compiler
 
 The root build downloads pinned GLFW, DirectX Shader Compiler, Vulkan-Headers,
