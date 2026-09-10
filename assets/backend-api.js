@@ -7605,7 +7605,7 @@ window.ArdaBackendApi = {
       "page": "api-reference.html",
       "signature": "virtual FArdaRHIStatus ResetGpuFence(const FArdaRHIGpuFenceRef& Fence) = 0",
       "summary": "Performs the reset GPU fence operation.",
-      "details": "Performs the reset GPU fence operation.  This operation coordinates queue submission or synchronization. Callers must preserve resource lifetimes until the relevant GPU work or synchronization point completes. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects. The operation does not mutate the observable state of the object through this interface.",
+      "details": "Resets the fence's observable signal state for reuse. Complete the previously signaled GPU work before resetting; resetting does not wait for or cancel pending work. Signal the reset fence again before waiting on it. Inspect the returned status and retain dependent resources through completion.",
       "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
       "params": [
         "const FArdaRHIGpuFenceRef& Fence"
@@ -7763,7 +7763,7 @@ window.ArdaBackendApi = {
       "page": "api-reference.html",
       "signature": "virtual FArdaRHIStatus SignalGpuFence(const FArdaRHIGpuFenceRef& Fence, EArdaRHIQueueType Queue) = 0",
       "summary": "Performs the signal GPU fence operation.",
-      "details": "Performs the signal GPU fence operation.  This operation coordinates queue submission or synchronization. Callers must preserve resource lifetimes until the relevant GPU work or synchronization point completes. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects. The operation does not mutate the observable state of the object through this interface.",
+      "details": "Places a completion signal after previously submitted work on the selected queue and updates the fence's observable signal state. A successful call records the signal; it does not mean the GPU has completed it. Poll or wait before reusing dependent resources, and inspect every returned status.",
       "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
       "params": [
         "const FArdaRHIGpuFenceRef& Fence",
@@ -53243,6 +53243,33 @@ window.ArdaBackendApi = {
   }
 })();
 /* END GENERATED BACKEND PROVIDER API */
+
+// Authored executable contract; internal example classes are not public backend API.
+window.ArdaBackendApi.symbols.push({
+  id: "api-pixel-sort",
+  name: "PixelSort",
+  qualifiedName: "PixelSort",
+  kind: "tool",
+  component: "presentation",
+  page: "api-reference.html",
+  signature: "PixelSort [--backend d3d12|vulkan] [--cuda-mode auto|context|graphics] [--width N --height N] [--channel 0|1|2 --threshold 0..255] [--frames N --hidden --verify --resize-test --validation] [--time T --capture image.png] [--help]",
+  summary: "Run the backend-only Win32 compute-noise, CUDA radix-sort and graphics-presentation example.",
+  details: "Build target PixelSort requires Windows, ARDASHIR_ENABLE_CUDA and ARDASHIR_BUILD_CUDA_KERNELS. It links ArdaBackend and its native PixelSortKernels profile. Portrait clients select 256-thread, 1024-pixel column tiles; landscape and square clients select 128-thread, 512-pixel row tiles. Bright runs are stably sorted by one RGB channel while complete RGBA pixels move together and dark boundaries remain fixed. C cycles RGB, Space pauses time, Tab toggles original, Up/Down changes the threshold and Escape closes. The window title reports the chosen direction and execution mode.",
+  params: [
+    {name: "--backend / --cuda-mode", description: "Defaults d3d12 / auto. context forces ordinary CUDA; graphics requires capability-qualified CUDA-in-graphics."},
+    {name: "--width / --height", description: "Requested initial client extent, 1..8192; defaults 960x1200. Win32 may constrain actual dimensions. Selection uses actual client dimensions."},
+    {name: "--channel / --threshold", description: "RGB key 0..2 (default red/0), dark-pixel luminance threshold 0..255 (default 48). Tile edges also delimit runs."},
+    {name: "--frames / --hidden / --resize-test", description: "Zero frames runs until closed; hidden creates an invisible native window. Resize-test cycles six extents, RGB keys and thresholds and defaults to six frames."},
+    {name: "--verify / --validation", description: "Verify enables native validation and exact full-image comparison against a CPU stable-sort reference after GPU completion. Validation alone adds native graphics diagnostics without readback; ordinary runs need no validation layers."},
+    {name: "--time / --capture", description: "A finite time freezes animation. Capture saves the rendered back buffer as PNG at the last bounded frame or the first indefinite frame. Parent directory must exist."}
+  ],
+  returns: "0 on normal completion/help; 77 when the requested backend, validation layer, CUDA mode or surface capability is unavailable; 1 on invalid input or workload failure.",
+  ownership: "Owns its window, backend, swap chain and textures. Resize, readback and shutdown wait for GPU completion. The executable statically retains both CUDA entries. Keep deployed D3D12, Shaders and ShaderCompiler directories beside it; the graphics shader cache is writable beside the executable. No runtime CUDA compiler is used.",
+  errors: "Reports the first RHI/CUDA failure or CPU mismatch. Missing native architecture coverage requires rebuilding the kernel profile. D3D12 CiG surfaces are unavailable on the locally tested driver; automatic mode selects ordinary context execution.",
+  threading: "One application thread records and submits the graphics list. The provider orders producer, CUDA and consumer on the GPU; normal frames perform no CPU readback or device-idle wait. CUDA blocks sort independent tiles using block barriers and warp ballots.",
+  source: "Examples/PixelSort/PixelSortMain.cpp",
+  related: ["TArdaComputeOperand", "IArdaSwapChain"]
+});
 
 /* Behavioral contracts for the native conformance additions. */
 (() => {
