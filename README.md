@@ -90,6 +90,39 @@ and Direct3D 12 Agility releases. DXC compiles shaders to DXIL and SPIR-V. The
 Vulkan backend dynamically loads the platform Vulkan loader, so a separately
 installed Vulkan SDK is not required.
 
+To detect and download missing graphics SDK/validation components before a build,
+run the root-level setup script with Python 3.10+:
+
+```powershell
+python SetupGraphicsSDK.py --check
+python SetupGraphicsSDK.py
+cmake -S . -B build/dev -C build/graphics-sdk/GraphicsSdk.cmake
+cmake --build build/dev --config Debug
+. ./build/graphics-sdk/ActivateGraphicsSDK.ps1
+```
+
+The script reuses compatible installed SDKs and existing project build caches.
+Missing D3D12 components come from the project's SHA-256-verified Agility package,
+including its matching debug layer. Missing Vulkan headers are downloaded at the
+project's pinned tag; missing Khronos validation layers use the existing pinned
+CMake source-build provisioner. That build needs Git, CMake and a C++ compiler;
+on Windows the script can discover an installed Visual Studio C++ toolchain.
+Visual Studio's base Windows SDK and GPU drivers remain platform prerequisites.
+
+Downloads and generated configuration go under `build/graphics-sdk` by default,
+without changing the registry or global environment. `--root` changes that
+directory, `--build-dir` adds an existing build cache to discovery, and
+`--backend d3d12|vulkan` limits setup. `--check` makes no setup changes and returns
+1 when a component is missing; normal setup also returns 1 on download/build/load
+failure. A validation JSON without a loadable library is rejected. An explicit
+`VK_LAYER_PATH` remains authoritative; correct or unset a broken override before
+running setup. Dot-source the generated PowerShell file for Vulkan applications;
+on Linux, source `build/graphics-sdk/activate-graphics-sdk.sh`. D3D12 applications
+receive their local runtime/debug DLLs through the normal CMake target deployment.
+
+Run the setup tool's offline regression checks with
+`python -m unittest discover -s Scripts/Tests -p test_setup_graphics_sdk.py`.
+
 ## Building
 
 Initialize the git submodules before configuring either platform:

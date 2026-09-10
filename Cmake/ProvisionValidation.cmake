@@ -6,7 +6,7 @@ file(WRITE "${VALIDATION_ROOT}/attempt.stamp" "attempted\n")
 if(NOT VULKAN_ENABLED)
     return()
 endif()
-if(LAYER_DIR)
+if(LAYER_DIR AND NOT FORCE_PROVISION)
     if(EXISTS "${LAYER_DIR}/VkLayer_khronos_validation.json")
         file(WRITE "${VALIDATION_ROOT}/layer-path.txt" "${LAYER_DIR}\n")
     else()
@@ -14,21 +14,23 @@ if(LAYER_DIR)
     endif()
     return()
 endif()
-find_file(LAYER_MANIFEST VkLayer_khronos_validation.json
-    PATHS "${VALIDATION_ROOT}/install/bin"
-        "${VALIDATION_ROOT}/install/share/vulkan/explicit_layer.d"
-        "$ENV{VULKAN_SDK}/Bin" "$ENV{VULKAN_SDK}/etc/vulkan/explicit_layer.d"
-        "$ENV{VULKAN_SDK}/share/vulkan/explicit_layer.d"
-        "$ENV{HOME}/.local/share/vulkan/explicit_layer.d"
-        /etc/vulkan/explicit_layer.d /usr/share/vulkan/explicit_layer.d
-        /usr/local/share/vulkan/explicit_layer.d
-        ENV VK_LAYER_PATH ENV VK_ADD_LAYER_PATH
-    NO_DEFAULT_PATH)
-if(LAYER_MANIFEST)
-    get_filename_component(LAYER_DIR "${LAYER_MANIFEST}" DIRECTORY)
-    file(WRITE "${VALIDATION_ROOT}/layer-path.txt" "${LAYER_DIR}\n")
-    message(STATUS "Using Vulkan validation layers: ${LAYER_DIR}")
-    return()
+if(NOT FORCE_PROVISION)
+    find_file(LAYER_MANIFEST VkLayer_khronos_validation.json
+        PATHS "${VALIDATION_ROOT}/install/bin"
+            "${VALIDATION_ROOT}/install/share/vulkan/explicit_layer.d"
+            "$ENV{VULKAN_SDK}/Bin" "$ENV{VULKAN_SDK}/etc/vulkan/explicit_layer.d"
+            "$ENV{VULKAN_SDK}/share/vulkan/explicit_layer.d"
+            "$ENV{HOME}/.local/share/vulkan/explicit_layer.d"
+            /etc/vulkan/explicit_layer.d /usr/share/vulkan/explicit_layer.d
+            /usr/local/share/vulkan/explicit_layer.d
+            ENV VK_LAYER_PATH ENV VK_ADD_LAYER_PATH
+        NO_DEFAULT_PATH)
+    if(LAYER_MANIFEST)
+        get_filename_component(LAYER_DIR "${LAYER_MANIFEST}" DIRECTORY)
+        file(WRITE "${VALIDATION_ROOT}/layer-path.txt" "${LAYER_DIR}\n")
+        message(STATUS "Using Vulkan validation layers: ${LAYER_DIR}")
+        return()
+    endif()
 endif()
 if(NOT PROVISION OR CROSS_COMPILING)
     message(STATUS "Vulkan validation provisioning is disabled; runtime-dependent tests can skip.")
@@ -66,6 +68,9 @@ endif()
 set(CONFIGURE_ARGS -G "${GENERATOR}" -DCMAKE_BUILD_TYPE=Release
     "-DCMAKE_INSTALL_PREFIX=${VALIDATION_ROOT}/install" -DBUILD_TESTS=OFF -DBUILD_WERROR=OFF
     -DUPDATE_DEPS=ON)
+if(SETUP_PYTHON_EXECUTABLE)
+    list(APPEND CONFIGURE_ARGS "-DPython3_EXECUTABLE=${SETUP_PYTHON_EXECUTABLE}")
+endif()
 if(UNIX AND NOT APPLE)
     # Headless tests do not require system X11/Wayland development packages.
     list(APPEND CONFIGURE_ARGS -DBUILD_WSI_WAYLAND_SUPPORT=OFF

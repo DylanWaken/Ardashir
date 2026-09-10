@@ -127,14 +127,24 @@ set_target_properties(ArdashirImGuiGlfw PROPERTIES FOLDER "ThirdParty/ImGui")
 # The module uses Vulkan-Hpp's runtime dispatcher, so no loader SDK or import
 # library is required on the build machine.
 if(ARDASHIR_BACKEND_VULKAN)
-    FetchContent_Declare(
-        ardashir_vulkan_headers
-        GIT_REPOSITORY "https://github.com/KhronosGroup/Vulkan-Headers.git"
-        GIT_TAG "v1.4.357"
-        GIT_SHALLOW TRUE)
-    ardashir_fetch_content_resolve(
-        ardashir_vulkan_headers
-        "https://github.com/KhronosGroup/Vulkan-Headers.git@v1.4.357")
+    set(ARDASHIR_VULKAN_INCLUDE_DIR "" CACHE PATH "Optional Vulkan SDK include directory supplied by SetupGraphicsSDK.py")
+    if(ARDASHIR_VULKAN_INCLUDE_DIR)
+        if(NOT EXISTS "${ARDASHIR_VULKAN_INCLUDE_DIR}/vulkan/vulkan.hpp")
+            message(FATAL_ERROR "ARDASHIR_VULKAN_INCLUDE_DIR must contain vulkan/vulkan.hpp")
+        endif()
+        add_library(ArdaVulkanHeaders INTERFACE)
+        add_library(Vulkan::Headers ALIAS ArdaVulkanHeaders)
+        target_include_directories(ArdaVulkanHeaders INTERFACE "${ARDASHIR_VULKAN_INCLUDE_DIR}")
+    else()
+        FetchContent_Declare(
+            ardashir_vulkan_headers
+            GIT_REPOSITORY "https://github.com/KhronosGroup/Vulkan-Headers.git"
+            GIT_TAG "v1.4.357"
+            GIT_SHALLOW TRUE)
+        ardashir_fetch_content_resolve(
+            ardashir_vulkan_headers
+            "https://github.com/KhronosGroup/Vulkan-Headers.git@v1.4.357")
+    endif()
 endif()
 
 # The retail Agility package supplies both the current Direct3D headers and the
