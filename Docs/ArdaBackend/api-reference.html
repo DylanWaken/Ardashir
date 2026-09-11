@@ -1111,6 +1111,7 @@
 <li><a href="#api-arda-fardacudacapabilities-operator-bool-fff48c54">arda::FArdaCudaCapabilities::operator bool <span class="api-kind">conversion operator</span></a></li>
 <li><a href="#api-arda-fardarhicomputepipelinedesc-operator-908b83e3">arda::FArdaRHIComputePipelineDesc::operator== <span class="api-kind">conversion operator</span></a></li>
 <li><a href="#api-arda-fardarhigraphicspipelinedesc-operator-1054764c">arda::FArdaRHIGraphicsPipelineDesc::operator== <span class="api-kind">conversion operator</span></a></li>
+<li><a href="#api-arda-fardarhiinputlayoutdesc-operator-c68714eb">arda::FArdaRHIInputLayoutDesc::operator== <span class="api-kind">conversion operator</span></a></li>
 <li><a href="#api-arda-fardarhimeshletpipelinedesc-operator-e126215f">arda::FArdaRHIMeshletPipelineDesc::operator== <span class="api-kind">conversion operator</span></a></li>
 <li><a href="#api-arda-fardarhiraytracinghitgroupdesc-operator-38867ca6">arda::FArdaRHIRayTracingHitGroupDesc::operator== <span class="api-kind">conversion operator</span></a></li>
 <li><a href="#api-arda-fardarhiraytracingpipelinedesc-operator-5d660f87">arda::FArdaRHIRayTracingPipelineDesc::operator== <span class="api-kind">conversion operator</span></a></li>
@@ -3230,7 +3231,7 @@
 <dt>Threading</dt><dd>Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/ArdaBackendProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardabackendruntime-createswapchain-4a6ed510" tabindex="-1"><h5>arda::IArdaBackendRuntime::CreateSwapChain</h5><pre><code>[[nodiscard]] virtual FArdaSwapChainCreateResult CreateSwapChain( uint32_t Width, uint32_t Height, arda::FArdaRHIDeviceRef Device) = 0</code></pre><p>Creates presentation resources for an initialized presentation device.</p>
+<section class="api-entry" id="api-arda-iardabackendruntime-createswapchain-4a6ed510" tabindex="-1"><h5>arda::IArdaBackendRuntime::CreateSwapChain</h5><pre><code>[[nodiscard]] virtual FArdaSwapChainCreateResult CreateSwapChain(uint32_t Width, uint32_t Height, arda::FArdaRHIDeviceRef Device) = 0</code></pre><p>Creates presentation resources for an initialized presentation device.</p>
 <dl>
 <dt>Width</dt><dd>Initial width in pixels.</dd>
 <dt>Height</dt><dd>Initial height in pixels.</dd>
@@ -3287,7 +3288,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudadevicedomain-buffer-b4932fda" tabindex="-1"><h5>arda::FArdaCudaDeviceDomain::Buffer</h5><pre><code>template&lt;class T, EArdaComputeAccess Access&gt; using Buffer = std::conditional_t&lt;Access == EArdaComputeAccess::Read, const T*, T*&gt;</code></pre><p>Defines buffer in the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-fardacudadevicedomain-buffer-b4932fda" tabindex="-1"><h5>arda::FArdaCudaDeviceDomain::Buffer</h5><pre><code>template &lt;class T, EArdaComputeAccess Access&gt; using Buffer = std::conditional_t&lt;Access == EArdaComputeAccess::Read, const T*, T*&gt;</code></pre><p>Defines buffer in the public backend and RHI contract.</p>
 <p>Defines buffer in the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -3295,7 +3296,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudadevicedomain-surface-1d8d5a1d" tabindex="-1"><h5>arda::FArdaCudaDeviceDomain::Surface</h5><pre><code>template&lt;class T, EArdaComputeAccess Access&gt; using Surface = uint64_t</code></pre><p>Defines surface in the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-fardacudadevicedomain-surface-1d8d5a1d" tabindex="-1"><h5>arda::FArdaCudaDeviceDomain::Surface</h5><pre><code>template &lt;class T, EArdaComputeAccess Access&gt; using Surface = uint64_t</code></pre><p>Defines surface in the public backend and RHI contract.</p>
 <p>Defines surface in the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -3303,7 +3304,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudadevicedomain-value-0eb7af4f" tabindex="-1"><h5>arda::FArdaCudaDeviceDomain::Value</h5><pre><code>template&lt;class T&gt; using Value = std::conditional_t&lt;std::is_trivially_copyable_v&lt;T&gt; &amp;&amp; std::is_standard_layout_v&lt;T&gt;, T, uint64_t&gt;</code></pre><p>Defines value in the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-fardacudadevicedomain-value-0eb7af4f" tabindex="-1"><h5>arda::FArdaCudaDeviceDomain::Value</h5><pre><code>template &lt;class T&gt; using Value = std::conditional_t&lt;std::is_trivially_copyable_v&lt;T&gt; &amp;&amp; std::is_standard_layout_v&lt;T&gt;, T, uint64_t&gt;</code></pre><p>Defines value in the public backend and RHI contract.</p>
 <p>Defines value in the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -3311,7 +3312,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudahostdomain-buffer-300c212b" tabindex="-1"><h5>arda::FArdaCudaHostDomain::Buffer</h5><pre><code>template&lt;class T, EArdaComputeAccess Access&gt; using Buffer = FArdaComputeBufferParameter</code></pre><p>Defines buffer in the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-fardacudahostdomain-buffer-300c212b" tabindex="-1"><h5>arda::FArdaCudaHostDomain::Buffer</h5><pre><code>template &lt;class T, EArdaComputeAccess Access&gt; using Buffer = FArdaComputeBufferParameter</code></pre><p>Defines buffer in the public backend and RHI contract.</p>
 <p>Defines buffer in the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -3319,7 +3320,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudahostdomain-surface-6efb9cc2" tabindex="-1"><h5>arda::FArdaCudaHostDomain::Surface</h5><pre><code>template&lt;class T, EArdaComputeAccess Access&gt; using Surface = FArdaComputeTextureParameter</code></pre><p>Defines surface in the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-fardacudahostdomain-surface-6efb9cc2" tabindex="-1"><h5>arda::FArdaCudaHostDomain::Surface</h5><pre><code>template &lt;class T, EArdaComputeAccess Access&gt; using Surface = FArdaComputeTextureParameter</code></pre><p>Defines surface in the public backend and RHI contract.</p>
 <p>Defines surface in the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -3327,7 +3328,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudahostdomain-value-cb0f8a61" tabindex="-1"><h5>arda::FArdaCudaHostDomain::Value</h5><pre><code>template&lt;class T&gt; using Value = T</code></pre><p>Defines value in the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-fardacudahostdomain-value-cb0f8a61" tabindex="-1"><h5>arda::FArdaCudaHostDomain::Value</h5><pre><code>template &lt;class T&gt; using Value = T</code></pre><p>Defines value in the public backend and RHI contract.</p>
 <p>Defines value in the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -3399,7 +3400,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudabindinghelpers-entry-5e774020" tabindex="-1"><h5>arda::FArdaCudaBindingHelpers::Entry</h5><pre><code>template&lt;auto Kernel&gt; class Entry final : public IArdaCudaKernelEntry</code></pre><p>Defines entry in the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-fardacudabindinghelpers-entry-5e774020" tabindex="-1"><h5>arda::FArdaCudaBindingHelpers::Entry</h5><pre><code>template &lt;auto Kernel&gt; class Entry final : public IArdaCudaKernelEntry</code></pre><p>Defines entry in the public backend and RHI contract.</p>
 <p>Defines entry in the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -3419,14 +3420,14 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/ArdaBackend.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-tardacomputeoperand-2d0c708f" tabindex="-1"><h5>arda::TArdaComputeOperand</h5><pre><code>template&lt;class ParameterType, class VariantPayload&gt; class TArdaComputeOperand : public FArdaComputeOperand</code></pre><p>Authors supply BindKernelVariants and SelectKernel. Dispatch cannot be overridden. Binding is synchronized once per operand. Selection must have no GPU/host side effects. Each dispatch retains its own frozen values/resources independently of the operand.</p>
+<section class="api-entry" id="api-arda-tardacomputeoperand-2d0c708f" tabindex="-1"><h5>arda::TArdaComputeOperand</h5><pre><code>template &lt;class ParameterType, class VariantPayload&gt; class TArdaComputeOperand : public FArdaComputeOperand</code></pre><p>Authors supply BindKernelVariants and SelectKernel. Dispatch cannot be overridden. Binding is synchronized once per operand. Selection must have no GPU/host side effects. Each dispatch retains its own frozen values/resources independently of the operand.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-tardacudakernelregistry-17cd772b" tabindex="-1"><h5>arda::TArdaCudaKernelRegistry</h5><pre><code>template&lt;class Parameters, class Payload&gt; class TArdaCudaKernelRegistry</code></pre><p>Immutable-after-binding registry; signature and resource eligibility checks occur at runtime.</p>
+<section class="api-entry" id="api-arda-tardacudakernelregistry-17cd772b" tabindex="-1"><h5>arda::TArdaCudaKernelRegistry</h5><pre><code>template &lt;class Parameters, class Payload&gt; class TArdaCudaKernelRegistry</code></pre><p>Immutable-after-binding registry; signature and resource eligibility checks occur at runtime.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
@@ -3681,7 +3682,7 @@
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>function</h4>
-<section class="api-entry" id="api-arda-bindardacudakernel-0d454f59" tabindex="-1"><h5>arda::BindArdaCudaKernel</h5><pre><code>template&lt;auto Kernel, class Payload&gt; TArdaCudaKernelVariant&lt;Kernel, Payload&gt; BindArdaCudaKernel(const char* Name, Payload Info, FArdaCudaBuildInfo Build, FArdaCudaKernelRequirements Requirements = {})</code></pre><p>Binds a precompiled symbol. Registry initialization reports incompatible signatures at runtime.</p>
+<section class="api-entry" id="api-arda-bindardacudakernel-0d454f59" tabindex="-1"><h5>arda::BindArdaCudaKernel</h5><pre><code>template &lt;auto Kernel, class Payload&gt; TArdaCudaKernelVariant&lt;Kernel, Payload&gt; BindArdaCudaKernel(const char* Name, Payload Info, FArdaCudaBuildInfo Build, FArdaCudaKernelRequirements Requirements = {})</code></pre><p>Binds a precompiled symbol. Registry initialization reports incompatible signatures at runtime.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -3709,7 +3710,7 @@
 <dt>Threading</dt><dd>Process-wide compiler and registration operations serialize shared state; device and global-map operations require the synchronization and quiescence documented by their containing types.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/ArdaBackend.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-foreachardacudapermutation-600d36a9" tabindex="-1"><h5>arda::ForEachArdaCudaPermutation</h5><pre><code>template&lt;class T, T... Values, class Visitor&gt; void ForEachArdaCudaPermutation(std::integer_sequence&lt;T, Values...&gt;, Visitor&amp;&amp; Visit)</code></pre><p>Enumerates template values with a C++17 callable. Use if constexpr to prune combinations.</p>
+<section class="api-entry" id="api-arda-foreachardacudapermutation-600d36a9" tabindex="-1"><h5>arda::ForEachArdaCudaPermutation</h5><pre><code>template &lt;class T, T... Values, class Visitor&gt; void ForEachArdaCudaPermutation(std::integer_sequence&lt;T, Values...&gt;, Visitor&amp;&amp; Visit)</code></pre><p>Enumerates template values with a C++17 callable. Use if constexpr to prune combinations.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -3798,7 +3799,7 @@
 <dt>Threading</dt><dd>Process-wide backend configuration and lifetime operations must be externally serialized and must not run concurrently with device use.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/ArdaBackend.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-isardacudasurfaceelementsupported-225b757b" tabindex="-1"><h5>arda::IsArdaCudaSurfaceElementSupported</h5><pre><code>template&lt;class T&gt; bool IsArdaCudaSurfaceElementSupported(EArdaRHIFormat Format)</code></pre><p>Checks scalar channel interpretation, or explicit aggregate pixel storage size, at runtime. Aggregate pixel layouts are author-defined; no color, normalization or channel packing is performed.</p>
+<section class="api-entry" id="api-arda-isardacudasurfaceelementsupported-225b757b" tabindex="-1"><h5>arda::IsArdaCudaSurfaceElementSupported</h5><pre><code>template &lt;class T&gt; bool IsArdaCudaSurfaceElementSupported(EArdaRHIFormat Format)</code></pre><p>Checks scalar channel interpretation, or explicit aggregate pixel storage size, at runtime. Aggregate pixel layouts are author-defined; no color, normalization or channel packing is performed.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -4766,7 +4767,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-tardacudakernelregistry-add-2ecfa1d0" tabindex="-1"><h5>arda::TArdaCudaKernelRegistry::Add</h5><pre><code>template&lt;auto Kernel&gt; FArdaRHIStatus Add(TArdaCudaKernelVariant&lt;Kernel, Payload&gt; Variant)</code></pre><p>Adds a symbol, retaining the first validation failure even if the caller ignores it.</p>
+<section class="api-entry" id="api-arda-tardacudakernelregistry-add-2ecfa1d0" tabindex="-1"><h5>arda::TArdaCudaKernelRegistry::Add</h5><pre><code>template &lt;auto Kernel&gt; FArdaRHIStatus Add(TArdaCudaKernelVariant&lt;Kernel, Payload&gt; Variant)</code></pre><p>Adds a symbol, retaining the first validation failure even if the caller ignores it.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -4866,7 +4867,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudabindinghelpers-signature-c19cda57" tabindex="-1"><h5>arda::FArdaCudaBindingHelpers::Signature</h5><pre><code>template&lt;class T&gt; struct Signature</code></pre><p>Defines signature in the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-fardacudabindinghelpers-signature-c19cda57" tabindex="-1"><h5>arda::FArdaCudaBindingHelpers::Signature</h5><pre><code>template &lt;class T&gt; struct Signature</code></pre><p>Defines signature in the public backend and RHI contract.</p>
 <p>Defines signature in the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -4874,7 +4875,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardacudabindinghelpers-signature-e763d825" tabindex="-1"><h5>arda::FArdaCudaBindingHelpers::Signature</h5><pre><code>template&lt;class P&gt; struct Signature&lt;void(*)(P)&gt;</code></pre><p>Defines signature in the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-fardacudabindinghelpers-signature-e763d825" tabindex="-1"><h5>arda::FArdaCudaBindingHelpers::Signature</h5><pre><code>template &lt;class P&gt; struct Signature&lt;void (*)(P)&gt;</code></pre><p>Defines signature in the public backend and RHI contract.</p>
 <p>Defines signature in the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -4961,7 +4962,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-tardacudakernelvariant-ead6eac2" tabindex="-1"><h5>arda::TArdaCudaKernelVariant</h5><pre><code>template&lt;auto Kernel, class Payload&gt; struct TArdaCudaKernelVariant</code></pre><p>Each compiled symbol has its own wrapper type and user-owned host policy payload.</p>
+<section class="api-entry" id="api-arda-tardacudakernelvariant-ead6eac2" tabindex="-1"><h5>arda::TArdaCudaKernelVariant</h5><pre><code>template &lt;auto Kernel, class Payload&gt; struct TArdaCudaKernelVariant</code></pre><p>Each compiled symbol has its own wrapper type and user-owned host policy payload.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
@@ -5855,7 +5856,7 @@
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>function</h4>
-<section class="api-entry" id="api-arda-logardapipelinecachemessage-6c0de896" tabindex="-1"><h5>arda::LogArdaPipelineCacheMessage</h5><pre><code>void LogArdaPipelineCacheMessage( arda::IArdaDiagnosticCallback* Callback, arda::EArdaDiagnosticSeverity Severity, const char* Text) noexcept</code></pre><p>Sends a pipeline-cache diagnostic when a callback is present.</p>
+<section class="api-entry" id="api-arda-logardapipelinecachemessage-6c0de896" tabindex="-1"><h5>arda::LogArdaPipelineCacheMessage</h5><pre><code>void LogArdaPipelineCacheMessage(arda::IArdaDiagnosticCallback* Callback, arda::EArdaDiagnosticSeverity Severity, const char* Text) noexcept</code></pre><p>Sends a pipeline-cache diagnostic when a callback is present.</p>
 <dl>
 <dt>Returns</dt><dd>No value (void).</dd>
 <dt>Ownership</dt><dd>Callback and Text are borrowed for this call only.</dd>
@@ -5863,7 +5864,7 @@
 <dt>Threading</dt><dd>The callback runs synchronously on the calling thread.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-makeardapipelinecachepath-72263dd0" tabindex="-1"><h5>arda::MakeArdaPipelineCachePath</h5><pre><code>[[nodiscard]] std::filesystem::path MakeArdaPipelineCachePath( const std::filesystem::path&amp; Directory, const eastl::string&amp; BackendName)</code></pre><p>Builds a backend-specific cache filename within Directory without filesystem I/O.</p>
+<section class="api-entry" id="api-arda-makeardapipelinecachepath-72263dd0" tabindex="-1"><h5>arda::MakeArdaPipelineCachePath</h5><pre><code>[[nodiscard]] std::filesystem::path MakeArdaPipelineCachePath(const std::filesystem::path&amp; Directory, const eastl::string&amp; BackendName)</code></pre><p>Builds a backend-specific cache filename within Directory without filesystem I/O.</p>
 <dl>
 <dt>Returns</dt><dd>An owning path with a sanitized backend name and .pso-cache suffix.</dd>
 <dt>Ownership</dt><dd>Inputs are borrowed; the returned path owns its storage.</dd>
@@ -5871,7 +5872,7 @@
 <dt>Threading</dt><dd>Independent calls may run concurrently.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-readardapipelinecacheblob-e6ec20cb" tabindex="-1"><h5>arda::ReadArdaPipelineCacheBlob</h5><pre><code>[[nodiscard]] bool ReadArdaPipelineCacheBlob( const std::filesystem::path&amp; Path, const eastl::string&amp; BackendName, std::vector&lt;uint8_t&gt;&amp; Payload)</code></pre><p>Reads a native cache payload after validating its header, backend identity and size.</p>
+<section class="api-entry" id="api-arda-readardapipelinecacheblob-e6ec20cb" tabindex="-1"><h5>arda::ReadArdaPipelineCacheBlob</h5><pre><code>[[nodiscard]] bool ReadArdaPipelineCacheBlob(const std::filesystem::path&amp; Path, const eastl::string&amp; BackendName, std::vector&lt;uint8_t&gt;&amp; Payload)</code></pre><p>Reads a native cache payload after validating its header, backend identity and size.</p>
 <dl>
 <dt>Returns</dt><dd>True only when the complete validated payload was read.</dd>
 <dt>Ownership</dt><dd>Payload is caller-owned and overwritten; disregard its contents on failure.</dd>
@@ -5879,7 +5880,7 @@
 <dt>Threading</dt><dd>Serialize access to Payload; each call owns its file stream.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-writeardapipelinecacheblob-9fb32a57" tabindex="-1"><h5>arda::WriteArdaPipelineCacheBlob</h5><pre><code>[[nodiscard]] bool WriteArdaPipelineCacheBlob( const std::filesystem::path&amp; Path, const eastl::string&amp; BackendName, const std::vector&lt;uint8_t&gt;&amp; Payload)</code></pre><p>Writes and flushes a temporary cache file, then replaces the destination.</p>
+<section class="api-entry" id="api-arda-writeardapipelinecacheblob-9fb32a57" tabindex="-1"><h5>arda::WriteArdaPipelineCacheBlob</h5><pre><code>[[nodiscard]] bool WriteArdaPipelineCacheBlob(const std::filesystem::path&amp; Path, const eastl::string&amp; BackendName, const std::vector&lt;uint8_t&gt;&amp; Payload)</code></pre><p>Writes and flushes a temporary cache file, then replaces the destination.</p>
 <dl>
 <dt>Returns</dt><dd>True only when the complete cache file replaced the destination.</dd>
 <dt>Ownership</dt><dd>All inputs are borrowed for this call; temporary-file cleanup is internal.</dd>
@@ -6134,7 +6135,7 @@
 <dt>Threading</dt><dd>The pipeline state cache is thread-safe for concurrent requests; destruction waits for internal operations to finish. The bound RHI device must remain valid for the cache lifetime.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardapipelinestatecache-getorcreatemeshlet-84b58946" tabindex="-1"><h5>arda::FArdaPipelineStateCache::GetOrCreateMeshlet</h5><pre><code>[[nodiscard]] arda::FArdaRHIStatus GetOrCreateMeshlet( const FArdaMeshletPipelineStateInitializer&amp; Initializer, const arda::FArdaRHIFramebufferRef&amp; Framebuffer, arda::FArdaRHIMeshletPipelineRef&amp; OutPipeline, const arda::IArdaRHIDevice* RequestingDevice = nullptr)</code></pre><p>Resolves or creates a framebuffer-compatible meshlet pipeline state.</p>
+<section class="api-entry" id="api-arda-fardapipelinestatecache-getorcreatemeshlet-84b58946" tabindex="-1"><h5>arda::FArdaPipelineStateCache::GetOrCreateMeshlet</h5><pre><code>[[nodiscard]] arda::FArdaRHIStatus GetOrCreateMeshlet(const FArdaMeshletPipelineStateInitializer&amp; Initializer, const arda::FArdaRHIFramebufferRef&amp; Framebuffer, arda::FArdaRHIMeshletPipelineRef&amp; OutPipeline, const arda::IArdaRHIDevice* RequestingDevice = nullptr)</code></pre><p>Resolves or creates a framebuffer-compatible meshlet pipeline state.</p>
 <dl>
 <dt>Initializer</dt><dd>Meshlet pipeline description.</dd>
 <dt>Framebuffer</dt><dd>Framebuffer used to complete dynamic formats.</dd>
@@ -6192,7 +6193,7 @@
 <dt>Threading</dt><dd>The pipeline state cache is thread-safe for concurrent requests; destruction waits for internal operations to finish. The bound RHI device must remain valid for the cache lifetime.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardapipelinestatecache-precachemeshlet-ac216381" tabindex="-1"><h5>arda::FArdaPipelineStateCache::PrecacheMeshlet</h5><pre><code>[[nodiscard]] arda::FArdaRHIStatus PrecacheMeshlet( const FArdaMeshletPipelineStateInitializer&amp; Initializer, const arda::FArdaRHIFramebufferRef&amp; Framebuffer, const arda::IArdaRHIDevice* RequestingDevice = nullptr)</code></pre><p>Creates and caches a framebuffer-compatible meshlet pipeline.</p>
+<section class="api-entry" id="api-arda-fardapipelinestatecache-precachemeshlet-ac216381" tabindex="-1"><h5>arda::FArdaPipelineStateCache::PrecacheMeshlet</h5><pre><code>[[nodiscard]] arda::FArdaRHIStatus PrecacheMeshlet(const FArdaMeshletPipelineStateInitializer&amp; Initializer, const arda::FArdaRHIFramebufferRef&amp; Framebuffer, const arda::IArdaRHIDevice* RequestingDevice = nullptr)</code></pre><p>Creates and caches a framebuffer-compatible meshlet pipeline.</p>
 <dl>
 <dt>Initializer</dt><dd>Meshlet pipeline description.</dd>
 <dt>Framebuffer</dt><dd>Framebuffer used to complete dynamic formats.</dd>
@@ -6211,7 +6212,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardapipelinestatecache-precacheworkgraph-517e4bd3" tabindex="-1"><h5>arda::FArdaPipelineStateCache::PrecacheWorkGraph</h5><pre><code>[[nodiscard]] arda::FArdaRHIStatus PrecacheWorkGraph( const FArdaWorkGraphPipelineStateInitializer&amp; Initializer, const arda::IArdaRHIDevice* RequestingDevice = nullptr)</code></pre><p>Creates and caches a work-graph pipeline without returning it.</p>
+<section class="api-entry" id="api-arda-fardapipelinestatecache-precacheworkgraph-517e4bd3" tabindex="-1"><h5>arda::FArdaPipelineStateCache::PrecacheWorkGraph</h5><pre><code>[[nodiscard]] arda::FArdaRHIStatus PrecacheWorkGraph(const FArdaWorkGraphPipelineStateInitializer&amp; Initializer, const arda::IArdaRHIDevice* RequestingDevice = nullptr)</code></pre><p>Creates and caches a work-graph pipeline without returning it.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -6243,7 +6244,7 @@
 <dt>Threading</dt><dd>The pipeline state cache is thread-safe for concurrent requests; destruction waits for internal operations to finish. The bound RHI device must remain valid for the cache lifetime.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardapipelinestatecache-setmeshletpipelinestate-bc5f7e49" tabindex="-1"><h5>arda::FArdaPipelineStateCache::SetMeshletPipelineState</h5><pre><code>[[nodiscard]] arda::FArdaRHIStatus SetMeshletPipelineState( arda::IArdaRHICommandList&amp; CommandList, const FArdaMeshletPipelineStateInitializer&amp; Initializer, arda::FArdaRHIMeshletState State)</code></pre><p>Resolves and binds a meshlet pipeline state.</p>
+<section class="api-entry" id="api-arda-fardapipelinestatecache-setmeshletpipelinestate-bc5f7e49" tabindex="-1"><h5>arda::FArdaPipelineStateCache::SetMeshletPipelineState</h5><pre><code>[[nodiscard]] arda::FArdaRHIStatus SetMeshletPipelineState(arda::IArdaRHICommandList&amp; CommandList, const FArdaMeshletPipelineStateInitializer&amp; Initializer, arda::FArdaRHIMeshletState State)</code></pre><p>Resolves and binds a meshlet pipeline state.</p>
 <dl>
 <dt>CommandList</dt><dd>Command list receiving the state.</dd>
 <dt>Initializer</dt><dd>Meshlet pipeline description.</dd>
@@ -6263,7 +6264,7 @@
 <dt>Threading</dt><dd>The pipeline state cache is thread-safe for concurrent requests; destruction waits for internal operations to finish. The bound RHI device must remain valid for the cache lifetime.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardapipelinestatecache-trim-e09c2fb2" tabindex="-1"><h5>arda::FArdaPipelineStateCache::Trim</h5><pre><code>void Trim( size_t MaxComputeEntries, size_t MaxGraphicsEntries, size_t MaxMeshletEntries)</code></pre><p>Evicts least-recently-used entries until all capacities are satisfied.</p>
+<section class="api-entry" id="api-arda-fardapipelinestatecache-trim-e09c2fb2" tabindex="-1"><h5>arda::FArdaPipelineStateCache::Trim</h5><pre><code>void Trim(size_t MaxComputeEntries, size_t MaxGraphicsEntries, size_t MaxMeshletEntries)</code></pre><p>Evicts least-recently-used entries until all capacities are satisfied.</p>
 <dl>
 <dt>MaxComputeEntries</dt><dd>Maximum retained compute entries.</dd>
 <dt>MaxGraphicsEntries</dt><dd>Maximum retained graphics entries.</dd>
@@ -6274,7 +6275,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardapipelinestatecache-trim-42ab3f0d" tabindex="-1"><h5>arda::FArdaPipelineStateCache::Trim</h5><pre><code>void Trim( size_t MaxComputeEntries, size_t MaxGraphicsEntries, size_t MaxMeshletEntries, size_t MaxRayTracingEntries, size_t MaxWorkGraphEntries)</code></pre><p>Evicts all five pipeline kinds to the supplied capacities.</p>
+<section class="api-entry" id="api-arda-fardapipelinestatecache-trim-42ab3f0d" tabindex="-1"><h5>arda::FArdaPipelineStateCache::Trim</h5><pre><code>void Trim(size_t MaxComputeEntries, size_t MaxGraphicsEntries, size_t MaxMeshletEntries, size_t MaxRayTracingEntries, size_t MaxWorkGraphEntries)</code></pre><p>Evicts all five pipeline kinds to the supplied capacities.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -7636,7 +7637,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardarhiresourcelifetimestats-mliveresources-c0a19b2c" tabindex="-1"><h5>arda::FArdaRHIResourceLifetimeStats::mLiveResources</h5><pre><code>size_t mLiveResources[ static_cast&lt;size_t&gt;(EArdaRHIResourceType::Count)]{}</code></pre><p>Stores live resources in this public backend and RHI value.</p>
+<section class="api-entry" id="api-arda-fardarhiresourcelifetimestats-mliveresources-c0a19b2c" tabindex="-1"><h5>arda::FArdaRHIResourceLifetimeStats::mLiveResources</h5><pre><code>size_t mLiveResources[static_cast&lt;size_t&gt;(EArdaRHIResourceType::Count)]{}</code></pre><p>Stores live resources in this public backend and RHI value.</p>
 <p>Stores live resources in this public backend and RHI value. The signature is generated from the current public header.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -7700,7 +7701,7 @@
 <dt>Threading</dt><dd>No implicit cross-thread ordering is promised; synchronize command recording, submission, and resource lifetime externally.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardarhiresourcelifetimestats-getliveresourcecount-65007d3b" tabindex="-1"><h5>arda::FArdaRHIResourceLifetimeStats::GetLiveResourceCount</h5><pre><code>[[nodiscard]] size_t GetLiveResourceCount( EArdaRHIResourceType Type) const noexcept</code></pre><p>Performs get live resource count through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-fardarhiresourcelifetimestats-getliveresourcecount-65007d3b" tabindex="-1"><h5>arda::FArdaRHIResourceLifetimeStats::GetLiveResourceCount</h5><pre><code>[[nodiscard]] size_t GetLiveResourceCount(EArdaRHIResourceType Type) const noexcept</code></pre><p>Performs get live resource count through the public backend and RHI contract.</p>
 <p>Performs get live resource count through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7709,7 +7710,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-aliasingbarrier-6dbf2ee2" tabindex="-1"><h5>arda::IArdaProviderCommandList::AliasingBarrier</h5><pre><code>virtual FArdaRHIStatus AliasingBarrier( const FArdaProviderObjectRef&amp; ResourceBefore, const FArdaProviderObjectRef&amp; ResourceAfter) = 0</code></pre><p>Performs aliasing barrier through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-aliasingbarrier-6dbf2ee2" tabindex="-1"><h5>arda::IArdaProviderCommandList::AliasingBarrier</h5><pre><code>virtual FArdaRHIStatus AliasingBarrier(const FArdaProviderObjectRef&amp; ResourceBefore, const FArdaProviderObjectRef&amp; ResourceAfter) = 0</code></pre><p>Performs aliasing barrier through the public backend and RHI contract.</p>
 <p>Performs aliasing barrier through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7727,7 +7728,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-begintimerquery-fba1e0bd" tabindex="-1"><h5>arda::IArdaProviderCommandList::BeginTimerQuery</h5><pre><code>virtual FArdaRHIStatus BeginTimerQuery( const FArdaProviderObjectRef&amp;)</code></pre><p>Records the start timestamp for a provider timer query.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-begintimerquery-fba1e0bd" tabindex="-1"><h5>arda::IArdaProviderCommandList::BeginTimerQuery</h5><pre><code>virtual FArdaRHIStatus BeginTimerQuery(const FArdaProviderObjectRef&amp;)</code></pre><p>Records the start timestamp for a provider timer query.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -7735,7 +7736,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-begintrackingbufferstate-051d4ef5" tabindex="-1"><h5>arda::IArdaProviderCommandList::BeginTrackingBufferState</h5><pre><code>virtual FArdaRHIStatus BeginTrackingBufferState( const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, EArdaRHIResourceState State) = 0</code></pre><p>Performs begin tracking buffer state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-begintrackingbufferstate-051d4ef5" tabindex="-1"><h5>arda::IArdaProviderCommandList::BeginTrackingBufferState</h5><pre><code>virtual FArdaRHIStatus BeginTrackingBufferState(const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, EArdaRHIResourceState State) = 0</code></pre><p>Performs begin tracking buffer state through the public backend and RHI contract.</p>
 <p>Performs begin tracking buffer state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7744,7 +7745,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-begintrackingtexturestate-8b2f15e0" tabindex="-1"><h5>arda::IArdaProviderCommandList::BeginTrackingTextureState</h5><pre><code>virtual FArdaRHIStatus BeginTrackingTextureState( const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureSubresourceRange&amp; Range, EArdaRHIResourceState State) = 0</code></pre><p>Performs begin tracking texture state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-begintrackingtexturestate-8b2f15e0" tabindex="-1"><h5>arda::IArdaProviderCommandList::BeginTrackingTextureState</h5><pre><code>virtual FArdaRHIStatus BeginTrackingTextureState(const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureSubresourceRange&amp; Range, EArdaRHIResourceState State) = 0</code></pre><p>Performs begin tracking texture state through the public backend and RHI contract.</p>
 <p>Performs begin tracking texture state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7753,7 +7754,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-buildbottomlevelaccelstruct-80213f7a" tabindex="-1"><h5>arda::IArdaProviderCommandList::BuildBottomLevelAccelStruct</h5><pre><code>virtual FArdaRHIStatus BuildBottomLevelAccelStruct( const FArdaProviderObjectRef&amp;, const eastl::vector&lt;FArdaProviderRayTracingGeometry&gt;&amp;, EArdaRHIAccelStructBuildFlags)</code></pre><p>Performs build bottom level accel struct through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-buildbottomlevelaccelstruct-80213f7a" tabindex="-1"><h5>arda::IArdaProviderCommandList::BuildBottomLevelAccelStruct</h5><pre><code>virtual FArdaRHIStatus BuildBottomLevelAccelStruct(const FArdaProviderObjectRef&amp;, const eastl::vector&lt;FArdaProviderRayTracingGeometry&gt;&amp;, EArdaRHIAccelStructBuildFlags)</code></pre><p>Performs build bottom level accel struct through the public backend and RHI contract.</p>
 <p>Performs build bottom level accel struct through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7762,7 +7763,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-buildopacitymicromap-cb028c89" tabindex="-1"><h5>arda::IArdaProviderCommandList::BuildOpacityMicromap</h5><pre><code>virtual FArdaRHIStatus BuildOpacityMicromap( const FArdaProviderObjectRef&amp;)</code></pre><p>Performs build opacity micromap through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-buildopacitymicromap-cb028c89" tabindex="-1"><h5>arda::IArdaProviderCommandList::BuildOpacityMicromap</h5><pre><code>virtual FArdaRHIStatus BuildOpacityMicromap(const FArdaProviderObjectRef&amp;)</code></pre><p>Performs build opacity micromap through the public backend and RHI contract.</p>
 <p>Performs build opacity micromap through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7771,7 +7772,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-buildtoplevelaccelstruct-a7aa734d" tabindex="-1"><h5>arda::IArdaProviderCommandList::BuildTopLevelAccelStruct</h5><pre><code>virtual FArdaRHIStatus BuildTopLevelAccelStruct( const FArdaProviderObjectRef&amp;, const eastl::vector&lt;FArdaProviderRayTracingInstance&gt;&amp;, EArdaRHIAccelStructBuildFlags)</code></pre><p>Performs build top level accel struct through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-buildtoplevelaccelstruct-a7aa734d" tabindex="-1"><h5>arda::IArdaProviderCommandList::BuildTopLevelAccelStruct</h5><pre><code>virtual FArdaRHIStatus BuildTopLevelAccelStruct(const FArdaProviderObjectRef&amp;, const eastl::vector&lt;FArdaProviderRayTracingInstance&gt;&amp;, EArdaRHIAccelStructBuildFlags)</code></pre><p>Performs build top level accel struct through the public backend and RHI contract.</p>
 <p>Performs build top level accel struct through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7780,7 +7781,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-buildtoplevelaccelstructfrombuffer-7f8701ed" tabindex="-1"><h5>arda::IArdaProviderCommandList::BuildTopLevelAccelStructFromBuffer</h5><pre><code>virtual FArdaRHIStatus BuildTopLevelAccelStructFromBuffer( const FArdaProviderObjectRef&amp;, const FArdaProviderObjectRef&amp;, uint64_t, size_t, EArdaRHIAccelStructBuildFlags)</code></pre><p>Performs build top level accel struct from buffer through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-buildtoplevelaccelstructfrombuffer-7f8701ed" tabindex="-1"><h5>arda::IArdaProviderCommandList::BuildTopLevelAccelStructFromBuffer</h5><pre><code>virtual FArdaRHIStatus BuildTopLevelAccelStructFromBuffer(const FArdaProviderObjectRef&amp;, const FArdaProviderObjectRef&amp;, uint64_t, size_t, EArdaRHIAccelStructBuildFlags)</code></pre><p>Performs build top level accel struct from buffer through the public backend and RHI contract.</p>
 <p>Performs build top level accel struct from buffer through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7789,7 +7790,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-clearbufferuint-5ddc1492" tabindex="-1"><h5>arda::IArdaProviderCommandList::ClearBufferUInt</h5><pre><code>virtual FArdaRHIStatus ClearBufferUInt( const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, uint32_t Value) = 0</code></pre><p>Performs clear buffer u int through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-clearbufferuint-5ddc1492" tabindex="-1"><h5>arda::IArdaProviderCommandList::ClearBufferUInt</h5><pre><code>virtual FArdaRHIStatus ClearBufferUInt(const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, uint32_t Value) = 0</code></pre><p>Performs clear buffer u int through the public backend and RHI contract.</p>
 <p>Performs clear buffer u int through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7798,7 +7799,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-cleardepthstenciltexture-98fe5162" tabindex="-1"><h5>arda::IArdaProviderCommandList::ClearDepthStencilTexture</h5><pre><code>virtual FArdaRHIStatus ClearDepthStencilTexture( const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureSubresourceRange&amp; Range, bool bClearDepth, float Depth, bool bClearStencil, uint8_t Stencil) = 0</code></pre><p>Performs clear depth stencil texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-cleardepthstenciltexture-98fe5162" tabindex="-1"><h5>arda::IArdaProviderCommandList::ClearDepthStencilTexture</h5><pre><code>virtual FArdaRHIStatus ClearDepthStencilTexture(const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureSubresourceRange&amp; Range, bool bClearDepth, float Depth, bool bClearStencil, uint8_t Stencil) = 0</code></pre><p>Performs clear depth stencil texture through the public backend and RHI contract.</p>
 <p>Performs clear depth stencil texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7807,7 +7808,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-clearsamplerfeedbacktexture-02a1248d" tabindex="-1"><h5>arda::IArdaProviderCommandList::ClearSamplerFeedbackTexture</h5><pre><code>virtual FArdaRHIStatus ClearSamplerFeedbackTexture( const FArdaProviderObjectRef&amp;)</code></pre><p>Performs clear sampler feedback texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-clearsamplerfeedbacktexture-02a1248d" tabindex="-1"><h5>arda::IArdaProviderCommandList::ClearSamplerFeedbackTexture</h5><pre><code>virtual FArdaRHIStatus ClearSamplerFeedbackTexture(const FArdaProviderObjectRef&amp;)</code></pre><p>Performs clear sampler feedback texture through the public backend and RHI contract.</p>
 <p>Performs clear sampler feedback texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7816,7 +7817,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-cleartexture-26189f38" tabindex="-1"><h5>arda::IArdaProviderCommandList::ClearTexture</h5><pre><code>virtual FArdaRHIStatus ClearTexture( const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureSubresourceRange&amp; Range, const FArdaRHIColor&amp; Color) = 0</code></pre><p>Performs clear texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-cleartexture-26189f38" tabindex="-1"><h5>arda::IArdaProviderCommandList::ClearTexture</h5><pre><code>virtual FArdaRHIStatus ClearTexture(const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureSubresourceRange&amp; Range, const FArdaRHIColor&amp; Color) = 0</code></pre><p>Performs clear texture through the public backend and RHI contract.</p>
 <p>Performs clear texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7825,7 +7826,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-cleartextureuint-07f8a5de" tabindex="-1"><h5>arda::IArdaProviderCommandList::ClearTextureUInt</h5><pre><code>virtual FArdaRHIStatus ClearTextureUInt( const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureSubresourceRange&amp; Range, uint32_t Value) = 0</code></pre><p>Performs clear texture u int through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-cleartextureuint-07f8a5de" tabindex="-1"><h5>arda::IArdaProviderCommandList::ClearTextureUInt</h5><pre><code>virtual FArdaRHIStatus ClearTextureUInt(const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureSubresourceRange&amp; Range, uint32_t Value) = 0</code></pre><p>Performs clear texture u int through the public backend and RHI contract.</p>
 <p>Performs clear texture u int through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7852,7 +7853,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-compactaccelstruct-c5a4ef63" tabindex="-1"><h5>arda::IArdaProviderCommandList::CompactAccelStruct</h5><pre><code>virtual FArdaRHIStatus CompactAccelStruct( const FArdaProviderObjectRef&amp;, const FArdaProviderObjectRef&amp;)</code></pre><p>Performs compact accel struct through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-compactaccelstruct-c5a4ef63" tabindex="-1"><h5>arda::IArdaProviderCommandList::CompactAccelStruct</h5><pre><code>virtual FArdaRHIStatus CompactAccelStruct(const FArdaProviderObjectRef&amp;, const FArdaProviderObjectRef&amp;)</code></pre><p>Performs compact accel struct through the public backend and RHI contract.</p>
 <p>Performs compact accel struct through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7861,7 +7862,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-compactopacitymicromap-8abbf77f" tabindex="-1"><h5>arda::IArdaProviderCommandList::CompactOpacityMicromap</h5><pre><code>virtual FArdaRHIStatus CompactOpacityMicromap( const FArdaProviderObjectRef&amp;, const FArdaProviderObjectRef&amp;)</code></pre><p>Performs compact opacity micromap through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-compactopacitymicromap-8abbf77f" tabindex="-1"><h5>arda::IArdaProviderCommandList::CompactOpacityMicromap</h5><pre><code>virtual FArdaRHIStatus CompactOpacityMicromap(const FArdaProviderObjectRef&amp;, const FArdaProviderObjectRef&amp;)</code></pre><p>Performs compact opacity micromap through the public backend and RHI contract.</p>
 <p>Performs compact opacity micromap through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7870,7 +7871,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-copybuffer-1bb372e1" tabindex="-1"><h5>arda::IArdaProviderCommandList::CopyBuffer</h5><pre><code>virtual FArdaRHIStatus CopyBuffer( const FArdaProviderObjectRef&amp; Destination, uint64_t DestinationOffset, const FArdaProviderObjectRef&amp; Source, uint64_t SourceOffset, uint64_t Size) = 0</code></pre><p>Performs copy buffer through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-copybuffer-1bb372e1" tabindex="-1"><h5>arda::IArdaProviderCommandList::CopyBuffer</h5><pre><code>virtual FArdaRHIStatus CopyBuffer(const FArdaProviderObjectRef&amp; Destination, uint64_t DestinationOffset, const FArdaProviderObjectRef&amp; Source, uint64_t SourceOffset, uint64_t Size) = 0</code></pre><p>Performs copy buffer through the public backend and RHI contract.</p>
 <p>Performs copy buffer through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7879,7 +7880,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-copytexture-6183ffe0" tabindex="-1"><h5>arda::IArdaProviderCommandList::CopyTexture</h5><pre><code>virtual FArdaRHIStatus CopyTexture( const FArdaProviderObjectRef&amp; Destination, const FArdaRHITextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaProviderObjectRef&amp; Source, const FArdaRHITextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice) = 0</code></pre><p>Performs copy texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-copytexture-6183ffe0" tabindex="-1"><h5>arda::IArdaProviderCommandList::CopyTexture</h5><pre><code>virtual FArdaRHIStatus CopyTexture(const FArdaProviderObjectRef&amp; Destination, const FArdaRHITextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaProviderObjectRef&amp; Source, const FArdaRHITextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice) = 0</code></pre><p>Performs copy texture through the public backend and RHI contract.</p>
 <p>Performs copy texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7888,7 +7889,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-copytexturefromstaging-62b4cfd8" tabindex="-1"><h5>arda::IArdaProviderCommandList::CopyTextureFromStaging</h5><pre><code>virtual FArdaRHIStatus CopyTextureFromStaging( const FArdaProviderObjectRef&amp; Destination, const FArdaRHITextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaProviderObjectRef&amp; Source, const FArdaRHIStagingTextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice) = 0</code></pre><p>Performs copy texture from staging through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-copytexturefromstaging-62b4cfd8" tabindex="-1"><h5>arda::IArdaProviderCommandList::CopyTextureFromStaging</h5><pre><code>virtual FArdaRHIStatus CopyTextureFromStaging(const FArdaProviderObjectRef&amp; Destination, const FArdaRHITextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaProviderObjectRef&amp; Source, const FArdaRHIStagingTextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice) = 0</code></pre><p>Performs copy texture from staging through the public backend and RHI contract.</p>
 <p>Performs copy texture from staging through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7897,7 +7898,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-copytexturetostaging-b9a50ac4" tabindex="-1"><h5>arda::IArdaProviderCommandList::CopyTextureToStaging</h5><pre><code>virtual FArdaRHIStatus CopyTextureToStaging( const FArdaProviderObjectRef&amp; Destination, const FArdaRHIStagingTextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaProviderObjectRef&amp; Source, const FArdaRHITextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice) = 0</code></pre><p>Performs copy texture to staging through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-copytexturetostaging-b9a50ac4" tabindex="-1"><h5>arda::IArdaProviderCommandList::CopyTextureToStaging</h5><pre><code>virtual FArdaRHIStatus CopyTextureToStaging(const FArdaProviderObjectRef&amp; Destination, const FArdaRHIStagingTextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaProviderObjectRef&amp; Source, const FArdaRHITextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice) = 0</code></pre><p>Performs copy texture to staging through the public backend and RHI contract.</p>
 <p>Performs copy texture to staging through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7906,7 +7907,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-decodesamplerfeedbacktexture-fbfacf7c" tabindex="-1"><h5>arda::IArdaProviderCommandList::DecodeSamplerFeedbackTexture</h5><pre><code>virtual FArdaRHIStatus DecodeSamplerFeedbackTexture( const FArdaProviderObjectRef&amp;, const FArdaRHITextureDesc&amp;, const FArdaProviderObjectRef&amp;, EArdaRHIFormat)</code></pre><p>Performs decode sampler feedback texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-decodesamplerfeedbacktexture-fbfacf7c" tabindex="-1"><h5>arda::IArdaProviderCommandList::DecodeSamplerFeedbackTexture</h5><pre><code>virtual FArdaRHIStatus DecodeSamplerFeedbackTexture(const FArdaProviderObjectRef&amp;, const FArdaRHITextureDesc&amp;, const FArdaProviderObjectRef&amp;, EArdaRHIFormat)</code></pre><p>Performs decode sampler feedback texture through the public backend and RHI contract.</p>
 <p>Performs decode sampler feedback texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7924,7 +7925,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchcuda-0734acd1" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchCuda</h5><pre><code>virtual FArdaRHIStatus DispatchCuda( const eastl::vector&lt;FArdaProviderCudaBinding&gt;&amp;, const eastl::vector&lt;FArdaCudaKernel&gt;&amp;)</code></pre><p>Performs dispatch cuda through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchcuda-0734acd1" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchCuda</h5><pre><code>virtual FArdaRHIStatus DispatchCuda(const eastl::vector&lt;FArdaProviderCudaBinding&gt;&amp;, const eastl::vector&lt;FArdaCudaKernel&gt;&amp;)</code></pre><p>Performs dispatch cuda through the public backend and RHI contract.</p>
 <p>Performs dispatch cuda through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7933,7 +7934,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchindirect-6e2b0ba2" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchIndirect</h5><pre><code>virtual FArdaRHIStatus DispatchIndirect( const FArdaProviderObjectRef&amp; Arguments, uint64_t Offset) = 0</code></pre><p>Performs dispatch indirect through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchindirect-6e2b0ba2" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchIndirect</h5><pre><code>virtual FArdaRHIStatus DispatchIndirect(const FArdaProviderObjectRef&amp; Arguments, uint64_t Offset) = 0</code></pre><p>Performs dispatch indirect through the public backend and RHI contract.</p>
 <p>Performs dispatch indirect through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7942,7 +7943,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchmesh-b701f055" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchMesh</h5><pre><code>virtual FArdaRHIStatus DispatchMesh( uint32_t, uint32_t, uint32_t)</code></pre><p>Performs dispatch mesh through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchmesh-b701f055" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchMesh</h5><pre><code>virtual FArdaRHIStatus DispatchMesh(uint32_t, uint32_t, uint32_t)</code></pre><p>Performs dispatch mesh through the public backend and RHI contract.</p>
 <p>Performs dispatch mesh through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7951,7 +7952,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchrays-9efe03e3" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchRays</h5><pre><code>virtual FArdaRHIStatus DispatchRays( uint32_t, uint32_t, uint32_t)</code></pre><p>Performs dispatch rays through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchrays-9efe03e3" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchRays</h5><pre><code>virtual FArdaRHIStatus DispatchRays(uint32_t, uint32_t, uint32_t)</code></pre><p>Performs dispatch rays through the public backend and RHI contract.</p>
 <p>Performs dispatch rays through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7960,7 +7961,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchraysindirect-50d34e2b" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchRaysIndirect</h5><pre><code>virtual FArdaRHIStatus DispatchRaysIndirect( const FArdaProviderObjectRef&amp;, uint64_t)</code></pre><p>Performs dispatch rays indirect through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchraysindirect-50d34e2b" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchRaysIndirect</h5><pre><code>virtual FArdaRHIStatus DispatchRaysIndirect(const FArdaProviderObjectRef&amp;, uint64_t)</code></pre><p>Performs dispatch rays indirect through the public backend and RHI contract.</p>
 <p>Performs dispatch rays indirect through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7969,7 +7970,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchworkgraph-cc5bf34f" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchWorkGraph</h5><pre><code>virtual FArdaRHIStatus DispatchWorkGraph( const FArdaProviderObjectRef&amp;, const void*, uint32_t, uint32_t, const eastl::vector&lt;FArdaProviderObjectRef&gt;&amp;)</code></pre><p>Performs dispatch work graph through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-dispatchworkgraph-cc5bf34f" tabindex="-1"><h5>arda::IArdaProviderCommandList::DispatchWorkGraph</h5><pre><code>virtual FArdaRHIStatus DispatchWorkGraph(const FArdaProviderObjectRef&amp;, const void*, uint32_t, uint32_t, const eastl::vector&lt;FArdaProviderObjectRef&gt;&amp;)</code></pre><p>Performs dispatch work graph through the public backend and RHI contract.</p>
 <p>Performs dispatch work graph through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -7996,7 +7997,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-drawindexedindirect-f17803e2" tabindex="-1"><h5>arda::IArdaProviderCommandList::DrawIndexedIndirect</h5><pre><code>virtual FArdaRHIStatus DrawIndexedIndirect( const FArdaProviderObjectRef&amp; Arguments, uint64_t Offset, uint32_t DrawCount, uint32_t Stride) = 0</code></pre><p>Performs draw indexed indirect through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-drawindexedindirect-f17803e2" tabindex="-1"><h5>arda::IArdaProviderCommandList::DrawIndexedIndirect</h5><pre><code>virtual FArdaRHIStatus DrawIndexedIndirect(const FArdaProviderObjectRef&amp; Arguments, uint64_t Offset, uint32_t DrawCount, uint32_t Stride) = 0</code></pre><p>Performs draw indexed indirect through the public backend and RHI contract.</p>
 <p>Performs draw indexed indirect through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8005,7 +8006,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-drawindirect-47188b93" tabindex="-1"><h5>arda::IArdaProviderCommandList::DrawIndirect</h5><pre><code>virtual FArdaRHIStatus DrawIndirect( const FArdaProviderObjectRef&amp; Arguments, uint64_t Offset, uint32_t DrawCount, uint32_t Stride) = 0</code></pre><p>Performs draw indirect through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-drawindirect-47188b93" tabindex="-1"><h5>arda::IArdaProviderCommandList::DrawIndirect</h5><pre><code>virtual FArdaRHIStatus DrawIndirect(const FArdaProviderObjectRef&amp; Arguments, uint64_t Offset, uint32_t DrawCount, uint32_t Stride) = 0</code></pre><p>Performs draw indirect through the public backend and RHI contract.</p>
 <p>Performs draw indirect through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8023,7 +8024,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-endtimerquery-18c57ffc" tabindex="-1"><h5>arda::IArdaProviderCommandList::EndTimerQuery</h5><pre><code>virtual FArdaRHIStatus EndTimerQuery( const FArdaProviderObjectRef&amp;)</code></pre><p>Records the end timestamp and result resolve for a timer query.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-endtimerquery-18c57ffc" tabindex="-1"><h5>arda::IArdaProviderCommandList::EndTimerQuery</h5><pre><code>virtual FArdaRHIStatus EndTimerQuery(const FArdaProviderObjectRef&amp;)</code></pre><p>Records the end timestamp and result resolve for a timer query.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -8048,7 +8049,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-queryaccelstructstate-687e7875" tabindex="-1"><h5>arda::IArdaProviderCommandList::QueryAccelStructState</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHINativeResourceState&gt; QueryAccelStructState(const FArdaProviderObjectRef&amp;) const</code></pre><p>Performs query accel struct state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-queryaccelstructstate-687e7875" tabindex="-1"><h5>arda::IArdaProviderCommandList::QueryAccelStructState</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHINativeResourceState&gt; QueryAccelStructState( const FArdaProviderObjectRef&amp;) const</code></pre><p>Performs query accel struct state through the public backend and RHI contract.</p>
 <p>Performs query accel struct state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8066,7 +8067,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-queryopacitymicromapstate-d7fe6c93" tabindex="-1"><h5>arda::IArdaProviderCommandList::QueryOpacityMicromapState</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHINativeResourceState&gt; QueryOpacityMicromapState(const FArdaProviderObjectRef&amp;) const</code></pre><p>Performs query opacity micromap state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-queryopacitymicromapstate-d7fe6c93" tabindex="-1"><h5>arda::IArdaProviderCommandList::QueryOpacityMicromapState</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHINativeResourceState&gt; QueryOpacityMicromapState( const FArdaProviderObjectRef&amp;) const</code></pre><p>Performs query opacity micromap state through the public backend and RHI contract.</p>
 <p>Performs query opacity micromap state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8102,7 +8103,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-resolvetexture-cdef4cc0" tabindex="-1"><h5>arda::IArdaProviderCommandList::ResolveTexture</h5><pre><code>virtual FArdaRHIStatus ResolveTexture( const FArdaProviderObjectRef&amp; Destination, const FArdaRHITextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaProviderObjectRef&amp; Source, const FArdaRHITextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice) = 0</code></pre><p>Performs resolve texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-resolvetexture-cdef4cc0" tabindex="-1"><h5>arda::IArdaProviderCommandList::ResolveTexture</h5><pre><code>virtual FArdaRHIStatus ResolveTexture(const FArdaProviderObjectRef&amp; Destination, const FArdaRHITextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaProviderObjectRef&amp; Source, const FArdaRHITextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice) = 0</code></pre><p>Performs resolve texture through the public backend and RHI contract.</p>
 <p>Performs resolve texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8111,7 +8112,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-setaccelstructstate-8218c076" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetAccelStructState</h5><pre><code>virtual FArdaRHIStatus SetAccelStructState( const FArdaProviderObjectRef&amp;, EArdaRHIResourceState)</code></pre><p>Performs set accel struct state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-setaccelstructstate-8218c076" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetAccelStructState</h5><pre><code>virtual FArdaRHIStatus SetAccelStructState(const FArdaProviderObjectRef&amp;, EArdaRHIResourceState)</code></pre><p>Performs set accel struct state through the public backend and RHI contract.</p>
 <p>Performs set accel struct state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8129,7 +8130,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-setbufferstate-f1d3ec89" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetBufferState</h5><pre><code>virtual FArdaRHIStatus SetBufferState( const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, EArdaRHIResourceState State) = 0</code></pre><p>Performs set buffer state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-setbufferstate-f1d3ec89" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetBufferState</h5><pre><code>virtual FArdaRHIStatus SetBufferState(const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, EArdaRHIResourceState State) = 0</code></pre><p>Performs set buffer state through the public backend and RHI contract.</p>
 <p>Performs set buffer state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8138,7 +8139,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-setcomputestate-68b37f8f" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetComputeState</h5><pre><code>virtual FArdaRHIStatus SetComputeState( const FArdaProviderComputeState&amp; State) = 0</code></pre><p>Performs set compute state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-setcomputestate-68b37f8f" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetComputeState</h5><pre><code>virtual FArdaRHIStatus SetComputeState(const FArdaProviderComputeState&amp; State) = 0</code></pre><p>Performs set compute state through the public backend and RHI contract.</p>
 <p>Performs set compute state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8147,7 +8148,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-setgraphicsstate-fe28c75d" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetGraphicsState</h5><pre><code>virtual FArdaRHIStatus SetGraphicsState( const FArdaProviderGraphicsState&amp; State) = 0</code></pre><p>Performs set graphics state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-setgraphicsstate-fe28c75d" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetGraphicsState</h5><pre><code>virtual FArdaRHIStatus SetGraphicsState(const FArdaProviderGraphicsState&amp; State) = 0</code></pre><p>Performs set graphics state through the public backend and RHI contract.</p>
 <p>Performs set graphics state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8156,7 +8157,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-setmeshletstate-043661aa" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetMeshletState</h5><pre><code>virtual FArdaRHIStatus SetMeshletState( const FArdaProviderMeshletState&amp;)</code></pre><p>Performs set meshlet state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-setmeshletstate-043661aa" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetMeshletState</h5><pre><code>virtual FArdaRHIStatus SetMeshletState(const FArdaProviderMeshletState&amp;)</code></pre><p>Performs set meshlet state through the public backend and RHI contract.</p>
 <p>Performs set meshlet state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8174,7 +8175,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-setraytracingstate-282fc8eb" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetRayTracingState</h5><pre><code>virtual FArdaRHIStatus SetRayTracingState( const FArdaProviderRayTracingState&amp;)</code></pre><p>Performs set ray tracing state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-setraytracingstate-282fc8eb" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetRayTracingState</h5><pre><code>virtual FArdaRHIStatus SetRayTracingState(const FArdaProviderRayTracingState&amp;)</code></pre><p>Performs set ray tracing state through the public backend and RHI contract.</p>
 <p>Performs set ray tracing state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8183,7 +8184,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-setsamplerfeedbacktexturestate-9b3b7264" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetSamplerFeedbackTextureState</h5><pre><code>virtual FArdaRHIStatus SetSamplerFeedbackTextureState( const FArdaProviderObjectRef&amp;, EArdaRHIResourceState)</code></pre><p>Performs set sampler feedback texture state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-setsamplerfeedbacktexturestate-9b3b7264" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetSamplerFeedbackTextureState</h5><pre><code>virtual FArdaRHIStatus SetSamplerFeedbackTextureState(const FArdaProviderObjectRef&amp;, EArdaRHIResourceState)</code></pre><p>Performs set sampler feedback texture state through the public backend and RHI contract.</p>
 <p>Performs set sampler feedback texture state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8192,7 +8193,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-settexturestate-b3c476a7" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetTextureState</h5><pre><code>virtual FArdaRHIStatus SetTextureState( const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureSubresourceRange&amp; Range, EArdaRHIResourceState State) = 0</code></pre><p>Performs set texture state through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-settexturestate-b3c476a7" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetTextureState</h5><pre><code>virtual FArdaRHIStatus SetTextureState(const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureSubresourceRange&amp; Range, EArdaRHIResourceState State) = 0</code></pre><p>Performs set texture state through the public backend and RHI contract.</p>
 <p>Performs set texture state through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8201,7 +8202,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-setuavbarriersforbuffer-554c049e" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetUAVBarriersForBuffer</h5><pre><code>virtual FArdaRHIStatus SetUAVBarriersForBuffer( const FArdaProviderObjectRef&amp; Buffer, bool bEnabled) = 0</code></pre><p>Performs set u a v barriers for buffer through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-setuavbarriersforbuffer-554c049e" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetUAVBarriersForBuffer</h5><pre><code>virtual FArdaRHIStatus SetUAVBarriersForBuffer(const FArdaProviderObjectRef&amp; Buffer, bool bEnabled) = 0</code></pre><p>Performs set u a v barriers for buffer through the public backend and RHI contract.</p>
 <p>Performs set u a v barriers for buffer through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8210,7 +8211,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-setuavbarriersfortexture-76e55fcd" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetUAVBarriersForTexture</h5><pre><code>virtual FArdaRHIStatus SetUAVBarriersForTexture( const FArdaProviderObjectRef&amp; Texture, bool bEnabled) = 0</code></pre><p>Performs set u a v barriers for texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-setuavbarriersfortexture-76e55fcd" tabindex="-1"><h5>arda::IArdaProviderCommandList::SetUAVBarriersForTexture</h5><pre><code>virtual FArdaRHIStatus SetUAVBarriersForTexture(const FArdaProviderObjectRef&amp; Texture, bool bEnabled) = 0</code></pre><p>Performs set u a v barriers for texture through the public backend and RHI contract.</p>
 <p>Performs set u a v barriers for texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8219,7 +8220,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-transitionbuffer-93fe2421" tabindex="-1"><h5>arda::IArdaProviderCommandList::TransitionBuffer</h5><pre><code>virtual FArdaRHIStatus TransitionBuffer( const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, const FArdaRHIBufferTransitionDesc&amp; Transition) = 0</code></pre><p>Performs transition buffer through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-transitionbuffer-93fe2421" tabindex="-1"><h5>arda::IArdaProviderCommandList::TransitionBuffer</h5><pre><code>virtual FArdaRHIStatus TransitionBuffer(const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, const FArdaRHIBufferTransitionDesc&amp; Transition) = 0</code></pre><p>Performs transition buffer through the public backend and RHI contract.</p>
 <p>Performs transition buffer through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8228,7 +8229,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-transitiontexture-cc71d603" tabindex="-1"><h5>arda::IArdaProviderCommandList::TransitionTexture</h5><pre><code>virtual FArdaRHIStatus TransitionTexture( const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureTransitionDesc&amp; Transition) = 0</code></pre><p>Performs transition texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-transitiontexture-cc71d603" tabindex="-1"><h5>arda::IArdaProviderCommandList::TransitionTexture</h5><pre><code>virtual FArdaRHIStatus TransitionTexture(const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaRHITextureTransitionDesc&amp; Transition) = 0</code></pre><p>Performs transition texture through the public backend and RHI contract.</p>
 <p>Performs transition texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8237,7 +8238,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardaprovidercommandlist-writebuffer-ccf06a89" tabindex="-1"><h5>arda::IArdaProviderCommandList::WriteBuffer</h5><pre><code>virtual FArdaRHIStatus WriteBuffer( const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, const void* Data, size_t Size, uint64_t Offset) = 0</code></pre><p>Performs write buffer through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-writebuffer-ccf06a89" tabindex="-1"><h5>arda::IArdaProviderCommandList::WriteBuffer</h5><pre><code>virtual FArdaRHIStatus WriteBuffer(const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, const void* Data, size_t Size, uint64_t Offset) = 0</code></pre><p>Performs write buffer through the public backend and RHI contract.</p>
 <p>Performs write buffer through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -8511,7 +8512,7 @@
 <dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhicommandlist-copybufferdevicetohost-034ed7d3" tabindex="-1"><h5>arda::IArdaRHICommandList::CopyBufferDeviceToHost</h5><pre><code>virtual FArdaRHIStatus CopyBufferDeviceToHost( IArdaRHIBuffer&amp; Source, eastl::vector&lt;uint8_t&gt;&amp; Output, uint64_t SourceOffset = 0, uint64_t Size = ArdaRHIWholeBuffer) = 0</code></pre><p>Records a device-to-host copy. Submission waits for completion and fills Output before ExecuteCommandList returns.</p>
+<section class="api-entry" id="api-arda-iardarhicommandlist-copybufferdevicetohost-034ed7d3" tabindex="-1"><h5>arda::IArdaRHICommandList::CopyBufferDeviceToHost</h5><pre><code>virtual FArdaRHIStatus CopyBufferDeviceToHost(IArdaRHIBuffer&amp; Source, eastl::vector&lt;uint8_t&gt;&amp; Output, uint64_t SourceOffset = 0, uint64_t Size = ArdaRHIWholeBuffer) = 0</code></pre><p>Records a device-to-host copy. Submission waits for completion and fills Output before ExecuteCommandList returns.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -8519,7 +8520,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhicommandlist-copybufferdevicetohostasync-2cdef6fb" tabindex="-1"><h5>arda::IArdaRHICommandList::CopyBufferDeviceToHostAsync</h5><pre><code>virtual FArdaRHIStatus CopyBufferDeviceToHostAsync( IArdaRHIBuffer&amp; Source, FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = ArdaRHIWholeBuffer) = 0</code></pre><p>Records a device-to-host copy and invokes Completion asynchronously with owned readback bytes after the submitted copy completes.</p>
+<section class="api-entry" id="api-arda-iardarhicommandlist-copybufferdevicetohostasync-2cdef6fb" tabindex="-1"><h5>arda::IArdaRHICommandList::CopyBufferDeviceToHostAsync</h5><pre><code>virtual FArdaRHIStatus CopyBufferDeviceToHostAsync(IArdaRHIBuffer&amp; Source, FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = ArdaRHIWholeBuffer) = 0</code></pre><p>Records a device-to-host copy and invokes Completion asynchronously with owned readback bytes after the submitted copy completes.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -8527,7 +8528,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhicommandlist-copybufferhosttodevice-610205a3" tabindex="-1"><h5>arda::IArdaRHICommandList::CopyBufferHostToDevice</h5><pre><code>virtual FArdaRHIStatus CopyBufferHostToDevice( IArdaRHIBuffer&amp; Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0) = 0</code></pre><p>Records a host-to-device copy and makes submission wait for its GPU completion. The source bytes are copied while this method executes.</p>
+<section class="api-entry" id="api-arda-iardarhicommandlist-copybufferhosttodevice-610205a3" tabindex="-1"><h5>arda::IArdaRHICommandList::CopyBufferHostToDevice</h5><pre><code>virtual FArdaRHIStatus CopyBufferHostToDevice(IArdaRHIBuffer&amp; Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0) = 0</code></pre><p>Records a host-to-device copy and makes submission wait for its GPU completion. The source bytes are copied while this method executes.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -8535,7 +8536,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhicommandlist-copybufferhosttodeviceasync-4871dec4" tabindex="-1"><h5>arda::IArdaRHICommandList::CopyBufferHostToDeviceAsync</h5><pre><code>virtual FArdaRHIStatus CopyBufferHostToDeviceAsync( IArdaRHIBuffer&amp; Destination, const void* SourceData, size_t Size, FArdaRHIHostToDeviceCopyCallback Completion, uint64_t DestinationOffset = 0) = 0</code></pre><p>Records a host-to-device copy whose completion callback is invoked asynchronously after the submitted copy reaches the GPU.</p>
+<section class="api-entry" id="api-arda-iardarhicommandlist-copybufferhosttodeviceasync-4871dec4" tabindex="-1"><h5>arda::IArdaRHICommandList::CopyBufferHostToDeviceAsync</h5><pre><code>virtual FArdaRHIStatus CopyBufferHostToDeviceAsync(IArdaRHIBuffer&amp; Destination, const void* SourceData, size_t Size, FArdaRHIHostToDeviceCopyCallback Completion, uint64_t DestinationOffset = 0) = 0</code></pre><p>Records a host-to-device copy whose completion callback is invoked asynchronously after the submitted copy reaches the GPU.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -9887,7 +9888,7 @@
 <dt>Threading</dt><dd>Table writes and command-list snapshots are serialized by the table mutex; resource data still needs ordinary GPU barriers and queue ordering.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-addshadertableentry-f4126265" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::AddShaderTableEntry</h5><pre><code>virtual FArdaRHIStatus AddShaderTableEntry( const FArdaProviderObjectRef&amp;, const char*, const FArdaProviderObjectRef&amp;, uint32_t)</code></pre><p>Performs add shader table entry through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-addshadertableentry-f4126265" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::AddShaderTableEntry</h5><pre><code>virtual FArdaRHIStatus AddShaderTableEntry(const FArdaProviderObjectRef&amp;, const char*, const FArdaProviderObjectRef&amp;, uint32_t)</code></pre><p>Performs add shader table entry through the public backend and RHI contract.</p>
 <p>Performs add shader table entry through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -9896,7 +9897,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-bindbuffermemory-9d0e7b7a" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::BindBufferMemory</h5><pre><code>virtual FArdaRHIStatus BindBufferMemory( const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, const FArdaProviderObjectRef&amp; Heap, uint64_t Offset) = 0</code></pre><p>Performs bind buffer memory through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-bindbuffermemory-9d0e7b7a" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::BindBufferMemory</h5><pre><code>virtual FArdaRHIStatus BindBufferMemory(const FArdaProviderObjectRef&amp; Buffer, const FArdaRHIBufferDesc&amp; Desc, const FArdaProviderObjectRef&amp; Heap, uint64_t Offset) = 0</code></pre><p>Performs bind buffer memory through the public backend and RHI contract.</p>
 <p>Performs bind buffer memory through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -9905,7 +9906,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-bindtexturememory-d4472ff4" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::BindTextureMemory</h5><pre><code>virtual FArdaRHIStatus BindTextureMemory( const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaProviderObjectRef&amp; Heap, uint64_t Offset) = 0</code></pre><p>Performs bind texture memory through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-bindtexturememory-d4472ff4" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::BindTextureMemory</h5><pre><code>virtual FArdaRHIStatus BindTextureMemory(const FArdaProviderObjectRef&amp; Texture, const FArdaRHITextureDesc&amp; Desc, const FArdaProviderObjectRef&amp; Heap, uint64_t Offset) = 0</code></pre><p>Performs bind texture memory through the public backend and RHI contract.</p>
 <p>Performs bind texture memory through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -9914,7 +9915,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-commitreservedresource-6977a80a" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CommitReservedResource</h5><pre><code>virtual FArdaRHIStatus CommitReservedResource( const FArdaProviderObjectRef&amp;, bool, uint64_t, EArdaRHIQueueType)</code></pre><p>Performs commit reserved resource through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-commitreservedresource-6977a80a" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CommitReservedResource</h5><pre><code>virtual FArdaRHIStatus CommitReservedResource(const FArdaProviderObjectRef&amp;, bool, uint64_t, EArdaRHIQueueType)</code></pre><p>Performs commit reserved resource through the public backend and RHI contract.</p>
 <p>Performs commit reserved resource through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -9923,7 +9924,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-commitshadertable-3f7946ea" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CommitShaderTable</h5><pre><code>virtual FArdaRHIStatus CommitShaderTable( const FArdaProviderObjectRef&amp;)</code></pre><p>Performs commit shader table through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-commitshadertable-3f7946ea" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CommitShaderTable</h5><pre><code>virtual FArdaRHIStatus CommitShaderTable(const FArdaProviderObjectRef&amp;)</code></pre><p>Performs commit shader table through the public backend and RHI contract.</p>
 <p>Performs commit shader table through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -9932,7 +9933,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createaccelstruct-d5e0a515" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateAccelStruct</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateAccelStruct( const FArdaRHIAccelStructDesc&amp;, const FArdaRHIAccelStructMemoryRequirements&amp;)</code></pre><p>Performs create accel struct through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createaccelstruct-d5e0a515" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateAccelStruct</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateAccelStruct(const FArdaRHIAccelStructDesc&amp;, const FArdaRHIAccelStructMemoryRequirements&amp;)</code></pre><p>Performs create accel struct through the public backend and RHI contract.</p>
 <p>Performs create accel struct through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -9941,7 +9942,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createbindinglayout-ee2fec4e" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateBindingLayout</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateBindingLayout( const FArdaRHIBindingLayoutDesc&amp; Desc) = 0</code></pre><p>Performs create binding layout through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createbindinglayout-ee2fec4e" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateBindingLayout</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateBindingLayout(const FArdaRHIBindingLayoutDesc&amp; Desc) = 0</code></pre><p>Performs create binding layout through the public backend and RHI contract.</p>
 <p>Performs create binding layout through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -9950,7 +9951,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createbindingset-cb593977" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateBindingSet</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateBindingSet( const FArdaRHIBindingSetDesc&amp; Desc, const FArdaProviderObjectRef&amp; Layout, const eastl::vector&lt;FArdaProviderBinding&gt;&amp; Bindings) = 0</code></pre><p>Performs create binding set through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createbindingset-cb593977" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateBindingSet</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateBindingSet(const FArdaRHIBindingSetDesc&amp; Desc, const FArdaProviderObjectRef&amp; Layout, const eastl::vector&lt;FArdaProviderBinding&gt;&amp; Bindings) = 0</code></pre><p>Performs create binding set through the public backend and RHI contract.</p>
 <p>Performs create binding set through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -9959,7 +9960,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createbindlesslayout-70c7eb56" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateBindlessLayout</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateBindlessLayout( const FArdaRHIBindlessLayoutDesc&amp;, const FArdaRHIBindingLayoutDesc&amp; NativeDesc)</code></pre><p>Performs create bindless layout through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createbindlesslayout-70c7eb56" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateBindlessLayout</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateBindlessLayout(const FArdaRHIBindlessLayoutDesc&amp;, const FArdaRHIBindingLayoutDesc&amp; NativeDesc)</code></pre><p>Performs create bindless layout through the public backend and RHI contract.</p>
 <p>Performs create bindless layout through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -9968,7 +9969,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createbuffer-71684f5d" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateBuffer</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateBuffer( const FArdaRHIBufferDesc&amp; Desc) = 0</code></pre><p>Performs create buffer through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createbuffer-71684f5d" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateBuffer</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateBuffer(const FArdaRHIBufferDesc&amp; Desc) = 0</code></pre><p>Performs create buffer through the public backend and RHI contract.</p>
 <p>Performs create buffer through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -9977,7 +9978,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createcommandlist-de5f50a0" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateCommandList</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;eastl::unique_ptr&lt;IArdaProviderCommandList&gt;&gt; CreateCommandList(EArdaRHIQueueType Queue, bool bImmediate) = 0</code></pre><p>Performs create command list through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createcommandlist-de5f50a0" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateCommandList</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;eastl::unique_ptr&lt;IArdaProviderCommandList&gt;&gt; CreateCommandList( EArdaRHIQueueType Queue, bool bImmediate) = 0</code></pre><p>Performs create command list through the public backend and RHI contract.</p>
 <p>Performs create command list through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10029,7 +10030,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createheap-db511049" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateHeap</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateHeap( const FArdaRHIHeapDesc&amp; Desc) = 0</code></pre><p>Performs create heap through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createheap-db511049" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateHeap</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateHeap(const FArdaRHIHeapDesc&amp; Desc) = 0</code></pre><p>Performs create heap through the public backend and RHI contract.</p>
 <p>Performs create heap through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10047,7 +10048,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createopacitymicromap-da8da857" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateOpacityMicromap</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateOpacityMicromap( const FArdaRHIOpacityMicromapDesc&amp;, const FArdaProviderObjectRef&amp;, const FArdaProviderObjectRef&amp;)</code></pre><p>Performs create opacity micromap through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createopacitymicromap-da8da857" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateOpacityMicromap</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateOpacityMicromap(const FArdaRHIOpacityMicromapDesc&amp;, const FArdaProviderObjectRef&amp;, const FArdaProviderObjectRef&amp;)</code></pre><p>Performs create opacity micromap through the public backend and RHI contract.</p>
 <p>Performs create opacity micromap through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10065,7 +10066,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createsampler-91f56a5c" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateSampler</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateSampler( const FArdaRHISamplerDesc&amp; Desc) = 0</code></pre><p>Performs create sampler through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createsampler-91f56a5c" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateSampler</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateSampler(const FArdaRHISamplerDesc&amp; Desc) = 0</code></pre><p>Performs create sampler through the public backend and RHI contract.</p>
 <p>Performs create sampler through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10074,7 +10075,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createsamplerfeedbacktexture-4d5e59a4" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateSamplerFeedbackTexture</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateSamplerFeedbackTexture( const FArdaProviderObjectRef&amp;, const FArdaRHITextureDesc&amp;, const FArdaRHISamplerFeedbackTextureDesc&amp;)</code></pre><p>Performs create sampler feedback texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createsamplerfeedbacktexture-4d5e59a4" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateSamplerFeedbackTexture</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateSamplerFeedbackTexture(const FArdaProviderObjectRef&amp;, const FArdaRHITextureDesc&amp;, const FArdaRHISamplerFeedbackTextureDesc&amp;)</code></pre><p>Performs create sampler feedback texture through the public backend and RHI contract.</p>
 <p>Performs create sampler feedback texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10083,7 +10084,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createshader-5580799e" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateShader</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateShader( const FArdaRHIShaderDesc&amp; Desc) = 0</code></pre><p>Performs create shader through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createshader-5580799e" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateShader</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateShader(const FArdaRHIShaderDesc&amp; Desc) = 0</code></pre><p>Performs create shader through the public backend and RHI contract.</p>
 <p>Performs create shader through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10092,7 +10093,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createshadertable-e5393f8f" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateShaderTable</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateShaderTable( const FArdaProviderObjectRef&amp;, const FArdaRHIShaderTableDesc&amp;)</code></pre><p>Performs create shader table through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createshadertable-e5393f8f" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateShaderTable</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateShaderTable(const FArdaProviderObjectRef&amp;, const FArdaRHIShaderTableDesc&amp;)</code></pre><p>Performs create shader table through the public backend and RHI contract.</p>
 <p>Performs create shader table through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10110,7 +10111,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-createtexture-f10acc28" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateTexture</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateTexture( const FArdaRHITextureDesc&amp; Desc) = 0</code></pre><p>Performs create texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-createtexture-f10acc28" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CreateTexture</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult CreateTexture(const FArdaRHITextureDesc&amp; Desc) = 0</code></pre><p>Performs create texture through the public backend and RHI contract.</p>
 <p>Performs create texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10136,7 +10137,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-executecommandlist-d6b83372" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ExecuteCommandList</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;uint64_t&gt; ExecuteCommandList( IArdaProviderCommandList&amp; CommandList, EArdaRHIQueueType Queue) = 0</code></pre><p>Performs execute command list through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-executecommandlist-d6b83372" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ExecuteCommandList</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;uint64_t&gt; ExecuteCommandList(IArdaProviderCommandList&amp; CommandList, EArdaRHIQueueType Queue) = 0</code></pre><p>Performs execute command list through the public backend and RHI contract.</p>
 <p>Performs execute command list through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10154,7 +10155,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-getaccelstructbuildmemoryrequirements-e3dd5007" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::GetAccelStructBuildMemoryRequirements</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHIAccelStructMemoryRequirements&gt; GetAccelStructBuildMemoryRequirements( const FArdaRHIAccelStructDesc&amp;, const eastl::vector&lt;FArdaProviderRayTracingGeometry&gt;&amp;)</code></pre><p>Performs get accel struct build memory requirements through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-getaccelstructbuildmemoryrequirements-e3dd5007" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::GetAccelStructBuildMemoryRequirements</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHIAccelStructMemoryRequirements&gt; GetAccelStructBuildMemoryRequirements(const FArdaRHIAccelStructDesc&amp;, const eastl::vector&lt;FArdaProviderRayTracingGeometry&gt;&amp;)</code></pre><p>Performs get accel struct build memory requirements through the public backend and RHI contract.</p>
 <p>Performs get accel struct build memory requirements through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10172,7 +10173,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-getaccelstructdeviceaddress-0b7e50f8" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::GetAccelStructDeviceAddress</h5><pre><code>[[nodiscard]] virtual uint64_t GetAccelStructDeviceAddress( const FArdaProviderObjectRef&amp;) const noexcept</code></pre><p>Performs get accel struct device address through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-getaccelstructdeviceaddress-0b7e50f8" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::GetAccelStructDeviceAddress</h5><pre><code>[[nodiscard]] virtual uint64_t GetAccelStructDeviceAddress(const FArdaProviderObjectRef&amp;) const noexcept</code></pre><p>Performs get accel struct device address through the public backend and RHI contract.</p>
 <p>Performs get accel struct device address through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10235,7 +10236,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-getopacitymicromapdeviceaddress-c2051c67" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::GetOpacityMicromapDeviceAddress</h5><pre><code>[[nodiscard]] virtual uint64_t GetOpacityMicromapDeviceAddress( const FArdaProviderObjectRef&amp;) const noexcept</code></pre><p>Performs get opacity micromap device address through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-getopacitymicromapdeviceaddress-c2051c67" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::GetOpacityMicromapDeviceAddress</h5><pre><code>[[nodiscard]] virtual uint64_t GetOpacityMicromapDeviceAddress(const FArdaProviderObjectRef&amp;) const noexcept</code></pre><p>Performs get opacity micromap device address through the public backend and RHI contract.</p>
 <p>Performs get opacity micromap device address through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10271,7 +10272,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-gettimerqueryseconds-cbed7fa8" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::GetTimerQuerySeconds</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;float&gt; GetTimerQuerySeconds( const FArdaProviderObjectRef&amp;)</code></pre><p>Returns the elapsed native timestamp interval in seconds.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-gettimerqueryseconds-cbed7fa8" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::GetTimerQuerySeconds</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;float&gt; GetTimerQuerySeconds(const FArdaProviderObjectRef&amp;)</code></pre><p>Returns the elapsed native timestamp interval in seconds.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10279,7 +10280,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-importbuffer-b3317e2d" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ImportBuffer</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult ImportBuffer( const FArdaRHINativeBufferImportDesc&amp; Desc) = 0</code></pre><p>Performs import buffer through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-importbuffer-b3317e2d" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ImportBuffer</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult ImportBuffer(const FArdaRHINativeBufferImportDesc&amp; Desc) = 0</code></pre><p>Performs import buffer through the public backend and RHI contract.</p>
 <p>Performs import buffer through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10288,7 +10289,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-importtexture-9e523ca7" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ImportTexture</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult ImportTexture( const FArdaRHINativeTextureImportDesc&amp; Desc) = 0</code></pre><p>Performs import texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-importtexture-9e523ca7" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ImportTexture</h5><pre><code>[[nodiscard]] virtual FArdaProviderObjectResult ImportTexture(const FArdaRHINativeTextureImportDesc&amp; Desc) = 0</code></pre><p>Performs import texture through the public backend and RHI contract.</p>
 <p>Performs import texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10297,7 +10298,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-mapbuffer-035769d6" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::MapBuffer</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;void*&gt; MapBuffer( const FArdaProviderObjectRef&amp; Buffer, uint64_t Offset, size_t Size) = 0</code></pre><p>Maps a host-visible native buffer range.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-mapbuffer-035769d6" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::MapBuffer</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;void*&gt; MapBuffer(const FArdaProviderObjectRef&amp; Buffer, uint64_t Offset, size_t Size) = 0</code></pre><p>Maps a host-visible native buffer range.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10314,7 +10315,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-polleventquery-963c049f" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::PollEventQuery</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;bool&gt; PollEventQuery( const FArdaProviderObjectRef&amp;)</code></pre><p>Tests whether the native event marker has completed.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-polleventquery-963c049f" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::PollEventQuery</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;bool&gt; PollEventQuery(const FArdaProviderObjectRef&amp;)</code></pre><p>Tests whether the native event marker has completed.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10322,7 +10323,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-pollgpufence-655e8b4a" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::PollGpuFence</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;bool&gt; PollGpuFence( const FArdaProviderObjectRef&amp;)</code></pre><p>Tests whether the native GPU fence has completed.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-pollgpufence-655e8b4a" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::PollGpuFence</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;bool&gt; PollGpuFence(const FArdaProviderObjectRef&amp;)</code></pre><p>Tests whether the native GPU fence has completed.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10330,7 +10331,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-polltimerquery-625263a7" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::PollTimerQuery</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;bool&gt; PollTimerQuery( const FArdaProviderObjectRef&amp;)</code></pre><p>Tests whether both native timer timestamps are available.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-polltimerquery-625263a7" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::PollTimerQuery</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;bool&gt; PollTimerQuery(const FArdaProviderObjectRef&amp;)</code></pre><p>Tests whether both native timer timestamps are available.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10347,7 +10348,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-queuewait-b756438c" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::QueueWait</h5><pre><code>virtual FArdaRHIStatus QueueWait( EArdaRHIQueueType WaitQueue, EArdaRHIQueueType ExecutionQueue, uint64_t Submission)</code></pre><p>Adds a GPU-side dependency on a previously signaled submission.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-queuewait-b756438c" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::QueueWait</h5><pre><code>virtual FArdaRHIStatus QueueWait(EArdaRHIQueueType WaitQueue, EArdaRHIQueueType ExecutionQueue, uint64_t Submission)</code></pre><p>Adds a GPU-side dependency on a previously signaled submission.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10355,7 +10356,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-reseteventquery-f62057d8" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ResetEventQuery</h5><pre><code>virtual FArdaRHIStatus ResetEventQuery( const FArdaProviderObjectRef&amp;)</code></pre><p>Rearms a completed native event query.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-reseteventquery-f62057d8" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ResetEventQuery</h5><pre><code>virtual FArdaRHIStatus ResetEventQuery(const FArdaProviderObjectRef&amp;)</code></pre><p>Rearms a completed native event query.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10363,7 +10364,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-resetgpufence-d9f663be" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ResetGpuFence</h5><pre><code>virtual FArdaRHIStatus ResetGpuFence( const FArdaProviderObjectRef&amp;)</code></pre><p>Rearms a completed native GPU fence.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-resetgpufence-d9f663be" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ResetGpuFence</h5><pre><code>virtual FArdaRHIStatus ResetGpuFence(const FArdaProviderObjectRef&amp;)</code></pre><p>Rearms a completed native GPU fence.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10371,7 +10372,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-resettimerquery-94d2d31f" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ResetTimerQuery</h5><pre><code>virtual FArdaRHIStatus ResetTimerQuery( const FArdaProviderObjectRef&amp;)</code></pre><p>Rearms a completed native timer query.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-resettimerquery-94d2d31f" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::ResetTimerQuery</h5><pre><code>virtual FArdaRHIStatus ResetTimerQuery(const FArdaProviderObjectRef&amp;)</code></pre><p>Rearms a completed native timer query.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10388,7 +10389,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-setshadertableraygeneration-60d052cd" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::SetShaderTableRayGeneration</h5><pre><code>virtual FArdaRHIStatus SetShaderTableRayGeneration( const FArdaProviderObjectRef&amp;, const char*, const FArdaProviderObjectRef&amp;)</code></pre><p>Performs set shader table ray generation through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-setshadertableraygeneration-60d052cd" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::SetShaderTableRayGeneration</h5><pre><code>virtual FArdaRHIStatus SetShaderTableRayGeneration(const FArdaProviderObjectRef&amp;, const char*, const FArdaProviderObjectRef&amp;)</code></pre><p>Performs set shader table ray generation through the public backend and RHI contract.</p>
 <p>Performs set shader table ray generation through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10397,7 +10398,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-setshadertablerecord-f3474709" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::SetShaderTableRecord</h5><pre><code>virtual FArdaRHIStatus SetShaderTableRecord( const FArdaProviderObjectRef&amp;, const FArdaRHIShaderTableRecordDesc&amp;, const FArdaProviderObjectRef&amp;, const FArdaProviderObjectRef&amp;)</code></pre><p>Performs set shader table record through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-setshadertablerecord-f3474709" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::SetShaderTableRecord</h5><pre><code>virtual FArdaRHIStatus SetShaderTableRecord(const FArdaProviderObjectRef&amp;, const FArdaRHIShaderTableRecordDesc&amp;, const FArdaProviderObjectRef&amp;, const FArdaProviderObjectRef&amp;)</code></pre><p>Performs set shader table record through the public backend and RHI contract.</p>
 <p>Performs set shader table record through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10415,7 +10416,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-signaleventquery-abcaf536" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::SignalEventQuery</h5><pre><code>virtual FArdaRHIStatus SignalEventQuery( const FArdaProviderObjectRef&amp;, EArdaRHIQueueType)</code></pre><p>Inserts an event marker after all prior work on the queue.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-signaleventquery-abcaf536" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::SignalEventQuery</h5><pre><code>virtual FArdaRHIStatus SignalEventQuery(const FArdaProviderObjectRef&amp;, EArdaRHIQueueType)</code></pre><p>Inserts an event marker after all prior work on the queue.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10423,7 +10424,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-signalgpufence-155e105d" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::SignalGpuFence</h5><pre><code>virtual FArdaRHIStatus SignalGpuFence( const FArdaProviderObjectRef&amp;, EArdaRHIQueueType)</code></pre><p>Inserts a native fence signal after all prior work on the queue.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-signalgpufence-155e105d" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::SignalGpuFence</h5><pre><code>virtual FArdaRHIStatus SignalGpuFence(const FArdaProviderObjectRef&amp;, EArdaRHIQueueType)</code></pre><p>Inserts a native fence signal after all prior work on the queue.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10439,7 +10440,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-unmapstagingtexture-5961467b" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::UnmapStagingTexture</h5><pre><code>virtual FArdaRHIStatus UnmapStagingTexture( const FArdaProviderObjectRef&amp; Texture) = 0</code></pre><p>Performs unmap staging texture through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-unmapstagingtexture-5961467b" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::UnmapStagingTexture</h5><pre><code>virtual FArdaRHIStatus UnmapStagingTexture(const FArdaProviderObjectRef&amp; Texture) = 0</code></pre><p>Performs unmap staging texture through the public backend and RHI contract.</p>
 <p>Performs unmap staging texture through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10448,7 +10449,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-updatebuffertilemappings-b37d4166" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::UpdateBufferTileMappings</h5><pre><code>virtual FArdaRHIStatus UpdateBufferTileMappings( const FArdaProviderObjectRef&amp;, const eastl::vector&lt;FArdaProviderBufferTileMapping&gt;&amp;, EArdaRHIQueueType)</code></pre><p>Performs update buffer tile mappings through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-updatebuffertilemappings-b37d4166" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::UpdateBufferTileMappings</h5><pre><code>virtual FArdaRHIStatus UpdateBufferTileMappings(const FArdaProviderObjectRef&amp;, const eastl::vector&lt;FArdaProviderBufferTileMapping&gt;&amp;, EArdaRHIQueueType)</code></pre><p>Performs update buffer tile mappings through the public backend and RHI contract.</p>
 <p>Performs update buffer tile mappings through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10457,7 +10458,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-updatetexturetilemappings-39576639" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::UpdateTextureTileMappings</h5><pre><code>virtual FArdaRHIStatus UpdateTextureTileMappings( const FArdaProviderObjectRef&amp;, const eastl::vector&lt;FArdaProviderTextureTileMapping&gt;&amp;, EArdaRHIQueueType)</code></pre><p>Performs update texture tile mappings through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-updatetexturetilemappings-39576639" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::UpdateTextureTileMappings</h5><pre><code>virtual FArdaRHIStatus UpdateTextureTileMappings(const FArdaProviderObjectRef&amp;, const eastl::vector&lt;FArdaProviderTextureTileMapping&gt;&amp;, EArdaRHIQueueType)</code></pre><p>Performs update texture tile mappings through the public backend and RHI contract.</p>
 <p>Performs update texture tile mappings through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -10466,7 +10467,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-waiteventquery-af7859f5" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::WaitEventQuery</h5><pre><code>virtual FArdaRHIStatus WaitEventQuery( const FArdaProviderObjectRef&amp;)</code></pre><p>Waits for the native event marker without idling unrelated queues.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-waiteventquery-af7859f5" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::WaitEventQuery</h5><pre><code>virtual FArdaRHIStatus WaitEventQuery(const FArdaProviderObjectRef&amp;)</code></pre><p>Waits for the native event marker without idling unrelated queues.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -10491,7 +10492,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhiproviderdevice-waitgpufence-098c8c8c" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::WaitGpuFence</h5><pre><code>virtual FArdaRHIStatus WaitGpuFence( const FArdaProviderObjectRef&amp;)</code></pre><p>Waits for the native GPU fence without idling unrelated queues.</p>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-waitgpufence-098c8c8c" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::WaitGpuFence</h5><pre><code>virtual FArdaRHIStatus WaitGpuFence(const FArdaProviderObjectRef&amp;)</code></pre><p>Waits for the native GPU fence without idling unrelated queues.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -11168,6 +11169,15 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIResources.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardarhiinputlayoutdesc-operator-c68714eb" tabindex="-1"><h5>arda::FArdaRHIInputLayoutDesc::operator==</h5><pre><code>bool operator==(const FArdaRHIInputLayoutDesc&amp; O) const noexcept</code></pre><p>Compares two values for equality.</p>
+<dl>
+<dt>O</dt><dd>The o.</dd>
+<dt>Returns</dt><dd>True when the condition is satisfied; otherwise false.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIResources.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-fardarhimeshletpipelinedesc-operator-e126215f" tabindex="-1"><h5>arda::FArdaRHIMeshletPipelineDesc::operator==</h5><pre><code>bool operator==(const FArdaRHIMeshletPipelineDesc&amp; O) const noexcept</code></pre><p>Compares two values for equality.</p>
 <dl>
 <dt>O</dt><dd>The o.</dd>
@@ -11833,7 +11843,7 @@
 <dt>Ownership</dt><dd>Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHIResources.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-hashvalue-c2ca1808" tabindex="-1"><h5>arda::HashValue</h5><pre><code>[[nodiscard]] size_t HashValue( const FArdaRHIWorkGraphPipelineDesc&amp; Value) noexcept</code></pre><p>Hashes the semantic work-graph pipeline descriptor.</p>
+<section class="api-entry" id="api-arda-hashvalue-c2ca1808" tabindex="-1"><h5>arda::HashValue</h5><pre><code>[[nodiscard]] size_t HashValue(const FArdaRHIWorkGraphPipelineDesc&amp; Value) noexcept</code></pre><p>Hashes the semantic work-graph pipeline descriptor.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -11894,7 +11904,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHICuda.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-validateardacudakernels-a5864f6f" tabindex="-1"><h5>arda::ValidateArdaCudaKernels</h5><pre><code>[[nodiscard]] FArdaRHIStatus ValidateArdaCudaKernels( const eastl::vector&lt;FArdaCudaKernel&gt;&amp; Kernels, size_t BindingCount, const FArdaCudaCapabilities&amp; Capabilities)</code></pre><p>Checks code, dimensions, shared memory and argument references; does not prove kernel memory safety.</p>
+<section class="api-entry" id="api-arda-validateardacudakernels-a5864f6f" tabindex="-1"><h5>arda::ValidateArdaCudaKernels</h5><pre><code>[[nodiscard]] FArdaRHIStatus ValidateArdaCudaKernels(const eastl::vector&lt;FArdaCudaKernel&gt;&amp; Kernels, size_t BindingCount, const FArdaCudaCapabilities&amp; Capabilities)</code></pre><p>Checks code, dimensions, shared memory and argument references; does not prove kernel memory safety.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -16594,7 +16604,7 @@
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>function</h4>
-<section class="api-entry" id="api-arda-getardarhiformatelementsize-e0b7ac06" tabindex="-1"><h5>arda::GetArdaRHIFormatElementSize</h5><pre><code>[[nodiscard]] uint32_t GetArdaRHIFormatElementSize( EArdaRHIFormat Format) noexcept</code></pre><p>Performs get arda r h i format element size through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-getardarhiformatelementsize-e0b7ac06" tabindex="-1"><h5>arda::GetArdaRHIFormatElementSize</h5><pre><code>[[nodiscard]] uint32_t GetArdaRHIFormatElementSize(EArdaRHIFormat Format) noexcept</code></pre><p>Performs get arda r h i format element size through the public backend and RHI contract.</p>
 <p>Performs get arda r h i format element size through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>The byte size of one uncompressed format element, or zero for compressed/unknown formats.</dd>
@@ -16611,7 +16621,7 @@
 <dt>Ownership</dt><dd>Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-getardarhiformatplanecount-b18155e4" tabindex="-1"><h5>arda::GetArdaRHIFormatPlaneCount</h5><pre><code>[[nodiscard]] uint32_t GetArdaRHIFormatPlaneCount( EArdaRHIFormat Format) noexcept</code></pre><p>Performs get arda r h i format plane count through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-getardarhiformatplanecount-b18155e4" tabindex="-1"><h5>arda::GetArdaRHIFormatPlaneCount</h5><pre><code>[[nodiscard]] uint32_t GetArdaRHIFormatPlaneCount(EArdaRHIFormat Format) noexcept</code></pre><p>Performs get arda r h i format plane count through the public backend and RHI contract.</p>
 <p>Performs get arda r h i format plane count through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>The number of independently addressable format planes.</dd>
@@ -16620,7 +16630,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-getardarhiqueueindex-1c30667b" tabindex="-1"><h5>arda::GetArdaRHIQueueIndex</h5><pre><code>[[nodiscard]] inline constexpr size_t GetArdaRHIQueueIndex( EArdaRHIQueueType Queue) noexcept</code></pre><p>Performs get arda r h i queue index through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-getardarhiqueueindex-1c30667b" tabindex="-1"><h5>arda::GetArdaRHIQueueIndex</h5><pre><code>[[nodiscard]] inline constexpr size_t GetArdaRHIQueueIndex(EArdaRHIQueueType Queue) noexcept</code></pre><p>Performs get arda r h i queue index through the public backend and RHI contract.</p>
 <p>Performs get arda r h i queue index through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>The canonical array index for a queue type.</dd>
@@ -16629,7 +16639,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-getardarhitexturemipextent-5682a136" tabindex="-1"><h5>arda::GetArdaRHITextureMipExtent</h5><pre><code>[[nodiscard]] uint32_t GetArdaRHITextureMipExtent( uint32_t BaseExtent, uint32_t MipLevel) noexcept</code></pre><p>Performs get arda r h i texture mip extent through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-getardarhitexturemipextent-5682a136" tabindex="-1"><h5>arda::GetArdaRHITextureMipExtent</h5><pre><code>[[nodiscard]] uint32_t GetArdaRHITextureMipExtent(uint32_t BaseExtent, uint32_t MipLevel) noexcept</code></pre><p>Performs get arda r h i texture mip extent through the public backend and RHI contract.</p>
 <p>Performs get arda r h i texture mip extent through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>One dimension of a texture at the requested mip level.</dd>
@@ -16807,7 +16817,7 @@
 <dt>Ownership</dt><dd>Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-isardarhiformatknown-63eb8305" tabindex="-1"><h5>arda::IsArdaRHIFormatKnown</h5><pre><code>[[nodiscard]] inline constexpr bool IsArdaRHIFormatKnown( EArdaRHIFormat Format) noexcept</code></pre><p>Performs is arda r h i format known through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-isardarhiformatknown-63eb8305" tabindex="-1"><h5>arda::IsArdaRHIFormatKnown</h5><pre><code>[[nodiscard]] inline constexpr bool IsArdaRHIFormatKnown(EArdaRHIFormat Format) noexcept</code></pre><p>Performs is arda r h i format known through the public backend and RHI contract.</p>
 <p>Performs is arda r h i format known through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>True for a usable format value rather than a sentinel.</dd>
@@ -16816,7 +16826,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-isardarhiraytracingshaderstage-ad69a256" tabindex="-1"><h5>arda::IsArdaRHIRayTracingShaderStage</h5><pre><code>[[nodiscard]] inline constexpr bool IsArdaRHIRayTracingShaderStage( EArdaRHIShaderStage Stage) noexcept</code></pre><p>Performs is arda r h i ray tracing shader stage through the public backend and RHI contract.</p>
+<section class="api-entry" id="api-arda-isardarhiraytracingshaderstage-ad69a256" tabindex="-1"><h5>arda::IsArdaRHIRayTracingShaderStage</h5><pre><code>[[nodiscard]] inline constexpr bool IsArdaRHIRayTracingShaderStage(EArdaRHIShaderStage Stage) noexcept</code></pre><p>Performs is arda r h i ray tracing shader stage through the public backend and RHI contract.</p>
 <p>Performs is arda r h i ray tracing shader stage through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>True when Stage names exactly one ray-tracing shader stage.</dd>
@@ -16825,7 +16835,7 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-resolveardarhitexturecopyextent-6c622bd2" tabindex="-1"><h5>arda::ResolveArdaRHITextureCopyExtent</h5><pre><code>[[nodiscard]] FArdaRHIStatus ResolveArdaRHITextureCopyExtent( const FArdaRHITextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaRHITextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice, FArdaRHITextureCopyExtent&amp; OutExtent) noexcept</code></pre><p>Validates matching texture slices and resolves sentinel source extents.</p>
+<section class="api-entry" id="api-arda-resolveardarhitexturecopyextent-6c622bd2" tabindex="-1"><h5>arda::ResolveArdaRHITextureCopyExtent</h5><pre><code>[[nodiscard]] FArdaRHIStatus ResolveArdaRHITextureCopyExtent(const FArdaRHITextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaRHITextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice, FArdaRHITextureCopyExtent&amp; OutExtent) noexcept</code></pre><p>Validates matching texture slices and resolves sentinel source extents.</p>
 <dl>
 <dt>Returns</dt><dd>Success and a concrete non-empty copy extent, or a validation error.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -16887,7 +16897,7 @@
 <dt>Errors</dt><dd>Failure is returned as EArdaRHIResult and diagnostic text; callers must inspect the status.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-validateardarhitextureresolve-32075b12" tabindex="-1"><h5>arda::ValidateArdaRHITextureResolve</h5><pre><code>[[nodiscard]] FArdaRHIStatus ValidateArdaRHITextureResolve( const FArdaRHITextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaRHITextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice, FArdaRHITextureCopyExtent&amp; OutExtent) noexcept</code></pre><p>Validates a whole-subresource multisample resolve and returns its extent. Slice width, height, and depth are ignored because resolves are not regions.</p>
+<section class="api-entry" id="api-arda-validateardarhitextureresolve-32075b12" tabindex="-1"><h5>arda::ValidateArdaRHITextureResolve</h5><pre><code>[[nodiscard]] FArdaRHIStatus ValidateArdaRHITextureResolve(const FArdaRHITextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaRHITextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice, FArdaRHITextureCopyExtent&amp; OutExtent) noexcept</code></pre><p>Validates a whole-subresource multisample resolve and returns its extent. Slice width, height, and depth are ignored because resolves are not regions.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -18637,7 +18647,7 @@
 <dt>Threading</dt><dd>Device calls and command-list recording follow the synchronization contract of the owning interface.</dd>
 <dt>Source</dt><dd>Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-fardarhicapabilities-evaluate-8ea63efe" tabindex="-1"><h5>arda::FArdaRHICapabilities::Evaluate</h5><pre><code>[[nodiscard]] FArdaRHIFeatureSupportReport Evaluate( const FArdaRHIFeatureRequirements&amp; R) const</code></pre><p>Evaluates every requested ability and returns all failures.</p>
+<section class="api-entry" id="api-arda-fardarhicapabilities-evaluate-8ea63efe" tabindex="-1"><h5>arda::FArdaRHICapabilities::Evaluate</h5><pre><code>[[nodiscard]] FArdaRHIFeatureSupportReport Evaluate(const FArdaRHIFeatureRequirements&amp; R) const</code></pre><p>Evaluates every requested ability and returns all failures.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>

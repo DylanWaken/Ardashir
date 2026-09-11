@@ -9924,7 +9924,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda"
     ],
-    "sourceLine": 32
+    "sourceLine": 31
   },
   {
     "id": "api-arda-fardgexecuteoptions-mbmergerasterpasses-03770049",
@@ -9966,7 +9966,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGExecutionResult"
     ],
-    "sourceLine": 153
+    "sourceLine": 149
   },
   {
     "id": "api-arda-fardgexecutionresult-mqueuedependencies-d53bd245",
@@ -9987,7 +9987,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGExecutionResult"
     ],
-    "sourceLine": 162
+    "sourceLine": 158
   },
   {
     "id": "api-arda-fardgexecutionresult-mtransientheapbytes-2b5acefa",
@@ -10008,7 +10008,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGExecutionResult"
     ],
-    "sourceLine": 183
+    "sourceLine": 179
   },
   {
     "id": "api-arda-fardgexecutionresult-mtransientaliasedbytes-d7ce615f",
@@ -10029,7 +10029,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGExecutionResult"
     ],
-    "sourceLine": 186
+    "sourceLine": 182
   },
   {
     "id": "api-arda-fardgexecutionresult-maliasingbarriercount-ddfef5f4",
@@ -10050,7 +10050,28 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGExecutionResult"
     ],
-    "sourceLine": 189
+    "sourceLine": 185
+  },
+  {
+    "id": "api-arda-fardgexecutionresult-mlastsubmittedinstances-5cc82c87",
+    "name": "mLastSubmittedInstances",
+    "qualifiedName": "arda::FARDGExecutionResult::mLastSubmittedInstances",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "eastl::array<uint64_t, arda::ArdaRHIQueueTypeCount> mLastSubmittedInstances{}",
+    "summary": "Last submitted RHI instance for graphics, compute, and copy queues.",
+    "details": "Last submitted RHI instance for graphics, compute, and copy queues.",
+    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FARDGExecutionResult"
+    ],
+    "sourceLine": 200
   },
   {
     "id": "api-arda-fardgraydispatcharguments-3fcc4a56",
@@ -10071,7 +10092,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda"
     ],
-    "sourceLine": 222
+    "sourceLine": 217
   },
   {
     "id": "api-arda-fardgraydispatcharguments-mwidth-12eabf58",
@@ -10092,7 +10113,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGRayDispatchArguments"
     ],
-    "sourceLine": 225
+    "sourceLine": 220
   },
   {
     "id": "api-arda-fardgraydispatcharguments-mheight-e3ccd19f",
@@ -10113,7 +10134,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGRayDispatchArguments"
     ],
-    "sourceLine": 228
+    "sourceLine": 223
   },
   {
     "id": "api-arda-fardgraydispatcharguments-mdepth-6d0805d3",
@@ -10134,7 +10155,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGRayDispatchArguments"
     ],
-    "sourceLine": 231
+    "sourceLine": 226
   },
   {
     "id": "api-arda-fardgaccelstructextraction-1e15fbf3",
@@ -10155,7 +10176,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda"
     ],
-    "sourceLine": 261
+    "sourceLine": 256
   },
   {
     "id": "api-arda-fardgaccelstructextraction-maccelstruct-d8196956",
@@ -10176,7 +10197,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGAccelStructExtraction"
     ],
-    "sourceLine": 264
+    "sourceLine": 259
   },
   {
     "id": "api-arda-fardgaccelstructextraction-moutput-502872ca",
@@ -10197,7 +10218,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGAccelStructExtraction"
     ],
-    "sourceLine": 267
+    "sourceLine": 262
   },
   {
     "id": "api-arda-fardgaccelstructextraction-mfinalstate-957e1d1b",
@@ -10218,7 +10239,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGAccelStructExtraction"
     ],
-    "sourceLine": 270
+    "sourceLine": 265
   },
   {
     "id": "api-arda-fardgbuilder-operator-7fcf1667",
@@ -10239,7 +10260,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 313
+    "sourceLine": 307
   },
   {
     "id": "api-arda-fardgbuilder-operator-e2f74543",
@@ -10260,133 +10281,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 315
-  },
-  {
-    "id": "api-arda-fardgbuilder-createsrv-7e38b601",
-    "name": "CreateSRV",
-    "qualifiedName": "arda::FARDGBuilder::CreateSRV",
-    "kind": "method",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGTextureSRVRef CreateSRV( eastl::string Name, FARDGTextureViewDesc Desc)",
-    "summary": "UE-style alias for creating a texture SRV.",
-    "details": "UE-style alias for creating a texture SRV.",
-    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FARDGBuilder"
-    ],
-    "sourceLine": 379
-  },
-  {
-    "id": "api-arda-fardgbuilder-createsrv-9e49dd5b",
-    "name": "CreateSRV",
-    "qualifiedName": "arda::FARDGBuilder::CreateSRV",
-    "kind": "method",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGBufferSRVRef CreateSRV( eastl::string Name, FARDGBufferViewDesc Desc)",
-    "summary": "UE-style alias for creating a buffer SRV.",
-    "details": "UE-style alias for creating a buffer SRV.",
-    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FARDGBuilder"
-    ],
-    "sourceLine": 387
-  },
-  {
-    "id": "api-arda-fardgbuilder-createuav-c2e0d938",
-    "name": "CreateUAV",
-    "qualifiedName": "arda::FARDGBuilder::CreateUAV",
-    "kind": "method",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGTextureUAVRef CreateUAV( eastl::string Name, FARDGTextureViewDesc Desc)",
-    "summary": "UE-style alias for creating a texture UAV.",
-    "details": "UE-style alias for creating a texture UAV.",
-    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FARDGBuilder"
-    ],
-    "sourceLine": 395
-  },
-  {
-    "id": "api-arda-fardgbuilder-createuav-0e363768",
-    "name": "CreateUAV",
-    "qualifiedName": "arda::FARDGBuilder::CreateUAV",
-    "kind": "method",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGBufferUAVRef CreateUAV( eastl::string Name, FARDGBufferViewDesc Desc)",
-    "summary": "UE-style alias for creating a buffer UAV.",
-    "details": "UE-style alias for creating a buffer UAV.",
-    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FARDGBuilder"
-    ],
-    "sourceLine": 403
-  },
-  {
-    "id": "api-arda-fardgbuilder-queuetextureextraction-e46c2e74",
-    "name": "QueueTextureExtraction",
-    "qualifiedName": "arda::FARDGBuilder::QueueTextureExtraction",
-    "kind": "method",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "void QueueTextureExtraction( FARDGTextureRef Texture, arda::FArdaRHITextureRef& Output, arda::EArdaRHIResourceState FinalState)",
-    "summary": "Declares texture extraction using an RHI reference.",
-    "details": "Declares texture extraction using an RHI reference.",
-    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FARDGBuilder"
-    ],
-    "sourceLine": 484
-  },
-  {
-    "id": "api-arda-fardgbuilder-queuebufferextraction-a299895b",
-    "name": "QueueBufferExtraction",
-    "qualifiedName": "arda::FARDGBuilder::QueueBufferExtraction",
-    "kind": "method",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "void QueueBufferExtraction( FARDGBufferRef Buffer, arda::FArdaRHIBufferRef& Output, arda::EArdaRHIResourceState FinalState)",
-    "summary": "Declares buffer extraction using an RHI reference.",
-    "details": "Declares buffer extraction using an RHI reference.",
-    "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FARDGBuilder"
-    ],
-    "sourceLine": 499
+    "sourceLine": 309
   },
   {
     "id": "api-arda-fardgbuilder-queueaccelstructextraction-b5d2512b",
@@ -10395,7 +10290,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "void QueueAccelStructExtraction( FARDGAccelStructRef AccelStruct, arda::FArdaRHIAccelStructRef* Output, arda::EArdaRHIResourceState FinalState)",
+    "signature": "void QueueAccelStructExtraction(FARDGAccelStructRef AccelStruct, arda::FArdaRHIAccelStructRef* Output, arda::EArdaRHIResourceState FinalState)",
     "summary": "Declares that a logical acceleration structure survives graph completion.",
     "details": "Declares that a logical acceleration structure survives graph completion.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10407,7 +10302,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 508
+    "sourceLine": 457
   },
   {
     "id": "api-arda-fardgbuilder-queueaccelstructextraction-1f240868",
@@ -10416,7 +10311,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "void QueueAccelStructExtraction( FARDGAccelStructRef AccelStruct, arda::FArdaRHIAccelStructRef& Output, arda::EArdaRHIResourceState FinalState)",
+    "signature": "void QueueAccelStructExtraction(FARDGAccelStructRef AccelStruct, arda::FArdaRHIAccelStructRef& Output, arda::EArdaRHIResourceState FinalState)",
     "summary": "Declares acceleration-structure extraction using an RHI reference.",
     "details": "Declares acceleration-structure extraction using an RHI reference.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10428,7 +10323,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 514
+    "sourceLine": 462
   },
   {
     "id": "api-arda-fardgbuilder-addhosttodevicecopypass-f7e567a5",
@@ -10437,7 +10332,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPass( FARDGBufferRef Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0, eastl::string Name = \"HostToDeviceCopy\")",
+    "signature": "[[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPass(FARDGBufferRef Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0, eastl::string Name = \"HostToDeviceCopy\")",
     "summary": "Adds a blocking host-to-device buffer copy pass. SourceData is copied into graph-owned storage immediately, matching Unreal's QueueBufferUpload ownership behavior.",
     "details": "Adds a blocking host-to-device buffer copy pass. SourceData is copied into graph-owned storage immediately, matching Unreal's QueueBufferUpload ownership behavior.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10449,7 +10344,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 528
+    "sourceLine": 474
   },
   {
     "id": "api-arda-fardgbuilder-addhosttodevicecopypassasync-37db3a10",
@@ -10458,7 +10353,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPassAsync( FARDGBufferRef Destination, const void* SourceData, size_t Size, arda::FArdaRHIHostToDeviceCopyCallback Completion, uint64_t DestinationOffset = 0, eastl::string Name = \"HostToDeviceCopyAsync\")",
+    "signature": "[[nodiscard]] FARDGPassHandle AddHostToDeviceCopyPassAsync(FARDGBufferRef Destination, const void* SourceData, size_t Size, arda::FArdaRHIHostToDeviceCopyCallback Completion, uint64_t DestinationOffset = 0, eastl::string Name = \"HostToDeviceCopyAsync\")",
     "summary": "Adds a nonblocking host-to-device copy pass with a GPU callback.",
     "details": "Adds a nonblocking host-to-device copy pass with a GPU callback.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10470,7 +10365,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 536
+    "sourceLine": 481
   },
   {
     "id": "api-arda-fardgbuilder-adddevicetohostcopypass-10f74a50",
@@ -10479,7 +10374,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPass( FARDGBufferRef Source, eastl::vector<uint8_t>& Output, uint64_t SourceOffset = 0, uint64_t Size = arda::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopy\")",
+    "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPass(FARDGBufferRef Source, eastl::vector<uint8_t>& Output, uint64_t SourceOffset = 0, uint64_t Size = arda::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopy\")",
     "summary": "Adds a blocking device-to-host buffer readback pass.",
     "details": "Adds a blocking device-to-host buffer readback pass.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10491,7 +10386,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 545
+    "sourceLine": 489
   },
   {
     "id": "api-arda-fardgbuilder-adddevicetohostcopypassasync-90f05d35",
@@ -10500,7 +10395,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPassAsync( FARDGBufferRef Source, arda::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = arda::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopyAsync\")",
+    "signature": "[[nodiscard]] FARDGPassHandle AddDeviceToHostCopyPassAsync(FARDGBufferRef Source, arda::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = arda::ArdaRHIWholeBuffer, eastl::string Name = \"DeviceToHostCopyAsync\")",
     "summary": "Adds a nonblocking device-to-host readback pass with owned bytes.",
     "details": "Adds a nonblocking device-to-host readback pass with owned bytes.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10512,7 +10407,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 553
+    "sourceLine": 496
   },
   {
     "id": "api-arda-fardgbuilder-queuebufferupload-6b01ad2a",
@@ -10521,7 +10416,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGPassHandle QueueBufferUpload( FARDGBufferRef Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0, eastl::string Name = \"QueueBufferUpload\")",
+    "signature": "[[nodiscard]] FARDGPassHandle QueueBufferUpload(FARDGBufferRef Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0, eastl::string Name = \"QueueBufferUpload\")",
     "summary": "Unreal-style alias for a graph-owned host buffer upload.",
     "details": "Unreal-style alias for a graph-owned host buffer upload.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10533,7 +10428,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 561
+    "sourceLine": 503
   },
   {
     "id": "api-arda-fardgbuilder-addenqueuecopypass-7c794a98",
@@ -10542,7 +10437,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FARDGPassHandle AddEnqueueCopyPass( FARDGBufferRef Source, arda::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = arda::ArdaRHIWholeBuffer, eastl::string Name = \"EnqueueBufferReadback\")",
+    "signature": "[[nodiscard]] FARDGPassHandle AddEnqueueCopyPass(FARDGBufferRef Source, arda::FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = arda::ArdaRHIWholeBuffer, eastl::string Name = \"EnqueueBufferReadback\")",
     "summary": "Unreal-style alias for an asynchronous GPU buffer readback pass.",
     "details": "Unreal-style alias for an asynchronous GPU buffer readback pass.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10554,7 +10449,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 574
+    "sourceLine": 513
   },
   {
     "id": "api-arda-fardgbuilder-addraydispatchpass-5cf34761",
@@ -10563,7 +10458,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template <typename ParameterType, typename ExecuteType> [[nodiscard]] FARDGPassHandle AddRayDispatchPass( eastl::string Name, const ParameterType* Parameters, FARDGRayDispatchArguments Dispatch, ExecuteType&& Setup, EARDGPassFlags Flags = EARDGPassFlags::Compute)",
+    "signature": "template <typename ParameterType, typename ExecuteType> [[nodiscard]] FARDGPassHandle AddRayDispatchPass(eastl::string Name, const ParameterType* Parameters, FARDGRayDispatchArguments Dispatch, ExecuteType&& Setup, EARDGPassFlags Flags = EARDGPassFlags::Compute)",
     "summary": "Registers a typed hardware ray-tracing pass that dispatches after setup.",
     "details": "Registers a typed hardware ray-tracing pass that dispatches after setup.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
@@ -10575,7 +10470,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 685
+    "sourceLine": 602
   },
   {
     "id": "api-arda-fardgbuilder-getaccelstructextractions-43069a4b",
@@ -10596,7 +10491,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGBuilder"
     ],
-    "sourceLine": 804
+    "sourceLine": 705
   },
   {
     "id": "api-arda-fardgcudaparameterdomain-dbabaee2",
@@ -10626,7 +10521,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "alias",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, EArdaComputeAccess Access> using Surface = FARDGTextureAccess",
+    "signature": "template <class T, EArdaComputeAccess Access> using Surface = FARDGTextureAccess",
     "summary": "Defines surface in the public render-graph contract.",
     "details": "Defines surface in the public render-graph contract. The signature is generated from the current public header.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -10638,7 +10533,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGCudaParameterDomain"
     ],
-    "sourceLine": 13
+    "sourceLine": 16
   },
   {
     "id": "api-arda-fardacudagraphhelpers-30543169",
@@ -10659,7 +10554,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda"
     ],
-    "sourceLine": 15
+    "sourceLine": 19
   },
   {
     "id": "api-arda-fardacudagraphhelpers-metadatavisitor-1bc14df0",
@@ -10680,7 +10575,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FArdaCudaGraphHelpers"
     ],
-    "sourceLine": 17
+    "sourceLine": 21
   },
   {
     "id": "api-arda-metadatavisitor-mmembers-9ef633df",
@@ -10701,7 +10596,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::MetadataVisitor"
     ],
-    "sourceLine": 19
+    "sourceLine": 23
   },
   {
     "id": "api-arda-metadatavisitor-value-29286452",
@@ -10710,7 +10605,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T> void Value(const char* Name, size_t Offset)",
+    "signature": "template <class T> void Value(const char* Name, size_t Offset)",
     "summary": "Performs value through the public render-graph contract.",
     "details": "Performs value through the public render-graph contract. The signature is generated from the current public header.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -10722,7 +10617,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::MetadataVisitor"
     ],
-    "sourceLine": 20
+    "sourceLine": 26
   },
   {
     "id": "api-arda-metadatavisitor-buffer-4e8fc264",
@@ -10731,7 +10626,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, EArdaComputeAccess A> void Buffer(const char* Name, size_t Offset)",
+    "signature": "template <class T, EArdaComputeAccess A> void Buffer(const char* Name, size_t Offset)",
     "summary": "Performs buffer through the public render-graph contract.",
     "details": "Performs buffer through the public render-graph contract. The signature is generated from the current public header.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -10743,7 +10638,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::MetadataVisitor"
     ],
-    "sourceLine": 22
+    "sourceLine": 32
   },
   {
     "id": "api-arda-metadatavisitor-surface-92f5864c",
@@ -10752,7 +10647,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, EArdaComputeAccess A> void Surface(const char* Name, size_t Offset, EArdaRHIFormat)",
+    "signature": "template <class T, EArdaComputeAccess A> void Surface(const char* Name, size_t Offset, EArdaRHIFormat)",
     "summary": "Performs surface through the public render-graph contract.",
     "details": "Performs surface through the public render-graph contract. The signature is generated from the current public header.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -10764,7 +10659,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::MetadataVisitor"
     ],
-    "sourceLine": 25
+    "sourceLine": 47
   },
   {
     "id": "api-arda-fardacudagraphhelpers-normalizevisitor-36f0438c",
@@ -10785,7 +10680,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FArdaCudaGraphHelpers"
     ],
-    "sourceLine": 29
+    "sourceLine": 62
   },
   {
     "id": "api-arda-normalizevisitor-mbytes-a2c60a96",
@@ -10806,7 +10701,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::NormalizeVisitor"
     ],
-    "sourceLine": 31
+    "sourceLine": 64
   },
   {
     "id": "api-arda-normalizevisitor-value-12b965ed",
@@ -10815,7 +10710,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T> void Value(const char*, size_t)",
+    "signature": "template <class T> void Value(const char*, size_t)",
     "summary": "Performs value through the public render-graph contract.",
     "details": "Performs value through the public render-graph contract. The signature is generated from the current public header.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -10827,7 +10722,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::NormalizeVisitor"
     ],
-    "sourceLine": 33
+    "sourceLine": 68
   },
   {
     "id": "api-arda-normalizevisitor-buffer-53cd309a",
@@ -10836,7 +10731,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, EArdaComputeAccess A> void Buffer(const char*, size_t Offset)",
+    "signature": "template <class T, EArdaComputeAccess A> void Buffer(const char*, size_t Offset)",
     "summary": "Performs buffer through the public render-graph contract.",
     "details": "Performs buffer through the public render-graph contract. The signature is generated from the current public header.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -10848,7 +10743,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::NormalizeVisitor"
     ],
-    "sourceLine": 34
+    "sourceLine": 73
   },
   {
     "id": "api-arda-normalizevisitor-surface-c9c9ac33",
@@ -10857,7 +10752,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, EArdaComputeAccess A> void Surface(const char*, size_t Offset, EArdaRHIFormat Format)",
+    "signature": "template <class T, EArdaComputeAccess A> void Surface(const char*, size_t Offset, EArdaRHIFormat Format)",
     "summary": "Performs surface through the public render-graph contract.",
     "details": "Performs surface through the public render-graph contract. The signature is generated from the current public header.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -10869,7 +10764,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::NormalizeVisitor"
     ],
-    "sourceLine": 43
+    "sourceLine": 93
   },
   {
     "id": "api-arda-fardacudagraphhelpers-resolvevisitor-6ebca799",
@@ -10890,7 +10785,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FArdaCudaGraphHelpers"
     ],
-    "sourceLine": 53
+    "sourceLine": 113
   },
   {
     "id": "api-arda-resolvevisitor-mgraph-27702cb6",
@@ -10911,7 +10806,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::ResolveVisitor"
     ],
-    "sourceLine": 55
+    "sourceLine": 115
   },
   {
     "id": "api-arda-resolvevisitor-mhost-a4690b40",
@@ -10932,7 +10827,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::ResolveVisitor"
     ],
-    "sourceLine": 56
+    "sourceLine": 116
   },
   {
     "id": "api-arda-resolvevisitor-mcontext-2319be24",
@@ -10953,7 +10848,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::ResolveVisitor"
     ],
-    "sourceLine": 58
+    "sourceLine": 118
   },
   {
     "id": "api-arda-resolvevisitor-mindex-023d5363",
@@ -10974,7 +10869,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::ResolveVisitor"
     ],
-    "sourceLine": 59
+    "sourceLine": 119
   },
   {
     "id": "api-arda-resolvevisitor-value-563defc0",
@@ -10983,7 +10878,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T> void Value(const char*, size_t Offset)",
+    "signature": "template <class T> void Value(const char*, size_t Offset)",
     "summary": "Performs value through the public render-graph contract.",
     "details": "Performs value through the public render-graph contract. The signature is generated from the current public header.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -10995,7 +10890,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::ResolveVisitor"
     ],
-    "sourceLine": 60
+    "sourceLine": 122
   },
   {
     "id": "api-arda-resolvevisitor-buffer-0d14b9f6",
@@ -11004,7 +10899,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, EArdaComputeAccess A> void Buffer(const char*, size_t Offset)",
+    "signature": "template <class T, EArdaComputeAccess A> void Buffer(const char*, size_t Offset)",
     "summary": "Performs buffer through the public render-graph contract.",
     "details": "Performs buffer through the public render-graph contract. The signature is generated from the current public header.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -11016,7 +10911,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::ResolveVisitor"
     ],
-    "sourceLine": 62
+    "sourceLine": 128
   },
   {
     "id": "api-arda-resolvevisitor-surface-2cd87dbc",
@@ -11025,7 +10920,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, EArdaComputeAccess A> void Surface(const char*, size_t Offset, EArdaRHIFormat)",
+    "signature": "template <class T, EArdaComputeAccess A> void Surface(const char*, size_t Offset, EArdaRHIFormat)",
     "summary": "Performs surface through the public render-graph contract.",
     "details": "Performs surface through the public render-graph contract. The signature is generated from the current public header.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -11037,7 +10932,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::ResolveVisitor"
     ],
-    "sourceLine": 68
+    "sourceLine": 137
   },
   {
     "id": "api-arda-tardgcudaparameters-971d48d1",
@@ -11046,7 +10941,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "struct",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class Parameters> struct TARDGCudaParameters : Parameters::template Rebind<FARDGCudaParameterDomain>",
+    "signature": "template <class Parameters> struct TARDGCudaParameters : Parameters::template Rebind<FARDGCudaParameterDomain>",
     "summary": "The same named fields as Parameters, storing logical graph resources instead of physical RHI references.",
     "details": "The same named fields as Parameters, storing logical graph resources instead of physical RHI references.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -11058,7 +10953,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda"
     ],
-    "sourceLine": 78
+    "sourceLine": 149
   },
   {
     "id": "api-arda-tardgcudaparameters-fstorage-f2677032",
@@ -11079,7 +10974,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::TARDGCudaParameters"
     ],
-    "sourceLine": 80
+    "sourceLine": 151
   },
   {
     "id": "api-arda-tardgcudaparameters-getstaticmetadata-a46f04a0",
@@ -11100,7 +10995,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::TARDGCudaParameters"
     ],
-    "sourceLine": 82
+    "sourceLine": 154
   },
   {
     "id": "api-arda-addardacudapass-86c3c9ac",
@@ -11109,7 +11004,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "function",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class OperandType> TArdaRHIResult<FARDGPassHandle> AddArdaCudaPass(FARDGBuilder& Graph, eastl::string Name, eastl::shared_ptr<OperandType> Operand, TARDGCudaParameters<typename OperandType::FParameters> Parameters, EARDGPassFlags Flags = EARDGPassFlags::Compute)",
+    "signature": "template <class OperandType> TArdaRHIResult<FARDGPassHandle> AddArdaCudaPass(FARDGBuilder& Graph, eastl::string Name, eastl::shared_ptr<OperandType> Operand, TARDGCudaParameters<typename OperandType::FParameters> Parameters, EARDGPassFlags Flags = EARDGPassFlags::Compute)",
     "summary": "Adds a single-kernel operand pass, deriving accesses before allocation and resolving them at execution. Retains Operand and a typed parameter copy. Runtime schema/build errors return before adding a pass; physical-resource/selection/launch failures propagate through the graph's execution status.",
     "details": "Adds a single-kernel operand pass, deriving accesses before allocation and resolving them at execution. Retains Operand and a typed parameter copy. Runtime schema/build errors return before adding a pass; physical-resource/selection/launch failures propagate through the graph's execution status.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphCuda.h",
@@ -11121,7 +11016,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda"
     ],
-    "sourceLine": 97
+    "sourceLine": 174
   },
   {
     "id": "api-arda-fardgqueuepolicy-12f238e2",
@@ -11142,7 +11037,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda"
     ],
-    "sourceLine": 151
+    "sourceLine": 153
   },
   {
     "id": "api-arda-eardgpassflags-recordatsubmit-343f81d5",
@@ -11163,7 +11058,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::EARDGPassFlags"
     ],
-    "sourceLine": 213
+    "sourceLine": 215
   },
   {
     "id": "api-arda-fardgrendergraphcontext-mqueuepolicy-d6f28bca",
@@ -11184,7 +11079,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGRenderGraphContext"
     ],
-    "sourceLine": 329
+    "sourceLine": 319
   },
   {
     "id": "api-arda-fardgparametermember-mbreadonlyuav-709e6082",
@@ -11214,7 +11109,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "conversion operator",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "friend bool operator==( const FARDGRasterBindingSignature& Left, const FARDGRasterBindingSignature& Right) noexcept",
+    "signature": "friend bool operator==(const FARDGRasterBindingSignature& Left, const FARDGRasterBindingSignature& Right) noexcept",
     "summary": "Returns whether both signatures bind the same logical attachments.",
     "details": "Returns whether both signatures bind the same logical attachments.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -11226,7 +11121,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGRasterBindingSignature"
     ],
-    "sourceLine": 132
+    "sourceLine": 131
   },
   {
     "id": "api-arda-fardgrasterbindingsignature-operator-412dda8d",
@@ -11235,7 +11130,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "conversion operator",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "friend bool operator!=( const FARDGRasterBindingSignature& Left, const FARDGRasterBindingSignature& Right) noexcept",
+    "signature": "friend bool operator!=(const FARDGRasterBindingSignature& Left, const FARDGRasterBindingSignature& Right) noexcept",
     "summary": "Returns whether two signatures bind different logical attachments.",
     "details": "Returns whether two signatures bind different logical attachments.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -11247,7 +11142,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGRasterBindingSignature"
     ],
-    "sourceLine": 143
+    "sourceLine": 140
   },
   {
     "id": "api-arda-fardgpassexecutioncontext-operator-781d6b61",
@@ -11268,7 +11163,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGPassExecutionContext"
     ],
-    "sourceLine": 230
+    "sourceLine": 225
   },
   {
     "id": "api-arda-fardgpassexecutioncontext-reportstatus-3c8856c0",
@@ -11289,7 +11184,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGPassExecutionContext"
     ],
-    "sourceLine": 314
+    "sourceLine": 305
   },
   {
     "id": "api-arda-fardgpassexecutioncontext-getstatus-4a4ab6c9",
@@ -11310,7 +11205,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGPassExecutionContext"
     ],
-    "sourceLine": 321
+    "sourceLine": 314
   },
   {
     "id": "api-arda-fardgpass-fardgpass-32fb441c",
@@ -11319,7 +11214,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "constructor",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "FARDGPass( FARDGPassHandle Handle, eastl::string Name, EARDGPassFlags Flags, const void* Parameters = nullptr, const FARDGParameterMetadata* ParameterMetadata = nullptr) : mHandle(Handle) , mName(eastl::move(Name)) , mFlags(Flags) , mParameters(Parameters) , mParameterMetadata(ParameterMetadata)",
+    "signature": "FARDGPass(FARDGPassHandle Handle, eastl::string Name, EARDGPassFlags Flags, const void* Parameters = nullptr, const FARDGParameterMetadata* ParameterMetadata = nullptr) : mHandle(Handle), mName(eastl::move(Name)), mFlags(Flags), mParameters(Parameters), mParameterMetadata(ParameterMetadata)",
     "summary": "Constructs a pass record without implementing execution dispatch.",
     "details": "Constructs a pass record without implementing execution dispatch.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -11352,7 +11247,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGPass"
     ],
-    "sourceLine": 349
+    "sourceLine": 342
   },
   {
     "id": "api-arda-fardglambdapass-fardglambdapass-2760f962",
@@ -11361,7 +11256,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "constructor",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "FARDGLambdaPass( FARDGPassHandle Handle, eastl::string Name, EARDGPassFlags Flags, const void* Parameters, const FARDGParameterMetadata* ParameterMetadata, FARDGPassExecuteFunction ExecuteFunction) : FARDGPass( Handle, eastl::move(Name), Flags, Parameters, ParameterMetadata) , mExecuteFunction(eastl::move(ExecuteFunction))",
+    "signature": "FARDGLambdaPass(FARDGPassHandle Handle, eastl::string Name, EARDGPassFlags Flags, const void* Parameters, const FARDGParameterMetadata* ParameterMetadata, FARDGPassExecuteFunction ExecuteFunction) : FARDGPass(Handle, eastl::move(Name), Flags, Parameters, ParameterMetadata), mExecuteFunction(eastl::move(ExecuteFunction))",
     "summary": "Constructs a lambda pass.",
     "details": "Constructs a lambda pass.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -11398,7 +11293,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGLambdaPass"
     ],
-    "sourceLine": 536
+    "sourceLine": 518
   },
   {
     "id": "api-arda-fardgsentinelpass-fardgsentinelpass-5db7790c",
@@ -11407,7 +11302,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "kind": "constructor",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "FARDGSentinelPass(FARDGPassHandle Handle, eastl::string Name) : FARDGPass( Handle, eastl::move(Name), EARDGPassFlags::NeverCull)",
+    "signature": "FARDGSentinelPass(FARDGPassHandle Handle, eastl::string Name) : FARDGPass(Handle, eastl::move(Name), EARDGPassFlags::NeverCull)",
     "summary": "Constructs a named synthetic boundary pass.",
     "details": "Constructs a named synthetic boundary pass.",
     "source": "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h",
@@ -11419,7 +11314,7 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
     "related": [
       "arda::FARDGSentinelPass"
     ],
-    "sourceLine": 571
+    "sourceLine": 547
   }
 ];
   window.ArdaRDGApi.symbols.push(...generatedSymbols);
@@ -11430,6 +11325,21 @@ window.ArdaCurrentApi = window.ArdaRDGApi;
   }
 })();
 /* END GENERATED ARDA RDG API GAPS */
+
+// Preserve published links to duplicate entries consolidated by whitespace-independent matching.
+(() => {
+  const aliases = {
+    "api-arda-rdg-fardgbuilder-createsrv-eb4fe324": "api-arda-fardgbuilder-createsrv-7e38b601",
+    "api-arda-rdg-fardgbuilder-createsrv-89fed085": "api-arda-fardgbuilder-createsrv-9e49dd5b",
+    "api-arda-rdg-fardgbuilder-createuav-addf8c18": "api-arda-fardgbuilder-createuav-c2e0d938",
+    "api-arda-rdg-fardgbuilder-createuav-dad88d46": "api-arda-fardgbuilder-createuav-0e363768",
+    "api-arda-rdg-fardgbuilder-queuetextureextraction-0f2bf6f0": "api-arda-fardgbuilder-queuetextureextraction-e46c2e74",
+    "api-arda-rdg-fardgbuilder-queuebufferextraction-54e67cf9": "api-arda-fardgbuilder-queuebufferextraction-a299895b"
+  };
+  for (const symbol of window.ArdaRDGApi.symbols) {
+    if (aliases[symbol.id]) symbol.aliases = [aliases[symbol.id]];
+  }
+})();
 
 // Authored execution contracts for the RDG native conformance paths.
 (() => {

@@ -142,14 +142,27 @@ public:
 
 ## Formatting
 
-- Use four spaces for indentation; do not use tabs.
+- Use tabs for indentation with a display width of four columns, matching Unreal.
+  Use spaces for alignment within a line; `.editorconfig` supplies editor defaults.
 - Put opening braces on a new line.
 - Always brace control-flow bodies, including one-line bodies.
 - Keep one statement per line.
+- Expand function, lambda and control-flow bodies instead of compressing them onto
+  one line. Separate function/type definitions with a blank line, and leave blank
+  lines between major declaration groups and logical stages inside long functions.
 - Keep pointer and reference symbols next to the type:
   `ArdaDevice* Device`, `const ArdaConfig& Configuration`.
 - Keep lines readable; split long expressions by logical structure.
-- Let the repository formatter decide mechanical details where configured.
+- Use the root `.clang-format` with **clang-format 19** for mechanical formatting.
+  Keep the existing Arda type/member names; formatting is not an API rename.
+
+Run `python Scripts/FormatCode.py` from any terminal to format tracked project-owned
+C++, CUDA and HLSL sources, including checked-in C++ templates and the CUDA docs
+example. Run `python Scripts/FormatCode.py --check` to check without modifying files.
+The script finds clang-format on `PATH` or in Visual Studio's LLVM tools; use
+`--clang-format PATH` to select it explicitly. Third-party submodules, generated
+build outputs, Python, CMake and website assets are outside this formatter's scope.
+Pass one or more repository-relative files/directories to limit the pass.
 
 ## Headers and Includes
 

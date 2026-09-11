@@ -1,0 +1,60 @@
+# Unreal-style layout for project-owned C++, CUDA and HLSL. Use clang-format 19.
+BasedOnStyle: Microsoft
+Standard: c++17
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+ContinuationIndentWidth: 4
+AlignAfterOpenBracket: DontAlign
+AlignOperands: DontAlign
+NamespaceIndentation: All
+AccessModifierOffset: -4
+ColumnLimit: 120
+BreakBeforeBraces: Allman
+BreakTemplateDeclarations: Yes
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: None
+AllowShortLoopsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+InsertBraces: true
+SeparateDefinitionBlocks: Always
+MaxEmptyLinesToKeep: 1
+EmptyLineBeforeAccessModifier: Always
+BinPackArguments: false
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+PackConstructorInitializers: Never
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+# Include order, comments and literal contents can have meaning; preserve them.
+SortIncludes: Never
+IncludeBlocks: Preserve
+SortUsingDeclarations: Never
+ReflowComments: false
+BreakStringLiterals: false
+FixNamespaceComments: false
+StatementMacros:
+  - ARDA_CUDA_PARAMETER_STRUCT
+  - ARDA_DECLARE_GLOBAL_SHADER
+  - ARDA_IMPLEMENT_GLOBAL_SHADER
+  - ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS
+  - ARDA_DECLARE_LOG_CATEGORY
+  - ARDA_DEFINE_LOG_CATEGORY
+  - ARDA_SHADER_PARAMETER_VALUE
+  - ARDA_SHADER_TEXTURE_SRV
+  - ARDA_SHADER_TEXTURE_UAV
+  - ARDA_SHADER_BUFFER_SRV
+  - ARDA_SHADER_BUFFER_UAV
+  - ARDA_SHADER_CONSTANT_BUFFER
+  - ARDA_SHADER_SAMPLER
+  - ARDA_SHADER_ACCEL_STRUCT
+  - ARDA_COMPUTE_PARAMETER
+  - ARDA_COMPUTE_BUFFER
+  - ARDA_COMPUTE_TEXTURE
+  - ARDA_COMPUTE_PARAMETER_STRUCT
+MacroBlockBegin: '^ARDA_BEGIN_(SHADER|COMPUTE)_PARAMETER_STRUCT$'
+MacroBlockEnd: '^ARDA_END_(SHADER|COMPUTE)_PARAMETER_STRUCT$'

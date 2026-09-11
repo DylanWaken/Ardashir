@@ -9,126 +9,120 @@
 
 namespace
 {
-    ARDA_DEFINE_LOG_CATEGORY_NAMED(LogTest, "TestScope", VeryVerbose);
+	ARDA_DEFINE_LOG_CATEGORY_NAMED(LogTest, "TestScope", VeryVerbose);
 
-    struct FCapturedLog
-    {
-        int mCount = 0;
-        char mCategory[64] = {};
-        arda::EArdaLogVerbosity mVerbosity =
-            arda::EArdaLogVerbosity::Off;
-        char mMessage[256] = {};
-        char mFile[256] = {};
-        std::uint32_t mLine = 0;
-        char mFunction[128] = {};
-    };
+	struct FCapturedLog
+	{
+		int mCount = 0;
+		char mCategory[64] = {};
+		arda::EArdaLogVerbosity mVerbosity = arda::EArdaLogVerbosity::Off;
+		char mMessage[256] = {};
+		char mFile[256] = {};
+		std::uint32_t mLine = 0;
+		char mFunction[128] = {};
+	};
 
-    void CopyText(char* Destination, std::size_t Capacity, const char* Source) noexcept
-    {
-        std::snprintf(Destination, Capacity, "%s", Source ? Source : "");
-    }
+	void CopyText(char* Destination, std::size_t Capacity, const char* Source) noexcept
+	{
+		std::snprintf(Destination, Capacity, "%s", Source ? Source : "");
+	}
 
-    void CaptureLog(
-        const arda::FArdaLogRecord& Record,
-        void* UserData) noexcept
-    {
-        auto& capture = *static_cast<FCapturedLog*>(UserData);
-        ++capture.mCount;
-        CopyText(capture.mCategory, sizeof(capture.mCategory), Record.mCategory);
-        capture.mVerbosity = Record.mVerbosity;
-        CopyText(capture.mMessage, sizeof(capture.mMessage), Record.mMessage);
-        CopyText(capture.mFile, sizeof(capture.mFile), Record.mFile);
-        capture.mLine = Record.mLine;
-        CopyText(capture.mFunction, sizeof(capture.mFunction), Record.mFunction);
-    }
+	void CaptureLog(const arda::FArdaLogRecord& Record, void* UserData) noexcept
+	{
+		auto& capture = *static_cast<FCapturedLog*>(UserData);
+		++capture.mCount;
+		CopyText(capture.mCategory, sizeof(capture.mCategory), Record.mCategory);
+		capture.mVerbosity = Record.mVerbosity;
+		CopyText(capture.mMessage, sizeof(capture.mMessage), Record.mMessage);
+		CopyText(capture.mFile, sizeof(capture.mFile), Record.mFile);
+		capture.mLine = Record.mLine;
+		CopyText(capture.mFunction, sizeof(capture.mFunction), Record.mFunction);
+	}
 
-    class FArdaLogTest : public testing::Test
-    {
-    protected:
-        void SetUp() override
-        {
-            arda::SetLogOutput(&CaptureLog, &mCapture);
-        }
+	class FArdaLogTest : public testing::Test
+	{
+	protected:
+		void SetUp() override
+		{
+			arda::SetLogOutput(&CaptureLog, &mCapture);
+		}
 
-        void TearDown() override
-        {
-            arda::ResetLogOutput();
-        }
+		void TearDown() override
+		{
+			arda::ResetLogOutput();
+		}
 
-        FCapturedLog mCapture;
-    };
+		FCapturedLog mCapture;
+	};
 }
 
 TEST_F(FArdaLogTest, EmitsFormattedStructuredRecords)
 {
-    ARDA_LOG(LogTest, Warning, "Resource %s has %d users", "SceneColor", 3);
+	ARDA_LOG(LogTest, Warning, "Resource %s has %d users", "SceneColor", 3);
 
-    EXPECT_EQ(mCapture.mCount, 1);
-    EXPECT_STREQ(mCapture.mCategory, "TestScope");
-    EXPECT_EQ(mCapture.mVerbosity, arda::EArdaLogVerbosity::Warning);
-    EXPECT_STREQ(mCapture.mMessage, "Resource SceneColor has 3 users");
-    EXPECT_NE(std::strstr(mCapture.mFile, "ArdaLogTests.cpp"), nullptr);
-    EXPECT_GT(mCapture.mLine, 0u);
-    EXPECT_NE(mCapture.mFunction[0], '\0');
+	EXPECT_EQ(mCapture.mCount, 1);
+	EXPECT_STREQ(mCapture.mCategory, "TestScope");
+	EXPECT_EQ(mCapture.mVerbosity, arda::EArdaLogVerbosity::Warning);
+	EXPECT_STREQ(mCapture.mMessage, "Resource SceneColor has 3 users");
+	EXPECT_NE(std::strstr(mCapture.mFile, "ArdaLogTests.cpp"), nullptr);
+	EXPECT_GT(mCapture.mLine, 0u);
+	EXPECT_NE(mCapture.mFunction[0], '\0');
 }
 
 TEST_F(FArdaLogTest, FiltersWithoutEvaluatingLogArguments)
 {
-    arda::FArdaLogCategory category(
-        "FilteredScope",
-        arda::EArdaLogVerbosity::Warning);
-    int value = 0;
+	arda::FArdaLogCategory category("FilteredScope", arda::EArdaLogVerbosity::Warning);
+	int value = 0;
 
-    ARDA_LOG(category, Verbose, "Value %d", ++value);
-    EXPECT_EQ(value, 0);
-    EXPECT_EQ(mCapture.mCount, 0);
+	ARDA_LOG(category, Verbose, "Value %d", ++value);
+	EXPECT_EQ(value, 0);
+	EXPECT_EQ(mCapture.mCount, 0);
 
-    category.SetMinimumVerbosity(arda::EArdaLogVerbosity::Verbose);
-    ARDA_LOG(category, Verbose, "Value %d", ++value);
-    EXPECT_EQ(value, 1);
-    EXPECT_EQ(mCapture.mCount, 1);
-    EXPECT_STREQ(mCapture.mMessage, "Value 1");
+	category.SetMinimumVerbosity(arda::EArdaLogVerbosity::Verbose);
+	ARDA_LOG(category, Verbose, "Value %d", ++value);
+	EXPECT_EQ(value, 1);
+	EXPECT_EQ(mCapture.mCount, 1);
+	EXPECT_STREQ(mCapture.mMessage, "Value 1");
 
-    category.SetMinimumVerbosity(arda::EArdaLogVerbosity::Off);
-    ARDA_LOG(category, Fatal, "Hidden");
-    EXPECT_EQ(mCapture.mCount, 1);
+	category.SetMinimumVerbosity(arda::EArdaLogVerbosity::Off);
+	ARDA_LOG(category, Fatal, "Hidden");
+	EXPECT_EQ(mCapture.mCount, 1);
 }
 
 TEST_F(FArdaLogTest, HandlesNullFormatStrings)
 {
-    arda::Logf(
-        LogTest,
-        arda::EArdaLogVerbosity::Log,
-        __FILE__,
-        static_cast<std::uint32_t>(__LINE__),
-        __func__,
-        nullptr);
+	arda::Logf(LogTest,
+	    arda::EArdaLogVerbosity::Log,
+	    __FILE__,
+	    static_cast<std::uint32_t>(__LINE__),
+	    __func__,
+	    nullptr);
 
-    ASSERT_EQ(mCapture.mCount, 1);
-    EXPECT_STREQ(mCapture.mMessage, "");
+	ASSERT_EQ(mCapture.mCount, 1);
+	EXPECT_STREQ(mCapture.mMessage, "");
 }
 
 TEST_F(FArdaLogTest, ExposesVerbosityNames)
 {
-    using namespace arda;
+	using namespace arda;
 
-    EXPECT_STREQ(ToString(EArdaLogVerbosity::VeryVerbose), "VeryVerbose");
-    EXPECT_STREQ(ToString(EArdaLogVerbosity::Verbose), "Verbose");
-    EXPECT_STREQ(ToString(EArdaLogVerbosity::Log), "Log");
-    EXPECT_STREQ(ToString(EArdaLogVerbosity::Display), "Display");
-    EXPECT_STREQ(ToString(EArdaLogVerbosity::Warning), "Warning");
-    EXPECT_STREQ(ToString(EArdaLogVerbosity::Error), "Error");
-    EXPECT_STREQ(ToString(EArdaLogVerbosity::Fatal), "Fatal");
-    EXPECT_STREQ(ToString(EArdaLogVerbosity::Off), "Off");
+	EXPECT_STREQ(ToString(EArdaLogVerbosity::VeryVerbose), "VeryVerbose");
+	EXPECT_STREQ(ToString(EArdaLogVerbosity::Verbose), "Verbose");
+	EXPECT_STREQ(ToString(EArdaLogVerbosity::Log), "Log");
+	EXPECT_STREQ(ToString(EArdaLogVerbosity::Display), "Display");
+	EXPECT_STREQ(ToString(EArdaLogVerbosity::Warning), "Warning");
+	EXPECT_STREQ(ToString(EArdaLogVerbosity::Error), "Error");
+	EXPECT_STREQ(ToString(EArdaLogVerbosity::Fatal), "Fatal");
+	EXPECT_STREQ(ToString(EArdaLogVerbosity::Off), "Off");
 }
 
 TEST(ArdaLog, ResetRestoresDefaultStderrOutput)
 {
-    arda::ResetLogOutput();
-    testing::internal::CaptureStderr();
-    ARDA_LOG(LogTest, Display, "Default output");
-    const std::string captured = testing::internal::GetCapturedStderr();
-    const eastl::string output(captured.data(), captured.size());
+	arda::ResetLogOutput();
+	testing::internal::CaptureStderr();
+	ARDA_LOG(LogTest, Display, "Default output");
+	const std::string captured = testing::internal::GetCapturedStderr();
+	const eastl::string output(captured.data(), captured.size());
 
-    EXPECT_NE(output.find("[TestScope][Display] Default output"), eastl::string::npos);
+	EXPECT_NE(output.find("[TestScope][Display] Default output"), eastl::string::npos);
 }

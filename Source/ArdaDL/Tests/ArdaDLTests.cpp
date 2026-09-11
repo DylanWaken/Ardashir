@@ -4,5 +4,5 @@
 
 TEST(ArdaDL, ReportsModuleName)
 {
-    EXPECT_STREQ(arda::GetDLModuleName(), "ArdaDL");
+	EXPECT_STREQ(arda::GetDLModuleName(), "ArdaDL");
 }

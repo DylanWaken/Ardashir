@@ -73,6 +73,23 @@ def normalized(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().rstrip(";")
 
 
+def signature_identity(text: str) -> str:
+    """Compare C++ tokens rather than layout, preserving literal contents."""
+    return " ".join(re.findall(r'''"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\w+|[^\s]''', text.strip().rstrip(";")))
+
+
+def preserve_symbol_ids(declarations: Sequence[Dict[str, object]], api: Dict[str, object]) -> None:
+    """Keep published anchors when source formatting changes a signature's layout."""
+    existing = {
+        (item["qualifiedName"], item["kind"], signature_identity(str(item.get("signature", "")))): item["id"]
+        for item in api.get("symbols", [])
+    }
+    for item in declarations:
+        key = (item["qualifiedName"], item["kind"], signature_identity(str(item["signature"])))
+        if key in existing:
+            item["id"] = existing[key]
+
+
 def humanize(name: str) -> str:
     name = name.lstrip("~")
     name = re.sub(r"^m(?:b(?=[A-Z])|(?=[A-Z]))", "", name)
@@ -334,7 +351,7 @@ def make_symbols(
             signature = declaration_signature(text, name, line, declared_kind)
             kind = api_kind(declared_kind, name, signature, owner)
             qualified = "::".join(item for item in (namespace, owner, name) if item)
-            key = (qualified, kind, normalized(signature))
+            key = (qualified, kind, signature_identity(signature))
             if key in semantic:
                 continue
             semantic.add(key)
@@ -417,7 +434,7 @@ def select_missing(
         (
             str(item.get("qualifiedName", "")).strip(),
             str(item.get("kind", "")).strip(),
-            normalized(str(item.get("signature", ""))),
+            signature_identity(str(item.get("signature", ""))),
         )
         for item in current
     }
@@ -443,7 +460,7 @@ def select_missing(
         key = (
             str(item["qualifiedName"]),
             str(item["kind"]),
-            normalized(str(item["signature"])),
+            signature_identity(str(item["signature"])),
         )
         if key in semantic:
             continue
@@ -538,7 +555,8 @@ def static_api_reference(template: str, asset: str, variable: str, module: str, 
         for kind, entries_by_kind in kinds.items():
             parts.append(f'<section class="api-kind-group"><h4>{escape(kind)}</h4>')
             for symbol in entries_by_kind:
-                parts.append(f'<section class="api-entry" id="{escape(symbol["id"])}" tabindex="-1"><h5>{escape(symbol["qualifiedName"])}</h5><pre><code>{escape(symbol["signature"])}</code></pre><p>{escape(symbol["summary"])}</p>')
+                aliases = "".join(f'<span id="{escape(alias)}"></span>' for alias in symbol.get("aliases", []))
+                parts.append(f'<section class="api-entry" id="{escape(symbol["id"])}" tabindex="-1">{aliases}<h5>{escape(symbol["qualifiedName"])}</h5><pre><code>{escape(symbol["signature"])}</code></pre><p>{escape(symbol["summary"])}</p>')
                 if symbol.get("details") and symbol["details"] != symbol["summary"]:
                     parts.append(f'<p>{escape(symbol["details"])}</p>')
                 parts.append('<dl>')
@@ -584,6 +602,7 @@ def main() -> int:
     backend_declarations = make_symbols(
         repo, backend_specs(repo), "backend and RHI"
     )
+    preserve_symbol_ids(backend_declarations, evaluate_api(backend_current, "ArdaBackendApi"))
     backend_symbols = select_missing(
         backend_declarations,
         evaluate_api(backend_base, "ArdaBackendApi"),
@@ -597,7 +616,7 @@ def main() -> int:
         if declaration["ownership"].startswith("Owning handles retain"):
             continue
         existing = next((s for s in authored if s["qualifiedName"] == declaration["qualifiedName"]
-            and normalized(s["signature"]) == normalized(declaration["signature"])), None)
+            and signature_identity(s["signature"]) == signature_identity(declaration["signature"])), None)
         if existing:
             contracts.append({"id": existing["id"], **{field: declaration[field] for field in
                 ("summary", "details", "params", "returns", "ownership", "errors", "threading", "sourceLine")}})
@@ -620,6 +639,7 @@ def main() -> int:
     rdg_current = rdg_path.read_text(encoding="utf-8-sig")
     rdg_base = without_generated_block(rdg_current, RDG_BEGIN, RDG_END)
     rdg_declarations = make_symbols(repo, rdg_specs(repo), "render-graph")
+    preserve_symbol_ids(rdg_declarations, evaluate_api(rdg_current, "ArdaRDGApi"))
     rdg_symbols = select_missing(
         rdg_declarations, evaluate_api(rdg_base, "ArdaRDGApi"),
         {"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",

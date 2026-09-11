@@ -368,6 +368,12 @@ button:hover {
   text-transform: uppercase;
 }
 
+.toc a {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .page-nav {
   display: flex;
   margin-top: 3rem;
@@ -423,6 +429,7 @@ h3,
 h4 {
   line-height: 1.2;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 h1 {

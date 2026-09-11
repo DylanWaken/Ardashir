@@ -12,20 +12,19 @@
 
 namespace arda
 {
-    /** Identifies the strongly typed handle template accepted by registries. */
-    template <typename Type>
-    struct TIsARDGHandle : eastl::false_type
-    {
-    };
+	/** Identifies the strongly typed handle template accepted by registries. */
+	template <typename Type>
+	struct TIsARDGHandle : eastl::false_type
+	{
+	};
 
-    /** Matches any TARDGHandle specialization while preserving its tag type. */
-    template <typename TagType>
-    struct TIsARDGHandle<TARDGHandle<TagType>> : eastl::true_type
-    {
-    };
+	/** Matches any TARDGHandle specialization while preserving its tag type. */
+	template <typename TagType>
+	struct TIsARDGHandle<TARDGHandle<TagType>> : eastl::true_type
+	{
+	};
 
-
-    /**
+	/**
      * Maps small, strongly typed handles to one category of graph records.
      *
      * A builder owns a separate registry for passes, textures, buffers, views,
@@ -74,26 +73,26 @@ namespace arda
      * FARDGPassHandle. InvalidIndex is reserved for "no object" and therefore
      * also bounds the registry's capacity.
      */
-    template <typename ObjectType, typename HandleType>
-    class TARDGHandleRegistry final
-    {
-        static_assert(
-            arda::TIsARDGHandle<HandleType>::value,
-            "TARDGHandleRegistry HandleType must specialize TARDGHandle<TagType>.");
+	template <typename ObjectType, typename HandleType>
+	class TARDGHandleRegistry final
+	{
+		static_assert(arda::TIsARDGHandle<HandleType>::value,
+		    "TARDGHandleRegistry HandleType must specialize TARDGHandle<TagType>.");
 
-    public:
-        /** Binds an initially empty registry to its graph-owned arena. */
-        explicit TARDGHandleRegistry(FARDGArena& Arena) noexcept
-            : mArena(Arena)
-        {
-        }
+	public:
+		/** Binds an initially empty registry to its graph-owned arena. */
+		explicit TARDGHandleRegistry(FARDGArena& Arena) noexcept
+		    : mArena(Arena)
+		{
+		}
 
-        /** Copying is disabled because entries are owned by the bound arena. */
-        TARDGHandleRegistry(const TARDGHandleRegistry&) = delete;
-        /** Copying is disabled because entries are owned by the bound arena. */
-        TARDGHandleRegistry& operator=(const TARDGHandleRegistry&) = delete;
+		/** Copying is disabled because entries are owned by the bound arena. */
+		TARDGHandleRegistry(const TARDGHandleRegistry&) = delete;
 
-        /**
+		/** Copying is disabled because entries are owned by the bound arena. */
+		TARDGHandleRegistry& operator=(const TARDGHandleRegistry&) = delete;
+
+		/**
          * Constructs and registers the next logical graph record.
          *
          * The current entry count becomes the object's typed handle, which is
@@ -112,104 +111,101 @@ namespace arda
          * @tparam ArgumentTypes Constructor argument types inferred from
          * Arguments.
          */
-        template <
-            typename ConcreteType = ObjectType,
-            typename... ArgumentTypes,
-            typename = eastl::enable_if_t<eastl::is_base_of_v<ObjectType, ConcreteType>>>
-        [[nodiscard]] HandleType Emplace(ArgumentTypes&&... Arguments)
-        {
-            // HandleType reserves uint32_t::max() as InvalidIndex. Valid entries
-            // therefore use indices [0, InvalidIndex), so the registry can hold
-            // at most InvalidIndex entries before the next index would be invalid.
-            if (mEntries.size() >= HandleType::InvalidIndex)
-            {
-                ARDA_CHECK_MSG("A render-graph registry exhausted its handle index space.");
-            }
+		template <typename ConcreteType = ObjectType,
+		    typename... ArgumentTypes,
+		    typename = eastl::enable_if_t<eastl::is_base_of_v<ObjectType, ConcreteType>>>
+		[[nodiscard]] HandleType Emplace(ArgumentTypes&&... Arguments)
+		{
+			// HandleType reserves uint32_t::max() as InvalidIndex. Valid entries
+			// therefore use indices [0, InvalidIndex), so the registry can hold
+			// at most InvalidIndex entries before the next index would be invalid.
+			if (mEntries.size() >= HandleType::InvalidIndex)
+			{
+				ARDA_CHECK_MSG("A render-graph registry exhausted its handle index space.");
+			}
 
-            const HandleType Handle(static_cast<uint32_t>(mEntries.size()));
-            ConcreteType* Object = mArena.Allocate<ConcreteType>(
-                Handle,
-                eastl::forward<ArgumentTypes>(Arguments)...);
+			const HandleType Handle(static_cast<uint32_t>(mEntries.size()));
+			ConcreteType* Object = mArena.Allocate<ConcreteType>(Handle, eastl::forward<ArgumentTypes>(Arguments)...);
 
-            mEntries.push_back(Object);
+			mEntries.push_back(Object);
 
-            return Handle;
-        }
+			return Handle;
+		}
 
-        /**
+		/**
          * Resolves a mutable record during graph build/compile, or returns null
          * when the typed handle is invalid or outside this registry.
          */
-        [[nodiscard]] ObjectType* TryGet(HandleType Handle) noexcept
-        {
-            if (!Handle.IsValid() || Handle.GetIndex() >= mEntries.size())
-            {
-                return nullptr;
-            }
-            return mEntries[Handle.GetIndex()];
-        }
+		[[nodiscard]] ObjectType* TryGet(HandleType Handle) noexcept
+		{
+			if (!Handle.IsValid() || Handle.GetIndex() >= mEntries.size())
+			{
+				return nullptr;
+			}
+			return mEntries[Handle.GetIndex()];
+		}
 
-        /** Const overload of TryGet with the same non-failing validation. */
-        [[nodiscard]] const ObjectType* TryGet(HandleType Handle) const noexcept
-        {
-            if (!Handle.IsValid() || Handle.GetIndex() >= mEntries.size())
-            {
-                return nullptr;
-            }
-            return mEntries[Handle.GetIndex()];
-        }
+		/** Const overload of TryGet with the same non-failing validation. */
+		[[nodiscard]] const ObjectType* TryGet(HandleType Handle) const noexcept
+		{
+			if (!Handle.IsValid() || Handle.GetIndex() >= mEntries.size())
+			{
+				return nullptr;
+			}
+			return mEntries[Handle.GetIndex()];
+		}
 
-        /**
+		/**
          * Resolves a mutable record and treats an invalid handle as a graph error.
          *
          * The returned reference remains stable until the owning arena resets.
          */
-        [[nodiscard]] ObjectType& Get(HandleType Handle)
-        {
-            ObjectType* Object = TryGet(Handle);
-            if (!Object)
-            {
-                ARDA_CHECK_MSG("Invalid render-graph registry handle.");
-            }
-            return *Object;
-        }
+		[[nodiscard]] ObjectType& Get(HandleType Handle)
+		{
+			ObjectType* Object = TryGet(Handle);
+			if (!Object)
+			{
+				ARDA_CHECK_MSG("Invalid render-graph registry handle.");
+			}
+			return *Object;
+		}
 
-        /** Const, checked counterpart to the mutable Get overload. */
-        [[nodiscard]] const ObjectType& Get(HandleType Handle) const
-        {
-            const ObjectType* Object = TryGet(Handle);
-            if (!Object)
-            {
-                ARDA_CHECK_MSG("Invalid render-graph registry handle.");
-            }
-            return *Object;
-        }
+		/** Const, checked counterpart to the mutable Get overload. */
+		[[nodiscard]] const ObjectType& Get(HandleType Handle) const
+		{
+			const ObjectType* Object = TryGet(Handle);
+			if (!Object)
+			{
+				ARDA_CHECK_MSG("Invalid render-graph registry handle.");
+			}
+			return *Object;
+		}
 
-        /** Returns the number of records registered in this append-only category. */
-        [[nodiscard]] size_t GetCount() const noexcept
-        {
-            return mEntries.size();
-        }
+		/** Returns the number of records registered in this append-only category. */
+		[[nodiscard]] size_t GetCount() const noexcept
+		{
+			return mEntries.size();
+		}
 
-        /** Returns whether no records have yet been registered. */
-        [[nodiscard]] bool IsEmpty() const noexcept
-        {
-            return mEntries.empty();
-        }
+		/** Returns whether no records have yet been registered. */
+		[[nodiscard]] bool IsEmpty() const noexcept
+		{
+			return mEntries.empty();
+		}
 
-        /**
+		/**
          * Exposes entries in handle-index/registration order for graph stages
          * that need deterministic whole-registry traversal.
          */
-        [[nodiscard]] const eastl::vector<ObjectType*>& GetEntries() const noexcept
-        {
-            return mEntries;
-        }
+		[[nodiscard]] const eastl::vector<ObjectType*>& GetEntries() const noexcept
+		{
+			return mEntries;
+		}
 
-    private:
-        /** Non-owning arena reference that remains valid for the registry's full lifetime. */
-        FARDGArena& mArena;
-        /** Stable non-owning object pointers in typed-handle index/registration order. */
-        eastl::vector<ObjectType*> mEntries;
-    };
+	private:
+		/** Non-owning arena reference that remains valid for the registry's full lifetime. */
+		FARDGArena& mArena;
+		/** Stable non-owning object pointers in typed-handle index/registration order. */
+		eastl::vector<ObjectType*> mEntries;
+	};
 }

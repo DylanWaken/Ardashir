@@ -5,6 +5,6 @@
 
 namespace arda
 {
-    /** Registers every backend library selected in the current build. */
-    void RegisterLinkedBackendModules();
+	/** Registers every backend library selected in the current build. */
+	void RegisterLinkedBackendModules();
 }

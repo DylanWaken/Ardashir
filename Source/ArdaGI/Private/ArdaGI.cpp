@@ -4,8 +4,8 @@
 
 namespace arda
 {
-    const char* GetGIModuleName() noexcept
-    {
-        return "ArdaGI";
-    }
+	const char* GetGIModuleName() noexcept
+	{
+		return "ArdaGI";
+	}
 }

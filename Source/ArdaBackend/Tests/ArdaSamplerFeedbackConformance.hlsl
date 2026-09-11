@@ -6,26 +6,24 @@ RWStructuredBuffer<uint> Metadata : register(u1);
 
 float SampleRequestedMip()
 {
-    uint Width, Height, Levels;
-    PairedTexture.GetDimensions(0, Width, Height, Levels);
-    Metadata[1] = Width;
-    Metadata[2] = Height;
-    Metadata[3] = Levels;
-    float Lod = (float)Metadata[0];
-    Metadata[4] = (uint)round(PairedTexture.SampleLevel(PointSampler, float2(0.25, 0.25), Lod).r * 255.0);
-    return Lod;
+	uint Width, Height, Levels;
+	PairedTexture.GetDimensions(0, Width, Height, Levels);
+	Metadata[1] = Width;
+	Metadata[2] = Height;
+	Metadata[3] = Levels;
+	float Lod = (float)Metadata[0];
+	Metadata[4] = (uint)round(PairedTexture.SampleLevel(PointSampler, float2(0.25, 0.25), Lod).r * 255.0);
+	return Lod;
 }
 
 [numthreads(1, 1, 1)]
 void SamplerFeedbackCS()
 {
-    Feedback.WriteSamplerFeedbackLevel(PairedTexture, PointSampler,
-        float2(0.25, 0.25), SampleRequestedMip());
+	Feedback.WriteSamplerFeedbackLevel(PairedTexture, PointSampler, float2(0.25, 0.25), SampleRequestedMip());
 }
 
 [numthreads(1, 1, 1)]
 void SamplerFeedbackRegionCS()
 {
-    RegionFeedback.WriteSamplerFeedbackLevel(PairedTexture, PointSampler,
-        float2(0.25, 0.25), SampleRequestedMip());
+	RegionFeedback.WriteSamplerFeedbackLevel(PairedTexture, PointSampler, float2(0.25, 0.25), SampleRequestedMip());
 }

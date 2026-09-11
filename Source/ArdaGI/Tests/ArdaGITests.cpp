@@ -4,5 +4,5 @@
 
 TEST(ArdaGI, ReportsModuleName)
 {
-    EXPECT_STREQ(arda::GetGIModuleName(), "ArdaGI");
+	EXPECT_STREQ(arda::GetGIModuleName(), "ArdaGI");
 }

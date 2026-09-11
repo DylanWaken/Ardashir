@@ -4,8 +4,8 @@
 
 namespace arda
 {
-    const char* GetSceneModuleName() noexcept
-    {
-        return "ArdaScene";
-    }
+	const char* GetSceneModuleName() noexcept
+	{
+		return "ArdaScene";
+	}
 }

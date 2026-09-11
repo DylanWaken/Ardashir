@@ -2,7 +2,6 @@
 
 namespace arda
 {
-    // Raw string preserves absolute CMake source paths containing spaces.
-    extern const char* const GArdaARDGShaderSourceDirectory =
-        R"ARDA(@CMAKE_CURRENT_SOURCE_DIR@/Shaders)ARDA";
+	// Raw string preserves absolute CMake source paths containing spaces.
+	extern const char* const GArdaARDGShaderSourceDirectory = R"ARDA(@CMAKE_CURRENT_SOURCE_DIR@/Shaders)ARDA";
 }

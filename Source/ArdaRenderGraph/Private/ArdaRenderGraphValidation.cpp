@@ -12,127 +12,100 @@
 
 namespace arda
 {
-    namespace
-    {
+	namespace
+	{
 
+		constexpr uint32_t TextureForbiddenMask = static_cast<uint32_t>(arda::EArdaRHIResourceState::ConstantBuffer) |
+		    static_cast<uint32_t>(arda::EArdaRHIResourceState::VertexBuffer) |
+		    static_cast<uint32_t>(arda::EArdaRHIResourceState::IndexBuffer) |
+		    static_cast<uint32_t>(arda::EArdaRHIResourceState::IndirectArgument);
 
+		constexpr uint32_t BufferForbiddenMask = static_cast<uint32_t>(arda::EArdaRHIResourceState::RenderTarget) |
+		    static_cast<uint32_t>(arda::EArdaRHIResourceState::DepthWrite) |
+		    static_cast<uint32_t>(arda::EArdaRHIResourceState::DepthRead) |
+		    static_cast<uint32_t>(arda::EArdaRHIResourceState::ResolveDest) |
+		    static_cast<uint32_t>(arda::EArdaRHIResourceState::ResolveSource) |
+		    static_cast<uint32_t>(arda::EArdaRHIResourceState::Present);
 
-
-
-
-        constexpr uint32_t TextureForbiddenMask =
-            static_cast<uint32_t>(arda::EArdaRHIResourceState::ConstantBuffer) |
-            static_cast<uint32_t>(arda::EArdaRHIResourceState::VertexBuffer) |
-            static_cast<uint32_t>(arda::EArdaRHIResourceState::IndexBuffer) |
-            static_cast<uint32_t>(arda::EArdaRHIResourceState::IndirectArgument);
-
-        constexpr uint32_t BufferForbiddenMask =
-            static_cast<uint32_t>(arda::EArdaRHIResourceState::RenderTarget) |
-            static_cast<uint32_t>(arda::EArdaRHIResourceState::DepthWrite) |
-            static_cast<uint32_t>(arda::EArdaRHIResourceState::DepthRead) |
-            static_cast<uint32_t>(arda::EArdaRHIResourceState::ResolveDest) |
-            static_cast<uint32_t>(arda::EArdaRHIResourceState::ResolveSource) |
-            static_cast<uint32_t>(arda::EArdaRHIResourceState::Present);
-
-        /**
+		/**
          * Returns whether more than one independently writable state bit is set.
          *
          * The bit-clearing test is applied only to the masked write bits; zero
          * and a single write state are legal candidates.
          */
-        [[nodiscard]] bool HasMultipleWriteStates(
-            arda::EArdaRHIResourceState State) noexcept
-        {
-            uint32_t Value = static_cast<uint32_t>(State) & WriteMask;
-            return Value != 0 && (Value & (Value - 1u)) != 0;
-        }
+		[[nodiscard]] bool HasMultipleWriteStates(arda::EArdaRHIResourceState State) noexcept
+		{
+			uint32_t Value = static_cast<uint32_t>(State) & WriteMask;
+			return Value != 0 && (Value & (Value - 1u)) != 0;
+		}
 
-        /**
+		/**
          * Checks the resource-state combinations accepted by graph declarations.
          *
          * A legal state is known, has at most one write bit, never combines a
          * write with reads, and uses Common or Present only as a standalone state.
          * Resource-kind and queue-specific restrictions are checked separately.
          */
-        [[nodiscard]] bool IsLegalStateCombination(
-            arda::EArdaRHIResourceState State) noexcept
-        {
-            const uint32_t Value = static_cast<uint32_t>(State);
-            const uint32_t Common =
-                static_cast<uint32_t>(arda::EArdaRHIResourceState::Common);
-            const uint32_t Present =
-                static_cast<uint32_t>(arda::EArdaRHIResourceState::Present);
-            return State != arda::EArdaRHIResourceState::Unknown &&
-                !HasMultipleWriteStates(State) &&
-                ((Value & WriteMask) == 0 || (Value & ~WriteMask) == 0) &&
-                ((Value & Common) == 0 || Value == Common) &&
-                ((Value & Present) == 0 || Value == Present);
-        }
+		[[nodiscard]] bool IsLegalStateCombination(arda::EArdaRHIResourceState State) noexcept
+		{
+			const uint32_t Value = static_cast<uint32_t>(State);
+			const uint32_t Common = static_cast<uint32_t>(arda::EArdaRHIResourceState::Common);
+			const uint32_t Present = static_cast<uint32_t>(arda::EArdaRHIResourceState::Present);
+			return State != arda::EArdaRHIResourceState::Unknown && !HasMultipleWriteStates(State) &&
+			    ((Value & WriteMask) == 0 || (Value & ~WriteMask) == 0) && ((Value & Common) == 0 || Value == Common) &&
+			    ((Value & Present) == 0 || Value == Present);
+		}
 
-        /**
+		/**
          * Reports a fatal validation failure prefixed with the pass's diagnostic name.
          *
          * Centralizing this formatting keeps all pass-local declaration and
          * transition errors attributable to the pass that introduced them.
          */
-        [[noreturn]] void ReportPassError(
-            const FARDGPass& Pass,
-            const char* Message)
-        {
-            std::ostringstream Stream;
-            Stream << "Render-graph pass \"" << Pass.GetName().c_str() << "\": "
-                   << Message;
-            ARDA_CHECK_MSG("%s", Stream.str().c_str());
-        }
+		[[noreturn]] void ReportPassError(const FARDGPass& Pass, const char* Message)
+		{
+			std::ostringstream Stream;
+			Stream << "Render-graph pass \"" << Pass.GetName().c_str() << "\": " << Message;
+			ARDA_CHECK_MSG("%s", Stream.str().c_str());
+		}
 
-        /**
+		/**
          * Validates one declared state against general, resource-kind, and queue rules.
          *
          * This pre-compile helper rejects unknown or internally incompatible
          * combinations, texture/buffer domain mismatches, and states forbidden
          * by explicit Copy or AsyncCompute pass requests.
          */
-        void ValidateState(
-            const FARDGPass& Pass,
-            arda::EArdaRHIResourceState State,
-            bool bTexture)
-        {
-            const uint32_t Value = static_cast<uint32_t>(State);
-            if (State == arda::EArdaRHIResourceState::Unknown)
-            {
-                ReportPassError(Pass, "declares an unknown resource state.");
-            }
-            if (!IsLegalStateCombination(State))
-            {
-                ReportPassError(
-                    Pass,
-                    "combines a write state with another incompatible state.");
-            }
-            if (bTexture && (Value & TextureForbiddenMask) != 0)
-            {
-                ReportPassError(Pass, "declares a buffer-only state for a texture.");
-            }
-            if (!bTexture && (Value & BufferForbiddenMask) != 0)
-            {
-                ReportPassError(Pass, "declares a texture-only state for a buffer.");
-            }
-            if (HasAllFlags(Pass.GetFlags(), EARDGPassFlags::Copy) &&
-                (Value & ~CopyMask) != 0)
-            {
-                ReportPassError(
-                    Pass,
-                    "declares a state unsupported by a copy queue.");
-            }
-            if (HasAllFlags(Pass.GetFlags(), EARDGPassFlags::AsyncCompute) &&
-                (Value & GraphicsOnlyMask) != 0)
-            {
-                ReportPassError(
-                    Pass,
-                    "declares a graphics-only state for async compute.");
-            }
-        }
+		void ValidateState(const FARDGPass& Pass, arda::EArdaRHIResourceState State, bool bTexture)
+		{
+			const uint32_t Value = static_cast<uint32_t>(State);
+			if (State == arda::EArdaRHIResourceState::Unknown)
+			{
+				ReportPassError(Pass, "declares an unknown resource state.");
+			}
+			if (!IsLegalStateCombination(State))
+			{
+				ReportPassError(Pass, "combines a write state with another incompatible state.");
+			}
+			if (bTexture && (Value & TextureForbiddenMask) != 0)
+			{
+				ReportPassError(Pass, "declares a buffer-only state for a texture.");
+			}
+			if (!bTexture && (Value & BufferForbiddenMask) != 0)
+			{
+				ReportPassError(Pass, "declares a texture-only state for a buffer.");
+			}
+			if (HasAllFlags(Pass.GetFlags(), EARDGPassFlags::Copy) && (Value & ~CopyMask) != 0)
+			{
+				ReportPassError(Pass, "declares a state unsupported by a copy queue.");
+			}
+			if (HasAllFlags(Pass.GetFlags(), EARDGPassFlags::AsyncCompute) && (Value & GraphicsOnlyMask) != 0)
+			{
+				ReportPassError(Pass, "declares a graphics-only state for async compute.");
+			}
+		}
 
-        /**
+		/**
          * Validates one pass texture access against the graph and texture descriptor.
          *
          * The handle must resolve in this graph, its state must be legal, its
@@ -140,115 +113,96 @@ namespace arda
          * attachment states require the corresponding descriptor capability.
          * This stage reads declarations only.
          */
-        void ValidateTextureAccess(
-            const FARDGBuilder::FImpl& Graph,
-            const FARDGPass& Pass,
-            const FARDGPassTextureState& Access)
-        {
-            const FARDGTexture* Texture = Graph.mTextures.TryGet(Access.mTexture);
-            if (Texture == nullptr)
-            {
-                ReportPassError(Pass, "references an invalid texture handle.");
-            }
-            ValidateState(Pass, Access.mState, true);
-            const arda::FArdaRHITextureDesc& Desc = Texture->GetDesc();
-            const arda::FArdaRHITextureSubresourceRange Resolved =
-                Access.mSubresources.Resolve(Desc);
-            if (Resolved.mMipLevelCount == 0 || Resolved.mArraySliceCount == 0 ||
-                Resolved.mBaseMipLevel >= Desc.mMipLevels ||
-                Resolved.mBaseArraySlice >= Desc.mArraySize ||
-                Resolved.mBaseMipLevel + Resolved.mMipLevelCount > Desc.mMipLevels ||
-                Resolved.mBaseArraySlice + Resolved.mArraySliceCount > Desc.mArraySize)
-            {
-                ReportPassError(Pass, "declares an invalid texture subresource range.");
-            }
-            if ((Access.mState & arda::EArdaRHIResourceState::UnorderedAccess) !=
-                    arda::EArdaRHIResourceState::Unknown &&
-                !arda::HasAnyFlags(Desc.mUsage, arda::EArdaRHITextureUsage::UnorderedAccess))
-            {
-                ReportPassError(Pass, "uses unordered access on a non-UAV texture.");
-            }
-            if ((Access.mState &
-                 (arda::EArdaRHIResourceState::RenderTarget |
-                  arda::EArdaRHIResourceState::DepthWrite |
-                  arda::EArdaRHIResourceState::DepthRead)) !=
-                    arda::EArdaRHIResourceState::Unknown &&
-                !arda::HasAnyFlags(Desc.mUsage,
-                    arda::EArdaRHITextureUsage::RenderTarget | arda::EArdaRHITextureUsage::DepthStencil))
-            {
-                ReportPassError(
-                    Pass,
-                    "uses an attachment state on a non-render-target texture.");
-            }
-        }
+		void ValidateTextureAccess(const FARDGBuilder::FImpl& Graph,
+		    const FARDGPass& Pass,
+		    const FARDGPassTextureState& Access)
+		{
+			const FARDGTexture* Texture = Graph.mTextures.TryGet(Access.mTexture);
+			if (Texture == nullptr)
+			{
+				ReportPassError(Pass, "references an invalid texture handle.");
+			}
+			ValidateState(Pass, Access.mState, true);
+			const arda::FArdaRHITextureDesc& Desc = Texture->GetDesc();
+			const arda::FArdaRHITextureSubresourceRange Resolved = Access.mSubresources.Resolve(Desc);
+			if (Resolved.mMipLevelCount == 0 || Resolved.mArraySliceCount == 0 ||
+			    Resolved.mBaseMipLevel >= Desc.mMipLevels || Resolved.mBaseArraySlice >= Desc.mArraySize ||
+			    Resolved.mBaseMipLevel + Resolved.mMipLevelCount > Desc.mMipLevels ||
+			    Resolved.mBaseArraySlice + Resolved.mArraySliceCount > Desc.mArraySize)
+			{
+				ReportPassError(Pass, "declares an invalid texture subresource range.");
+			}
+			if ((Access.mState & arda::EArdaRHIResourceState::UnorderedAccess) !=
+			        arda::EArdaRHIResourceState::Unknown &&
+			    !arda::HasAnyFlags(Desc.mUsage, arda::EArdaRHITextureUsage::UnorderedAccess))
+			{
+				ReportPassError(Pass, "uses unordered access on a non-UAV texture.");
+			}
+			if ((Access.mState &
+			        (arda::EArdaRHIResourceState::RenderTarget | arda::EArdaRHIResourceState::DepthWrite |
+			            arda::EArdaRHIResourceState::DepthRead)) != arda::EArdaRHIResourceState::Unknown &&
+			    !arda::HasAnyFlags(Desc.mUsage,
+			        arda::EArdaRHITextureUsage::RenderTarget | arda::EArdaRHITextureUsage::DepthStencil))
+			{
+				ReportPassError(Pass, "uses an attachment state on a non-render-target texture.");
+			}
+		}
 
-        /**
+		/**
          * Validates one pass buffer access against the graph and buffer descriptor.
          *
          * The handle and state must be valid, the resolved byte range must be
          * nonempty and in bounds, and unordered access requires UAV-capable
          * backing. Buffer state tracking remains whole-resource after this check.
          */
-        void ValidateBufferAccess(
-            const FARDGBuilder::FImpl& Graph,
-            const FARDGPass& Pass,
-            const FARDGPassBufferState& Access)
-        {
-            const FARDGBuffer* Buffer = Graph.mBuffers.TryGet(Access.mBuffer);
-            if (Buffer == nullptr)
-            {
-                ReportPassError(Pass, "references an invalid buffer handle.");
-            }
-            ValidateState(Pass, Access.mState, false);
-            const arda::FArdaRHIBufferDesc& Desc = Buffer->GetDesc();
-            const arda::FArdaRHIBufferRange Resolved = Access.mRange.Resolve(Desc);
-            const bool bWholeRemainingBuffer =
-                Access.mRange.mByteSize == arda::ArdaRHIWholeBuffer;
-            const bool bRequestedRangeOverflows =
-                Access.mRange.mByteOffset > Desc.mByteSize ||
-                (!bWholeRemainingBuffer &&
-                 Access.mRange.mByteOffset <= Desc.mByteSize &&
-                 Access.mRange.mByteSize >
-                     Desc.mByteSize - Access.mRange.mByteOffset);
-            if (Resolved.mByteSize == 0 ||
-                Resolved.mByteOffset > Desc.mByteSize ||
-                Resolved.mByteSize > Desc.mByteSize - Resolved.mByteOffset ||
-                bRequestedRangeOverflows)
-            {
-                ReportPassError(Pass, "declares an invalid buffer range.");
-            }
-            if ((Access.mState & arda::EArdaRHIResourceState::UnorderedAccess) !=
-                    arda::EArdaRHIResourceState::Unknown &&
-                !arda::HasAnyFlags(Desc.mUsage, arda::EArdaRHIBufferUsage::UnorderedAccess))
-            {
-                ReportPassError(Pass, "uses unordered access on a non-UAV buffer.");
-            }
-        }
+		void ValidateBufferAccess(const FARDGBuilder::FImpl& Graph,
+		    const FARDGPass& Pass,
+		    const FARDGPassBufferState& Access)
+		{
+			const FARDGBuffer* Buffer = Graph.mBuffers.TryGet(Access.mBuffer);
+			if (Buffer == nullptr)
+			{
+				ReportPassError(Pass, "references an invalid buffer handle.");
+			}
+			ValidateState(Pass, Access.mState, false);
+			const arda::FArdaRHIBufferDesc& Desc = Buffer->GetDesc();
+			const arda::FArdaRHIBufferRange Resolved = Access.mRange.Resolve(Desc);
+			const bool bWholeRemainingBuffer = Access.mRange.mByteSize == arda::ArdaRHIWholeBuffer;
+			const bool bRequestedRangeOverflows = Access.mRange.mByteOffset > Desc.mByteSize ||
+			    (!bWholeRemainingBuffer && Access.mRange.mByteOffset <= Desc.mByteSize &&
+			        Access.mRange.mByteSize > Desc.mByteSize - Access.mRange.mByteOffset);
+			if (Resolved.mByteSize == 0 || Resolved.mByteOffset > Desc.mByteSize ||
+			    Resolved.mByteSize > Desc.mByteSize - Resolved.mByteOffset || bRequestedRangeOverflows)
+			{
+				ReportPassError(Pass, "declares an invalid buffer range.");
+			}
+			if ((Access.mState & arda::EArdaRHIResourceState::UnorderedAccess) !=
+			        arda::EArdaRHIResourceState::Unknown &&
+			    !arda::HasAnyFlags(Desc.mUsage, arda::EArdaRHIBufferUsage::UnorderedAccess))
+			{
+				ReportPassError(Pass, "uses unordered access on a non-UAV buffer.");
+			}
+		}
 
-        void ValidateAccelStructAccess(
-            const FARDGBuilder::FImpl& Graph,
-            const FARDGPass& Pass,
-            const FARDGPassAccelStructState& Access)
-        {
-            if (Graph.mAccelStructs.TryGet(Access.mAccelStruct) == nullptr)
-            {
-                ReportPassError(
-                    Pass, "references an invalid acceleration-structure handle.");
-            }
-            const auto Allowed =
-                arda::EArdaRHIResourceState::AccelStructRead |
-                arda::EArdaRHIResourceState::AccelStructWrite;
-            if (Access.mState == arda::EArdaRHIResourceState::Unknown ||
-                static_cast<uint32_t>(Access.mState & Allowed) !=
-                    static_cast<uint32_t>(Access.mState) ||
-                HasAllFlags(Pass.GetFlags(), EARDGPassFlags::Copy))
-            {
-                ReportPassError(
-                    Pass, "declares an invalid acceleration-structure state.");
-            }
-        }
+		void ValidateAccelStructAccess(const FARDGBuilder::FImpl& Graph,
+		    const FARDGPass& Pass,
+		    const FARDGPassAccelStructState& Access)
+		{
+			if (Graph.mAccelStructs.TryGet(Access.mAccelStruct) == nullptr)
+			{
+				ReportPassError(Pass, "references an invalid acceleration-structure handle.");
+			}
+			const auto Allowed =
+			    arda::EArdaRHIResourceState::AccelStructRead | arda::EArdaRHIResourceState::AccelStructWrite;
+			if (Access.mState == arda::EArdaRHIResourceState::Unknown ||
+			    static_cast<uint32_t>(Access.mState & Allowed) != static_cast<uint32_t>(Access.mState) ||
+			    HasAllFlags(Pass.GetFlags(), EARDGPassFlags::Copy))
+			{
+				ReportPassError(Pass, "declares an invalid acceleration-structure state.");
+			}
+		}
 
-        /**
+		/**
          * Replays registration order to reject graph-created reads before production.
          *
          * External resources start produced. Texture production is tracked per
@@ -257,197 +211,177 @@ namespace arda
          * same-pass write, and finally those writes are committed globally.
          * Sentinels are ignored and no graph state is mutated.
          */
-        void ValidateProducedBeforeRead(const FARDGBuilder::FImpl& Graph)
-        {
-            eastl::vector<eastl::vector<bool>> ProducedTextures;
-            ProducedTextures.reserve(Graph.mTextures.GetCount());
-            for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
-            {
-                const arda::FArdaRHITextureDesc& Desc = Texture->GetDesc();
-                ProducedTextures.emplace_back(
-                    static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize,
-                    Texture->IsExternal());
-            }
-            eastl::vector<eastl::vector<arda::FArdaRHIBufferRange>> ProducedBuffers(
-                Graph.mBuffers.GetCount());
-            for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
-            {
-                if (Buffer->IsExternal())
-                    ProducedBuffers[Buffer->GetHandle().GetIndex()].push_back(
-                        {0, Buffer->GetDesc().mByteSize});
-            }
-            eastl::vector<bool> ProducedAccelStructs(
-                Graph.mAccelStructs.GetCount(), false);
-            for (const FARDGAccelStruct* AccelStruct :
-                 Graph.mAccelStructs.GetEntries())
-            {
-                ProducedAccelStructs[AccelStruct->GetHandle().GetIndex()] =
-                    AccelStruct->IsExternal();
-            }
+		void ValidateProducedBeforeRead(const FARDGBuilder::FImpl& Graph)
+		{
+			eastl::vector<eastl::vector<bool>> ProducedTextures;
+			ProducedTextures.reserve(Graph.mTextures.GetCount());
+			for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
+			{
+				const arda::FArdaRHITextureDesc& Desc = Texture->GetDesc();
+				ProducedTextures.emplace_back(static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize,
+				    Texture->IsExternal());
+			}
+			eastl::vector<eastl::vector<arda::FArdaRHIBufferRange>> ProducedBuffers(Graph.mBuffers.GetCount());
+			for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
+			{
+				if (Buffer->IsExternal())
+				{
+					ProducedBuffers[Buffer->GetHandle().GetIndex()].push_back({0, Buffer->GetDesc().mByteSize});
+				}
+			}
+			eastl::vector<bool> ProducedAccelStructs(Graph.mAccelStructs.GetCount(), false);
+			for (const FARDGAccelStruct* AccelStruct : Graph.mAccelStructs.GetEntries())
+			{
+				ProducedAccelStructs[AccelStruct->GetHandle().GetIndex()] = AccelStruct->IsExternal();
+			}
 
-            for (const FARDGPass* Pass : Graph.mPasses.GetEntries())
-            {
-                if (Pass->GetState().mbSentinel)
-                {
-                    continue;
-                }
+			for (const FARDGPass* Pass : Graph.mPasses.GetEntries())
+			{
+				if (Pass->GetState().mbSentinel)
+				{
+					continue;
+				}
 
-                // Gather writes first so a pass may initialize and read the same
-                // declared state unit without exposing it to earlier passes.
-                eastl::vector<eastl::vector<bool>> PassTextureWrites(
-                    Graph.mTextures.GetCount());
-                for (const FARDGPassTextureState& Access :
-                     Pass->GetState().mTextureStates)
-                {
-                    const FARDGTexture& Texture =
-                        Graph.mTextures.Get(Access.mTexture);
-                    const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
-                    auto& Writes = PassTextureWrites[Access.mTexture.GetIndex()];
-                    if (Writes.empty())
-                    {
-                        Writes.resize(
-                            static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize,
-                            false);
-                    }
-                    if (!Access.mbWrite)
-                    {
-                        continue;
-                    }
-                    const auto Range = Access.mSubresources.Resolve(Desc);
-                    for (uint32_t Slice = Range.mBaseArraySlice;
-                         Slice < Range.mBaseArraySlice + Range.mArraySliceCount;
-                         ++Slice)
-                    {
-                        for (uint32_t Mip = Range.mBaseMipLevel;
-                             Mip < Range.mBaseMipLevel + Range.mMipLevelCount;
-                             ++Mip)
-                        {
-                            Writes[static_cast<size_t>(Slice) * Desc.mMipLevels + Mip] =
-                                true;
-                        }
-                    }
-                }
+				// Gather writes first so a pass may initialize and read the same
+				// declared state unit without exposing it to earlier passes.
+				eastl::vector<eastl::vector<bool>> PassTextureWrites(Graph.mTextures.GetCount());
+				for (const FARDGPassTextureState& Access : Pass->GetState().mTextureStates)
+				{
+					const FARDGTexture& Texture = Graph.mTextures.Get(Access.mTexture);
+					const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
+					auto& Writes = PassTextureWrites[Access.mTexture.GetIndex()];
+					if (Writes.empty())
+					{
+						Writes.resize(static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize, false);
+					}
+					if (!Access.mbWrite)
+					{
+						continue;
+					}
+					const auto Range = Access.mSubresources.Resolve(Desc);
+					for (uint32_t Slice = Range.mBaseArraySlice; Slice < Range.mBaseArraySlice + Range.mArraySliceCount;
+					    ++Slice)
+					{
+						for (uint32_t Mip = Range.mBaseMipLevel; Mip < Range.mBaseMipLevel + Range.mMipLevelCount;
+						    ++Mip)
+						{
+							Writes[static_cast<size_t>(Slice) * Desc.mMipLevels + Mip] = true;
+						}
+					}
+				}
 
-                // Publish this pass's writes before checking reads, matching
-                // the texture rule that a callback may initialize then read.
-                for (const auto& Access : Pass->GetState().mBufferStates)
-                {
-                    if (!Access.mbWrite)
-                        continue;
-                    auto& Ranges = ProducedBuffers[Access.mBuffer.GetIndex()];
-                    Ranges.push_back(Access.mRange.Resolve(Graph.mBuffers.Get(Access.mBuffer).GetDesc()));
-                    eastl::sort(Ranges.begin(), Ranges.end(), [](const auto& Left, const auto& Right)
-                    { return Left.mByteOffset < Right.mByteOffset; });
-                    size_t Count = 0;
-                    for (const auto Range : Ranges)
-                    {
-                        if (Count && Ranges[Count - 1].mByteOffset + Ranges[Count - 1].mByteSize >=
-                            Range.mByteOffset)
-                        {
-                            auto& Last = Ranges[Count - 1];
-                            Last.mByteSize = eastl::max(Last.mByteOffset + Last.mByteSize,
-                                Range.mByteOffset + Range.mByteSize) - Last.mByteOffset;
-                        }
-                        else
-                            Ranges[Count++] = Range;
-                    }
-                    Ranges.resize(Count);
-                }
-                eastl::unordered_set<uint32_t> PassAccelStructWrites;
-                for (const FARDGPassAccelStructState& Access :
-                     Pass->GetState().mAccelStructStates)
-                {
-                    if (Access.mbWrite)
-                    {
-                        PassAccelStructWrites.insert(
-                            Access.mAccelStruct.GetIndex());
-                    }
-                }
+				// Publish this pass's writes before checking reads, matching
+				// the texture rule that a callback may initialize then read.
+				for (const auto& Access : Pass->GetState().mBufferStates)
+				{
+					if (!Access.mbWrite)
+					{
+						continue;
+					}
+					auto& Ranges = ProducedBuffers[Access.mBuffer.GetIndex()];
+					Ranges.push_back(Access.mRange.Resolve(Graph.mBuffers.Get(Access.mBuffer).GetDesc()));
+					eastl::sort(Ranges.begin(),
+					    Ranges.end(),
+					    [](const auto& Left, const auto& Right)
+					    {
+						    return Left.mByteOffset < Right.mByteOffset;
+					    });
+					size_t Count = 0;
+					for (const auto Range : Ranges)
+					{
+						if (Count && Ranges[Count - 1].mByteOffset + Ranges[Count - 1].mByteSize >= Range.mByteOffset)
+						{
+							auto& Last = Ranges[Count - 1];
+							Last.mByteSize =
+							    eastl::max(Last.mByteOffset + Last.mByteSize, Range.mByteOffset + Range.mByteSize) -
+							    Last.mByteOffset;
+						}
+						else
+						{
+							Ranges[Count++] = Range;
+						}
+					}
+					Ranges.resize(Count);
+				}
+				eastl::unordered_set<uint32_t> PassAccelStructWrites;
+				for (const FARDGPassAccelStructState& Access : Pass->GetState().mAccelStructStates)
+				{
+					if (Access.mbWrite)
+					{
+						PassAccelStructWrites.insert(Access.mAccelStruct.GetIndex());
+					}
+				}
 
-                // Validate reads against prior production or the pass-local write set.
-                for (const FARDGPassTextureState& Access :
-                     Pass->GetState().mTextureStates)
-                {
-                    if (Access.mbWrite)
-                    {
-                        continue;
-                    }
-                    const FARDGTexture& Texture =
-                        Graph.mTextures.Get(Access.mTexture);
-                    const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
-                    const auto Range = Access.mSubresources.Resolve(Desc);
-                    for (uint32_t Slice = Range.mBaseArraySlice;
-                         Slice < Range.mBaseArraySlice + Range.mArraySliceCount;
-                         ++Slice)
-                    {
-                        for (uint32_t Mip = Range.mBaseMipLevel;
-                             Mip < Range.mBaseMipLevel + Range.mMipLevelCount;
-                             ++Mip)
-                        {
-                            const size_t Index =
-                                static_cast<size_t>(Slice) * Desc.mMipLevels + Mip;
-                            if (!ProducedTextures[Access.mTexture.GetIndex()][Index] &&
-                                !PassTextureWrites[Access.mTexture.GetIndex()][Index])
-                            {
-                                ReportPassError(
-                                    *Pass,
-                                    "reads a texture subresource before it is produced.");
-                            }
-                        }
-                    }
-                }
-                for (const FARDGPassBufferState& Access :
-                     Pass->GetState().mBufferStates)
-                {
-                    const uint32_t Index = Access.mBuffer.GetIndex();
-                    const auto Read = Access.mRange.Resolve(Graph.mBuffers.Get(Access.mBuffer).GetDesc());
-                    const auto& Ranges = ProducedBuffers[Index];
-                    if (!Access.mbWrite && !eastl::any_of(Ranges.begin(), Ranges.end(),
-                        [&](const auto& Range)
-                        {
-                            return Range.mByteOffset <= Read.mByteOffset &&
-                                Range.mByteOffset + Range.mByteSize >= Read.mByteOffset + Read.mByteSize;
-                        }))
-                    {
-                        ReportPassError(*Pass, "reads a buffer before its byte range is produced.");
-                    }
-                }
-                for (const FARDGPassAccelStructState& Access :
-                     Pass->GetState().mAccelStructStates)
-                {
-                    const uint32_t Index = Access.mAccelStruct.GetIndex();
-                    if (!Access.mbWrite && !ProducedAccelStructs[Index] &&
-                        PassAccelStructWrites.find(Index) ==
-                            PassAccelStructWrites.end())
-                    {
-                        ReportPassError(
-                            *Pass,
-                            "reads an acceleration structure before it is produced.");
-                    }
-                }
+				// Validate reads against prior production or the pass-local write set.
+				for (const FARDGPassTextureState& Access : Pass->GetState().mTextureStates)
+				{
+					if (Access.mbWrite)
+					{
+						continue;
+					}
+					const FARDGTexture& Texture = Graph.mTextures.Get(Access.mTexture);
+					const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
+					const auto Range = Access.mSubresources.Resolve(Desc);
+					for (uint32_t Slice = Range.mBaseArraySlice; Slice < Range.mBaseArraySlice + Range.mArraySliceCount;
+					    ++Slice)
+					{
+						for (uint32_t Mip = Range.mBaseMipLevel; Mip < Range.mBaseMipLevel + Range.mMipLevelCount;
+						    ++Mip)
+						{
+							const size_t Index = static_cast<size_t>(Slice) * Desc.mMipLevels + Mip;
+							if (!ProducedTextures[Access.mTexture.GetIndex()][Index] &&
+							    !PassTextureWrites[Access.mTexture.GetIndex()][Index])
+							{
+								ReportPassError(*Pass, "reads a texture subresource before it is produced.");
+							}
+						}
+					}
+				}
+				for (const FARDGPassBufferState& Access : Pass->GetState().mBufferStates)
+				{
+					const uint32_t Index = Access.mBuffer.GetIndex();
+					const auto Read = Access.mRange.Resolve(Graph.mBuffers.Get(Access.mBuffer).GetDesc());
+					const auto& Ranges = ProducedBuffers[Index];
+					if (!Access.mbWrite &&
+					    !eastl::any_of(Ranges.begin(),
+					        Ranges.end(),
+					        [&](const auto& Range)
+					        {
+						        return Range.mByteOffset <= Read.mByteOffset &&
+						            Range.mByteOffset + Range.mByteSize >= Read.mByteOffset + Read.mByteSize;
+					        }))
+					{
+						ReportPassError(*Pass, "reads a buffer before its byte range is produced.");
+					}
+				}
+				for (const FARDGPassAccelStructState& Access : Pass->GetState().mAccelStructStates)
+				{
+					const uint32_t Index = Access.mAccelStruct.GetIndex();
+					if (!Access.mbWrite && !ProducedAccelStructs[Index] &&
+					    PassAccelStructWrites.find(Index) == PassAccelStructWrites.end())
+					{
+						ReportPassError(*Pass, "reads an acceleration structure before it is produced.");
+					}
+				}
 
-                // Publish this pass's writes only after all of its reads are checked.
-                for (uint32_t TextureIndex = 0;
-                     TextureIndex < PassTextureWrites.size();
-                     ++TextureIndex)
-                {
-                    const auto& Writes = PassTextureWrites[TextureIndex];
-                    for (size_t Index = 0; Index < Writes.size(); ++Index)
-                    {
-                        ProducedTextures[TextureIndex][Index] =
-                            ProducedTextures[TextureIndex][Index] ||
-                            Writes[Index];
-                    }
-                }
-                for (uint32_t Index : PassAccelStructWrites)
-                {
-                    ProducedAccelStructs[Index] = true;
-                }
-            }
-        }
-    }
+				// Publish this pass's writes only after all of its reads are checked.
+				for (uint32_t TextureIndex = 0; TextureIndex < PassTextureWrites.size(); ++TextureIndex)
+				{
+					const auto& Writes = PassTextureWrites[TextureIndex];
+					for (size_t Index = 0; Index < Writes.size(); ++Index)
+					{
+						ProducedTextures[TextureIndex][Index] = ProducedTextures[TextureIndex][Index] || Writes[Index];
+					}
+				}
+				for (uint32_t Index : PassAccelStructWrites)
+				{
+					ProducedAccelStructs[Index] = true;
+				}
+			}
+		}
+	}
 
-    /**
+	/**
      * Validates the complete build-time representation before compiler mutation.
      *
      * Resource loops enforce known flags, ownership/backing consistency, and
@@ -456,160 +390,124 @@ namespace arda
      * to unique registered resources and unique output addresses. A final
      * production replay proves graph-created reads have an initialization path.
      */
-    void FARDGValidation::ValidateBeforeCompile(
-        const FARDGBuilder::FImpl& Graph)
-    {
-        constexpr uint16_t KnownPassFlags =
-            static_cast<uint16_t>(EARDGPassFlags::Raster) |
-            static_cast<uint16_t>(EARDGPassFlags::Compute) |
-            static_cast<uint16_t>(EARDGPassFlags::AsyncCompute) |
-            static_cast<uint16_t>(EARDGPassFlags::Copy) |
-            static_cast<uint16_t>(EARDGPassFlags::NeverCull) |
-            static_cast<uint16_t>(EARDGPassFlags::SkipRenderPass) |
-            static_cast<uint16_t>(EARDGPassFlags::NeverParallel) |
-            static_cast<uint16_t>(EARDGPassFlags::RecordAtSubmit);
-        constexpr uint8_t KnownResourceFlags =
-            static_cast<uint8_t>(EARDGResourceFlags::External) |
-            static_cast<uint8_t>(EARDGResourceFlags::Extracted) |
-            static_cast<uint8_t>(EARDGResourceFlags::Transient);
+	void FARDGValidation::ValidateBeforeCompile(const FARDGBuilder::FImpl& Graph)
+	{
+		constexpr uint16_t KnownPassFlags = static_cast<uint16_t>(EARDGPassFlags::Raster) |
+		    static_cast<uint16_t>(EARDGPassFlags::Compute) | static_cast<uint16_t>(EARDGPassFlags::AsyncCompute) |
+		    static_cast<uint16_t>(EARDGPassFlags::Copy) | static_cast<uint16_t>(EARDGPassFlags::NeverCull) |
+		    static_cast<uint16_t>(EARDGPassFlags::SkipRenderPass) |
+		    static_cast<uint16_t>(EARDGPassFlags::NeverParallel) |
+		    static_cast<uint16_t>(EARDGPassFlags::RecordAtSubmit);
+		constexpr uint8_t KnownResourceFlags = static_cast<uint8_t>(EARDGResourceFlags::External) |
+		    static_cast<uint8_t>(EARDGResourceFlags::Extracted) | static_cast<uint8_t>(EARDGResourceFlags::Transient);
 
-        for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
-        {
-            const uint8_t Flags = static_cast<uint8_t>(Texture->GetFlags());
-            const uint32_t Initial =
-                static_cast<uint32_t>(Texture->GetInitialState());
-            const uint32_t Final =
-                static_cast<uint32_t>(Texture->GetFinalState());
-            if ((Flags & ~KnownResourceFlags) != 0 ||
-                (Texture->IsExternal() &&
-                 HasAllFlags(Texture->GetFlags(), EARDGResourceFlags::Transient)) ||
-                (Texture->IsExternal() != static_cast<bool>(Texture->GetTexture())) ||
-                (Texture->GetInitialState() != arda::EArdaRHIResourceState::Unknown &&
-                 (!IsLegalStateCombination(Texture->GetInitialState()) ||
-                  (Initial & TextureForbiddenMask) != 0)) ||
-                ((Texture->IsExternal() || Texture->IsExtracted()) &&
-                 (!IsLegalStateCombination(Texture->GetFinalState()) ||
-                  (Final & TextureForbiddenMask) != 0)))
-            {
-                ARDA_CHECK_MSG(
-                    "A render-graph texture has invalid ownership flags or backing.");
-            }
-        }
-        for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
-        {
-            const uint8_t Flags = static_cast<uint8_t>(Buffer->GetFlags());
-            const uint32_t Initial =
-                static_cast<uint32_t>(Buffer->GetInitialState());
-            const uint32_t Final =
-                static_cast<uint32_t>(Buffer->GetFinalState());
-            if ((Flags & ~KnownResourceFlags) != 0 ||
-                (Buffer->IsExternal() &&
-                 HasAllFlags(Buffer->GetFlags(), EARDGResourceFlags::Transient)) ||
-                (Buffer->IsExternal() != static_cast<bool>(Buffer->GetBuffer())) ||
-                (Buffer->GetInitialState() != arda::EArdaRHIResourceState::Unknown &&
-                 (!IsLegalStateCombination(Buffer->GetInitialState()) ||
-                  (Initial & BufferForbiddenMask) != 0)) ||
-                ((Buffer->IsExternal() || Buffer->IsExtracted()) &&
-                 (!IsLegalStateCombination(Buffer->GetFinalState()) ||
-                  (Final & BufferForbiddenMask) != 0)))
-            {
-                ARDA_CHECK_MSG(
-                    "A render-graph buffer has invalid ownership flags or backing.");
-            }
-        }
-        for (const FARDGAccelStruct* AccelStruct :
-             Graph.mAccelStructs.GetEntries())
-        {
-            const uint8_t Flags = static_cast<uint8_t>(AccelStruct->GetFlags());
-            if ((Flags & ~KnownResourceFlags) != 0 ||
-                (AccelStruct->IsExternal() !=
-                 static_cast<bool>(AccelStruct->GetAccelStruct())) ||
-                HasAllFlags(AccelStruct->GetFlags(), EARDGResourceFlags::Transient))
-            {
-                ARDA_CHECK_MSG(
-                    "A render-graph acceleration structure has invalid ownership flags or backing.");
-            }
-        }
+		for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
+		{
+			const uint8_t Flags = static_cast<uint8_t>(Texture->GetFlags());
+			const uint32_t Initial = static_cast<uint32_t>(Texture->GetInitialState());
+			const uint32_t Final = static_cast<uint32_t>(Texture->GetFinalState());
+			if ((Flags & ~KnownResourceFlags) != 0 ||
+			    (Texture->IsExternal() && HasAllFlags(Texture->GetFlags(), EARDGResourceFlags::Transient)) ||
+			    (Texture->IsExternal() != static_cast<bool>(Texture->GetTexture())) ||
+			    (Texture->GetInitialState() != arda::EArdaRHIResourceState::Unknown &&
+			        (!IsLegalStateCombination(Texture->GetInitialState()) || (Initial & TextureForbiddenMask) != 0)) ||
+			    ((Texture->IsExternal() || Texture->IsExtracted()) &&
+			        (!IsLegalStateCombination(Texture->GetFinalState()) || (Final & TextureForbiddenMask) != 0)))
+			{
+				ARDA_CHECK_MSG("A render-graph texture has invalid ownership flags or backing.");
+			}
+		}
+		for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
+		{
+			const uint8_t Flags = static_cast<uint8_t>(Buffer->GetFlags());
+			const uint32_t Initial = static_cast<uint32_t>(Buffer->GetInitialState());
+			const uint32_t Final = static_cast<uint32_t>(Buffer->GetFinalState());
+			if ((Flags & ~KnownResourceFlags) != 0 ||
+			    (Buffer->IsExternal() && HasAllFlags(Buffer->GetFlags(), EARDGResourceFlags::Transient)) ||
+			    (Buffer->IsExternal() != static_cast<bool>(Buffer->GetBuffer())) ||
+			    (Buffer->GetInitialState() != arda::EArdaRHIResourceState::Unknown &&
+			        (!IsLegalStateCombination(Buffer->GetInitialState()) || (Initial & BufferForbiddenMask) != 0)) ||
+			    ((Buffer->IsExternal() || Buffer->IsExtracted()) &&
+			        (!IsLegalStateCombination(Buffer->GetFinalState()) || (Final & BufferForbiddenMask) != 0)))
+			{
+				ARDA_CHECK_MSG("A render-graph buffer has invalid ownership flags or backing.");
+			}
+		}
+		for (const FARDGAccelStruct* AccelStruct : Graph.mAccelStructs.GetEntries())
+		{
+			const uint8_t Flags = static_cast<uint8_t>(AccelStruct->GetFlags());
+			if ((Flags & ~KnownResourceFlags) != 0 ||
+			    (AccelStruct->IsExternal() != static_cast<bool>(AccelStruct->GetAccelStruct())) ||
+			    HasAllFlags(AccelStruct->GetFlags(), EARDGResourceFlags::Transient))
+			{
+				ARDA_CHECK_MSG("A render-graph acceleration structure has invalid ownership flags or backing.");
+			}
+		}
 
-        for (const FARDGPass* Pass : Graph.mPasses.GetEntries())
-        {
-            if ((static_cast<uint16_t>(Pass->GetFlags()) & ~KnownPassFlags) != 0)
-            {
-                ReportPassError(*Pass, "contains unknown pass flags.");
-            }
-            for (const FARDGPassTextureState& Access :
-                 Pass->GetState().mTextureStates)
-            {
-                ValidateTextureAccess(Graph, *Pass, Access);
-            }
-            for (const FARDGPassBufferState& Access :
-                 Pass->GetState().mBufferStates)
-            {
-                ValidateBufferAccess(Graph, *Pass, Access);
-            }
-            for (const FARDGPassAccelStructState& Access :
-                 Pass->GetState().mAccelStructStates)
-            {
-                ValidateAccelStructAccess(Graph, *Pass, Access);
-            }
-        }
+		for (const FARDGPass* Pass : Graph.mPasses.GetEntries())
+		{
+			if ((static_cast<uint16_t>(Pass->GetFlags()) & ~KnownPassFlags) != 0)
+			{
+				ReportPassError(*Pass, "contains unknown pass flags.");
+			}
+			for (const FARDGPassTextureState& Access : Pass->GetState().mTextureStates)
+			{
+				ValidateTextureAccess(Graph, *Pass, Access);
+			}
+			for (const FARDGPassBufferState& Access : Pass->GetState().mBufferStates)
+			{
+				ValidateBufferAccess(Graph, *Pass, Access);
+			}
+			for (const FARDGPassAccelStructState& Access : Pass->GetState().mAccelStructStates)
+			{
+				ValidateAccelStructAccess(Graph, *Pass, Access);
+			}
+		}
 
-        eastl::unordered_set<uint32_t> ExtractedTextures;
-        eastl::unordered_set<const void*> TextureOutputs;
-        for (const FARDGTextureExtraction& Extraction : Graph.mTextureExtractions)
-        {
-            if (Extraction.mTexture == nullptr || Extraction.mOutput == nullptr ||
-                Graph.mTextures.TryGet(Extraction.mTexture->GetHandle()) !=
-                    Extraction.mTexture ||
-                !Extraction.mTexture->IsExtracted() ||
-                !ExtractedTextures.insert(
-                    Extraction.mTexture->GetHandle().GetIndex()).second ||
-                !TextureOutputs.insert(Extraction.mOutput).second)
-            {
-                ARDA_CHECK_MSG(
-                    "A render-graph texture extraction is invalid or duplicated.");
-            }
-        }
-        eastl::unordered_set<uint32_t> ExtractedBuffers;
-        eastl::unordered_set<const void*> BufferOutputs;
-        for (const FARDGBufferExtraction& Extraction : Graph.mBufferExtractions)
-        {
-            if (Extraction.mBuffer == nullptr || Extraction.mOutput == nullptr ||
-                Graph.mBuffers.TryGet(Extraction.mBuffer->GetHandle()) !=
-                    Extraction.mBuffer ||
-                !Extraction.mBuffer->IsExtracted() ||
-                !ExtractedBuffers.insert(
-                    Extraction.mBuffer->GetHandle().GetIndex()).second ||
-                !BufferOutputs.insert(Extraction.mOutput).second)
-            {
-                ARDA_CHECK_MSG(
-                    "A render-graph buffer extraction is invalid or duplicated.");
-            }
-        }
-        eastl::unordered_set<uint32_t> ExtractedAccelStructs;
-        eastl::unordered_set<const void*> AccelStructOutputs;
-        for (const FARDGAccelStructExtraction& Extraction :
-             Graph.mAccelStructExtractions)
-        {
-            if (Extraction.mAccelStruct == nullptr ||
-                Extraction.mOutput == nullptr ||
-                Graph.mAccelStructs.TryGet(
-                    Extraction.mAccelStruct->GetHandle()) !=
-                    Extraction.mAccelStruct ||
-                !Extraction.mAccelStruct->IsExtracted() ||
-                !ExtractedAccelStructs.insert(
-                    Extraction.mAccelStruct->GetHandle().GetIndex()).second ||
-                !AccelStructOutputs.insert(Extraction.mOutput).second)
-            {
-                ARDA_CHECK_MSG(
-                    "A render-graph acceleration-structure extraction is invalid or duplicated.");
-            }
-        }
+		eastl::unordered_set<uint32_t> ExtractedTextures;
+		eastl::unordered_set<const void*> TextureOutputs;
+		for (const FARDGTextureExtraction& Extraction : Graph.mTextureExtractions)
+		{
+			if (Extraction.mTexture == nullptr || Extraction.mOutput == nullptr ||
+			    Graph.mTextures.TryGet(Extraction.mTexture->GetHandle()) != Extraction.mTexture ||
+			    !Extraction.mTexture->IsExtracted() ||
+			    !ExtractedTextures.insert(Extraction.mTexture->GetHandle().GetIndex()).second ||
+			    !TextureOutputs.insert(Extraction.mOutput).second)
+			{
+				ARDA_CHECK_MSG("A render-graph texture extraction is invalid or duplicated.");
+			}
+		}
+		eastl::unordered_set<uint32_t> ExtractedBuffers;
+		eastl::unordered_set<const void*> BufferOutputs;
+		for (const FARDGBufferExtraction& Extraction : Graph.mBufferExtractions)
+		{
+			if (Extraction.mBuffer == nullptr || Extraction.mOutput == nullptr ||
+			    Graph.mBuffers.TryGet(Extraction.mBuffer->GetHandle()) != Extraction.mBuffer ||
+			    !Extraction.mBuffer->IsExtracted() ||
+			    !ExtractedBuffers.insert(Extraction.mBuffer->GetHandle().GetIndex()).second ||
+			    !BufferOutputs.insert(Extraction.mOutput).second)
+			{
+				ARDA_CHECK_MSG("A render-graph buffer extraction is invalid or duplicated.");
+			}
+		}
+		eastl::unordered_set<uint32_t> ExtractedAccelStructs;
+		eastl::unordered_set<const void*> AccelStructOutputs;
+		for (const FARDGAccelStructExtraction& Extraction : Graph.mAccelStructExtractions)
+		{
+			if (Extraction.mAccelStruct == nullptr || Extraction.mOutput == nullptr ||
+			    Graph.mAccelStructs.TryGet(Extraction.mAccelStruct->GetHandle()) != Extraction.mAccelStruct ||
+			    !Extraction.mAccelStruct->IsExtracted() ||
+			    !ExtractedAccelStructs.insert(Extraction.mAccelStruct->GetHandle().GetIndex()).second ||
+			    !AccelStructOutputs.insert(Extraction.mOutput).second)
+			{
+				ARDA_CHECK_MSG("A render-graph acceleration-structure extraction is invalid or duplicated.");
+			}
+		}
 
-        ValidateProducedBeforeRead(Graph);
-    }
+		ValidateProducedBeforeRead(Graph);
+	}
 
-    /**
+	/**
      * Independently replays compiled transitions and verifies all live contracts.
      *
      * The replay starts from declared initial states, treating Unknown as Common.
@@ -618,223 +516,165 @@ namespace arda
      * mask, and used external/extracted resources must reach their final state.
      * Texture tracking is per mip/slice; buffer tracking is whole-resource.
      */
-    void FARDGValidation::ValidateTransitions(
-        const FARDGBuilder::FImpl& Graph)
-    {
-        eastl::vector<eastl::vector<arda::EArdaRHIResourceState>> TextureStates;
-        TextureStates.reserve(Graph.mTextures.GetCount());
-        for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
-        {
-            const arda::FArdaRHITextureDesc& Desc = Texture->GetDesc();
-            arda::EArdaRHIResourceState Initial = Texture->GetInitialState();
-            if (Initial == arda::EArdaRHIResourceState::Unknown)
-            {
-                Initial = arda::EArdaRHIResourceState::Common;
-            }
-            TextureStates.emplace_back(
-                static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize,
-                Initial);
-        }
-        eastl::vector<arda::EArdaRHIResourceState> BufferStates;
-        BufferStates.reserve(Graph.mBuffers.GetCount());
-        for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
-        {
-            arda::EArdaRHIResourceState Initial = Buffer->GetInitialState();
-            BufferStates.push_back(
-                Initial == arda::EArdaRHIResourceState::Unknown
-                    ? arda::EArdaRHIResourceState::Common
-                    : Initial);
-        }
-        eastl::vector<arda::EArdaRHIResourceState> AccelStructStates;
-        for (const FARDGAccelStruct* AccelStruct :
-             Graph.mAccelStructs.GetEntries())
-        {
-            AccelStructStates.push_back(AccelStruct->GetInitialState());
-        }
+	void FARDGValidation::ValidateTransitions(const FARDGBuilder::FImpl& Graph)
+	{
+		eastl::vector<eastl::vector<arda::EArdaRHIResourceState>> TextureStates;
+		TextureStates.reserve(Graph.mTextures.GetCount());
+		for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
+		{
+			const arda::FArdaRHITextureDesc& Desc = Texture->GetDesc();
+			arda::EArdaRHIResourceState Initial = Texture->GetInitialState();
+			if (Initial == arda::EArdaRHIResourceState::Unknown)
+			{
+				Initial = arda::EArdaRHIResourceState::Common;
+			}
+			TextureStates.emplace_back(static_cast<size_t>(Desc.mMipLevels) * Desc.mArraySize, Initial);
+		}
+		eastl::vector<arda::EArdaRHIResourceState> BufferStates;
+		BufferStates.reserve(Graph.mBuffers.GetCount());
+		for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
+		{
+			arda::EArdaRHIResourceState Initial = Buffer->GetInitialState();
+			BufferStates.push_back(
+			    Initial == arda::EArdaRHIResourceState::Unknown ? arda::EArdaRHIResourceState::Common : Initial);
+		}
+		eastl::vector<arda::EArdaRHIResourceState> AccelStructStates;
+		for (const FARDGAccelStruct* AccelStruct : Graph.mAccelStructs.GetEntries())
+		{
+			AccelStructStates.push_back(AccelStruct->GetInitialState());
+		}
 
-        for (FARDGPassHandle Handle : Graph.mCompileResult.mExecutionOrder)
-        {
-            const FARDGPass& Pass = Graph.mPasses.Get(Handle);
-            // Replay compiler output first, then test declarations against the
-            // resulting state visible while this pass executes.
-            for (const FARDGTextureTransition& Transition :
-                 Pass.GetState().mTextureTransitions)
-            {
-                const FARDGTexture& Texture =
-                    Graph.mTextures.Get(Transition.mTexture);
-                const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
-                const auto Range =
-                    Transition.mSubresources.Resolve(Desc);
-                for (uint32_t Slice = Range.mBaseArraySlice;
-                     Slice < Range.mBaseArraySlice + Range.mArraySliceCount;
-                     ++Slice)
-                {
-                    for (uint32_t Mip = Range.mBaseMipLevel;
-                         Mip < Range.mBaseMipLevel + Range.mMipLevelCount;
-                         ++Mip)
-                    {
-                        arda::EArdaRHIResourceState& Current =
-                            TextureStates[Transition.mTexture.GetIndex()]
-                                         [static_cast<size_t>(Slice) *
-                                              Desc.mMipLevels +
-                                          Mip];
-                        if (Current != Transition.mStateBefore)
-                        {
-                            ReportPassError(
-                                Pass,
-                                "has a discontinuous compiled texture transition.");
-                        }
-                        Current = Transition.mStateAfter;
-                    }
-                }
-            }
-            for (const FARDGBufferTransition& Transition :
-                 Pass.GetState().mBufferTransitions)
-            {
-                arda::EArdaRHIResourceState& Current =
-                    BufferStates[Transition.mBuffer.GetIndex()];
-                if (Current != Transition.mStateBefore)
-                {
-                    ReportPassError(
-                        Pass,
-                        "has a discontinuous compiled buffer transition.");
-                }
-                Current = Transition.mStateAfter;
-            }
-            for (const FARDGAccelStructTransition& Transition :
-                 Pass.GetState().mAccelStructTransitions)
-            {
-                auto& Current =
-                    AccelStructStates[Transition.mAccelStruct.GetIndex()];
-                if (Current != Transition.mStateBefore)
-                {
-                    ReportPassError(
-                        Pass,
-                        "has a discontinuous compiled acceleration-structure transition.");
-                }
-                Current = Transition.mStateAfter;
-            }
+		for (FARDGPassHandle Handle : Graph.mCompileResult.mExecutionOrder)
+		{
+			const FARDGPass& Pass = Graph.mPasses.Get(Handle);
 
-            for (const FARDGPassTextureState& Access :
-                 Pass.GetState().mTextureStates)
-            {
-                const FARDGTexture& Texture =
-                    Graph.mTextures.Get(Access.mTexture);
-                const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
-                const auto Range =
-                    Access.mSubresources.Resolve(Desc);
-                for (uint32_t Slice = Range.mBaseArraySlice;
-                     Slice < Range.mBaseArraySlice + Range.mArraySliceCount;
-                     ++Slice)
-                {
-                    for (uint32_t Mip = Range.mBaseMipLevel;
-                         Mip < Range.mBaseMipLevel + Range.mMipLevelCount;
-                         ++Mip)
-                    {
-                        const arda::EArdaRHIResourceState Current =
-                            TextureStates[Access.mTexture.GetIndex()]
-                                         [static_cast<size_t>(Slice) *
-                                              Desc.mMipLevels +
-                                          Mip];
-                        const arda::EArdaRHIResourceState Required =
-                            NormalizeStateForPipeline(
-                                Access.mState,
-                                Pass.GetState().mPipeline);
-                        const bool bSatisfied = Access.mbWrite
-                            ? Current == Required
-                            : (Current & Required) == Required;
-                        if (!bSatisfied)
-                        {
-                            ReportPassError(
-                                Pass,
-                                "has an unsatisfied compiled texture state.");
-                        }
-                    }
-                }
-            }
-            for (const FARDGPassBufferState& Access :
-                 Pass.GetState().mBufferStates)
-            {
-                const arda::EArdaRHIResourceState Current =
-                    BufferStates[Access.mBuffer.GetIndex()];
-                const arda::EArdaRHIResourceState Required =
-                    NormalizeStateForPipeline(
-                        Access.mState,
-                        Pass.GetState().mPipeline);
-                const bool bSatisfied = Access.mbWrite
-                    ? Current == Required
-                    : (Current & Required) == Required;
-                if (!bSatisfied)
-                {
-                    ReportPassError(
-                        Pass,
-                        "has an unsatisfied compiled buffer state.");
-                }
-            }
-            for (const FARDGPassAccelStructState& Access :
-                 Pass.GetState().mAccelStructStates)
-            {
-                const auto Current =
-                    AccelStructStates[Access.mAccelStruct.GetIndex()];
-                const auto Required = NormalizeStateForPipeline(
-                    Access.mState, Pass.GetState().mPipeline);
-                if (Access.mbWrite ? Current != Required :
-                    (Current & Required) != Required)
-                {
-                    ReportPassError(
-                        Pass,
-                        "has an unsatisfied compiled acceleration-structure state.");
-                }
-            }
-        }
+			// Replay compiler output first, then test declarations against the
+			// resulting state visible while this pass executes.
+			for (const FARDGTextureTransition& Transition : Pass.GetState().mTextureTransitions)
+			{
+				const FARDGTexture& Texture = Graph.mTextures.Get(Transition.mTexture);
+				const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
+				const auto Range = Transition.mSubresources.Resolve(Desc);
+				for (uint32_t Slice = Range.mBaseArraySlice; Slice < Range.mBaseArraySlice + Range.mArraySliceCount;
+				    ++Slice)
+				{
+					for (uint32_t Mip = Range.mBaseMipLevel; Mip < Range.mBaseMipLevel + Range.mMipLevelCount; ++Mip)
+					{
+						arda::EArdaRHIResourceState& Current =
+						    TextureStates[Transition.mTexture.GetIndex()]
+						                 [static_cast<size_t>(Slice) * Desc.mMipLevels + Mip];
+						if (Current != Transition.mStateBefore)
+						{
+							ReportPassError(Pass, "has a discontinuous compiled texture transition.");
+						}
+						Current = Transition.mStateAfter;
+					}
+				}
+			}
+			for (const FARDGBufferTransition& Transition : Pass.GetState().mBufferTransitions)
+			{
+				arda::EArdaRHIResourceState& Current = BufferStates[Transition.mBuffer.GetIndex()];
+				if (Current != Transition.mStateBefore)
+				{
+					ReportPassError(Pass, "has a discontinuous compiled buffer transition.");
+				}
+				Current = Transition.mStateAfter;
+			}
+			for (const FARDGAccelStructTransition& Transition : Pass.GetState().mAccelStructTransitions)
+			{
+				auto& Current = AccelStructStates[Transition.mAccelStruct.GetIndex()];
+				if (Current != Transition.mStateBefore)
+				{
+					ReportPassError(Pass, "has a discontinuous compiled acceleration-structure transition.");
+				}
+				Current = Transition.mStateAfter;
+			}
 
-        for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
-        {
-            if ((!Texture->IsExternal() && !Texture->IsExtracted()) ||
-                !Texture->GetFirstUse().IsValid())
-            {
-                continue;
-            }
-            const auto& States =
-                TextureStates[Texture->GetHandle().GetIndex()];
-            if (eastl::any_of(
-                    States.begin(),
-                    States.end(),
-                    // One final state contract applies to every texture cell.
-                    [Texture](arda::EArdaRHIResourceState State)
-                    {
-                        return State != Texture->GetFinalState();
-                    }))
-            {
-                ARDA_CHECK_MSG(
-                    "A compiled texture does not reach its graph-exit state.");
-            }
-        }
-        for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
-        {
-            if ((!Buffer->IsExternal() && !Buffer->IsExtracted()) ||
-                !Buffer->GetFirstUse().IsValid())
-            {
-                continue;
-            }
-            if (BufferStates[Buffer->GetHandle().GetIndex()] !=
-                Buffer->GetFinalState())
-            {
-                ARDA_CHECK_MSG(
-                    "A compiled buffer does not reach its graph-exit state.");
-            }
-        }
-        for (const FARDGAccelStruct* AccelStruct :
-             Graph.mAccelStructs.GetEntries())
-        {
-            if ((!AccelStruct->IsExternal() && !AccelStruct->IsExtracted()) ||
-                !AccelStruct->GetFirstUse().IsValid()) continue;
-            if (AccelStructStates[AccelStruct->GetHandle().GetIndex()] !=
-                AccelStruct->GetFinalState())
-            {
-                ARDA_CHECK_MSG(
-                    "A compiled acceleration structure does not reach its graph-exit state.");
-            }
-        }
-    }
+			for (const FARDGPassTextureState& Access : Pass.GetState().mTextureStates)
+			{
+				const FARDGTexture& Texture = Graph.mTextures.Get(Access.mTexture);
+				const arda::FArdaRHITextureDesc& Desc = Texture.GetDesc();
+				const auto Range = Access.mSubresources.Resolve(Desc);
+				for (uint32_t Slice = Range.mBaseArraySlice; Slice < Range.mBaseArraySlice + Range.mArraySliceCount;
+				    ++Slice)
+				{
+					for (uint32_t Mip = Range.mBaseMipLevel; Mip < Range.mBaseMipLevel + Range.mMipLevelCount; ++Mip)
+					{
+						const arda::EArdaRHIResourceState Current =
+						    TextureStates[Access.mTexture.GetIndex()]
+						                 [static_cast<size_t>(Slice) * Desc.mMipLevels + Mip];
+						const arda::EArdaRHIResourceState Required =
+						    NormalizeStateForPipeline(Access.mState, Pass.GetState().mPipeline);
+						const bool bSatisfied = Access.mbWrite ? Current == Required : (Current & Required) == Required;
+						if (!bSatisfied)
+						{
+							ReportPassError(Pass, "has an unsatisfied compiled texture state.");
+						}
+					}
+				}
+			}
+			for (const FARDGPassBufferState& Access : Pass.GetState().mBufferStates)
+			{
+				const arda::EArdaRHIResourceState Current = BufferStates[Access.mBuffer.GetIndex()];
+				const arda::EArdaRHIResourceState Required =
+				    NormalizeStateForPipeline(Access.mState, Pass.GetState().mPipeline);
+				const bool bSatisfied = Access.mbWrite ? Current == Required : (Current & Required) == Required;
+				if (!bSatisfied)
+				{
+					ReportPassError(Pass, "has an unsatisfied compiled buffer state.");
+				}
+			}
+			for (const FARDGPassAccelStructState& Access : Pass.GetState().mAccelStructStates)
+			{
+				const auto Current = AccelStructStates[Access.mAccelStruct.GetIndex()];
+				const auto Required = NormalizeStateForPipeline(Access.mState, Pass.GetState().mPipeline);
+				if (Access.mbWrite ? Current != Required : (Current & Required) != Required)
+				{
+					ReportPassError(Pass, "has an unsatisfied compiled acceleration-structure state.");
+				}
+			}
+		}
+
+		for (const FARDGTexture* Texture : Graph.mTextures.GetEntries())
+		{
+			if ((!Texture->IsExternal() && !Texture->IsExtracted()) || !Texture->GetFirstUse().IsValid())
+			{
+				continue;
+			}
+			const auto& States = TextureStates[Texture->GetHandle().GetIndex()];
+			if (eastl::any_of(States.begin(),
+			        States.end(),
+
+			        // One final state contract applies to every texture cell.
+			        [Texture](arda::EArdaRHIResourceState State)
+			        {
+				        return State != Texture->GetFinalState();
+			        }))
+			{
+				ARDA_CHECK_MSG("A compiled texture does not reach its graph-exit state.");
+			}
+		}
+		for (const FARDGBuffer* Buffer : Graph.mBuffers.GetEntries())
+		{
+			if ((!Buffer->IsExternal() && !Buffer->IsExtracted()) || !Buffer->GetFirstUse().IsValid())
+			{
+				continue;
+			}
+			if (BufferStates[Buffer->GetHandle().GetIndex()] != Buffer->GetFinalState())
+			{
+				ARDA_CHECK_MSG("A compiled buffer does not reach its graph-exit state.");
+			}
+		}
+		for (const FARDGAccelStruct* AccelStruct : Graph.mAccelStructs.GetEntries())
+		{
+			if ((!AccelStruct->IsExternal() && !AccelStruct->IsExtracted()) || !AccelStruct->GetFirstUse().IsValid())
+			{
+				continue;
+			}
+			if (AccelStructStates[AccelStruct->GetHandle().GetIndex()] != AccelStruct->GetFinalState())
+			{
+				ARDA_CHECK_MSG("A compiled acceleration structure does not reach its graph-exit state.");
+			}
+		}
+	}
 }

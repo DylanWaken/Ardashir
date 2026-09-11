@@ -4,8 +4,8 @@
 
 namespace arda
 {
-    const char* GetDLModuleName() noexcept
-    {
-        return "ArdaDL";
-    }
+	const char* GetDLModuleName() noexcept
+	{
+		return "ArdaDL";
+	}
 }

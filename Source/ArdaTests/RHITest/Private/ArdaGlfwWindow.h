@@ -9,35 +9,49 @@ struct GLFWwindow;
 
 namespace arda
 {
-    class FArdaGlfwWindow final : public arda::IArdaWindowSurface
-    {
-    public:
-        ~FArdaGlfwWindow();
+	class FArdaGlfwWindow final : public arda::IArdaWindowSurface
+	{
+	public:
+		~FArdaGlfwWindow();
 
-        bool Create(const char* title, uint32_t width, uint32_t height, bool visible);
-        bool PumpMessages();
-        void Close();
-        bool ConsumeResize(uint32_t& width, uint32_t& height);
+		bool Create(const char* title, uint32_t width, uint32_t height, bool visible);
+		bool PumpMessages();
+		void Close();
+		bool ConsumeResize(uint32_t& width, uint32_t& height);
 
-        [[nodiscard]] GLFWwindow* GetHandle() const { return mWindow; }
-        [[nodiscard]] uint32_t GetWidth() const { return mWidth; }
-        [[nodiscard]] uint32_t GetHeight() const { return mHeight; }
-        [[nodiscard]] const eastl::string& GetError() const { return mError; }
+		[[nodiscard]] GLFWwindow* GetHandle() const
+		{
+			return mWindow;
+		}
 
-        [[nodiscard]] arda::FArdaNativeObject GetD3D12WindowHandle() const noexcept override;
-        [[nodiscard]] eastl::vector<const char*> GetVulkanInstanceExtensions() const override;
-        [[nodiscard]] arda::FArdaNativeObject CreateVulkanSurface(
-            arda::FArdaNativeObject VulkanInstance,
-            eastl::string& OutError) override;
+		[[nodiscard]] uint32_t GetWidth() const
+		{
+			return mWidth;
+		}
 
-    private:
-        static void FramebufferSizeCallback(GLFWwindow* window, int width, int height);
+		[[nodiscard]] uint32_t GetHeight() const
+		{
+			return mHeight;
+		}
 
-        GLFWwindow* mWindow = nullptr;
-        uint32_t mWidth = 0;
-        uint32_t mHeight = 0;
-        bool mbResizePending = false;
-        bool mbGlfwInitialized = false;
-        eastl::string mError;
-    };
+		[[nodiscard]] const eastl::string& GetError() const
+		{
+			return mError;
+		}
+
+		[[nodiscard]] arda::FArdaNativeObject GetD3D12WindowHandle() const noexcept override;
+		[[nodiscard]] eastl::vector<const char*> GetVulkanInstanceExtensions() const override;
+		[[nodiscard]] arda::FArdaNativeObject CreateVulkanSurface(arda::FArdaNativeObject VulkanInstance,
+		    eastl::string& OutError) override;
+
+	private:
+		static void FramebufferSizeCallback(GLFWwindow* window, int width, int height);
+
+		GLFWwindow* mWindow = nullptr;
+		uint32_t mWidth = 0;
+		uint32_t mHeight = 0;
+		bool mbResizePending = false;
+		bool mbGlfwInitialized = false;
+		eastl::string mError;
+	};
 }

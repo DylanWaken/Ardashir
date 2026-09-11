@@ -2,6 +2,6 @@
 
 namespace arda
 {
-    /** Returns the stable name of the scene module. */
-    [[nodiscard]] const char* GetSceneModuleName() noexcept;
+	/** Returns the stable name of the scene module. */
+	[[nodiscard]] const char* GetSceneModuleName() noexcept;
 }

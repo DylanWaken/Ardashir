@@ -4,7 +4,7 @@
 
 namespace arda
 {
-    /**
+	/**
      * Validates render-graph declarations and compiler-generated state metadata.
      *
      * The pre-compile stage rejects malformed ownership, access, extraction,
@@ -12,10 +12,10 @@ namespace arda
      * transition stage independently replays compiler output to verify that
      * every live access and graph-exit state is satisfied.
      */
-    class FARDGValidation final
-    {
-    public:
-        /**
+	class FARDGValidation final
+	{
+	public:
+		/**
          * Validates all build-time declarations before compilation mutates the graph.
          *
          * This stage checks every resource and pass, including passes that may
@@ -26,9 +26,9 @@ namespace arda
          *
          * @param Graph The completed build-time graph representation.
          */
-        static void ValidateBeforeCompile(const FARDGBuilder::FImpl& Graph);
+		static void ValidateBeforeCompile(const FARDGBuilder::FImpl& Graph);
 
-        /**
+		/**
          * Replays compiled transitions and verifies the lowered resource state machine.
          *
          * Starting from each resource's graph-entry state, this post-barrier
@@ -39,6 +39,6 @@ namespace arda
          *
          * @param Graph A graph whose barriers and execution order are compiled.
          */
-        static void ValidateTransitions(const FARDGBuilder::FImpl& Graph);
-    };
+		static void ValidateTransitions(const FARDGBuilder::FImpl& Graph);
+	};
 }

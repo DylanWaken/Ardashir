@@ -1,18 +1,18 @@
 #pragma once
 
 #if defined(_WIN32)
-    #ifndef NOMINMAX
-        #define NOMINMAX
-    #endif
-    #ifndef WIN32_LEAN_AND_MEAN
-        #define WIN32_LEAN_AND_MEAN
-    #endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 
-    #include <Windows.h>
+#include <Windows.h>
 #endif
 
 #if defined(ARDA_TEST_WITH_VULKAN)
-    #include <vulkan/vulkan.h>
+#include <vulkan/vulkan.h>
 #endif
 #include <GLFW/glfw3.h>
 

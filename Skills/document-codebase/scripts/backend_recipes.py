@@ -98,12 +98,13 @@ def source_block(source: str, name: str) -> str:
     """Extract a whole C++ function/test, ignoring braces inside strings and comments."""
     text = (ROOT / source).read_text(encoding="utf-8-sig")
     pattern = (r"(?m)^TEST\(\w+,\s*" + re.escape(name) + r"\)"
-               if name == LIFETIME else r"(?m)^    (?:void |CreateExtendedShader\b)" + (re.escape(name) + r"\s*\(" if name != "CreateExtendedShader" else ""))
+               if name == LIFETIME else
+               r"(?m)^[ \t]+(?:[\w:<>*&]+[ \t]+)?" + re.escape(name) + r"\s*\(")
     match = re.search(pattern, text)
     if not match:
         raise ValueError(f"{source}: missing example function {name}")
     start = match.start()
-    if name == "CreateExtendedShader":
+    if name == "CreateExtendedShader" and match.group().lstrip().startswith(name):
         start = text.rfind("\n", 0, start - 1) + 1
     body_line = re.search(r"(?m)^[ \t]*\{\s*$", text[match.end():])
     if not body_line:
@@ -228,7 +229,10 @@ def generate() -> dict[Path, str]:
     # Keep the complete function once, even when several resources/capabilities use it.
     examples = [(name, name, f'<p>Source: <code>{BACKEND if name == LIFETIME else EXTENDED}</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">{html.escape(code)}</code></pre></details>') for name, code in blocks.items()]
     extended = (ROOT / EXTENDED).read_text(encoding="utf-8")
-    scaffold = extended[:extended.index("    void VerifySamplerFeedbackStateParity")].rstrip() + "\n} // anonymous namespace"
+    fixture_end = re.search(r"(?m)^[ \t]+void VerifySamplerFeedbackStateParity\b", extended)
+    if not fixture_end:
+        raise ValueError("Missing end of the GPU example fixture")
+    scaffold = extended[:fixture_end.start()].rstrip() + "\n} // anonymous namespace"
     shader_examples = "".join(
         f'<details id="shader-{path.stem.lower()}"><summary>{path.name}</summary><pre><code class="language-hlsl">{html.escape(path.read_text(encoding="utf-8"))}</code></pre></details>'
         for path in sorted((ROOT / "Source/ArdaBackend/Tests").glob("*.hlsl")))

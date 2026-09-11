@@ -1,0 +1,13 @@
+root = true
+
+[*.{c,cc,cpp,cxx,h,hpp,inl,cu,cuh,hlsl,hlsli}]
+indent_style = tab
+indent_size = 4
+tab_width = 4
+insert_final_newline = true
+
+[*.{cpp,h}.in]
+indent_style = tab
+indent_size = 4
+tab_width = 4
+insert_final_newline = true

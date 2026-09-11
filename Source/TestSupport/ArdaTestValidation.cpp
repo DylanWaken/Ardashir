@@ -8,28 +8,34 @@
 
 namespace
 {
-    // Shared by direct executable runs and CTest. An explicit VK_LAYER_PATH
-    // remains authoritative, including tests that intentionally hide layers.
-    const bool ValidationEnvironmentConfigured = []
-    {
-        if (std::getenv("VK_LAYER_PATH")) return true;
-        std::ifstream File(ARDA_TEST_VULKAN_LAYER_PATH_FILE);
-        std::string Path;
-        if (!std::getline(File, Path) || Path.empty()) return true;
-        if (const char* Existing = std::getenv("VK_ADD_LAYER_PATH"); Existing && *Existing)
-        {
+	// Shared by direct executable runs and CTest. An explicit VK_LAYER_PATH
+	// remains authoritative, including tests that intentionally hide layers.
+	const bool ValidationEnvironmentConfigured = []
+	{
+		if (std::getenv("VK_LAYER_PATH"))
+		{
+			return true;
+		}
+		std::ifstream File(ARDA_TEST_VULKAN_LAYER_PATH_FILE);
+		std::string Path;
+		if (!std::getline(File, Path) || Path.empty())
+		{
+			return true;
+		}
+		if (const char* Existing = std::getenv("VK_ADD_LAYER_PATH"); Existing && *Existing)
+		{
 #if defined(_WIN32)
-            Path += ';';
+			Path += ';';
 #else
-            Path += ':';
+			Path += ':';
 #endif
-            Path += Existing;
-        }
+			Path += Existing;
+		}
 #if defined(_WIN32)
-        _putenv_s("VK_ADD_LAYER_PATH", Path.c_str());
+		_putenv_s("VK_ADD_LAYER_PATH", Path.c_str());
 #else
-        setenv("VK_ADD_LAYER_PATH", Path.c_str(), 1);
+		setenv("VK_ADD_LAYER_PATH", Path.c_str(), 1);
 #endif
-        return true;
-    }();
+		return true;
+	}();
 }

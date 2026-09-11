@@ -4,7 +4,7 @@
 
 namespace arda
 {
-    /**
+	/**
      * Runs the device-independent compilation stages for a completed render graph.
      *
      * Compilation validates declarations, anchors observable outputs at the
@@ -12,10 +12,10 @@ namespace arda
      * states to transitions, and builds lifetime and synchronization metadata.
      * It does not allocate resources, record commands, or submit GPU work.
      */
-    class FARDGCompiler final
-    {
-    public:
-        /**
+	class FARDGCompiler final
+	{
+	public:
+		/**
          * Compiles Builder once and returns its stable compile products.
          *
          * The first call mutates Builder's private pass/resource metadata and
@@ -26,6 +26,6 @@ namespace arda
          * @param Builder The fully declared graph to compile.
          * @return Builder-owned compilation metadata, valid for Builder's lifetime.
          */
-        [[nodiscard]] static const FARDGCompileResult& Compile(FARDGBuilder& Builder);
-    };
+		[[nodiscard]] static const FARDGCompileResult& Compile(FARDGBuilder& Builder);
+	};
 }

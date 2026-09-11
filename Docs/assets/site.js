@@ -943,6 +943,11 @@
       entry.id = id;
       entry.setAttribute("tabindex", "-1");
     }
+    for (const alias of symbol.aliases || []) {
+      const anchor = doc.createElement("span");
+      anchor.id = alias;
+      entry.appendChild(anchor);
+    }
     const heading = doc.createElement("h5");
     heading.textContent = symbolName(symbol);
     entry.appendChild(heading);

@@ -4,8 +4,8 @@
 
 namespace arda
 {
-    const char* GetInteropModuleName() noexcept
-    {
-        return "ArdaInterop";
-    }
+	const char* GetInteropModuleName() noexcept
+	{
+		return "ArdaInterop";
+	}
 }

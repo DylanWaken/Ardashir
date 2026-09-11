@@ -8,38 +8,41 @@
 
 namespace arda
 {
-    /** Renderer-facing compute PSO description; never a concrete RHI pipeline. */
-    struct FArdaComputePipelineStateInitializer
-    {
-        /** RHI compute pipeline description to resolve. */
-        arda::FArdaRHIComputePipelineDesc mDesc;
+	/** Renderer-facing compute PSO description; never a concrete RHI pipeline. */
+	struct FArdaComputePipelineStateInitializer
+	{
+		/** RHI compute pipeline description to resolve. */
+		arda::FArdaRHIComputePipelineDesc mDesc;
 
-        /**
+		/**
          * Creates a compute initializer from a global shader.
          * @param Shader Compute global shader instance.
          * @param DebugName Optional pipeline debug name.
          * @return A compute pipeline initializer referencing the shader.
          */
-        [[nodiscard]] static FArdaComputePipelineStateInitializer FromGlobalShader(
-            const FArdaGlobalShaderInstance& Shader,
-            const char* DebugName = nullptr);
-    };
+		[[nodiscard]] static FArdaComputePipelineStateInitializer FromGlobalShader(
+		    const FArdaGlobalShaderInstance& Shader,
+		    const char* DebugName = nullptr);
+	};
 
-    /**
+	/**
      * Renderer-facing graphics PSO description.
      *
      * Empty color formats, Unknown depth format, and a zero sample count are
      * completed from the framebuffer supplied when the PSO is resolved.
      */
-    struct FArdaGraphicsPipelineStateInitializer
-    {
-        /** Creates an initializer with framebuffer-derived sample count. */
-        FArdaGraphicsPipelineStateInitializer() { mDesc.mSampleCount = 0; }
+	struct FArdaGraphicsPipelineStateInitializer
+	{
+		/** Creates an initializer with framebuffer-derived sample count. */
+		FArdaGraphicsPipelineStateInitializer()
+		{
+			mDesc.mSampleCount = 0;
+		}
 
-        /** RHI graphics pipeline description to complete and resolve. */
-        arda::FArdaRHIGraphicsPipelineDesc mDesc;
+		/** RHI graphics pipeline description to complete and resolve. */
+		arda::FArdaRHIGraphicsPipelineDesc mDesc;
 
-        /**
+		/**
          * Creates a graphics initializer from global shaders and fixed state.
          * @param VertexShader Vertex global shader instance.
          * @param PixelShader Optional pixel global shader instance.
@@ -47,13 +50,13 @@ namespace arda
          * @param FixedState Fixed-function graphics state.
          * @return A graphics pipeline initializer referencing the supplied shaders.
          */
-        [[nodiscard]] static FArdaGraphicsPipelineStateInitializer FromGlobalShaders(
-            const FArdaGlobalShaderInstance& VertexShader,
-            const FArdaGlobalShaderInstance* PixelShader,
-            const arda::FArdaRHIInputLayoutRef& InputLayout,
-            const arda::FArdaRHIGraphicsPipelineDesc& FixedState = {});
+		[[nodiscard]] static FArdaGraphicsPipelineStateInitializer FromGlobalShaders(
+		    const FArdaGlobalShaderInstance& VertexShader,
+		    const FArdaGlobalShaderInstance* PixelShader,
+		    const arda::FArdaRHIInputLayoutRef& InputLayout,
+		    const arda::FArdaRHIGraphicsPipelineDesc& FixedState = {});
 
-        /**
+		/**
          * Creates a graphics initializer with optional tessellation and geometry stages.
          * @param VertexShader Vertex global shader instance.
          * @param HullShader Optional hull global shader instance.
@@ -64,31 +67,34 @@ namespace arda
          * @param FixedState Fixed-function graphics state.
          * @return A graphics pipeline initializer referencing the supplied shaders.
          */
-        [[nodiscard]] static FArdaGraphicsPipelineStateInitializer FromGlobalShaders(
-            const FArdaGlobalShaderInstance& VertexShader,
-            const FArdaGlobalShaderInstance* HullShader,
-            const FArdaGlobalShaderInstance* DomainShader,
-            const FArdaGlobalShaderInstance* GeometryShader,
-            const FArdaGlobalShaderInstance* PixelShader,
-            const arda::FArdaRHIInputLayoutRef& InputLayout,
-            const arda::FArdaRHIGraphicsPipelineDesc& FixedState = {});
-    };
+		[[nodiscard]] static FArdaGraphicsPipelineStateInitializer FromGlobalShaders(
+		    const FArdaGlobalShaderInstance& VertexShader,
+		    const FArdaGlobalShaderInstance* HullShader,
+		    const FArdaGlobalShaderInstance* DomainShader,
+		    const FArdaGlobalShaderInstance* GeometryShader,
+		    const FArdaGlobalShaderInstance* PixelShader,
+		    const arda::FArdaRHIInputLayoutRef& InputLayout,
+		    const arda::FArdaRHIGraphicsPipelineDesc& FixedState = {});
+	};
 
-    /**
+	/**
      * Renderer-facing meshlet PSO description.
      *
      * Empty color formats, Unknown depth format, and a zero sample count are
      * completed from the framebuffer supplied when the PSO is resolved.
      */
-    struct FArdaMeshletPipelineStateInitializer
-    {
-        /** Creates an initializer with framebuffer-derived sample count. */
-        FArdaMeshletPipelineStateInitializer() { mDesc.mSampleCount = 0; }
+	struct FArdaMeshletPipelineStateInitializer
+	{
+		/** Creates an initializer with framebuffer-derived sample count. */
+		FArdaMeshletPipelineStateInitializer()
+		{
+			mDesc.mSampleCount = 0;
+		}
 
-        /** RHI meshlet pipeline description to complete and resolve. */
-        arda::FArdaRHIMeshletPipelineDesc mDesc;
+		/** RHI meshlet pipeline description to complete and resolve. */
+		arda::FArdaRHIMeshletPipelineDesc mDesc;
 
-        /**
+		/**
          * Creates a meshlet initializer from global shaders and fixed state.
          * @param MeshShader Mesh global shader instance.
          * @param AmplificationShader Optional amplification global shader instance.
@@ -96,24 +102,24 @@ namespace arda
          * @param FixedState Fixed-function meshlet state.
          * @return A meshlet pipeline initializer referencing the supplied shaders.
          */
-        [[nodiscard]] static FArdaMeshletPipelineStateInitializer FromGlobalShaders(
-            const FArdaGlobalShaderInstance& MeshShader,
-            const FArdaGlobalShaderInstance* AmplificationShader,
-            const FArdaGlobalShaderInstance* PixelShader,
-            const arda::FArdaRHIMeshletPipelineDesc& FixedState = {});
-    };
+		[[nodiscard]] static FArdaMeshletPipelineStateInitializer FromGlobalShaders(
+		    const FArdaGlobalShaderInstance& MeshShader,
+		    const FArdaGlobalShaderInstance* AmplificationShader,
+		    const FArdaGlobalShaderInstance* PixelShader,
+		    const arda::FArdaRHIMeshletPipelineDesc& FixedState = {});
+	};
 
-    /** Renderer-facing ray-tracing pipeline state description. */
-    struct FArdaRayTracingPipelineStateInitializer
-    {
-        /** RHI ray-tracing pipeline description to resolve. */
-        arda::FArdaRHIRayTracingPipelineDesc mDesc;
-    };
+	/** Renderer-facing ray-tracing pipeline state description. */
+	struct FArdaRayTracingPipelineStateInitializer
+	{
+		/** RHI ray-tracing pipeline description to resolve. */
+		arda::FArdaRHIRayTracingPipelineDesc mDesc;
+	};
 
-    /** Renderer-facing work-graph pipeline state description. */
-    struct FArdaWorkGraphPipelineStateInitializer
-    {
-        /** RHI work-graph pipeline description to resolve. */
-        arda::FArdaRHIWorkGraphPipelineDesc mDesc;
-    };
+	/** Renderer-facing work-graph pipeline state description. */
+	struct FArdaWorkGraphPipelineStateInitializer
+	{
+		/** RHI work-graph pipeline description to resolve. */
+		arda::FArdaRHIWorkGraphPipelineDesc mDesc;
+	};
 }

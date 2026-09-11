@@ -4,5 +4,5 @@
 
 TEST(ArdaScene, ReportsModuleName)
 {
-    EXPECT_STREQ(arda::GetSceneModuleName(), "ArdaScene");
+	EXPECT_STREQ(arda::GetSceneModuleName(), "ArdaScene");
 }

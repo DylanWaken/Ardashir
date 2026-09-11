@@ -4,8 +4,8 @@
 
 namespace arda
 {
-    const char* GetPhysModuleName() noexcept
-    {
-        return "ArdaPhys";
-    }
+	const char* GetPhysModuleName() noexcept
+	{
+		return "ArdaPhys";
+	}
 }

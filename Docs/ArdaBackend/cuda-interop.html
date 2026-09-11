@@ -72,19 +72,23 @@
 
 namespace ARDA_CUDA_BUILD_NAMESPACE
 {
-    void BindAdd(arda::FArdaAddOperand::FRegistry&amp; Registry)
-    {
-        arda::ForEachArdaCudaPermutation(std::integer_sequence&lt;int, 32, 128&gt;{}, [&amp;](auto Tile) {
-            constexpr int Block = decltype(Tile)::value;
-            const auto Name = GetBuildInfo().mName + (Block == 32 ? &quot;.block32&quot; : &quot;.block128&quot;);
-            Registry.Add(arda::BindArdaCudaKernel&lt;&amp;Add&lt;Block&gt;&gt;(Name.c_str(),
-                arda::FArdaAddVariantInfo{Block}, GetBuildInfo()));
-        });
-    }
-    void BindSurface(arda::FArdaSurfaceOperand::FRegistry&amp; Registry)
-    {
-        Registry.Add(arda::BindArdaCudaKernel&lt;&amp;FillSurface&gt;(&quot;surface.u32&quot;, 8u, GetBuildInfo()));
-    }
+	void BindAdd(arda::FArdaAddOperand::FRegistry&amp; Registry)
+	{
+		arda::ForEachArdaCudaPermutation(std::integer_sequence&lt;int, 32, 128&gt;{},
+		    [&amp;](auto Tile)
+		    {
+			    constexpr int Block = decltype(Tile)::value;
+			    const auto Name = GetBuildInfo().mName + (Block == 32 ? &quot;.block32&quot; : &quot;.block128&quot;);
+			    Registry.Add(arda::BindArdaCudaKernel&lt;&amp;Add&lt;Block&gt;&gt;(Name.c_str(),
+			        arda::FArdaAddVariantInfo{Block},
+			        GetBuildInfo()));
+		    });
+	}
+
+	void BindSurface(arda::FArdaSurfaceOperand::FRegistry&amp; Registry)
+	{
+		Registry.Add(arda::BindArdaCudaKernel&lt;&amp;FillSurface&gt;(&quot;surface.u32&quot;, 8u, GetBuildInfo()));
+	}
 }
 </code></pre></details>
 <p>The bridge queries cudaFuncGetAttributes under the selected CUDA context, checks the entry's launch limits, patches resource fields in a private parameter copy, and calls cudaLaunchKernel. This is why the .cpp dispatcher has no triple-chevron expression. It no longer loads text, resolves string entry points or compiles device source. Diagnostic names identify variants; pointers identify executable entries.</p></section>
@@ -95,44 +99,47 @@ namespace ARDA_CUDA_BUILD_NAMESPACE
 
 namespace arda
 {
-    struct FAddParameters
-    {
-        const unsigned int* Input;
-        unsigned int* Output;
-        unsigned int Count;
-        unsigned int Bias;
-    };
-    __global__ void AddArdaValues(FAddParameters P)
-    {
-        const unsigned int Index = blockIdx.x * blockDim.x + threadIdx.x;
-        if (Index &lt; P.Count)
-        {
-            P.Output[Index] = P.Input[Index] + P.Bias;
-        }
-    }
+	struct FAddParameters
+	{
+		const unsigned int* Input;
+		unsigned int* Output;
+		unsigned int Count;
+		unsigned int Bias;
+	};
 
-    // Input and Output cover Count elements on the current CUDA device.
-    // They may be identical; otherwise their ranges must not overlap.
-    // The caller orders graphics producers before this stream and retains
-    // allocations, mappings and Stream until all submitted work completes.
-    cudaError_t LaunchArdaAddTwice(const unsigned int* Input, unsigned int* Output,
-        unsigned int Count, cudaStream_t Stream)
-    {
-        if (!Input || !Output || !Count)
-        {
-            return cudaErrorInvalidValue;
-        }
-        const dim3 Block(128, 1, 1);
-        const dim3 Grid(1 + (Count - 1) / Block.x, 1, 1);
-        AddArdaValues&lt;&lt;&lt;Grid, Block, 0, Stream&gt;&gt;&gt;({Input, Output, Count, 7u});
-        const cudaError_t FirstStatus = cudaGetLastError();
-        if (FirstStatus != cudaSuccess)
-        {
-            return FirstStatus;
-        }
-        AddArdaValues&lt;&lt;&lt;Grid, Block, 0, Stream&gt;&gt;&gt;({Output, Output, Count, 11u});
-        return cudaGetLastError();
-    }
+	__global__ void AddArdaValues(FAddParameters P)
+	{
+		const unsigned int Index = blockIdx.x * blockDim.x + threadIdx.x;
+		if (Index &lt; P.Count)
+		{
+			P.Output[Index] = P.Input[Index] + P.Bias;
+		}
+	}
+
+	// Input and Output cover Count elements on the current CUDA device.
+	// They may be identical; otherwise their ranges must not overlap.
+	// The caller orders graphics producers before this stream and retains
+	// allocations, mappings and Stream until all submitted work completes.
+	cudaError_t LaunchArdaAddTwice(const unsigned int* Input,
+	    unsigned int* Output,
+	    unsigned int Count,
+	    cudaStream_t Stream)
+	{
+		if (!Input || !Output || !Count)
+		{
+			return cudaErrorInvalidValue;
+		}
+		const dim3 Block(128, 1, 1);
+		const dim3 Grid(1 + (Count - 1) / Block.x, 1, 1);
+		AddArdaValues&lt;&lt;&lt;Grid, Block, 0, Stream&gt;&gt;&gt;({Input, Output, Count, 7u});
+		const cudaError_t FirstStatus = cudaGetLastError();
+		if (FirstStatus != cudaSuccess)
+		{
+			return FirstStatus;
+		}
+		AddArdaValues&lt;&lt;&lt;Grid, Block, 0, Stream&gt;&gt;&gt;({Output, Output, Count, 11u});
+		return cudaGetLastError();
+	}
 }
 </code></pre>
 <p>The same two stages in Arda use two operand dispatches, with mBias equal to 7 then 11. Each operand launches once. cudaGetLastError reports immediate launch errors; completion can still report an asynchronous failure. Calling a direct helper while recording an RDG pass would bypass its submission contract. Do not obtain a Vulkan device address and treat it as an imported CUDA pointer. See <a href="https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__EXECUTION.html">CUDA runtime execution</a> and <a href="https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DRIVER.html">Runtime/Driver context interoperability</a>.</p></section>
@@ -166,140 +173,201 @@ ardashir_add_cuda_kernels(ArdaTestCudaTuned
 
 namespace arda
 {
-#define ARDA_ADD_FIELDS(VALUE, BUFFER, SURFACE) \
-    BUFFER(uint32_t, mInput, EArdaComputeAccess::Read) \
-    BUFFER(uint32_t, mOutput, EArdaComputeAccess::Write) \
-    VALUE(uint32_t, mCount) \
-    VALUE(uint32_t, mBias)
-    ARDA_CUDA_PARAMETER_STRUCT(FArdaAddParameters, ARDA_ADD_FIELDS)
+#define ARDA_ADD_FIELDS(VALUE, BUFFER, SURFACE)                                                                        \
+	BUFFER(uint32_t, mInput, EArdaComputeAccess::Read)                                                                 \
+	BUFFER(uint32_t, mOutput, EArdaComputeAccess::Write)                                                               \
+	VALUE(uint32_t, mCount)                                                                                            \
+	VALUE(uint32_t, mBias)
+	ARDA_CUDA_PARAMETER_STRUCT(FArdaAddParameters, ARDA_ADD_FIELDS)
 
-    struct FArdaAddVariantInfo { uint32_t mBlockSize = 0; };
-    class FArdaAddOperand final : public TArdaComputeOperand&lt;FArdaAddParameters, FArdaAddVariantInfo&gt;
-    {
-    public:
-        using TArdaComputeOperand::TArdaComputeOperand;
-        bool mbPreferFastMath = false;
-        const char* GetName() const noexcept override { return &quot;sample.add&quot;; }
-        void BindKernelVariants(FRegistry&amp; Registry) const override;
-        TArdaRHIResult&lt;FArdaCudaKernelSelection&gt; SelectKernel(const FParameters&amp; Parameters,
-            const FArdaCudaSelectionContext&amp; Context, const FVariants&amp; Candidates) const override;
-    };
-#define ARDA_SURFACE_FIELDS(VALUE, BUFFER, SURFACE) \
-    SURFACE(uint32_t, mSurface, EArdaComputeAccess::Write, EArdaRHIFormat::R32UInt) \
-    VALUE(uint32_t, mWidth) \
-    VALUE(uint32_t, mHeight) \
-    VALUE(uint32_t, mValue)
-    ARDA_CUDA_PARAMETER_STRUCT(FArdaSurfaceParameters, ARDA_SURFACE_FIELDS)
-    class FArdaSurfaceOperand final : public TArdaComputeOperand&lt;FArdaSurfaceParameters, uint32_t&gt;
-    {
-    public:
-        using TArdaComputeOperand::TArdaComputeOperand;
-        const char* GetName() const noexcept override { return &quot;sample.surface&quot;; }
-        void BindKernelVariants(FRegistry&amp; Registry) const override;
-        TArdaRHIResult&lt;FArdaCudaKernelSelection&gt; SelectKernel(const FParameters&amp; Parameters,
-            const FArdaCudaSelectionContext&amp; Context, const FVariants&amp; Candidates) const override;
-    };
+	struct FArdaAddVariantInfo
+	{
+		uint32_t mBlockSize = 0;
+	};
+
+	class FArdaAddOperand final : public TArdaComputeOperand&lt;FArdaAddParameters, FArdaAddVariantInfo&gt;
+	{
+	public:
+		using TArdaComputeOperand::TArdaComputeOperand;
+		bool mbPreferFastMath = false;
+
+		const char* GetName() const noexcept override
+		{
+			return &quot;sample.add&quot;;
+		}
+
+		void BindKernelVariants(FRegistry&amp; Registry) const override;
+		TArdaRHIResult&lt;FArdaCudaKernelSelection&gt; SelectKernel(const FParameters&amp; Parameters,
+		    const FArdaCudaSelectionContext&amp; Context,
+		    const FVariants&amp; Candidates) const override;
+	};
+
+#define ARDA_SURFACE_FIELDS(VALUE, BUFFER, SURFACE)                                                                    \
+	SURFACE(uint32_t, mSurface, EArdaComputeAccess::Write, EArdaRHIFormat::R32UInt)                                    \
+	VALUE(uint32_t, mWidth)                                                                                            \
+	VALUE(uint32_t, mHeight)                                                                                           \
+	VALUE(uint32_t, mValue)
+	ARDA_CUDA_PARAMETER_STRUCT(FArdaSurfaceParameters, ARDA_SURFACE_FIELDS)
+
+	class FArdaSurfaceOperand final : public TArdaComputeOperand&lt;FArdaSurfaceParameters, uint32_t&gt;
+	{
+	public:
+		using TArdaComputeOperand::TArdaComputeOperand;
+
+		const char* GetName() const noexcept override
+		{
+			return &quot;sample.surface&quot;;
+		}
+
+		void BindKernelVariants(FRegistry&amp; Registry) const override;
+		TArdaRHIResult&lt;FArdaCudaKernelSelection&gt; SelectKernel(const FParameters&amp; Parameters,
+		    const FArdaCudaSelectionContext&amp; Context,
+		    const FVariants&amp; Candidates) const override;
+	};
 }
 </code></pre></details>
 <p>Binding runs once per operand instance through synchronized initialization. It performs no CUDA initialization or launches. The first schema/registration error is retained even if the author ignores Add's returned status. Once frozen, the registry is immutable. Do not retain a mutable registry reference, recursively inspect support from BindKernelVariants, or mutate shared policy during concurrent dispatches. Exceptions from binding or selection become runtime error statuses.</p>
 <p>SelectKernel receives only compatible candidates, capabilities, queue type and host parameters. It returns a candidate ID plus grid, block and dynamic shared-memory configuration, or an error. It must be a side-effect-free host decision: no allocation, CUDA calls, resource writes or asynchronous work. Device/kernel-specific thread and memory limits are validated again at native recording. An explicit NoWork choice is available for algorithms that permit empty work; zero grid dimensions do not imply NoWork.</p><details><summary>Read compiled example: ArdaTestComputeOperand.cpp</summary><pre><code class="language-cpp">#include &quot;ArdaTestComputeOperand.h&quot;
 
 #if defined(ARDA_TEST_PRECOMPILED_CUDA)
-namespace arda_cuda_portable {
-    void BindAdd(arda::FArdaAddOperand::FRegistry&amp;);
-    void BindSurface(arda::FArdaSurfaceOperand::FRegistry&amp;);
+namespace arda_cuda_portable
+{
+	void BindAdd(arda::FArdaAddOperand::FRegistry&amp;);
+	void BindSurface(arda::FArdaSurfaceOperand::FRegistry&amp;);
 }
-namespace arda_cuda_tuned { void BindAdd(arda::FArdaAddOperand::FRegistry&amp;); }
+
+namespace arda_cuda_tuned
+{
+	void BindAdd(arda::FArdaAddOperand::FRegistry&amp;);
+}
 #endif
 namespace arda
 {
-    void FArdaAddOperand::BindKernelVariants(FRegistry&amp; Registry) const
-    {
+	void FArdaAddOperand::BindKernelVariants(FRegistry&amp; Registry) const
+	{
 #if defined(ARDA_TEST_PRECOMPILED_CUDA)
-        arda_cuda_portable::BindAdd(Registry);
-        arda_cuda_tuned::BindAdd(Registry);
+		arda_cuda_portable::BindAdd(Registry);
+		arda_cuda_tuned::BindAdd(Registry);
 #endif
-    }
-    TArdaRHIResult&lt;FArdaCudaKernelSelection&gt; FArdaAddOperand::SelectKernel(const FParameters&amp; P,
-        const FArdaCudaSelectionContext&amp;, const FVariants&amp; Candidates) const
-    {
-        if (!P.mInput.mBuffer || !P.mOutput.mBuffer || !P.mCount)
-            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Add requires a nonzero count matching both views.&quot;)};
-        const auto InputRange = P.mInput.mRange.Resolve(P.mInput.mBuffer-&gt;GetDesc());
-        const auto OutputRange = P.mOutput.mRange.Resolve(P.mOutput.mBuffer-&gt;GetDesc());
-        const auto ByteCount = uint64_t(P.mCount) * sizeof(uint32_t);
-        if (ByteCount != InputRange.mByteSize || ByteCount != OutputRange.mByteSize)
-            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Add count must match both views.&quot;)};
-        if (P.mInput.mBuffer == P.mOutput.mBuffer)
-        {
-            if (InputRange.mByteOffset != OutputRange.mByteOffset &amp;&amp;
-                InputRange.mByteOffset &lt; OutputRange.mByteOffset + OutputRange.mByteSize &amp;&amp;
-                OutputRange.mByteOffset &lt; InputRange.mByteOffset + InputRange.mByteSize)
-                return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Add permits identical or disjoint views, but not partial overlap.&quot;)};
-        }
-        const uint32_t Block = P.mCount &lt;= 64 ? 32 : 128;
-        const FVariants::value_type* Selected = nullptr;
-        for (const auto&amp; V : Candidates)
-        {
-            const bool FastMath = V.mEntry-&gt;GetBuildInfo().mbFastMath;
-            if (V.mPayload.mBlockSize != Block || (FastMath &amp;&amp; !mbPreferFastMath)) continue;
-            if (!Selected) Selected = &amp;V;
-            if (FastMath == mbPreferFastMath)
-            {
-                Selected = &amp;V;
-                break;
-            }
-        }
-        if (!Selected)
-            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, &quot;No compatible add tile was compiled.&quot;)};
-        FArdaCudaKernelSelection Choice;
-        Choice.mVariantId = Selected-&gt;mId;
-        Choice.mLaunch.mBlockSize[0] = Block;
-        Choice.mLaunch.mGridSize[0] = 1 + (P.mCount - 1) / Block;
-        return {Choice, {}};
-    }
-    void FArdaSurfaceOperand::BindKernelVariants(FRegistry&amp; Registry) const
-    {
+	}
+
+	TArdaRHIResult&lt;FArdaCudaKernelSelection&gt; FArdaAddOperand::SelectKernel(const FParameters&amp; P,
+	    const FArdaCudaSelectionContext&amp;,
+	    const FVariants&amp; Candidates) const
+	{
+		if (!P.mInput.mBuffer || !P.mOutput.mBuffer || !P.mCount)
+		{
+			return {{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			        &quot;Add requires a nonzero count matching both views.&quot;)};
+		}
+		const auto InputRange = P.mInput.mRange.Resolve(P.mInput.mBuffer-&gt;GetDesc());
+		const auto OutputRange = P.mOutput.mRange.Resolve(P.mOutput.mBuffer-&gt;GetDesc());
+		const auto ByteCount = uint64_t(P.mCount) * sizeof(uint32_t);
+		if (ByteCount != InputRange.mByteSize || ByteCount != OutputRange.mByteSize)
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Add count must match both views.&quot;)};
+		}
+		if (P.mInput.mBuffer == P.mOutput.mBuffer)
+		{
+			if (InputRange.mByteOffset != OutputRange.mByteOffset &amp;&amp;
+			    InputRange.mByteOffset &lt; OutputRange.mByteOffset + OutputRange.mByteSize &amp;&amp;
+			    OutputRange.mByteOffset &lt; InputRange.mByteOffset + InputRange.mByteSize)
+			{
+				return {{},
+				    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+				        &quot;Add permits identical or disjoint views, but not partial overlap.&quot;)};
+			}
+		}
+		const uint32_t Block = P.mCount &lt;= 64 ? 32 : 128;
+		const FVariants::value_type* Selected = nullptr;
+		for (const auto&amp; V : Candidates)
+		{
+			const bool FastMath = V.mEntry-&gt;GetBuildInfo().mbFastMath;
+			if (V.mPayload.mBlockSize != Block || (FastMath &amp;&amp; !mbPreferFastMath))
+			{
+				continue;
+			}
+			if (!Selected)
+			{
+				Selected = &amp;V;
+			}
+			if (FastMath == mbPreferFastMath)
+			{
+				Selected = &amp;V;
+				break;
+			}
+		}
+		if (!Selected)
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, &quot;No compatible add tile was compiled.&quot;)};
+		}
+		FArdaCudaKernelSelection Choice;
+		Choice.mVariantId = Selected-&gt;mId;
+		Choice.mLaunch.mBlockSize[0] = Block;
+		Choice.mLaunch.mGridSize[0] = 1 + (P.mCount - 1) / Block;
+		return {Choice, {}};
+	}
+
+	void FArdaSurfaceOperand::BindKernelVariants(FRegistry&amp; Registry) const
+	{
 #if defined(ARDA_TEST_PRECOMPILED_CUDA)
-        arda_cuda_portable::BindSurface(Registry);
+		arda_cuda_portable::BindSurface(Registry);
 #endif
-    }
-    TArdaRHIResult&lt;FArdaCudaKernelSelection&gt; FArdaSurfaceOperand::SelectKernel(const FParameters&amp; P,
-        const FArdaCudaSelectionContext&amp;, const FVariants&amp; Candidates) const
-    {
-        if (!P.mSurface.mTexture || !P.mWidth || !P.mHeight || Candidates.empty())
-            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Surface requires nonzero dimensions and a compiled variant.&quot;)};
-        const auto&amp; Desc = P.mSurface.mTexture-&gt;GetDesc();
-        const auto Mip = P.mSurface.mRange.mBaseMipLevel;
-        if (Mip &gt;= Desc.mMipLevels || Mip &gt;= 32 || Desc.mDimension != EArdaRHITextureDimension::Texture2D ||
-            P.mWidth != (Desc.mWidth &gt;&gt; Mip) || P.mHeight != (Desc.mHeight &gt;&gt; Mip))
-            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Surface dimensions must match the selected 2D mip.&quot;)};
-        FArdaCudaKernelSelection Choice;
-        Choice.mVariantId = Candidates.front().mId;
-        Choice.mLaunch.mBlockSize[0] = Choice.mLaunch.mBlockSize[1] = 8;
-        Choice.mLaunch.mGridSize[0] = 1 + (P.mWidth - 1) / 8;
-        Choice.mLaunch.mGridSize[1] = 1 + (P.mHeight - 1) / 8;
-        return {Choice, {}};
-    }
+	}
+
+	TArdaRHIResult&lt;FArdaCudaKernelSelection&gt; FArdaSurfaceOperand::SelectKernel(const FParameters&amp; P,
+	    const FArdaCudaSelectionContext&amp;,
+	    const FVariants&amp; Candidates) const
+	{
+		if (!P.mSurface.mTexture || !P.mWidth || !P.mHeight || Candidates.empty())
+		{
+			return {{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			        &quot;Surface requires nonzero dimensions and a compiled variant.&quot;)};
+		}
+		const auto&amp; Desc = P.mSurface.mTexture-&gt;GetDesc();
+		const auto Mip = P.mSurface.mRange.mBaseMipLevel;
+		if (Mip &gt;= Desc.mMipLevels || Mip &gt;= 32 || Desc.mDimension != EArdaRHITextureDimension::Texture2D ||
+		    P.mWidth != (Desc.mWidth &gt;&gt; Mip) || P.mHeight != (Desc.mHeight &gt;&gt; Mip))
+		{
+			return {{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			        &quot;Surface dimensions must match the selected 2D mip.&quot;)};
+		}
+		FArdaCudaKernelSelection Choice;
+		Choice.mVariantId = Candidates.front().mId;
+		Choice.mLaunch.mBlockSize[0] = Choice.mLaunch.mBlockSize[1] = 8;
+		Choice.mLaunch.mGridSize[0] = 1 + (P.mWidth - 1) / 8;
+		Choice.mLaunch.mGridSize[1] = 1 + (P.mHeight - 1) / 8;
+		return {Choice, {}};
+	}
 }
 </code></pre></details></section>
 <section id="parameters"><h2>One declaration produces host, CUDA and graph representations</h2><p><a href="api-reference.html#api-arda-arda-cuda-parameter-struct-6ccbb61e"><code>ARDA_CUDA_PARAMETER_STRUCT</code></a> expands a field-list macro into one parameter storage template. The public alias stores retained RHI resource views; its FCuda alias stores device pointers or 64-bit surface handles plus plain copied values. A Read buffer becomes const T* in CUDA, and writable buffers become T*. The device function takes that FCuda object as its only by-value argument.</p><details><summary>Read compiled example: ArdaCudaOperand.cuh</summary><pre><code class="language-cpp">#pragma once
+
 // Included after the parameter declarations and generated build profile header.
 namespace ARDA_CUDA_BUILD_NAMESPACE
 {
-    template&lt;int BlockSize&gt;
-    __global__ void Add(arda::FArdaAddParameters::FCuda P)
-    {
-        const uint32_t Index = blockIdx.x * BlockSize + threadIdx.x;
-        if (Index &lt; P.mCount) P.mOutput[Index] = P.mInput[Index] + P.mBias;
-    }
-    __global__ void FillSurface(arda::FArdaSurfaceParameters::FCuda P)
-    {
-        const uint32_t X = blockIdx.x * blockDim.x + threadIdx.x;
-        const uint32_t Y = blockIdx.y * blockDim.y + threadIdx.y;
-        if (X &lt; P.mWidth &amp;&amp; Y &lt; P.mHeight)
-            surf2Dwrite(P.mValue, static_cast&lt;cudaSurfaceObject_t&gt;(P.mSurface), X * sizeof(uint32_t), Y);
-    }
+	template &lt;int BlockSize&gt;
+	__global__ void Add(arda::FArdaAddParameters::FCuda P)
+	{
+		const uint32_t Index = blockIdx.x * BlockSize + threadIdx.x;
+		if (Index &lt; P.mCount)
+		{
+			P.mOutput[Index] = P.mInput[Index] + P.mBias;
+		}
+	}
+
+	__global__ void FillSurface(arda::FArdaSurfaceParameters::FCuda P)
+	{
+		const uint32_t X = blockIdx.x * blockDim.x + threadIdx.x;
+		const uint32_t Y = blockIdx.y * blockDim.y + threadIdx.y;
+		if (X &lt; P.mWidth &amp;&amp; Y &lt; P.mHeight)
+		{
+			surf2Dwrite(P.mValue, static_cast&lt;cudaSurfaceObject_t&gt;(P.mSurface), X * sizeof(uint32_t), Y);
+		}
+	}
 }
 </code></pre></details>
 <p>Host references, device slots and graph handles have different layouts. Paired metadata records member offsets in each representation; the framework copies value fields individually into a zeroed argument block and patches resource slots after resolving mappings. It never memcpy-copies an entire host object containing reference-counted resources into CUDA.</p>
