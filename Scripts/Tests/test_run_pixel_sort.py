@@ -1,5 +1,6 @@
 """Check launch-only isolation, build failures, and executable/argument selection."""
 import importlib.util
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -81,6 +82,24 @@ class PixelSortLauncherTests(unittest.TestCase):
             launcher.main(["vulkan", str(self.build)])
         configure = run.call_args_list[0].args[0]
         self.assertFalse(any(arg.startswith("-DARDASHIR_BUILD_TESTS=") for arg in configure))
+        self.assertNotIn("-G", configure)
+
+    def test_new_build_uses_ninja_without_an_explicit_generator(self):
+        with patch.dict(os.environ, {"CMAKE_GENERATOR": ""}):
+            with patch.object(launcher.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+                launcher.main(["vulkan", str(self.build)])
+        configure = run.call_args_list[0].args[0]
+        self.assertEqual(configure[configure.index("-G") + 1], "Ninja")
+
+    def test_generator_environment_and_command_line_are_respected(self):
+        with patch.dict(os.environ, {"CMAKE_GENERATOR": "Visual Studio 17 2022"}):
+            with patch.object(launcher.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+                launcher.main(["vulkan", str(self.build)])
+                self.assertNotIn("-G", run.call_args_list[0].args[0])
+            with patch.object(launcher.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+                launcher.main(["vulkan", str(self.build), "--generator", "Ninja Multi-Config"])
+                configure = run.call_args_list[0].args[0]
+                self.assertEqual(configure[configure.index("-G") + 1], "Ninja Multi-Config")
 
     def test_failed_configure_stops_before_build_or_launch(self):
         with patch.object(launcher.subprocess, "run", side_effect=subprocess.CalledProcessError(9, "cmake")) as run:

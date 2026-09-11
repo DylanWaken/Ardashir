@@ -2,10 +2,14 @@ include_guard(GLOBAL)
 
 # Compiler discovery occurs only during project configuration. Applications never search for nvcc.
 macro(ardashir_enable_cuda_compiler)
-    include(CheckLanguage)
-    check_language(CUDA)
+    # CUDA is required in this branch. A separate CheckLanguage project both
+    # caches failed probes and hides the actual host compiler/toolset error.
     if(NOT CMAKE_CUDA_COMPILER)
-        message(FATAL_ERROR "CUDA kernel builds require nvcc at build time. Set CMAKE_CUDA_COMPILER or CUDACXX (Ninja), or select the CUDA Visual Studio toolset. Disable ARDASHIR_BUILD_CUDA_KERNELS for a consumer-only build. Deployed applications do not require nvcc.")
+        unset(CMAKE_CUDA_COMPILER CACHE)
+        unset(CMAKE_CUDA_COMPILER)
+    endif()
+    if(CMAKE_GENERATOR MATCHES "Visual Studio")
+        message(STATUS "CUDA with Visual Studio requires CUDA MSBuild integration. If only nvcc is available on PATH, use a new Ninja build directory (-G Ninja) from a Visual Studio developer shell.")
     endif()
     enable_language(CUDA)
     if(NOT CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA")
@@ -13,8 +17,18 @@ macro(ardashir_enable_cuda_compiler)
     endif()
     find_package(CUDAToolkit REQUIRED)
     if(NOT ARDASHIR_CUDA_INCLUDE_DIR)
-        set(ARDASHIR_CUDA_INCLUDE_DIR "${CUDAToolkit_INCLUDE_DIRS}")
+        # Modern toolkits also list CCCL includes. The provider option is one
+        # directory containing cuda.h, not the complete toolkit include list.
+        foreach(_arda_cuda_include IN LISTS CUDAToolkit_INCLUDE_DIRS)
+            if(EXISTS "${_arda_cuda_include}/cuda.h")
+                set(ARDASHIR_CUDA_INCLUDE_DIR "${_arda_cuda_include}" CACHE PATH
+                    "CUDA SDK include directory containing cuda.h" FORCE)
+                break()
+            endif()
+        endforeach()
+        unset(_arda_cuda_include)
     endif()
+    message(STATUS "Arda build-time CUDA compiler: ${CMAKE_CUDA_COMPILER}")
 endmacro()
 
 # One target per architecture/flag profile. Refer to exported bindings explicitly so static

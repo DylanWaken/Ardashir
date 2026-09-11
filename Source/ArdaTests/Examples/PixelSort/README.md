@@ -63,6 +63,18 @@ python Scripts/Examples/RunPixelSort.py vulkan build/pixel-sort Release --genera
 python Scripts/Examples/RunPixelSort.py vulkan build/pixel-sort Release --run-only
 ```
 
+For a new build the launcher selects Ninja unless `--generator` or
+`CMAKE_GENERATOR` specifies another generator. Existing build directories keep
+their generator. With nvcc on the terminal's `PATH`, no `--nvcc` option is needed:
+
+```powershell
+python Scripts/Examples/RunPixelSort.py vulkan build/pixel-sort-ninja Release --architectures "120"
+```
+
+Run that command in a Visual Studio developer shell with Ninja available.
+Visual Studio generators require CUDA MSBuild integration as well as nvcc;
+an existing Visual Studio build cannot be converted to Ninja in place.
+
 `--nvcc` also sets the backend's include directory to the toolkit's `include`
 folder; `--cuda-include-dir` overrides that location. Existing builds reuse
 their compiler and architecture cache unless overridden. New builds disable
@@ -70,6 +82,12 @@ other examples and tests; add `--cmake-arg=-DARDASHIR_BUILD_TESTS=ON` to provisi
 validation for verification. Repeated `--cmake-arg=-DNAME=VALUE` options pass
 additional settings to CMake. Use a fresh directory when changing generators
 or CUDA compilers.
+
+A previous `CMAKE_CUDA_COMPILER=NOTFOUND` is retried on the next configure.
+Successful compiler selections stay cached. CMake now reports the underlying
+host compiler/toolset error directly if CUDA setup fails. Automatic provider
+header discovery selects the directory containing `cuda.h`, including toolkits
+that also report separate CCCL include directories.
 
 `--run-only` launches the existing executable without invoking CMake or looking
 for nvcc. Both single-configuration and Visual Studio configuration directories

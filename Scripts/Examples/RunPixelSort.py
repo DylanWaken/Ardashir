@@ -3,6 +3,7 @@
 
 import argparse
 import math
+import os
 import platform
 import subprocess
 from pathlib import Path
@@ -21,7 +22,7 @@ def parse_arguments(argv=None) -> argparse.Namespace:
                         default=SOURCE_DIRECTORY / "build" / "pixel-sort")
     parser.add_argument("configuration", nargs="?", default="Release")
     parser.add_argument("--run-only", action="store_true", help="Skip configuration and compilation.")
-    parser.add_argument("--generator", help="CMake generator for a new build directory, e.g. Ninja.")
+    parser.add_argument("--generator", help="CMake generator; new builds default to Ninja unless CMAKE_GENERATOR is set.")
     parser.add_argument("--nvcc", type=Path, help="Build-time path to nvcc.exe (Ninja/Makefiles).")
     parser.add_argument("--cuda-include-dir", type=Path, help="CUDA SDK include directory for the backend.")
     parser.add_argument("--architectures", help='Native CUDA targets, e.g. "80;120"; otherwise use CMake defaults/cache.')
@@ -61,11 +62,15 @@ def main(argv=None) -> int:
                 f"-DCMAKE_BUILD_TYPE={args.configuration}",
             ]
             # Isolate a new example build without changing an existing tree's test settings.
-            if not (build_directory / "CMakeCache.txt").is_file():
+            new_build = not (build_directory / "CMakeCache.txt").is_file()
+            if new_build:
                 configure.extend(f"-DARDASHIR_BUILD_{name}=OFF" for name in
                                  ("TESTS", "RHI_TEST", "ARDG_EXAMPLE", "CORNELL_BOX"))
-            if args.generator:
-                configure.extend(("-G", args.generator))
+            generator = args.generator
+            if not generator and new_build and not os.environ.get("CMAKE_GENERATOR"):
+                generator = "Ninja"
+            if generator:
+                configure.extend(("-G", generator))
             cuda_include = args.cuda_include_dir
             if args.nvcc:
                 nvcc = args.nvcc.resolve()

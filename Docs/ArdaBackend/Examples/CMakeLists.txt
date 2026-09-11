@@ -8,16 +8,11 @@ if(NOT ARDA_EXAMPLE_BUILD_CUDA)
     return()
 endif()
 
-include(CheckLanguage)
-check_language(CUDA)
 if(NOT CMAKE_CUDA_COMPILER)
-    message(FATAL_ERROR
-        "Building this example requires a CUDA compiler on the build machine. "
-        "For Ninja, select nvcc with CMAKE_CUDA_COMPILER or CUDACXX; "
-        "for Visual Studio, select an installed CUDA toolset with -T cuda=<version>. "
-        "Use a fresh build directory after changing toolchains, or set "
-        "ARDA_EXAMPLE_BUILD_CUDA=OFF. End users do not need nvcc at runtime.")
+    unset(CMAKE_CUDA_COMPILER CACHE)
+    unset(CMAKE_CUDA_COMPILER)
 endif()
+# Enabling a required language directly preserves CMake's real toolchain errors.
 enable_language(CUDA)
 find_package(CUDAToolkit REQUIRED)
 set(ARDA_EXAMPLE_ARCHITECTURES "80;86;89;90;100;120" CACHE STRING "Native binary architecture targets")
