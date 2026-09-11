@@ -53267,7 +53267,7 @@ window.ArdaBackendApi.symbols.push({
   ownership: "Owns its window, backend, swap chain and textures. Resize, readback and shutdown wait for GPU completion. The executable statically retains both CUDA entries. Keep deployed D3D12, Shaders and ShaderCompiler directories beside it; the graphics shader cache is writable beside the executable. No runtime CUDA compiler is used.",
   errors: "Reports the first RHI/CUDA failure or CPU mismatch. Missing native architecture coverage requires rebuilding the kernel profile. D3D12 CiG surfaces are unavailable on the locally tested driver; automatic mode selects ordinary context execution.",
   threading: "One application thread records and submits the graphics list. The provider orders producer, CUDA and consumer on the GPU; normal frames perform no CPU readback or device-idle wait. CUDA blocks sort independent tiles using block barriers and warp ballots.",
-  source: "Examples/PixelSort/PixelSortMain.cpp",
+  source: "Source/ArdaTests/Examples/PixelSort/PixelSortMain.cpp",
   related: ["TArdaComputeOperand", "IArdaSwapChain"]
 });
 
