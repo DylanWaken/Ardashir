@@ -11,6 +11,19 @@ for optional PNG captures, and Vulkan headers for surface creation. It does not
 use RDG, scene modules, GLFW or ImGui. All application and shader sources live
 in this directory; build it through the repository's root CMake project.
 
+## Follow the commented implementation
+
+1. [CMakeLists.txt](CMakeLists.txt): build native CUDA profiles and deploy graphics assets.
+2. [PixelSortOperand.h](PixelSortOperand.h) and [PixelSortOperand.cpp](PixelSortOperand.cpp):
+   define the shared parameter schema, bind compiled entries, and select a launch configuration.
+3. [PixelSortKernels.cu](PixelSortKernels.cu): register template permutations and follow the
+   stable radix sort, including boundaries, padding, shared memory and synchronization.
+4. [PixelSortRenderer.cpp](PixelSortRenderer.cpp): follow `Initialize`, `Resize`, then the
+   six numbered stages in `Render`. [PixelSort.hlsl](Shaders/PixelSort.hlsl) supplies the
+   graphics producer and presentation shaders used by those stages.
+5. [PixelSortMain.cpp](PixelSortMain.cpp) and [PixelSortWindow.cpp](PixelSortWindow.cpp):
+   connect the backend to a native window, handle capabilities/events, and release resources safely.
+
 ## Build
 
 Use a Visual Studio developer PowerShell with CMake 3.24+, Ninja and an NVIDIA

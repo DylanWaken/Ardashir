@@ -1,3 +1,10 @@
+// Pixel Sort reading guide:
+//   CMakeLists.txt           -> build native CUDA entries and deploy HLSL assets
+//   PixelSortOperand.h/.cpp  -> parameter schema, registration hook, launch policy
+//   PixelSortKernels.cu      -> typed compiled variants and the radix algorithm
+//   PixelSortRenderer.cpp   -> shared textures and one graphics/CUDA frame
+//   PixelSortWindow.h/.cpp   -> minimal Win32 surface adapter and resize events
+// This file connects those pieces, selects the backend/mode, and owns their lifetime.
 #include "PixelSortWindow.h"
 #include "PixelSortRenderer.h"
 #include <atomic>
@@ -12,6 +19,9 @@ namespace arda
 {
     namespace
     {
+        // Default to an animated portrait window. --frames bounds a test run;
+        // --time fixes the noise field for reproducible captures. Neither affects
+        // which CUDA images are available: that was decided during the CMake build.
         struct FOptions
         {
             eastl::string mBackend = "native-d3d12";
@@ -21,6 +31,9 @@ namespace arda
             bool mbHidden = false, mbVerify = false, mbResizeTest = false, mbFixedTime = false, mbValidation = false;
             std::filesystem::path mCapture;
         };
+        // The backend may issue callbacks from different threads. Collect errors
+        // atomically so validation failures fail the example even after submission.
+        // This object must outlive backend shutdown, which can also emit diagnostics.
         struct FDiagnostics final : IArdaDiagnosticCallback
         {
             std::atomic<uint32_t> mErrors{0};
@@ -30,6 +43,9 @@ namespace arda
                 if (Severity >= EArdaDiagnosticSeverity::Warning) std::fprintf(stderr, "%s\n", Text ? Text : "");
             }
         };
+        // Destruction order matters: renderer/resources, then swap chain/backend,
+        // then diagnostics/window. Keeping a small owner also handles early returns
+        // and exceptions after partial initialization without leaking the backend.
         struct FBackendLifetime
         {
             eastl::unique_ptr<IArdaSwapChain> mSwapChain;
@@ -96,16 +112,30 @@ namespace arda
             FPixelSortWindow Window; Window.Create(O.mWidth, O.mHeight, O.mbHidden);
             Window.mChannel = O.mChannel; Window.mThreshold = O.mThreshold;
             FDiagnostics Diagnostics;
+            // Configure before creating the device. Automatic mode asks the backend
+            // for its qualified choice; context requests ordinary CUDA, graphics
+            // requires CUDA-in-graphics. Application recording is identical for both.
             FArdaBackendConfiguration Config; Config.mBackendName = O.mBackend; Config.mCudaExecutionMode = O.mMode;
             Config.mbEnableValidation = O.mbValidation || O.mbVerify; Config.mMessageCallback = &Diagnostics;
+            // Renderer.Initialize explicitly manages this example's editable HLSL
+            // artifacts. CUDA compilation never happens in this initialization path.
             Config.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
             if (!ConfigureBackend(Config)) throw std::runtime_error(GetBackendError().c_str());
             FBackendLifetime Backend;
+            // IArdaWindowSurface supplies an HWND or creates a VkSurfaceKHR. The
+            // backend creates the presentation device/swap chain and establishes
+            // CUDA interop for that graphics adapter; the app does not pick a
+            // separate CUDA device or import native graphics memory itself.
             const auto Init = InitializeBackendForPresentation(Window, Window.mWidth, Window.mHeight, Backend.mSwapChain);
             if (Init != EArdaInitializeResult::Success) { std::fprintf(stderr, "%s\n", GetBackendError().c_str()); return Init == EArdaInitializeResult::Unavailable || Init == EArdaInitializeResult::ValidationUnavailable ? 77 : 1; }
             const auto Caps = GetDevice()->GetCudaCapabilities();
+            // CUDA availability alone is insufficient for a surface-based kernel.
+            // Qualify texture/surface access before allocating shared images. Exit 77
+            // marks an unavailable test configuration, while workload failures are 1.
             if (!Caps || !Caps.mbSurfaceAccess)
             { std::fprintf(stderr, "%s\n", (Caps ? Caps.mSurfaceUnavailableReason : Caps.mUnavailableReason).c_str()); return 77; }
+            // Resolve deployed shaders/compiler relative to the executable so the
+            // launcher can preserve the caller's working directory (and capture path).
             wchar_t Executable[32768]; const auto PathLength = GetModuleFileNameW(nullptr, Executable, 32768);
             if (!PathLength || PathLength == 32768) throw std::runtime_error("Cannot locate executable.");
             FPixelSortRenderer Renderer(GetDevice());
@@ -119,20 +149,33 @@ namespace arda
             {
                 if (O.mbResizeTest)
                 {
+                    // Exercise real window/swap-chain resizes, both orientations,
+                    // all RGB keys, dark thresholds, partial tiles and multi-tile lines.
+                    // --verify checks the resulting pixels against the CPU oracle.
                     constexpr uint32_t Sizes[][2] = {{321, 197}, {197, 321}, {257, 193}, {193, 257}, {1537, 197}, {197, 1537}};
                     Window.Resize(Sizes[Frame % 6][0], Sizes[Frame % 6][1]);
                     Window.Pump(); Window.mChannel = Frame % 3; Window.mThreshold = (Frame % 3) * 48;
                 }
                 const bool Resized = Window.ConsumeResize();
+                // Minimize produces a zero client extent. Suspend drawing until a
+                // message arrives; reset the clock so restore does not jump in time.
                 if (!Window.mWidth || !Window.mHeight) { WaitMessage(); Previous = std::chrono::steady_clock::now(); continue; }
+                // Resize presentation resources here, outside the window callback.
+                // Renderer.Render then recreates its shared textures/bindings, and
+                // SelectKernel sees the new extent on the next dispatch. Kernel
+                // registration/native compilation are not repeated when resizing.
                 if (Resized && !Backend.mSwapChain->Resize(Window.mWidth, Window.mHeight)) throw std::runtime_error(Backend.mSwapChain->GetError().c_str());
                 const auto Now = std::chrono::steady_clock::now();
+                // Floating-point elapsed seconds drive continuous motion in NoiseCS;
+                // animation speed is independent of how many frames were rendered.
                 if (!Window.mbPaused && !O.mbFixedTime) Time += std::chrono::duration<float>(Now - Previous).count();
                 Previous = Now;
                 char Title[256]; const bool Vertical = Window.mHeight > Window.mWidth;
                 std::snprintf(Title, sizeof(Title), "Pixel Sort | %s | %c channel | %s / %u threads | C: channel  Space: pause  Tab: original  Up/Down: threshold %u",
                     Mode, "RGB"[Window.mChannel], Vertical ? "Vertical" : "Horizontal", Vertical ? 256 : 128, Window.mThreshold);
                 Window.SetTitle(Title);
+                // Capture once: the last bounded frame, or the first interactive
+                // frame. Tab changes presentation only; CUDA still sorts every frame.
                 const bool Last = O.mFrames ? Frame + 1 == O.mFrames : Frame == 0;
                 Renderer.Render(*Backend.mSwapChain, Time, Window.mChannel, Window.mThreshold, Window.mbOriginal, O.mbVerify,
                     Last ? O.mCapture : std::filesystem::path{});
@@ -146,6 +189,8 @@ namespace arda
 }
 int main(int Count, char** Args)
 {
+    // WIC PNG encoding uses COM. Keep it initialized through all renderer work,
+    // then balance successful initialization after Run's owned resources unwind.
     const auto Com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     int Result = 1;
     try { Result = arda::Run(Count, Args); }

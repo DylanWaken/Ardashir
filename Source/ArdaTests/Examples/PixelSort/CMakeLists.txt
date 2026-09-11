@@ -1,18 +1,37 @@
+# Build this directory through the repository root (or RunPixelSort.py). The root
+# discovers nvcc while configuring; the launcher prepares Windows developer tools.
+# This example uses a Win32 window even when its graphics backend is Vulkan.
 if(NOT WIN32 OR NOT ARDASHIR_ENABLE_CUDA OR NOT ARDASHIR_BUILD_CUDA_KERNELS)
     message(FATAL_ERROR "PixelSort requires Windows, ARDASHIR_ENABLE_CUDA and ARDASHIR_BUILD_CUDA_KERNELS.")
 endif()
 
+# Step 1: compile the .cu file into a static library of native GPU code.
+# PROFILE pixel_sort generates ARDA_CUDA_BUILD_NAMESPACE=arda_cuda_pixel_sort
+# and GetBuildInfo() in ArdaCudaBuildInfo.h. DEPENDS includes the shared schema
+# in the generated build identity; edit that schema once for both C++ and CUDA.
+# With ARCHITECTURES omitted, this target inherits ARDASHIR_CUDA_ARCHITECTURES.
+# The helper emits native (-real) images and links static cudart: no runtime nvcc/PTX.
+#
+# For a different per-kernel architecture/flag policy, add another named target
+# with a UNIQUE PROFILE, e.g. ARCHITECTURES 89 120, DEFINITIONS MY_TUNING=1,
+# or OPTIONS --maxrregcount=64. Each profile gets its own namespace/manifest.
+# Link that target and call its binding export from BindKernelVariants explicitly.
 ardashir_add_cuda_kernels(PixelSortKernels PROFILE pixel_sort
     SOURCES PixelSortKernels.cu DEPENDS PixelSortOperand.h)
+# Step 2: compile ordinary application code with the host C++ compiler. The only
+# Arda module dependency is ArdaBackend; the window uses Win32, capture uses WIC.
 add_executable(PixelSort PixelSortMain.cpp PixelSortWindow.cpp PixelSortRenderer.cpp PixelSortOperand.cpp)
 target_compile_features(PixelSort PRIVATE cxx_std_17)
 target_compile_definitions(PixelSort PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 target_link_libraries(PixelSort PRIVATE Ardashir::ArdaBackend PixelSortKernels user32 ole32 windowscodecs)
 if(ARDASHIR_BACKEND_VULKAN)
+    # Headers describe the Win32 surface ABI. PixelSortWindow loads the system's
+    # Vulkan loader dynamically, so the application does not link a loader library.
     target_link_libraries(PixelSort PRIVATE Vulkan::Headers)
     target_compile_definitions(PixelSort PRIVATE ARDA_PIXEL_SORT_VULKAN)
 endif()
 set_target_properties(PixelSort PixelSortKernels PROPERTIES FOLDER "Ardashir/Tests/Examples/PixelSort")
+# Step 3: deploy the graphics assets beside the executable, independent of cwd.
 # Keep this development example runnable outside the source/build tree. CUDA is
 # already native code; DXC is used only for the editable HLSL graphics stages.
 get_filename_component(PixelSortDxcDirectory "${ARDASHIR_DXC_EXECUTABLE}" DIRECTORY)
@@ -31,6 +50,9 @@ if(ARDASHIR_BACKEND_D3D12)
     ardashir_deploy_d3d12_agility(PixelSort)
 endif()
 if(ARDASHIR_BUILD_TESTS)
+    # Opt-in development validation and exact CPU/GPU comparisons. Each test
+    # resizes a real hidden window six times to cover both variants and edge tiles.
+    # Exit 77 means the selected backend/mode is unavailable, rather than a sort failure.
     ardashir_test_validation(PixelSort)
     foreach(Backend IN ITEMS d3d12 vulkan)
         string(TOUPPER "${Backend}" BackendOption)
