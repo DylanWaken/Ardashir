@@ -35313,7 +35313,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaInitializeResult"
     ],
-    "sourceLine": 101
+    "sourceLine": 129
   },
   {
     "id": "api-arda-eardarhideviceprofile-raytracinginfrastructure-a6c77a68",
@@ -35334,7 +35334,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIDeviceProfile"
     ],
-    "sourceLine": 108
+    "sourceLine": 136
   },
   {
     "id": "api-arda-eardarhideviceprofile-realtimeraytracing-e8dd8df9",
@@ -35355,7 +35355,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIDeviceProfile"
     ],
-    "sourceLine": 109
+    "sourceLine": 137
   },
   {
     "id": "api-arda-eardarhideviceprofile-realtimeraytracingandml-02120a80",
@@ -35376,7 +35376,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIDeviceProfile"
     ],
-    "sourceLine": 110
+    "sourceLine": 138
   },
   {
     "id": "api-arda-fardabackendconfiguration-mcudaexecutionmode-0f63e71d",
@@ -35397,7 +35397,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaBackendConfiguration"
     ],
-    "sourceLine": 151
+    "sourceLine": 179
   },
   {
     "id": "api-arda-getbackendinitializeresult-07a294fd",
@@ -35418,7 +35418,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 203
+    "sourceLine": 232
   },
   {
     "id": "api-arda-getbackendmodulename-33e5a837",
@@ -35439,7 +35439,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 217
+    "sourceLine": 247
   },
   {
     "id": "api-arda-fardaswapchaincreateresult-fe42ce79",
@@ -35460,7 +35460,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 115
+    "sourceLine": 113
   },
   {
     "id": "api-arda-fardaswapchaincreateresult-mswapchain-af910a66",
@@ -35481,7 +35481,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaSwapChainCreateResult"
     ],
-    "sourceLine": 118
+    "sourceLine": 116
   },
   {
     "id": "api-arda-fardaswapchaincreateresult-merror-83fc5bb0",
@@ -35502,7 +35502,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaSwapChainCreateResult"
     ],
-    "sourceLine": 120
+    "sourceLine": 118
   },
   {
     "id": "api-arda-fardaswapchaincreateresult-operator-bool-6239cd60",
@@ -35523,7 +35523,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaSwapChainCreateResult"
     ],
-    "sourceLine": 122
+    "sourceLine": 120
   },
   {
     "id": "api-arda-iardabackendruntime-b02a9dac",
@@ -35544,7 +35544,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 129
+    "sourceLine": 127
   },
   {
     "id": "api-arda-iardabackendruntime-iardabackendruntime-a4facca5",
@@ -35565,7 +35565,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaBackendRuntime"
     ],
-    "sourceLine": 133
+    "sourceLine": 131
   },
   {
     "id": "api-arda-iardabackendruntime-createswapchain-4a6ed510",
@@ -35574,7 +35574,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "backend-modules",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaSwapChainCreateResult CreateSwapChain( uint32_t Width, uint32_t Height, arda::FArdaRHIDeviceRef Device) = 0",
+    "signature": "[[nodiscard]] virtual FArdaSwapChainCreateResult CreateSwapChain(uint32_t Width, uint32_t Height, arda::FArdaRHIDeviceRef Device) = 0",
     "summary": "Creates presentation resources for an initialized presentation device.",
     "details": "Creates presentation resources for an initialized presentation device.",
     "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
@@ -35599,7 +35599,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaBackendRuntime"
     ],
-    "sourceLine": 142
+    "sourceLine": 140
   },
   {
     "id": "api-arda-fardabackenddevicecreateresult-mresult-6a98ad3d",
@@ -35620,7 +35620,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaBackendDeviceCreateResult"
     ],
-    "sourceLine": 152
+    "sourceLine": 149
   },
   {
     "id": "api-arda-fardabackenddevicecreateresult-mbackendruntime-6c75e939",
@@ -35641,7 +35641,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaBackendDeviceCreateResult"
     ],
-    "sourceLine": 154
+    "sourceLine": 151
   },
   {
     "id": "api-arda-fardabackenddevicecreateresult-mproviderdevice-0e515519",
@@ -35662,7 +35662,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaBackendDeviceCreateResult"
     ],
-    "sourceLine": 156
+    "sourceLine": 153
   },
   {
     "id": "api-arda-fardabackenddevicecreateresult-operator-bool-af4d9f31",
@@ -35683,7 +35683,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaBackendDeviceCreateResult"
     ],
-    "sourceLine": 160
+    "sourceLine": 157
   },
   {
     "id": "api-arda-iardacustompresent-iardacustompresent-a52483ec",
@@ -35818,7 +35818,7 @@ window.ArdaBackendApi = {
     "kind": "class",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class ParameterType, class VariantPayload> class TArdaComputeOperand : public FArdaComputeOperand",
+    "signature": "template <class ParameterType, class VariantPayload> class TArdaComputeOperand : public FArdaComputeOperand",
     "summary": "Authors supply BindKernelVariants and SelectKernel. Dispatch cannot be overridden. Binding is synchronized once per operand. Selection must have no GPU/host side effects. Each dispatch retains its own frozen values/resources independently of the operand.",
     "details": "Authors supply BindKernelVariants and SelectKernel. Dispatch cannot be overridden. Binding is synchronized once per operand. Selection must have no GPU/host side effects. Each dispatch retains its own frozen values/resources independently of the operand.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
@@ -35830,7 +35830,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 25
+    "sourceLine": 26
   },
   {
     "id": "api-arda-tardacomputeoperand-fparameters-e7e28412",
@@ -35851,7 +35851,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 28
+    "sourceLine": 29
   },
   {
     "id": "api-arda-tardacomputeoperand-fkernelparameters-30c48ae6",
@@ -35872,7 +35872,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 29
+    "sourceLine": 30
   },
   {
     "id": "api-arda-tardacomputeoperand-fregistry-dea98490",
@@ -35893,7 +35893,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 30
+    "sourceLine": 31
   },
   {
     "id": "api-arda-tardacomputeoperand-fvariants-76f17a54",
@@ -35914,7 +35914,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 31
+    "sourceLine": 32
   },
   {
     "id": "api-arda-tardacomputeoperand-fplan-7df69ee3",
@@ -35935,7 +35935,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 32
+    "sourceLine": 33
   },
   {
     "id": "api-arda-tardacomputeoperand-tardacomputeoperand-e0c5a309",
@@ -35956,7 +35956,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 33
+    "sourceLine": 35
   },
   {
     "id": "api-arda-tardacomputeoperand-getparametermetadata-f1cf0ff0",
@@ -35977,7 +35977,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 34
+    "sourceLine": 40
   },
   {
     "id": "api-arda-tardacomputeoperand-bindkernelvariants-42a7bd31",
@@ -35998,7 +35998,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 36
+    "sourceLine": 46
   },
   {
     "id": "api-arda-tardacomputeoperand-selectkernel-b4fcaedd",
@@ -36019,7 +36019,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 38
+    "sourceLine": 49
   },
   {
     "id": "api-arda-tardacomputeoperand-getkernelvariants-1c542e64",
@@ -36040,7 +36040,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 41
+    "sourceLine": 54
   },
   {
     "id": "api-arda-tardacomputeoperand-getoperandsupport-6d4a80d3",
@@ -36061,7 +36061,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 48
+    "sourceLine": 65
   },
   {
     "id": "api-arda-tardacomputeoperand-preparedispatch-0959e24c",
@@ -36082,7 +36082,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 55
+    "sourceLine": 73
   },
   {
     "id": "api-arda-tardacomputeoperand-recordplan-0923eeba",
@@ -36103,7 +36103,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 82
+    "sourceLine": 149
   },
   {
     "id": "api-arda-tardacomputeoperand-dispatchdeferred-054ad63a",
@@ -36124,7 +36124,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 91
+    "sourceLine": 164
   },
   {
     "id": "api-arda-tardacomputeoperand-dispatch-2a87d7a8",
@@ -36145,7 +36145,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 97
+    "sourceLine": 172
   },
   {
     "id": "api-arda-tardacomputeoperand-getdevice-a6d22968",
@@ -36166,7 +36166,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 114
+    "sourceLine": 211
   },
   {
     "id": "api-arda-eardacomputeparameterkind-dd17fa5d",
@@ -36355,7 +36355,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 35
+    "sourceLine": 36
   },
   {
     "id": "api-arda-fardacomputetextureparameter-mtexture-f36841b7",
@@ -36376,7 +36376,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeTextureParameter"
     ],
-    "sourceLine": 38
+    "sourceLine": 39
   },
   {
     "id": "api-arda-fardacomputetextureparameter-mrange-ba3c59a0",
@@ -36397,7 +36397,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeTextureParameter"
     ],
-    "sourceLine": 40
+    "sourceLine": 41
   },
   {
     "id": "api-arda-fardacomputeparametermember-f60284f6",
@@ -36418,7 +36418,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 44
+    "sourceLine": 46
   },
   {
     "id": "api-arda-fardacomputeparametermember-mname-c32d7e8a",
@@ -36439,7 +36439,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMember"
     ],
-    "sourceLine": 47
+    "sourceLine": 49
   },
   {
     "id": "api-arda-fardacomputeparametermember-mcpptype-0d01cea5",
@@ -36460,7 +36460,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMember"
     ],
-    "sourceLine": 49
+    "sourceLine": 51
   },
   {
     "id": "api-arda-fardacomputeparametermember-mkind-5c448c81",
@@ -36481,7 +36481,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMember"
     ],
-    "sourceLine": 51
+    "sourceLine": 53
   },
   {
     "id": "api-arda-fardacomputeparametermember-maccess-9637a7d8",
@@ -36502,7 +36502,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMember"
     ],
-    "sourceLine": 53
+    "sourceLine": 55
   },
   {
     "id": "api-arda-fardacomputeparametermember-moffset-2b680a70",
@@ -36523,7 +36523,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMember"
     ],
-    "sourceLine": 55
+    "sourceLine": 57
   },
   {
     "id": "api-arda-fardacomputeparametermember-msize-f02a9d9d",
@@ -36544,7 +36544,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMember"
     ],
-    "sourceLine": 57
+    "sourceLine": 59
   },
   {
     "id": "api-arda-fardacomputeparametermember-malignment-78ac45fd",
@@ -36565,7 +36565,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMember"
     ],
-    "sourceLine": 59
+    "sourceLine": 61
   },
   {
     "id": "api-arda-fardacomputeparametermember-melementcount-fafcc05b",
@@ -36586,7 +36586,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMember"
     ],
-    "sourceLine": 61
+    "sourceLine": 63
   },
   {
     "id": "api-arda-fardacomputeparametermember-melementstride-5bebb8f6",
@@ -36607,7 +36607,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMember"
     ],
-    "sourceLine": 63
+    "sourceLine": 65
   },
   {
     "id": "api-arda-fardacomputeparametermember-mnestedmetadata-b25fbafe",
@@ -36628,7 +36628,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMember"
     ],
-    "sourceLine": 65
+    "sourceLine": 67
   },
   {
     "id": "api-arda-fardacomputeparameter-aea6cdac",
@@ -36649,7 +36649,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 68
+    "sourceLine": 71
   },
   {
     "id": "api-arda-fardacomputeparameter-mmember-cef9b5b5",
@@ -36670,7 +36670,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameter"
     ],
-    "sourceLine": 71
+    "sourceLine": 74
   },
   {
     "id": "api-arda-fardacomputeparameter-mvalue-53dd6158",
@@ -36691,7 +36691,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameter"
     ],
-    "sourceLine": 73
+    "sourceLine": 76
   },
   {
     "id": "api-arda-fardacomputeparameter-mpath-39ea0b45",
@@ -36712,7 +36712,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameter"
     ],
-    "sourceLine": 75
+    "sourceLine": 78
   },
   {
     "id": "api-arda-fardacomputeparameter-mabsoluteoffset-e18367bc",
@@ -36733,7 +36733,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameter"
     ],
-    "sourceLine": 77
+    "sourceLine": 80
   },
   {
     "id": "api-arda-fardacomputeparametervisitor-17d3bb8b",
@@ -36754,7 +36754,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 80
+    "sourceLine": 84
   },
   {
     "id": "api-arda-fardacomputeresourceaccess-9d47a130",
@@ -36775,7 +36775,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 82
+    "sourceLine": 87
   },
   {
     "id": "api-arda-fardacomputeresourceaccess-mpath-07c2a918",
@@ -36796,7 +36796,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeResourceAccess"
     ],
-    "sourceLine": 85
+    "sourceLine": 90
   },
   {
     "id": "api-arda-fardacomputeresourceaccess-mkind-9b81378b",
@@ -36817,7 +36817,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeResourceAccess"
     ],
-    "sourceLine": 87
+    "sourceLine": 92
   },
   {
     "id": "api-arda-fardacomputeresourceaccess-maccess-dbc5dee9",
@@ -36838,7 +36838,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeResourceAccess"
     ],
-    "sourceLine": 89
+    "sourceLine": 94
   },
   {
     "id": "api-arda-fardacomputeresourceaccess-mresource-1c670ed3",
@@ -36859,7 +36859,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeResourceAccess"
     ],
-    "sourceLine": 91
+    "sourceLine": 96
   },
   {
     "id": "api-arda-fardacomputeresourceaccess-mbufferrange-d679b0db",
@@ -36880,7 +36880,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeResourceAccess"
     ],
-    "sourceLine": 93
+    "sourceLine": 98
   },
   {
     "id": "api-arda-fardacomputeresourceaccess-mtexturerange-3f2315c5",
@@ -36901,7 +36901,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeResourceAccess"
     ],
-    "sourceLine": 95
+    "sourceLine": 100
   },
   {
     "id": "api-arda-fardacomputeparametermetadata-f2a80e39",
@@ -36922,7 +36922,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 98
+    "sourceLine": 104
   },
   {
     "id": "api-arda-fardacomputeparametermetadata-fardacomputeparametermetadata-473c2bca",
@@ -36943,7 +36943,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMetadata"
     ],
-    "sourceLine": 102
+    "sourceLine": 108
   },
   {
     "id": "api-arda-fardacomputeparametermetadata-getname-625e1c1c",
@@ -36964,7 +36964,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMetadata"
     ],
-    "sourceLine": 105
+    "sourceLine": 114
   },
   {
     "id": "api-arda-fardacomputeparametermetadata-getsize-7e3bccec",
@@ -36985,7 +36985,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMetadata"
     ],
-    "sourceLine": 107
+    "sourceLine": 120
   },
   {
     "id": "api-arda-fardacomputeparametermetadata-getalignment-2a5ce96f",
@@ -37006,7 +37006,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMetadata"
     ],
-    "sourceLine": 109
+    "sourceLine": 126
   },
   {
     "id": "api-arda-fardacomputeparametermetadata-getstatus-e00152af",
@@ -37027,7 +37027,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMetadata"
     ],
-    "sourceLine": 111
+    "sourceLine": 132
   },
   {
     "id": "api-arda-fardacomputeparametermetadata-getmembers-90f6d130",
@@ -37048,7 +37048,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMetadata"
     ],
-    "sourceLine": 113
+    "sourceLine": 138
   },
   {
     "id": "api-arda-fardacomputeparametermetadata-findmember-18c8b0f9",
@@ -37069,7 +37069,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMetadata"
     ],
-    "sourceLine": 115
+    "sourceLine": 144
   },
   {
     "id": "api-arda-fardacomputeparametermetadata-enumerate-ad7daeb6",
@@ -37090,7 +37090,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMetadata"
     ],
-    "sourceLine": 122
+    "sourceLine": 152
   },
   {
     "id": "api-arda-fardacomputeparametermetadata-getresourceaccesses-4796e61c",
@@ -37111,7 +37111,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaComputeParameterMetadata"
     ],
-    "sourceLine": 130
+    "sourceLine": 162
   },
   {
     "id": "api-arda-arda-begin-compute-parameter-struct-596541f1",
@@ -37132,7 +37132,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 144
+    "sourceLine": 179
   },
   {
     "id": "api-arda-structtype-arda-end-compute-parameter-struct-59d9c5d3",
@@ -37153,7 +37153,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::StructType"
     ],
-    "sourceLine": 169
+    "sourceLine": 224
   },
   {
     "id": "api-arda-arda-compute-parameter-f89067dd",
@@ -37174,7 +37174,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 184
+    "sourceLine": 247
   },
   {
     "id": "api-arda-arda-compute-buffer-78089946",
@@ -37195,7 +37195,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 187
+    "sourceLine": 257
   },
   {
     "id": "api-arda-arda-compute-texture-4a520ee8",
@@ -37216,7 +37216,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 190
+    "sourceLine": 267
   },
   {
     "id": "api-arda-arda-compute-parameter-struct-a93dff6f",
@@ -37237,7 +37237,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 193
+    "sourceLine": 277
   },
   {
     "id": "api-arda-arda-compute-parameter-array-f9f3f038",
@@ -37258,7 +37258,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 202
+    "sourceLine": 294
   },
   {
     "id": "api-arda-arda-compute-buffer-array-a6d4ab42",
@@ -37279,7 +37279,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 205
+    "sourceLine": 303
   },
   {
     "id": "api-arda-arda-compute-texture-array-a895169d",
@@ -37300,7 +37300,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 208
+    "sourceLine": 312
   },
   {
     "id": "api-arda-arda-compute-parameter-struct-array-18badc35",
@@ -37321,7 +37321,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 211
+    "sourceLine": 321
   },
   {
     "id": "api-arda-fardacudabindinghelpers-17a8e7d5",
@@ -37345,6 +37345,27 @@ window.ArdaBackendApi = {
     "sourceLine": 8
   },
   {
+    "id": "api-arda-fardacudabindinghelpers-signature-c19cda57",
+    "name": "Signature",
+    "qualifiedName": "arda::FArdaCudaBindingHelpers::Signature",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template <class T> struct Signature",
+    "summary": "Defines signature in the public backend and RHI contract.",
+    "details": "Defines signature in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaBindingHelpers"
+    ],
+    "sourceLine": 11
+  },
+  {
     "id": "api-arda-signature-get-dd0075ef",
     "name": "Get",
     "qualifiedName": "arda::Signature::Get",
@@ -37363,28 +37384,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::Signature"
     ],
-    "sourceLine": 10
-  },
-  {
-    "id": "api-arda-fardacudabindinghelpers-signature-c19cda57",
-    "name": "Signature",
-    "qualifiedName": "arda::FArdaCudaBindingHelpers::Signature",
-    "kind": "struct",
-    "component": "core",
-    "page": "api-reference.html",
-    "signature": "template<class T> struct Signature",
-    "summary": "Defines signature in the public backend and RHI contract.",
-    "details": "Defines signature in the public backend and RHI contract. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
-    "params": [],
-    "returns": "",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::FArdaCudaBindingHelpers"
-    ],
-    "sourceLine": 10
+    "sourceLine": 13
   },
   {
     "id": "api-arda-fardacudabindinghelpers-signature-e763d825",
@@ -37393,7 +37393,7 @@ window.ArdaBackendApi = {
     "kind": "struct",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class P> struct Signature<void(*)(P)>",
+    "signature": "template <class P> struct Signature<void (*)(P)>",
     "summary": "Defines signature in the public backend and RHI contract.",
     "details": "Defines signature in the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
@@ -37405,7 +37405,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBindingHelpers"
     ],
-    "sourceLine": 11
+    "sourceLine": 20
   },
   {
     "id": "api-arda-fardacudabindinghelpers-check-e37370dc",
@@ -37426,7 +37426,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBindingHelpers"
     ],
-    "sourceLine": 17
+    "sourceLine": 31
   },
   {
     "id": "api-arda-fardacudabindinghelpers-entry-5e774020",
@@ -37435,7 +37435,7 @@ window.ArdaBackendApi = {
     "kind": "class",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<auto Kernel> class Entry final : public IArdaCudaKernelEntry",
+    "signature": "template <auto Kernel> class Entry final : public IArdaCudaKernelEntry",
     "summary": "Defines entry in the public backend and RHI contract.",
     "details": "Defines entry in the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
@@ -37447,7 +37447,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBindingHelpers"
     ],
-    "sourceLine": 19
+    "sourceLine": 39
   },
   {
     "id": "api-arda-entry-entry-83950626",
@@ -37468,7 +37468,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::Entry"
     ],
-    "sourceLine": 22
+    "sourceLine": 42
   },
   {
     "id": "api-arda-entry-getsignature-13154bcc",
@@ -37489,7 +37489,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::Entry"
     ],
-    "sourceLine": 23
+    "sourceLine": 47
   },
   {
     "id": "api-arda-entry-getbuildinfo-dd94429a",
@@ -37510,7 +37510,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::Entry"
     ],
-    "sourceLine": 24
+    "sourceLine": 52
   },
   {
     "id": "api-arda-entry-getlimits-668039b1",
@@ -37531,7 +37531,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::Entry"
     ],
-    "sourceLine": 25
+    "sourceLine": 57
   },
   {
     "id": "api-arda-entry-launch-84819e47",
@@ -37552,7 +37552,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::Entry"
     ],
-    "sourceLine": 32
+    "sourceLine": 76
   },
   {
     "id": "api-arda-bindardacudakernel-0d454f59",
@@ -37561,7 +37561,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<auto Kernel, class Payload> TArdaCudaKernelVariant<Kernel, Payload> BindArdaCudaKernel(const char* Name, Payload Info, FArdaCudaBuildInfo Build, FArdaCudaKernelRequirements Requirements = {})",
+    "signature": "template <auto Kernel, class Payload> TArdaCudaKernelVariant<Kernel, Payload> BindArdaCudaKernel(const char* Name, Payload Info, FArdaCudaBuildInfo Build, FArdaCudaKernelRequirements Requirements = {})",
     "summary": "Binds a precompiled symbol. Registry initialization reports incompatible signatures at runtime.",
     "details": "Binds a precompiled symbol. Registry initialization reports incompatible signatures at runtime.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
@@ -37573,7 +37573,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 49
+    "sourceLine": 103
   },
   {
     "id": "api-arda-fardacudakernelrequirements-e3fa97cc",
@@ -37645,7 +37645,7 @@ window.ArdaBackendApi = {
     "kind": "struct",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<auto Kernel, class Payload> struct TArdaCudaKernelVariant",
+    "signature": "template <auto Kernel, class Payload> struct TArdaCudaKernelVariant",
     "summary": "Each compiled symbol has its own wrapper type and user-owned host policy payload.",
     "details": "Each compiled symbol has its own wrapper type and user-owned host policy payload.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
@@ -37657,7 +37657,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 16
+    "sourceLine": 18
   },
   {
     "id": "api-arda-tardacudakernelvariant-mentry-cbcc75e6",
@@ -37678,7 +37678,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 18
+    "sourceLine": 20
   },
   {
     "id": "api-arda-tardacudakernelvariant-mpayload-b2a35a42",
@@ -37699,7 +37699,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 19
+    "sourceLine": 21
   },
   {
     "id": "api-arda-tardacudakernelvariant-mname-97276ad9",
@@ -37720,7 +37720,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 20
+    "sourceLine": 22
   },
   {
     "id": "api-arda-tardacudakernelvariant-mrequirements-bc24dc7d",
@@ -37741,7 +37741,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelVariant"
     ],
-    "sourceLine": 21
+    "sourceLine": 23
   },
   {
     "id": "api-arda-tardacudakernelregistry-17cd772b",
@@ -37750,7 +37750,7 @@ window.ArdaBackendApi = {
     "kind": "class",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class Parameters, class Payload> class TArdaCudaKernelRegistry",
+    "signature": "template <class Parameters, class Payload> class TArdaCudaKernelRegistry",
     "summary": "Immutable-after-binding registry; signature and resource eligibility checks occur at runtime.",
     "details": "Immutable-after-binding registry; signature and resource eligibility checks occur at runtime.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
@@ -37762,7 +37762,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 24
+    "sourceLine": 28
   },
   {
     "id": "api-arda-tardacudakernelregistry-fvariant-9ac7dec9",
@@ -37783,7 +37783,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 27
+    "sourceLine": 31
   },
   {
     "id": "api-arda-fvariant-mid-18d6167b",
@@ -37804,7 +37804,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 29
+    "sourceLine": 33
   },
   {
     "id": "api-arda-fvariant-mentry-7cce4ae7",
@@ -37825,7 +37825,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 30
+    "sourceLine": 34
   },
   {
     "id": "api-arda-fvariant-mpayload-926be985",
@@ -37846,7 +37846,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 31
+    "sourceLine": 35
   },
   {
     "id": "api-arda-fvariant-mname-c4cff3d0",
@@ -37867,7 +37867,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 32
+    "sourceLine": 36
   },
   {
     "id": "api-arda-fvariant-mrequirements-591ac147",
@@ -37888,7 +37888,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 33
+    "sourceLine": 37
   },
   {
     "id": "api-arda-tardacudakernelregistry-fvariants-a4ace94e",
@@ -37909,7 +37909,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 35
+    "sourceLine": 40
   },
   {
     "id": "api-arda-tardacudakernelregistry-add-2ecfa1d0",
@@ -37918,7 +37918,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<auto Kernel> FArdaRHIStatus Add(TArdaCudaKernelVariant<Kernel, Payload> Variant)",
+    "signature": "template <auto Kernel> FArdaRHIStatus Add(TArdaCudaKernelVariant<Kernel, Payload> Variant)",
     "summary": "Adds a symbol, retaining the first validation failure even if the caller ignores it.",
     "details": "Adds a symbol, retaining the first validation failure even if the caller ignores it.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
@@ -37930,7 +37930,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 37
+    "sourceLine": 44
   },
   {
     "id": "api-arda-tardacudakernelregistry-freeze-6c728f0c",
@@ -37951,7 +37951,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 60
+    "sourceLine": 102
   },
   {
     "id": "api-arda-tardacudakernelregistry-getstatus-850f1b5a",
@@ -37972,7 +37972,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 66
+    "sourceLine": 113
   },
   {
     "id": "api-arda-tardacudakernelregistry-getvariants-8daa90d6",
@@ -37993,7 +37993,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 67
+    "sourceLine": 118
   },
   {
     "id": "api-arda-tardacudakernelregistry-getcompatiblevariants-0dedf1de",
@@ -38014,7 +38014,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 69
+    "sourceLine": 124
   },
   {
     "id": "api-arda-foreachardacudapermutation-600d36a9",
@@ -38023,7 +38023,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, T... Values, class Visitor> void ForEachArdaCudaPermutation(std::integer_sequence<T, Values...>, Visitor&& Visit)",
+    "signature": "template <class T, T... Values, class Visitor> void ForEachArdaCudaPermutation(std::integer_sequence<T, Values...>, Visitor&& Visit)",
     "summary": "Enumerates template values with a C++17 callable. Use if constexpr to prune combinations.",
     "details": "Enumerates template values with a C++17 callable. Use if constexpr to prune combinations.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
@@ -38035,7 +38035,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 89
+    "sourceLine": 158
   },
   {
     "id": "api-arda-fardacudakernelselection-af4ca8b4",
@@ -38056,7 +38056,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 92
+    "sourceLine": 164
   },
   {
     "id": "api-arda-fardacudakernelselection-mvariantid-054e23fe",
@@ -38077,7 +38077,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 94
+    "sourceLine": 166
   },
   {
     "id": "api-arda-fardacudakernelselection-mlaunch-11154ebc",
@@ -38098,7 +38098,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 95
+    "sourceLine": 167
   },
   {
     "id": "api-arda-fardacudakernelselection-mbnowork-2c062b29",
@@ -38119,7 +38119,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 97
+    "sourceLine": 169
   },
   {
     "id": "api-arda-fardacudaselectioncontext-7394dc65",
@@ -38140,7 +38140,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 100
+    "sourceLine": 173
   },
   {
     "id": "api-arda-fardacudaselectioncontext-mcapabilities-ebf71dac",
@@ -38161,7 +38161,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSelectionContext"
     ],
-    "sourceLine": 102
+    "sourceLine": 175
   },
   {
     "id": "api-arda-fardacudaselectioncontext-mqueue-117216c2",
@@ -38182,7 +38182,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSelectionContext"
     ],
-    "sourceLine": 103
+    "sourceLine": 176
   },
   {
     "id": "api-arda-fardacudasubmission-5f5fabac",
@@ -38203,7 +38203,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 106
+    "sourceLine": 180
   },
   {
     "id": "api-arda-fardacudasubmission-mdevice-8d294b61",
@@ -38224,7 +38224,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 108
+    "sourceLine": 182
   },
   {
     "id": "api-arda-fardacudasubmission-mqueue-8c64c3cf",
@@ -38245,7 +38245,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 109
+    "sourceLine": 183
   },
   {
     "id": "api-arda-fardacudasubmission-minstance-0a458bd7",
@@ -38266,7 +38266,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 110
+    "sourceLine": 184
   },
   {
     "id": "api-arda-fardacudasubmission-mselection-2fc30fea",
@@ -38287,7 +38287,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 111
+    "sourceLine": 185
   },
   {
     "id": "api-arda-fardacudadispatchplan-31e70bad",
@@ -38308,7 +38308,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 114
+    "sourceLine": 189
   },
   {
     "id": "api-arda-fardacudadispatchplan-mdevice-05d203af",
@@ -38329,7 +38329,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 116
+    "sourceLine": 191
   },
   {
     "id": "api-arda-fardacudadispatchplan-mqueue-c50b1a54",
@@ -38350,7 +38350,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 117
+    "sourceLine": 192
   },
   {
     "id": "api-arda-fardacudadispatchplan-mselection-2420b2de",
@@ -38371,7 +38371,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 118
+    "sourceLine": 193
   },
   {
     "id": "api-arda-fardacudadispatchplan-mdispatch-4d70e563",
@@ -38392,7 +38392,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 119
+    "sourceLine": 194
   },
   {
     "id": "api-arda-isardacudasurfaceelementsupported-225b757b",
@@ -38401,7 +38401,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T> bool IsArdaCudaSurfaceElementSupported(EArdaRHIFormat Format)",
+    "signature": "template <class T> bool IsArdaCudaSurfaceElementSupported(EArdaRHIFormat Format)",
     "summary": "Checks scalar channel interpretation, or explicit aggregate pixel storage size, at runtime. Aggregate pixel layouts are author-defined; no color, normalization or channel packing is performed.",
     "details": "Checks scalar channel interpretation, or explicit aggregate pixel storage size, at runtime. Aggregate pixel layouts are author-defined; no color, normalization or channel packing is performed.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
@@ -38413,7 +38413,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 15
+    "sourceLine": 16
   },
   {
     "id": "api-arda-fardacudahostdomain-ffae65a7",
@@ -38434,7 +38434,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 29
+    "sourceLine": 35
   },
   {
     "id": "api-arda-fardacudahostdomain-value-cb0f8a61",
@@ -38443,7 +38443,7 @@ window.ArdaBackendApi = {
     "kind": "alias",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T> using Value = T",
+    "signature": "template <class T> using Value = T",
     "summary": "Defines value in the public backend and RHI contract.",
     "details": "Defines value in the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
@@ -38455,7 +38455,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaHostDomain"
     ],
-    "sourceLine": 31
+    "sourceLine": 38
   },
   {
     "id": "api-arda-fardacudahostdomain-buffer-300c212b",
@@ -38464,7 +38464,7 @@ window.ArdaBackendApi = {
     "kind": "alias",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, EArdaComputeAccess Access> using Buffer = FArdaComputeBufferParameter",
+    "signature": "template <class T, EArdaComputeAccess Access> using Buffer = FArdaComputeBufferParameter",
     "summary": "Defines buffer in the public backend and RHI contract.",
     "details": "Defines buffer in the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
@@ -38476,7 +38476,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaHostDomain"
     ],
-    "sourceLine": 32
+    "sourceLine": 40
   },
   {
     "id": "api-arda-fardacudahostdomain-surface-6efb9cc2",
@@ -38485,7 +38485,7 @@ window.ArdaBackendApi = {
     "kind": "alias",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, EArdaComputeAccess Access> using Surface = FArdaComputeTextureParameter",
+    "signature": "template <class T, EArdaComputeAccess Access> using Surface = FArdaComputeTextureParameter",
     "summary": "Defines surface in the public backend and RHI contract.",
     "details": "Defines surface in the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
@@ -38497,7 +38497,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaHostDomain"
     ],
-    "sourceLine": 33
+    "sourceLine": 42
   },
   {
     "id": "api-arda-fardacudadevicedomain-d8feaea8",
@@ -38518,7 +38518,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 36
+    "sourceLine": 46
   },
   {
     "id": "api-arda-fardacudadevicedomain-value-0eb7af4f",
@@ -38527,7 +38527,7 @@ window.ArdaBackendApi = {
     "kind": "alias",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T> using Value = std::conditional_t<std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>, T, uint64_t>",
+    "signature": "template <class T> using Value = std::conditional_t<std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>, T, uint64_t>",
     "summary": "Defines value in the public backend and RHI contract.",
     "details": "Defines value in the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
@@ -38539,7 +38539,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDeviceDomain"
     ],
-    "sourceLine": 38
+    "sourceLine": 49
   },
   {
     "id": "api-arda-fardacudadevicedomain-buffer-b4932fda",
@@ -38548,7 +38548,7 @@ window.ArdaBackendApi = {
     "kind": "alias",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, EArdaComputeAccess Access> using Buffer = std::conditional_t<Access == EArdaComputeAccess::Read, const T*, T*>",
+    "signature": "template <class T, EArdaComputeAccess Access> using Buffer = std::conditional_t<Access == EArdaComputeAccess::Read, const T*, T*>",
     "summary": "Defines buffer in the public backend and RHI contract.",
     "details": "Defines buffer in the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
@@ -38560,7 +38560,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDeviceDomain"
     ],
-    "sourceLine": 40
+    "sourceLine": 51
   },
   {
     "id": "api-arda-fardacudadevicedomain-surface-1d8d5a1d",
@@ -38569,7 +38569,7 @@ window.ArdaBackendApi = {
     "kind": "alias",
     "component": "core",
     "page": "api-reference.html",
-    "signature": "template<class T, EArdaComputeAccess Access> using Surface = uint64_t",
+    "signature": "template <class T, EArdaComputeAccess Access> using Surface = uint64_t",
     "summary": "Defines surface in the public backend and RHI contract.",
     "details": "Defines surface in the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
@@ -38581,7 +38581,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDeviceDomain"
     ],
-    "sourceLine": 42
+    "sourceLine": 53
   },
   {
     "id": "api-arda-fardacudaparametermember-498b8ac2",
@@ -38602,7 +38602,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 45
+    "sourceLine": 57
   },
   {
     "id": "api-arda-fardacudaparametermember-mname-e18b3462",
@@ -38623,7 +38623,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 47
+    "sourceLine": 59
   },
   {
     "id": "api-arda-fardacudaparametermember-mkind-466c0acc",
@@ -38644,7 +38644,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 48
+    "sourceLine": 60
   },
   {
     "id": "api-arda-fardacudaparametermember-maccess-80a89de0",
@@ -38665,7 +38665,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 49
+    "sourceLine": 61
   },
   {
     "id": "api-arda-fardacudaparametermember-mhostoffset-df659027",
@@ -38686,7 +38686,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 50
+    "sourceLine": 62
   },
   {
     "id": "api-arda-fardacudaparametermember-mcudaoffset-79231a37",
@@ -38707,7 +38707,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 51
+    "sourceLine": 63
   },
   {
     "id": "api-arda-fardacudaparametermember-mhostsize-e7d18d7f",
@@ -38728,7 +38728,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 52
+    "sourceLine": 64
   },
   {
     "id": "api-arda-fardacudaparametermember-mcudasize-a0ce8d3c",
@@ -38749,7 +38749,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 53
+    "sourceLine": 65
   },
   {
     "id": "api-arda-fardacudaparametermember-mhostalignment-641382c9",
@@ -38770,7 +38770,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 54
+    "sourceLine": 66
   },
   {
     "id": "api-arda-fardacudaparametermember-melementsize-3e165927",
@@ -38791,7 +38791,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 55
+    "sourceLine": 67
   },
   {
     "id": "api-arda-fardacudaparametermember-melementalignment-a0ed9a43",
@@ -38812,7 +38812,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 56
+    "sourceLine": 68
   },
   {
     "id": "api-arda-fardacudaparametermember-mformat-0ed57f01",
@@ -38833,7 +38833,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 57
+    "sourceLine": 69
   },
   {
     "id": "api-arda-fardacudaparametermember-mbsupported-01de9485",
@@ -38854,7 +38854,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMember"
     ],
-    "sourceLine": 58
+    "sourceLine": 70
   },
   {
     "id": "api-arda-fardacudaparametermetadata-9bee218f",
@@ -38875,7 +38875,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 61
+    "sourceLine": 74
   },
   {
     "id": "api-arda-fardacudaparametermetadata-fardacudaparametermetadata-2a28fadc",
@@ -38896,7 +38896,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMetadata"
     ],
-    "sourceLine": 65
+    "sourceLine": 78
   },
   {
     "id": "api-arda-fardacudaparametermetadata-getstatus-0b36e565",
@@ -38917,7 +38917,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMetadata"
     ],
-    "sourceLine": 69
+    "sourceLine": 86
   },
   {
     "id": "api-arda-fardacudaparametermetadata-gethostmetadata-525db12b",
@@ -38938,7 +38938,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMetadata"
     ],
-    "sourceLine": 71
+    "sourceLine": 92
   },
   {
     "id": "api-arda-fardacudaparametermetadata-getsignature-563ca9eb",
@@ -38959,7 +38959,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMetadata"
     ],
-    "sourceLine": 73
+    "sourceLine": 98
   },
   {
     "id": "api-arda-fardacudaparametermetadata-getmembers-73478663",
@@ -38980,7 +38980,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMetadata"
     ],
-    "sourceLine": 75
+    "sourceLine": 104
   },
   {
     "id": "api-arda-fardacudaparametermetadata-prepare-1a85f794",
@@ -39001,7 +39001,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterMetadata"
     ],
-    "sourceLine": 80
+    "sourceLine": 113
   },
   {
     "id": "api-arda-arda-cuda-parameter-struct-6ccbb61e",
@@ -39022,7 +39022,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 113
+    "sourceLine": 176
   },
   {
     "id": "api-arda-eardapipelinestatekind-64d17ed3",
@@ -39253,7 +39253,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaPipelineStateCache"
     ],
-    "sourceLine": 105
+    "sourceLine": 106
   },
   {
     "id": "api-arda-fardapipelinestatecache-operator-79cf9749",
@@ -39274,7 +39274,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaPipelineStateCache"
     ],
-    "sourceLine": 109
+    "sourceLine": 112
   },
   {
     "id": "api-arda-fardapipelinestatecache-getorcreatemeshlet-84b58946",
@@ -39283,7 +39283,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] arda::FArdaRHIStatus GetOrCreateMeshlet( const FArdaMeshletPipelineStateInitializer& Initializer, const arda::FArdaRHIFramebufferRef& Framebuffer, arda::FArdaRHIMeshletPipelineRef& OutPipeline, const arda::IArdaRHIDevice* RequestingDevice = nullptr)",
+    "signature": "[[nodiscard]] arda::FArdaRHIStatus GetOrCreateMeshlet(const FArdaMeshletPipelineStateInitializer& Initializer, const arda::FArdaRHIFramebufferRef& Framebuffer, arda::FArdaRHIMeshletPipelineRef& OutPipeline, const arda::IArdaRHIDevice* RequestingDevice = nullptr)",
     "summary": "Resolves or creates a framebuffer-compatible meshlet pipeline state.",
     "details": "Resolves or creates a framebuffer-compatible meshlet pipeline state.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
@@ -39312,7 +39312,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaPipelineStateCache"
     ],
-    "sourceLine": 143
+    "sourceLine": 146
   },
   {
     "id": "api-arda-fardapipelinestatecache-getorcreateraytracing-25001b4d",
@@ -39333,7 +39333,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaPipelineStateCache"
     ],
-    "sourceLine": 149
+    "sourceLine": 152
   },
   {
     "id": "api-arda-fardapipelinestatecache-getorcreateworkgraph-ed5de6ba",
@@ -39354,7 +39354,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaPipelineStateCache"
     ],
-    "sourceLine": 154
+    "sourceLine": 158
   },
   {
     "id": "api-arda-fardapipelinestatecache-precachemeshlet-ac216381",
@@ -39363,7 +39363,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] arda::FArdaRHIStatus PrecacheMeshlet( const FArdaMeshletPipelineStateInitializer& Initializer, const arda::FArdaRHIFramebufferRef& Framebuffer, const arda::IArdaRHIDevice* RequestingDevice = nullptr)",
+    "signature": "[[nodiscard]] arda::FArdaRHIStatus PrecacheMeshlet(const FArdaMeshletPipelineStateInitializer& Initializer, const arda::FArdaRHIFramebufferRef& Framebuffer, const arda::IArdaRHIDevice* RequestingDevice = nullptr)",
     "summary": "Creates and caches a framebuffer-compatible meshlet pipeline.",
     "details": "Creates and caches a framebuffer-compatible meshlet pipeline.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
@@ -39388,7 +39388,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaPipelineStateCache"
     ],
-    "sourceLine": 186
+    "sourceLine": 190
   },
   {
     "id": "api-arda-fardapipelinestatecache-precacheraytracing-3fe79545",
@@ -39409,7 +39409,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaPipelineStateCache"
     ],
-    "sourceLine": 191
+    "sourceLine": 195
   },
   {
     "id": "api-arda-fardapipelinestatecache-precacheworkgraph-517e4bd3",
@@ -39418,7 +39418,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] arda::FArdaRHIStatus PrecacheWorkGraph( const FArdaWorkGraphPipelineStateInitializer& Initializer, const arda::IArdaRHIDevice* RequestingDevice = nullptr)",
+    "signature": "[[nodiscard]] arda::FArdaRHIStatus PrecacheWorkGraph(const FArdaWorkGraphPipelineStateInitializer& Initializer, const arda::IArdaRHIDevice* RequestingDevice = nullptr)",
     "summary": "Creates and caches a work-graph pipeline without returning it.",
     "details": "Creates and caches a work-graph pipeline without returning it.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
@@ -39430,7 +39430,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaPipelineStateCache"
     ],
-    "sourceLine": 195
+    "sourceLine": 200
   },
   {
     "id": "api-arda-fardapipelinestatecache-setmeshletpipelinestate-bc5f7e49",
@@ -39439,7 +39439,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] arda::FArdaRHIStatus SetMeshletPipelineState( arda::IArdaRHICommandList& CommandList, const FArdaMeshletPipelineStateInitializer& Initializer, arda::FArdaRHIMeshletState State)",
+    "signature": "[[nodiscard]] arda::FArdaRHIStatus SetMeshletPipelineState(arda::IArdaRHICommandList& CommandList, const FArdaMeshletPipelineStateInitializer& Initializer, arda::FArdaRHIMeshletState State)",
     "summary": "Resolves and binds a meshlet pipeline state.",
     "details": "Resolves and binds a meshlet pipeline state.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
@@ -39464,7 +39464,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaPipelineStateCache"
     ],
-    "sourceLine": 228
+    "sourceLine": 232
   },
   {
     "id": "api-arda-fardapipelinestatecache-trim-e09c2fb2",
@@ -39473,7 +39473,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "void Trim( size_t MaxComputeEntries, size_t MaxGraphicsEntries, size_t MaxMeshletEntries)",
+    "signature": "void Trim(size_t MaxComputeEntries, size_t MaxGraphicsEntries, size_t MaxMeshletEntries)",
     "summary": "Evicts least-recently-used entries until all capacities are satisfied.",
     "details": "Evicts least-recently-used entries until all capacities are satisfied.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
@@ -39498,7 +39498,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaPipelineStateCache"
     ],
-    "sourceLine": 245
+    "sourceLine": 249
   },
   {
     "id": "api-arda-fardapipelinestatecache-trim-42ab3f0d",
@@ -39507,7 +39507,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "void Trim( size_t MaxComputeEntries, size_t MaxGraphicsEntries, size_t MaxMeshletEntries, size_t MaxRayTracingEntries, size_t MaxWorkGraphEntries)",
+    "signature": "void Trim(size_t MaxComputeEntries, size_t MaxGraphicsEntries, size_t MaxMeshletEntries, size_t MaxRayTracingEntries, size_t MaxWorkGraphEntries)",
     "summary": "Evicts all five pipeline kinds to the supplied capacities.",
     "details": "Evicts all five pipeline kinds to the supplied capacities.",
     "source": "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
@@ -39519,7 +39519,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaPipelineStateCache"
     ],
-    "sourceLine": 250
+    "sourceLine": 252
   },
   {
     "id": "api-arda-fardagraphicspipelinestateinitializer-fardagraphicspipelinestateinitializer-345d5ab0",
@@ -39590,7 +39590,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaGraphicsPipelineStateInitializer"
     ],
-    "sourceLine": 67
+    "sourceLine": 70
   },
   {
     "id": "api-arda-fardameshletpipelinestateinitializer-4065af7e",
@@ -39611,7 +39611,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 83
+    "sourceLine": 86
   },
   {
     "id": "api-arda-fardameshletpipelinestateinitializer-fardameshletpipelinestateinitializer-b3ff9a2e",
@@ -39632,7 +39632,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaMeshletPipelineStateInitializer"
     ],
-    "sourceLine": 86
+    "sourceLine": 89
   },
   {
     "id": "api-arda-fardameshletpipelinestateinitializer-mdesc-eb3e4cb2",
@@ -39653,7 +39653,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaMeshletPipelineStateInitializer"
     ],
-    "sourceLine": 89
+    "sourceLine": 95
   },
   {
     "id": "api-arda-fardameshletpipelinestateinitializer-fromglobalshaders-16af02a9",
@@ -39691,7 +39691,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaMeshletPipelineStateInitializer"
     ],
-    "sourceLine": 99
+    "sourceLine": 105
   },
   {
     "id": "api-arda-fardaraytracingpipelinestateinitializer-acab8544",
@@ -39712,7 +39712,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 107
+    "sourceLine": 113
   },
   {
     "id": "api-arda-fardaraytracingpipelinestateinitializer-mdesc-7e9a4ec6",
@@ -39733,7 +39733,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRayTracingPipelineStateInitializer"
     ],
-    "sourceLine": 110
+    "sourceLine": 116
   },
   {
     "id": "api-arda-fardaworkgraphpipelinestateinitializer-e6391a92",
@@ -39754,7 +39754,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 114
+    "sourceLine": 120
   },
   {
     "id": "api-arda-fardaworkgraphpipelinestateinitializer-mdesc-52f94ecd",
@@ -39775,7 +39775,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaWorkGraphPipelineStateInitializer"
     ],
-    "sourceLine": 117
+    "sourceLine": 123
   },
   {
     "id": "api-arda-eardarhiraytracingtier-none-18d0aee1",
@@ -40111,7 +40111,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIQueueCapabilities"
     ],
-    "sourceLine": 179
+    "sourceLine": 189
   },
   {
     "id": "api-arda-fardarhiqueuecapabilities-getfamily-d3d3c06e",
@@ -40132,7 +40132,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIQueueCapabilities"
     ],
-    "sourceLine": 190
+    "sourceLine": 203
   },
   {
     "id": "api-arda-fardarhicapabilities-mbqueries-0e79f55a",
@@ -40153,7 +40153,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 369
+    "sourceLine": 390
   },
   {
     "id": "api-arda-fardarhicapabilities-mbshaderlibraries-e76fb798",
@@ -40174,7 +40174,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 371
+    "sourceLine": 392
   },
   {
     "id": "api-arda-fardarhicapabilities-isqueuesupported-91c5c25f",
@@ -40195,7 +40195,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 375
+    "sourceLine": 396
   },
   {
     "id": "api-arda-fardarhicapabilities-evaluate-8ea63efe",
@@ -40204,7 +40204,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-types",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FArdaRHIFeatureSupportReport Evaluate( const FArdaRHIFeatureRequirements& R) const",
+    "signature": "[[nodiscard]] FArdaRHIFeatureSupportReport Evaluate(const FArdaRHIFeatureRequirements& R) const",
     "summary": "Evaluates every requested ability and returns all failures.",
     "details": "Evaluates every requested ability and returns all failures.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
@@ -40216,7 +40216,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 382
+    "sourceLine": 403
   },
   {
     "id": "api-arda-eardacudaexecutionmode-61683a2b",
@@ -40678,7 +40678,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 63
+    "sourceLine": 64
   },
   {
     "id": "api-arda-eardacomputeaccess-6348bfa6",
@@ -40699,7 +40699,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 67
+    "sourceLine": 71
   },
   {
     "id": "api-arda-eardacomputeaccess-read-ecbdf367",
@@ -40720,7 +40720,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeAccess"
     ],
-    "sourceLine": 70
+    "sourceLine": 74
   },
   {
     "id": "api-arda-eardacomputeaccess-write-7f14efdc",
@@ -40741,7 +40741,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeAccess"
     ],
-    "sourceLine": 72
+    "sourceLine": 76
   },
   {
     "id": "api-arda-eardacomputeaccess-readwrite-8b38af4a",
@@ -40762,7 +40762,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeAccess"
     ],
-    "sourceLine": 74
+    "sourceLine": 78
   },
   {
     "id": "api-arda-eardacomputebindingtype-f2eadd2b",
@@ -40783,7 +40783,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 77
+    "sourceLine": 81
   },
   {
     "id": "api-arda-eardacomputebindingtype-buffer-3d8e5162",
@@ -40804,7 +40804,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeBindingType"
     ],
-    "sourceLine": 80
+    "sourceLine": 84
   },
   {
     "id": "api-arda-eardacomputebindingtype-surface-f8a3420d",
@@ -40825,7 +40825,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeBindingType"
     ],
-    "sourceLine": 82
+    "sourceLine": 86
   },
   {
     "id": "api-arda-eardacudascalartype-4f4964d0",
@@ -40846,7 +40846,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 85
+    "sourceLine": 89
   },
   {
     "id": "api-arda-eardacudascalartype-uint-05714f06",
@@ -40867,7 +40867,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaScalarType"
     ],
-    "sourceLine": 88
+    "sourceLine": 92
   },
   {
     "id": "api-arda-eardacudascalartype-sint-203e34f8",
@@ -40888,7 +40888,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaScalarType"
     ],
-    "sourceLine": 90
+    "sourceLine": 94
   },
   {
     "id": "api-arda-eardacudascalartype-float-2f21c531",
@@ -40909,7 +40909,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaScalarType"
     ],
-    "sourceLine": 92
+    "sourceLine": 96
   },
   {
     "id": "api-arda-fardacudaformatinfo-809af6d3",
@@ -40930,7 +40930,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 95
+    "sourceLine": 100
   },
   {
     "id": "api-arda-fardacudaformatinfo-mscalartype-1236da86",
@@ -40951,7 +40951,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaFormatInfo"
     ],
-    "sourceLine": 98
+    "sourceLine": 103
   },
   {
     "id": "api-arda-fardacudaformatinfo-mbits-95622b75",
@@ -40972,7 +40972,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaFormatInfo"
     ],
-    "sourceLine": 100
+    "sourceLine": 105
   },
   {
     "id": "api-arda-fardacudaformatinfo-mchannels-3ff88f85",
@@ -40993,7 +40993,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaFormatInfo"
     ],
-    "sourceLine": 102
+    "sourceLine": 107
   },
   {
     "id": "api-arda-getardacudaformatinfo-ca180757",
@@ -41014,7 +41014,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 105
+    "sourceLine": 111
   },
   {
     "id": "api-arda-fardacudabinding-e0fdec99",
@@ -41035,7 +41035,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 108
+    "sourceLine": 114
   },
   {
     "id": "api-arda-fardacudabinding-mresource-99707619",
@@ -41056,7 +41056,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 111
+    "sourceLine": 117
   },
   {
     "id": "api-arda-fardacudabinding-maccess-224336b2",
@@ -41077,7 +41077,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 113
+    "sourceLine": 119
   },
   {
     "id": "api-arda-fardacudabinding-mbufferrange-dca332c8",
@@ -41098,7 +41098,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 115
+    "sourceLine": 121
   },
   {
     "id": "api-arda-fardacudabinding-mmiplevel-1786fabe",
@@ -41119,7 +41119,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 117
+    "sourceLine": 123
   },
   {
     "id": "api-arda-fardacudaarchitecture-42fc9ad1",
@@ -41140,7 +41140,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 121
+    "sourceLine": 127
   },
   {
     "id": "api-arda-fardacudaarchitecture-mcomputecapability-97b2d83c",
@@ -41161,7 +41161,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaArchitecture"
     ],
-    "sourceLine": 124
+    "sourceLine": 130
   },
   {
     "id": "api-arda-fardacudaarchitecture-mbexact-8ba3439d",
@@ -41182,7 +41182,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaArchitecture"
     ],
-    "sourceLine": 126
+    "sourceLine": 132
   },
   {
     "id": "api-arda-fardacudaarchitecture-supports-bde826d7",
@@ -41203,7 +41203,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaArchitecture"
     ],
-    "sourceLine": 128
+    "sourceLine": 135
   },
   {
     "id": "api-arda-fardacudabuildinfo-4d8ad014",
@@ -41224,7 +41224,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 131
+    "sourceLine": 139
   },
   {
     "id": "api-arda-fardacudabuildinfo-mname-8a9f2a87",
@@ -41245,7 +41245,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBuildInfo"
     ],
-    "sourceLine": 134
+    "sourceLine": 142
   },
   {
     "id": "api-arda-fardacudabuildinfo-midentity-c98d85b2",
@@ -41266,7 +41266,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBuildInfo"
     ],
-    "sourceLine": 136
+    "sourceLine": 144
   },
   {
     "id": "api-arda-fardacudabuildinfo-marchitectures-6cffed24",
@@ -41287,7 +41287,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBuildInfo"
     ],
-    "sourceLine": 138
+    "sourceLine": 146
   },
   {
     "id": "api-arda-fardacudabuildinfo-mbfastmath-72da9a15",
@@ -41308,7 +41308,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBuildInfo"
     ],
-    "sourceLine": 140
+    "sourceLine": 148
   },
   {
     "id": "api-arda-fardacudalaunchconfig-277cad72",
@@ -41329,7 +41329,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 143
+    "sourceLine": 152
   },
   {
     "id": "api-arda-fardacudalaunchconfig-mgridsize-e26cc179",
@@ -41350,7 +41350,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaLaunchConfig"
     ],
-    "sourceLine": 146
+    "sourceLine": 155
   },
   {
     "id": "api-arda-fardacudalaunchconfig-mblocksize-cf7e48df",
@@ -41371,7 +41371,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaLaunchConfig"
     ],
-    "sourceLine": 148
+    "sourceLine": 157
   },
   {
     "id": "api-arda-fardacudalaunchconfig-msharedmemorybytes-9f3757aa",
@@ -41392,7 +41392,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaLaunchConfig"
     ],
-    "sourceLine": 150
+    "sourceLine": 159
   },
   {
     "id": "api-arda-fardacudakernelsignature-e13b8196",
@@ -41413,7 +41413,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 153
+    "sourceLine": 163
   },
   {
     "id": "api-arda-fardacudakernelsignature-mtype-88773501",
@@ -41434,7 +41434,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSignature"
     ],
-    "sourceLine": 156
+    "sourceLine": 166
   },
   {
     "id": "api-arda-fardacudakernelsignature-msize-a07001bb",
@@ -41455,7 +41455,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSignature"
     ],
-    "sourceLine": 158
+    "sourceLine": 168
   },
   {
     "id": "api-arda-fardacudakernelsignature-malignment-2ee9d770",
@@ -41476,7 +41476,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSignature"
     ],
-    "sourceLine": 160
+    "sourceLine": 170
   },
   {
     "id": "api-arda-fardacudakernelsignature-mbsupported-80cc48ed",
@@ -41497,7 +41497,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSignature"
     ],
-    "sourceLine": 162
+    "sourceLine": 172
   },
   {
     "id": "api-arda-fardacudakernellimits-e3d2af33",
@@ -41518,7 +41518,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 165
+    "sourceLine": 176
   },
   {
     "id": "api-arda-fardacudakernellimits-mmaxthreadsperblock-eddb2620",
@@ -41539,7 +41539,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelLimits"
     ],
-    "sourceLine": 168
+    "sourceLine": 179
   },
   {
     "id": "api-arda-fardacudakernellimits-mstaticsharedmemorybytes-1c529e79",
@@ -41560,7 +41560,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelLimits"
     ],
-    "sourceLine": 170
+    "sourceLine": 181
   },
   {
     "id": "api-arda-fardacudakernellimits-mmaxdynamicsharedmemorybytes-405271c8",
@@ -41581,7 +41581,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelLimits"
     ],
-    "sourceLine": 172
+    "sourceLine": 183
   },
   {
     "id": "api-arda-iardacudakernelentry-d81012e8",
@@ -41602,7 +41602,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 178
+    "sourceLine": 190
   },
   {
     "id": "api-arda-iardacudakernelentry-iardacudakernelentry-c6434efb",
@@ -41623,7 +41623,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaCudaKernelEntry"
     ],
-    "sourceLine": 181
+    "sourceLine": 193
   },
   {
     "id": "api-arda-iardacudakernelentry-getsignature-5789fdd3",
@@ -41644,7 +41644,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaCudaKernelEntry"
     ],
-    "sourceLine": 183
+    "sourceLine": 196
   },
   {
     "id": "api-arda-iardacudakernelentry-getbuildinfo-14306c57",
@@ -41665,7 +41665,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaCudaKernelEntry"
     ],
-    "sourceLine": 185
+    "sourceLine": 199
   },
   {
     "id": "api-arda-iardacudakernelentry-getlimits-debed1c2",
@@ -41686,7 +41686,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaCudaKernelEntry"
     ],
-    "sourceLine": 187
+    "sourceLine": 202
   },
   {
     "id": "api-arda-iardacudakernelentry-launch-2a171925",
@@ -41707,7 +41707,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaCudaKernelEntry"
     ],
-    "sourceLine": 189
+    "sourceLine": 205
   },
   {
     "id": "api-arda-fardacudaparameterpatch-2cb3939e",
@@ -41728,7 +41728,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 193
+    "sourceLine": 212
   },
   {
     "id": "api-arda-fardacudaparameterpatch-mbindingindex-b80a6151",
@@ -41749,7 +41749,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterPatch"
     ],
-    "sourceLine": 196
+    "sourceLine": 215
   },
   {
     "id": "api-arda-fardacudaparameterpatch-moffset-bb54d7bc",
@@ -41770,7 +41770,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterPatch"
     ],
-    "sourceLine": 198
+    "sourceLine": 217
   },
   {
     "id": "api-arda-fardacudaparameterpatch-malignment-d62e79c4",
@@ -41791,7 +41791,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterPatch"
     ],
-    "sourceLine": 200
+    "sourceLine": 219
   },
   {
     "id": "api-arda-fardacudakernel-f9242bfb",
@@ -41812,7 +41812,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 203
+    "sourceLine": 223
   },
   {
     "id": "api-arda-fardacudakernel-mentry-8f92e672",
@@ -41833,7 +41833,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernel"
     ],
-    "sourceLine": 206
+    "sourceLine": 226
   },
   {
     "id": "api-arda-fardacudakernel-mparameters-2eb1ad50",
@@ -41854,7 +41854,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernel"
     ],
-    "sourceLine": 208
+    "sourceLine": 228
   },
   {
     "id": "api-arda-fardacudakernel-mpatches-a87ea994",
@@ -41875,7 +41875,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernel"
     ],
-    "sourceLine": 210
+    "sourceLine": 230
   },
   {
     "id": "api-arda-fardacudadispatch-7832a24b",
@@ -41896,7 +41896,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 213
+    "sourceLine": 234
   },
   {
     "id": "api-arda-fardacudadispatch-mbindings-ef7c9d8f",
@@ -41917,7 +41917,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatch"
     ],
-    "sourceLine": 216
+    "sourceLine": 237
   },
   {
     "id": "api-arda-fardacudadispatch-mkernels-9a7d2f5f",
@@ -41938,7 +41938,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatch"
     ],
-    "sourceLine": 218
+    "sourceLine": 239
   },
   {
     "id": "api-arda-validateardacudatexture-dc3d493c",
@@ -41959,7 +41959,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 222
+    "sourceLine": 243
   },
   {
     "id": "api-arda-validateardacudabuffer-dcddcda3",
@@ -41980,7 +41980,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 224
+    "sourceLine": 246
   },
   {
     "id": "api-arda-validateardacudakernels-a5864f6f",
@@ -41989,7 +41989,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "rhi-resources",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaCudaKernels( const eastl::vector<FArdaCudaKernel>& Kernels, size_t BindingCount, const FArdaCudaCapabilities& Capabilities)",
+    "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaCudaKernels(const eastl::vector<FArdaCudaKernel>& Kernels, size_t BindingCount, const FArdaCudaCapabilities& Capabilities)",
     "summary": "Checks code, dimensions, shared memory and argument references; does not prove kernel memory safety.",
     "details": "Checks code, dimensions, shared memory and argument references; does not prove kernel memory safety.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
@@ -42001,7 +42001,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 226
+    "sourceLine": 249
   },
   {
     "id": "api-arda-fardarhibufferreadbackresult-0dc473ca",
@@ -42043,7 +42043,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 20
+    "sourceLine": 19
   },
   {
     "id": "api-arda-fardarhidevicetohostcopycallback-9abd91f8",
@@ -42064,7 +42064,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 24
+    "sourceLine": 22
   },
   {
     "id": "api-arda-fardarhistagingtexturemapping-mdepthpitch-07f4db47",
@@ -42085,7 +42085,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStagingTextureMapping"
     ],
-    "sourceLine": 35
+    "sourceLine": 32
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-0cba00f9",
@@ -42106,7 +42106,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 64
+    "sourceLine": 61
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-mliveresources-c0a19b2c",
@@ -42115,7 +42115,7 @@ window.ArdaBackendApi = {
     "kind": "member variable",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "size_t mLiveResources[ static_cast<size_t>(EArdaRHIResourceType::Count)]{}",
+    "signature": "size_t mLiveResources[static_cast<size_t>(EArdaRHIResourceType::Count)]{}",
     "summary": "Stores live resources in this public backend and RHI value.",
     "details": "Stores live resources in this public backend and RHI value. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
@@ -42127,7 +42127,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 66
+    "sourceLine": 63
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-mresourcedescriptors-26d37523",
@@ -42148,7 +42148,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 68
+    "sourceLine": 64
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-msamplerdescriptors-43ad0d76",
@@ -42169,7 +42169,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 69
+    "sourceLine": 65
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-mdescriptorsets-db6e5eee",
@@ -42190,7 +42190,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 70
+    "sourceLine": 66
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-mpendingsubmissions-4e4be1d1",
@@ -42211,7 +42211,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 71
+    "sourceLine": 67
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-getliveresourcecount-65007d3b",
@@ -42220,7 +42220,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] size_t GetLiveResourceCount( EArdaRHIResourceType Type) const noexcept",
+    "signature": "[[nodiscard]] size_t GetLiveResourceCount(EArdaRHIResourceType Type) const noexcept",
     "summary": "Performs get live resource count through the public backend and RHI contract.",
     "details": "Performs get live resource count through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
@@ -42232,7 +42232,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 73
+    "sourceLine": 69
   },
   {
     "id": "api-arda-iardarhicommandlist-dispatchcuda-69460b3b",
@@ -42253,7 +42253,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 96
+    "sourceLine": 90
   },
   {
     "id": "api-arda-iardarhicommandlist-copybufferhosttodevice-610205a3",
@@ -42262,7 +42262,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CopyBufferHostToDevice( IArdaRHIBuffer& Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0) = 0",
+    "signature": "virtual FArdaRHIStatus CopyBufferHostToDevice(IArdaRHIBuffer& Destination, const void* SourceData, size_t Size, uint64_t DestinationOffset = 0) = 0",
     "summary": "Records a host-to-device copy and makes submission wait for its GPU completion. The source bytes are copied while this method executes.",
     "details": "Records a host-to-device copy and makes submission wait for its GPU completion. The source bytes are copied while this method executes.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
@@ -42274,7 +42274,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 136
+    "sourceLine": 142
   },
   {
     "id": "api-arda-iardarhicommandlist-copybufferhosttodeviceasync-4871dec4",
@@ -42283,7 +42283,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CopyBufferHostToDeviceAsync( IArdaRHIBuffer& Destination, const void* SourceData, size_t Size, FArdaRHIHostToDeviceCopyCallback Completion, uint64_t DestinationOffset = 0) = 0",
+    "signature": "virtual FArdaRHIStatus CopyBufferHostToDeviceAsync(IArdaRHIBuffer& Destination, const void* SourceData, size_t Size, FArdaRHIHostToDeviceCopyCallback Completion, uint64_t DestinationOffset = 0) = 0",
     "summary": "Records a host-to-device copy whose completion callback is invoked asynchronously after the submitted copy reaches the GPU.",
     "details": "Records a host-to-device copy whose completion callback is invoked asynchronously after the submitted copy reaches the GPU.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
@@ -42295,7 +42295,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 145
+    "sourceLine": 151
   },
   {
     "id": "api-arda-iardarhicommandlist-copybufferdevicetohost-034ed7d3",
@@ -42304,7 +42304,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CopyBufferDeviceToHost( IArdaRHIBuffer& Source, eastl::vector<uint8_t>& Output, uint64_t SourceOffset = 0, uint64_t Size = ArdaRHIWholeBuffer) = 0",
+    "signature": "virtual FArdaRHIStatus CopyBufferDeviceToHost(IArdaRHIBuffer& Source, eastl::vector<uint8_t>& Output, uint64_t SourceOffset = 0, uint64_t Size = ArdaRHIWholeBuffer) = 0",
     "summary": "Records a device-to-host copy. Submission waits for completion and fills Output before ExecuteCommandList returns.",
     "details": "Records a device-to-host copy. Submission waits for completion and fills Output before ExecuteCommandList returns.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
@@ -42316,7 +42316,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 155
+    "sourceLine": 161
   },
   {
     "id": "api-arda-iardarhicommandlist-copybufferdevicetohostasync-2cdef6fb",
@@ -42325,7 +42325,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CopyBufferDeviceToHostAsync( IArdaRHIBuffer& Source, FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = ArdaRHIWholeBuffer) = 0",
+    "signature": "virtual FArdaRHIStatus CopyBufferDeviceToHostAsync(IArdaRHIBuffer& Source, FArdaRHIDeviceToHostCopyCallback Completion, uint64_t SourceOffset = 0, uint64_t Size = ArdaRHIWholeBuffer) = 0",
     "summary": "Records a device-to-host copy and invokes Completion asynchronously with owned readback bytes after the submitted copy completes.",
     "details": "Records a device-to-host copy and invokes Completion asynchronously with owned readback bytes after the submitted copy completes.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
@@ -42337,7 +42337,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 164
+    "sourceLine": 170
   },
   {
     "id": "api-arda-iardarhicommandlist-querysamplerfeedbacktexturestate-72933759",
@@ -42358,7 +42358,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 291
+    "sourceLine": 323
   },
   {
     "id": "api-arda-iardarhidevice-getcudacapabilities-50bfa86e",
@@ -42379,7 +42379,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 593
+    "sourceLine": 670
   },
   {
     "id": "api-arda-iardarhidevice-getresourcelifetimestats-18d7ae60",
@@ -42400,7 +42400,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 1179
+    "sourceLine": 1405
   },
   {
     "id": "api-arda-iardaproviderobject-b2180131",
@@ -42484,7 +42484,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderObject"
     ],
-    "sourceLine": 19
+    "sourceLine": 20
   },
   {
     "id": "api-arda-iardaproviderobject-getdescriptorbaseindex-ecc151d7",
@@ -42505,7 +42505,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderObject"
     ],
-    "sourceLine": 20
+    "sourceLine": 25
   },
   {
     "id": "api-arda-iardaproviderobject-getworkgraphbackingmemorysize-a1e85b9b",
@@ -42526,7 +42526,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderObject"
     ],
-    "sourceLine": 25
+    "sourceLine": 30
   },
   {
     "id": "api-arda-fardaproviderobjectref-4039e389",
@@ -42547,7 +42547,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 31
+    "sourceLine": 36
   },
   {
     "id": "api-arda-fardaproviderobjectresult-5960fe50",
@@ -42568,7 +42568,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 32
+    "sourceLine": 37
   },
   {
     "id": "api-arda-fardaprovidercudabinding-a387d967",
@@ -42589,7 +42589,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 34
+    "sourceLine": 39
   },
   {
     "id": "api-arda-fardaprovidercudabinding-mobject-4ec147b6",
@@ -42610,7 +42610,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderCudaBinding"
     ],
-    "sourceLine": 36
+    "sourceLine": 41
   },
   {
     "id": "api-arda-fardaprovidercudabinding-maccess-2a52bae5",
@@ -42631,7 +42631,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderCudaBinding"
     ],
-    "sourceLine": 37
+    "sourceLine": 42
   },
   {
     "id": "api-arda-fardaprovidercudabinding-mtype-e6174f0c",
@@ -42652,7 +42652,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderCudaBinding"
     ],
-    "sourceLine": 38
+    "sourceLine": 43
   },
   {
     "id": "api-arda-fardaprovidercudabinding-mbufferrange-6dfc8dae",
@@ -42673,7 +42673,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderCudaBinding"
     ],
-    "sourceLine": 39
+    "sourceLine": 44
   },
   {
     "id": "api-arda-fardaprovidercudabinding-mmiplevel-e43cbcb1",
@@ -42694,7 +42694,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderCudaBinding"
     ],
-    "sourceLine": 40
+    "sourceLine": 45
   },
   {
     "id": "api-arda-fardaproviderlifetimestats-c31b7e3d",
@@ -42715,7 +42715,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 43
+    "sourceLine": 48
   },
   {
     "id": "api-arda-fardaproviderlifetimestats-mresourcedescriptors-f5ed2ec0",
@@ -42736,7 +42736,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderLifetimeStats"
     ],
-    "sourceLine": 45
+    "sourceLine": 50
   },
   {
     "id": "api-arda-fardaproviderlifetimestats-msamplerdescriptors-23fd52ba",
@@ -42757,7 +42757,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderLifetimeStats"
     ],
-    "sourceLine": 46
+    "sourceLine": 51
   },
   {
     "id": "api-arda-fardaproviderlifetimestats-mdescriptorsets-cb51da67",
@@ -42778,7 +42778,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderLifetimeStats"
     ],
-    "sourceLine": 47
+    "sourceLine": 52
   },
   {
     "id": "api-arda-fardaproviderlifetimestats-mpendingsubmissions-628095ea",
@@ -42799,7 +42799,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderLifetimeStats"
     ],
-    "sourceLine": 48
+    "sourceLine": 53
   },
   {
     "id": "api-arda-fardaproviderbinding-65f1e848",
@@ -42820,7 +42820,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 51
+    "sourceLine": 56
   },
   {
     "id": "api-arda-fardaproviderbinding-mitem-591f770b",
@@ -42841,7 +42841,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBinding"
     ],
-    "sourceLine": 53
+    "sourceLine": 58
   },
   {
     "id": "api-arda-fardaproviderbinding-mobject-cc9bb8c2",
@@ -42862,7 +42862,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBinding"
     ],
-    "sourceLine": 54
+    "sourceLine": 59
   },
   {
     "id": "api-arda-fardaprovidertexturetilemapping-7412891e",
@@ -42883,7 +42883,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 57
+    "sourceLine": 62
   },
   {
     "id": "api-arda-fardaprovidertexturetilemapping-mcoordinates-8300807f",
@@ -42904,7 +42904,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderTextureTileMapping"
     ],
-    "sourceLine": 59
+    "sourceLine": 64
   },
   {
     "id": "api-arda-fardaprovidertexturetilemapping-mregions-abf7c144",
@@ -42925,7 +42925,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderTextureTileMapping"
     ],
-    "sourceLine": 60
+    "sourceLine": 65
   },
   {
     "id": "api-arda-fardaprovidertexturetilemapping-mbyteoffsets-4e2df06a",
@@ -42946,7 +42946,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderTextureTileMapping"
     ],
-    "sourceLine": 61
+    "sourceLine": 66
   },
   {
     "id": "api-arda-fardaprovidertexturetilemapping-mheap-aa19500f",
@@ -42967,7 +42967,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderTextureTileMapping"
     ],
-    "sourceLine": 62
+    "sourceLine": 67
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-c6077f51",
@@ -42988,7 +42988,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 65
+    "sourceLine": 70
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-mbufferoffset-785f1747",
@@ -43009,7 +43009,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBufferTileMapping"
     ],
-    "sourceLine": 67
+    "sourceLine": 72
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-mbytesize-f758b781",
@@ -43030,7 +43030,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBufferTileMapping"
     ],
-    "sourceLine": 68
+    "sourceLine": 73
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-mheapoffset-b7235a11",
@@ -43051,7 +43051,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBufferTileMapping"
     ],
-    "sourceLine": 69
+    "sourceLine": 74
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-mheap-b248026a",
@@ -43072,7 +43072,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBufferTileMapping"
     ],
-    "sourceLine": 70
+    "sourceLine": 75
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-mbcommit-5116c05e",
@@ -43093,7 +43093,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBufferTileMapping"
     ],
-    "sourceLine": 71
+    "sourceLine": 76
   },
   {
     "id": "api-arda-fardaproviderframebuffertarget-7a2b92b5",
@@ -43114,7 +43114,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 74
+    "sourceLine": 79
   },
   {
     "id": "api-arda-fardaproviderframebuffertarget-mtarget-8ea5bb62",
@@ -43135,7 +43135,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderFramebufferTarget"
     ],
-    "sourceLine": 76
+    "sourceLine": 81
   },
   {
     "id": "api-arda-fardaproviderframebuffertarget-mtexture-c22548a5",
@@ -43156,7 +43156,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderFramebufferTarget"
     ],
-    "sourceLine": 77
+    "sourceLine": 82
   },
   {
     "id": "api-arda-fardaproviderframebuffercreateinfo-57521bf0",
@@ -43177,7 +43177,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 80
+    "sourceLine": 85
   },
   {
     "id": "api-arda-fardaproviderframebuffercreateinfo-mdesc-9887bb13",
@@ -43198,7 +43198,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderFramebufferCreateInfo"
     ],
-    "sourceLine": 82
+    "sourceLine": 87
   },
   {
     "id": "api-arda-fardaproviderframebuffercreateinfo-mcolors-27a3ead6",
@@ -43219,7 +43219,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderFramebufferCreateInfo"
     ],
-    "sourceLine": 83
+    "sourceLine": 88
   },
   {
     "id": "api-arda-fardaproviderframebuffercreateinfo-mdepth-f89d8783",
@@ -43240,7 +43240,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderFramebufferCreateInfo"
     ],
-    "sourceLine": 84
+    "sourceLine": 89
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-12025c95",
@@ -43261,7 +43261,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 87
+    "sourceLine": 92
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mdesc-737b749b",
@@ -43282,7 +43282,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 89
+    "sourceLine": 94
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-minputlayout-f504f475",
@@ -43303,7 +43303,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 90
+    "sourceLine": 95
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mvertexshader-1915552c",
@@ -43324,7 +43324,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 91
+    "sourceLine": 96
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mhullshader-688ed5c3",
@@ -43345,7 +43345,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 92
+    "sourceLine": 97
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mdomainshader-35b650b9",
@@ -43366,7 +43366,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 93
+    "sourceLine": 98
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mgeometryshader-0a534ed0",
@@ -43387,7 +43387,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 94
+    "sourceLine": 99
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mpixelshader-41d1d4d3",
@@ -43408,7 +43408,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 95
+    "sourceLine": 100
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mbindinglayouts-52a7ac7a",
@@ -43429,7 +43429,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 96
+    "sourceLine": 101
   },
   {
     "id": "api-arda-fardaprovidercomputepipelinecreateinfo-447006bc",
@@ -43450,7 +43450,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 99
+    "sourceLine": 104
   },
   {
     "id": "api-arda-fardaprovidercomputepipelinecreateinfo-mdesc-eb0289bc",
@@ -43471,7 +43471,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderComputePipelineCreateInfo"
     ],
-    "sourceLine": 101
+    "sourceLine": 106
   },
   {
     "id": "api-arda-fardaprovidercomputepipelinecreateinfo-mcomputeshader-2ccd55d4",
@@ -43492,7 +43492,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderComputePipelineCreateInfo"
     ],
-    "sourceLine": 102
+    "sourceLine": 107
   },
   {
     "id": "api-arda-fardaprovidercomputepipelinecreateinfo-mbindinglayouts-8cbb79bd",
@@ -43513,7 +43513,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderComputePipelineCreateInfo"
     ],
-    "sourceLine": 103
+    "sourceLine": 108
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-526a1814",
@@ -43534,7 +43534,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 106
+    "sourceLine": 111
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-mdesc-a4a179dc",
@@ -43555,7 +43555,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletPipelineCreateInfo"
     ],
-    "sourceLine": 108
+    "sourceLine": 113
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-mamplificationshader-8083d973",
@@ -43576,7 +43576,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletPipelineCreateInfo"
     ],
-    "sourceLine": 109
+    "sourceLine": 114
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-mmeshshader-c193b1a3",
@@ -43597,7 +43597,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletPipelineCreateInfo"
     ],
-    "sourceLine": 110
+    "sourceLine": 115
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-mpixelshader-dd96d40a",
@@ -43618,7 +43618,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletPipelineCreateInfo"
     ],
-    "sourceLine": 111
+    "sourceLine": 116
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-mbindinglayouts-c9f31890",
@@ -43639,7 +43639,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletPipelineCreateInfo"
     ],
-    "sourceLine": 112
+    "sourceLine": 117
   },
   {
     "id": "api-arda-fardaproviderworkgraphpipelinecreateinfo-96bf980e",
@@ -43660,7 +43660,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 115
+    "sourceLine": 120
   },
   {
     "id": "api-arda-fardaproviderworkgraphpipelinecreateinfo-mdesc-9415df2e",
@@ -43681,7 +43681,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderWorkGraphPipelineCreateInfo"
     ],
-    "sourceLine": 117
+    "sourceLine": 122
   },
   {
     "id": "api-arda-fardaproviderworkgraphpipelinecreateinfo-mshaders-229406a0",
@@ -43702,7 +43702,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderWorkGraphPipelineCreateInfo"
     ],
-    "sourceLine": 118
+    "sourceLine": 123
   },
   {
     "id": "api-arda-fardaproviderworkgraphpipelinecreateinfo-mbindinglayouts-0383b05f",
@@ -43723,7 +43723,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderWorkGraphPipelineCreateInfo"
     ],
-    "sourceLine": 119
+    "sourceLine": 124
   },
   {
     "id": "api-arda-fardaproviderraytracingshader-8ce4412b",
@@ -43744,7 +43744,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 122
+    "sourceLine": 127
   },
   {
     "id": "api-arda-fardaproviderraytracingshader-mexportname-af270342",
@@ -43765,7 +43765,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingShader"
     ],
-    "sourceLine": 124
+    "sourceLine": 129
   },
   {
     "id": "api-arda-fardaproviderraytracingshader-mentrypoint-4aabfd92",
@@ -43786,7 +43786,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingShader"
     ],
-    "sourceLine": 125
+    "sourceLine": 130
   },
   {
     "id": "api-arda-fardaproviderraytracingshader-mshader-8fe9e74f",
@@ -43807,7 +43807,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingShader"
     ],
-    "sourceLine": 126
+    "sourceLine": 131
   },
   {
     "id": "api-arda-fardaproviderraytracingshader-mlocalbindinglayout-34ac4bb5",
@@ -43828,7 +43828,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingShader"
     ],
-    "sourceLine": 127
+    "sourceLine": 132
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-17e81ece",
@@ -43849,7 +43849,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 130
+    "sourceLine": 135
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-mexportname-162ce9d2",
@@ -43870,7 +43870,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 132
+    "sourceLine": 137
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-mclosesthit-df372986",
@@ -43891,7 +43891,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 133
+    "sourceLine": 138
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-manyhit-875d585f",
@@ -43912,7 +43912,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 134
+    "sourceLine": 139
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-mintersection-c3b81fb7",
@@ -43933,7 +43933,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 135
+    "sourceLine": 140
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-mlocalbindinglayout-e57023ac",
@@ -43954,7 +43954,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 136
+    "sourceLine": 141
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-mbproceduralprimitive-9df88469",
@@ -43975,7 +43975,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 137
+    "sourceLine": 142
   },
   {
     "id": "api-arda-fardaproviderraytracingpipelinecreateinfo-d7ef976e",
@@ -43996,7 +43996,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 140
+    "sourceLine": 145
   },
   {
     "id": "api-arda-fardaproviderraytracingpipelinecreateinfo-mdesc-6d2935ee",
@@ -44017,7 +44017,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingPipelineCreateInfo"
     ],
-    "sourceLine": 142
+    "sourceLine": 147
   },
   {
     "id": "api-arda-fardaproviderraytracingpipelinecreateinfo-mshaders-94fb06d1",
@@ -44038,7 +44038,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingPipelineCreateInfo"
     ],
-    "sourceLine": 143
+    "sourceLine": 148
   },
   {
     "id": "api-arda-fardaproviderraytracingpipelinecreateinfo-mhitgroups-80dd0606",
@@ -44059,7 +44059,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingPipelineCreateInfo"
     ],
-    "sourceLine": 144
+    "sourceLine": 149
   },
   {
     "id": "api-arda-fardaproviderraytracingpipelinecreateinfo-mglobalbindinglayouts-e6d0d6e6",
@@ -44080,7 +44080,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingPipelineCreateInfo"
     ],
-    "sourceLine": 145
+    "sourceLine": 150
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-e9ad649c",
@@ -44101,7 +44101,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 148
+    "sourceLine": 153
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-mbuffer-d5418044",
@@ -44122,7 +44122,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderVertexBufferBinding"
     ],
-    "sourceLine": 150
+    "sourceLine": 155
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-mslot-b177b8b1",
@@ -44143,7 +44143,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderVertexBufferBinding"
     ],
-    "sourceLine": 151
+    "sourceLine": 156
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-moffset-a767ccd5",
@@ -44164,7 +44164,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderVertexBufferBinding"
     ],
-    "sourceLine": 152
+    "sourceLine": 157
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-mstride-cd28a636",
@@ -44185,7 +44185,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderVertexBufferBinding"
     ],
-    "sourceLine": 153
+    "sourceLine": 158
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-msize-d274a93d",
@@ -44206,7 +44206,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderVertexBufferBinding"
     ],
-    "sourceLine": 154
+    "sourceLine": 159
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-ac573c06",
@@ -44227,7 +44227,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 157
+    "sourceLine": 162
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mpipeline-fa712975",
@@ -44248,7 +44248,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 159
+    "sourceLine": 164
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mframebuffer-bbbc4431",
@@ -44269,7 +44269,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 160
+    "sourceLine": 165
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mbindings-c165425c",
@@ -44290,7 +44290,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 161
+    "sourceLine": 166
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mvertexbuffers-6e522833",
@@ -44311,7 +44311,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 162
+    "sourceLine": 167
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mindexbuffer-569a06f0",
@@ -44332,7 +44332,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 163
+    "sourceLine": 168
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mindexformat-915c0977",
@@ -44353,7 +44353,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 164
+    "sourceLine": 169
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mindexoffset-4e0c6184",
@@ -44374,7 +44374,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 165
+    "sourceLine": 170
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mviewports-97243e15",
@@ -44395,7 +44395,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 166
+    "sourceLine": 171
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mscissors-44d7a44e",
@@ -44416,7 +44416,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 167
+    "sourceLine": 172
   },
   {
     "id": "api-arda-fardaprovidercomputestate-f67b099b",
@@ -44437,7 +44437,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 170
+    "sourceLine": 175
   },
   {
     "id": "api-arda-fardaprovidercomputestate-mpipeline-8d77ea04",
@@ -44458,7 +44458,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderComputeState"
     ],
-    "sourceLine": 172
+    "sourceLine": 177
   },
   {
     "id": "api-arda-fardaprovidercomputestate-mbindings-693b5ded",
@@ -44479,7 +44479,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderComputeState"
     ],
-    "sourceLine": 173
+    "sourceLine": 178
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-ee033772",
@@ -44500,7 +44500,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 176
+    "sourceLine": 181
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-mpipeline-a3296c10",
@@ -44521,7 +44521,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletState"
     ],
-    "sourceLine": 178
+    "sourceLine": 183
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-mframebuffer-688720f4",
@@ -44542,7 +44542,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletState"
     ],
-    "sourceLine": 179
+    "sourceLine": 184
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-mbindings-4eade614",
@@ -44563,7 +44563,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletState"
     ],
-    "sourceLine": 180
+    "sourceLine": 185
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-mviewports-cdb8dfe3",
@@ -44584,7 +44584,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletState"
     ],
-    "sourceLine": 181
+    "sourceLine": 186
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-mscissors-c00f8da5",
@@ -44605,7 +44605,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletState"
     ],
-    "sourceLine": 182
+    "sourceLine": 187
   },
   {
     "id": "api-arda-fardaproviderraytracingstate-fbab2f5c",
@@ -44626,7 +44626,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 185
+    "sourceLine": 190
   },
   {
     "id": "api-arda-fardaproviderraytracingstate-mshadertable-06b203ff",
@@ -44647,7 +44647,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingState"
     ],
-    "sourceLine": 187
+    "sourceLine": 192
   },
   {
     "id": "api-arda-fardaproviderraytracingstate-mbindings-024e4a06",
@@ -44668,7 +44668,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingState"
     ],
-    "sourceLine": 188
+    "sourceLine": 193
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-051d4fa0",
@@ -44689,7 +44689,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 192
+    "sourceLine": 197
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-mdesc-cf8fa8b3",
@@ -44710,7 +44710,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingGeometry"
     ],
-    "sourceLine": 194
+    "sourceLine": 199
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-mindexbuffer-39cbe1ba",
@@ -44731,7 +44731,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingGeometry"
     ],
-    "sourceLine": 195
+    "sourceLine": 200
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-mvertexoraabbbuffer-7ec5afd8",
@@ -44752,7 +44752,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingGeometry"
     ],
-    "sourceLine": 196
+    "sourceLine": 201
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-mopacitymicromap-ff0a5518",
@@ -44773,7 +44773,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingGeometry"
     ],
-    "sourceLine": 197
+    "sourceLine": 202
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-mopacitymicromapindexbuffer-3c648153",
@@ -44794,7 +44794,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingGeometry"
     ],
-    "sourceLine": 198
+    "sourceLine": 203
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-3db22c47",
@@ -44815,7 +44815,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 202
+    "sourceLine": 207
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-mtransform-03022a5a",
@@ -44836,7 +44836,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 204
+    "sourceLine": 209
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-minstanceid-f47748a2",
@@ -44857,7 +44857,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 205
+    "sourceLine": 210
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-minstancemask-982fcc30",
@@ -44878,7 +44878,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 206
+    "sourceLine": 211
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-minstancecontributiontohitgroupindex-b18afee7",
@@ -44899,7 +44899,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 207
+    "sourceLine": 212
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-mflags-9620db70",
@@ -44920,7 +44920,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 208
+    "sourceLine": 213
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-mbottomlevelaccelstruct-33326c1a",
@@ -44941,7 +44941,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 209
+    "sourceLine": 214
   },
   {
     "id": "api-arda-iardaprovidercommandlist-7fde7436",
@@ -44962,7 +44962,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 212
+    "sourceLine": 217
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchcuda-0734acd1",
@@ -44971,7 +44971,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus DispatchCuda( const eastl::vector<FArdaProviderCudaBinding>&, const eastl::vector<FArdaCudaKernel>&)",
+    "signature": "virtual FArdaRHIStatus DispatchCuda(const eastl::vector<FArdaProviderCudaBinding>&, const eastl::vector<FArdaCudaKernel>&)",
     "summary": "Performs dispatch cuda through the public backend and RHI contract.",
     "details": "Performs dispatch cuda through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -44983,7 +44983,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 215
+    "sourceLine": 220
   },
   {
     "id": "api-arda-iardaprovidercommandlist-isopen-597c4b7e",
@@ -45004,7 +45004,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 220
+    "sourceLine": 227
   },
   {
     "id": "api-arda-iardaprovidercommandlist-iardaprovidercommandlist-81ab89a4",
@@ -45025,7 +45025,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 221
+    "sourceLine": 232
   },
   {
     "id": "api-arda-iardaprovidercommandlist-open-e5e24c05",
@@ -45046,7 +45046,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 222
+    "sourceLine": 233
   },
   {
     "id": "api-arda-iardaprovidercommandlist-close-0e037725",
@@ -45067,7 +45067,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 223
+    "sourceLine": 234
   },
   {
     "id": "api-arda-iardaprovidercommandlist-reset-2e249e40",
@@ -45088,7 +45088,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 224
+    "sourceLine": 235
   },
   {
     "id": "api-arda-iardaprovidercommandlist-writebuffer-ccf06a89",
@@ -45097,7 +45097,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus WriteBuffer( const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, const void* Data, size_t Size, uint64_t Offset) = 0",
+    "signature": "virtual FArdaRHIStatus WriteBuffer(const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, const void* Data, size_t Size, uint64_t Offset) = 0",
     "summary": "Performs write buffer through the public backend and RHI contract.",
     "details": "Performs write buffer through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45109,7 +45109,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 225
+    "sourceLine": 236
   },
   {
     "id": "api-arda-iardaprovidercommandlist-copybuffer-1bb372e1",
@@ -45118,7 +45118,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CopyBuffer( const FArdaProviderObjectRef& Destination, uint64_t DestinationOffset, const FArdaProviderObjectRef& Source, uint64_t SourceOffset, uint64_t Size) = 0",
+    "signature": "virtual FArdaRHIStatus CopyBuffer(const FArdaProviderObjectRef& Destination, uint64_t DestinationOffset, const FArdaProviderObjectRef& Source, uint64_t SourceOffset, uint64_t Size) = 0",
     "summary": "Performs copy buffer through the public backend and RHI contract.",
     "details": "Performs copy buffer through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45130,7 +45130,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 231
+    "sourceLine": 241
   },
   {
     "id": "api-arda-iardaprovidercommandlist-copytexture-6183ffe0",
@@ -45139,7 +45139,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CopyTexture( const FArdaProviderObjectRef& Destination, const FArdaRHITextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaProviderObjectRef& Source, const FArdaRHITextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice) = 0",
+    "signature": "virtual FArdaRHIStatus CopyTexture(const FArdaProviderObjectRef& Destination, const FArdaRHITextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaProviderObjectRef& Source, const FArdaRHITextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice) = 0",
     "summary": "Performs copy texture through the public backend and RHI contract.",
     "details": "Performs copy texture through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45151,7 +45151,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 237
+    "sourceLine": 246
   },
   {
     "id": "api-arda-iardaprovidercommandlist-resolvetexture-cdef4cc0",
@@ -45160,7 +45160,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus ResolveTexture( const FArdaProviderObjectRef& Destination, const FArdaRHITextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaProviderObjectRef& Source, const FArdaRHITextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice) = 0",
+    "signature": "virtual FArdaRHIStatus ResolveTexture(const FArdaProviderObjectRef& Destination, const FArdaRHITextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaProviderObjectRef& Source, const FArdaRHITextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice) = 0",
     "summary": "Performs resolve texture through the public backend and RHI contract.",
     "details": "Performs resolve texture through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45172,7 +45172,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 244
+    "sourceLine": 252
   },
   {
     "id": "api-arda-iardaprovidercommandlist-copytexturetostaging-b9a50ac4",
@@ -45181,30 +45181,9 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CopyTextureToStaging( const FArdaProviderObjectRef& Destination, const FArdaRHIStagingTextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaProviderObjectRef& Source, const FArdaRHITextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice) = 0",
+    "signature": "virtual FArdaRHIStatus CopyTextureToStaging(const FArdaProviderObjectRef& Destination, const FArdaRHIStagingTextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaProviderObjectRef& Source, const FArdaRHITextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice) = 0",
     "summary": "Performs copy texture to staging through the public backend and RHI contract.",
     "details": "Performs copy texture to staging through the public backend and RHI contract. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::IArdaProviderCommandList"
-    ],
-    "sourceLine": 251
-  },
-  {
-    "id": "api-arda-iardaprovidercommandlist-copytexturefromstaging-62b4cfd8",
-    "name": "CopyTextureFromStaging",
-    "qualifiedName": "arda::IArdaProviderCommandList::CopyTextureFromStaging",
-    "kind": "method",
-    "component": "rhi-device",
-    "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CopyTextureFromStaging( const FArdaProviderObjectRef& Destination, const FArdaRHITextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaProviderObjectRef& Source, const FArdaRHIStagingTextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice) = 0",
-    "summary": "Performs copy texture from staging through the public backend and RHI contract.",
-    "details": "Performs copy texture from staging through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -45217,15 +45196,15 @@ window.ArdaBackendApi = {
     "sourceLine": 258
   },
   {
-    "id": "api-arda-iardaprovidercommandlist-cleartexture-26189f38",
-    "name": "ClearTexture",
-    "qualifiedName": "arda::IArdaProviderCommandList::ClearTexture",
+    "id": "api-arda-iardaprovidercommandlist-copytexturefromstaging-62b4cfd8",
+    "name": "CopyTextureFromStaging",
+    "qualifiedName": "arda::IArdaProviderCommandList::CopyTextureFromStaging",
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus ClearTexture( const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureSubresourceRange& Range, const FArdaRHIColor& Color) = 0",
-    "summary": "Performs clear texture through the public backend and RHI contract.",
-    "details": "Performs clear texture through the public backend and RHI contract. The signature is generated from the current public header.",
+    "signature": "virtual FArdaRHIStatus CopyTextureFromStaging(const FArdaProviderObjectRef& Destination, const FArdaRHITextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaProviderObjectRef& Source, const FArdaRHIStagingTextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice) = 0",
+    "summary": "Performs copy texture from staging through the public backend and RHI contract.",
+    "details": "Performs copy texture from staging through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -45235,18 +45214,18 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 265
+    "sourceLine": 264
   },
   {
-    "id": "api-arda-iardaprovidercommandlist-cleartextureuint-07f8a5de",
-    "name": "ClearTextureUInt",
-    "qualifiedName": "arda::IArdaProviderCommandList::ClearTextureUInt",
+    "id": "api-arda-iardaprovidercommandlist-cleartexture-26189f38",
+    "name": "ClearTexture",
+    "qualifiedName": "arda::IArdaProviderCommandList::ClearTexture",
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus ClearTextureUInt( const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureSubresourceRange& Range, uint32_t Value) = 0",
-    "summary": "Performs clear texture u int through the public backend and RHI contract.",
-    "details": "Performs clear texture u int through the public backend and RHI contract. The signature is generated from the current public header.",
+    "signature": "virtual FArdaRHIStatus ClearTexture(const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureSubresourceRange& Range, const FArdaRHIColor& Color) = 0",
+    "summary": "Performs clear texture through the public backend and RHI contract.",
+    "details": "Performs clear texture through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -45259,15 +45238,15 @@ window.ArdaBackendApi = {
     "sourceLine": 270
   },
   {
-    "id": "api-arda-iardaprovidercommandlist-clearbufferuint-5ddc1492",
-    "name": "ClearBufferUInt",
-    "qualifiedName": "arda::IArdaProviderCommandList::ClearBufferUInt",
+    "id": "api-arda-iardaprovidercommandlist-cleartextureuint-07f8a5de",
+    "name": "ClearTextureUInt",
+    "qualifiedName": "arda::IArdaProviderCommandList::ClearTextureUInt",
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus ClearBufferUInt( const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, uint32_t Value) = 0",
-    "summary": "Performs clear buffer u int through the public backend and RHI contract.",
-    "details": "Performs clear buffer u int through the public backend and RHI contract. The signature is generated from the current public header.",
+    "signature": "virtual FArdaRHIStatus ClearTextureUInt(const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureSubresourceRange& Range, uint32_t Value) = 0",
+    "summary": "Performs clear texture u int through the public backend and RHI contract.",
+    "details": "Performs clear texture u int through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -45277,18 +45256,18 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 275
+    "sourceLine": 274
   },
   {
-    "id": "api-arda-iardaprovidercommandlist-cleardepthstenciltexture-98fe5162",
-    "name": "ClearDepthStencilTexture",
-    "qualifiedName": "arda::IArdaProviderCommandList::ClearDepthStencilTexture",
+    "id": "api-arda-iardaprovidercommandlist-clearbufferuint-5ddc1492",
+    "name": "ClearBufferUInt",
+    "qualifiedName": "arda::IArdaProviderCommandList::ClearBufferUInt",
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus ClearDepthStencilTexture( const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureSubresourceRange& Range, bool bClearDepth, float Depth, bool bClearStencil, uint8_t Stencil) = 0",
-    "summary": "Performs clear depth stencil texture through the public backend and RHI contract.",
-    "details": "Performs clear depth stencil texture through the public backend and RHI contract. The signature is generated from the current public header.",
+    "signature": "virtual FArdaRHIStatus ClearBufferUInt(const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, uint32_t Value) = 0",
+    "summary": "Performs clear buffer u int through the public backend and RHI contract.",
+    "details": "Performs clear buffer u int through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -45301,13 +45280,34 @@ window.ArdaBackendApi = {
     "sourceLine": 278
   },
   {
+    "id": "api-arda-iardaprovidercommandlist-cleardepthstenciltexture-98fe5162",
+    "name": "ClearDepthStencilTexture",
+    "qualifiedName": "arda::IArdaProviderCommandList::ClearDepthStencilTexture",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus ClearDepthStencilTexture(const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureSubresourceRange& Range, bool bClearDepth, float Depth, bool bClearStencil, uint8_t Stencil) = 0",
+    "summary": "Performs clear depth stencil texture through the public backend and RHI contract.",
+    "details": "Performs clear depth stencil texture through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaProviderCommandList"
+    ],
+    "sourceLine": 281
+  },
+  {
     "id": "api-arda-iardaprovidercommandlist-settexturestate-b3c476a7",
     "name": "SetTextureState",
     "qualifiedName": "arda::IArdaProviderCommandList::SetTextureState",
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetTextureState( const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureSubresourceRange& Range, EArdaRHIResourceState State) = 0",
+    "signature": "virtual FArdaRHIStatus SetTextureState(const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureSubresourceRange& Range, EArdaRHIResourceState State) = 0",
     "summary": "Performs set texture state through the public backend and RHI contract.",
     "details": "Performs set texture state through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45319,7 +45319,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 286
+    "sourceLine": 288
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setbufferstate-f1d3ec89",
@@ -45328,7 +45328,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetBufferState( const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, EArdaRHIResourceState State) = 0",
+    "signature": "virtual FArdaRHIStatus SetBufferState(const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, EArdaRHIResourceState State) = 0",
     "summary": "Performs set buffer state through the public backend and RHI contract.",
     "details": "Performs set buffer state through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45340,7 +45340,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 291
+    "sourceLine": 292
   },
   {
     "id": "api-arda-iardaprovidercommandlist-transitiontexture-cc71d603",
@@ -45349,7 +45349,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus TransitionTexture( const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureTransitionDesc& Transition) = 0",
+    "signature": "virtual FArdaRHIStatus TransitionTexture(const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureTransitionDesc& Transition) = 0",
     "summary": "Performs transition texture through the public backend and RHI contract.",
     "details": "Performs transition texture through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45370,7 +45370,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus TransitionBuffer( const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, const FArdaRHIBufferTransitionDesc& Transition) = 0",
+    "signature": "virtual FArdaRHIStatus TransitionBuffer(const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, const FArdaRHIBufferTransitionDesc& Transition) = 0",
     "summary": "Performs transition buffer through the public backend and RHI contract.",
     "details": "Performs transition buffer through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45382,7 +45382,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 299
+    "sourceLine": 298
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setautomaticbarriers-b9f107c5",
@@ -45403,7 +45403,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 303
+    "sourceLine": 301
   },
   {
     "id": "api-arda-iardaprovidercommandlist-begintrackingtexturestate-8b2f15e0",
@@ -45412,7 +45412,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus BeginTrackingTextureState( const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureSubresourceRange& Range, EArdaRHIResourceState State) = 0",
+    "signature": "virtual FArdaRHIStatus BeginTrackingTextureState(const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaRHITextureSubresourceRange& Range, EArdaRHIResourceState State) = 0",
     "summary": "Performs begin tracking texture state through the public backend and RHI contract.",
     "details": "Performs begin tracking texture state through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45424,7 +45424,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 304
+    "sourceLine": 302
   },
   {
     "id": "api-arda-iardaprovidercommandlist-begintrackingbufferstate-051d4ef5",
@@ -45433,7 +45433,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus BeginTrackingBufferState( const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, EArdaRHIResourceState State) = 0",
+    "signature": "virtual FArdaRHIStatus BeginTrackingBufferState(const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, EArdaRHIResourceState State) = 0",
     "summary": "Performs begin tracking buffer state through the public backend and RHI contract.",
     "details": "Performs begin tracking buffer state through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45445,7 +45445,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 309
+    "sourceLine": 306
   },
   {
     "id": "api-arda-iardaprovidercommandlist-querytexturestate-4c44fe01",
@@ -45466,7 +45466,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 314
+    "sourceLine": 309
   },
   {
     "id": "api-arda-iardaprovidercommandlist-querybufferstate-155dc9d3",
@@ -45487,7 +45487,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 319
+    "sourceLine": 313
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setuavbarriersfortexture-76e55fcd",
@@ -45496,7 +45496,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetUAVBarriersForTexture( const FArdaProviderObjectRef& Texture, bool bEnabled) = 0",
+    "signature": "virtual FArdaRHIStatus SetUAVBarriersForTexture(const FArdaProviderObjectRef& Texture, bool bEnabled) = 0",
     "summary": "Performs set u a v barriers for texture through the public backend and RHI contract.",
     "details": "Performs set u a v barriers for texture through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45508,7 +45508,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 322
+    "sourceLine": 316
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setuavbarriersforbuffer-554c049e",
@@ -45517,7 +45517,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetUAVBarriersForBuffer( const FArdaProviderObjectRef& Buffer, bool bEnabled) = 0",
+    "signature": "virtual FArdaRHIStatus SetUAVBarriersForBuffer(const FArdaProviderObjectRef& Buffer, bool bEnabled) = 0",
     "summary": "Performs set u a v barriers for buffer through the public backend and RHI contract.",
     "details": "Performs set u a v barriers for buffer through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45529,7 +45529,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 325
+    "sourceLine": 317
   },
   {
     "id": "api-arda-iardaprovidercommandlist-commitbarriers-f4b21963",
@@ -45550,7 +45550,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 328
+    "sourceLine": 318
   },
   {
     "id": "api-arda-iardaprovidercommandlist-aliasingbarrier-6dbf2ee2",
@@ -45559,7 +45559,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus AliasingBarrier( const FArdaProviderObjectRef& ResourceBefore, const FArdaProviderObjectRef& ResourceAfter) = 0",
+    "signature": "virtual FArdaRHIStatus AliasingBarrier(const FArdaProviderObjectRef& ResourceBefore, const FArdaProviderObjectRef& ResourceAfter) = 0",
     "summary": "Performs aliasing barrier through the public backend and RHI contract.",
     "details": "Performs aliasing barrier through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45571,7 +45571,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 329
+    "sourceLine": 319
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setgraphicsstate-fe28c75d",
@@ -45580,7 +45580,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetGraphicsState( const FArdaProviderGraphicsState& State) = 0",
+    "signature": "virtual FArdaRHIStatus SetGraphicsState(const FArdaProviderGraphicsState& State) = 0",
     "summary": "Performs set graphics state through the public backend and RHI contract.",
     "details": "Performs set graphics state through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45592,7 +45592,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 332
+    "sourceLine": 321
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setcomputestate-68b37f8f",
@@ -45601,7 +45601,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetComputeState( const FArdaProviderComputeState& State) = 0",
+    "signature": "virtual FArdaRHIStatus SetComputeState(const FArdaProviderComputeState& State) = 0",
     "summary": "Performs set compute state through the public backend and RHI contract.",
     "details": "Performs set compute state through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45613,7 +45613,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 334
+    "sourceLine": 322
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setmeshletstate-043661aa",
@@ -45622,7 +45622,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetMeshletState( const FArdaProviderMeshletState&)",
+    "signature": "virtual FArdaRHIStatus SetMeshletState(const FArdaProviderMeshletState&)",
     "summary": "Performs set meshlet state through the public backend and RHI contract.",
     "details": "Performs set meshlet state through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45634,7 +45634,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 336
+    "sourceLine": 324
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setraytracingstate-282fc8eb",
@@ -45643,7 +45643,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetRayTracingState( const FArdaProviderRayTracingState&)",
+    "signature": "virtual FArdaRHIStatus SetRayTracingState(const FArdaProviderRayTracingState&)",
     "summary": "Performs set ray tracing state through the public backend and RHI contract.",
     "details": "Performs set ray tracing state through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45655,7 +45655,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 343
+    "sourceLine": 330
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setpushconstants-adfbd702",
@@ -45676,7 +45676,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 350
+    "sourceLine": 336
   },
   {
     "id": "api-arda-iardaprovidercommandlist-draw-043e9e72",
@@ -45697,7 +45697,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 351
+    "sourceLine": 337
   },
   {
     "id": "api-arda-iardaprovidercommandlist-drawindexed-e2a661d1",
@@ -45718,7 +45718,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 352
+    "sourceLine": 338
   },
   {
     "id": "api-arda-iardaprovidercommandlist-drawindirect-47188b93",
@@ -45727,7 +45727,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus DrawIndirect( const FArdaProviderObjectRef& Arguments, uint64_t Offset, uint32_t DrawCount, uint32_t Stride) = 0",
+    "signature": "virtual FArdaRHIStatus DrawIndirect(const FArdaProviderObjectRef& Arguments, uint64_t Offset, uint32_t DrawCount, uint32_t Stride) = 0",
     "summary": "Performs draw indirect through the public backend and RHI contract.",
     "details": "Performs draw indirect through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45739,7 +45739,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 353
+    "sourceLine": 339
   },
   {
     "id": "api-arda-iardaprovidercommandlist-drawindexedindirect-f17803e2",
@@ -45748,7 +45748,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus DrawIndexedIndirect( const FArdaProviderObjectRef& Arguments, uint64_t Offset, uint32_t DrawCount, uint32_t Stride) = 0",
+    "signature": "virtual FArdaRHIStatus DrawIndexedIndirect(const FArdaProviderObjectRef& Arguments, uint64_t Offset, uint32_t DrawCount, uint32_t Stride) = 0",
     "summary": "Performs draw indexed indirect through the public backend and RHI contract.",
     "details": "Performs draw indexed indirect through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45760,7 +45760,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 358
+    "sourceLine": 343
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatch-609f38d1",
@@ -45781,7 +45781,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 363
+    "sourceLine": 347
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchindirect-6e2b0ba2",
@@ -45790,7 +45790,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus DispatchIndirect( const FArdaProviderObjectRef& Arguments, uint64_t Offset) = 0",
+    "signature": "virtual FArdaRHIStatus DispatchIndirect(const FArdaProviderObjectRef& Arguments, uint64_t Offset) = 0",
     "summary": "Performs dispatch indirect through the public backend and RHI contract.",
     "details": "Performs dispatch indirect through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45802,7 +45802,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 364
+    "sourceLine": 348
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchmesh-b701f055",
@@ -45811,7 +45811,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus DispatchMesh( uint32_t, uint32_t, uint32_t)",
+    "signature": "virtual FArdaRHIStatus DispatchMesh(uint32_t, uint32_t, uint32_t)",
     "summary": "Performs dispatch mesh through the public backend and RHI contract.",
     "details": "Performs dispatch mesh through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45823,7 +45823,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 367
+    "sourceLine": 350
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchrays-9efe03e3",
@@ -45832,7 +45832,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus DispatchRays( uint32_t, uint32_t, uint32_t)",
+    "signature": "virtual FArdaRHIStatus DispatchRays(uint32_t, uint32_t, uint32_t)",
     "summary": "Performs dispatch rays through the public backend and RHI contract.",
     "details": "Performs dispatch rays through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45844,7 +45844,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 374
+    "sourceLine": 356
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchraysindirect-50d34e2b",
@@ -45853,7 +45853,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus DispatchRaysIndirect( const FArdaProviderObjectRef&, uint64_t)",
+    "signature": "virtual FArdaRHIStatus DispatchRaysIndirect(const FArdaProviderObjectRef&, uint64_t)",
     "summary": "Performs dispatch rays indirect through the public backend and RHI contract.",
     "details": "Performs dispatch rays indirect through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45865,7 +45865,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 381
+    "sourceLine": 362
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchworkgraph-cc5bf34f",
@@ -45874,7 +45874,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus DispatchWorkGraph( const FArdaProviderObjectRef&, const void*, uint32_t, uint32_t, const eastl::vector<FArdaProviderObjectRef>&)",
+    "signature": "virtual FArdaRHIStatus DispatchWorkGraph(const FArdaProviderObjectRef&, const void*, uint32_t, uint32_t, const eastl::vector<FArdaProviderObjectRef>&)",
     "summary": "Performs dispatch work graph through the public backend and RHI contract.",
     "details": "Performs dispatch work graph through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45886,7 +45886,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 388
+    "sourceLine": 368
   },
   {
     "id": "api-arda-iardaprovidercommandlist-clearsamplerfeedbacktexture-02a1248d",
@@ -45895,7 +45895,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus ClearSamplerFeedbackTexture( const FArdaProviderObjectRef&)",
+    "signature": "virtual FArdaRHIStatus ClearSamplerFeedbackTexture(const FArdaProviderObjectRef&)",
     "summary": "Performs clear sampler feedback texture through the public backend and RHI contract.",
     "details": "Performs clear sampler feedback texture through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45907,7 +45907,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 395
+    "sourceLine": 378
   },
   {
     "id": "api-arda-iardaprovidercommandlist-decodesamplerfeedbacktexture-fbfacf7c",
@@ -45916,7 +45916,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus DecodeSamplerFeedbackTexture( const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaProviderObjectRef&, EArdaRHIFormat)",
+    "signature": "virtual FArdaRHIStatus DecodeSamplerFeedbackTexture(const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaProviderObjectRef&, EArdaRHIFormat)",
     "summary": "Performs decode sampler feedback texture through the public backend and RHI contract.",
     "details": "Performs decode sampler feedback texture through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45928,7 +45928,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 401
+    "sourceLine": 384
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setsamplerfeedbacktexturestate-9b3b7264",
@@ -45937,7 +45937,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetSamplerFeedbackTextureState( const FArdaProviderObjectRef&, EArdaRHIResourceState)",
+    "signature": "virtual FArdaRHIStatus SetSamplerFeedbackTextureState(const FArdaProviderObjectRef&, EArdaRHIResourceState)",
     "summary": "Performs set sampler feedback texture state through the public backend and RHI contract.",
     "details": "Performs set sampler feedback texture state through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -45949,7 +45949,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 408
+    "sourceLine": 393
   },
   {
     "id": "api-arda-iardaprovidercommandlist-querysamplerfeedbacktexturestate-6c65792d",
@@ -45970,7 +45970,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 415
+    "sourceLine": 399
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setaccelstructstate-8218c076",
@@ -45979,9 +45979,51 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetAccelStructState( const FArdaProviderObjectRef&, EArdaRHIResourceState)",
+    "signature": "virtual FArdaRHIStatus SetAccelStructState(const FArdaProviderObjectRef&, EArdaRHIResourceState)",
     "summary": "Performs set accel struct state through the public backend and RHI contract.",
     "details": "Performs set accel struct state through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaProviderCommandList"
+    ],
+    "sourceLine": 407
+  },
+  {
+    "id": "api-arda-iardaprovidercommandlist-queryaccelstructstate-687e7875",
+    "name": "QueryAccelStructState",
+    "qualifiedName": "arda::IArdaProviderCommandList::QueryAccelStructState",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHINativeResourceState> QueryAccelStructState( const FArdaProviderObjectRef&) const",
+    "summary": "Performs query accel struct state through the public backend and RHI contract.",
+    "details": "Performs query accel struct state through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaProviderCommandList"
+    ],
+    "sourceLine": 413
+  },
+  {
+    "id": "api-arda-iardaprovidercommandlist-buildbottomlevelaccelstruct-80213f7a",
+    "name": "BuildBottomLevelAccelStruct",
+    "qualifiedName": "arda::IArdaProviderCommandList::BuildBottomLevelAccelStruct",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus BuildBottomLevelAccelStruct(const FArdaProviderObjectRef&, const eastl::vector<FArdaProviderRayTracingGeometry>&, EArdaRHIAccelStructBuildFlags)",
+    "summary": "Performs build bottom level accel struct through the public backend and RHI contract.",
+    "details": "Performs build bottom level accel struct through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -45994,15 +46036,15 @@ window.ArdaBackendApi = {
     "sourceLine": 421
   },
   {
-    "id": "api-arda-iardaprovidercommandlist-queryaccelstructstate-687e7875",
-    "name": "QueryAccelStructState",
-    "qualifiedName": "arda::IArdaProviderCommandList::QueryAccelStructState",
+    "id": "api-arda-iardaprovidercommandlist-buildtoplevelaccelstruct-a7aa734d",
+    "name": "BuildTopLevelAccelStruct",
+    "qualifiedName": "arda::IArdaProviderCommandList::BuildTopLevelAccelStruct",
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHINativeResourceState> QueryAccelStructState(const FArdaProviderObjectRef&) const",
-    "summary": "Performs query accel struct state through the public backend and RHI contract.",
-    "details": "Performs query accel struct state through the public backend and RHI contract. The signature is generated from the current public header.",
+    "signature": "virtual FArdaRHIStatus BuildTopLevelAccelStruct(const FArdaProviderObjectRef&, const eastl::vector<FArdaProviderRayTracingInstance>&, EArdaRHIAccelStructBuildFlags)",
+    "summary": "Performs build top level accel struct through the public backend and RHI contract.",
+    "details": "Performs build top level accel struct through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -46015,55 +46057,13 @@ window.ArdaBackendApi = {
     "sourceLine": 429
   },
   {
-    "id": "api-arda-iardaprovidercommandlist-buildbottomlevelaccelstruct-80213f7a",
-    "name": "BuildBottomLevelAccelStruct",
-    "qualifiedName": "arda::IArdaProviderCommandList::BuildBottomLevelAccelStruct",
-    "kind": "method",
-    "component": "rhi-device",
-    "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus BuildBottomLevelAccelStruct( const FArdaProviderObjectRef&, const eastl::vector<FArdaProviderRayTracingGeometry>&, EArdaRHIAccelStructBuildFlags)",
-    "summary": "Performs build bottom level accel struct through the public backend and RHI contract.",
-    "details": "Performs build bottom level accel struct through the public backend and RHI contract. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::IArdaProviderCommandList"
-    ],
-    "sourceLine": 435
-  },
-  {
-    "id": "api-arda-iardaprovidercommandlist-buildtoplevelaccelstruct-a7aa734d",
-    "name": "BuildTopLevelAccelStruct",
-    "qualifiedName": "arda::IArdaProviderCommandList::BuildTopLevelAccelStruct",
-    "kind": "method",
-    "component": "rhi-device",
-    "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus BuildTopLevelAccelStruct( const FArdaProviderObjectRef&, const eastl::vector<FArdaProviderRayTracingInstance>&, EArdaRHIAccelStructBuildFlags)",
-    "summary": "Performs build top level accel struct through the public backend and RHI contract.",
-    "details": "Performs build top level accel struct through the public backend and RHI contract. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::IArdaProviderCommandList"
-    ],
-    "sourceLine": 443
-  },
-  {
     "id": "api-arda-iardaprovidercommandlist-buildtoplevelaccelstructfrombuffer-7f8701ed",
     "name": "BuildTopLevelAccelStructFromBuffer",
     "qualifiedName": "arda::IArdaProviderCommandList::BuildTopLevelAccelStructFromBuffer",
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus BuildTopLevelAccelStructFromBuffer( const FArdaProviderObjectRef&, const FArdaProviderObjectRef&, uint64_t, size_t, EArdaRHIAccelStructBuildFlags)",
+    "signature": "virtual FArdaRHIStatus BuildTopLevelAccelStructFromBuffer(const FArdaProviderObjectRef&, const FArdaProviderObjectRef&, uint64_t, size_t, EArdaRHIAccelStructBuildFlags)",
     "summary": "Performs build top level accel struct from buffer through the public backend and RHI contract.",
     "details": "Performs build top level accel struct from buffer through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46075,7 +46075,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 451
+    "sourceLine": 437
   },
   {
     "id": "api-arda-iardaprovidercommandlist-compactaccelstruct-c5a4ef63",
@@ -46084,7 +46084,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CompactAccelStruct( const FArdaProviderObjectRef&, const FArdaProviderObjectRef&)",
+    "signature": "virtual FArdaRHIStatus CompactAccelStruct(const FArdaProviderObjectRef&, const FArdaProviderObjectRef&)",
     "summary": "Performs compact accel struct through the public backend and RHI contract.",
     "details": "Performs compact accel struct through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46096,7 +46096,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 458
+    "sourceLine": 447
   },
   {
     "id": "api-arda-iardaprovidercommandlist-buildopacitymicromap-cb028c89",
@@ -46105,7 +46105,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus BuildOpacityMicromap( const FArdaProviderObjectRef&)",
+    "signature": "virtual FArdaRHIStatus BuildOpacityMicromap(const FArdaProviderObjectRef&)",
     "summary": "Performs build opacity micromap through the public backend and RHI contract.",
     "details": "Performs build opacity micromap through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46117,7 +46117,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 464
+    "sourceLine": 453
   },
   {
     "id": "api-arda-iardaprovidercommandlist-compactopacitymicromap-8abbf77f",
@@ -46126,7 +46126,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CompactOpacityMicromap( const FArdaProviderObjectRef&, const FArdaProviderObjectRef&)",
+    "signature": "virtual FArdaRHIStatus CompactOpacityMicromap(const FArdaProviderObjectRef&, const FArdaProviderObjectRef&)",
     "summary": "Performs compact opacity micromap through the public backend and RHI contract.",
     "details": "Performs compact opacity micromap through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46138,7 +46138,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 470
+    "sourceLine": 459
   },
   {
     "id": "api-arda-iardaprovidercommandlist-queryopacitymicromapstate-d7fe6c93",
@@ -46147,7 +46147,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHINativeResourceState> QueryOpacityMicromapState(const FArdaProviderObjectRef&) const",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHINativeResourceState> QueryOpacityMicromapState( const FArdaProviderObjectRef&) const",
     "summary": "Performs query opacity micromap state through the public backend and RHI contract.",
     "details": "Performs query opacity micromap state through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46159,7 +46159,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 477
+    "sourceLine": 465
   },
   {
     "id": "api-arda-iardaprovidercommandlist-begintimerquery-fba1e0bd",
@@ -46168,7 +46168,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus BeginTimerQuery( const FArdaProviderObjectRef&)",
+    "signature": "virtual FArdaRHIStatus BeginTimerQuery(const FArdaProviderObjectRef&)",
     "summary": "Records the start timestamp for a provider timer query.",
     "details": "Records the start timestamp for a provider timer query.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46180,7 +46180,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 483
+    "sourceLine": 474
   },
   {
     "id": "api-arda-iardaprovidercommandlist-endtimerquery-18c57ffc",
@@ -46189,7 +46189,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus EndTimerQuery( const FArdaProviderObjectRef&)",
+    "signature": "virtual FArdaRHIStatus EndTimerQuery(const FArdaProviderObjectRef&)",
     "summary": "Records the end timestamp and result resolve for a timer query.",
     "details": "Records the end timestamp and result resolve for a timer query.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46201,7 +46201,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 490
+    "sourceLine": 481
   },
   {
     "id": "api-arda-iardaprovidercommandlist-beginmarker-874c6f50",
@@ -46222,7 +46222,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 496
+    "sourceLine": 487
   },
   {
     "id": "api-arda-iardaprovidercommandlist-endmarker-22a2e56f",
@@ -46243,7 +46243,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 497
+    "sourceLine": 488
   },
   {
     "id": "api-arda-iardarhiproviderdevice-034a7e6a",
@@ -46264,7 +46264,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 500
+    "sourceLine": 491
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getcudacapabilities-cd57bb68",
@@ -46285,7 +46285,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 503
+    "sourceLine": 494
   },
   {
     "id": "api-arda-iardarhiproviderdevice-iardarhiproviderdevice-068316f7",
@@ -46306,7 +46306,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 504
+    "sourceLine": 499
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getcapabilities-4011ea43",
@@ -46327,7 +46327,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 505
+    "sourceLine": 500
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettextureimporttype-5b9ef5ec",
@@ -46348,7 +46348,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 506
+    "sourceLine": 501
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getbufferimporttype-28ae595c",
@@ -46369,7 +46369,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 507
+    "sourceLine": 502
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createtexture-f10acc28",
@@ -46378,7 +46378,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateTexture( const FArdaRHITextureDesc& Desc) = 0",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateTexture(const FArdaRHITextureDesc& Desc) = 0",
     "summary": "Performs create texture through the public backend and RHI contract.",
     "details": "Performs create texture through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46390,7 +46390,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 509
+    "sourceLine": 504
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createsamplerfeedbacktexture-4d5e59a4",
@@ -46399,7 +46399,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateSamplerFeedbackTexture( const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaRHISamplerFeedbackTextureDesc&)",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateSamplerFeedbackTexture(const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaRHISamplerFeedbackTextureDesc&)",
     "summary": "Performs create sampler feedback texture through the public backend and RHI contract.",
     "details": "Performs create sampler feedback texture through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46411,7 +46411,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 512
+    "sourceLine": 506
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbuffer-71684f5d",
@@ -46420,7 +46420,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateBuffer( const FArdaRHIBufferDesc& Desc) = 0",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateBuffer(const FArdaRHIBufferDesc& Desc) = 0",
     "summary": "Performs create buffer through the public backend and RHI contract.",
     "details": "Performs create buffer through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46432,7 +46432,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 520
+    "sourceLine": 515
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createheap-db511049",
@@ -46441,7 +46441,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateHeap( const FArdaRHIHeapDesc& Desc) = 0",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateHeap(const FArdaRHIHeapDesc& Desc) = 0",
     "summary": "Performs create heap through the public backend and RHI contract.",
     "details": "Performs create heap through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46453,7 +46453,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 522
+    "sourceLine": 516
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettexturememoryrequirements-ed014bd7",
@@ -46474,7 +46474,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 525
+    "sourceLine": 517
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getbuffermemoryrequirements-2f9ecaf1",
@@ -46495,7 +46495,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 529
+    "sourceLine": 520
   },
   {
     "id": "api-arda-iardarhiproviderdevice-bindtexturememory-d4472ff4",
@@ -46504,7 +46504,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus BindTextureMemory( const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaProviderObjectRef& Heap, uint64_t Offset) = 0",
+    "signature": "virtual FArdaRHIStatus BindTextureMemory(const FArdaProviderObjectRef& Texture, const FArdaRHITextureDesc& Desc, const FArdaProviderObjectRef& Heap, uint64_t Offset) = 0",
     "summary": "Performs bind texture memory through the public backend and RHI contract.",
     "details": "Performs bind texture memory through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46516,7 +46516,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 532
+    "sourceLine": 523
   },
   {
     "id": "api-arda-iardarhiproviderdevice-bindbuffermemory-9d0e7b7a",
@@ -46525,7 +46525,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus BindBufferMemory( const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, const FArdaProviderObjectRef& Heap, uint64_t Offset) = 0",
+    "signature": "virtual FArdaRHIStatus BindBufferMemory(const FArdaProviderObjectRef& Buffer, const FArdaRHIBufferDesc& Desc, const FArdaProviderObjectRef& Heap, uint64_t Offset) = 0",
     "summary": "Performs bind buffer memory through the public backend and RHI contract.",
     "details": "Performs bind buffer memory through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46537,7 +46537,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 537
+    "sourceLine": 527
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettexturetiling-402e11c3",
@@ -46558,7 +46558,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 543
+    "sourceLine": 532
   },
   {
     "id": "api-arda-iardarhiproviderdevice-updatetexturetilemappings-39576639",
@@ -46567,7 +46567,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus UpdateTextureTileMappings( const FArdaProviderObjectRef&, const eastl::vector<FArdaProviderTextureTileMapping>&, EArdaRHIQueueType)",
+    "signature": "virtual FArdaRHIStatus UpdateTextureTileMappings(const FArdaProviderObjectRef&, const eastl::vector<FArdaProviderTextureTileMapping>&, EArdaRHIQueueType)",
     "summary": "Performs update texture tile mappings through the public backend and RHI contract.",
     "details": "Performs update texture tile mappings through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46579,7 +46579,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 548
+    "sourceLine": 539
   },
   {
     "id": "api-arda-iardarhiproviderdevice-updatebuffertilemappings-b37d4166",
@@ -46588,7 +46588,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus UpdateBufferTileMappings( const FArdaProviderObjectRef&, const eastl::vector<FArdaProviderBufferTileMapping>&, EArdaRHIQueueType)",
+    "signature": "virtual FArdaRHIStatus UpdateBufferTileMappings(const FArdaProviderObjectRef&, const eastl::vector<FArdaProviderBufferTileMapping>&, EArdaRHIQueueType)",
     "summary": "Performs update buffer tile mappings through the public backend and RHI contract.",
     "details": "Performs update buffer tile mappings through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46600,7 +46600,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 556
+    "sourceLine": 547
   },
   {
     "id": "api-arda-iardarhiproviderdevice-commitreservedresource-6977a80a",
@@ -46609,7 +46609,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CommitReservedResource( const FArdaProviderObjectRef&, bool, uint64_t, EArdaRHIQueueType)",
+    "signature": "virtual FArdaRHIStatus CommitReservedResource(const FArdaProviderObjectRef&, bool, uint64_t, EArdaRHIQueueType)",
     "summary": "Performs commit reserved resource through the public backend and RHI contract.",
     "details": "Performs commit reserved resource through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46621,7 +46621,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 564
+    "sourceLine": 555
   },
   {
     "id": "api-arda-iardarhiproviderdevice-querystreamingbudget-763ebaa3",
@@ -46642,7 +46642,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 572
+    "sourceLine": 561
   },
   {
     "id": "api-arda-iardarhiproviderdevice-setstreamingbudgetreservation-837664de",
@@ -46663,7 +46663,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 577
+    "sourceLine": 568
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createstagingtexture-cbb98b08",
@@ -46684,7 +46684,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 582
+    "sourceLine": 574
   },
   {
     "id": "api-arda-iardarhiproviderdevice-mapstagingtexture-cb128204",
@@ -46705,7 +46705,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 585
+    "sourceLine": 576
   },
   {
     "id": "api-arda-iardarhiproviderdevice-unmapstagingtexture-5961467b",
@@ -46714,7 +46714,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus UnmapStagingTexture( const FArdaProviderObjectRef& Texture) = 0",
+    "signature": "virtual FArdaRHIStatus UnmapStagingTexture(const FArdaProviderObjectRef& Texture) = 0",
     "summary": "Performs unmap staging texture through the public backend and RHI contract.",
     "details": "Performs unmap staging texture through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46726,7 +46726,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 589
+    "sourceLine": 580
   },
   {
     "id": "api-arda-iardarhiproviderdevice-mapbuffer-035769d6",
@@ -46735,7 +46735,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual TArdaRHIResult<void*> MapBuffer( const FArdaProviderObjectRef& Buffer, uint64_t Offset, size_t Size) = 0",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<void*> MapBuffer(const FArdaProviderObjectRef& Buffer, uint64_t Offset, size_t Size) = 0",
     "summary": "Maps a host-visible native buffer range.",
     "details": "Maps a host-visible native buffer range.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46747,7 +46747,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 592
+    "sourceLine": 583
   },
   {
     "id": "api-arda-iardarhiproviderdevice-unmapbuffer-12b707a2",
@@ -46768,7 +46768,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 597
+    "sourceLine": 588
   },
   {
     "id": "api-arda-iardarhiproviderdevice-importtexture-9e523ca7",
@@ -46777,7 +46777,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult ImportTexture( const FArdaRHINativeTextureImportDesc& Desc) = 0",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult ImportTexture(const FArdaRHINativeTextureImportDesc& Desc) = 0",
     "summary": "Performs import texture through the public backend and RHI contract.",
     "details": "Performs import texture through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46789,7 +46789,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 598
+    "sourceLine": 589
   },
   {
     "id": "api-arda-iardarhiproviderdevice-importbuffer-b3317e2d",
@@ -46798,7 +46798,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult ImportBuffer( const FArdaRHINativeBufferImportDesc& Desc) = 0",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult ImportBuffer(const FArdaRHINativeBufferImportDesc& Desc) = 0",
     "summary": "Performs import buffer through the public backend and RHI contract.",
     "details": "Performs import buffer through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46810,7 +46810,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 600
+    "sourceLine": 590
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createsampler-91f56a5c",
@@ -46819,7 +46819,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateSampler( const FArdaRHISamplerDesc& Desc) = 0",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateSampler(const FArdaRHISamplerDesc& Desc) = 0",
     "summary": "Performs create sampler through the public backend and RHI contract.",
     "details": "Performs create sampler through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46831,7 +46831,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 602
+    "sourceLine": 591
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createshader-5580799e",
@@ -46840,7 +46840,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateShader( const FArdaRHIShaderDesc& Desc) = 0",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateShader(const FArdaRHIShaderDesc& Desc) = 0",
     "summary": "Performs create shader through the public backend and RHI contract.",
     "details": "Performs create shader through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46852,7 +46852,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 604
+    "sourceLine": 592
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbindinglayout-ee2fec4e",
@@ -46861,7 +46861,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateBindingLayout( const FArdaRHIBindingLayoutDesc& Desc) = 0",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateBindingLayout(const FArdaRHIBindingLayoutDesc& Desc) = 0",
     "summary": "Performs create binding layout through the public backend and RHI contract.",
     "details": "Performs create binding layout through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46873,7 +46873,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 606
+    "sourceLine": 593
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbindlesslayout-70c7eb56",
@@ -46882,7 +46882,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateBindlessLayout( const FArdaRHIBindlessLayoutDesc&, const FArdaRHIBindingLayoutDesc& NativeDesc)",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateBindlessLayout(const FArdaRHIBindlessLayoutDesc&, const FArdaRHIBindingLayoutDesc& NativeDesc)",
     "summary": "Performs create bindless layout through the public backend and RHI contract.",
     "details": "Performs create bindless layout through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46894,7 +46894,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 608
+    "sourceLine": 595
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbindingset-cb593977",
@@ -46903,7 +46903,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateBindingSet( const FArdaRHIBindingSetDesc& Desc, const FArdaProviderObjectRef& Layout, const eastl::vector<FArdaProviderBinding>& Bindings) = 0",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateBindingSet(const FArdaRHIBindingSetDesc& Desc, const FArdaProviderObjectRef& Layout, const eastl::vector<FArdaProviderBinding>& Bindings) = 0",
     "summary": "Performs create binding set through the public backend and RHI contract.",
     "details": "Performs create binding set through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -46915,7 +46915,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 614
+    "sourceLine": 601
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createframebuffer-2026842e",
@@ -46936,7 +46936,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 618
+    "sourceLine": 604
   },
   {
     "id": "api-arda-iardarhiproviderdevice-creategraphicspipeline-7cd5f9ae",
@@ -46957,7 +46957,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 620
+    "sourceLine": 606
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createcomputepipeline-a86255ea",
@@ -46978,7 +46978,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 622
+    "sourceLine": 608
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createmeshletpipeline-8fa2c684",
@@ -46999,7 +46999,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 624
+    "sourceLine": 611
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createraytracingpipeline-ba644131",
@@ -47020,7 +47020,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 635
+    "sourceLine": 619
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createworkgraphpipeline-4f2ce182",
@@ -47041,7 +47041,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 646
+    "sourceLine": 627
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createshadertable-e5393f8f",
@@ -47050,7 +47050,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateShaderTable( const FArdaProviderObjectRef&, const FArdaRHIShaderTableDesc&)",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateShaderTable(const FArdaProviderObjectRef&, const FArdaRHIShaderTableDesc&)",
     "summary": "Performs create shader table through the public backend and RHI contract.",
     "details": "Performs create shader table through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47062,7 +47062,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 652
+    "sourceLine": 635
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getaccelstructbuildmemoryrequirements-e3dd5007",
@@ -47071,7 +47071,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHIAccelStructMemoryRequirements> GetAccelStructBuildMemoryRequirements( const FArdaRHIAccelStructDesc&, const eastl::vector<FArdaProviderRayTracingGeometry>&)",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHIAccelStructMemoryRequirements> GetAccelStructBuildMemoryRequirements(const FArdaRHIAccelStructDesc&, const eastl::vector<FArdaProviderRayTracingGeometry>&)",
     "summary": "Performs get accel struct build memory requirements through the public backend and RHI contract.",
     "details": "Performs get accel struct build memory requirements through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47083,7 +47083,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 664
+    "sourceLine": 644
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createaccelstruct-d5e0a515",
@@ -47092,7 +47092,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateAccelStruct( const FArdaRHIAccelStructDesc&, const FArdaRHIAccelStructMemoryRequirements&)",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateAccelStruct(const FArdaRHIAccelStructDesc&, const FArdaRHIAccelStructMemoryRequirements&)",
     "summary": "Performs create accel struct through the public backend and RHI contract.",
     "details": "Performs create accel struct through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47104,7 +47104,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 671
+    "sourceLine": 652
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getaccelstructcompactedsize-7fa4e1ad",
@@ -47125,7 +47125,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 679
+    "sourceLine": 660
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getaccelstructdeviceaddress-0b7e50f8",
@@ -47134,7 +47134,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual uint64_t GetAccelStructDeviceAddress( const FArdaProviderObjectRef&) const noexcept",
+    "signature": "[[nodiscard]] virtual uint64_t GetAccelStructDeviceAddress(const FArdaProviderObjectRef&) const noexcept",
     "summary": "Performs get accel struct device address through the public backend and RHI contract.",
     "details": "Performs get accel struct device address through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47146,7 +47146,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 684
+    "sourceLine": 667
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createopacitymicromap-da8da857",
@@ -47155,7 +47155,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateOpacityMicromap( const FArdaRHIOpacityMicromapDesc&, const FArdaProviderObjectRef&, const FArdaProviderObjectRef&)",
+    "signature": "[[nodiscard]] virtual FArdaProviderObjectResult CreateOpacityMicromap(const FArdaRHIOpacityMicromapDesc&, const FArdaProviderObjectRef&, const FArdaProviderObjectRef&)",
     "summary": "Performs create opacity micromap through the public backend and RHI contract.",
     "details": "Performs create opacity micromap through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47167,7 +47167,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 689
+    "sourceLine": 672
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getopacitymicromapcompactedsize-e4dc1e7a",
@@ -47188,7 +47188,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 698
+    "sourceLine": 681
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getopacitymicromapdeviceaddress-c2051c67",
@@ -47197,7 +47197,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual uint64_t GetOpacityMicromapDeviceAddress( const FArdaProviderObjectRef&) const noexcept",
+    "signature": "[[nodiscard]] virtual uint64_t GetOpacityMicromapDeviceAddress(const FArdaProviderObjectRef&) const noexcept",
     "summary": "Performs get opacity micromap device address through the public backend and RHI contract.",
     "details": "Performs get opacity micromap device address through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47209,7 +47209,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 703
+    "sourceLine": 688
   },
   {
     "id": "api-arda-iardarhiproviderdevice-setshadertablerecord-f3474709",
@@ -47218,9 +47218,51 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetShaderTableRecord( const FArdaProviderObjectRef&, const FArdaRHIShaderTableRecordDesc&, const FArdaProviderObjectRef&, const FArdaProviderObjectRef&)",
+    "signature": "virtual FArdaRHIStatus SetShaderTableRecord(const FArdaProviderObjectRef&, const FArdaRHIShaderTableRecordDesc&, const FArdaProviderObjectRef&, const FArdaProviderObjectRef&)",
     "summary": "Performs set shader table record through the public backend and RHI contract.",
     "details": "Performs set shader table record through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIProviderDevice"
+    ],
+    "sourceLine": 693
+  },
+  {
+    "id": "api-arda-iardarhiproviderdevice-commitshadertable-3f7946ea",
+    "name": "CommitShaderTable",
+    "qualifiedName": "arda::IArdaRHIProviderDevice::CommitShaderTable",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus CommitShaderTable(const FArdaProviderObjectRef&)",
+    "summary": "Performs commit shader table through the public backend and RHI contract.",
+    "details": "Performs commit shader table through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIProviderDevice"
+    ],
+    "sourceLine": 702
+  },
+  {
+    "id": "api-arda-iardarhiproviderdevice-setshadertableraygeneration-60d052cd",
+    "name": "SetShaderTableRayGeneration",
+    "qualifiedName": "arda::IArdaRHIProviderDevice::SetShaderTableRayGeneration",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus SetShaderTableRayGeneration(const FArdaProviderObjectRef&, const char*, const FArdaProviderObjectRef&)",
+    "summary": "Performs set shader table ray generation through the public backend and RHI contract.",
+    "details": "Performs set shader table ray generation through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -47233,55 +47275,13 @@ window.ArdaBackendApi = {
     "sourceLine": 708
   },
   {
-    "id": "api-arda-iardarhiproviderdevice-commitshadertable-3f7946ea",
-    "name": "CommitShaderTable",
-    "qualifiedName": "arda::IArdaRHIProviderDevice::CommitShaderTable",
-    "kind": "method",
-    "component": "rhi-device",
-    "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus CommitShaderTable( const FArdaProviderObjectRef&)",
-    "summary": "Performs commit shader table through the public backend and RHI contract.",
-    "details": "Performs commit shader table through the public backend and RHI contract. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::IArdaRHIProviderDevice"
-    ],
-    "sourceLine": 717
-  },
-  {
-    "id": "api-arda-iardarhiproviderdevice-setshadertableraygeneration-60d052cd",
-    "name": "SetShaderTableRayGeneration",
-    "qualifiedName": "arda::IArdaRHIProviderDevice::SetShaderTableRayGeneration",
-    "kind": "method",
-    "component": "rhi-device",
-    "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SetShaderTableRayGeneration( const FArdaProviderObjectRef&, const char*, const FArdaProviderObjectRef&)",
-    "summary": "Performs set shader table ray generation through the public backend and RHI contract.",
-    "details": "Performs set shader table ray generation through the public backend and RHI contract. The signature is generated from the current public header.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::IArdaRHIProviderDevice"
-    ],
-    "sourceLine": 723
-  },
-  {
     "id": "api-arda-iardarhiproviderdevice-addshadertableentry-f4126265",
     "name": "AddShaderTableEntry",
     "qualifiedName": "arda::IArdaRHIProviderDevice::AddShaderTableEntry",
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus AddShaderTableEntry( const FArdaProviderObjectRef&, const char*, const FArdaProviderObjectRef&, uint32_t)",
+    "signature": "virtual FArdaRHIStatus AddShaderTableEntry(const FArdaProviderObjectRef&, const char*, const FArdaProviderObjectRef&, uint32_t)",
     "summary": "Performs add shader table entry through the public backend and RHI contract.",
     "details": "Performs add shader table entry through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47293,7 +47293,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 732
+    "sourceLine": 716
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createeventquery-6b9d63f3",
@@ -47314,7 +47314,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 743
+    "sourceLine": 726
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createtimerquery-209be9cb",
@@ -47335,7 +47335,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 749
+    "sourceLine": 734
   },
   {
     "id": "api-arda-iardarhiproviderdevice-creategpufence-acabc8b8",
@@ -47356,7 +47356,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 755
+    "sourceLine": 742
   },
   {
     "id": "api-arda-iardarhiproviderdevice-signaleventquery-abcaf536",
@@ -47365,7 +47365,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SignalEventQuery( const FArdaProviderObjectRef&, EArdaRHIQueueType)",
+    "signature": "virtual FArdaRHIStatus SignalEventQuery(const FArdaProviderObjectRef&, EArdaRHIQueueType)",
     "summary": "Inserts an event marker after all prior work on the queue.",
     "details": "Inserts an event marker after all prior work on the queue.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47377,7 +47377,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 761
+    "sourceLine": 750
   },
   {
     "id": "api-arda-iardarhiproviderdevice-polleventquery-963c049f",
@@ -47386,7 +47386,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual TArdaRHIResult<bool> PollEventQuery( const FArdaProviderObjectRef&)",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<bool> PollEventQuery(const FArdaProviderObjectRef&)",
     "summary": "Tests whether the native event marker has completed.",
     "details": "Tests whether the native event marker has completed.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47398,7 +47398,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 768
+    "sourceLine": 757
   },
   {
     "id": "api-arda-iardarhiproviderdevice-waiteventquery-af7859f5",
@@ -47407,7 +47407,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus WaitEventQuery( const FArdaProviderObjectRef&)",
+    "signature": "virtual FArdaRHIStatus WaitEventQuery(const FArdaProviderObjectRef&)",
     "summary": "Waits for the native event marker without idling unrelated queues.",
     "details": "Waits for the native event marker without idling unrelated queues.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47419,7 +47419,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 775
+    "sourceLine": 765
   },
   {
     "id": "api-arda-iardarhiproviderdevice-reseteventquery-f62057d8",
@@ -47428,7 +47428,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus ResetEventQuery( const FArdaProviderObjectRef&)",
+    "signature": "virtual FArdaRHIStatus ResetEventQuery(const FArdaProviderObjectRef&)",
     "summary": "Rearms a completed native event query.",
     "details": "Rearms a completed native event query.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47440,7 +47440,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 782
+    "sourceLine": 772
   },
   {
     "id": "api-arda-iardarhiproviderdevice-polltimerquery-625263a7",
@@ -47449,7 +47449,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual TArdaRHIResult<bool> PollTimerQuery( const FArdaProviderObjectRef&)",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<bool> PollTimerQuery(const FArdaProviderObjectRef&)",
     "summary": "Tests whether both native timer timestamps are available.",
     "details": "Tests whether both native timer timestamps are available.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47461,7 +47461,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 789
+    "sourceLine": 779
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettimerqueryseconds-cbed7fa8",
@@ -47470,7 +47470,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual TArdaRHIResult<float> GetTimerQuerySeconds( const FArdaProviderObjectRef&)",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<float> GetTimerQuerySeconds(const FArdaProviderObjectRef&)",
     "summary": "Returns the elapsed native timestamp interval in seconds.",
     "details": "Returns the elapsed native timestamp interval in seconds.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47482,7 +47482,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 796
+    "sourceLine": 787
   },
   {
     "id": "api-arda-iardarhiproviderdevice-resettimerquery-94d2d31f",
@@ -47491,7 +47491,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus ResetTimerQuery( const FArdaProviderObjectRef&)",
+    "signature": "virtual FArdaRHIStatus ResetTimerQuery(const FArdaProviderObjectRef&)",
     "summary": "Rearms a completed native timer query.",
     "details": "Rearms a completed native timer query.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47503,7 +47503,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 803
+    "sourceLine": 795
   },
   {
     "id": "api-arda-iardarhiproviderdevice-signalgpufence-155e105d",
@@ -47512,7 +47512,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus SignalGpuFence( const FArdaProviderObjectRef&, EArdaRHIQueueType)",
+    "signature": "virtual FArdaRHIStatus SignalGpuFence(const FArdaProviderObjectRef&, EArdaRHIQueueType)",
     "summary": "Inserts a native fence signal after all prior work on the queue.",
     "details": "Inserts a native fence signal after all prior work on the queue.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47524,7 +47524,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 810
+    "sourceLine": 802
   },
   {
     "id": "api-arda-iardarhiproviderdevice-pollgpufence-655e8b4a",
@@ -47533,9 +47533,30 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual TArdaRHIResult<bool> PollGpuFence( const FArdaProviderObjectRef&)",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<bool> PollGpuFence(const FArdaProviderObjectRef&)",
     "summary": "Tests whether the native GPU fence has completed.",
     "details": "Tests whether the native GPU fence has completed.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIProviderDevice"
+    ],
+    "sourceLine": 809
+  },
+  {
+    "id": "api-arda-iardarhiproviderdevice-waitgpufence-098c8c8c",
+    "name": "WaitGpuFence",
+    "qualifiedName": "arda::IArdaRHIProviderDevice::WaitGpuFence",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus WaitGpuFence(const FArdaProviderObjectRef&)",
+    "summary": "Waits for the native GPU fence without idling unrelated queues.",
+    "details": "Waits for the native GPU fence without idling unrelated queues.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -47548,15 +47569,15 @@ window.ArdaBackendApi = {
     "sourceLine": 817
   },
   {
-    "id": "api-arda-iardarhiproviderdevice-waitgpufence-098c8c8c",
-    "name": "WaitGpuFence",
-    "qualifiedName": "arda::IArdaRHIProviderDevice::WaitGpuFence",
+    "id": "api-arda-iardarhiproviderdevice-resetgpufence-d9f663be",
+    "name": "ResetGpuFence",
+    "qualifiedName": "arda::IArdaRHIProviderDevice::ResetGpuFence",
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus WaitGpuFence( const FArdaProviderObjectRef&)",
-    "summary": "Waits for the native GPU fence without idling unrelated queues.",
-    "details": "Waits for the native GPU fence without idling unrelated queues.",
+    "signature": "virtual FArdaRHIStatus ResetGpuFence(const FArdaProviderObjectRef&)",
+    "summary": "Rearms a completed native GPU fence.",
+    "details": "Rearms a completed native GPU fence.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -47569,34 +47590,13 @@ window.ArdaBackendApi = {
     "sourceLine": 824
   },
   {
-    "id": "api-arda-iardarhiproviderdevice-resetgpufence-d9f663be",
-    "name": "ResetGpuFence",
-    "qualifiedName": "arda::IArdaRHIProviderDevice::ResetGpuFence",
-    "kind": "method",
-    "component": "rhi-device",
-    "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus ResetGpuFence( const FArdaProviderObjectRef&)",
-    "summary": "Rearms a completed native GPU fence.",
-    "details": "Rearms a completed native GPU fence.",
-    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
-    "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
-    "related": [
-      "arda::IArdaRHIProviderDevice"
-    ],
-    "sourceLine": 831
-  },
-  {
     "id": "api-arda-iardarhiproviderdevice-createcommandlist-de5f50a0",
     "name": "CreateCommandList",
     "qualifiedName": "arda::IArdaRHIProviderDevice::CreateCommandList",
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual TArdaRHIResult<eastl::unique_ptr<IArdaProviderCommandList>> CreateCommandList(EArdaRHIQueueType Queue, bool bImmediate) = 0",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<eastl::unique_ptr<IArdaProviderCommandList>> CreateCommandList( EArdaRHIQueueType Queue, bool bImmediate) = 0",
     "summary": "Performs create command list through the public backend and RHI contract.",
     "details": "Performs create command list through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47608,7 +47608,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 838
+    "sourceLine": 830
   },
   {
     "id": "api-arda-iardarhiproviderdevice-executecommandlist-d6b83372",
@@ -47617,7 +47617,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] virtual TArdaRHIResult<uint64_t> ExecuteCommandList( IArdaProviderCommandList& CommandList, EArdaRHIQueueType Queue) = 0",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<uint64_t> ExecuteCommandList(IArdaProviderCommandList& CommandList, EArdaRHIQueueType Queue) = 0",
     "summary": "Performs execute command list through the public backend and RHI contract.",
     "details": "Performs execute command list through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47629,7 +47629,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 839
+    "sourceLine": 833
   },
   {
     "id": "api-arda-iardarhiproviderdevice-queuewait-b756438c",
@@ -47638,7 +47638,7 @@ window.ArdaBackendApi = {
     "kind": "method",
     "component": "rhi-device",
     "page": "api-reference.html",
-    "signature": "virtual FArdaRHIStatus QueueWait( EArdaRHIQueueType WaitQueue, EArdaRHIQueueType ExecutionQueue, uint64_t Submission)",
+    "signature": "virtual FArdaRHIStatus QueueWait(EArdaRHIQueueType WaitQueue, EArdaRHIQueueType ExecutionQueue, uint64_t Submission)",
     "summary": "Adds a GPU-side dependency on a previously signaled submission.",
     "details": "Adds a GPU-side dependency on a previously signaled submission.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
@@ -47650,7 +47650,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 843
+    "sourceLine": 837
   },
   {
     "id": "api-arda-iardarhiproviderdevice-waitforsubmission-9db274b6",
@@ -47671,7 +47671,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 853
+    "sourceLine": 847
   },
   {
     "id": "api-arda-iardarhiproviderdevice-waitforidle-78975f4f",
@@ -47692,7 +47692,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 858
+    "sourceLine": 853
   },
   {
     "id": "api-arda-iardarhiproviderdevice-rungarbagecollection-dd1b5149",
@@ -47713,7 +47713,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 859
+    "sourceLine": 854
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getlifetimestats-c16f47f3",
@@ -47734,7 +47734,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 861
+    "sourceLine": 856
   },
   {
     "id": "api-arda-iardarhiproviderdevice-flushpipelinecache-d03d5cb1",
@@ -47755,7 +47755,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 862
+    "sourceLine": 861
   },
   {
     "id": "api-arda-ardaproviderpipelinecachemaxpayloadsize-604d7834",
@@ -47785,7 +47785,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "void LogArdaPipelineCacheMessage( arda::IArdaDiagnosticCallback* Callback, arda::EArdaDiagnosticSeverity Severity, const char* Text) noexcept",
+    "signature": "void LogArdaPipelineCacheMessage(arda::IArdaDiagnosticCallback* Callback, arda::EArdaDiagnosticSeverity Severity, const char* Text) noexcept",
     "summary": "Sends a pipeline-cache diagnostic when a callback is present.",
     "details": "Sends a pipeline-cache diagnostic when a callback is present.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
@@ -47806,7 +47806,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] std::filesystem::path MakeArdaPipelineCachePath( const std::filesystem::path& Directory, const eastl::string& BackendName)",
+    "signature": "[[nodiscard]] std::filesystem::path MakeArdaPipelineCachePath(const std::filesystem::path& Directory, const eastl::string& BackendName)",
     "summary": "Builds a backend-specific cache filename within Directory without filesystem I/O.",
     "details": "Builds a backend-specific cache filename within Directory without filesystem I/O.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
@@ -47818,7 +47818,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 37
+    "sourceLine": 36
   },
   {
     "id": "api-arda-readardapipelinecacheblob-e6ec20cb",
@@ -47827,7 +47827,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] bool ReadArdaPipelineCacheBlob( const std::filesystem::path& Path, const eastl::string& BackendName, std::vector<uint8_t>& Payload)",
+    "signature": "[[nodiscard]] bool ReadArdaPipelineCacheBlob(const std::filesystem::path& Path, const eastl::string& BackendName, std::vector<uint8_t>& Payload)",
     "summary": "Reads a native cache payload after validating its header, backend identity and size.",
     "details": "Reads a native cache payload after validating its header, backend identity and size.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
@@ -47839,7 +47839,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 47
+    "sourceLine": 45
   },
   {
     "id": "api-arda-writeardapipelinecacheblob-9fb32a57",
@@ -47848,7 +47848,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "pipelines",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] bool WriteArdaPipelineCacheBlob( const std::filesystem::path& Path, const eastl::string& BackendName, const std::vector<uint8_t>& Payload)",
+    "signature": "[[nodiscard]] bool WriteArdaPipelineCacheBlob(const std::filesystem::path& Path, const eastl::string& BackendName, const std::vector<uint8_t>& Payload)",
     "summary": "Writes and flushes a temporary cache file, then replaces the destination.",
     "details": "Writes and flushes a temporary cache file, then replaces the destination.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
@@ -47860,7 +47860,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 58
+    "sourceLine": 55
   },
   {
     "id": "api-arda-eardacudarepresentation-169e169b",
@@ -48028,7 +48028,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 34
+    "sourceLine": 35
   },
   {
     "id": "api-arda-fardacudaresourceinfo-msupportedrepresentation-578bf14e",
@@ -48049,7 +48049,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaResourceInfo"
     ],
-    "sourceLine": 37
+    "sourceLine": 38
   },
   {
     "id": "api-arda-fardacudaresourceinfo-mrepresentations-e478d013",
@@ -48070,7 +48070,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaResourceInfo"
     ],
-    "sourceLine": 39
+    "sourceLine": 40
   },
   {
     "id": "api-arda-fardacudaresourceinfo-mbsharingenabled-7b1df5a8",
@@ -48091,7 +48091,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaResourceInfo"
     ],
-    "sourceLine": 41
+    "sourceLine": 42
   },
   {
     "id": "api-arda-eardarhiresourcetype-46046253",
@@ -48112,7 +48112,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 45
+    "sourceLine": 46
   },
   {
     "id": "api-arda-eardarhiresourcetype-resourcecollection-69041e4e",
@@ -48133,7 +48133,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 66
+    "sourceLine": 67
   },
   {
     "id": "api-arda-eardarhiresourcetype-workgraphpipeline-76209e11",
@@ -48154,7 +48154,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 74
+    "sourceLine": 75
   },
   {
     "id": "api-arda-eardarhiresourcetype-shaderbundle-3d09e51f",
@@ -48175,7 +48175,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 75
+    "sourceLine": 76
   },
   {
     "id": "api-arda-eardarhiresourcetype-count-37ddfe4e",
@@ -48196,7 +48196,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 82
+    "sourceLine": 83
   },
   {
     "id": "api-arda-iardarhiresource-getcudaresourceinfo-4d3f9d8e",
@@ -48217,7 +48217,33 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIResource"
     ],
-    "sourceLine": 114
+    "sourceLine": 119
+  },
+  {
+    "id": "api-arda-fardarhiinputlayoutdesc-operator-c68714eb",
+    "name": "operator==",
+    "qualifiedName": "arda::FArdaRHIInputLayoutDesc::operator==",
+    "kind": "conversion operator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool operator==(const FArdaRHIInputLayoutDesc& O) const noexcept",
+    "summary": "Compares two values for equality.",
+    "details": "Compares two values for equality.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [
+      {
+        "name": "O",
+        "description": "The o."
+      }
+    ],
+    "returns": "True when the condition is satisfied; otherwise false.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIInputLayoutDesc"
+    ],
+    "sourceLine": 224
   },
   {
     "id": "api-arda-iardarhibindinglayout-getbindlessdesc-599cec89",
@@ -48238,7 +48264,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIBindingLayout"
     ],
-    "sourceLine": 232
+    "sourceLine": 253
   },
   {
     "id": "api-arda-fardarhibindingsetdesc-mvariabledescriptorcount-578dbe67",
@@ -48259,7 +48285,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindingSetDesc"
     ],
-    "sourceLine": 261
+    "sourceLine": 282
   },
   {
     "id": "api-arda-fardarhibindlesslayoutdesc-mbunbounded-92e16e36",
@@ -48280,7 +48306,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindlessLayoutDesc"
     ],
-    "sourceLine": 289
+    "sourceLine": 310
   },
   {
     "id": "api-arda-fardarhibindlesslayoutdesc-mbupdateafterbind-b81a992f",
@@ -48301,7 +48327,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindlessLayoutDesc"
     ],
-    "sourceLine": 291
+    "sourceLine": 312
   },
   {
     "id": "api-arda-fardarhibindlesslayoutdesc-mbvariabledescriptorcount-3d02d905",
@@ -48322,7 +48348,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindlessLayoutDesc"
     ],
-    "sourceLine": 293
+    "sourceLine": 314
   },
   {
     "id": "api-arda-fardarhibindlesslayoutdesc-mbdirectheapindexing-bb35cf4c",
@@ -48343,7 +48369,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindlessLayoutDesc"
     ],
-    "sourceLine": 295
+    "sourceLine": 316
   },
   {
     "id": "api-arda-fardarhibindlesslayoutdesc-mbdescriptorbuffer-1be333b7",
@@ -48364,7 +48390,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindlessLayoutDesc"
     ],
-    "sourceLine": 297
+    "sourceLine": 318
   },
   {
     "id": "api-arda-eardarhiresourcecollectionitemtype-texture-6ade8836",
@@ -48385,7 +48411,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceCollectionItemType"
     ],
-    "sourceLine": 330
+    "sourceLine": 352
   },
   {
     "id": "api-arda-eardarhiresourcecollectionitemtype-texturereference-cace3de1",
@@ -48406,7 +48432,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceCollectionItemType"
     ],
-    "sourceLine": 331
+    "sourceLine": 353
   },
   {
     "id": "api-arda-eardarhiresourcecollectionitemtype-buffer-2e77f8df",
@@ -48427,7 +48453,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceCollectionItemType"
     ],
-    "sourceLine": 332
+    "sourceLine": 354
   },
   {
     "id": "api-arda-eardarhiresourcecollectionitemtype-shaderresourceview-ff1b8b7c",
@@ -48448,7 +48474,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceCollectionItemType"
     ],
-    "sourceLine": 333
+    "sourceLine": 355
   },
   {
     "id": "api-arda-eardarhiresourcecollectionitemtype-unorderedaccessview-7f64b3f3",
@@ -48469,7 +48495,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceCollectionItemType"
     ],
-    "sourceLine": 334
+    "sourceLine": 356
   },
   {
     "id": "api-arda-eardarhiresourcecollectionitemtype-accelerationstructure-183ca7e3",
@@ -48490,7 +48516,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceCollectionItemType"
     ],
-    "sourceLine": 335
+    "sourceLine": 357
   },
   {
     "id": "api-arda-eardarhiresourcecollectionitemtype-sampler-bc84dbda",
@@ -48511,7 +48537,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceCollectionItemType"
     ],
-    "sourceLine": 336
+    "sourceLine": 358
   },
   {
     "id": "api-arda-fardarhiresourcecollectionitem-mtype-5e154b83",
@@ -48532,7 +48558,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionItem"
     ],
-    "sourceLine": 342
+    "sourceLine": 364
   },
   {
     "id": "api-arda-fardarhiresourcecollectionitem-mtexture-545c7324",
@@ -48553,7 +48579,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionItem"
     ],
-    "sourceLine": 344
+    "sourceLine": 365
   },
   {
     "id": "api-arda-fardarhiresourcecollectionitem-mtexturereference-96567975",
@@ -48574,7 +48600,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionItem"
     ],
-    "sourceLine": 345
+    "sourceLine": 366
   },
   {
     "id": "api-arda-fardarhiresourcecollectionitem-mbuffer-15512c5f",
@@ -48595,7 +48621,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionItem"
     ],
-    "sourceLine": 346
+    "sourceLine": 367
   },
   {
     "id": "api-arda-fardarhiresourcecollectionitem-mshaderresourceview-55df0455",
@@ -48616,7 +48642,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionItem"
     ],
-    "sourceLine": 347
+    "sourceLine": 368
   },
   {
     "id": "api-arda-fardarhiresourcecollectionitem-munorderedaccessview-585e5911",
@@ -48637,7 +48663,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionItem"
     ],
-    "sourceLine": 348
+    "sourceLine": 369
   },
   {
     "id": "api-arda-fardarhiresourcecollectionitem-maccelerationstructure-8a1b8aab",
@@ -48658,7 +48684,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionItem"
     ],
-    "sourceLine": 349
+    "sourceLine": 370
   },
   {
     "id": "api-arda-fardarhiresourcecollectionitem-msampler-d71abd7a",
@@ -48679,7 +48705,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionItem"
     ],
-    "sourceLine": 350
+    "sourceLine": 371
   },
   {
     "id": "api-arda-fardarhiresourcecollectiondesc-mitems-c239484d",
@@ -48700,7 +48726,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionDesc"
     ],
-    "sourceLine": 356
+    "sourceLine": 377
   },
   {
     "id": "api-arda-fardarhiresourcecollectiondesc-mbmutable-b069d4eb",
@@ -48721,7 +48747,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionDesc"
     ],
-    "sourceLine": 357
+    "sourceLine": 378
   },
   {
     "id": "api-arda-fardarhiresourcecollectiondesc-mbdirectlyindexed-34fdf2c0",
@@ -48742,7 +48768,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionDesc"
     ],
-    "sourceLine": 358
+    "sourceLine": 379
   },
   {
     "id": "api-arda-fardarhiresourcecollectiondesc-mdebugname-e0883335",
@@ -48763,7 +48789,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceCollectionDesc"
     ],
-    "sourceLine": 359
+    "sourceLine": 380
   },
   {
     "id": "api-arda-iardarhiresourcecollection-getdesc-12e56787",
@@ -48784,7 +48810,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIResourceCollection"
     ],
-    "sourceLine": 367
+    "sourceLine": 387
   },
   {
     "id": "api-arda-iardarhiresourcecollection-getfirstdescriptorindexinheap-194991f2",
@@ -48805,7 +48831,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIResourceCollection"
     ],
-    "sourceLine": 368
+    "sourceLine": 388
   },
   {
     "id": "api-arda-iardarhiresourcecollection-getdescriptortable-4eba369c",
@@ -48826,7 +48852,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIResourceCollection"
     ],
-    "sourceLine": 371
+    "sourceLine": 391
   },
   {
     "id": "api-arda-fardarhigraphicspipelinedesc-operator-1054764c",
@@ -48852,7 +48878,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIGraphicsPipelineDesc"
     ],
-    "sourceLine": 451
+    "sourceLine": 472
   },
   {
     "id": "api-arda-fardarhicomputepipelinedesc-operator-908b83e3",
@@ -48878,7 +48904,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIComputePipelineDesc"
     ],
-    "sourceLine": 495
+    "sourceLine": 516
   },
   {
     "id": "api-arda-fardarhimeshletpipelinedesc-mpersistentcachekey-9fc4592a",
@@ -48899,7 +48925,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIMeshletPipelineDesc"
     ],
-    "sourceLine": 543
+    "sourceLine": 563
   },
   {
     "id": "api-arda-fardarhimeshletpipelinedesc-operator-e126215f",
@@ -48925,7 +48951,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIMeshletPipelineDesc"
     ],
-    "sourceLine": 551
+    "sourceLine": 572
   },
   {
     "id": "api-arda-eardarhiaccelstructbuildstate-e93a97f6",
@@ -48946,7 +48972,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 606
+    "sourceLine": 627
   },
   {
     "id": "api-arda-eardarhiaccelstructbuildstate-unbuilt-382b991c",
@@ -48967,7 +48993,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIAccelStructBuildState"
     ],
-    "sourceLine": 608
+    "sourceLine": 629
   },
   {
     "id": "api-arda-eardarhiaccelstructbuildstate-built-94e27502",
@@ -48988,7 +49014,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIAccelStructBuildState"
     ],
-    "sourceLine": 609
+    "sourceLine": 630
   },
   {
     "id": "api-arda-eardarhiaccelstructbuildstate-updated-e3822e1e",
@@ -49009,7 +49035,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIAccelStructBuildState"
     ],
-    "sourceLine": 610
+    "sourceLine": 631
   },
   {
     "id": "api-arda-eardarhiaccelstructbuildstate-compacted-abfa6e36",
@@ -49030,7 +49056,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIAccelStructBuildState"
     ],
-    "sourceLine": 611
+    "sourceLine": 632
   },
   {
     "id": "api-arda-iardarhiopacitymicromap-getphysicalidentity-094b81b3",
@@ -49051,7 +49077,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIOpacityMicromap"
     ],
-    "sourceLine": 670
+    "sourceLine": 694
   },
   {
     "id": "api-arda-iardarhiopacitymicromap-getbuildstate-c1b0b958",
@@ -49072,7 +49098,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIOpacityMicromap"
     ],
-    "sourceLine": 673
+    "sourceLine": 697
   },
   {
     "id": "api-arda-fardarhiaccelstructdesc-mresultsizeoverride-894c7084",
@@ -49093,7 +49119,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIAccelStructDesc"
     ],
-    "sourceLine": 734
+    "sourceLine": 758
   },
   {
     "id": "api-arda-fardarhiaccelstructmemoryrequirements-mresultsize-f03cedda",
@@ -49114,7 +49140,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIAccelStructMemoryRequirements"
     ],
-    "sourceLine": 742
+    "sourceLine": 766
   },
   {
     "id": "api-arda-fardarhiaccelstructmemoryrequirements-mbuildscratchsize-775d491e",
@@ -49135,7 +49161,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIAccelStructMemoryRequirements"
     ],
-    "sourceLine": 743
+    "sourceLine": 767
   },
   {
     "id": "api-arda-fardarhiaccelstructmemoryrequirements-mupdatescratchsize-f9e9768a",
@@ -49156,7 +49182,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIAccelStructMemoryRequirements"
     ],
-    "sourceLine": 744
+    "sourceLine": 768
   },
   {
     "id": "api-arda-fardarhiaccelstructmemoryrequirements-mresultalignment-e7ba2162",
@@ -49177,7 +49203,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIAccelStructMemoryRequirements"
     ],
-    "sourceLine": 745
+    "sourceLine": 769
   },
   {
     "id": "api-arda-fardarhiaccelstructmemoryrequirements-mscratchalignment-252a2dd2",
@@ -49198,7 +49224,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIAccelStructMemoryRequirements"
     ],
-    "sourceLine": 746
+    "sourceLine": 770
   },
   {
     "id": "api-arda-iardarhiaccelstruct-getbuildstate-a027bb55",
@@ -49219,7 +49245,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIAccelStruct"
     ],
-    "sourceLine": 772
+    "sourceLine": 799
   },
   {
     "id": "api-arda-fardarhiraytracingpipelineshaderdesc-operator-a7705473",
@@ -49245,7 +49271,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIRayTracingPipelineShaderDesc"
     ],
-    "sourceLine": 792
+    "sourceLine": 820
   },
   {
     "id": "api-arda-fardarhiraytracinghitgroupdesc-operator-38867ca6",
@@ -49271,7 +49297,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIRayTracingHitGroupDesc"
     ],
-    "sourceLine": 819
+    "sourceLine": 847
   },
   {
     "id": "api-arda-fardarhiraytracingpipelinedesc-mpersistentcachekey-8168f4cd",
@@ -49292,7 +49318,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIRayTracingPipelineDesc"
     ],
-    "sourceLine": 848
+    "sourceLine": 874
   },
   {
     "id": "api-arda-fardarhiraytracingpipelinedesc-operator-5d660f87",
@@ -49318,7 +49344,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIRayTracingPipelineDesc"
     ],
-    "sourceLine": 856
+    "sourceLine": 883
   },
   {
     "id": "api-arda-fardarhishadertabledesc-mmaxlocalargumentbytes-b0dbc679",
@@ -49339,7 +49365,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderTableDesc"
     ],
-    "sourceLine": 886
+    "sourceLine": 911
   },
   {
     "id": "api-arda-fardarhishadertabledesc-mbpersistent-47e61683",
@@ -49360,7 +49386,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderTableDesc"
     ],
-    "sourceLine": 888
+    "sourceLine": 913
   },
   {
     "id": "api-arda-eardarhishadertablerecordtype-raygeneration-5d48fcf1",
@@ -49381,7 +49407,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIShaderTableRecordType"
     ],
-    "sourceLine": 896
+    "sourceLine": 921
   },
   {
     "id": "api-arda-eardarhishadertablerecordtype-miss-f3fe62a4",
@@ -49402,7 +49428,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIShaderTableRecordType"
     ],
-    "sourceLine": 897
+    "sourceLine": 922
   },
   {
     "id": "api-arda-eardarhishadertablerecordtype-hitgroup-dbc74a3f",
@@ -49423,7 +49449,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIShaderTableRecordType"
     ],
-    "sourceLine": 898
+    "sourceLine": 923
   },
   {
     "id": "api-arda-eardarhishadertablerecordtype-callable-e462e899",
@@ -49444,7 +49470,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIShaderTableRecordType"
     ],
-    "sourceLine": 899
+    "sourceLine": 924
   },
   {
     "id": "api-arda-fardarhishadertablerecorddesc-mtype-75a2098b",
@@ -49465,7 +49491,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderTableRecordDesc"
     ],
-    "sourceLine": 905
+    "sourceLine": 930
   },
   {
     "id": "api-arda-fardarhishadertablerecorddesc-mrecordindex-f8b082a8",
@@ -49486,7 +49512,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderTableRecordDesc"
     ],
-    "sourceLine": 907
+    "sourceLine": 931
   },
   {
     "id": "api-arda-fardarhishadertablerecorddesc-mexportname-ec449e12",
@@ -49507,7 +49533,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderTableRecordDesc"
     ],
-    "sourceLine": 908
+    "sourceLine": 932
   },
   {
     "id": "api-arda-fardarhishadertablerecorddesc-mbindings-7d4d4d9a",
@@ -49528,7 +49554,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderTableRecordDesc"
     ],
-    "sourceLine": 909
+    "sourceLine": 933
   },
   {
     "id": "api-arda-fardarhishadertablerecorddesc-mlocalarguments-1cbc3336",
@@ -49549,7 +49575,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderTableRecordDesc"
     ],
-    "sourceLine": 910
+    "sourceLine": 934
   },
   {
     "id": "api-arda-fardarhishadertablerecorddesc-muserdata-930e0e98",
@@ -49570,7 +49596,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderTableRecordDesc"
     ],
-    "sourceLine": 911
+    "sourceLine": 935
   },
   {
     "id": "api-arda-fardarhishadertablerecorddesc-mgeometry-e5f78d91",
@@ -49591,7 +49617,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderTableRecordDesc"
     ],
-    "sourceLine": 912
+    "sourceLine": 936
   },
   {
     "id": "api-arda-fardarhishadertablerecorddesc-mgeometrysegment-0334f786",
@@ -49612,7 +49638,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderTableRecordDesc"
     ],
-    "sourceLine": 913
+    "sourceLine": 937
   },
   {
     "id": "api-arda-fardarhiworkgraphpipelinedesc-mprogramname-3f8d5d42",
@@ -49633,7 +49659,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIWorkGraphPipelineDesc"
     ],
-    "sourceLine": 935
+    "sourceLine": 960
   },
   {
     "id": "api-arda-fardarhiworkgraphpipelinedesc-mentrypoint-72806d2e",
@@ -49654,7 +49680,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIWorkGraphPipelineDesc"
     ],
-    "sourceLine": 936
+    "sourceLine": 961
   },
   {
     "id": "api-arda-fardarhiworkgraphpipelinedesc-mshaders-d3844e59",
@@ -49675,7 +49701,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIWorkGraphPipelineDesc"
     ],
-    "sourceLine": 937
+    "sourceLine": 962
   },
   {
     "id": "api-arda-fardarhiworkgraphpipelinedesc-mglobalbindinglayouts-fb615681",
@@ -49696,7 +49722,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIWorkGraphPipelineDesc"
     ],
-    "sourceLine": 938
+    "sourceLine": 963
   },
   {
     "id": "api-arda-fardarhiworkgraphpipelinedesc-mmaxinputrecords-669ac76b",
@@ -49717,7 +49743,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIWorkGraphPipelineDesc"
     ],
-    "sourceLine": 939
+    "sourceLine": 964
   },
   {
     "id": "api-arda-fardarhiworkgraphpipelinedesc-mpersistentcachekey-ea54034a",
@@ -49738,7 +49764,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIWorkGraphPipelineDesc"
     ],
-    "sourceLine": 941
+    "sourceLine": 966
   },
   {
     "id": "api-arda-fardarhiworkgraphpipelinedesc-mdebugname-c1a842e6",
@@ -49759,7 +49785,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIWorkGraphPipelineDesc"
     ],
-    "sourceLine": 942
+    "sourceLine": 967
   },
   {
     "id": "api-arda-fardarhiworkgraphpipelinedesc-operator-3cfba29e",
@@ -49780,7 +49806,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIWorkGraphPipelineDesc"
     ],
-    "sourceLine": 943
+    "sourceLine": 969
   },
   {
     "id": "api-arda-iardarhiworkgraphpipeline-getdesc-fd0523f0",
@@ -49801,7 +49827,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIWorkGraphPipeline"
     ],
-    "sourceLine": 957
+    "sourceLine": 979
   },
   {
     "id": "api-arda-iardarhiworkgraphpipeline-getbackingmemorysize-2e756b49",
@@ -49822,7 +49848,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIWorkGraphPipeline"
     ],
-    "sourceLine": 958
+    "sourceLine": 980
   },
   {
     "id": "api-arda-fardarhishaderbundlerecord-mcomputepipeline-e3fce9af",
@@ -49843,7 +49869,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderBundleRecord"
     ],
-    "sourceLine": 964
+    "sourceLine": 986
   },
   {
     "id": "api-arda-fardarhishaderbundlerecord-mmeshpipeline-5c59d3de",
@@ -49864,7 +49890,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderBundleRecord"
     ],
-    "sourceLine": 965
+    "sourceLine": 987
   },
   {
     "id": "api-arda-fardarhishaderbundlerecord-mbindings-e118be5a",
@@ -49885,7 +49911,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderBundleRecord"
     ],
-    "sourceLine": 966
+    "sourceLine": 988
   },
   {
     "id": "api-arda-fardarhishaderbundlerecord-mlocalarguments-e916d8f7",
@@ -49906,7 +49932,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderBundleRecord"
     ],
-    "sourceLine": 967
+    "sourceLine": 989
   },
   {
     "id": "api-arda-fardarhishaderbundlerecord-mgroupsx-7fdcdf4f",
@@ -49927,7 +49953,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderBundleRecord"
     ],
-    "sourceLine": 968
+    "sourceLine": 990
   },
   {
     "id": "api-arda-fardarhishaderbundlerecord-mgroupsy-48ebaa9c",
@@ -49948,7 +49974,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderBundleRecord"
     ],
-    "sourceLine": 969
+    "sourceLine": 991
   },
   {
     "id": "api-arda-fardarhishaderbundlerecord-mgroupsz-8098d04c",
@@ -49969,7 +49995,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderBundleRecord"
     ],
-    "sourceLine": 970
+    "sourceLine": 992
   },
   {
     "id": "api-arda-fardarhishaderbundledesc-mmaxrecords-1e05ab46",
@@ -49990,7 +50016,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderBundleDesc"
     ],
-    "sourceLine": 975
+    "sourceLine": 997
   },
   {
     "id": "api-arda-fardarhishaderbundledesc-mbmeshrecords-84945972",
@@ -50011,7 +50037,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderBundleDesc"
     ],
-    "sourceLine": 976
+    "sourceLine": 998
   },
   {
     "id": "api-arda-fardarhishaderbundledesc-mbpersistent-446c2bab",
@@ -50032,7 +50058,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderBundleDesc"
     ],
-    "sourceLine": 977
+    "sourceLine": 999
   },
   {
     "id": "api-arda-fardarhishaderbundledesc-mdebugname-e227e2a7",
@@ -50053,7 +50079,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIShaderBundleDesc"
     ],
-    "sourceLine": 978
+    "sourceLine": 1000
   },
   {
     "id": "api-arda-iardarhishaderbundle-getdesc-a576585b",
@@ -50074,7 +50100,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIShaderBundle"
     ],
-    "sourceLine": 985
+    "sourceLine": 1006
   },
   {
     "id": "api-arda-iardarhishaderbundle-getrecordcount-bf4b9437",
@@ -50095,7 +50121,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIShaderBundle"
     ],
-    "sourceLine": 986
+    "sourceLine": 1007
   },
   {
     "id": "api-arda-iardarhisamplerfeedbacktexture-getphysicalidentity-48d13337",
@@ -50116,7 +50142,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHISamplerFeedbackTexture"
     ],
-    "sourceLine": 1023
+    "sourceLine": 1046
   },
   {
     "id": "api-arda-fardarhibuffertilemapping-mbufferoffset-ba6397d7",
@@ -50137,7 +50163,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTileMapping"
     ],
-    "sourceLine": 1139
+    "sourceLine": 1162
   },
   {
     "id": "api-arda-fardarhibuffertilemapping-mbytesize-b84703cc",
@@ -50158,7 +50184,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTileMapping"
     ],
-    "sourceLine": 1140
+    "sourceLine": 1163
   },
   {
     "id": "api-arda-fardarhibuffertilemapping-mheapoffset-a128f002",
@@ -50179,7 +50205,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTileMapping"
     ],
-    "sourceLine": 1141
+    "sourceLine": 1164
   },
   {
     "id": "api-arda-fardarhibuffertilemapping-mheap-f838abed",
@@ -50200,7 +50226,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTileMapping"
     ],
-    "sourceLine": 1142
+    "sourceLine": 1165
   },
   {
     "id": "api-arda-fardarhibuffertilemapping-mbcommit-48eeb989",
@@ -50221,7 +50247,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTileMapping"
     ],
-    "sourceLine": 1143
+    "sourceLine": 1166
   },
   {
     "id": "api-arda-fardarhistreamingbudget-mbudgetbytes-f66101be",
@@ -50242,7 +50268,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStreamingBudget"
     ],
-    "sourceLine": 1149
+    "sourceLine": 1172
   },
   {
     "id": "api-arda-fardarhistreamingbudget-mcurrentusagebytes-515df6c8",
@@ -50263,7 +50289,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStreamingBudget"
     ],
-    "sourceLine": 1150
+    "sourceLine": 1173
   },
   {
     "id": "api-arda-fardarhistreamingbudget-mavailableforreservationbytes-9b8a0c4c",
@@ -50284,7 +50310,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStreamingBudget"
     ],
-    "sourceLine": 1151
+    "sourceLine": 1174
   },
   {
     "id": "api-arda-fardarhistreamingbudget-mcurrentreservationbytes-dd46405b",
@@ -50305,7 +50331,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStreamingBudget"
     ],
-    "sourceLine": 1152
+    "sourceLine": 1175
   },
   {
     "id": "api-arda-fardarhistreamingbudget-mblocalmemory-d72625ea",
@@ -50326,7 +50352,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStreamingBudget"
     ],
-    "sourceLine": 1153
+    "sourceLine": 1176
   },
   {
     "id": "api-arda-hashvalue-c2ca1808",
@@ -50335,7 +50361,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "rhi-resources",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] size_t HashValue( const FArdaRHIWorkGraphPipelineDesc& Value) noexcept",
+    "signature": "[[nodiscard]] size_t HashValue(const FArdaRHIWorkGraphPipelineDesc& Value) noexcept",
     "summary": "Hashes the semantic work-graph pipeline descriptor.",
     "details": "Hashes the semantic work-graph pipeline descriptor.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
@@ -50347,7 +50373,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1199
+    "sourceLine": 1229
   },
   {
     "id": "api-arda-eardarhiresult-4327f686",
@@ -50368,7 +50394,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 36
+    "sourceLine": 37
   },
   {
     "id": "api-arda-fardarhistatus-issuccess-a2857041",
@@ -50389,7 +50415,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStatus"
     ],
-    "sourceLine": 58
+    "sourceLine": 59
   },
   {
     "id": "api-arda-fardarhistatus-operator-bool-fe2c8aa2",
@@ -50410,7 +50436,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStatus"
     ],
-    "sourceLine": 63
+    "sourceLine": 68
   },
   {
     "id": "api-arda-fardarhistatus-success-0fa3fd49",
@@ -50431,7 +50457,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStatus"
     ],
-    "sourceLine": 68
+    "sourceLine": 77
   },
   {
     "id": "api-arda-fardarhistatus-error-0d7988fb",
@@ -50461,7 +50487,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStatus"
     ],
-    "sourceLine": 75
+    "sourceLine": 88
   },
   {
     "id": "api-arda-tardarhiresult-6ee5f0b4",
@@ -50482,7 +50508,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 83
+    "sourceLine": 96
   },
   {
     "id": "api-arda-tardarhiresult-operator-bool-edf3efc3",
@@ -50503,7 +50529,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaRHIResult"
     ],
-    "sourceLine": 93
+    "sourceLine": 107
   },
   {
     "id": "api-arda-eardarhiformat-c07fcd85",
@@ -50524,7 +50550,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 97
+    "sourceLine": 114
   },
   {
     "id": "api-arda-eardarhiformat-count-b659b747",
@@ -50545,7 +50571,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIFormat"
     ],
-    "sourceLine": 117
+    "sourceLine": 180
   },
   {
     "id": "api-arda-isardarhiformatknown-63eb8305",
@@ -50554,7 +50580,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "rhi-types",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] inline constexpr bool IsArdaRHIFormatKnown( EArdaRHIFormat Format) noexcept",
+    "signature": "[[nodiscard]] inline constexpr bool IsArdaRHIFormatKnown(EArdaRHIFormat Format) noexcept",
     "summary": "Performs is arda r h i format known through the public backend and RHI contract.",
     "details": "Performs is arda r h i format known through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
@@ -50566,7 +50592,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 120
+    "sourceLine": 184
   },
   {
     "id": "api-arda-eardarhitexturedimension-5344e7d0",
@@ -50587,7 +50613,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 128
+    "sourceLine": 190
   },
   {
     "id": "api-arda-eardarhicpuaccess-33a6a547",
@@ -50608,7 +50634,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 135
+    "sourceLine": 205
   },
   {
     "id": "api-arda-eardarhiqueuetype-ad12bdda",
@@ -50629,7 +50655,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 137
+    "sourceLine": 212
   },
   {
     "id": "api-arda-eardarhiqueuetype-graphics-c5800361",
@@ -50650,7 +50676,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIQueueType"
     ],
-    "sourceLine": 139
+    "sourceLine": 214
   },
   {
     "id": "api-arda-eardarhiqueuetype-compute-653aa46e",
@@ -50671,7 +50697,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIQueueType"
     ],
-    "sourceLine": 140
+    "sourceLine": 215
   },
   {
     "id": "api-arda-eardarhiqueuetype-copy-358d254c",
@@ -50692,7 +50718,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIQueueType"
     ],
-    "sourceLine": 141
+    "sourceLine": 216
   },
   {
     "id": "api-arda-eardarhiqueuetype-count-68e420e8",
@@ -50713,7 +50739,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIQueueType"
     ],
-    "sourceLine": 142
+    "sourceLine": 217
   },
   {
     "id": "api-arda-ardarhiqueuetypecount-fc3e3c22",
@@ -50734,7 +50760,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 145
+    "sourceLine": 221
   },
   {
     "id": "api-arda-getardarhiqueueindex-1c30667b",
@@ -50743,7 +50769,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "rhi-types",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] inline constexpr size_t GetArdaRHIQueueIndex( EArdaRHIQueueType Queue) noexcept",
+    "signature": "[[nodiscard]] inline constexpr size_t GetArdaRHIQueueIndex(EArdaRHIQueueType Queue) noexcept",
     "summary": "Performs get arda r h i queue index through the public backend and RHI contract.",
     "details": "Performs get arda r h i queue index through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
@@ -50755,7 +50781,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 148
+    "sourceLine": 224
   },
   {
     "id": "api-arda-eardarhipipeline-6c449681",
@@ -50776,7 +50802,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 154
+    "sourceLine": 229
   },
   {
     "id": "api-arda-eardarhipipeline-none-5a31c5cd",
@@ -50797,7 +50823,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIPipeline"
     ],
-    "sourceLine": 156
+    "sourceLine": 231
   },
   {
     "id": "api-arda-eardarhipipeline-graphics-14dacfa8",
@@ -50818,7 +50844,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIPipeline"
     ],
-    "sourceLine": 157
+    "sourceLine": 232
   },
   {
     "id": "api-arda-eardarhipipeline-asynccompute-e6f010ea",
@@ -50839,7 +50865,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIPipeline"
     ],
-    "sourceLine": 158
+    "sourceLine": 233
   },
   {
     "id": "api-arda-eardarhipipeline-copy-d069e234",
@@ -50860,7 +50886,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIPipeline"
     ],
-    "sourceLine": 159
+    "sourceLine": 234
   },
   {
     "id": "api-arda-eardarhipipeline-all-17d89e5f",
@@ -50881,7 +50907,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIPipeline"
     ],
-    "sourceLine": 160
+    "sourceLine": 235
   },
   {
     "id": "api-arda-eardarhitransitionflags-d4df726d",
@@ -50902,7 +50928,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 163
+    "sourceLine": 238
   },
   {
     "id": "api-arda-eardarhitransitionflags-none-7fa636e5",
@@ -50923,7 +50949,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHITransitionFlags"
     ],
-    "sourceLine": 165
+    "sourceLine": 240
   },
   {
     "id": "api-arda-eardarhitransitionflags-beginonly-95a72dd6",
@@ -50944,7 +50970,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHITransitionFlags"
     ],
-    "sourceLine": 166
+    "sourceLine": 241
   },
   {
     "id": "api-arda-eardarhitransitionflags-endonly-c424a756",
@@ -50965,7 +50991,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHITransitionFlags"
     ],
-    "sourceLine": 167
+    "sourceLine": 242
   },
   {
     "id": "api-arda-eardarhitransitionflags-discard-f27c9cb5",
@@ -50986,7 +51012,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHITransitionFlags"
     ],
-    "sourceLine": 168
+    "sourceLine": 243
   },
   {
     "id": "api-arda-eardarhiheaptype-3795beaf",
@@ -51007,7 +51033,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 171
+    "sourceLine": 246
   },
   {
     "id": "api-arda-eardarhibindlesslayouttype-15762f73",
@@ -51028,7 +51054,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 173
+    "sourceLine": 253
   },
   {
     "id": "api-arda-eardarhinativeresourcetype-8eb11fe5",
@@ -51049,7 +51075,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 178
+    "sourceLine": 261
   },
   {
     "id": "api-arda-eardarhinativeresourcetype-backenddefined-e2122be5",
@@ -51070,7 +51096,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHINativeResourceType"
     ],
-    "sourceLine": 181
+    "sourceLine": 264
   },
   {
     "id": "api-arda-eardarhinativeresourcetype-d3d12accelerationstructure-8ad9bfdf",
@@ -51091,7 +51117,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHINativeResourceType"
     ],
-    "sourceLine": 186
+    "sourceLine": 269
   },
   {
     "id": "api-arda-eardarhinativeresourcetype-vulkanaccelerationstructure-fb5912b6",
@@ -51112,7 +51138,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHINativeResourceType"
     ],
-    "sourceLine": 187
+    "sourceLine": 270
   },
   {
     "id": "api-arda-eardarhinativeresourcetype-vulkanopacitymicromap-98a97512",
@@ -51133,7 +51159,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHINativeResourceType"
     ],
-    "sourceLine": 188
+    "sourceLine": 271
   },
   {
     "id": "api-arda-eardarhinativeownership-9b94f06d",
@@ -51154,7 +51180,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 191
+    "sourceLine": 274
   },
   {
     "id": "api-arda-eardarhisamplerfeedbackformat-10b02bce",
@@ -51175,7 +51201,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 197
+    "sourceLine": 280
   },
   {
     "id": "api-arda-eardarhiraytracinggeometrytype-adc234e7",
@@ -51196,7 +51222,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 202
+    "sourceLine": 286
   },
   {
     "id": "api-arda-eardarhiopacitymicromapformat-039c615e",
@@ -51217,7 +51243,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 204
+    "sourceLine": 292
   },
   {
     "id": "api-arda-eardarhishaderstage-07acea35",
@@ -51238,7 +51264,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 206
+    "sourceLine": 298
   },
   {
     "id": "api-arda-eardarhishaderstage-workgraph-f2f216dc",
@@ -51259,7 +51285,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIShaderStage"
     ],
-    "sourceLine": 214
+    "sourceLine": 315
   },
   {
     "id": "api-arda-eardarhishaderstage-all-e20af426",
@@ -51280,7 +51306,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIShaderStage"
     ],
-    "sourceLine": 215
+    "sourceLine": 318
   },
   {
     "id": "api-arda-isardarhiraytracingshaderstage-ad69a256",
@@ -51289,7 +51315,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "rhi-types",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] inline constexpr bool IsArdaRHIRayTracingShaderStage( EArdaRHIShaderStage Stage) noexcept",
+    "signature": "[[nodiscard]] inline constexpr bool IsArdaRHIRayTracingShaderStage(EArdaRHIShaderStage Stage) noexcept",
     "summary": "Performs is arda r h i ray tracing shader stage through the public backend and RHI contract.",
     "details": "Performs is arda r h i ray tracing shader stage through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
@@ -51301,7 +51327,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 218
+    "sourceLine": 322
   },
   {
     "id": "api-arda-eardarhiresourcestate-f09153c9",
@@ -51322,7 +51348,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 229
+    "sourceLine": 330
   },
   {
     "id": "api-arda-eardarhiresourcestate-cpuread-a5cdca53",
@@ -51343,7 +51369,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceState"
     ],
-    "sourceLine": 242
+    "sourceLine": 354
   },
   {
     "id": "api-arda-eardarhiresourcestate-discard-f69a051c",
@@ -51364,7 +51390,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceState"
     ],
-    "sourceLine": 244
+    "sourceLine": 357
   },
   {
     "id": "api-arda-eardarhiresourcestate-shadingratesource-8c822e4b",
@@ -51385,7 +51411,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceState"
     ],
-    "sourceLine": 244
+    "sourceLine": 358
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-f1801836",
@@ -51406,7 +51432,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 248
+    "sourceLine": 362
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mstate-0c8a3581",
@@ -51427,7 +51453,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 251
+    "sourceLine": 365
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mnativetype-7c7f9cb7",
@@ -51448,7 +51474,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 253
+    "sourceLine": 367
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mprimarystate-1cbf380b",
@@ -51469,7 +51495,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 256
+    "sourceLine": 369
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mpipelinestagemask-b539804c",
@@ -51490,7 +51516,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 258
+    "sourceLine": 371
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-maccessmask-fe8c28a0",
@@ -51511,7 +51537,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 260
+    "sourceLine": 373
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mqueuefamily-d29ae3c6",
@@ -51532,7 +51558,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 262
+    "sourceLine": 375
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mbknown-2ee1c21a",
@@ -51553,7 +51579,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 264
+    "sourceLine": 377
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mbnativecompatible-b17ba7e7",
@@ -51574,7 +51600,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 266
+    "sourceLine": 379
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-bad94381",
@@ -51595,7 +51621,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 270
+    "sourceLine": 383
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mfacadestate-bc222999",
@@ -51616,7 +51642,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 273
+    "sourceLine": 386
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mqueue-c7a4cf55",
@@ -51637,7 +51663,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 275
+    "sourceLine": 388
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mfacadequeueowner-7dd0a789",
@@ -51658,7 +51684,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 277
+    "sourceLine": 390
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mbfacadequeueownerknown-7482b5a0",
@@ -51679,7 +51705,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 279
+    "sourceLine": 392
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mnative-c0143c09",
@@ -51700,7 +51726,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 281
+    "sourceLine": 394
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mbfacadeknown-91f9024c",
@@ -51721,7 +51747,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 283
+    "sourceLine": 396
   },
   {
     "id": "api-arda-eardarhitextureusage-bc4d3b43",
@@ -51742,7 +51768,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 298
+    "sourceLine": 409
   },
   {
     "id": "api-arda-eardarhibufferusage-c06a92d3",
@@ -51763,7 +51789,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 306
+    "sourceLine": 420
   },
   {
     "id": "api-arda-eardarhibufferusage-opacitymicromapbuildinput-873d91d4",
@@ -51784,7 +51810,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIBufferUsage"
     ],
-    "sourceLine": 313
+    "sourceLine": 435
   },
   {
     "id": "api-arda-eardarhiraytracinggeometryflags-018b3b3f",
@@ -51805,7 +51831,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 317
+    "sourceLine": 439
   },
   {
     "id": "api-arda-eardarhiaccelstructbuildflags-bd7f3a02",
@@ -51826,7 +51852,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 322
+    "sourceLine": 446
   },
   {
     "id": "api-arda-eardarhiopacitymicromapbuildflags-3124851b",
@@ -51847,7 +51873,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 330
+    "sourceLine": 458
   },
   {
     "id": "api-arda-eardarhisampleraddressmode-8dcdb51b",
@@ -51868,7 +51894,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 359
+    "sourceLine": 502
   },
   {
     "id": "api-arda-eardarhisamplerreduction-91bc17aa",
@@ -51889,7 +51915,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 361
+    "sourceLine": 511
   },
   {
     "id": "api-arda-eardarhiprimitivetopology-42a2c1d8",
@@ -51910,7 +51936,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 363
+    "sourceLine": 519
   },
   {
     "id": "api-arda-eardarhifillmode-4a045e06",
@@ -51931,7 +51957,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 365
+    "sourceLine": 529
   },
   {
     "id": "api-arda-eardarhicullmode-6249adbf",
@@ -51952,7 +51978,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 367
+    "sourceLine": 535
   },
   {
     "id": "api-arda-eardarhicomparisonfunc-44026d51",
@@ -51973,7 +51999,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 369
+    "sourceLine": 542
   },
   {
     "id": "api-arda-eardarhiblendfactor-a5428c81",
@@ -51994,7 +52020,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 371
+    "sourceLine": 554
   },
   {
     "id": "api-arda-eardarhibindingtype-3d3415ae",
@@ -52015,7 +52041,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 378
+    "sourceLine": 568
   },
   {
     "id": "api-arda-fardarhicolor-operator-71f5613f",
@@ -52041,7 +52067,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIColor"
     ],
-    "sourceLine": 402
+    "sourceLine": 603
   },
   {
     "id": "api-arda-fardarhitexturesubresourcerange-operator-37d0da6c",
@@ -52067,7 +52093,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureSubresourceRange"
     ],
-    "sourceLine": 425
+    "sourceLine": 630
   },
   {
     "id": "api-arda-fardarhibufferrange-operator-90a55271",
@@ -52093,7 +52119,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferRange"
     ],
-    "sourceLine": 452
+    "sourceLine": 658
   },
   {
     "id": "api-arda-fardarhitexturedesc-mbcudainterop-22edfe4a",
@@ -52114,7 +52140,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureDesc"
     ],
-    "sourceLine": 503
+    "sourceLine": 714
   },
   {
     "id": "api-arda-fardarhitexturedesc-operator-ff662b9b",
@@ -52140,7 +52166,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureDesc"
     ],
-    "sourceLine": 509
+    "sourceLine": 721
   },
   {
     "id": "api-arda-fardarhibufferdesc-mbtiled-66beebf4",
@@ -52161,7 +52187,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferDesc"
     ],
-    "sourceLine": 534
+    "sourceLine": 746
   },
   {
     "id": "api-arda-fardarhibufferdesc-mbcudainterop-fcc791fb",
@@ -52182,7 +52208,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferDesc"
     ],
-    "sourceLine": 538
+    "sourceLine": 750
   },
   {
     "id": "api-arda-fardarhibufferdesc-operator-139e7716",
@@ -52208,7 +52234,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferDesc"
     ],
-    "sourceLine": 544
+    "sourceLine": 757
   },
   {
     "id": "api-arda-fardarhiviewdesc-operator-40562ade",
@@ -52234,7 +52260,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIViewDesc"
     ],
-    "sourceLine": 563
+    "sourceLine": 777
   },
   {
     "id": "api-arda-fardarhinativetextureimportdesc-mnativetype-c8b63b8c",
@@ -52255,7 +52281,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeTextureImportDesc"
     ],
-    "sourceLine": 576
+    "sourceLine": 790
   },
   {
     "id": "api-arda-fardarhinativetextureimportdesc-operator-10fe5966",
@@ -52281,7 +52307,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeTextureImportDesc"
     ],
-    "sourceLine": 597
+    "sourceLine": 812
   },
   {
     "id": "api-arda-fardarhinativebufferimportdesc-mnativetype-93890366",
@@ -52302,7 +52328,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeBufferImportDesc"
     ],
-    "sourceLine": 614
+    "sourceLine": 827
   },
   {
     "id": "api-arda-fardarhinativebufferimportdesc-operator-3a1fca1c",
@@ -52328,7 +52354,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeBufferImportDesc"
     ],
-    "sourceLine": 635
+    "sourceLine": 849
   },
   {
     "id": "api-arda-fardarhitexturecopyextent-31d7cec6",
@@ -52349,7 +52375,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 670
+    "sourceLine": 882
   },
   {
     "id": "api-arda-fardarhitexturecopyextent-mwidth-0a82c723",
@@ -52370,7 +52396,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureCopyExtent"
     ],
-    "sourceLine": 672
+    "sourceLine": 884
   },
   {
     "id": "api-arda-fardarhitexturecopyextent-mheight-99293a46",
@@ -52391,7 +52417,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureCopyExtent"
     ],
-    "sourceLine": 673
+    "sourceLine": 885
   },
   {
     "id": "api-arda-fardarhitexturecopyextent-mdepth-02b0e101",
@@ -52412,7 +52438,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureCopyExtent"
     ],
-    "sourceLine": 674
+    "sourceLine": 886
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-00d23005",
@@ -52433,7 +52459,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 678
+    "sourceLine": 890
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-msubresources-771c6fe2",
@@ -52454,7 +52480,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 680
+    "sourceLine": 892
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mstatebefore-2a7a1fb8",
@@ -52475,7 +52501,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 681
+    "sourceLine": 893
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mstateafter-63f0b51f",
@@ -52496,7 +52522,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 682
+    "sourceLine": 894
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-msourcepipelines-35bbd2b5",
@@ -52517,7 +52543,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 683
+    "sourceLine": 895
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mdestinationpipelines-566b6e19",
@@ -52538,7 +52564,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 684
+    "sourceLine": 896
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mflags-47d1e4d2",
@@ -52559,7 +52585,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 685
+    "sourceLine": 897
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-msourcequeue-e5fe1761",
@@ -52580,7 +52606,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 687
+    "sourceLine": 899
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mdestinationqueue-9a4f67d1",
@@ -52601,7 +52627,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 689
+    "sourceLine": 901
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mbqueueownershiptransfer-f258e016",
@@ -52622,7 +52648,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 691
+    "sourceLine": 903
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-44ef599c",
@@ -52643,7 +52669,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 695
+    "sourceLine": 907
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mstatebefore-c0a52878",
@@ -52664,7 +52690,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 697
+    "sourceLine": 909
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mstateafter-41bed612",
@@ -52685,7 +52711,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 698
+    "sourceLine": 910
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-msourcepipelines-0be8e126",
@@ -52706,7 +52732,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 699
+    "sourceLine": 911
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mdestinationpipelines-bcd60bc4",
@@ -52727,7 +52753,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 700
+    "sourceLine": 912
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mflags-76d04946",
@@ -52748,7 +52774,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 701
+    "sourceLine": 913
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-msourcequeue-773a0795",
@@ -52769,7 +52795,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 702
+    "sourceLine": 914
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mdestinationqueue-a91a018e",
@@ -52790,7 +52816,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 703
+    "sourceLine": 915
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mbqueueownershiptransfer-a033b233",
@@ -52811,7 +52837,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 704
+    "sourceLine": 916
   },
   {
     "id": "api-arda-fardarhisamplerdesc-operator-ea546eef",
@@ -52837,7 +52863,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHISamplerDesc"
     ],
-    "sourceLine": 802
+    "sourceLine": 1015
   },
   {
     "id": "api-arda-fardarhivertexattributedesc-operator-b7a3e496",
@@ -52863,7 +52889,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIVertexAttributeDesc"
     ],
-    "sourceLine": 842
+    "sourceLine": 1056
   },
   {
     "id": "api-arda-fardarhibindinglayoutitem-operator-3851d353",
@@ -52889,7 +52915,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindingLayoutItem"
     ],
-    "sourceLine": 865
+    "sourceLine": 1079
   },
   {
     "id": "api-arda-fardarhibindinglayoutdesc-operator-fc928092",
@@ -52915,7 +52941,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindingLayoutDesc"
     ],
-    "sourceLine": 886
+    "sourceLine": 1104
   },
   {
     "id": "api-arda-fardarhirasterstate-operator-b9d34c2d",
@@ -52941,7 +52967,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIRasterState"
     ],
-    "sourceLine": 923
+    "sourceLine": 1141
   },
   {
     "id": "api-arda-fardarhidepthstencilstate-operator-8b638309",
@@ -52967,7 +52993,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIDepthStencilState"
     ],
-    "sourceLine": 944
+    "sourceLine": 1164
   },
   {
     "id": "api-arda-fardarhiblendtargetstate-operator-83b470de",
@@ -52993,7 +53019,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBlendTargetState"
     ],
-    "sourceLine": 968
+    "sourceLine": 1189
   },
   {
     "id": "api-arda-fardarhiblendstate-operator-3e4cf690",
@@ -53019,7 +53045,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBlendState"
     ],
-    "sourceLine": 988
+    "sourceLine": 1210
   },
   {
     "id": "api-arda-fardarhiformatinfo-mbytesperblock-0a62a65e",
@@ -53040,7 +53066,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFormatInfo"
     ],
-    "sourceLine": 1049
+    "sourceLine": 1282
   },
   {
     "id": "api-arda-fardarhiformatinfo-mblockwidth-b464f51e",
@@ -53061,7 +53087,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFormatInfo"
     ],
-    "sourceLine": 1051
+    "sourceLine": 1284
   },
   {
     "id": "api-arda-fardarhiformatinfo-mblockheight-b86f1d79",
@@ -53082,7 +53108,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFormatInfo"
     ],
-    "sourceLine": 1053
+    "sourceLine": 1286
   },
   {
     "id": "api-arda-getardarhiformatelementsize-e0b7ac06",
@@ -53091,7 +53117,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "rhi-types",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] uint32_t GetArdaRHIFormatElementSize( EArdaRHIFormat Format) noexcept",
+    "signature": "[[nodiscard]] uint32_t GetArdaRHIFormatElementSize(EArdaRHIFormat Format) noexcept",
     "summary": "Performs get arda r h i format element size through the public backend and RHI contract.",
     "details": "Performs get arda r h i format element size through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
@@ -53103,7 +53129,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1074
+    "sourceLine": 1308
   },
   {
     "id": "api-arda-getardarhiformatplanecount-b18155e4",
@@ -53112,7 +53138,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "rhi-types",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] uint32_t GetArdaRHIFormatPlaneCount( EArdaRHIFormat Format) noexcept",
+    "signature": "[[nodiscard]] uint32_t GetArdaRHIFormatPlaneCount(EArdaRHIFormat Format) noexcept",
     "summary": "Performs get arda r h i format plane count through the public backend and RHI contract.",
     "details": "Performs get arda r h i format plane count through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
@@ -53124,7 +53150,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1077
+    "sourceLine": 1311
   },
   {
     "id": "api-arda-getardarhitexturemipextent-5682a136",
@@ -53133,7 +53159,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "rhi-types",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] uint32_t GetArdaRHITextureMipExtent( uint32_t BaseExtent, uint32_t MipLevel) noexcept",
+    "signature": "[[nodiscard]] uint32_t GetArdaRHITextureMipExtent(uint32_t BaseExtent, uint32_t MipLevel) noexcept",
     "summary": "Performs get arda r h i texture mip extent through the public backend and RHI contract.",
     "details": "Performs get arda r h i texture mip extent through the public backend and RHI contract. The signature is generated from the current public header.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
@@ -53145,7 +53171,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1080
+    "sourceLine": 1314
   },
   {
     "id": "api-arda-resolveardarhitexturecopyextent-6c622bd2",
@@ -53154,7 +53180,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "rhi-types",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FArdaRHIStatus ResolveArdaRHITextureCopyExtent( const FArdaRHITextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaRHITextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice, FArdaRHITextureCopyExtent& OutExtent) noexcept",
+    "signature": "[[nodiscard]] FArdaRHIStatus ResolveArdaRHITextureCopyExtent(const FArdaRHITextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaRHITextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice, FArdaRHITextureCopyExtent& OutExtent) noexcept",
     "summary": "Validates matching texture slices and resolves sentinel source extents.",
     "details": "Validates matching texture slices and resolves sentinel source extents.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
@@ -53166,7 +53192,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1086
+    "sourceLine": 1320
   },
   {
     "id": "api-arda-validateardarhitextureresolve-32075b12",
@@ -53175,7 +53201,7 @@ window.ArdaBackendApi = {
     "kind": "function",
     "component": "rhi-types",
     "page": "api-reference.html",
-    "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaRHITextureResolve( const FArdaRHITextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaRHITextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice, FArdaRHITextureCopyExtent& OutExtent) noexcept",
+    "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaRHITextureResolve(const FArdaRHITextureDesc& DestinationDesc, const FArdaRHITextureSlice& DestinationSlice, const FArdaRHITextureDesc& SourceDesc, const FArdaRHITextureSlice& SourceSlice, FArdaRHITextureCopyExtent& OutExtent) noexcept",
     "summary": "Validates a whole-subresource multisample resolve and returns its extent. Slice width, height, and depth are ignored because resolves are not regions.",
     "details": "Validates a whole-subresource multisample resolve and returns its extent. Slice width, height, and depth are ignored because resolves are not regions.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
@@ -53187,7 +53213,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1096
+    "sourceLine": 1330
   }
 ];
   window.ArdaBackendApi.symbols.push(...generatedSymbols);
@@ -53214,7 +53240,7 @@ window.ArdaBackendApi = {
     "ownership": "The new version retains its resources; recorded versions independently retain their previous dependencies through submission completion, including removed entries.",
     "errors": "A null, foreign-device or incompatible table is rejected with WrongDevice.",
     "threading": "Table updates and recording snapshots are serialized by the table mutex.",
-    "sourceLine": 783
+    "sourceLine": 914
   },
   {
     "id": "api-arda-rhi-iardarhidevice-writedescriptortable-16ff6b67",
@@ -53234,7 +53260,7 @@ window.ArdaBackendApi = {
     "ownership": "A successful write retains Item.mResource immediately. Recorded versions keep their dependencies when subsequent writes replace entries; submission retains them until its own queue completes. No unsafe-lifetime opt-in is required.",
     "errors": "WrongDevice rejects null/foreign resources and incompatible tables; InvalidArgument rejects undeclared slots or out-of-range array elements.",
     "threading": "Table writes and command-list snapshots are serialized by the table mutex; resource data still needs ordinary GPU barriers and queue ordering.",
-    "sourceLine": 799
+    "sourceLine": 933
   }
 ];
   for (const contract of sourceContracts) {
