@@ -86,9 +86,9 @@ def main() -> int:
 
     executable_name = "CornellBox.exe" if platform.system() == "Windows" else "CornellBox"
     candidates = (
-        build_directory / "Source" / "ArdaTests" / "CornellBox"
+        build_directory / "Source" / "ArdaTests" / "Examples" / "CornellBox"
         / arguments.configuration / executable_name,
-        build_directory / "Source" / "ArdaTests" / "CornellBox" / executable_name,
+        build_directory / "Source" / "ArdaTests" / "Examples" / "CornellBox" / executable_name,
     )
     executable = next((path for path in candidates if path.is_file()), None)
     if executable is None:

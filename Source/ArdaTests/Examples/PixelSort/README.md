@@ -51,6 +51,32 @@ export, as in the [profile guide](../../../../Docs/ArdaBackend/cuda-interop.html
 
 ## Run and interact
 
+Use Python 3.10+ for the launcher in `Scripts/Examples`. It follows the ARDG and Cornell Box launcher
+convention: backend, build directory, then configuration. It configures, builds
+and launches by default. For a new Ninja build, run in a Visual Studio developer
+shell and select the toolkit and native GPU architectures:
+
+```powershell
+python Scripts/Examples/RunPixelSort.py vulkan build/pixel-sort Release --generator Ninja `
+  --nvcc "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.3/bin/nvcc.exe" `
+  --architectures "120"
+python Scripts/Examples/RunPixelSort.py vulkan build/pixel-sort Release --run-only
+```
+
+`--nvcc` also sets the backend's include directory to the toolkit's `include`
+folder; `--cuda-include-dir` overrides that location. Existing builds reuse
+their compiler and architecture cache unless overridden. New builds disable
+other examples and tests; add `--cmake-arg=-DARDASHIR_BUILD_TESTS=ON` to provision
+validation for verification. Repeated `--cmake-arg=-DNAME=VALUE` options pass
+additional settings to CMake. Use a fresh directory when changing generators
+or CUDA compilers.
+
+`--run-only` launches the existing executable without invoking CMake or looking
+for nvcc. Both single-configuration and Visual Studio configuration directories
+are supported. The launcher forwards the frame, extent, channel, threshold,
+CUDA mode, capture and validation options below and preserves the executable's
+exit code. Use `--help` for its options. Direct invocation is also supported:
+
 ```powershell
 build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend vulkan --cuda-mode auto
 build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend d3d12 --cuda-mode context

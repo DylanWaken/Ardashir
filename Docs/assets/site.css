@@ -752,6 +752,7 @@ select {
 
 .api-index-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   margin: 0;
   padding: 0;
   gap: 0.55rem;
@@ -760,6 +761,7 @@ select {
 
 .api-index-list a {
   display: block;
+  overflow-wrap: anywhere;
   padding: 0.65rem 0.8rem;
   border: 0.0625rem solid var(--border);
   border-radius: var(--radius);
@@ -780,9 +782,6 @@ select {
   border-radius: var(--radius);
   background: var(--surface);
   scroll-margin-top: calc(var(--header-height) + 1rem);
-}
-
-.api-entry :is(h3, h4, h5, h6) {
   overflow-wrap: anywhere;
 }
 

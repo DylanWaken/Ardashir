@@ -38,7 +38,7 @@ elseif(TARGET Vulkan-Headers)
     target_link_libraries(ARDGExample PRIVATE Vulkan-Headers)
 endif()
 
-set_target_properties(ARDGExample PROPERTIES FOLDER "Ardashir/Tests/ARDG")
+set_target_properties(ARDGExample PROPERTIES FOLDER "Ardashir/Tests/Examples/ARDGExample")
 
 if(ARDASHIR_BUILD_TESTS)
     ardashir_test_validation(ARDGExample)

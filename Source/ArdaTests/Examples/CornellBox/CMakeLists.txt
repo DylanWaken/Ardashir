@@ -36,7 +36,7 @@ elseif(TARGET Vulkan-Headers)
     target_link_libraries(CornellBox PRIVATE Vulkan-Headers)
 endif()
 
-set_target_properties(CornellBox PROPERTIES FOLDER "Ardashir/Tests/ARDG")
+set_target_properties(CornellBox PROPERTIES FOLDER "Ardashir/Tests/Examples/CornellBox")
 
 if(ARDASHIR_BUILD_TESTS)
     ardashir_test_validation(CornellBox)

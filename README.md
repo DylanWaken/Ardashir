@@ -69,12 +69,25 @@ in the operand guide.
 
 ## Examples
 
+Application examples live under `Source/ArdaTests/Examples`, with launchers in
+`Scripts/Examples`: `RunARDGExample.py`, `RunCornellBox.py`, and `RunPixelSort.py`.
+
 **[Pixel Sort](Source/ArdaTests/Examples/PixelSort/README.md)** is a self-contained Windows CUDA
 example that links only ArdaBackend and its compiled kernels. An HLSL compute
 shader generates animated noise, a CUDA radix kernel sorts its pixels, and a
 fullscreen graphics pass presents the result through D3D12 or Vulkan. Resizing
 switches between row and column kernel variants. See the
 [CUDA walkthrough](Docs/ArdaBackend/cuda-interop.html#pixel-sort).
+
+Launch an existing Pixel Sort build with either backend:
+
+```powershell
+python Scripts/Examples/RunPixelSort.py d3d12 build/pixel-sort Release --run-only
+python Scripts/Examples/RunPixelSort.py vulkan build/pixel-sort Release --run-only
+```
+
+Omit `--run-only` to configure and build first; see the example README for CUDA
+toolkit and architecture selection.
 
 ## Dependencies
 

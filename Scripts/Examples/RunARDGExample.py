@@ -83,10 +83,11 @@ def main() -> int:
         build_directory
         / "Source"
         / "ArdaTests"
+        / "Examples"
         / "ARDGExample"
         / arguments.configuration
         / executable_name,
-        build_directory / "Source" / "ArdaTests" / "ARDGExample" / executable_name,
+        build_directory / "Source" / "ArdaTests" / "Examples" / "ARDGExample" / executable_name,
     )
     executable = next(
         (candidate for candidate in executable_candidates if candidate.is_file()),
