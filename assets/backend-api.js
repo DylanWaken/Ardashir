@@ -53271,6 +53271,31 @@ window.ArdaBackendApi.symbols.push({
   related: ["TArdaComputeOperand", "IArdaSwapChain"]
 });
 
+window.ArdaBackendApi.symbols.push({
+  id: "api-run-pixel-sort",
+  name: "RunPixelSort.py",
+  qualifiedName: "RunPixelSort.py",
+  kind: "tool",
+  component: "presentation",
+  page: "api-reference.html",
+  signature: "python Scripts/Examples/RunPixelSort.py [d3d12|vulkan] [build_directory] [configuration] [--run-only] [--generator NAME] [--nvcc PATH] [--cuda-include-dir PATH] [--architectures LIST] [--cmake-arg=ARG] [PixelSort options]",
+  summary: "Configure, build and launch Pixel Sort, or launch an existing Windows build without CMake or nvcc.",
+  details: "Run with Python 3.10+. Defaults to d3d12, the repository's build/pixel-sort directory and Release. Normal mode configures the root CMake project with CUDA, native kernel compilation, Pixel Sort and the requested graphics provider enabled, builds only target PixelSort, then launches it. A new build disables the other examples and tests; an existing build retains their settings. Uses the new Source/ArdaTests/Examples/PixelSort output directory for both single-configuration and configuration-subdirectory builds.",
+  params: [
+    {name: "backend / build_directory / configuration", description: "Optional positional arguments, in that order. Backend is d3d12 or vulkan. Explicit relative build directories resolve from the caller's working directory; the default is anchored to the repository."},
+    {name: "--run-only", description: "Skip all configure/compiler/build work and locate the existing executable. A missing executable is an error; the launcher never searches old example locations or silently builds in this mode."},
+    {name: "--generator / --nvcc / --cuda-include-dir / --architectures", description: "Build-time overrides. Generator selects CMake's generator. nvcc sets CMAKE_CUDA_COMPILER for Ninja/Makefiles and defaults the backend header path to its toolkit's include directory; cuda-include-dir overrides that path. Architectures passes a semicolon-separated native target list. Omitted options retain CMake defaults/cache. Change generator or compiler in a fresh build directory."},
+    {name: "--cmake-arg=ARG", description: "Repeat to append configure arguments after defaults; for example --cmake-arg=-DARDASHIR_BUILD_TESTS=ON provisions validation for verification."},
+    {name: "PixelSort options", description: "Forwards --cuda-mode auto|context|graphics (default auto), --width, --height, --frames, --channel, --threshold, --time, --capture, --hidden, --verify, --resize-test and --validation. Unspecified values retain executable defaults. Capture paths resolve from the caller's working directory. --help displays launcher usage."}
+  ],
+  returns: "The configure/build failure code or PixelSort's exit code, including 77 for unavailable capabilities. Launcher setup errors exit 1; invalid arguments exit 2; help exits 0.",
+  ownership: "Owns no graphics resources; synchronously runs subprocesses and leaves the build and deployed assets on disk. Runtime resource ownership belongs to PixelSort.",
+  errors: "Requires Windows. Reports missing executables or unavailable tools; a failed configure/build prevents launch. Build mode requires CMake 3.24+, a Visual Studio developer environment and CUDA SDK; the Ninja generator also requires Ninja on PATH; run-only does not invoke CMake or discover nvcc. Runtime still requires the deployed assets, supported native code and compatible driver described by PixelSort.",
+  threading: "Configure, build and application processes run sequentially; the launcher waits for completion. CMake may compile in parallel.",
+  source: "Scripts/Examples/RunPixelSort.py",
+  related: ["PixelSort"]
+});
+
 /* Behavioral contracts for the native conformance additions. */
 (() => {
   const contracts = {

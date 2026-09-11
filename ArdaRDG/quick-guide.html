@@ -56,7 +56,7 @@
           <h2>Evidence labels used throughout</h2>
           <dl>
             <dt><strong>DEMONSTRATED</strong></dt>
-            <dd>The complete usage pattern appears in <code>Source/ArdaTests/ARDGExample</code> or <code>Source/ArdaTests/RHITest</code>, including one-frame presentation.</dd>
+            <dd>The complete usage pattern appears in <code>Source/ArdaTests/Examples/ARDGExample</code> or <code>Source/ArdaTests/RHITest</code>, including one-frame presentation.</dd>
             <dt><strong>TESTED API PATH</strong></dt>
             <dd>The API or transition path is exercised by <code>ArdaGraphTests.cpp</code> or ArdaBackend tests, but not necessarily in a presented renderer.</dd>
             <dt><strong>INTEGRATION SKETCH / TESTED RT SAMPLE AVAILABLE</strong></dt>
@@ -305,7 +305,7 @@ graph.AddPass(
           <h2>Capability-gated hardware ray tracing</h2>
           <aside class="callout warning">
             <h3>INTEGRATION SKETCH / TESTED RT SAMPLE AVAILABLE</h3>
-            <p>The CornellBox GPU smoke tests run BLAS/TLAS construction, shader-table ray dispatch, and presentation through ARDG on D3D12 and Vulkan. RDG conformance tests additionally read back a declared ray-dispatch buffer. The sketch below still uses application-specific descriptor and binding helpers; the implemented frame is in the repository at <code>Source/<wbr>ArdaTests/<wbr>CornellBox/<wbr>Private/<wbr>ArdaCornellBoxRenderer.cpp</code>.</p>
+            <p>The CornellBox GPU smoke tests run BLAS/TLAS construction, shader-table ray dispatch, and presentation through ARDG on D3D12 and Vulkan. RDG conformance tests additionally read back a declared ray-dispatch buffer. The sketch below still uses application-specific descriptor and binding helpers; the implemented frame is in the repository at <code>Source/<wbr>ArdaTests/<wbr>Examples/<wbr>CornellBox/<wbr>Private/<wbr>ArdaCornellBoxRenderer.cpp</code>.</p>
           </aside>
 
           <h3>Gate setup before creating any RT-only object</h3>

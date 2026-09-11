@@ -560,6 +560,7 @@
 <li><a href="#api-arda-backend-iardawindowsurface-getd3d12windowhandle-dc2c7f0f">arda::IArdaWindowSurface::GetD3D12WindowHandle <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-backend-iardawindowsurface-getvulkaninstanceextensions-45278511">arda::IArdaWindowSurface::GetVulkanInstanceExtensions <span class="api-kind">method</span></a></li>
 <li><a href="#api-pixel-sort">PixelSort <span class="api-kind">tool</span></a></li>
+<li><a href="#api-run-pixel-sort">RunPixelSort.py <span class="api-kind">tool</span></a></li>
 <li><a href="#api-arda-fardaproviderobjectref-4039e389">arda::FArdaProviderObjectRef <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-fardaproviderobjectresult-5960fe50">arda::FArdaProviderObjectResult <span class="api-kind">alias</span></a></li>
 <li><a href="#api-arda-fardarhibufferreadbackresult-0dc473ca">arda::FArdaRHIBufferReadbackResult <span class="api-kind">alias</span></a></li>
@@ -6558,6 +6559,20 @@
 <dt>Errors</dt><dd>Reports the first RHI/CUDA failure or CPU mismatch. Missing native architecture coverage requires rebuilding the kernel profile. D3D12 CiG surfaces are unavailable on the locally tested driver; automatic mode selects ordinary context execution.</dd>
 <dt>Threading</dt><dd>One application thread records and submits the graphics list. The provider orders producer, CUDA and consumer on the GPU; normal frames perform no CPU readback or device-idle wait. CUDA blocks sort independent tiles using block barriers and warp ballots.</dd>
 <dt>Source</dt><dd>Source/ArdaTests/Examples/PixelSort/PixelSortMain.cpp</dd>
+</dl></section>
+<section class="api-entry" id="api-run-pixel-sort" tabindex="-1"><h5>RunPixelSort.py</h5><pre><code>python Scripts/Examples/RunPixelSort.py [d3d12|vulkan] [build_directory] [configuration] [--run-only] [--generator NAME] [--nvcc PATH] [--cuda-include-dir PATH] [--architectures LIST] [--cmake-arg=ARG] [PixelSort options]</code></pre><p>Configure, build and launch Pixel Sort, or launch an existing Windows build without CMake or nvcc.</p>
+<p>Run with Python 3.10+. Defaults to d3d12, the repository&#x27;s build/pixel-sort directory and Release. Normal mode configures the root CMake project with CUDA, native kernel compilation, Pixel Sort and the requested graphics provider enabled, builds only target PixelSort, then launches it. A new build disables the other examples and tests; an existing build retains their settings. Uses the new Source/ArdaTests/Examples/PixelSort output directory for both single-configuration and configuration-subdirectory builds.</p>
+<dl>
+<dt>backend / build_directory / configuration</dt><dd>Optional positional arguments, in that order. Backend is d3d12 or vulkan. Explicit relative build directories resolve from the caller&#x27;s working directory; the default is anchored to the repository.</dd>
+<dt>--run-only</dt><dd>Skip all configure/compiler/build work and locate the existing executable. A missing executable is an error; the launcher never searches old example locations or silently builds in this mode.</dd>
+<dt>--generator / --nvcc / --cuda-include-dir / --architectures</dt><dd>Build-time overrides. Generator selects CMake&#x27;s generator. nvcc sets CMAKE_CUDA_COMPILER for Ninja/Makefiles and defaults the backend header path to its toolkit&#x27;s include directory; cuda-include-dir overrides that path. Architectures passes a semicolon-separated native target list. Omitted options retain CMake defaults/cache. Change generator or compiler in a fresh build directory.</dd>
+<dt>--cmake-arg=ARG</dt><dd>Repeat to append configure arguments after defaults; for example --cmake-arg=-DARDASHIR_BUILD_TESTS=ON provisions validation for verification.</dd>
+<dt>PixelSort options</dt><dd>Forwards --cuda-mode auto|context|graphics (default auto), --width, --height, --frames, --channel, --threshold, --time, --capture, --hidden, --verify, --resize-test and --validation. Unspecified values retain executable defaults. Capture paths resolve from the caller&#x27;s working directory. --help displays launcher usage.</dd>
+<dt>Returns</dt><dd>The configure/build failure code or PixelSort&#x27;s exit code, including 77 for unavailable capabilities. Launcher setup errors exit 1; invalid arguments exit 2; help exits 0.</dd>
+<dt>Ownership</dt><dd>Owns no graphics resources; synchronously runs subprocesses and leaves the build and deployed assets on disk. Runtime resource ownership belongs to PixelSort.</dd>
+<dt>Errors</dt><dd>Requires Windows. Reports missing executables or unavailable tools; a failed configure/build prevents launch. Build mode requires CMake 3.24+, a Visual Studio developer environment and CUDA SDK; the Ninja generator also requires Ninja on PATH; run-only does not invoke CMake or discover nvcc. Runtime still requires the deployed assets, supported native code and compatible driver described by PixelSort.</dd>
+<dt>Threading</dt><dd>Configure, build and application processes run sequentially; the launcher waits for completion. CMake may compile in parallel.</dd>
+<dt>Source</dt><dd>Scripts/Examples/RunPixelSort.py</dd>
 </dl></section>
 </section>
 </section>
