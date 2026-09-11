@@ -3,6 +3,7 @@ import importlib.util
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -11,7 +12,9 @@ from unittest.mock import patch
 SPEC = importlib.util.spec_from_file_location(
     "run_pixel_sort", Path(__file__).resolve().parents[1] / "Examples" / "RunPixelSort.py")
 launcher = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(launcher)
+with patch.object(sys, "path", [str(Path(SPEC.origin).parent), *sys.path]):
+    SPEC.loader.exec_module(launcher)
+import ExampleBuild
 
 
 class PixelSortLauncherTests(unittest.TestCase):
@@ -26,6 +29,10 @@ class PixelSortLauncherTests(unittest.TestCase):
         self.windows = patch.object(launcher.platform, "system", return_value="Windows")
         self.windows.start()
         self.addCleanup(self.windows.stop)
+        self.environment = patch.object(ExampleBuild, "prepare_build_environment",
+                                        return_value=("cmake", {"PATH": "build tools"}))
+        self.prepare = self.environment.start()
+        self.addCleanup(self.environment.stop)
 
     def test_run_only_never_invokes_build_tools_and_preserves_skip_code(self):
         capture = self.build / "frame with spaces.png"
@@ -36,6 +43,7 @@ class PixelSortLauncherTests(unittest.TestCase):
                 "--capture", str(capture), "--channel", "2", "--threshold", "0",
             ])
         self.assertEqual(result, 77)
+        self.prepare.assert_not_called()
         run.assert_called_once_with([
             str(self.executable), "--backend", "vulkan", "--cuda-mode", "graphics",
             "--frames", "6", "--channel", "2", "--threshold", "0", "--time", "4.0",
@@ -75,6 +83,9 @@ class PixelSortLauncherTests(unittest.TestCase):
         self.assertEqual(configure[-1], "-DARDASHIR_BUILD_TESTS=ON")
         self.assertEqual(build[build.index("--target") + 1], "PixelSort")
         self.assertEqual(launch[0], str(self.executable))
+        self.assertEqual(run.call_args_list[0].kwargs["env"], {"PATH": "build tools"})
+        self.assertEqual(run.call_args_list[1].kwargs["env"], {"PATH": "build tools"})
+        self.assertNotIn("env", run.call_args_list[2].kwargs)
 
     def test_existing_build_preserves_test_configuration(self):
         (self.build / "CMakeCache.txt").touch()

@@ -5,6 +5,8 @@ import platform
 import subprocess
 from pathlib import Path
 
+from ExampleBuild import build_example
+
 
 def parse_arguments() -> argparse.Namespace:
     source_directory = Path(__file__).resolve().parents[2]
@@ -39,7 +41,6 @@ def parse_arguments() -> argparse.Namespace:
 
 def main() -> int:
     arguments = parse_arguments()
-    source_directory = Path(__file__).resolve().parents[2]
     build_directory = arguments.build_directory.resolve()
 
     if arguments.frames is not None and arguments.frames < 0:
@@ -49,34 +50,8 @@ def main() -> int:
     if arguments.hidden and arguments.fullscreen:
         raise SystemExit("--hidden and --fullscreen cannot be combined.")
 
-    print(f'Configuring ARDGExample in "{build_directory}"...')
-    subprocess.run(
-        [
-            "cmake",
-            "-S",
-            str(source_directory),
-            "-B",
-            str(build_directory),
-            "-DARDASHIR_BUILD_ARDG_EXAMPLE=ON",
-            f"-DCMAKE_BUILD_TYPE={arguments.configuration}",
-        ],
-        check=True,
-    )
-
-    print(f'Building ARDGExample using configuration "{arguments.configuration}"...')
-    subprocess.run(
-        [
-            "cmake",
-            "--build",
-            str(build_directory),
-            "--config",
-            arguments.configuration,
-            "--target",
-            "ARDGExample",
-            "--parallel",
-        ],
-        check=True,
-    )
+    build_example("ARDGExample", build_directory, arguments.configuration,
+                  ["-DARDASHIR_BUILD_ARDG_EXAMPLE=ON"])
 
     executable_name = "ARDGExample.exe" if platform.system() == "Windows" else "ARDGExample"
     executable_candidates = (

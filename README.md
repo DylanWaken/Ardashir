@@ -71,6 +71,12 @@ in the operand guide.
 
 Application examples live under `Source/ArdaTests/Examples`, with launchers in
 `Scripts/Examples`: `RunARDGExample.py`, `RunCornellBox.py`, and `RunPixelSort.py`.
+On Windows these scripts work from ordinary PowerShell or Command Prompt: they
+prepare Visual Studio's x64 build environment and locate bundled CMake/Ninja
+automatically. Install the **Desktop development with C++** workload with MSVC
+and a Windows SDK, plus **C++ CMake tools for Windows** if CMake/Ninja are not
+already on `PATH`. New Windows build directories default to Ninja; existing
+generators and an explicit `CMAKE_GENERATOR` are retained.
 
 **[Pixel Sort](Source/ArdaTests/Examples/PixelSort/README.md)** is a self-contained Windows CUDA
 example that links only ArdaBackend and its compiled kernels. An HLSL compute

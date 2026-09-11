@@ -53,8 +53,8 @@ export, as in the [profile guide](../../../../Docs/ArdaBackend/cuda-interop.html
 
 Use Python 3.10+ for the launcher in `Scripts/Examples`. It follows the ARDG and Cornell Box launcher
 convention: backend, build directory, then configuration. It configures, builds
-and launches by default. For a new Ninja build, run in a Visual Studio developer
-shell and select the toolkit and native GPU architectures:
+and launches by default. Run it from ordinary PowerShell or Command Prompt and
+select the toolkit and native GPU architectures:
 
 ```powershell
 python Scripts/Examples/RunPixelSort.py vulkan build/pixel-sort Release --generator Ninja `
@@ -71,7 +71,16 @@ their generator. With nvcc on the terminal's `PATH`, no `--nvcc` option is neede
 python Scripts/Examples/RunPixelSort.py vulkan build/pixel-sort-ninja Release --architectures "120"
 ```
 
-Run that command in a Visual Studio developer shell with Ninja available.
+All three example launchers automatically locate Visual Studio or Build Tools,
+prepare an x64 developer environment for configure/build subprocesses, and find
+bundled CMake/Ninja when those tools are absent from `PATH`. Install **Desktop
+development with C++**, including MSVC x64 tools and a Windows SDK. Install
+**C++ CMake tools for Windows** for bundled CMake/Ninja, or provide CMake 3.24+
+and Ninja separately on `PATH`. An existing usable x64 developer environment
+is reused; cached MSVC installations/toolsets are preserved. Setup changes
+neither the parent terminal nor the launched application's environment.
+The manual CMake commands above still require a developer shell.
+
 Visual Studio generators require CUDA MSBuild integration as well as nvcc;
 an existing Visual Studio build cannot be converted to Ninja in place.
 
@@ -89,8 +98,8 @@ host compiler/toolset error directly if CUDA setup fails. Automatic provider
 header discovery selects the directory containing `cuda.h`, including toolkits
 that also report separate CCCL include directories.
 
-`--run-only` launches the existing executable without invoking CMake or looking
-for nvcc. Both single-configuration and Visual Studio configuration directories
+`--run-only` launches the existing executable without Visual Studio setup,
+invoking CMake, or looking for nvcc. Both single-configuration and Visual Studio configuration directories
 are supported. The launcher forwards the frame, extent, channel, threshold,
 CUDA mode, capture and validation options below and preserves the executable's
 exit code. Use `--help` for its options. Direct invocation is also supported:

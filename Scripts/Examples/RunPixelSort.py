@@ -3,10 +3,11 @@
 
 import argparse
 import math
-import os
 import platform
 import subprocess
 from pathlib import Path
+
+from ExampleBuild import build_example
 
 
 SOURCE_DIRECTORY = Path(__file__).resolve().parents[2]
@@ -15,7 +16,7 @@ SOURCE_DIRECTORY = Path(__file__).resolve().parents[2]
 def parse_arguments(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Configure, build, and run Pixel Sort on D3D12 or Vulkan.",
-        epilog="Build in a developer shell with a CUDA toolkit. --run-only needs neither CMake nor nvcc.",
+        epilog="Build mode locates Visual Studio x64 tools and bundled Ninja automatically; install a CUDA toolkit. --run-only needs neither CMake nor nvcc.",
     )
     parser.add_argument("backend", nargs="?", choices=("d3d12", "vulkan"), default="d3d12")
     parser.add_argument("build_directory", nargs="?", type=Path,
@@ -55,22 +56,15 @@ def main(argv=None) -> int:
     try:
         if not args.run_only:
             configure = [
-                "cmake", "-S", str(SOURCE_DIRECTORY), "-B", str(build_directory),
                 "-DARDASHIR_ENABLE_CUDA=ON", "-DARDASHIR_BUILD_CUDA_KERNELS=ON",
                 "-DARDASHIR_BUILD_PIXEL_SORT=ON",
                 f"-DARDASHIR_BACKEND_{args.backend.upper()}=ON",
-                f"-DCMAKE_BUILD_TYPE={args.configuration}",
             ]
             # Isolate a new example build without changing an existing tree's test settings.
             new_build = not (build_directory / "CMakeCache.txt").is_file()
             if new_build:
                 configure.extend(f"-DARDASHIR_BUILD_{name}=OFF" for name in
                                  ("TESTS", "RHI_TEST", "ARDG_EXAMPLE", "CORNELL_BOX"))
-            generator = args.generator
-            if not generator and new_build and not os.environ.get("CMAKE_GENERATOR"):
-                generator = "Ninja"
-            if generator:
-                configure.extend(("-G", generator))
             cuda_include = args.cuda_include_dir
             if args.nvcc:
                 nvcc = args.nvcc.resolve()
@@ -82,13 +76,7 @@ def main(argv=None) -> int:
             if args.architectures:
                 configure.append(f"-DARDASHIR_CUDA_ARCHITECTURES={args.architectures}")
             configure.extend(args.cmake_arg)
-            print(f'Configuring PixelSort in "{build_directory}"...', flush=True)
-            subprocess.run(configure, check=True)
-            print(f"Building PixelSort ({args.configuration})...", flush=True)
-            subprocess.run([
-                "cmake", "--build", str(build_directory), "--config", args.configuration,
-                "--target", "PixelSort", "--parallel",
-            ], check=True)
+            build_example("PixelSort", build_directory, args.configuration, configure, args.generator)
 
         output_directory = build_directory / "Source" / "ArdaTests" / "Examples" / "PixelSort"
         candidates = (output_directory / args.configuration / "PixelSort.exe",
