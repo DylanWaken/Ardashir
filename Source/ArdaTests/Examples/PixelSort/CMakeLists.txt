@@ -12,7 +12,7 @@ if(ARDASHIR_BACKEND_VULKAN)
     target_link_libraries(PixelSort PRIVATE Vulkan::Headers)
     target_compile_definitions(PixelSort PRIVATE ARDA_PIXEL_SORT_VULKAN)
 endif()
-set_target_properties(PixelSort PixelSortKernels PROPERTIES FOLDER "Ardashir/Examples")
+set_target_properties(PixelSort PixelSortKernels PROPERTIES FOLDER "Ardashir/Tests/Examples/PixelSort")
 # Keep this development example runnable outside the source/build tree. CUDA is
 # already native code; DXC is used only for the editable HLSL graphics stages.
 get_filename_component(PixelSortDxcDirectory "${ARDASHIR_DXC_EXECUTABLE}" DIRECTORY)
@@ -26,7 +26,7 @@ add_custom_target(PixelSortShaders
         "$<TARGET_FILE_DIR:PixelSort>/ShaderCompiler"
     VERBATIM)
 add_dependencies(PixelSort PixelSortShaders)
-set_target_properties(PixelSortShaders PROPERTIES FOLDER "Ardashir/Examples")
+set_target_properties(PixelSortShaders PROPERTIES FOLDER "Ardashir/Tests/Examples/PixelSort")
 if(ARDASHIR_BACKEND_D3D12)
     ardashir_deploy_d3d12_agility(PixelSort)
 endif()

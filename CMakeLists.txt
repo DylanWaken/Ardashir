@@ -90,10 +90,6 @@ add_subdirectory(Source/ArdaGI)
 add_subdirectory(Source/ArdaPhys)
 add_subdirectory(Source/ArdaDL)
 
-if(ARDASHIR_BUILD_PIXEL_SORT)
-    add_subdirectory(Examples/PixelSort)
-endif()
-
-if(ARDASHIR_BUILD_RHI_TEST OR ARDASHIR_BUILD_ARDG_EXAMPLE OR ARDASHIR_BUILD_CORNELL_BOX)
+if(ARDASHIR_BUILD_RHI_TEST OR ARDASHIR_BUILD_ARDG_EXAMPLE OR ARDASHIR_BUILD_CORNELL_BOX OR ARDASHIR_BUILD_PIXEL_SORT)
     add_subdirectory(Source/ArdaTests)
 endif()

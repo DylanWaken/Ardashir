@@ -6557,7 +6557,7 @@
 <dt>Ownership</dt><dd>Owns its window, backend, swap chain and textures. Resize, readback and shutdown wait for GPU completion. The executable statically retains both CUDA entries. Keep deployed D3D12, Shaders and ShaderCompiler directories beside it; the graphics shader cache is writable beside the executable. No runtime CUDA compiler is used.</dd>
 <dt>Errors</dt><dd>Reports the first RHI/CUDA failure or CPU mismatch. Missing native architecture coverage requires rebuilding the kernel profile. D3D12 CiG surfaces are unavailable on the locally tested driver; automatic mode selects ordinary context execution.</dd>
 <dt>Threading</dt><dd>One application thread records and submits the graphics list. The provider orders producer, CUDA and consumer on the GPU; normal frames perform no CPU readback or device-idle wait. CUDA blocks sort independent tiles using block barriers and warp ballots.</dd>
-<dt>Source</dt><dd>Examples/PixelSort/PixelSortMain.cpp</dd>
+<dt>Source</dt><dd>Source/ArdaTests/Examples/PixelSort/PixelSortMain.cpp</dd>
 </dl></section>
 </section>
 </section>

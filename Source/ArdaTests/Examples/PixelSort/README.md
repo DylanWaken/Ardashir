@@ -28,7 +28,7 @@ cmake -S . -B build/pixel-sort -G Ninja -DCMAKE_BUILD_TYPE=Release `
   -DCMAKE_CUDA_COMPILER="C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.3/bin/nvcc.exe" `
   -DARDASHIR_CUDA_ARCHITECTURES="120"
 cmake --build build/pixel-sort --target PixelSort
-build/pixel-sort/Examples/PixelSort/PixelSort.exe --backend d3d12
+build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend d3d12
 ```
 
 `CMAKE_CUDA_COMPILER` pins nvcc for this build directory. Alternatively set
@@ -36,7 +36,7 @@ build/pixel-sort/Examples/PixelSort/PixelSort.exe --backend d3d12
 CUDA toolset. Use a fresh build directory when changing toolchains. The root
 build finds nvcc only when `ARDASHIR_BUILD_CUDA_KERNELS` is enabled; disabling
 that option also requires `ARDASHIR_BUILD_PIXEL_SORT=OFF` in an existing cache.
-See the [compiler discovery guide](../../Docs/ArdaBackend/cuda-interop.html#nvcc-build).
+See the [compiler discovery guide](../../../../Docs/ArdaBackend/cuda-interop.html#nvcc-build).
 
 The example defaults on for Windows builds that compile CUDA kernels. Normal
 CUDA-disabled builds omit it. `ARDASHIR_BACKEND_D3D12` and
@@ -47,13 +47,13 @@ For several GPUs use, for example, `-DARDASHIR_CUDA_ARCHITECTURES="80;120"`.
 coverage manifest and links static cudart. Both entries inherit that profile's
 coverage. To give additional kernels distinct architectures or compiler flags,
 create separate named profiles and explicitly call each profile's binding
-export, as in the [profile guide](../../Docs/ArdaBackend/cuda-interop.html#offline-ptx).
+export, as in the [profile guide](../../../../Docs/ArdaBackend/cuda-interop.html#offline-ptx).
 
 ## Run and interact
 
 ```powershell
-build/pixel-sort/Examples/PixelSort/PixelSort.exe --backend vulkan --cuda-mode auto
-build/pixel-sort/Examples/PixelSort/PixelSort.exe --backend d3d12 --cuda-mode context
+build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend vulkan --cuda-mode auto
+build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend d3d12 --cuda-mode context
 ```
 
 - **Resize:** portrait selects columns, landscape or square selects rows.
@@ -91,7 +91,7 @@ command list:
 
 The public command list may contain native segments with imported semaphore or
 fence handoffs. The application does not launch CUDA separately or issue its
-own context switch. [CUDA in graphics](../../Docs/ArdaBackend/cuda-graphics.html)
+own context switch. [CUDA in graphics](../../../../Docs/ArdaBackend/cuda-graphics.html)
 explains how CUDA-in-graphics and ordinary contexts share this ordering contract.
 
 `BindKernelVariants` calls the nvcc-built registration function. A C++ integer
@@ -146,9 +146,9 @@ nvcc version that supports their architecture settings.
 
 ```powershell
 ctest --test-dir build/pixel-sort -R '^PixelSort\.' --output-on-failure
-build/pixel-sort/Examples/PixelSort/PixelSort.exe --backend vulkan `
+build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend vulkan `
   --hidden --verify --resize-test --frames 6
-build/pixel-sort/Examples/PixelSort/PixelSort.exe --backend d3d12 `
+build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend d3d12 `
   --width 900 --height 1200 --time 4 --frames 1 --capture portrait.png
 ```
 

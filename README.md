@@ -69,7 +69,7 @@ in the operand guide.
 
 ## Examples
 
-**[Pixel Sort](Examples/PixelSort/README.md)** is a self-contained Windows CUDA
+**[Pixel Sort](Source/ArdaTests/Examples/PixelSort/README.md)** is a self-contained Windows CUDA
 example that links only ArdaBackend and its compiled kernels. An HLSL compute
 shader generates animated noise, a CUDA radix kernel sorts its pixels, and a
 fullscreen graphics pass presents the result through D3D12 or Vulkan. Resizing
