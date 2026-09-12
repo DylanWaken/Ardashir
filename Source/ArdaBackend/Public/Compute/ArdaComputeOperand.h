@@ -1,5 +1,5 @@
 /** @file ArdaComputeOperand.h
- * Single-kernel operands with user binding/selection and framework-owned dispatch.
+ * Single-operation operands with user binding/selection and framework-owned dispatch.
  */
 #pragma once
 #include "ArdaCudaKernelVariants.h"
@@ -42,10 +42,10 @@ namespace arda
 			return ParameterType::GetStaticMetadata();
 		}
 
-		/** Registers compiled symbols and payloads without calling CUDA. */
+		/** Registers compiled symbols or external library factories and payloads without calling CUDA. */
 		virtual void BindKernelVariants(FRegistry& Registry) const = 0;
 
-		/** Chooses one compatible kernel using host metadata; can fail or explicitly return NoWork. */
+		/** Chooses one compatible operation using host metadata; can fail or explicitly return NoWork. */
 		virtual TArdaRHIResult<FArdaCudaKernelSelection> SelectKernel(const FParameters& Parameters,
 		    const FArdaCudaSelectionContext& Context,
 		    const FVariants& Candidates) const = 0;
@@ -125,10 +125,11 @@ namespace arda
 				if (V.mId == Choice.mValue.mVariantId)
 				{
 					K.mEntry = V.mEntry;
+					K.mExternalCall = V.mExternalCall;
 					break;
 				}
 			}
-			if (!K.mEntry)
+			if (!K.mEntry && !K.mExternalCall)
 			{
 				return {{},
 				    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
@@ -160,7 +161,7 @@ namespace arda
 			return Plan->mSelection.mbNoWork ? FArdaRHIStatus{} : Commands.DispatchCuda(Plan->mDispatch);
 		}
 
-		/** Records one selected kernel into the caller-owned list; RDG uses this path. */
+		/** Records one selected kernel or library operation into the caller-owned list; RDG uses this path. */
 		virtual FArdaRHIStatus DispatchDeferred(IArdaRHICommandList& Commands,
 		    const FParameters& Parameters) const final
 		{

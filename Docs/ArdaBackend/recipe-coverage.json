@@ -534,6 +534,13 @@
       "page": "capability-recipes.html#feature-heapaliasing",
       "example": "gpu-examples.html#VerifyExplicitHeapAliasing"
     },
+    "HeapCapacityAlignment": {
+      "name": "HeapCapacityAlignment",
+      "expression": "C.mHeapAllocationAlignment > 0",
+      "probe": "HeapAliasing",
+      "page": "capability-recipes.html#feature-heapaliasing",
+      "example": "gpu-examples.html#VerifyExplicitHeapAliasing"
+    },
     "AliasingBarriers": {
       "name": "AliasingBarriers",
       "expression": "C.mbAliasingBarriers",
@@ -589,6 +596,27 @@
       "probe": "Queries",
       "page": "capability-recipes.html#feature-queries",
       "example": "gpu-examples.html#VerifyQueryExecution"
+    },
+    "GraphicsTimestamps": {
+      "name": "GraphicsTimestamps",
+      "expression": "C.mQueues.mGraphicsTimestampValidBits != 0",
+      "probe": "QueueTimestamps",
+      "page": "capability-recipes.html#feature-queuetimestamps",
+      "example": "gpu-examples.html#VerifyPerQueueTimerExecution"
+    },
+    "ComputeTimestamps": {
+      "name": "ComputeTimestamps",
+      "expression": "C.mQueues.mComputeTimestampValidBits != 0",
+      "probe": "QueueTimestamps",
+      "page": "capability-recipes.html#feature-queuetimestamps",
+      "example": "gpu-examples.html#VerifyPerQueueTimerExecution"
+    },
+    "CopyTimestamps": {
+      "name": "CopyTimestamps",
+      "expression": "C.mQueues.mCopyTimestampValidBits != 0",
+      "probe": "QueueTimestamps",
+      "page": "capability-recipes.html#feature-queuetimestamps",
+      "example": "gpu-examples.html#VerifyPerQueueTimerExecution"
     },
     "ShaderLibraries": {
       "name": "ShaderLibraries",

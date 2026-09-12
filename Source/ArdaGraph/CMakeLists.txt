@@ -1,0 +1,2 @@
+ardashir_add_module(ArdaGraph Private/ArdaGraphPch.h)
+ardashir_add_module_tests(ArdaGraph ArdaDirectedGraphTests)

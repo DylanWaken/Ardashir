@@ -17,13 +17,23 @@ endif()
 # or OPTIONS --maxrregcount=64. Each profile gets its own namespace/manifest.
 # Link that target and call its binding export from BindKernelVariants explicitly.
 ardashir_add_cuda_kernels(PixelSortKernels PROFILE pixel_sort
-    SOURCES PixelSortKernels.cu DEPENDS PixelSortOperand.h)
-# Step 2: compile ordinary application code with the host C++ compiler. The only
-# Arda module dependency is ArdaBackend; the window uses Win32, capture uses WIC.
-add_executable(PixelSort PixelSortMain.cpp PixelSortWindow.cpp PixelSortRenderer.cpp PixelSortOperand.cpp)
+    SOURCES Private/Nodes/ArdaPixelSortKernels.cu DEPENDS Public/Nodes/ArdaPixelSortOperand.h)
+target_include_directories(PixelSortKernels PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Public")
+# Step 2: compile the renderer and node library with the host C++ compiler.
+# The graph owns GPU execution; the window uses Win32 and capture uses WIC.
+add_executable(PixelSort PixelSortMain.cpp PixelSortWindow.cpp PixelSortRenderer.cpp
+    Private/Nodes/ArdaPixelSortOperand.cpp Private/Nodes/ArdaPixelSortShader.cpp
+    Private/Nodes/ArdaPixelSortUploadFrameNode.cpp
+    Private/Nodes/ArdaPixelSortNoiseNode.cpp
+    Private/Nodes/ArdaPixelSortSortNode.cpp
+    Private/Nodes/ArdaPixelSortPresentNode.cpp
+    Private/Nodes/ArdaPixelSortReadbackNode.cpp
+)
+target_include_directories(PixelSort PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Public")
 target_compile_features(PixelSort PRIVATE cxx_std_17)
 target_compile_definitions(PixelSort PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
-target_link_libraries(PixelSort PRIVATE Ardashir::ArdaBackend PixelSortKernels user32 ole32 windowscodecs)
+target_link_libraries(PixelSort PRIVATE
+    ArdaExampleNodes Ardashir::ArdaBackend Ardashir::ArdaRenderGraph PixelSortKernels user32 ole32 windowscodecs)
 if(ARDASHIR_BACKEND_VULKAN)
     # Headers describe the Win32 surface ABI. PixelSortWindow loads the system's
     # Vulkan loader dynamically, so the application does not link a loader library.
@@ -36,9 +46,9 @@ set_target_properties(PixelSort PixelSortKernels PROPERTIES FOLDER "Ardashir/Tes
 # already native code; DXC is used only for the editable HLSL graphics stages.
 get_filename_component(PixelSortDxcDirectory "${ARDASHIR_DXC_EXECUTABLE}" DIRECTORY)
 add_custom_target(PixelSortShaders
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:PixelSort>/Shaders"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/Shaders/PixelSort.hlsl"
-        "$<TARGET_FILE_DIR:PixelSort>/Shaders/PixelSort.hlsl"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:PixelSort>/Nodes/Shaders"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/Private/Nodes/Shaders/ArdaPixelSort.hlsl"
+        "$<TARGET_FILE_DIR:PixelSort>/Nodes/Shaders/ArdaPixelSort.hlsl"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:PixelSort>/ShaderCompiler"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${ARDASHIR_DXC_EXECUTABLE}" "${PixelSortDxcDirectory}/dxcompiler.dll" "${PixelSortDxcDirectory}/dxil.dll"
@@ -63,6 +73,11 @@ if(ARDASHIR_BUILD_TESTS)
                 set_tests_properties(PixelSort.${Backend}.${Mode} PROPERTIES
                     LABELS "gpu;cuda;example" SKIP_RETURN_CODE 77 TIMEOUT 90 RUN_SERIAL TRUE)
             endforeach()
+            add_test(NAME PixelSort.${Backend}.Replay
+                COMMAND PixelSort --backend ${Backend} --cuda-mode auto
+                    --hidden --verify --width 197 --height 321 --frames 8)
+            set_tests_properties(PixelSort.${Backend}.Replay PROPERTIES
+                LABELS "gpu;cuda;example" SKIP_RETURN_CODE 77 TIMEOUT 90 RUN_SERIAL TRUE)
         endif()
     endforeach()
 endif()

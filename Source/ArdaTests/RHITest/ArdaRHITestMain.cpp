@@ -128,11 +128,6 @@ namespace arda
 			return true;
 		}
 
-		std::filesystem::path GetExecutableDirectory(const char* executable)
-		{
-			return std::filesystem::absolute(executable).parent_path();
-		}
-
 		int Run(int argumentCount, char** arguments)
 		{
 			FArdaOptions options;
@@ -177,7 +172,7 @@ namespace arda
 			}
 
 			FArdaTriangleRenderer renderer;
-			if (!renderer.Initialize(arda::GetDevice(), swapChain->GetFormat(), GetExecutableDirectory(arguments[0])))
+			if (!renderer.Initialize(arda::GetDevice(), swapChain->GetFormat()))
 			{
 				ARDA_LOG(LogRHITest, Error, "%s", renderer.GetError().c_str());
 				return EXIT_FAILURE;
@@ -188,10 +183,14 @@ namespace arda
 			{
 				uint32_t width = 0;
 				uint32_t height = 0;
-				if (window.ConsumeResize(width, height) && !swapChain->Resize(width, height))
+				if (window.ConsumeResize(width, height))
 				{
-					ARDA_LOG(LogRHITest, Error, "%s", swapChain->GetError().c_str());
-					return EXIT_FAILURE;
+					renderer.ReleaseFrameGraphs();
+					if (!swapChain->Resize(width, height))
+					{
+						ARDA_LOG(LogRHITest, Error, "%s", swapChain->GetError().c_str());
+						return EXIT_FAILURE;
+					}
 				}
 
 				if (!renderer.RenderFrame(*swapChain))

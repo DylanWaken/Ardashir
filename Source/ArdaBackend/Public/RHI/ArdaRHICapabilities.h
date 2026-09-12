@@ -185,6 +185,36 @@ namespace arda
 		uint32_t mComputeFamily = ArdaRHIInvalidQueueFamily;
 		/** Native copy queue-family identity; may share another family. */
 		uint32_t mCopyFamily = ArdaRHIInvalidQueueFamily;
+		/** Meaningful timestamp bits on graphics; zero means timestamp queries are unsupported. */
+		uint32_t mGraphicsTimestampValidBits = 0;
+		/** Meaningful timestamp bits on compute; independent of graphics timestamp support. */
+		uint32_t mComputeTimestampValidBits = 0;
+		/** Meaningful timestamp bits on copy; copy queues may not support timestamp queries. */
+		uint32_t mCopyTimestampValidBits = 0;
+
+		[[nodiscard]] uint32_t GetTimestampValidBits(EArdaRHIQueueType Queue) const noexcept
+		{
+			if (!IsSupported(Queue))
+			{
+				return 0;
+			}
+			switch (Queue)
+			{
+			case EArdaRHIQueueType::Graphics:
+				return mGraphicsTimestampValidBits;
+			case EArdaRHIQueueType::Compute:
+				return mComputeTimestampValidBits;
+			case EArdaRHIQueueType::Copy:
+				return mCopyTimestampValidBits;
+			}
+			return 0;
+		}
+
+		/** Tests whether this queue can be timed without moving its work to another queue. */
+		[[nodiscard]] bool SupportsTimestamps(EArdaRHIQueueType Queue) const noexcept
+		{
+			return GetTimestampValidBits(Queue) != 0;
+		}
 
 		[[nodiscard]] bool IsSupported(EArdaRHIQueueType Queue) const noexcept
 		{
@@ -372,6 +402,8 @@ namespace arda
 		bool mbVirtualResources = false;
 		/** Explicit native heap creation and compatible resource placement are supported. */
 		bool mbHeaps = false;
+		/** Required capacity multiple for native explicit heaps, before resource-specific alignment. */
+		uint64_t mHeapAllocationAlignment = 65536;
 		/** CPU-visible pitched texture staging and map/unmap operations are supported. */
 		bool mbStagingTextures = false;
 		/** Qualified texture region/subresource copy operations are supported. */

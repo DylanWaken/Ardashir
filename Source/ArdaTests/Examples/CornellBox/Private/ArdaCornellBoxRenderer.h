@@ -2,8 +2,8 @@
 
 #include "ArdaBackend.h"
 #include "ArdaSwapChain.h"
-#include "ArdaRenderGraph.h"
-#include "PipelineStateCache/ArdaPipelineStateCache.h"
+#include "ArdaDependencyGraph.h"
+#include "Nodes/ArdaCornellBoxNodes.h"
 
 #include <EASTL/string.h>
 #include <memory>
@@ -47,37 +47,32 @@ namespace arda
 		}
 
 	private:
-		bool CreateShadersAndPipelines(arda::EArdaRHIFormat SwapChainFormat);
-		bool GenerateSceneGeometry();
+		bool CreateSceneGeometryResources();
 		bool BuildSceneAccelerationStructures();
 		bool BuildUncompactedSceneAccelerationStructures();
-		bool CompactBlasAndBuildTlas(uint64_t CompactedSize);
-		bool ExecuteGraph(arda::FARDGBuilder& Graph, const char* Description);
-		[[nodiscard]] arda::FARDGRenderGraphContext CreateGraphContext() const;
+		bool CompactSceneBlas(uint64_t CompactedSize);
+		bool CreateFrameTlasResource();
+		bool ExecuteGraph(arda::FArdaDependencyGraph& Graph, const char* Description);
 		void ResetAccumulation();
 
 		arda::FArdaRHIDeviceRef mDevice;
-		arda::FArdaGlobalShaderMap mShaderMap;
-		std::unique_ptr<arda::FArdaPipelineStateCache> mPipelineStateCache;
 
-		const arda::FArdaGlobalShaderInstance* mGenerateGeometryShader = nullptr;
-		const arda::FArdaGlobalShaderInstance* mRayGenerationShader = nullptr;
-		const arda::FArdaGlobalShaderInstance* mMissShader = nullptr;
-		const arda::FArdaGlobalShaderInstance* mClosestHitShader = nullptr;
-		const arda::FArdaGlobalShaderInstance* mAccumulateShader = nullptr;
-		const arda::FArdaGlobalShaderInstance* mPresentVertexShader = nullptr;
-		const arda::FArdaGlobalShaderInstance* mPresentPixelShader = nullptr;
-		arda::FArdaComputePipelineStateInitializer mGenerateGeometryPipelineInitializer;
-		arda::FArdaComputePipelineStateInitializer mAccumulatePipelineInitializer;
-		arda::FArdaGraphicsPipelineStateInitializer mPresentPipelineInitializer;
-		arda::FArdaRHIRayTracingPipelineRef mRayTracingPipeline;
-		arda::FArdaRHIShaderTableRef mShaderTable;
+		struct FCachedFrame
+		{
+			FArdaRHITextureRef mBackBuffer;
+			uint32_t mDispatchSamples = 0;
+			eastl::shared_ptr<FArdaCornellFrameInput> mInput;
+			std::unique_ptr<FArdaDependencyGraph> mGraph;
+		};
+
+		eastl::vector<eastl::shared_ptr<FCachedFrame>> mFrames;
 
 		arda::FArdaRHIBufferRef mVertexBuffer;
 		arda::FArdaRHIBufferRef mIndexBuffer;
 		arda::FArdaRHIBufferRef mMaterialBuffer;
 		arda::FArdaRHIAccelStructRef mBlas;
 		arda::FArdaRHIAccelStructRef mTlas;
+		uint64_t mTlasWorkspaceBytes = 0;
 		arda::FArdaRHITextureRef mAccumulationTexture;
 
 		FArdaCornellBoxSettings mSettings;

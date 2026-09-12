@@ -1,4 +1,5 @@
 #include "ArdaTestComputeOperand.h"
+#include "Compute/ArdaCudaSequence.h"
 #include <gtest/gtest.h>
 #include <atomic>
 #include <future>
@@ -229,5 +230,26 @@ namespace
 		Bad = K;
 		Bad.mEntry.reset();
 		EXPECT_FALSE(ValidateArdaCudaKernels({Bad}, 0, Capabilities()));
+	}
+
+	TEST(ArdaCudaSequence, BatchValidatesEveryKernelWithoutRelaxingSingleDispatch)
+	{
+		FArdaCudaKernel Kernel;
+		Kernel.mEntry = eastl::make_shared<FFakeEntry>();
+		Kernel.mParameters.resize(4);
+		EXPECT_TRUE(ValidateArdaCudaKernelBatch({Kernel, Kernel}, 0, Capabilities()));
+		EXPECT_FALSE(ValidateArdaCudaKernels({Kernel, Kernel}, 0, Capabilities()));
+		auto Invalid = Kernel;
+		Invalid.mGridSize[0] = 0;
+		EXPECT_FALSE(ValidateArdaCudaKernelBatch({Kernel, Invalid}, 0, Capabilities()));
+		Invalid = Kernel;
+		Invalid.mEntry.reset();
+		EXPECT_FALSE(ValidateArdaCudaKernelBatch({Kernel, Invalid}, 0, Capabilities()));
+		EXPECT_FALSE(ValidateArdaCudaKernelBatch({}, 0, Capabilities()));
+		EXPECT_FALSE(ValidateArdaCudaKernelBatch({Kernel}, 0, {}));
+		FArdaCudaSequence MissingDevice({});
+		EXPECT_FALSE(MissingDevice.GetStatus());
+		EXPECT_FALSE(MissingDevice.Dispatch());
+		EXPECT_EQ(MissingDevice.GetKernelCount(), 0u);
 	}
 }

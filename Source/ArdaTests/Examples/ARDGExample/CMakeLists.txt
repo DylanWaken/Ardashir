@@ -20,9 +20,11 @@ if(ARDASHIR_BACKEND_VULKAN)
 endif()
 target_include_directories(ARDGExample PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Private"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Public"
 )
 target_precompile_headers(ARDGExample PRIVATE Private/ArdaARDGExamplePch.h)
 target_link_libraries(ARDGExample PRIVATE
+    ArdaExampleNodes
     Ardashir::ArdaBackend
     Ardashir::ArdaRenderGraph
     glfw

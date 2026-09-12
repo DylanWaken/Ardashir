@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1080" viewBox="0 0 1200 1080" role="img" aria-labelledby="overlap-title overlap-desc">
+  <title id="overlap-title">Changing a legal order can expose graphics and compute overlap</title>
+  <desc id="overlap-desc">A is independent graphics work with cost 10. Graphics producer P costs 1 and must finish before compute consumer C, which costs 10. With a compute queue and minimum async chain and slack both set to 1, order A, P, C finishes at model time 21. Order P, C, A lets A and C overlap and finishes at model time 11. These are illustrative cost units, not measured benchmark results.</desc>
+  <defs>
+    <marker id="overlap-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L11 6 L1 11 Z" fill="#eef6ff"/></marker>
+    <style>
+      text { font-family: system-ui, sans-serif; font-size: 24px; fill: #eef6ff; }
+      .title { font-size: 34px; font-weight: 700; }
+      .heading { font-size: 27px; font-weight: 650; }
+      .small { font-size: 22px; }
+      .muted { fill: #b7cbe1; }
+      .panel { fill: #111f33; stroke: #29425f; stroke-width: 2; }
+      .grid { stroke: #29425f; stroke-width: 1; stroke-dasharray: 4 6; }
+      .a { fill: #164962; stroke: #7dd3fc; stroke-width: 2; }
+      .p { fill: #533d24; stroke: #f5cc8a; stroke-width: 2; }
+      .c { fill: #164b45; stroke: #6ee7b7; stroke-width: 2; }
+      .edge { fill: none; stroke: #eef6ff; stroke-width: 2.5; marker-end: url(#overlap-arrow); }
+    </style>
+  </defs>
+  <rect width="1200" height="1080" rx="20" fill="#0b1424"/>
+  <text class="title" x="40" y="58">A legal order can expose queue overlap</text>
+  <text class="small muted" x="40" y="101">Compute queue available · minimum async chain = 1 · minimum async slack = 1</text>
+
+  <rect class="panel" x="40" y="137" width="1120" height="181" rx="14"/>
+  <text class="small muted" x="64" y="173">DEPENDENCY GRAPH</text>
+  <rect class="a" x="70" y="193" width="338" height="66" rx="10"/>
+  <text x="239" y="220" text-anchor="middle">A · Graphics</text>
+  <text class="small" x="239" y="248" text-anchor="middle">cost 10</text>
+  <text class="small muted" x="239" y="295" text-anchor="middle">A has no edge to P or C</text>
+  <rect class="p" x="540" y="193" width="247" height="66" rx="10"/>
+  <text x="663" y="220" text-anchor="middle">P · Graphics</text>
+  <text class="small" x="663" y="248" text-anchor="middle">cost 1</text>
+  <path class="edge" d="M788 226 H870"/>
+  <rect class="c" x="874" y="193" width="257" height="66" rx="10"/>
+  <text x="1002" y="220" text-anchor="middle">C · Compute</text>
+  <text class="small" x="1002" y="248" text-anchor="middle">cost 10</text>
+  <text class="small muted" x="834" y="295" text-anchor="middle">P must finish before C</text>
+
+  <rect class="panel" x="40" y="350" width="1120" height="292" rx="14"/>
+  <text class="heading" x="64" y="396">Chosen order: A, P, C</text>
+  <text class="heading" x="1128" y="396" text-anchor="end">Finish: 21 units</text>
+  <path class="grid" d="M210 421 V596 M610 421 V596 M650 421 V596 M1050 421 V596"/>
+  <text x="65" y="470">Graphics</text>
+  <text x="65" y="551">Compute</text>
+  <rect class="a" x="210" y="439" width="400" height="49" rx="5"/>
+  <text x="410" y="472" text-anchor="middle">A · 10</text>
+  <rect class="p" x="610" y="439" width="40" height="49" rx="4"/>
+  <text class="small" x="630" y="472" text-anchor="middle">P</text>
+  <text class="small muted" x="410" y="551" text-anchor="middle">idle until P finishes</text>
+  <path class="edge" d="M650 490 V516"/>
+  <rect class="c" x="650" y="520" width="400" height="49" rx="5"/>
+  <text x="850" y="553" text-anchor="middle">C · 10</text>
+  <text class="small muted" x="210" y="608" text-anchor="middle">0</text>
+  <text class="small muted" x="610" y="608" text-anchor="middle">10</text>
+  <text class="small muted" x="650" y="608" text-anchor="middle">11</text>
+  <text class="small muted" x="1050" y="608" text-anchor="middle">21</text>
+
+  <rect class="panel" x="40" y="674" width="1120" height="292" rx="14"/>
+  <text class="heading" x="64" y="720">Chosen order: P, C, A</text>
+  <text class="heading" x="1128" y="720" fill="#6ee7b7" text-anchor="end">Finish: 11 units</text>
+  <path class="grid" d="M210 745 V920 M250 745 V920 M650 745 V920 M1050 745 V920"/>
+  <text x="65" y="794">Graphics</text>
+  <text x="65" y="875">Compute</text>
+  <rect class="p" x="210" y="763" width="40" height="49" rx="4"/>
+  <text class="small" x="230" y="796" text-anchor="middle">P</text>
+  <rect class="a" x="250" y="763" width="400" height="49" rx="5"/>
+  <text x="450" y="796" text-anchor="middle">A · 10</text>
+  <path class="edge" d="M250 814 V840"/>
+  <rect class="c" x="250" y="844" width="400" height="49" rx="5"/>
+  <text x="450" y="877" text-anchor="middle">C · 10</text>
+  <path d="M650 750 V908" stroke="#6ee7b7" stroke-width="3" stroke-dasharray="7 6"/>
+  <text class="small muted" x="850" y="836" text-anchor="middle">A and C overlap</text>
+  <text class="small muted" x="850" y="872" text-anchor="middle">after P completes</text>
+  <text class="small muted" x="210" y="932" text-anchor="middle">0</text>
+  <text class="small muted" x="250" y="932" text-anchor="middle">1</text>
+  <text class="small muted" x="650" y="932" text-anchor="middle">11</text>
+  <text class="small muted" x="1050" y="932" text-anchor="middle">21</text>
+  <text x="40" y="1023">Illustrative cost model: 21 → 11 units.</text>
+  <text class="muted" x="40" y="1058">Both charts use the same time scale. This is not a GPU benchmark.</text>
+</svg>

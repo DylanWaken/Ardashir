@@ -4,9 +4,9 @@ The current design is implemented in the native D3D12/Vulkan providers and the R
 
 ## Public contract
 
-An operand dispatch launches exactly one precompiled kernel. Authors implement `BindKernelVariants()` and `SelectKernel()` plus a diagnostic name. `Dispatch()`, `DispatchDeferred()`, `PrepareDispatch()` and support validation belong to the framework and cannot be overridden. Algorithms needing several kernels expose separate dispatches or graph passes.
+An operand dispatch launches exactly one precompiled kernel. Authors implement `BindKernelVariants()` and `SelectKernel()` plus a diagnostic name. `Dispatch()`, `DispatchDeferred()`, `PrepareDispatch()` and support validation belong to the framework and cannot be overridden. Algorithms needing several kernels can compose these operands with `FArdaCudaSequence`, or attach registered CUDA nodes to `FArdaDependencyGraph` for automatic batching, keeping one stream and one graphics handoff around the whole sequence. See [CUDA sequences](CUDA-Sequences.md) for usage and validation rules.
 
-`ARDA_CUDA_PARAMETER_STRUCT` generates a host resource/value representation and its plain `FCuda` argument type from one field list. `TARDGCudaParameters` rebinds the same fields to logical graph accesses. Every bound kernel accepts the exact `FCuda` type by value as its only parameter.
+`ARDA_CUDA_PARAMETER_STRUCT` generates a host resource/value representation and its plain `FCuda` argument type from one field list. `TArdaDependencyCudaParameters` rebinds the same fields to logical graph accesses. Every bound kernel accepts the exact `FCuda` type by value as its only parameter.
 
 Schema eligibility, unsupported host values, signatures, native coverage, resource formats/ranges/alignment and ownership are runtime checks with error statuses. Normal C++/CUDA syntax and template rules still apply. Nontrivial values and raw scalar pointers are rejected; authors must not hide host pointers or dependencies inside plain value aggregates.
 
@@ -14,7 +14,7 @@ Resource conversion means preparing CUDA pointers and arrays/surfaces from decla
 
 Each `TArdaCudaKernelVariant<Kernel, Payload>` has a distinct symbol-specific wrapper type. A registry checks its signature and retains the compiled entry, diagnostic name, payload, requirements and generated build information. Binding is synchronized once per operand and freezes an immutable registry. Selection filters native coverage and execution requirements before consulting the author. The chosen launch plan freezes values and retained resource views; provider recording resolves addresses and checks actual compiled-kernel limits.
 
-The backend provider interface version is now 5 because native CUDA dispatch descriptors changed. Rebuild external provider modules against these headers.
+The backend provider interface version is now 12, including allocation-requirements and residency queries, retained CUDA Graph execution, submission completion and queue-qualified timestamp capabilities. The RHI supports explicit sequence recording, and native CUDA dispatch accepts a nonempty ordered batch of compiled kernels and external library calls against one resource binding table. Rebuild external provider modules and consumers against these headers; providers must process every operation in a batch or reject it. [External CUDA calls](CUDA-External-Calls.md) describes cuBLAS/cuDNN adapters and their context-owned handle/plan lifetime. [CUDA texture buffers](CUDA-Texture-Buffers.md) describes the explicit GPU copy path for processing graphics textures through linear CUDA pointers, including D3D12 CiG without native surface support.
 
 ## Build and packaging
 
@@ -36,17 +36,24 @@ Ship linked native code and required runtime libraries, with a compatible instal
 
 `Automatic` prefers CiG and falls back to ordinary CUDA when context creation or D3D12 surface qualification fails. `GraphicsQueue` requires CiG; `ContextSwitch` forces an ordinary context. Mode selection happens before resource allocation. Capabilities report surface support and layered support independently; allocation can still fail for a particular descriptor.
 
-## RDG integration
+## Dependency graph integration
 
-`AddArdaCudaPass` derives logical resource accesses from the schema before allocation, retains operand/parameters, resolves physical resources at execution and records one framework dispatch. Read-only CUDA dependencies remain reads even when their graphics state is UAV. CUDA resources use dedicated committed allocations; pool compatibility includes `mbCudaInterop`.
+`RegisterArdaCudaOperandNode` installs a typed operand definition in the singleton
+registry. `TArdaDependencyCudaParameters` binds its schema to graph resource values.
+ArdaInductor derives resource dependencies, coalesces eligible CUDA chains, prepares
+all steps, and retains a native capture cache per frame slot and batch. Each resource
+value has one producer, and attachment order does not define execution order.
 
-D3D12 CiG passes require the graphics pipeline. The adapter rejects async compute and adds `NeverParallel | RecordAtSubmit`. This preserves capture order by recording each such pass immediately before its submission. Ordinary passes still record before submission. A `RecordAtSubmit` failure can occur after earlier graph work submitted; execution reports failure and submitted completion identities, and does not publish extractions. Applications must respect those in-flight lifetimes.
+D3D12 CiG batches use ordered graphics-queue capture/submission. Failures can occur
+after earlier work submitted; frame receipts retain accepted submissions until
+completion and failed frames do not publish readbacks. `FArdaCudaSequence` remains
+the backend's direct batch API for applications that do not use a dependency graph.
 
 ## Qualification and limits
 
 Local hardware: Windows, NVIDIA RTX PRO 6000 Blackwell Workstation Edition, compute capability 12.0, driver 610.62, nvcc 13.3.33. The build-only toolkit is local ignored tooling, not an application runtime dependency.
 
-Native tests verify immediate/deferred shared plans, frozen values, single-use recordings, resource runtime errors, nonzero buffer offsets/guards, kernel/resource lifetime and the two-pass RDG result `Output[i] = Input[i] + 18`. These buffer/RDG tests pass on D3D12 ordinary CUDA, Vulkan ordinary CUDA, D3D12 CiG and Vulkan CiG. Nonzero-mip R32UInt surface tests pass on ordinary D3D12/Vulkan and Vulkan CiG.
+Native tests verify immediate/deferred shared plans, frozen values, single-use recordings, resource runtime errors, nonzero buffer offsets/guards, kernel/resource lifetime and the coalesced graph result `Output[i] = Input[i] + 18`. These buffer/RDG tests pass on D3D12 ordinary CUDA, Vulkan ordinary CUDA, D3D12 CiG and Vulkan CiG. Nonzero-mip R32UInt surface tests pass on ordinary D3D12/Vulkan and Vulkan CiG.
 
 D3D12 CiG surface mapping returns `CUDA_ERROR_UNKNOWN` on this driver. The provider's startup probe reports surface unavailability; that test explicitly skips and Automatic selects an ordinary context. Layered Vulkan imports remain excluded because earlier cross-API layer-stride qualification failed; the removal of the former Vulkan native-module route does not carry its old image-matrix qualification forward. This implementation does not claim all 24 raw formats × all dimensions have been requalified through the new compiled entries.
 

@@ -3,9 +3,64 @@
  * These checks constrain bindings and launch metadata, not arbitrary kernel memory accesses.
  */
 #include "RHI/ArdaRHICuda.h"
+#include <exception>
 
 namespace arda
 {
+	TArdaRHIResult<FArdaCudaTimingResult> FArdaCudaTimingQuery::Poll(bool SubmissionComplete)
+	{
+		if (!SubmissionComplete)
+		{
+			return {{}, {}};
+		}
+		std::unique_lock<std::mutex> Lock(mMutex, std::try_to_lock);
+		if (!Lock.owns_lock() || !mPoll)
+		{
+			return {{}, {}};
+		}
+		auto Result = mPoll();
+		if (!Result || Result.mValue.mbReady)
+		{
+			mPoll = {};
+			mNativeState.reset();
+		}
+		return Result;
+	}
+
+	FArdaCudaGraphCache::FArdaCudaGraphCache(EArdaCudaGraphMode Mode, uint32_t MaximumCachedVariants)
+	    : mMode(Mode),
+	      mMaximumCachedVariants(MaximumCachedVariants)
+	{
+	}
+
+	FArdaCudaGraphCache::~FArdaCudaGraphCache() = default;
+
+	EArdaCudaGraphMode FArdaCudaGraphCache::GetMode() const noexcept
+	{
+		return mMode;
+	}
+
+	uint32_t FArdaCudaGraphCache::GetMaximumCachedVariants() const noexcept
+	{
+		return mMaximumCachedVariants;
+	}
+
+	FArdaCudaGraphStats FArdaCudaGraphCache::GetStats() const
+	{
+		std::lock_guard<std::mutex> Lock(mMutex);
+		return mStats;
+	}
+
+	void FArdaCudaGraphCache::Reset()
+	{
+		eastl::shared_ptr<void> Retired;
+		{
+			std::lock_guard<std::mutex> Lock(mMutex);
+			Retired.swap(mNativeState);
+			mStats.mCachedVariantCount = 0;
+		}
+	}
+
 	bool FArdaCudaArchitecture::Supports(uint32_t DeviceCapability) const noexcept
 	{
 		if (!mComputeCapability)
@@ -110,6 +165,40 @@ namespace arda
 		}
 	}
 
+	FArdaRHIStatus IArdaCudaExternalCall::GetSupport(const FArdaCudaCapabilities& Capabilities) const
+	{
+		if (Capabilities.mLaunchMode != EArdaCudaLaunchMode::ContextSwitch &&
+		    Capabilities.mLaunchMode != EArdaCudaLaunchMode::VulkanCiG)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+			    "External CUDA call has not qualified this execution mode; D3D12 CiG requires explicit adapter support.");
+		}
+		return {};
+	}
+
+	TArdaRHIResult<eastl::unique_ptr<IArdaCudaExternalCallState>> IArdaCudaExternalCall::CreateContextState(
+	    const FArdaCudaExternalCallContext&) const
+	{
+		return {};
+	}
+
+	FArdaRHIStatus IArdaCudaExternalCall::CheckSupport(const FArdaCudaCapabilities& Capabilities) const
+	{
+		try
+		{
+			return GetSupport(Capabilities);
+		}
+		catch (const std::exception& Error)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, Error.what());
+		}
+		catch (...)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    "External CUDA support check threw an exception.");
+		}
+	}
+
 	FArdaRHIStatus ValidateArdaCudaKernels(const eastl::vector<FArdaCudaKernel>& Kernels,
 	    size_t BindingCount,
 	    const FArdaCudaCapabilities& C)
@@ -121,54 +210,72 @@ namespace arda
 		if (Kernels.size() != 1)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-			    "Each CUDA dispatch must contain exactly one kernel.");
+			    "Each CUDA dispatch must contain exactly one kernel or external call.");
 		}
-		const auto& K = Kernels.front();
-		if (!K.mEntry)
+		return ValidateArdaCudaKernelBatch(Kernels, BindingCount, C);
+	}
+
+	static FArdaRHIStatus ValidateCudaKernel(const FArdaCudaKernel& K,
+	    size_t BindingCount,
+	    const FArdaCudaCapabilities& C)
+	{
+		if (bool(K.mEntry) == bool(K.mExternalCall))
 		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA dispatch has no compiled entry.");
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    "CUDA operation requires exactly one compiled entry or external call.");
 		}
-		const auto Signature = K.mEntry->GetSignature();
+		const auto Signature = K.mEntry ? K.mEntry->GetSignature() : K.mExternalCall->GetSignature();
 		if (!Signature.mbSupported || !Signature.mType || Signature.mSize != K.mParameters.size() || !Signature.mSize ||
 		    !Signature.mAlignment || (Signature.mAlignment & (Signature.mAlignment - 1)))
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 			    "CUDA parameter signature or size is invalid.");
 		}
-		bool Supported = false;
-		for (const auto& A : K.mEntry->GetBuildInfo().mArchitectures)
+		if (K.mExternalCall)
 		{
-			if (A.Supports(C.mComputeCapability))
+			if (auto Status = K.mExternalCall->CheckSupport(C); !Status)
 			{
-				Supported = true;
-				break;
+				return Status;
 			}
 		}
-		if (!Supported)
+		else
 		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
-			    "No precompiled native kernel image supports this CUDA architecture.");
-		}
-		if (K.mSharedMemoryBytes > C.mMaxSharedMemoryBytes)
-		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA shared-memory requirement is invalid.");
-		}
-		uint64_t Threads = 1;
-		for (uint32_t Axis = 0; Axis < 3; ++Axis)
-		{
-			if (!K.mGridSize[Axis] || K.mGridSize[Axis] > C.mMaxGridSize[Axis] || !K.mBlockSize[Axis] ||
-			    K.mBlockSize[Axis] > C.mMaxBlockSize[Axis])
+			bool Supported = false;
+			for (const auto& A : K.mEntry->GetBuildInfo().mArchitectures)
+			{
+				if (A.Supports(C.mComputeCapability))
+				{
+					Supported = true;
+					break;
+				}
+			}
+			if (!Supported)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+				    "No precompiled native kernel image supports this CUDA architecture.");
+			}
+			if (K.mSharedMemoryBytes > C.mMaxSharedMemoryBytes)
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-				    "CUDA launch dimensions exceed the device limits.");
+				    "CUDA shared-memory requirement is invalid.");
 			}
-
-			// Check before multiplying, including capabilities supplied by custom providers.
-			if (Threads > C.mMaxThreadsPerBlock / K.mBlockSize[Axis])
+			uint64_t Threads = 1;
+			for (uint32_t Axis = 0; Axis < 3; ++Axis)
 			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA block has too many threads.");
+				if (!K.mGridSize[Axis] || K.mGridSize[Axis] > C.mMaxGridSize[Axis] || !K.mBlockSize[Axis] ||
+				    K.mBlockSize[Axis] > C.mMaxBlockSize[Axis])
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+					    "CUDA launch dimensions exceed the device limits.");
+				}
+
+				// Check before multiplying, including capabilities supplied by custom providers.
+				if (Threads > C.mMaxThreadsPerBlock / K.mBlockSize[Axis])
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA block has too many threads.");
+				}
+				Threads *= K.mBlockSize[Axis];
 			}
-			Threads *= K.mBlockSize[Axis];
 		}
 		for (size_t I = 0; I < K.mPatches.size(); ++I)
 		{
@@ -187,6 +294,29 @@ namespace arda
 				{
 					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "CUDA resource patches overlap.");
 				}
+			}
+		}
+		return {};
+	}
+
+	FArdaRHIStatus ValidateArdaCudaKernelBatch(const eastl::vector<FArdaCudaKernel>& Kernels,
+	    size_t BindingCount,
+	    const FArdaCudaCapabilities& C)
+	{
+		if (!C)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, C.mUnavailableReason.c_str());
+		}
+		if (Kernels.empty())
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    "CUDA batch requires at least one operation.");
+		}
+		for (const auto& Kernel : Kernels)
+		{
+			if (auto Status = ValidateCudaKernel(Kernel, BindingCount, C); !Status)
+			{
+				return Status;
 			}
 		}
 		return {};

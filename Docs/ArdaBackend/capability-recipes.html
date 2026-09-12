@@ -55,7 +55,7 @@
         ArdaBackend
       </nav>
       <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>Capability recipes</h1><p>Admit every capability in the native conformance matrix and follow its executable usage example.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#feature-raytracingpipeline">Dispatch ray-tracing stages</a><a href="#feature-accelerationstructure">Build, update and compact acceleration structures</a><a href="#feature-inlinerayquery">Trace rays from an ordinary compute shader</a><a href="#feature-raytracingscene">Use hit groups, local arguments and indirect rays</a><a href="#feature-opacitymicromap">Build Vulkan opacity micromaps</a><a href="#feature-bindless">Address descriptors by array index</a><a href="#feature-runtimedescriptors">Update descriptors without rewriting recorded work</a><a href="#feature-expandeddescriptors">Use resource collections</a><a href="#feature-directresourceheap">Index the resource descriptor heap</a><a href="#feature-directresourceandsamplerheaps">Index resource and sampler heaps together</a><a href="#feature-descriptorbuffer">Use native descriptor-buffer storage</a><a href="#feature-queuebreadth">Order work across queue families</a><a href="#feature-sparseresidency">Map reserved buffers and textures</a><a href="#feature-streamingbudget">Observe and reserve a streaming budget</a><a href="#feature-subgroup">Use subgroup arithmetic</a><a href="#feature-float16">Select native half-precision arithmetic</a><a href="#feature-int8">Select packed integer dot products</a><a href="#feature-instancebuffer">Build a TLAS from instance data</a><a href="#feature-meshshader">Rasterize mesh-shader output</a><a href="#feature-workgraph">Dispatch a D3D12 work graph</a><a href="#feature-samplerfeedback">Decode native sampler feedback</a><a href="#feature-shaderbundle">Dispatch a shader bundle</a><a href="#feature-custompresent">Integrate a custom presentation callback</a><a href="#feature-contract">Unsupported raster policy</a><a href="#feature-heapaliasing">Reuse explicit GPU memory</a><a href="#feature-extendedcommands">Copy, stage, transition and dispatch indirectly</a><a href="#feature-resolve">Resolve multisampling and select planes</a><a href="#feature-queries">Measure and observe submitted work</a><a href="#feature-shaderlibrary">Execute an entry point from a library</a><a href="#feature-pipelinecache">Persist native pipeline compilation</a><a href="#summary">Checkpoints</a></nav>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#feature-raytracingpipeline">Dispatch ray-tracing stages</a><a href="#feature-accelerationstructure">Build, update and compact acceleration structures</a><a href="#feature-inlinerayquery">Trace rays from an ordinary compute shader</a><a href="#feature-raytracingscene">Use hit groups, local arguments and indirect rays</a><a href="#feature-opacitymicromap">Build Vulkan opacity micromaps</a><a href="#feature-bindless">Address descriptors by array index</a><a href="#feature-runtimedescriptors">Update descriptors without rewriting recorded work</a><a href="#feature-expandeddescriptors">Use resource collections</a><a href="#feature-directresourceheap">Index the resource descriptor heap</a><a href="#feature-directresourceandsamplerheaps">Index resource and sampler heaps together</a><a href="#feature-descriptorbuffer">Use native descriptor-buffer storage</a><a href="#feature-queuebreadth">Order work across queue families</a><a href="#feature-sparseresidency">Map reserved buffers and textures</a><a href="#feature-streamingbudget">Observe and reserve a streaming budget</a><a href="#feature-subgroup">Use subgroup arithmetic</a><a href="#feature-float16">Select native half-precision arithmetic</a><a href="#feature-int8">Select packed integer dot products</a><a href="#feature-instancebuffer">Build a TLAS from instance data</a><a href="#feature-meshshader">Rasterize mesh-shader output</a><a href="#feature-workgraph">Dispatch a D3D12 work graph</a><a href="#feature-samplerfeedback">Decode native sampler feedback</a><a href="#feature-shaderbundle">Dispatch a shader bundle</a><a href="#feature-custompresent">Integrate a custom presentation callback</a><a href="#feature-contract">Unsupported raster policy</a><a href="#feature-heapaliasing">Reuse explicit GPU memory</a><a href="#feature-extendedcommands">Copy, stage, transition and dispatch indirectly</a><a href="#feature-resolve">Resolve multisampling and select planes</a><a href="#feature-queries">Measure and observe submitted work</a><a href="#feature-queuetimestamps">Poll per-queue GPU execution times</a><a href="#feature-shaderlibrary">Execute an entry point from a library</a><a href="#feature-pipelinecache">Persist native pipeline compilation</a><a href="#summary">Checkpoints</a></nav>
 <section id="objectives"><h2>How to use these examples</h2>
 <p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
 <p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
@@ -816,6 +816,7 @@ const bool VariableRateShading = C.mbVariableRateShading;</code></pre><pre><code
 <section id="feature-heapaliasing"><h2>Reuse explicit GPU memory</h2><p>Virtual resources are created before their memory is bound. Size and alignment come from native memory requirements, not guessed format sizes. An alias barrier changes which overlapping resource is valid; queue/fence ordering must ensure the previous user's lifetime has ended.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
 const bool VirtualResources = C.mbVirtualResources;
 const bool ExplicitHeaps = C.mbHeaps;
+const bool HeapCapacityAlignment = C.mHeapAllocationAlignment &gt; 0;
 const bool AliasingBarriers = C.mbAliasingBarriers;</code></pre><pre><code class="language-cpp">FArdaRHIBufferDesc BufferDesc;
 BufferDesc.mDebugName = &quot;Explicit heap alias A&quot;;
 BufferDesc.mByteSize = 256;
@@ -881,6 +882,109 @@ auto Fence = Device-&gt;CreateGpuFence();
 ASSERT_TRUE(Event) &lt;&lt; Event.mStatus.mMessage.c_str();
 ASSERT_TRUE(Timer) &lt;&lt; Timer.mStatus.mMessage.c_str();
 ASSERT_TRUE(Fence) &lt;&lt; Fence.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyQueryExecution">Complete usage and output checks: VerifyQueryExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
+<section id="feature-queuetimestamps"><h2>Poll per-queue GPU execution times</h2><p>SupportsTimestamps checks the selected queue, including native copy-queue limitations. PollTimerQuery never waits; GetTimerQuerySeconds reads a completed generation. Reuse queries only after completion. Vulkan transfer-only queues require enabled host query reset; unsupported timing never requires moving work to another queue.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
+const bool GraphicsTimestamps = C.mQueues.mGraphicsTimestampValidBits != 0;
+const bool ComputeTimestamps = C.mQueues.mComputeTimestampValidBits != 0;
+const bool CopyTimestamps = C.mQueues.mCopyTimestampValidBits != 0;</code></pre><pre><code class="language-cpp">void VerifyPerQueueTimerExecution(const char* BackendName)
+{
+	using namespace arda;
+	ShutdownBackend();
+	FExtendedDiagnosticCallback Diagnostics;
+	FExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration;
+	Configuration.mBackendName = BackendName;
+	Configuration.mbEnableValidation = true;
+	Configuration.mMessageCallback = &amp;Diagnostics;
+	ASSERT_TRUE(ConfigureBackend(Configuration));
+	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
+	auto Device = GetDevice();
+	ASSERT_TRUE(Device);
+	auto Timer = Device-&gt;CreateTimerQuery();
+	ASSERT_TRUE(Timer) &lt;&lt; Timer.mStatus.mMessage.c_str();
+	const auto&amp; Caps = Device-&gt;GetCapabilities().mQueues;
+	FArdaRHIBufferDesc Desc;
+	Desc.mByteSize = 2 * 1024 * 1024;
+	Desc.mInitialState = EArdaRHIResourceState::Common;
+	Desc.mbKeepInitialState = true;
+	auto Buffer = Device-&gt;CreateBuffer(Desc);
+	ASSERT_TRUE(Buffer) &lt;&lt; Buffer.mStatus.mMessage.c_str();
+	std::vector&lt;uint8_t&gt; Bytes(static_cast&lt;size_t&gt;(Desc.mByteSize), 0x6b);
+	// Reuse one query across native heap/family types and return to graphics afterward.
+	for (auto Queue : {EArdaRHIQueueType::Graphics,
+	         EArdaRHIQueueType::Compute,
+	         EArdaRHIQueueType::Copy,
+	         EArdaRHIQueueType::Graphics})
+	{
+		if (!Caps.IsSupported(Queue))
+		{
+			continue;
+		}
+		SCOPED_TRACE(static_cast&lt;unsigned&gt;(Queue));
+		auto Commands = Device-&gt;CreateCommandList(Queue);
+		ASSERT_TRUE(Commands) &lt;&lt; Commands.mStatus.mMessage.c_str();
+		EXPECT_EQ(Commands.mValue-&gt;BeginTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::InvalidState);
+		ASSERT_TRUE(Commands.mValue-&gt;Open());
+		if (!Caps.SupportsTimestamps(Queue))
+		{
+			EXPECT_EQ(Commands.mValue-&gt;BeginTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::Unsupported);
+			ASSERT_TRUE(Commands.mValue-&gt;Close());
+			continue;
+		}
+		EXPECT_GT(Caps.GetTimestampValidBits(Queue), 0u);
+		EXPECT_LE(Caps.GetTimestampValidBits(Queue), 64u);
+		for (unsigned Generation = 0; Generation &lt; 2; ++Generation)
+		{
+			if (Generation)
+			{
+				ASSERT_TRUE(Commands.mValue-&gt;Open());
+			}
+			ASSERT_TRUE(Commands.mValue-&gt;BeginTimerQuery(*Timer.mValue));
+			EXPECT_EQ(Device-&gt;ResetTimerQuery(Timer.mValue).mCode, EArdaRHIResult::InvalidState);
+			ASSERT_TRUE(Commands.mValue-&gt;WriteBuffer(*Buffer.mValue, Bytes.data(), Bytes.size()));
+			ASSERT_TRUE(Commands.mValue-&gt;EndTimerQuery(*Timer.mValue));
+			ASSERT_TRUE(Commands.mValue-&gt;Close());
+			EXPECT_EQ(Commands.mValue-&gt;EndTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::InvalidState);
+			// Native results from an earlier generation are never visible before this submission.
+			auto BeforeSubmit = Device-&gt;PollTimerQuery(Timer.mValue);
+			ASSERT_TRUE(BeforeSubmit);
+			EXPECT_FALSE(BeforeSubmit.mValue);
+			EXPECT_EQ(Device-&gt;GetTimerQuerySeconds(Timer.mValue).mStatus.mCode, EArdaRHIResult::InvalidState);
+			auto Submitted = Device-&gt;ExecuteCommandList(Commands.mValue);
+			ASSERT_TRUE(Submitted) &lt;&lt; Submitted.mStatus.mMessage.c_str();
+			auto Ready = Device-&gt;PollTimerQuery(Timer.mValue);
+			ASSERT_TRUE(Ready) &lt;&lt; Ready.mStatus.mMessage.c_str();
+			// If the current submission is still pending after polling, its timer cannot be complete.
+			auto SubmissionReady = Device-&gt;PollSubmission(Submitted.mValue);
+			ASSERT_TRUE(SubmissionReady);
+			if (!SubmissionReady.mValue)
+			{
+				EXPECT_FALSE(Ready.mValue);
+			}
+			ASSERT_TRUE(Device-&gt;WaitForSubmission(Submitted.mValue));
+			Ready = Device-&gt;PollTimerQuery(Timer.mValue);
+			ASSERT_TRUE(Ready);
+			EXPECT_TRUE(Ready.mValue);
+			auto Seconds = Device-&gt;GetTimerQuerySeconds(Timer.mValue);
+			ASSERT_TRUE(Seconds) &lt;&lt; Seconds.mStatus.mMessage.c_str();
+			EXPECT_TRUE(std::isfinite(Seconds.mValue));
+			EXPECT_GT(Seconds.mValue, 0.f);
+			EXPECT_FLOAT_EQ(Device-&gt;GetTimerQuerySeconds(Timer.mValue).mValue, Seconds.mValue);
+			ASSERT_TRUE(Device-&gt;ResetTimerQuery(Timer.mValue));
+			EXPECT_FALSE(Device-&gt;PollTimerQuery(Timer.mValue).mValue);
+		}
+	}
+	if (Caps.SupportsTimestamps(EArdaRHIQueueType::Graphics))
+	{
+		auto Old = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+		ASSERT_TRUE(Old);
+		ASSERT_TRUE(Old.mValue-&gt;Open());
+		ASSERT_TRUE(Old.mValue-&gt;BeginTimerQuery(*Timer.mValue));
+		ASSERT_TRUE(Old.mValue-&gt;EndTimerQuery(*Timer.mValue));
+		ASSERT_TRUE(Old.mValue-&gt;Close());
+		auto Prior = Device-&gt;ExecuteCommandList(Old.mValue);
+		ASSERT_TRUE(Prior);
+		ASSERT_TRUE(Device-&gt;WaitForSubmission(Prior.mValue));
+		ASSERT_TRUE(Device-&gt;ResetTimerQuery(Timer.mValue));</code></pre><p><a href="gpu-examples.html#VerifyPerQueueTimerExecution">Complete usage and output checks: VerifyPerQueueTimerExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
 <section id="feature-shaderlibrary"><h2>Execute an entry point from a library</h2><p>A library is a retained bytecode container. Resolve an entry point and stage, build a matching pipeline and dispatch. Shader artifacts remain backend-specific even when the public creation API is shared.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
 const bool ShaderLibraries = C.mbShaderLibraries;</code></pre><pre><code class="language-cpp">auto Device = GetDevice();
 ASSERT_TRUE(Device);

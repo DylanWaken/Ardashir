@@ -349,10 +349,14 @@ namespace arda
 
 				uint32_t width = 0;
 				uint32_t height = 0;
-				if (window.ConsumeResize(width, height) && !swapChain->Resize(width, height))
+				if (window.ConsumeResize(width, height))
 				{
-					ARDA_LOG(LogARDGExample, Error, "%s", swapChain->GetError().c_str());
-					return EXIT_FAILURE;
+					renderer.ReleaseFrameGraphs();
+					if (!swapChain->Resize(width, height))
+					{
+						ARDA_LOG(LogARDGExample, Error, "%s", swapChain->GetError().c_str());
+						return EXIT_FAILURE;
+					}
 				}
 
 				if (!renderer.RenderFrame(*swapChain))

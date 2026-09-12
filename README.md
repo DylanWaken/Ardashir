@@ -17,9 +17,13 @@ changing renderer code.
   devices, resources, shaders, pipelines, commands, and presentation. See the
   [provider module contract](Docs/ArdaBackend/BackendModules.md).
 
-- **[ArdaRenderGraph](Source/ArdaRenderGraph)** — A foundational render
-  dependency graph implementation on top of ArdaBackend. It schedules rendering work
-  and manages resource dependencies, transitions, queues, and lifetimes.
+- **[ArdaGraph](Source/ArdaGraph)** — Generic directed graph storage with indexed
+  adjacency, generational handles, traversal, and graph algorithms.
+
+- **[ArdaRenderGraph](Source/ArdaRenderGraph)** — Persistent graphics and CUDA
+  dependency graphs compiled by ArdaInductor. Typed registered nodes declare
+  resources; compilation resolves dependencies, pipelines, CUDA batches, queue
+  scheduling, and memory budgets. See the [graph guide](Docs/ArdaRDG/ArdaInductor.md).
 
 - **[ArdaScene](Docs/ArdaScene/README.md)** — Planned engine-neutral scene
   representation for standalone and hosted ray-traced rendering.
@@ -40,23 +44,28 @@ changing renderer code.
 - **[ArdaBackend quick user's guide](Docs/ArdaBackend/quick-guide.html)**
 - **[ArdaRenderGraph quick user's guide](Docs/ArdaRDG/quick-guide.html)**
 
-Both guides demonstrate startup, compute, raster, submission, and presentation.
-Their capability-gated hardware ray-tracing path is synthesized from implemented
-and tested API components; it is not a checked-in end-to-end RT sample.
+The guides cover startup, compute, raster, submission, and presentation.
+The [Cornell Box example](Source/ArdaTests/Examples/CornellBox/README.md) demonstrates
+hardware ray tracing through persistent typed graph nodes and automatic pipelines.
 
 ## Public API naming
 
 Public APIs share one `arda` namespace: use `arda::FArdaBackendConfiguration`,
-`arda::FArdaRHIDeviceRef`, and `arda::FARDGBuilder`, or place `using namespace arda;`
+`arda::FArdaRHIDeviceRef`, and `arda::FArdaDependencyGraph`, or place `using namespace arda;`
 in application code. Module names remain in descriptive type/function names,
 following Unreal's RHI/RenderGraph convention. This is a source/ABI change: remove
 the former `backend`, `rhi`, `render_graph`, and `trace` namespace qualifiers and
 rebuild consumers. Provider APIs, shared implementation helpers, tests, samples, and
-generated-source templates now follow the same flat namespace. Module-name helpers are now `GetBackendModuleName`,
-`GetRenderGraphModuleName`, etc. Provider types use descriptive names such as
+generated-source templates now follow the same flat namespace. Provider types use descriptive names such as
 `arda::IArdaRHIProviderDevice`; pipeline-cache helpers include
 `arda::ReadArdaPipelineCacheBlob`. The `ArdaNamespaceBoundary` build/CTest check
 rejects nested project namespaces and Arda namespace aliases.
+
+Graph changes are authored between `BeginGraphEdit` and `EndGraphEdit`, which
+recompiles the graph. Use `AttachOrFind` with registered typed parameters, then
+reuse `Execute` or `Submit`/`Wait` across frames. The `ArdaDependencyGraphBoundary`
+build/CTest check rejects references to the removed graph API, and public headers
+are compiled independently to keep execution internals private.
 
 Host-owned Vulkan devices are supported by `native-vulkan`; see the
 [enabled-feature and lifetime contract](Docs/ArdaBackend/external-interop.html#vulkan).
@@ -127,6 +136,19 @@ project's pinned tag; missing Khronos validation layers use the existing pinned
 CMake source-build provisioner. That build needs Git, CMake and a C++ compiler;
 on Windows the script can discover an installed Visual Studio C++ toolchain.
 Visual Studio's base Windows SDK and GPU drivers remain platform prerequisites.
+
+After setup at the default location, the `Scripts/Examples` launchers automatically
+load `build/graphics-sdk/GraphicsSdkDefaults.cmake`. Empty SDK cache entries receive
+the verified paths; existing nonempty paths and explicit launcher CMake arguments
+take precedence. For a custom setup root, configure the example build with the
+printed `cmake -C` command first.
+
+Run Vulkan examples from a **non-elevated terminal** when using these local layers.
+The Vulkan loader ignores `VK_LAYER_PATH` and `VK_ADD_LAYER_PATH` in elevated
+applications, so a valid local DLL can still produce “validation is unavailable.”
+Administrator execution requires a system-installed validation layer; SDK setup
+does not register layers system-wide. See the
+[Khronos loader restriction](https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderLayerInterface.md#exception-for-elevated-privileges).
 
 Downloads and generated configuration go under `build/graphics-sdk` by default,
 without changing the registry or global environment. `--root` changes that

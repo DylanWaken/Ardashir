@@ -144,6 +144,10 @@ def build_example(target, build_directory, configuration, options, generator=Non
         generator = "Ninja"
     configure = ["-S", str(SOURCE_DIRECTORY), "-B", str(build_directory),
                  f"-DCMAKE_BUILD_TYPE={configuration}"]
+    sdk_defaults = SOURCE_DIRECTORY / "build/graphics-sdk/GraphicsSdkDefaults.cmake"
+    if sdk_defaults.is_file():
+        print(f'Using graphics SDK defaults from "{sdk_defaults}"...', flush=True)
+        configure.extend(("-C", str(sdk_defaults)))
     if generator:
         configure.extend(("-G", generator))
     configure.extend(options)

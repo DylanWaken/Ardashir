@@ -14,7 +14,7 @@
 
   <rect class="build" x="42" y="112" width="180" height="112" rx="11"/>
   <text class="label" x="132" y="142">1 · Build</text>
-  <text class="small" x="132" y="168">logical textures/buffers</text><text class="small" x="132" y="188">typed pass parameters</text><text class="small" x="132" y="208">extractions and uploads</text>
+  <text class="small" x="132" y="168">logical resource values</text><text class="small" x="132" y="188">typed node parameters</text><text class="small" x="132" y="208">outputs and readbacks</text>
   <path class="flow" d="M222 168 H270"/>
   <rect class="compile" x="272" y="98" width="196" height="140" rx="11"/>
   <text class="label" x="370" y="128">2 · Compile</text>
@@ -44,5 +44,5 @@
   <rect class="compile" x="282" y="510" width="180" height="66" rx="8"/><text class="label" x="372" y="536">Facade snapshot</text><text class="tiny" x="372" y="557">abstract tracked state</text>
   <rect class="memory" x="496" y="510" width="180" height="66" rx="8"/><text class="label" x="586" y="536">Backend snapshot</text><text class="tiny" x="586" y="557">independent native tracker</text>
   <rect class="record" x="710" y="510" width="180" height="66" rx="8"/><text class="label" x="800" y="536">Native encoding</text><text class="tiny" x="800" y="557">state bits or layout/masks</text>
-  <text class="tiny" x="480" y="636">Immediate mode uses the same declarations and validation contract but compiles/submits incrementally for debugging.</text>
+  <text class="tiny" x="480" y="636">Edit transactions compile a reusable program; frame tickets retain submissions and publish completed readbacks.</text>
 </svg>

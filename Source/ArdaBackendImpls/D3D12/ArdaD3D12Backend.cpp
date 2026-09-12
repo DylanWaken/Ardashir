@@ -1,3 +1,4 @@
+#include "../ArdaGpuTimestamp.h"
 #include "../../ArdaBackend/Private/RHI/ArdaRHISubresources.h"
 #include "RHI/ArdaRHIProvider.h"
 #include "../Cuda/ArdaCudaInterop.h"
@@ -584,6 +585,13 @@ namespace arda
 				return mResource.Get();
 			}
 
+			FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept override
+			{
+				return mHeap ? mHeap->GetMemoryAllocationInfo() : mMemoryAllocationInfo;
+			}
+
+			FArdaRHIMemoryAllocationInfo mMemoryAllocationInfo;
+
 			FArdaCudaResourceInfo GetCudaResourceInfo() const noexcept override
 			{
 				return mCudaMapping ? FArdaCudaResourceInfo{EArdaCudaRepresentation::Surface,
@@ -625,6 +633,13 @@ namespace arda
 				return mResource.Get();
 			}
 
+			FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept override
+			{
+				return mHeap ? mHeap->GetMemoryAllocationInfo() : mMemoryAllocationInfo;
+			}
+
+			FArdaRHIMemoryAllocationInfo mMemoryAllocationInfo;
+
 			FArdaCudaResourceInfo GetCudaResourceInfo() const noexcept override
 			{
 				return mCudaMapping ? FArdaCudaResourceInfo{EArdaCudaRepresentation::LinearBuffer,
@@ -654,6 +669,13 @@ namespace arda
 				return mResource.Get();
 			}
 
+			FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept override
+			{
+				return mMemoryAllocationInfo;
+			}
+
+			FArdaRHIMemoryAllocationInfo mMemoryAllocationInfo;
+
 			FArdaRHIAccelStructDesc mDesc;
 			FArdaRHIAccelStructMemoryRequirements mRequirements;
 			ComPtr<ID3D12Resource> mResource;
@@ -668,6 +690,11 @@ namespace arda
 		class FD3D12Heap final : public IArdaProviderObject
 		{
 		public:
+			FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept override
+			{
+				return {GetIdentity(), mDesc.mCapacity, true};
+			}
+
 			const void* GetIdentity() const noexcept override
 			{
 				return mHeap.Get();
@@ -984,7 +1011,10 @@ namespace arda
 				return mQueryHeap.Get();
 			}
 
-			[[nodiscard]] FArdaRHIStatus Begin(ID3D12GraphicsCommandList& CommandList, const void* RecordingOwner)
+			[[nodiscard]] FArdaRHIStatus Begin(ID3D12Device& Device,
+			    ID3D12GraphicsCommandList& CommandList,
+			    const void* RecordingOwner,
+			    bool CopyQueue)
 			{
 				std::lock_guard<std::mutex> Lock(mMutex);
 				if (mState != ED3D12TimerQueryState::Idle)
@@ -992,7 +1022,19 @@ namespace arda
 					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 					    "The D3D12 timer query must be reset before reuse.");
 				}
-				CommandList.EndQuery(mQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0);
+				if (CopyQueue && !mCopyQueryHeap)
+				{
+					D3D12_QUERY_HEAP_DESC Desc{};
+					Desc.Type = D3D12_QUERY_HEAP_TYPE_COPY_QUEUE_TIMESTAMP;
+					Desc.Count = 2;
+					const HRESULT Result = Device.CreateQueryHeap(&Desc, IID_PPV_ARGS(&mCopyQueryHeap));
+					if (FAILED(Result))
+					{
+						return D3D12Failure("Failed to create a D3D12 copy timestamp heap.", Result);
+					}
+				}
+				mRecordingHeap = CopyQueue ? mCopyQueryHeap.Get() : mQueryHeap.Get();
+				CommandList.EndQuery(mRecordingHeap, D3D12_QUERY_TYPE_TIMESTAMP, 0);
 				mRecordingOwner = RecordingOwner;
 				mState = ED3D12TimerQueryState::Recording;
 				return {};
@@ -1005,22 +1047,22 @@ namespace arda
 				{
 					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "The D3D12 timer query was not begun.");
 				}
-				CommandList.EndQuery(mQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 1);
-				CommandList.ResolveQueryData(mQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0, 2, mReadback.Get(), 0);
+				CommandList.EndQuery(mRecordingHeap, D3D12_QUERY_TYPE_TIMESTAMP, 1);
+				CommandList.ResolveQueryData(mRecordingHeap, D3D12_QUERY_TYPE_TIMESTAMP, 0, 2, mReadback.Get(), 0);
 				mState = ED3D12TimerQueryState::Recorded;
 				return {};
 			}
 
-			[[nodiscard]] bool IsReadyForSubmission() const
+			[[nodiscard]] bool IsReadyForSubmission(const void* RecordingOwner) const
 			{
 				std::lock_guard<std::mutex> Lock(mMutex);
-				return mState == ED3D12TimerQueryState::Recorded;
+				return mState == ED3D12TimerQueryState::Recorded && mRecordingOwner == RecordingOwner;
 			}
 
-			void MarkSubmitted(ID3D12Fence* Fence, uint64_t Value, uint64_t Frequency)
+			void MarkSubmitted(const void* RecordingOwner, ID3D12Fence* Fence, uint64_t Value, uint64_t Frequency)
 			{
 				std::lock_guard<std::mutex> Lock(mMutex);
-				if (mState != ED3D12TimerQueryState::Recorded)
+				if (mState != ED3D12TimerQueryState::Recorded || mRecordingOwner != RecordingOwner)
 				{
 					return;
 				}
@@ -1042,36 +1084,56 @@ namespace arda
 				}
 			}
 
-			[[nodiscard]] bool Poll()
+			[[nodiscard]] TArdaRHIResult<bool> PollLocked()
+			{
+				if (mState == ED3D12TimerQueryState::Submitted && mCompletionFence)
+				{
+					const uint64_t Completed = mCompletionFence->GetCompletedValue();
+					if (Completed == UINT64_MAX)
+					{
+						return {false,
+						    FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+						        "The D3D12 timer device was removed.")};
+					}
+					if (Completed >= mCompletionValue)
+					{
+						mState = ED3D12TimerQueryState::Complete;
+					}
+				}
+				return {mState == ED3D12TimerQueryState::Complete, {}};
+			}
+
+			[[nodiscard]] TArdaRHIResult<bool> Poll()
 			{
 				std::lock_guard<std::mutex> Lock(mMutex);
-				if (mState == ED3D12TimerQueryState::Submitted && mCompletionFence &&
-				    mCompletionFence->GetCompletedValue() >= mCompletionValue)
-				{
-					mState = ED3D12TimerQueryState::Complete;
-				}
-				return mState == ED3D12TimerQueryState::Complete;
+				return PollLocked();
 			}
 
 			[[nodiscard]] TArdaRHIResult<float> GetSeconds()
 			{
-				if (!Poll())
+				std::lock_guard<std::mutex> Lock(mMutex);
+				const auto Complete = PollLocked();
+				if (!Complete)
+				{
+					return {0.f, Complete.mStatus};
+				}
+				if (!Complete.mValue)
 				{
 					return {0.f,
 					    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 					        "The D3D12 timer query has not completed.")};
 				}
-				uint64_t Frequency = 0;
+				if (mbSecondsCached)
 				{
-					std::lock_guard<std::mutex> Lock(mMutex);
-					Frequency = mTimestampFrequency;
+					return {mSeconds, {}};
 				}
-				if (!Frequency)
+				if (!mTimestampFrequency)
 				{
 					return {0.f,
 					    FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
 					        "The D3D12 timer query has no timestamp frequency.")};
 				}
+				// Map never substitutes for completion polling: mapping a readback resource does not wait for its GPU writes.
 				void* Mapped = nullptr;
 				const D3D12_RANGE ReadRange{0, sizeof(uint64_t) * 2};
 				const HRESULT Result = mReadback->Map(0, &ReadRange, &Mapped);
@@ -1080,16 +1142,22 @@ namespace arda
 					return {0.f, D3D12Failure("Failed to map the D3D12 timer query result.", Result)};
 				}
 				const auto* Timestamps = static_cast<const uint64_t*>(Mapped);
-				const uint64_t Elapsed = Timestamps[1] >= Timestamps[0] ? Timestamps[1] - Timestamps[0] : 0;
+				const uint64_t Elapsed = ArdaTimestampElapsedTicks(Timestamps[0], Timestamps[1], 64);
 				const D3D12_RANGE WrittenRange{0, 0};
 				mReadback->Unmap(0, &WrittenRange);
-				return {static_cast<float>(static_cast<double>(Elapsed) / static_cast<double>(Frequency)), {}};
+				mSeconds = static_cast<float>(static_cast<double>(Elapsed) / static_cast<double>(mTimestampFrequency));
+				mbSecondsCached = true;
+				return {mSeconds, {}};
 			}
 
 			[[nodiscard]] FArdaRHIStatus Reset()
 			{
-				(void)Poll();
 				std::lock_guard<std::mutex> Lock(mMutex);
+				const auto Complete = PollLocked();
+				if (!Complete)
+				{
+					return Complete.mStatus;
+				}
 				if (mState == ED3D12TimerQueryState::Recording || mState == ED3D12TimerQueryState::Recorded ||
 				    mState == ED3D12TimerQueryState::Submitted)
 				{
@@ -1100,11 +1168,17 @@ namespace arda
 				mCompletionValue = 0;
 				mTimestampFrequency = 0;
 				mRecordingOwner = nullptr;
+				mRecordingHeap = nullptr;
+				mbSecondsCached = false;
+				mSeconds = 0.f;
 				mState = ED3D12TimerQueryState::Idle;
 				return {};
 			}
 
-			ComPtr<ID3D12QueryHeap> mQueryHeap;
+			ComPtr<ID3D12QueryHeap> mQueryHeap, mCopyQueryHeap;
+			ID3D12QueryHeap* mRecordingHeap = nullptr;
+			bool mbSecondsCached = false;
+			float mSeconds = 0.f;
 			ComPtr<ID3D12Resource> mReadback;
 			ComPtr<ID3D12Fence> mCompletionFence;
 			mutable std::mutex mMutex;
@@ -1176,6 +1250,18 @@ namespace arda
 			FArdaRHIStatus CopyTexture(const FArdaProviderObjectRef&,
 			    const FArdaRHITextureDesc&,
 			    const FArdaRHITextureSlice&,
+			    const FArdaProviderObjectRef&,
+			    const FArdaRHITextureDesc&,
+			    const FArdaRHITextureSlice&) override;
+			FArdaRHIStatus CopyBufferToTexture(const FArdaProviderObjectRef&,
+			    const FArdaRHITextureDesc&,
+			    const FArdaRHITextureSlice&,
+			    const FArdaProviderObjectRef&,
+			    const FArdaRHIBufferDesc&,
+			    const FArdaRHITextureBufferLayout&) override;
+			FArdaRHIStatus CopyTextureToBuffer(const FArdaProviderObjectRef&,
+			    const FArdaRHIBufferDesc&,
+			    const FArdaRHITextureBufferLayout&,
 			    const FArdaProviderObjectRef&,
 			    const FArdaRHITextureDesc&,
 			    const FArdaRHITextureSlice&) override;
@@ -1354,6 +1440,8 @@ namespace arda
 			{
 				EArdaRHIResourceState mAbstractState = EArdaRHIResourceState::AccelStructRead;
 				EArdaRHIAccelStructBuildState mBuildState = EArdaRHIAccelStructBuildState::Unbuilt;
+				// State-only command lists must not republish an earlier lifecycle snapshot.
+				bool mbLifecycleWritten = false;
 			};
 
 			void Retain(const FArdaProviderObjectRef& Object)
@@ -1364,6 +1452,13 @@ namespace arda
 				}
 			}
 
+			FArdaRHIStatus CopyTextureBuffer(bool,
+			    const FArdaProviderObjectRef&,
+			    const FArdaRHITextureDesc&,
+			    const FArdaRHITextureSlice&,
+			    const FArdaProviderObjectRef&,
+			    const FArdaRHIBufferDesc&,
+			    const FArdaRHITextureBufferLayout&);
 			FArdaRHIStatus TransitionBuffer(const FArdaProviderObjectRef&, EArdaRHIResourceState);
 			FArdaRHIStatus TransitionTexture(const FArdaProviderObjectRef&,
 			    const FArdaRHITextureDesc&,
@@ -1458,6 +1553,10 @@ namespace arda
 			    const FArdaRHISamplerFeedbackTextureDesc&) override;
 			FArdaProviderObjectResult CreateBuffer(const FArdaRHIBufferDesc&) override;
 			FArdaProviderObjectResult CreateHeap(const FArdaRHIHeapDesc&) override;
+			TArdaRHIResult<FArdaRHIMemoryRequirements> QueryTextureMemoryRequirements(
+			    const FArdaRHITextureDesc&) override;
+			TArdaRHIResult<FArdaRHIMemoryRequirements> QueryBufferMemoryRequirements(
+			    const FArdaRHIBufferDesc&) override;
 			TArdaRHIResult<FArdaRHIMemoryRequirements> GetTextureMemoryRequirements(const FArdaProviderObjectRef&,
 			    const FArdaRHITextureDesc&) override;
 			TArdaRHIResult<FArdaRHIMemoryRequirements> GetBufferMemoryRequirements(const FArdaProviderObjectRef&,
@@ -1547,6 +1646,7 @@ namespace arda
 			TArdaRHIResult<uint64_t> ExecuteCommandList(IArdaProviderCommandList&, EArdaRHIQueueType) override;
 			FArdaRHIStatus QueueWait(EArdaRHIQueueType, EArdaRHIQueueType, uint64_t) override;
 			FArdaRHIStatus WaitForSubmission(uint64_t) override;
+			TArdaRHIResult<bool> PollSubmission(uint64_t) override;
 			FArdaRHIStatus WaitForIdle() override;
 			void RunGarbageCollection() override;
 
@@ -1614,7 +1714,6 @@ namespace arda
 			eastl::array<ComPtr<ID3D12Fence>, ArdaRHIQueueTypeCount> mQueueFences;
 			eastl::array<std::atomic<uint64_t>, ArdaRHIQueueTypeCount> mQueueFenceValues{};
 			ComPtr<IDXGIAdapter3> mDxgiAdapter;
-			HANDLE mFenceEvent = nullptr;
 			eastl::shared_ptr<void> mLifetimeToken;
 			eastl::shared_ptr<FD3D12DescriptorAllocator> mDescriptorAllocator;
 			uint32_t mResourceDescriptorSize = 0;
@@ -1632,10 +1731,6 @@ namespace arda
 		FArdaD3D12ProviderDevice::~FArdaD3D12ProviderDevice()
 		{
 			(void)WaitForIdle();
-			if (mFenceEvent)
-			{
-				CloseHandle(mFenceEvent);
-			}
 		}
 
 		FArdaRHIStatus FArdaD3D12ProviderDevice::Initialize()
@@ -1732,12 +1827,6 @@ namespace arda
 					return D3D12Failure("Failed to create a D3D12 queue fence.", Result);
 				}
 			}
-			mFenceEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
-			if (!mFenceEvent)
-			{
-				return D3D12Failure("Failed to create the D3D12 queue fence event.",
-				    HRESULT_FROM_WIN32(GetLastError()));
-			}
 			ComPtr<IDXGIFactory4> Factory;
 			if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&Factory))))
 			{
@@ -1765,6 +1854,21 @@ namespace arda
 			mCapabilities.mQueues.mbDedicatedComputeFamily = mComputeQueue != nullptr;
 			mCapabilities.mQueues.mbDedicatedCopyFamily = mCopyQueue != nullptr;
 			mCapabilities.mQueues.mbGpuWaits = true;
+			const auto TimestampBits = [](ID3D12CommandQueue* Queue) -> uint32_t
+			{
+				uint64_t Frequency = 0;
+				return Queue && SUCCEEDED(Queue->GetTimestampFrequency(&Frequency)) && Frequency ? 64u : 0u;
+			};
+			mCapabilities.mQueues.mGraphicsTimestampValidBits = TimestampBits(mQueue.Get());
+			mCapabilities.mQueues.mComputeTimestampValidBits = TimestampBits(mComputeQueue.Get());
+			D3D12_FEATURE_DATA_D3D12_OPTIONS3 TimestampOptions{};
+			if (SUCCEEDED(mD3DDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS3,
+			        &TimestampOptions,
+			        sizeof(TimestampOptions))) &&
+			    TimestampOptions.CopyQueueTimestampQueriesSupported)
+			{
+				mCapabilities.mQueues.mCopyTimestampValidBits = TimestampBits(mCopyQueue.Get());
+			}
 			mCapabilities.mbStagingTextures = true;
 			mCapabilities.mbTextureCopies = true;
 			mCapabilities.mbTextureResolve = true;
@@ -2203,6 +2307,9 @@ namespace arda
 				}
 				Texture->mCudaMapping = eastl::move(Mapping.mValue);
 			}
+			Texture->mMemoryAllocationInfo = {Texture->GetIdentity(),
+			    mD3DDevice->GetResourceAllocationInfo(0, 1, &Resource).SizeInBytes,
+			    true};
 			return {Texture, {}};
 		}
 
@@ -2378,6 +2485,9 @@ namespace arda
 				}
 				Buffer->mCudaMapping = eastl::move(Mapping.mValue);
 			}
+			Buffer->mMemoryAllocationInfo = {Buffer->GetIdentity(),
+			    mD3DDevice->GetResourceAllocationInfo(0, 1, &Resource).SizeInBytes,
+			    true};
 			return {Buffer, {}};
 		}
 
@@ -2512,6 +2622,25 @@ namespace arda
 				AccelStruct->mCompactedSizeGpu = eastl::move(Gpu.mValue);
 				AccelStruct->mCompactedSizeReadback = eastl::move(Readback.mValue);
 			}
+			uint64_t RetainedBytes = 0;
+			for (ID3D12Resource* Storage : {AccelStruct->mResource.Get(),
+			         AccelStruct->mCompactedSizeGpu.Get(),
+			         AccelStruct->mCompactedSizeReadback.Get()})
+			{
+				if (Storage)
+				{
+					const auto StorageDesc = Storage->GetDesc();
+					const auto Allocation = mD3DDevice->GetResourceAllocationInfo(0, 1, &StorageDesc);
+					if (Allocation.SizeInBytes == UINT64_MAX || RetainedBytes > UINT64_MAX - Allocation.SizeInBytes)
+					{
+						return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+						    "Invalid D3D12 AS retained allocation size."));
+					}
+					RetainedBytes += Allocation.SizeInBytes;
+				}
+			}
+			AccelStruct->mMemoryAllocationInfo = {AccelStruct->GetIdentity(), RetainedBytes, true};
+
 			return {AccelStruct, {}};
 		}
 
@@ -2575,6 +2704,44 @@ namespace arda
 			return {Heap, {}};
 		}
 
+		TArdaRHIResult<FArdaRHIMemoryRequirements> FArdaD3D12ProviderDevice::QueryTextureMemoryRequirements(
+		    const FArdaRHITextureDesc& Desc)
+		{
+			if (auto Status = Validate(Desc); !Status)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(eastl::move(Status));
+			}
+			D3D12_RESOURCE_DESC Resource = ToD3D12ResourceDesc(Desc);
+			if (Desc.mbTiled)
+			{
+				Resource.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
+			}
+			const D3D12_RESOURCE_ALLOCATION_INFO Info = mD3DDevice->GetResourceAllocationInfo(0, 1, &Resource);
+			if (!Info.SizeInBytes || Info.SizeInBytes == UINT64_MAX)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+				    "D3D12 could not determine texture allocation requirements."));
+			}
+			return {{Info.SizeInBytes, Info.Alignment, 0xffffffffu}, {}};
+		}
+
+		TArdaRHIResult<FArdaRHIMemoryRequirements> FArdaD3D12ProviderDevice::QueryBufferMemoryRequirements(
+		    const FArdaRHIBufferDesc& Desc)
+		{
+			if (auto Status = Validate(Desc); !Status)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(eastl::move(Status));
+			}
+			const D3D12_RESOURCE_DESC Resource = ToD3D12ResourceDesc(Desc);
+			const D3D12_RESOURCE_ALLOCATION_INFO Info = mD3DDevice->GetResourceAllocationInfo(0, 1, &Resource);
+			if (!Info.SizeInBytes || Info.SizeInBytes == UINT64_MAX)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
+				    "D3D12 could not determine buffer allocation requirements."));
+			}
+			return {{Info.SizeInBytes, Info.Alignment, 0xffffffffu}, {}};
+		}
+
 		TArdaRHIResult<FArdaRHIMemoryRequirements> FArdaD3D12ProviderDevice::GetTextureMemoryRequirements(
 		    const FArdaProviderObjectRef& Object,
 		    const FArdaRHITextureDesc& Desc)
@@ -2584,14 +2751,7 @@ namespace arda
 				return Fail<FArdaRHIMemoryRequirements>(FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
 				    "D3D12 texture memory requirements have the wrong resource type."));
 			}
-			const D3D12_RESOURCE_DESC Resource = ToD3D12ResourceDesc(Desc);
-			const D3D12_RESOURCE_ALLOCATION_INFO Info = mD3DDevice->GetResourceAllocationInfo(0, 1, &Resource);
-			if (!Info.SizeInBytes || Info.SizeInBytes == UINT64_MAX)
-			{
-				return Fail<FArdaRHIMemoryRequirements>(FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
-				    "D3D12 could not determine texture allocation requirements."));
-			}
-			return {{Info.SizeInBytes, Info.Alignment, 0xffffffffu}, {}};
+			return QueryTextureMemoryRequirements(Desc);
 		}
 
 		TArdaRHIResult<FArdaRHIMemoryRequirements> FArdaD3D12ProviderDevice::GetBufferMemoryRequirements(
@@ -2603,14 +2763,7 @@ namespace arda
 				return Fail<FArdaRHIMemoryRequirements>(FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
 				    "D3D12 buffer memory requirements have the wrong resource type."));
 			}
-			const D3D12_RESOURCE_DESC Resource = ToD3D12ResourceDesc(Desc);
-			const D3D12_RESOURCE_ALLOCATION_INFO Info = mD3DDevice->GetResourceAllocationInfo(0, 1, &Resource);
-			if (!Info.SizeInBytes || Info.SizeInBytes == UINT64_MAX)
-			{
-				return Fail<FArdaRHIMemoryRequirements>(FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
-				    "D3D12 could not determine buffer allocation requirements."));
-			}
-			return {{Info.SizeInBytes, Info.Alignment, 0xffffffffu}, {}};
+			return QueryBufferMemoryRequirements(Desc);
 		}
 
 		FArdaRHIStatus FArdaD3D12ProviderDevice::BindTextureMemory(const FArdaProviderObjectRef& Object,
@@ -3212,6 +3365,7 @@ namespace arda
 			auto Texture = eastl::make_shared<FD3D12Texture>();
 			Texture->mResource = reinterpret_cast<ID3D12Resource*>(Desc.mNativeObject);
 			Texture->mDesc = Desc.mTexture;
+			Texture->mMemoryAllocationInfo = Desc.mMemoryAllocationInfo;
 			Texture->mAbstractStates.assign(D3D12TextureStateCount(Desc.mTexture), Desc.mTexture.mInitialState);
 			Texture->mNativeStates.assign(D3D12TextureStateCount(Desc.mTexture),
 			    ToD3D12State(Desc.mTexture.mInitialState));
@@ -3232,6 +3386,7 @@ namespace arda
 			auto Buffer = eastl::make_shared<FD3D12Buffer>();
 			Buffer->mResource = reinterpret_cast<ID3D12Resource*>(Desc.mNativeObject);
 			Buffer->mDesc = Desc.mBuffer;
+			Buffer->mMemoryAllocationInfo = Desc.mMemoryAllocationInfo;
 			Buffer->mAbstractState = Desc.mBuffer.mInitialState;
 			Buffer->mNativeState = ToD3D12State(Desc.mBuffer.mInitialState);
 			Buffer->mbStateKnown = true;
@@ -5180,7 +5335,10 @@ namespace arda
 			{
 				std::lock_guard<std::mutex> Lock(Entry.first->mStateMutex);
 				Entry.first->mAbstractState = Entry.second.mAbstractState;
-				Entry.first->mBuildState = Entry.second.mBuildState;
+				if (Entry.second.mbLifecycleWritten)
+				{
+					Entry.first->mBuildState = Entry.second.mBuildState;
+				}
 			}
 		}
 
@@ -5189,10 +5347,10 @@ namespace arda
 			for (const auto& Object : mTimerQueries)
 			{
 				auto* Query = dynamic_cast<FD3D12TimerQuery*>(Object.get());
-				if (!Query || !Query->IsReadyForSubmission())
+				if (!Query || !Query->IsReadyForSubmission(this))
 				{
 					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
-					    "A D3D12 timer query was not ended before submission.");
+					    "A D3D12 timer query was not ended on this command list before submission.");
 				}
 			}
 			return {};
@@ -5204,7 +5362,7 @@ namespace arda
 			{
 				if (auto* Query = dynamic_cast<FD3D12TimerQuery*>(Object.get()))
 				{
-					Query->MarkSubmitted(Fence, Value, Frequency);
+					Query->MarkSubmitted(this, Fence, Value, Frequency);
 				}
 			}
 		}
@@ -5499,6 +5657,167 @@ namespace arda
 			}
 			Retain(Destination);
 			Retain(Source);
+			return {};
+		}
+
+		FArdaRHIStatus FArdaD3D12CommandList::CopyBufferToTexture(const FArdaProviderObjectRef& Destination,
+		    const FArdaRHITextureDesc& DestinationDesc,
+		    const FArdaRHITextureSlice& DestinationSlice,
+		    const FArdaProviderObjectRef& Source,
+		    const FArdaRHIBufferDesc& SourceDesc,
+		    const FArdaRHITextureBufferLayout& SourceLayout)
+		{
+			return CopyTextureBuffer(true,
+			    Destination,
+			    DestinationDesc,
+			    DestinationSlice,
+			    Source,
+			    SourceDesc,
+			    SourceLayout);
+		}
+
+		FArdaRHIStatus FArdaD3D12CommandList::CopyTextureToBuffer(const FArdaProviderObjectRef& Destination,
+		    const FArdaRHIBufferDesc& DestinationDesc,
+		    const FArdaRHITextureBufferLayout& DestinationLayout,
+		    const FArdaProviderObjectRef& Source,
+		    const FArdaRHITextureDesc& SourceDesc,
+		    const FArdaRHITextureSlice& SourceSlice)
+		{
+			return CopyTextureBuffer(false,
+			    Source,
+			    SourceDesc,
+			    SourceSlice,
+			    Destination,
+			    DestinationDesc,
+			    DestinationLayout);
+		}
+
+		FArdaRHIStatus FArdaD3D12CommandList::CopyTextureBuffer(bool bToTexture,
+		    const FArdaProviderObjectRef& TextureObject,
+		    const FArdaRHITextureDesc& TextureDesc,
+		    const FArdaRHITextureSlice& Slice,
+		    const FArdaProviderObjectRef& BufferObject,
+		    const FArdaRHIBufferDesc& BufferDesc,
+		    const FArdaRHITextureBufferLayout& Layout)
+		{
+			if (!mbOpen)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "D3D12 texture-buffer copies require an open command list.");
+			}
+			auto* Texture = dynamic_cast<FD3D12Texture*>(TextureObject.get());
+			auto* Buffer = dynamic_cast<FD3D12Buffer*>(BufferObject.get());
+			if (!Texture || !Buffer || !Texture->mResource || !Buffer->mResource)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+				    "D3D12 texture-buffer copy resources have the wrong implementation or no backing allocation.");
+			}
+			FArdaRHITextureCopyExtent Extent;
+			if (auto Status = ValidateArdaRHITextureBufferCopy(TextureDesc, Slice, BufferDesc, Layout, Extent); !Status)
+			{
+				return Status;
+			}
+			if ((bToTexture && BufferDesc.mCpuAccess == EArdaRHICpuAccess::Read) ||
+			    (!bToTexture && BufferDesc.mCpuAccess == EArdaRHICpuAccess::Write))
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+				    "D3D12 texture-buffer copy direction is incompatible with the buffer CPU access.");
+			}
+			const uint32_t Subresource = ArdaD3D12CalcSubresource(Slice.mMipLevel,
+			    Slice.mArraySlice,
+			    Slice.mPlane,
+			    TextureDesc.mMipLevels,
+			    TextureDesc.mArraySize);
+			const auto& TextureTracking = GetTextureTracking(*Texture);
+			const auto& BufferTracking = GetBufferTracking(*Buffer);
+			const auto PreviousTexture = TextureTracking.mAbstractStates[Subresource];
+			const auto PreviousBuffer = BufferTracking.mAbstractState;
+			const auto TextureState = bToTexture ? EArdaRHIResourceState::CopyDest : EArdaRHIResourceState::CopySource;
+			const auto BufferState = bToTexture ? EArdaRHIResourceState::CopySource : EArdaRHIResourceState::CopyDest;
+			const auto QueueAllowsState = [this](D3D12_RESOURCE_STATES State)
+			{
+				if (mType == D3D12_COMMAND_LIST_TYPE_DIRECT)
+				{
+					return true;
+				}
+				UINT Allowed = D3D12_RESOURCE_STATE_COPY_SOURCE | D3D12_RESOURCE_STATE_COPY_DEST;
+				if (mType == D3D12_COMMAND_LIST_TYPE_COMPUTE)
+				{
+					Allowed |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER | D3D12_RESOURCE_STATE_UNORDERED_ACCESS |
+					    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+				}
+				return (static_cast<UINT>(State) & ~Allowed) == 0;
+			};
+			if (mbAutomaticBarriers)
+			{
+				if (!QueueAllowsState(TextureTracking.mNativeStates[Subresource]) ||
+				    (BufferDesc.mCpuAccess == EArdaRHICpuAccess::None &&
+				        !QueueAllowsState(BufferTracking.mNativeState)))
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+					    "Transition texture-buffer copy resources to queue-compatible states before using this queue.");
+				}
+			}
+			else if ((TextureTracking.mNativeStates[Subresource] & ToD3D12State(TextureState)) !=
+			        ToD3D12State(TextureState) ||
+			    (BufferTracking.mNativeState & ToD3D12State(BufferState)) != ToD3D12State(BufferState))
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "Texture-buffer copies with automatic barriers disabled require explicit copy states.");
+			}
+			const FArdaRHITextureSubresourceRange Range{Slice.mMipLevel, 1, Slice.mArraySlice, 1, Slice.mPlane, 1};
+			if (mbAutomaticBarriers)
+			{
+				if (auto Status = TransitionTexture(TextureObject, TextureDesc, Range, TextureState); !Status)
+				{
+					return Status;
+				}
+				if (auto Status = TransitionBuffer(BufferObject, BufferState); !Status)
+				{
+					return Status;
+				}
+			}
+			D3D12_TEXTURE_COPY_LOCATION TextureLocation{};
+			TextureLocation.pResource = Texture->mResource.Get();
+			TextureLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+			TextureLocation.SubresourceIndex = Subresource;
+			D3D12_TEXTURE_COPY_LOCATION BufferLocation{};
+			BufferLocation.pResource = Buffer->mResource.Get();
+			BufferLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+			BufferLocation.PlacedFootprint.Offset = Layout.mByteOffset;
+			BufferLocation.PlacedFootprint.Footprint = {ToDxgi(TextureDesc.mFormat),
+			    Extent.mWidth,
+			    Extent.mHeight,
+			    Extent.mDepth,
+			    Layout.mRowPitch};
+			if (bToTexture)
+			{
+				const D3D12_BOX Box{0, 0, 0, Extent.mWidth, Extent.mHeight, Extent.mDepth};
+				mCommandList->CopyTextureRegion(&TextureLocation, Slice.mX, Slice.mY, Slice.mZ, &BufferLocation, &Box);
+			}
+			else
+			{
+				const D3D12_BOX Box{Slice.mX,
+				    Slice.mY,
+				    Slice.mZ,
+				    Slice.mX + Extent.mWidth,
+				    Slice.mY + Extent.mHeight,
+				    Slice.mZ + Extent.mDepth};
+				mCommandList->CopyTextureRegion(&BufferLocation, 0, 0, 0, &TextureLocation, &Box);
+			}
+			if (mbAutomaticBarriers)
+			{
+				if (auto Status = TransitionTexture(TextureObject, TextureDesc, Range, PreviousTexture); !Status)
+				{
+					return Status;
+				}
+				if (auto Status = TransitionBuffer(BufferObject, PreviousBuffer); !Status)
+				{
+					return Status;
+				}
+			}
+			Retain(TextureObject);
+			Retain(BufferObject);
 			return {};
 		}
 
@@ -5980,7 +6299,43 @@ namespace arda
 			{
 				if (HasAnyFlags(Transition.mFlags, EArdaRHITransitionFlags::Discard))
 				{
-					mCommandList->DiscardResource(Texture->mResource.Get(), nullptr);
+					// Discard permits undefined old contents. Emit the native metadata reset
+					// only on an admitted queue and in its required state; UAV-only images
+					// activated on graphics need just their alias barrier and transition.
+					EArdaRHIResourceState DiscardState = EArdaRHIResourceState::Unknown;
+					if (mType == D3D12_COMMAND_LIST_TYPE_DIRECT)
+					{
+						if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::DepthStencil))
+						{
+							DiscardState = EArdaRHIResourceState::DepthWrite;
+						}
+						else if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::RenderTarget))
+						{
+							DiscardState = EArdaRHIResourceState::RenderTarget;
+						}
+					}
+					else if (mType == D3D12_COMMAND_LIST_TYPE_COMPUTE &&
+					    HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::UnorderedAccess))
+					{
+						DiscardState = EArdaRHIResourceState::UnorderedAccess;
+					}
+					if (DiscardState != EArdaRHIResourceState::Unknown)
+					{
+						if (auto Status = TransitionTexture(Object, Desc, Transition.mSubresources, DiscardState);
+						    !Status)
+						{
+							return Status;
+						}
+						for (const auto [Mip, Slice, Plane] :
+						    FArdaTextureSubresources(Transition.mSubresources.Resolve(Desc)))
+						{
+							D3D12_DISCARD_REGION Region{};
+							Region.FirstSubresource =
+							    ArdaD3D12CalcSubresource(Mip, Slice, Plane, Desc.mMipLevels, Desc.mArraySize);
+							Region.NumSubresources = 1;
+							mCommandList->DiscardResource(Texture->mResource.Get(), &Region);
+						}
+					}
 				}
 				return TransitionTexture(Object, Desc, Transition.mSubresources, Transition.mStateAfter);
 			}
@@ -6038,10 +6393,8 @@ namespace arda
 			}
 			if (!bBegin && !bEnd)
 			{
-				if (HasAnyFlags(Transition.mFlags, EArdaRHITransitionFlags::Discard))
-				{
-					mCommandList->DiscardResource(Buffer->mResource.Get(), nullptr);
-				}
+				// Buffer discards require no metadata reset. In particular copy lists
+				// cannot call DiscardResource, even though contents may be undefined.
 				return TransitionBuffer(Object, Transition.mStateAfter);
 			}
 			if (Desc.mCpuAccess != EArdaRHICpuAccess::None)
@@ -6788,7 +7141,8 @@ namespace arda
 			mUploadResources.push_back(eastl::move(Scratch.mValue));
 			Retain(Object);
 			mAccelStructStates[AccelStruct] = {EArdaRHIResourceState::AccelStructRead,
-			    bUpdate ? EArdaRHIAccelStructBuildState::Updated : EArdaRHIAccelStructBuildState::Built};
+			    bUpdate ? EArdaRHIAccelStructBuildState::Updated : EArdaRHIAccelStructBuildState::Built,
+			    true};
 			return {};
 		}
 
@@ -6917,7 +7271,8 @@ namespace arda
 			Retain(DestinationObject);
 			Retain(SourceObject);
 			mAccelStructStates[Destination] = {EArdaRHIResourceState::AccelStructRead,
-			    EArdaRHIAccelStructBuildState::Compacted};
+			    EArdaRHIAccelStructBuildState::Compacted,
+			    true};
 			return {};
 		}
 
@@ -7204,7 +7559,22 @@ namespace arda
 				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
 				    "The timer query is not a D3D12 timer query.");
 			}
-			if (auto Status = Query->Begin(*mCommandList.Get(), this); !Status)
+			if (!IsOpen())
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "A timer query requires an open D3D12 command list.");
+			}
+			const auto Queue = mType == D3D12_COMMAND_LIST_TYPE_COPY ? EArdaRHIQueueType::Copy
+			    : mType == D3D12_COMMAND_LIST_TYPE_COMPUTE           ? EArdaRHIQueueType::Compute
+			                                                         : EArdaRHIQueueType::Graphics;
+			if (!mDevice.GetCapabilities().mQueues.SupportsTimestamps(Queue))
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+				    "The D3D12 command queue does not support timestamps.");
+			}
+			if (auto Status =
+			        Query->Begin(mDevice.GetDevice(), *mCommandList.Get(), this, Queue == EArdaRHIQueueType::Copy);
+			    !Status)
 			{
 				return Status;
 			}
@@ -7223,6 +7593,11 @@ namespace arda
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
 				    "The timer query is not a D3D12 timer query.");
+			}
+			if (!IsOpen())
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "A timer query requires an open D3D12 command list.");
 			}
 			return Query->End(*mCommandList.Get(), this);
 		}
@@ -7394,7 +7769,7 @@ namespace arda
 				return Fail<bool>(
 				    FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice, "The timer query is not a D3D12 timer query."));
 			}
-			return {Query->Poll(), {}};
+			return Query->Poll();
 		}
 
 		TArdaRHIResult<float> FArdaD3D12ProviderDevice::GetTimerQuerySeconds(const FArdaProviderObjectRef& Object)
@@ -7577,8 +7952,37 @@ namespace arda
 			                      : FArdaRHIStatus{};
 		}
 
+		TArdaRHIResult<bool> FArdaD3D12ProviderDevice::PollSubmission(uint64_t Value)
+		{
+			const uint32_t QueueIndex = static_cast<uint32_t>(Value >> D3D12SubmissionQueueShift);
+			const uint64_t QueueValue = DecodeD3D12SubmissionValue(Value);
+			if (QueueIndex >= mQueueFences.size() || !mQueueFences[QueueIndex] ||
+			    QueueValue > mQueueFenceValues[QueueIndex].load(std::memory_order_relaxed))
+			{
+				return {false,
+				    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Invalid D3D12 submission token.")};
+			}
+			const uint64_t Completed = mQueueFences[QueueIndex]->GetCompletedValue();
+			if (Completed == UINT64_MAX)
+			{
+				return {false,
+				    D3D12Failure("The D3D12 device was removed while polling a submission.",
+				        mD3DDevice->GetDeviceRemovedReason())};
+			}
+			return {Completed >= QueueValue, {}};
+		}
+
 		FArdaRHIStatus FArdaD3D12ProviderDevice::WaitForSubmission(uint64_t Value)
 		{
+			const auto Poll = PollSubmission(Value);
+			if (!Poll || Poll.mValue)
+			{
+				if (Poll)
+				{
+					RunGarbageCollection();
+				}
+				return Poll.mStatus;
+			}
 			const uint32_t QueueIndex = static_cast<uint32_t>(Value >> D3D12SubmissionQueueShift);
 			if (QueueIndex >= mQueueFences.size())
 			{
@@ -7586,20 +7990,62 @@ namespace arda
 				    "The D3D12 submission queue encoding is invalid.");
 			}
 			const uint64_t QueueValue = DecodeD3D12SubmissionValue(Value);
-			ID3D12Fence* Fence = mQueueFences[QueueIndex].Get();
-			if (!Fence || Fence->GetCompletedValue() >= QueueValue)
+			const ComPtr<ID3D12Fence> Fence = mQueueFences[QueueIndex];
+			if (!Fence)
 			{
 				RunGarbageCollection();
 				return {};
 			}
-			const HRESULT Result = Fence->SetEventOnCompletion(QueueValue, mFenceEvent);
-			if (FAILED(Result))
+
+			// Concurrent readback completions must not consume another submission's
+			// wakeup. Each CPU wait owns its event, including waits issued by WaitForIdle.
+			struct FWaitEvent
 			{
-				return D3D12Failure("Failed to arm the D3D12 submission fence.", Result);
+				HANDLE mHandle = nullptr;
+
+				~FWaitEvent()
+				{
+					if (mHandle)
+					{
+						CloseHandle(mHandle);
+					}
+				}
+			} Event;
+
+			for (;;)
+			{
+				const uint64_t CompletedValue = Fence->GetCompletedValue();
+				if (CompletedValue == UINT64_MAX)
+				{
+					return D3D12Failure("The D3D12 device was removed while waiting for a submission.",
+					    mD3DDevice->GetDeviceRemovedReason());
+				}
+				if (CompletedValue >= QueueValue)
+				{
+					RunGarbageCollection();
+					return {};
+				}
+				if (!Event.mHandle)
+				{
+					Event.mHandle = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+					if (!Event.mHandle)
+					{
+						return D3D12Failure("Failed to create a D3D12 submission wait event.",
+						    HRESULT_FROM_WIN32(GetLastError()));
+					}
+				}
+				const HRESULT Result = Fence->SetEventOnCompletion(QueueValue, Event.mHandle);
+				if (FAILED(Result))
+				{
+					return D3D12Failure("Failed to arm the D3D12 submission fence.", Result);
+				}
+				if (WaitForSingleObject(Event.mHandle, INFINITE) != WAIT_OBJECT_0)
+				{
+					return D3D12Failure("Failed while waiting for the D3D12 submission fence.",
+					    HRESULT_FROM_WIN32(GetLastError()));
+				}
+				// Recheck completion after every wakeup, including device-removal signals.
 			}
-			WaitForSingleObject(mFenceEvent, INFINITE);
-			RunGarbageCollection();
-			return {};
 		}
 
 		FArdaRHIStatus FArdaD3D12ProviderDevice::WaitForIdle()
@@ -7619,14 +8065,11 @@ namespace arda
 				{
 					return D3D12Failure("Failed to signal the D3D12 idle fence.", Result);
 				}
-				if (Fence->GetCompletedValue() < Value)
+				if (auto Status =
+				        WaitForSubmission(EncodeD3D12Submission(static_cast<EArdaRHIQueueType>(QueueIndex), Value));
+				    !Status)
 				{
-					Result = Fence->SetEventOnCompletion(Value, mFenceEvent);
-					if (FAILED(Result))
-					{
-						return D3D12Failure("Failed to arm the D3D12 idle fence.", Result);
-					}
-					WaitForSingleObject(mFenceEvent, INFINITE);
+					return Status;
 				}
 			}
 			RunGarbageCollection();

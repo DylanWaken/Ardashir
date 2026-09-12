@@ -1,3 +1,4 @@
+#include "../ArdaGpuTimestamp.h"
 #include "../../ArdaBackend/Private/RHI/ArdaRHISubresources.h"
 #if defined(_WIN32)
 #define NOMINMAX
@@ -977,6 +978,7 @@ namespace arda
 			// Declared first so the host outlives every Arda-created child object.
 			eastl::shared_ptr<void> mNativeLifetime;
 			bool mbOwnsDevice = true;
+			bool mbHostQueryReset = false;
 			vk::PhysicalDeviceFeatures mEnabledFeatures;
 			vk::detail::DynamicLoader mLoader;
 			vk::Instance mInstance;
@@ -1099,6 +1101,13 @@ namespace arda
 				}
 			}
 
+			FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept override
+			{
+				return mHeap ? mHeap->GetMemoryAllocationInfo() : mMemoryAllocationInfo;
+			}
+
+			FArdaRHIMemoryAllocationInfo mMemoryAllocationInfo;
+
 			FArdaCudaResourceInfo GetCudaResourceInfo() const noexcept override
 			{
 				return bool(mCudaMapping) ? FArdaCudaResourceInfo{EArdaCudaRepresentation::Surface,
@@ -1148,6 +1157,13 @@ namespace arda
 					}
 				}
 			}
+
+			FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept override
+			{
+				return mHeap ? mHeap->GetMemoryAllocationInfo() : mMemoryAllocationInfo;
+			}
+
+			FArdaRHIMemoryAllocationInfo mMemoryAllocationInfo;
 
 			FArdaCudaResourceInfo GetCudaResourceInfo() const noexcept override
 			{
@@ -1210,6 +1226,13 @@ namespace arda
 			{
 				return reinterpret_cast<const void*>(static_cast<VkAccelerationStructureKHR>(mAccelStruct));
 			}
+
+			FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept override
+			{
+				return mMemoryAllocationInfo;
+			}
+
+			FArdaRHIMemoryAllocationInfo mMemoryAllocationInfo;
 
 			eastl::shared_ptr<FArdaVulkanContext> mContext;
 			FArdaRHIAccelStructDesc mDesc;
@@ -1283,6 +1306,11 @@ namespace arda
 				{
 					mContext->mDevice.freeMemory(mMemory);
 				}
+			}
+
+			FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept override
+			{
+				return {GetIdentity(), mDesc.mCapacity, true};
 			}
 
 			const void* GetIdentity() const noexcept override
@@ -1699,7 +1727,17 @@ namespace arda
 					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 					    "The Vulkan timer query must be reset before reuse.");
 				}
-				CommandBuffer.resetQueryPool(mQueryPool, 0, 2);
+				if (mContext->mbHostQueryReset)
+				{
+					// Idle is reached only before submission, after cancellation, or after Reset
+					// has polled the previous submission complete. The mutex also excludes host reads.
+					mContext->mDevice.resetQueryPool(mQueryPool, 0, 2);
+				}
+				else
+				{
+					// Queue capabilities admit this fallback only on graphics/compute families.
+					CommandBuffer.resetQueryPool(mQueryPool, 0, 2);
+				}
 				CommandBuffer.writeTimestamp2(vk::PipelineStageFlagBits2::eTopOfPipe, mQueryPool, 0);
 				mRecordingOwner = RecordingOwner;
 				mTimestampValidBits = TimestampValidBits;
@@ -1720,20 +1758,22 @@ namespace arda
 				return {};
 			}
 
-			[[nodiscard]] bool IsReadyForSubmission() const
+			[[nodiscard]] bool IsReadyForSubmission(const void* RecordingOwner) const
 			{
 				std::lock_guard<std::mutex> Lock(mMutex);
-				return mState == EVulkanTimerQueryState::Recorded;
+				return mState == EVulkanTimerQueryState::Recorded && mRecordingOwner == RecordingOwner;
 			}
 
-			void MarkSubmitted()
+			void MarkSubmitted(const void* RecordingOwner, EArdaRHIQueueType Queue, uint64_t Value)
 			{
 				std::lock_guard<std::mutex> Lock(mMutex);
-				if (mState != EVulkanTimerQueryState::Recorded)
+				if (mState != EVulkanTimerQueryState::Recorded || mRecordingOwner != RecordingOwner)
 				{
 					return;
 				}
 				mRecordingOwner = nullptr;
+				mCompletionTimeline = mContext->mQueueTimelines[GetArdaRHIQueueIndex(Queue)];
+				mCompletionValue = Value;
 				mState = EVulkanTimerQueryState::Submitted;
 			}
 
@@ -1755,22 +1795,26 @@ namespace arda
 				uint64_t mAvailable = 0;
 			};
 
-			[[nodiscard]] TArdaRHIResult<bool> Poll()
+			[[nodiscard]] TArdaRHIResult<bool> PollLocked()
 			{
+				if (mState == EVulkanTimerQueryState::Complete)
 				{
-					std::lock_guard<std::mutex> Lock(mMutex);
-					if (mState == EVulkanTimerQueryState::Complete)
-					{
-						return {true, {}};
-					}
-					if (mState != EVulkanTimerQueryState::Submitted)
+					return {true, {}};
+				}
+				if (mState != EVulkanTimerQueryState::Submitted)
+				{
+					return {false, {}};
+				}
+				try
+				{
+					// Availability alone can still refer to the prior use until the recorded reset executes.
+					// Poll this submission's timeline first; never use WAIT_BIT or a blocking fence wait.
+					if (!mCompletionTimeline ||
+					    mContext->mDevice.getSemaphoreCounterValue(mCompletionTimeline) < mCompletionValue)
 					{
 						return {false, {}};
 					}
-				}
-				FTimestampResult Results[2]{};
-				try
-				{
+					FTimestampResult Results[2]{};
 					const vk::Result Result = mContext->mDevice.getQueryPoolResults(mQueryPool,
 					    0,
 					    2,
@@ -1782,16 +1826,16 @@ namespace arda
 					{
 						return {false, VulkanFailure("Failed to poll a Vulkan timer query.", Result)};
 					}
-					const bool bComplete = Results[0].mAvailable != 0 && Results[1].mAvailable != 0;
-					if (bComplete)
+					if (!Results[0].mAvailable || !Results[1].mAvailable)
 					{
-						std::lock_guard<std::mutex> Lock(mMutex);
-						if (mState == EVulkanTimerQueryState::Submitted)
-						{
-							mState = EVulkanTimerQueryState::Complete;
-						}
+						return {false, {}};
 					}
-					return {bComplete, {}};
+					const uint64_t Elapsed =
+					    ArdaTimestampElapsedTicks(Results[0].mTimestamp, Results[1].mTimestamp, mTimestampValidBits);
+					mSeconds = static_cast<float>(
+					    static_cast<double>(Elapsed) * static_cast<double>(mTimestampPeriodNanoseconds) * 1.0e-9);
+					mState = EVulkanTimerQueryState::Complete;
+					return {true, {}};
 				}
 				catch (const vk::SystemError& Error)
 				{
@@ -1799,9 +1843,16 @@ namespace arda
 				}
 			}
 
+			[[nodiscard]] TArdaRHIResult<bool> Poll()
+			{
+				std::lock_guard<std::mutex> Lock(mMutex);
+				return PollLocked();
+			}
+
 			[[nodiscard]] TArdaRHIResult<float> GetSeconds()
 			{
-				auto Complete = Poll();
+				std::lock_guard<std::mutex> Lock(mMutex);
+				const auto Complete = PollLocked();
 				if (!Complete)
 				{
 					return {0.f, Complete.mStatus};
@@ -1812,50 +1863,28 @@ namespace arda
 					    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 					        "The Vulkan timer query has not completed.")};
 				}
-				uint64_t Timestamps[2]{};
-				try
-				{
-					const vk::Result Result = mContext->mDevice.getQueryPoolResults(mQueryPool,
-					    0,
-					    2,
-					    sizeof(Timestamps),
-					    Timestamps,
-					    sizeof(uint64_t),
-					    vk::QueryResultFlagBits::e64);
-					if (Result != vk::Result::eSuccess)
-					{
-						return {0.f, VulkanFailure("Failed to read a Vulkan timer query.", Result)};
-					}
-					const uint64_t TimestampMask =
-					    mTimestampValidBits >= 64 ? UINT64_MAX : (uint64_t{1} << mTimestampValidBits) - 1;
-					const uint64_t Elapsed = (Timestamps[1] - Timestamps[0]) & TimestampMask;
-					return {static_cast<float>(static_cast<double>(Elapsed) *
-					            static_cast<double>(mTimestampPeriodNanoseconds) * 1.0e-9),
-					    {}};
-				}
-				catch (const vk::SystemError& Error)
-				{
-					return {0.f, FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what())};
-				}
+				return {mSeconds, {}};
 			}
 
 			[[nodiscard]] FArdaRHIStatus Reset()
 			{
-				auto Complete = Poll();
+				std::lock_guard<std::mutex> Lock(mMutex);
+				const auto Complete = PollLocked();
 				if (!Complete)
 				{
 					return Complete.mStatus;
 				}
-				std::lock_guard<std::mutex> Lock(mMutex);
 				if (mState == EVulkanTimerQueryState::Recording || mState == EVulkanTimerQueryState::Recorded ||
 				    mState == EVulkanTimerQueryState::Submitted)
 				{
 					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 					    "The Vulkan timer query is still in use.");
 				}
-
-				// Begin resets both native slots on the GPU before writing them.
+				// The next Begin resets both slots on the host or a supported queue.
 				mRecordingOwner = nullptr;
+				mCompletionTimeline = nullptr;
+				mCompletionValue = 0;
+				mSeconds = 0.f;
 				mState = EVulkanTimerQueryState::Idle;
 				return {};
 			}
@@ -1864,6 +1893,9 @@ namespace arda
 			vk::QueryPool mQueryPool;
 			float mTimestampPeriodNanoseconds = 0.f;
 			uint32_t mTimestampValidBits = 64;
+			vk::Semaphore mCompletionTimeline;
+			uint64_t mCompletionValue = 0;
+			float mSeconds = 0.f;
 			mutable std::mutex mMutex;
 			const void* mRecordingOwner = nullptr;
 			EVulkanTimerQueryState mState = EVulkanTimerQueryState::Idle;
@@ -1992,6 +2024,18 @@ namespace arda
 			FArdaRHIStatus CopyTexture(const FArdaProviderObjectRef&,
 			    const FArdaRHITextureDesc&,
 			    const FArdaRHITextureSlice&,
+			    const FArdaProviderObjectRef&,
+			    const FArdaRHITextureDesc&,
+			    const FArdaRHITextureSlice&) override;
+			FArdaRHIStatus CopyBufferToTexture(const FArdaProviderObjectRef&,
+			    const FArdaRHITextureDesc&,
+			    const FArdaRHITextureSlice&,
+			    const FArdaProviderObjectRef&,
+			    const FArdaRHIBufferDesc&,
+			    const FArdaRHITextureBufferLayout&) override;
+			FArdaRHIStatus CopyTextureToBuffer(const FArdaProviderObjectRef&,
+			    const FArdaRHIBufferDesc&,
+			    const FArdaRHITextureBufferLayout&,
 			    const FArdaProviderObjectRef&,
 			    const FArdaRHITextureDesc&,
 			    const FArdaRHITextureSlice&) override;
@@ -2130,7 +2174,7 @@ namespace arda
 
 			[[nodiscard]] FArdaRHIStatus ValidateTrackedStartStates() const;
 			[[nodiscard]] FArdaRHIStatus ValidateTimerQueries() const;
-			void MarkTimerQueriesSubmitted();
+			void MarkTimerQueriesSubmitted(EArdaRHIQueueType Queue, uint64_t Value);
 			void CommitTrackedStates();
 
 		private:
@@ -2163,6 +2207,13 @@ namespace arda
 			std::function<FArdaRHIStatus()> mRestoreState;
 			eastl::vector<uint8_t> mPushConstants;
 			void GlobalBarrier();
+			FArdaRHIStatus CopyTextureBuffer(const FArdaProviderObjectRef&,
+			    const FArdaRHITextureDesc&,
+			    const FArdaRHITextureSlice&,
+			    const FArdaProviderObjectRef&,
+			    const FArdaRHIBufferDesc&,
+			    const FArdaRHITextureBufferLayout&,
+			    bool);
 			eastl::vector<vk::ImageLayout>& GetTrackedTextureLayouts(FVulkanTexture&, const FArdaRHITextureDesc&);
 			FBufferTracking& GetBufferTracking(FVulkanBuffer& Buffer);
 			template <typename ClearOperation>
@@ -2202,6 +2253,8 @@ namespace arda
 			{
 				EArdaRHIResourceState mState = EArdaRHIResourceState::AccelStructRead;
 				EArdaRHIAccelStructBuildState mBuildState = EArdaRHIAccelStructBuildState::Unbuilt;
+				// State-only command lists must not republish an earlier lifecycle snapshot.
+				bool mbLifecycleWritten = false;
 			};
 
 			std::unordered_map<FVulkanAccelStruct*, FAccelStructTracking> mAccelStructStates;
@@ -2258,6 +2311,10 @@ namespace arda
 			FArdaProviderObjectResult CreateTexture(const FArdaRHITextureDesc&) override;
 			FArdaProviderObjectResult CreateBuffer(const FArdaRHIBufferDesc&) override;
 			FArdaProviderObjectResult CreateHeap(const FArdaRHIHeapDesc&) override;
+			TArdaRHIResult<FArdaRHIMemoryRequirements> QueryTextureMemoryRequirements(
+			    const FArdaRHITextureDesc&) override;
+			TArdaRHIResult<FArdaRHIMemoryRequirements> QueryBufferMemoryRequirements(
+			    const FArdaRHIBufferDesc&) override;
 			TArdaRHIResult<FArdaRHIMemoryRequirements> GetTextureMemoryRequirements(const FArdaProviderObjectRef&,
 			    const FArdaRHITextureDesc&) override;
 			TArdaRHIResult<FArdaRHIMemoryRequirements> GetBufferMemoryRequirements(const FArdaProviderObjectRef&,
@@ -2350,6 +2407,7 @@ namespace arda
 			TArdaRHIResult<uint64_t> ExecuteCommandList(IArdaProviderCommandList&, EArdaRHIQueueType) override;
 			FArdaRHIStatus QueueWait(EArdaRHIQueueType, EArdaRHIQueueType, uint64_t) override;
 			FArdaRHIStatus WaitForSubmission(uint64_t) override;
+			TArdaRHIResult<bool> PollSubmission(uint64_t) override;
 			FArdaRHIStatus WaitForIdle() override;
 			void RunGarbageCollection() override;
 			FArdaProviderLifetimeStats GetLifetimeStats() const noexcept override;
@@ -2370,7 +2428,9 @@ namespace arda
 			struct FPendingSubmission
 			{
 				uint64_t mValue = 0;
-				vk::Fence mFence;
+				// Waiters retain only the fence lease. GC can release recording resources
+				// after completion without destroying a fence another thread is waiting on.
+				eastl::shared_ptr<FVulkanQueueSignal> mFenceLease;
 				eastl::shared_ptr<FVulkanCommandRecording> mRecording;
 			};
 
@@ -2554,6 +2614,24 @@ namespace arda
 			    mContext->mCopyQueueFamily != mContext->mComputeQueueFamily;
 			mCapabilities.mQueues.mbGpuWaits = true;
 			mCapabilities.mQueues.mbTimelineSynchronization = true;
+			const auto TimestampQueueProperties = mContext->mPhysicalDevice.getQueueFamilyProperties();
+			const auto TimestampBits = [&](EArdaRHIQueueType Queue) -> uint32_t
+			{
+				const uint32_t Family = mContext->GetQueueFamily(Queue);
+				if (!mCapabilities.mQueues.IsSupported(Queue) || Family >= TimestampQueueProperties.size())
+				{
+					return 0u;
+				}
+				const auto& Properties = TimestampQueueProperties[Family];
+				const bool CommandReset =
+				    bool(Properties.queueFlags & (vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute));
+				// Transfer-only command pools cannot record vkCmdResetQueryPool. Never move
+				// a reset to another queue or wait just to enable timestamp instrumentation.
+				return mContext->mbHostQueryReset || CommandReset ? Properties.timestampValidBits : 0u;
+			};
+			mCapabilities.mQueues.mGraphicsTimestampValidBits = TimestampBits(EArdaRHIQueueType::Graphics);
+			mCapabilities.mQueues.mComputeTimestampValidBits = TimestampBits(EArdaRHIQueueType::Compute);
+			mCapabilities.mQueues.mCopyTimestampValidBits = TimestampBits(EArdaRHIQueueType::Copy);
 			mCapabilities.mQueues.mbQueueFamilyOwnershipTransfer =
 			    mCapabilities.mQueues.mbDedicatedComputeFamily || mCapabilities.mQueues.mbDedicatedCopyFamily;
 			mCapabilities.mQueues.mbSparseBindingQueue = eastl::any_of(mContext->mQueueSparseBinding.begin(),
@@ -2572,6 +2650,7 @@ namespace arda
 			mCapabilities.mbQueries = true;
 			mCapabilities.mbVirtualResources = true;
 			mCapabilities.mbHeaps = true;
+			mCapabilities.mHeapAllocationAlignment = 1;
 			mCapabilities.mbResourceCollections = true;
 			mCapabilities.mbCustomPresent = true;
 			mCapabilities.mbShaderBundleDispatch = true;
@@ -2651,6 +2730,121 @@ namespace arda
 			return {};
 		}
 
+		vk::ImageCreateInfo MakeVulkanTextureCreateInfo(const FArdaRHITextureDesc& Desc,
+		    bool AliasedMappings,
+		    const void* ExternalInfo)
+		{
+			vk::ImageCreateInfo Info;
+			Info.imageType = Desc.mDimension == EArdaRHITextureDimension::Texture3D
+			    ? vk::ImageType::e3D
+			    : ((Desc.mDimension == EArdaRHITextureDimension::Texture1D ||
+			           Desc.mDimension == EArdaRHITextureDimension::Texture1DArray)
+			              ? vk::ImageType::e1D
+			              : vk::ImageType::e2D);
+			Info.format = ToVulkan(Desc.mFormat);
+			Info.extent = vk::Extent3D(Desc.mWidth, Desc.mHeight, Desc.mDepth);
+			Info.mipLevels = Desc.mMipLevels;
+			Info.arrayLayers = Desc.mArraySize;
+			Info.samples = static_cast<vk::SampleCountFlagBits>(eastl::max(1u, Desc.mSampleCount));
+			Info.tiling = vk::ImageTiling::eOptimal;
+			Info.usage = vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
+			if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::ShaderResource))
+			{
+				Info.usage |= vk::ImageUsageFlagBits::eSampled;
+			}
+			if (Desc.mbCudaInterop || HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::UnorderedAccess))
+			{
+				Info.usage |= vk::ImageUsageFlagBits::eStorage;
+			}
+			if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::RenderTarget))
+			{
+				Info.usage |= vk::ImageUsageFlagBits::eColorAttachment;
+			}
+			if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::DepthStencil))
+			{
+				Info.usage |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+			}
+			if (Desc.mDimension == EArdaRHITextureDimension::TextureCube ||
+			    Desc.mDimension == EArdaRHITextureDimension::TextureCubeArray)
+			{
+				Info.flags |= vk::ImageCreateFlagBits::eCubeCompatible;
+			}
+			if (Desc.mbTiled)
+			{
+				Info.flags |= vk::ImageCreateFlagBits::eSparseBinding | vk::ImageCreateFlagBits::eSparseResidency |
+				    (AliasedMappings ? vk::ImageCreateFlagBits::eSparseAliased : vk::ImageCreateFlags{});
+			}
+			if (Desc.mbVirtual)
+			{
+				Info.flags |= vk::ImageCreateFlagBits::eAlias;
+			}
+			Info.sharingMode = vk::SharingMode::eExclusive;
+			Info.initialLayout = vk::ImageLayout::eUndefined;
+			Info.pNext = ExternalInfo;
+			return Info;
+		}
+
+		vk::BufferCreateInfo MakeVulkanBufferCreateInfo(const FArdaRHIBufferDesc& Desc,
+		    bool BufferDeviceAddress,
+		    bool AliasedMappings,
+		    const void* ExternalInfo)
+		{
+			vk::BufferCreateInfo Info;
+			Info.size = eastl::max<uint64_t>(1, Desc.mByteSize);
+			Info.usage = vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst;
+			if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Vertex))
+			{
+				Info.usage |= vk::BufferUsageFlagBits::eVertexBuffer;
+			}
+			if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Index))
+			{
+				Info.usage |= vk::BufferUsageFlagBits::eIndexBuffer;
+			}
+			if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Constant))
+			{
+				Info.usage |= vk::BufferUsageFlagBits::eUniformBuffer;
+			}
+			if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::ShaderResource) ||
+			    HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::UnorderedAccess) ||
+			    HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Structured) ||
+			    HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Raw))
+			{
+				Info.usage |= vk::BufferUsageFlagBits::eStorageBuffer;
+			}
+			if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Indirect))
+			{
+				Info.usage |= vk::BufferUsageFlagBits::eIndirectBuffer;
+			}
+			if (BufferDeviceAddress)
+			{
+				Info.usage |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
+			}
+			if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::AccelStructBuildInput))
+			{
+				Info.usage |= vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR;
+			}
+			if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::AccelStructStorage))
+			{
+				Info.usage |= vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR;
+			}
+			if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::ShaderBindingTable))
+			{
+				Info.usage |= vk::BufferUsageFlagBits::eShaderBindingTableKHR;
+			}
+			if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::OpacityMicromapBuildInput))
+			{
+				Info.usage |= vk::BufferUsageFlagBits::eMicromapBuildInputReadOnlyEXT;
+			}
+			if (Desc.mbTiled)
+			{
+				Info.flags |= vk::BufferCreateFlagBits::eSparseBinding | vk::BufferCreateFlagBits::eSparseResidency |
+				    (AliasedMappings ? vk::BufferCreateFlagBits::eSparseAliased : vk::BufferCreateFlags{});
+			}
+			Info.sharingMode = vk::SharingMode::eExclusive;
+			Info.pNext = ExternalInfo;
+			return Info;
+		}
+
 		FArdaProviderObjectResult FArdaVulkanProviderDevice::CreateTexture(const FArdaRHITextureDesc& Desc)
 		{
 			if (Desc.mbCudaInterop && !mContext->mCudaCapabilities.mbSurfaceAccess)
@@ -2675,63 +2869,15 @@ namespace arda
 				Texture->mStageMasks.assign(SubresourceCount, vk::PipelineStageFlagBits2::eTopOfPipe);
 				Texture->mAccessMasks.assign(SubresourceCount, vk::AccessFlags2{});
 				Texture->mQueueFamily = mContext->mQueueFamily;
-				vk::ImageCreateInfo Info;
-				Info.imageType = Desc.mDimension == EArdaRHITextureDimension::Texture3D
-				    ? vk::ImageType::e3D
-				    : ((Desc.mDimension == EArdaRHITextureDimension::Texture1D ||
-				           Desc.mDimension == EArdaRHITextureDimension::Texture1DArray)
-				              ? vk::ImageType::e1D
-				              : vk::ImageType::e2D);
-				Info.format = Format;
-				Info.extent = vk::Extent3D(Desc.mWidth, Desc.mHeight, Desc.mDepth);
-				Info.mipLevels = Desc.mMipLevels;
-				Info.arrayLayers = Desc.mArraySize;
-				Info.samples = static_cast<vk::SampleCountFlagBits>(eastl::max(1u, Desc.mSampleCount));
-				Info.tiling = vk::ImageTiling::eOptimal;
-				Info.usage = vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
-				if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::ShaderResource))
-				{
-					Info.usage |= vk::ImageUsageFlagBits::eSampled;
-				}
-				if (Desc.mbCudaInterop || HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::UnorderedAccess))
-				{
-					Info.usage |= vk::ImageUsageFlagBits::eStorage;
-				}
-				if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::RenderTarget))
-				{
-					Info.usage |= vk::ImageUsageFlagBits::eColorAttachment;
-				}
-				if (HasAnyFlags(Desc.mUsage, EArdaRHITextureUsage::DepthStencil))
-				{
-					Info.usage |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
-				}
-				if (Desc.mDimension == EArdaRHITextureDimension::TextureCube ||
-				    Desc.mDimension == EArdaRHITextureDimension::TextureCubeArray)
-				{
-					Info.flags |= vk::ImageCreateFlagBits::eCubeCompatible;
-				}
 				if (Desc.mbVirtual && Desc.mbTiled)
 				{
 					return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 					    "A Vulkan image cannot be both placed/virtual and sparse/tiled."));
 				}
-				if (Desc.mbTiled)
-				{
-					Info.flags |= vk::ImageCreateFlagBits::eSparseBinding | vk::ImageCreateFlagBits::eSparseResidency |
-					    (mCapabilities.mResidency.mbAliasedMappings ? vk::ImageCreateFlagBits::eSparseAliased
-					                                                : vk::ImageCreateFlags{});
-				}
-				if (Desc.mbVirtual)
-				{
-					Info.flags |= vk::ImageCreateFlagBits::eAlias;
-				}
-				Info.sharingMode = vk::SharingMode::eExclusive;
-				Info.initialLayout = vk::ImageLayout::eUndefined;
 				vk::ExternalMemoryImageCreateInfo ExternalInfo(VulkanCudaMemoryHandleType);
-				if (Desc.mbCudaInterop && mContext->mCudaContext)
-				{
-					Info.pNext = &ExternalInfo;
-				}
+				const auto Info = MakeVulkanTextureCreateInfo(Desc,
+				    mCapabilities.mResidency.mbAliasedMappings,
+				    Desc.mbCudaInterop && mContext->mCudaContext ? &ExternalInfo : nullptr);
 				Texture->mImage = mContext->mDevice.createImage(Info);
 				if (Desc.mbVirtual)
 				{
@@ -2765,6 +2911,10 @@ namespace arda
 					Dedicated.pNext = &Export;
 				}
 				Texture->mMemory = mContext->mDevice.allocateMemory(Allocation);
+				Texture->mMemoryAllocationInfo = {
+				    reinterpret_cast<const void*>(static_cast<VkDeviceMemory>(Texture->mMemory)),
+				    Requirements.size,
+				    true};
 				mContext->mDevice.bindImageMemory(Texture->mImage, Texture->mMemory, 0);
 				vk::ImageViewCreateInfo ViewInfo;
 				ViewInfo.image = Texture->mImage;
@@ -2804,70 +2954,16 @@ namespace arda
 				Buffer->mAccessMask = InitialSync.mAccess;
 				Buffer->mbStateKnown = true;
 				Buffer->mQueueFamily = mContext->mQueueFamily;
-				vk::BufferCreateInfo Info;
-				Info.size = eastl::max<uint64_t>(1, Desc.mByteSize);
-				Info.usage = vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst;
-				if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Vertex))
-				{
-					Info.usage |= vk::BufferUsageFlagBits::eVertexBuffer;
-				}
-				if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Index))
-				{
-					Info.usage |= vk::BufferUsageFlagBits::eIndexBuffer;
-				}
-				if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Constant))
-				{
-					Info.usage |= vk::BufferUsageFlagBits::eUniformBuffer;
-				}
-				if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::ShaderResource) ||
-				    HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::UnorderedAccess) ||
-				    HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Structured) ||
-				    HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Raw))
-				{
-					Info.usage |= vk::BufferUsageFlagBits::eStorageBuffer;
-				}
-				if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::Indirect))
-				{
-					Info.usage |= vk::BufferUsageFlagBits::eIndirectBuffer;
-				}
-				if (mContext->mbBufferDeviceAddress)
-				{
-					Info.usage |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
-				}
-				if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::AccelStructBuildInput))
-				{
-					Info.usage |= vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR;
-				}
-				if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::AccelStructStorage))
-				{
-					Info.usage |= vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR;
-				}
-				if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::ShaderBindingTable))
-				{
-					Info.usage |= vk::BufferUsageFlagBits::eShaderBindingTableKHR;
-				}
-				if (HasAnyFlags(Desc.mUsage, EArdaRHIBufferUsage::OpacityMicromapBuildInput))
-				{
-					Info.usage |= vk::BufferUsageFlagBits::eMicromapBuildInputReadOnlyEXT;
-				}
 				if (Desc.mbVirtual && Desc.mbTiled)
 				{
 					return Fail<FArdaProviderObjectRef>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
 					    "A Vulkan buffer cannot be both placed/virtual and sparse/tiled."));
 				}
-				if (Desc.mbTiled)
-				{
-					Info.flags |= vk::BufferCreateFlagBits::eSparseBinding |
-					    vk::BufferCreateFlagBits::eSparseResidency |
-					    (mCapabilities.mResidency.mbAliasedMappings ? vk::BufferCreateFlagBits::eSparseAliased
-					                                                : vk::BufferCreateFlags{});
-				}
-				Info.sharingMode = vk::SharingMode::eExclusive;
 				vk::ExternalMemoryBufferCreateInfo ExternalInfo(VulkanCudaMemoryHandleType);
-				if (Desc.mbCudaInterop && mContext->mCudaContext)
-				{
-					Info.pNext = &ExternalInfo;
-				}
+				const auto Info = MakeVulkanBufferCreateInfo(Desc,
+				    mContext->mbBufferDeviceAddress,
+				    mCapabilities.mResidency.mbAliasedMappings,
+				    Desc.mbCudaInterop && mContext->mCudaContext ? &ExternalInfo : nullptr);
 				Buffer->mBuffer = mContext->mDevice.createBuffer(Info);
 				if (Desc.mbVirtual || Desc.mbTiled)
 				{
@@ -2902,6 +2998,10 @@ namespace arda
 					Allocate.pNext = &Export;
 				}
 				Buffer->mMemory = mContext->mDevice.allocateMemory(Allocate);
+				Buffer->mMemoryAllocationInfo = {
+				    reinterpret_cast<const void*>(static_cast<VkDeviceMemory>(Buffer->mMemory)),
+				    Requirements.size,
+				    true};
 				mContext->mDevice.bindBufferMemory(Buffer->mBuffer, Buffer->mMemory, 0);
 				if (Desc.mbCudaInterop && mContext->mCudaContext)
 				{
@@ -3132,6 +3232,11 @@ namespace arda
 				vk::MemoryAllocateInfo Allocate(MemoryRequirements.size, MemoryType);
 				Allocate.pNext = &Flags;
 				AccelStruct->mMemory = mContext->mDevice.allocateMemory(Allocate);
+				AccelStruct->mMemoryAllocationInfo = {
+				    reinterpret_cast<const void*>(static_cast<VkDeviceMemory>(AccelStruct->mMemory)),
+				    MemoryRequirements.size,
+				    true};
+
 				mContext->mDevice.bindBufferMemory(AccelStruct->mBuffer, AccelStruct->mMemory, 0);
 				vk::AccelerationStructureCreateInfoKHR Create;
 				Create.buffer = AccelStruct->mBuffer;
@@ -3376,6 +3481,80 @@ namespace arda
 			catch (const vk::SystemError& Error)
 			{
 				return Fail<FArdaProviderObjectRef>(
+				    FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what()));
+			}
+		}
+
+		TArdaRHIResult<FArdaRHIMemoryRequirements> FArdaVulkanProviderDevice::QueryTextureMemoryRequirements(
+		    const FArdaRHITextureDesc& Desc)
+		{
+			if (auto Status = Validate(Desc); !Status)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(eastl::move(Status));
+			}
+			if (Desc.mbVirtual && Desc.mbTiled)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+				    "A Vulkan image cannot be both placed/virtual and sparse/tiled."));
+			}
+			if (ToVulkan(Desc.mFormat) == vk::Format::eUndefined)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(
+				    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "The Vulkan texture format is unsupported."));
+			}
+			if (Desc.mbCudaInterop && !mContext->mCudaContext)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(
+				    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Vulkan CUDA external memory is unavailable."));
+			}
+			try
+			{
+				vk::ExternalMemoryImageCreateInfo ExternalInfo(VulkanCudaMemoryHandleType);
+				const auto Info = MakeVulkanTextureCreateInfo(Desc,
+				    mCapabilities.mResidency.mbAliasedMappings,
+				    Desc.mbCudaInterop ? &ExternalInfo : nullptr);
+				const auto Image = mContext->mDevice.createImageUnique(Info);
+				const auto Requirements = mContext->mDevice.getImageMemoryRequirements(*Image);
+				return {{Requirements.size, Requirements.alignment, Requirements.memoryTypeBits}, {}};
+			}
+			catch (const vk::SystemError& Error)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(
+				    FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what()));
+			}
+		}
+
+		TArdaRHIResult<FArdaRHIMemoryRequirements> FArdaVulkanProviderDevice::QueryBufferMemoryRequirements(
+		    const FArdaRHIBufferDesc& Desc)
+		{
+			if (auto Status = Validate(Desc); !Status)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(eastl::move(Status));
+			}
+			if (Desc.mbVirtual && Desc.mbTiled)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+				    "A Vulkan buffer cannot be both placed/virtual and sparse/tiled."));
+			}
+			if (Desc.mbCudaInterop && !mContext->mCudaContext)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(
+				    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Vulkan CUDA external memory is unavailable."));
+			}
+			try
+			{
+				vk::ExternalMemoryBufferCreateInfo ExternalInfo(VulkanCudaMemoryHandleType);
+				const auto Info = MakeVulkanBufferCreateInfo(Desc,
+				    mContext->mbBufferDeviceAddress,
+				    mCapabilities.mResidency.mbAliasedMappings,
+				    Desc.mbCudaInterop ? &ExternalInfo : nullptr);
+				const auto Buffer = mContext->mDevice.createBufferUnique(Info);
+				const auto Requirements = mContext->mDevice.getBufferMemoryRequirements(*Buffer);
+				return {{Requirements.size, Requirements.alignment, Requirements.memoryTypeBits}, {}};
+			}
+			catch (const vk::SystemError& Error)
+			{
+				return Fail<FArdaRHIMemoryRequirements>(
 				    FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what()));
 			}
 		}
@@ -4052,6 +4231,7 @@ namespace arda
 				auto Texture = eastl::make_shared<FVulkanTexture>();
 				Texture->mContext = mContext;
 				Texture->mDesc = Desc.mTexture;
+				Texture->mMemoryAllocationInfo = Desc.mMemoryAllocationInfo;
 				Texture->mImage = vk::Image(reinterpret_cast<VkImage>(Desc.mNativeObject));
 				Texture->mbOwned = Desc.mOwnership == EArdaRHINativeOwnership::Transferred;
 				const size_t SubresourceCount = TextureSubresourceCount(Desc.mTexture);
@@ -4092,6 +4272,7 @@ namespace arda
 			auto Buffer = eastl::make_shared<FVulkanBuffer>();
 			Buffer->mContext = mContext;
 			Buffer->mDesc = Desc.mBuffer;
+			Buffer->mMemoryAllocationInfo = Desc.mMemoryAllocationInfo;
 			const FVulkanSyncState InitialSync = ToVulkanSyncState(Desc.mInitialState);
 			Buffer->mAbstractState = Desc.mInitialState;
 			Buffer->mStageMask = InitialSync.mStages;
@@ -6359,6 +6540,133 @@ namespace arda
 			return {};
 		}
 
+		FArdaRHIStatus FArdaVulkanCommandList::CopyBufferToTexture(const FArdaProviderObjectRef& Destination,
+		    const FArdaRHITextureDesc& DestinationDesc,
+		    const FArdaRHITextureSlice& DestinationSlice,
+		    const FArdaProviderObjectRef& Source,
+		    const FArdaRHIBufferDesc& SourceDesc,
+		    const FArdaRHITextureBufferLayout& SourceLayout)
+		{
+			return CopyTextureBuffer(Destination,
+			    DestinationDesc,
+			    DestinationSlice,
+			    Source,
+			    SourceDesc,
+			    SourceLayout,
+			    true);
+		}
+
+		FArdaRHIStatus FArdaVulkanCommandList::CopyTextureToBuffer(const FArdaProviderObjectRef& Destination,
+		    const FArdaRHIBufferDesc& DestinationDesc,
+		    const FArdaRHITextureBufferLayout& DestinationLayout,
+		    const FArdaProviderObjectRef& Source,
+		    const FArdaRHITextureDesc& SourceDesc,
+		    const FArdaRHITextureSlice& SourceSlice)
+		{
+			return CopyTextureBuffer(Source,
+			    SourceDesc,
+			    SourceSlice,
+			    Destination,
+			    DestinationDesc,
+			    DestinationLayout,
+			    false);
+		}
+
+		FArdaRHIStatus FArdaVulkanCommandList::CopyTextureBuffer(const FArdaProviderObjectRef& TextureObject,
+		    const FArdaRHITextureDesc& TextureDesc,
+		    const FArdaRHITextureSlice& TextureSlice,
+		    const FArdaProviderObjectRef& BufferObject,
+		    const FArdaRHIBufferDesc& BufferDesc,
+		    const FArdaRHITextureBufferLayout& BufferLayout,
+		    bool bBufferToTexture)
+		{
+			auto* Texture = dynamic_cast<FVulkanTexture*>(TextureObject.get());
+			auto* Buffer = dynamic_cast<FVulkanBuffer*>(BufferObject.get());
+			if (!Texture || !Buffer || !Texture->mImage || !Buffer->mBuffer)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+				    "Vulkan texture-buffer copy has the wrong resource type.");
+			}
+			FArdaRHITextureCopyExtent Extent;
+			if (auto Status =
+			        ValidateArdaRHITextureBufferCopy(TextureDesc, TextureSlice, BufferDesc, BufferLayout, Extent);
+			    !Status)
+			{
+				return Status;
+			}
+			const size_t TextureIndex = TextureSubresourceIndex(TextureDesc,
+			    TextureSlice.mMipLevel,
+			    TextureSlice.mArraySlice,
+			    TextureSlice.mPlane);
+			(void)GetTrackedTextureLayouts(*Texture, TextureDesc);
+			const EArdaRHIResourceState PreviousTexture =
+			    mTextureAbstractStates.at(Texture->GetIdentity())[TextureIndex];
+			const EArdaRHIResourceState PreviousBuffer = GetBufferTracking(*Buffer).mAbstractState;
+			const FArdaRHITextureSubresourceRange Range{TextureSlice.mMipLevel,
+			    1,
+			    TextureSlice.mArraySlice,
+			    1,
+			    TextureSlice.mPlane,
+			    1};
+			if (mbAutomaticBarriers)
+			{
+				if (auto Status = TransitionTextureLayout(TextureObject,
+				        TextureDesc,
+				        Range,
+				        bBufferToTexture ? EArdaRHIResourceState::CopyDest : EArdaRHIResourceState::CopySource);
+				    !Status)
+				{
+					return Status;
+				}
+				if (auto Status = SetBufferState(BufferObject,
+				        BufferDesc,
+				        bBufferToTexture ? EArdaRHIResourceState::CopySource : EArdaRHIResourceState::CopyDest);
+				    !Status)
+				{
+					return Status;
+				}
+			}
+			EndRendering();
+			vk::BufferImageCopy Region;
+			Region.bufferOffset = BufferLayout.mByteOffset;
+			Region.bufferRowLength = BufferLayout.mRowPitch / GetArdaRHIFormatInfo(TextureDesc.mFormat).mBytesPerBlock;
+			Region.bufferImageHeight = Extent.mHeight;
+			Region.imageSubresource = vk::ImageSubresourceLayers(ImageAspect(TextureDesc.mFormat, TextureSlice.mPlane),
+			    TextureSlice.mMipLevel,
+			    TextureSlice.mArraySlice,
+			    1);
+			Region.imageOffset = vk::Offset3D(TextureSlice.mX, TextureSlice.mY, TextureSlice.mZ);
+			Region.imageExtent = vk::Extent3D(Extent.mWidth, Extent.mHeight, Extent.mDepth);
+			if (bBufferToTexture)
+			{
+				mCommandBuffer.copyBufferToImage(Buffer->mBuffer,
+				    Texture->mImage,
+				    vk::ImageLayout::eTransferDstOptimal,
+				    Region);
+			}
+			else
+			{
+				mCommandBuffer.copyImageToBuffer(Texture->mImage,
+				    vk::ImageLayout::eTransferSrcOptimal,
+				    Buffer->mBuffer,
+				    Region);
+			}
+			if (mbAutomaticBarriers)
+			{
+				if (auto Status = TransitionTextureLayout(TextureObject, TextureDesc, Range, PreviousTexture); !Status)
+				{
+					return Status;
+				}
+				if (auto Status = SetBufferState(BufferObject, BufferDesc, PreviousBuffer); !Status)
+				{
+					return Status;
+				}
+			}
+			Retain(TextureObject);
+			Retain(BufferObject);
+			return {};
+		}
+
 		FArdaRHIStatus FArdaVulkanCommandList::CopyTexture(const FArdaProviderObjectRef& Destination,
 		    const FArdaRHITextureDesc& DestinationDesc,
 		    const FArdaRHITextureSlice& DestinationSlice,
@@ -6828,13 +7136,19 @@ namespace arda
 			{
 				std::lock_guard<std::mutex> Lock(Entry.first->mStateMutex);
 				Entry.first->mAbstractState = Entry.second.mState;
-				Entry.first->mBuildState = Entry.second.mBuildState;
+				if (Entry.second.mbLifecycleWritten)
+				{
+					Entry.first->mBuildState = Entry.second.mBuildState;
+				}
 			}
 			for (const auto& Entry : mOpacityMicromapStates)
 			{
 				std::lock_guard<std::mutex> Lock(Entry.first->mStateMutex);
 				Entry.first->mAbstractState = Entry.second.mState;
-				Entry.first->mBuildState = Entry.second.mBuildState;
+				if (Entry.second.mbLifecycleWritten)
+				{
+					Entry.first->mBuildState = Entry.second.mBuildState;
+				}
 			}
 		}
 
@@ -6843,22 +7157,22 @@ namespace arda
 			for (const auto& Object : mTimerQueries)
 			{
 				auto* Query = dynamic_cast<FVulkanTimerQuery*>(Object.get());
-				if (!Query || !Query->IsReadyForSubmission())
+				if (!Query || !Query->IsReadyForSubmission(this))
 				{
 					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
-					    "A Vulkan timer query was not ended before submission.");
+					    "A Vulkan timer query was not ended on this command list before submission.");
 				}
 			}
 			return {};
 		}
 
-		void FArdaVulkanCommandList::MarkTimerQueriesSubmitted()
+		void FArdaVulkanCommandList::MarkTimerQueriesSubmitted(EArdaRHIQueueType Queue, uint64_t Value)
 		{
 			for (const auto& Object : mTimerQueries)
 			{
 				if (auto* Query = dynamic_cast<FVulkanTimerQuery*>(Object.get()))
 				{
-					Query->MarkSubmitted();
+					Query->MarkSubmitted(this, Queue, Value);
 				}
 			}
 		}
@@ -8157,7 +8471,8 @@ namespace arda
 			Retain(Object);
 			Retain(ScratchObject.mValue);
 			mAccelStructStates[AccelStruct] = {EArdaRHIResourceState::AccelStructRead,
-			    bUpdate ? EArdaRHIAccelStructBuildState::Updated : EArdaRHIAccelStructBuildState::Built};
+			    bUpdate ? EArdaRHIAccelStructBuildState::Updated : EArdaRHIAccelStructBuildState::Built,
+			    true};
 			return {};
 		}
 
@@ -8233,7 +8548,8 @@ namespace arda
 			Retain(Micromap->mInputBuffer);
 			Retain(Micromap->mTriangleBuffer);
 			mOpacityMicromapStates[Micromap] = {EArdaRHIResourceState::OpacityMicromapBuildInput,
-			    EArdaRHIAccelStructBuildState::Built};
+			    EArdaRHIAccelStructBuildState::Built,
+			    true};
 			return {};
 		}
 
@@ -8266,7 +8582,8 @@ namespace arda
 			Retain(DestinationObject);
 			Retain(SourceObject);
 			mOpacityMicromapStates[Destination] = {EArdaRHIResourceState::OpacityMicromapBuildInput,
-			    EArdaRHIAccelStructBuildState::Compacted};
+			    EArdaRHIAccelStructBuildState::Compacted,
+			    true};
 			return {};
 		}
 
@@ -8464,7 +8781,8 @@ namespace arda
 			Retain(DestinationObject);
 			Retain(SourceObject);
 			mAccelStructStates[Destination] = {EArdaRHIResourceState::AccelStructRead,
-			    EArdaRHIAccelStructBuildState::Compacted};
+			    EArdaRHIAccelStructBuildState::Compacted,
+			    true};
 			return {};
 		}
 
@@ -8528,17 +8846,21 @@ namespace arda
 				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
 				    "The timer query is not a Vulkan timer query.");
 			}
+			if (!IsOpen())
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "A timer query requires an open Vulkan command list.");
+			}
+			const uint32_t Bits = mDevice.GetCapabilities().mQueues.GetTimestampValidBits(mQueue);
+			if (!Bits)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+				    "The Vulkan command queue does not support timestamps.");
+			}
 			try
 			{
-				const auto QueueProperties = mDevice.GetContext()->mPhysicalDevice.getQueueFamilyProperties();
-				const uint32_t QueueFamily = mDevice.GetContext()->GetQueueFamily(mQueue);
-				if (QueueFamily >= QueueProperties.size() || QueueProperties[QueueFamily].timestampValidBits == 0)
-				{
-					return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
-					    "The Vulkan command queue does not support timestamps.");
-				}
-				if (auto Status = Query->Begin(mCommandBuffer, this, QueueProperties[QueueFamily].timestampValidBits);
-				    !Status)
+				EndRendering(); // vkCmdResetQueryPool must be outside a rendering scope.
+				if (auto Status = Query->Begin(mCommandBuffer, this, Bits); !Status)
 				{
 					return Status;
 				}
@@ -8562,6 +8884,11 @@ namespace arda
 			{
 				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
 				    "The timer query is not a Vulkan timer query.");
+			}
+			if (!IsOpen())
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "A timer query requires an open Vulkan command list.");
 			}
 			try
 			{
@@ -8856,9 +9183,13 @@ namespace arda
 				return Fail<uint64_t>(Status);
 			}
 			vk::Fence Fence;
+			eastl::shared_ptr<FVulkanQueueSignal> FenceLease;
 			try
 			{
+				FenceLease = eastl::make_shared<FVulkanQueueSignal>();
+				FenceLease->mContext = mContext;
 				Fence = mContext->mDevice.createFence({});
+				FenceLease->mFence = Fence;
 				const vk::CommandBuffer Buffer = Commands->GetCommandBuffer();
 				const size_t TimelineIndex = GetArdaRHIQueueIndex(QueueType);
 				const uint64_t TimelineValue =
@@ -8888,7 +9219,6 @@ namespace arda
 					{
 						if (Recording->mbSubmitted)
 						{
-							mContext->mDevice.destroyFence(Fence);
 							return Fail<uint64_t>(FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
 							    "Context-switching CUDA lists are single-use."));
 						}
@@ -8896,7 +9226,6 @@ namespace arda
 						{
 							if (auto Status = Segment.mCuda->ValidateSubmit(); !Status)
 							{
-								mContext->mDevice.destroyFence(Fence);
 								return Fail<uint64_t>(Status);
 							}
 						}
@@ -8921,7 +9250,10 @@ namespace arda
 							Queue.submit2(GraphicsSubmit, {});
 							if (auto Status = Segment.mCuda->Execute(); !Status)
 							{
-								mContext->mDevice.destroyFence(Fence);
+								// CUDA drains its stream on failure, but that does not retire Vulkan's
+								// pending command buffer and semaphore references. No wait on this
+								// segment's unsignaled Done semaphore has been submitted yet.
+								Queue.waitIdle();
 								return Fail<uint64_t>(Status);
 							}
 							PreviousDone = vk::SemaphoreSubmitInfo(Segment.mHandoff->mDone,
@@ -8931,27 +9263,25 @@ namespace arda
 						Submit.waitSemaphoreInfoCount = 1;
 						Submit.pWaitSemaphoreInfos = &PreviousDone;
 						Queue.submit2(Submit, Fence);
+						FenceLease->mbArmed = true;
 					}
 					else
 					{
 						Queue.submit2(Submit, Fence);
+						FenceLease->mbArmed = true;
 					}
 				}
-				Commands->MarkTimerQueriesSubmitted();
+				Commands->MarkTimerQueriesSubmitted(QueueType, TimelineValue);
 				Commands->CommitTrackedStates();
 				{
 					std::lock_guard<std::mutex> Lock(mSubmissionMutex);
 					const uint64_t Value = EncodeVulkanSubmission(QueueType, TimelineValue);
-					mPendingSubmissions.push_back({Value, Fence, Commands->GetRecording()});
+					mPendingSubmissions.push_back({Value, FenceLease, Commands->GetRecording()});
 					return {Value, {}};
 				}
 			}
 			catch (const vk::SystemError& Error)
 			{
-				if (Fence)
-				{
-					mContext->mDevice.destroyFence(Fence);
-				}
 				return Fail<uint64_t>(FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what()));
 			}
 		}
@@ -8993,29 +9323,63 @@ namespace arda
 			}
 		}
 
-		FArdaRHIStatus FArdaVulkanProviderDevice::WaitForSubmission(uint64_t Value)
+		TArdaRHIResult<bool> FArdaVulkanProviderDevice::PollSubmission(uint64_t Value)
 		{
 			try
 			{
-				std::lock_guard<std::mutex> Lock(mSubmissionMutex);
-				const auto It = eastl::find_if(mPendingSubmissions.begin(),
-				    mPendingSubmissions.end(),
-				    [Value](const FPendingSubmission& Submission)
-				    {
-					    return Submission.mValue == Value;
-				    });
-				if (It == mPendingSubmissions.end())
+				const auto Context = mContext;
+				const uint32_t QueueIndex = static_cast<uint32_t>(Value >> 60);
+				const uint64_t QueueValue = DecodeVulkanSubmissionValue(Value);
+				if (QueueIndex >= Context->mQueueTimelines.size() || !Context->mQueueTimelines[QueueIndex] ||
+				    QueueValue > Context->mQueueTimelineValues[QueueIndex].load(std::memory_order_relaxed))
 				{
-					return {};
+					return {false,
+					    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Invalid Vulkan submission token.")};
 				}
-				const vk::Result Result = mContext->mDevice.waitForFences(It->mFence, true, UINT64_MAX);
+				return {Context->mDevice.getSemaphoreCounterValue(Context->mQueueTimelines[QueueIndex]) >= QueueValue,
+				    {}};
+			}
+			catch (const vk::SystemError& Error)
+			{
+				return {false, FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure, Error.what())};
+			}
+		}
+
+		FArdaRHIStatus FArdaVulkanProviderDevice::WaitForSubmission(uint64_t Value)
+		{
+			const auto Poll = PollSubmission(Value);
+			if (!Poll)
+			{
+				return Poll.mStatus;
+			}
+			try
+			{
+				eastl::shared_ptr<FVulkanQueueSignal> FenceLease;
+				{
+					std::lock_guard<std::mutex> Lock(mSubmissionMutex);
+					const auto It = eastl::find_if(mPendingSubmissions.begin(),
+					    mPendingSubmissions.end(),
+					    [Value](const FPendingSubmission& Submission)
+					    {
+						    return Submission.mValue == Value;
+					    });
+					if (It == mPendingSubmissions.end())
+					{
+						return {};
+					}
+					FenceLease = It->mFenceLease;
+				}
+				// Timeline visibility alone can precede native fence completion. Wait the
+				// retained fence outside the submission lock, then release all completed
+				// recording references before returning to a pool-recycling caller.
+				const vk::Result Result =
+				    FenceLease->mContext->mDevice.waitForFences(FenceLease->mFence, true, UINT64_MAX);
 				if (Result != vk::Result::eSuccess)
 				{
 					return FArdaRHIStatus::Error(EArdaRHIResult::BackendFailure,
 					    "Failed while waiting for a Vulkan submission fence.");
 				}
-				mContext->mDevice.destroyFence(It->mFence);
-				mPendingSubmissions.erase(It);
+				RunGarbageCollection();
 				return {};
 			}
 			catch (const vk::SystemError& Error)
@@ -9032,7 +9396,7 @@ namespace arda
 				vk::Result Status = vk::Result::eNotReady;
 				try
 				{
-					Status = mContext->mDevice.getFenceStatus(mPendingSubmissions[Index].mFence);
+					Status = mContext->mDevice.getFenceStatus(mPendingSubmissions[Index].mFenceLease->mFence);
 				}
 				catch (const vk::SystemError&)
 				{
@@ -9044,7 +9408,6 @@ namespace arda
 					++Index;
 					continue;
 				}
-				mContext->mDevice.destroyFence(mPendingSubmissions[Index].mFence);
 				mPendingSubmissions.erase(mPendingSubmissions.begin() + Index);
 			}
 		}
@@ -9076,13 +9439,6 @@ namespace arda
 					}
 				}
 				std::lock_guard<std::mutex> Lock(mSubmissionMutex);
-				for (const FPendingSubmission& Submission : mPendingSubmissions)
-				{
-					if (Submission.mFence)
-					{
-						mContext->mDevice.destroyFence(Submission.mFence);
-					}
-				}
 				mPendingSubmissions.clear();
 				return {};
 			}
@@ -9649,7 +10005,8 @@ namespace arda
 							if (!bValidationLayerEnabled)
 							{
 								mError =
-								    "Vulkan validation was requested, but VK_LAYER_KHRONOS_validation is unavailable. Install the layer or configure VK_LAYER_PATH.";
+								    "Vulkan validation was requested, but VK_LAYER_KHRONOS_validation is unavailable. Install the layer or configure VK_LAYER_PATH. "
+								    "Elevated applications ignore VK_LAYER_PATH and VK_ADD_LAYER_PATH; run from a non-elevated terminal or use a system-installed validation layer.";
 								return EArdaInitializeResult::ValidationUnavailable;
 							}
 							if (bValidationLayerEnabled)
@@ -9962,6 +10319,7 @@ namespace arda
 					vk::PhysicalDeviceVulkan13Features Supported13;
 					vk::PhysicalDeviceShaderFloat16Int8Features SupportedPrecision;
 					vk::PhysicalDeviceSeparateDepthStencilLayoutsFeatures SupportedSeparateLayouts;
+					vk::PhysicalDeviceHostQueryResetFeatures SupportedHostQueryReset;
 					vk::PhysicalDeviceTimelineSemaphoreFeatures SupportedTimeline;
 					vk::PhysicalDeviceDescriptorIndexingFeatures SupportedIndexing;
 					vk::PhysicalDeviceBufferDeviceAddressFeatures SupportedAddress;
@@ -9986,6 +10344,7 @@ namespace arda
 					SupportedDescriptorBuffer.pNext = &SupportedDescriptorHeap;
 					SupportedDescriptorHeap.pNext = &SupportedPrecision;
 					SupportedPrecision.pNext = &SupportedSeparateLayouts;
+					SupportedSeparateLayouts.pNext = &SupportedHostQueryReset;
 					mContext->mPhysicalDevice.getFeatures2(&SupportedFeatures);
 
 					// Supported features are queried from hardware. Adopted devices may only use
@@ -10000,6 +10359,7 @@ namespace arda
 						MaskFeature(Supported13.synchronization2, "synchronization2");
 						MaskFeature(Supported13.shaderIntegerDotProduct, "shaderIntegerDotProduct");
 						MaskFeature(SupportedTimeline.timelineSemaphore, "timelineSemaphore");
+						MaskFeature(SupportedHostQueryReset.hostQueryReset, "hostQueryReset");
 						MaskFeature(SupportedPrecision.shaderFloat16, "shaderFloat16");
 						MaskFeature(SupportedPrecision.shaderInt8, "shaderInt8");
 						MaskFeature(SupportedSeparateLayouts.separateDepthStencilLayouts,
@@ -10092,6 +10452,9 @@ namespace arda
 					Precision.shaderInt8 = SupportedPrecision.shaderInt8;
 					vk::PhysicalDeviceSeparateDepthStencilLayoutsFeatures SeparateLayouts;
 					SeparateLayouts.separateDepthStencilLayouts = SupportedSeparateLayouts.separateDepthStencilLayouts;
+					vk::PhysicalDeviceHostQueryResetFeatures HostQueryReset;
+					HostQueryReset.hostQueryReset = SupportedHostQueryReset.hostQueryReset;
+					mContext->mbHostQueryReset = HostQueryReset.hostQueryReset;
 					mContext->mMachineLearning.mbNativeFloat16 = Precision.shaderFloat16;
 					mContext->mMachineLearning.mbNativeInt8 = Vulkan13.shaderIntegerDotProduct;
 					vk::PhysicalDeviceTimelineSemaphoreFeatures TimelineFeatures;
@@ -10148,6 +10511,7 @@ namespace arda
 					DescriptorBuffer.pNext = &DescriptorHeap;
 					DescriptorHeap.pNext = &Precision;
 					Precision.pNext = &SeparateLayouts;
+					SeparateLayouts.pNext = &HostQueryReset;
 					const auto& Supported = mContext->mEnabledFeatures;
 					vk::PhysicalDeviceFeatures Enabled;
 					Enabled.fillModeNonSolid = Supported.fillModeNonSolid;

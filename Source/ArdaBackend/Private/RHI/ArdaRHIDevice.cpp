@@ -161,11 +161,13 @@ namespace arda
 			    FArdaProviderObjectRef Native,
 			    const void* Owner,
 			    eastl::shared_ptr<FLifetimeTracker> LifetimeTracker,
-			    eastl::shared_ptr<void> LifetimeToken = {})
+			    eastl::shared_ptr<void> LifetimeToken = {},
+			    FArdaRHIMemoryAllocationInfo ImportedAllocationInfo = {})
 			    : FResource(Type, Descriptor.mDebugName, Owner, eastl::move(LifetimeTracker)),
 			      mDesc(eastl::move(Descriptor)),
 			      mNative(eastl::move(Native)),
-			      mLifetimeToken(eastl::move(LifetimeToken))
+			      mLifetimeToken(eastl::move(LifetimeToken)),
+			      mImportedAllocationInfo(ImportedAllocationInfo)
 			{
 			}
 
@@ -184,9 +186,16 @@ namespace arda
 				return mNative ? mNative->GetIdentity() : nullptr;
 			}
 
+			FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept override
+			{
+				const auto NativeInfo = mNative ? mNative->GetMemoryAllocationInfo() : FArdaRHIMemoryAllocationInfo{};
+				return NativeInfo.mbKnown ? NativeInfo : mImportedAllocationInfo;
+			}
+
 			Desc mDesc;
 			FArdaProviderObjectRef mNative;
 			eastl::shared_ptr<void> mLifetimeToken;
+			FArdaRHIMemoryAllocationInfo mImportedAllocationInfo;
 		};
 
 		using FTextureBase = TNativeResource<IArdaRHITexture, FArdaRHITextureDesc, EArdaRHIResourceType::Texture>;
@@ -438,6 +447,13 @@ namespace arda
 			const void* GetPhysicalIdentity() const noexcept override
 			{
 				return mNative ? mNative->GetIdentity() : nullptr;
+			}
+
+			FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept override
+			{
+				return mHeap  ? mHeap->GetMemoryAllocationInfo()
+				    : mNative ? mNative->GetMemoryAllocationInfo()
+				              : FArdaRHIMemoryAllocationInfo{};
 			}
 
 			EArdaRHIAccelStructBuildState GetBuildState() const noexcept override
@@ -1114,6 +1130,9 @@ namespace arda
 		{
 		public:
 			FArdaRHIStatus DispatchCuda(const FArdaCudaDispatch&) override;
+			FArdaRHIStatus DispatchCudaSequence(const eastl::vector<FArdaCudaDispatch>&) override;
+			FArdaRHIStatus RecordCudaBatch(const eastl::vector<FArdaCudaBinding>&,
+			    const eastl::vector<FArdaCudaKernel>&);
 			FCommandList(FArdaRHIDeviceImpl* Device,
 			    EArdaRHIQueueType Queue,
 			    eastl::unique_ptr<IArdaProviderCommandList> Native,
@@ -1152,6 +1171,14 @@ namespace arda
 			FArdaRHIStatus CopyBuffer(IArdaRHIBuffer&, uint64_t, IArdaRHIBuffer&, uint64_t, uint64_t) override;
 			FArdaRHIStatus CopyTexture(IArdaRHITexture&,
 			    const FArdaRHITextureSlice&,
+			    IArdaRHITexture&,
+			    const FArdaRHITextureSlice&) override;
+			FArdaRHIStatus CopyBufferToTexture(IArdaRHITexture&,
+			    const FArdaRHITextureSlice&,
+			    IArdaRHIBuffer&,
+			    const FArdaRHITextureBufferLayout&) override;
+			FArdaRHIStatus CopyTextureToBuffer(IArdaRHIBuffer&,
+			    const FArdaRHITextureBufferLayout&,
 			    IArdaRHITexture&,
 			    const FArdaRHITextureSlice&) override;
 			FArdaRHIStatus ResolveTexture(IArdaRHITexture&,
@@ -1325,6 +1352,8 @@ namespace arda
 			{
 				EArdaRHIResourceState mState = EArdaRHIResourceState::AccelStructRead;
 				EArdaRHIAccelStructBuildState mBuildState = EArdaRHIAccelStructBuildState::Unbuilt;
+				// State-only command lists must not republish an earlier lifecycle snapshot.
+				bool mbLifecycleWritten = false;
 			};
 
 			mutable std::unordered_map<FAccelStruct*, FAccelStructTracking> mFacadeAccelStructStates;
@@ -1471,6 +1500,10 @@ namespace arda
 				return mDevice->QueueWait(WaitQueue, ExecutionQueue, Submission);
 			}
 
+			TArdaRHIResult<FArdaRHIMemoryRequirements> QueryTextureMemoryRequirements(
+			    const FArdaRHITextureDesc&) override;
+			TArdaRHIResult<FArdaRHIMemoryRequirements> QueryBufferMemoryRequirements(
+			    const FArdaRHIBufferDesc&) override;
 			TArdaRHIResult<FArdaRHIMemoryRequirements> GetTextureMemoryRequirements(const FArdaRHITextureRef&) override;
 			TArdaRHIResult<FArdaRHIMemoryRequirements> GetBufferMemoryRequirements(const FArdaRHIBufferRef&) override;
 			TArdaRHIResult<FArdaRHIMemoryRequirements> GetAccelStructMemoryRequirements(
@@ -1529,6 +1562,16 @@ namespace arda
 			FArdaRHIStatus WaitForIdle() override
 			{
 				return mDevice->WaitForIdle();
+			}
+
+			FArdaRHIStatus WaitForSubmission(uint64_t Submission) override
+			{
+				return mDevice->WaitForSubmission(Submission);
+			}
+
+			TArdaRHIResult<bool> PollSubmission(uint64_t Submission) override
+			{
+				return mDevice->PollSubmission(Submission);
 			}
 
 			void FlushAndDisablePipelineCachePersistence() noexcept override;
@@ -1681,6 +1724,79 @@ namespace arda
 				return Failure<FArdaRHIHeapRef>(eastl::move(Native.mStatus));
 			}
 			return {FArdaRHIHeapRef(new FHeap(Desc, eastl::move(Native.mValue), this, mLifetimeTracker)), {}};
+		}
+
+		TArdaRHIResult<FArdaRHIMemoryRequirements> FArdaRHIDeviceImpl::QueryTextureMemoryRequirements(
+		    const FArdaRHITextureDesc& Desc)
+		{
+			if (auto Status = Validate(Desc); !Status)
+			{
+				return Failure<FArdaRHIMemoryRequirements>(eastl::move(Status));
+			}
+			if (Desc.mbVirtual && Desc.mbTiled)
+			{
+				return Failure<FArdaRHIMemoryRequirements>(Invalid("A texture cannot be both virtual and tiled."));
+			}
+			if (Desc.mbCudaInterop)
+			{
+				if (auto Status = ValidateArdaCudaTexture(Desc); !Status)
+				{
+					return Failure<FArdaRHIMemoryRequirements>(eastl::move(Status));
+				}
+				const auto Cuda = GetCudaCapabilities();
+				if (!Cuda)
+				{
+					return UnsupportedResult<FArdaRHIMemoryRequirements>(Cuda.mUnavailableReason.c_str());
+				}
+				if (!Cuda.mbSurfaceAccess)
+				{
+					return UnsupportedResult<FArdaRHIMemoryRequirements>(Cuda.mSurfaceUnavailableReason.c_str());
+				}
+				if ((Desc.mDimension == EArdaRHITextureDimension::Texture1DArray ||
+				        Desc.mDimension == EArdaRHITextureDimension::Texture2DArray) &&
+				    !Cuda.mbLayeredSurfaceAccess)
+				{
+					return UnsupportedResult<FArdaRHIMemoryRequirements>(
+					    "Layered CUDA surfaces are not qualified in this execution mode.");
+				}
+			}
+			if (Desc.mbTiled &&
+			    !(mDevice->GetCapabilities().mResidency.mbReservedTexture2D ||
+			        mDevice->GetCapabilities().mResidency.mbReservedTexture3D))
+			{
+				return UnsupportedResult<FArdaRHIMemoryRequirements>("Tiled textures are unsupported by this device.");
+			}
+			return mDevice->QueryTextureMemoryRequirements(Desc);
+		}
+
+		TArdaRHIResult<FArdaRHIMemoryRequirements> FArdaRHIDeviceImpl::QueryBufferMemoryRequirements(
+		    const FArdaRHIBufferDesc& Desc)
+		{
+			if (auto Status = Validate(Desc); !Status)
+			{
+				return Failure<FArdaRHIMemoryRequirements>(eastl::move(Status));
+			}
+			if (Desc.mbVirtual && Desc.mbTiled)
+			{
+				return Failure<FArdaRHIMemoryRequirements>(Invalid("A buffer cannot be both virtual and tiled."));
+			}
+			if (Desc.mbCudaInterop)
+			{
+				if (auto Status = ValidateArdaCudaBuffer(Desc); !Status)
+				{
+					return Failure<FArdaRHIMemoryRequirements>(eastl::move(Status));
+				}
+				const auto Cuda = GetCudaCapabilities();
+				if (!Cuda)
+				{
+					return UnsupportedResult<FArdaRHIMemoryRequirements>(Cuda.mUnavailableReason.c_str());
+				}
+			}
+			if (Desc.mbTiled && !mDevice->GetCapabilities().mResidency.mbReservedBuffers)
+			{
+				return UnsupportedResult<FArdaRHIMemoryRequirements>("Sparse buffers are unsupported by this device.");
+			}
+			return mDevice->QueryBufferMemoryRequirements(Desc);
 		}
 
 		TArdaRHIResult<FArdaRHIMemoryRequirements> FArdaRHIDeviceImpl::GetTextureMemoryRequirements(
@@ -1972,6 +2088,12 @@ namespace arda
 		TArdaRHIResult<FArdaRHITextureRef> FArdaRHIDeviceImpl::ImportNativeTexture(
 		    const FArdaRHINativeTextureImportDesc& Desc)
 		{
+			if (Desc.mMemoryAllocationInfo.mbKnown &&
+			    (!Desc.mMemoryAllocationInfo.mIdentity || !Desc.mMemoryAllocationInfo.mByteSize))
+			{
+				return Failure<FArdaRHITextureRef>(
+				    Invalid("Known native allocation metadata requires identity and capacity."));
+			}
 			if (Desc.mTexture.mbCudaInterop)
 			{
 				return UnsupportedResult<FArdaRHITextureRef>("CUDA sharing requires a backend-created allocation.");
@@ -2004,6 +2126,25 @@ namespace arda
 			{
 				return Failure<FArdaRHITextureRef>(eastl::move(Native.mStatus));
 			}
+			if (Desc.mMemoryAllocationInfo.mbKnown)
+			{
+				const auto ProviderInfo = Native.mValue->GetMemoryAllocationInfo();
+				if (ProviderInfo.mbKnown && !(ProviderInfo == Desc.mMemoryAllocationInfo))
+				{
+					return Failure<FArdaRHITextureRef>(
+					    Invalid("Native allocation hint disagrees with provider-owned storage."));
+				}
+				const auto Requirements = mDevice->GetTextureMemoryRequirements(Native.mValue, Desc.mTexture);
+				if (!Requirements)
+				{
+					return Failure<FArdaRHITextureRef>(Requirements.mStatus);
+				}
+				if (Desc.mMemoryAllocationInfo.mByteSize < Requirements.mValue.mSize)
+				{
+					return Failure<FArdaRHITextureRef>(
+					    Invalid("Native allocation capacity is smaller than its texture requirements."));
+				}
+			}
 			FArdaRHITextureDesc TextureDesc = Desc.mTexture;
 			TextureDesc.mInitialState =
 			    Desc.mInitialState == EArdaRHIResourceState::Unknown ? TextureDesc.mInitialState : Desc.mInitialState;
@@ -2011,7 +2152,8 @@ namespace arda
 			    eastl::move(Native.mValue),
 			    this,
 			    mLifetimeTracker,
-			    Desc.mLifetimeToken));
+			    Desc.mLifetimeToken,
+			    Desc.mMemoryAllocationInfo));
 			mTextureImportCache.Insert(Desc, Result);
 			return {Result, {}};
 		}
@@ -2019,6 +2161,12 @@ namespace arda
 		TArdaRHIResult<FArdaRHIBufferRef> FArdaRHIDeviceImpl::ImportNativeBuffer(
 		    const FArdaRHINativeBufferImportDesc& Desc)
 		{
+			if (Desc.mMemoryAllocationInfo.mbKnown &&
+			    (!Desc.mMemoryAllocationInfo.mIdentity || !Desc.mMemoryAllocationInfo.mByteSize))
+			{
+				return Failure<FArdaRHIBufferRef>(
+				    Invalid("Known native allocation metadata requires identity and capacity."));
+			}
 			if (Desc.mBuffer.mbCudaInterop)
 			{
 				return UnsupportedResult<FArdaRHIBufferRef>("CUDA sharing requires a backend-created allocation.");
@@ -2051,6 +2199,25 @@ namespace arda
 			{
 				return Failure<FArdaRHIBufferRef>(eastl::move(Native.mStatus));
 			}
+			if (Desc.mMemoryAllocationInfo.mbKnown)
+			{
+				const auto ProviderInfo = Native.mValue->GetMemoryAllocationInfo();
+				if (ProviderInfo.mbKnown && !(ProviderInfo == Desc.mMemoryAllocationInfo))
+				{
+					return Failure<FArdaRHIBufferRef>(
+					    Invalid("Native allocation hint disagrees with provider-owned storage."));
+				}
+				const auto Requirements = mDevice->GetBufferMemoryRequirements(Native.mValue, Desc.mBuffer);
+				if (!Requirements)
+				{
+					return Failure<FArdaRHIBufferRef>(Requirements.mStatus);
+				}
+				if (Desc.mMemoryAllocationInfo.mByteSize < Requirements.mValue.mSize)
+				{
+					return Failure<FArdaRHIBufferRef>(
+					    Invalid("Native allocation capacity is smaller than its buffer requirements."));
+				}
+			}
 			FArdaRHIBufferDesc BufferDesc = Desc.mBuffer;
 			BufferDesc.mInitialState =
 			    Desc.mInitialState == EArdaRHIResourceState::Unknown ? BufferDesc.mInitialState : Desc.mInitialState;
@@ -2058,7 +2225,8 @@ namespace arda
 			    eastl::move(Native.mValue),
 			    this,
 			    mLifetimeTracker,
-			    Desc.mLifetimeToken));
+			    Desc.mLifetimeToken,
+			    Desc.mMemoryAllocationInfo));
 			mBufferImportCache.Insert(Desc, Result);
 			return {Result, {}};
 		}
@@ -4056,13 +4224,19 @@ namespace arda
 			{
 				std::lock_guard<std::mutex> Lock(Entry.first->mStateMutex);
 				Entry.first->mFacadeState = Entry.second.mState;
-				Entry.first->mBuildState = Entry.second.mBuildState;
+				if (Entry.second.mbLifecycleWritten)
+				{
+					Entry.first->mBuildState = Entry.second.mBuildState;
+				}
 			}
 			for (const auto& Entry : mFacadeOpacityMicromapStates)
 			{
 				std::lock_guard<std::mutex> Lock(Entry.first->mStateMutex);
 				Entry.first->mFacadeState = Entry.second.mState;
-				Entry.first->mBuildState = Entry.second.mBuildState;
+				if (Entry.second.mbLifecycleWritten)
+				{
+					Entry.first->mBuildState = Entry.second.mBuildState;
+				}
 			}
 			for (const auto& Entry : mFacadeSamplerFeedbackStates)
 			{
@@ -4294,6 +4468,76 @@ namespace arda
 			    ->CopyTexture(Dst->mNative, Dst->mDesc, DestinationSlice, Src->mNative, Src->mDesc, SourceSlice);
 		}
 
+		FArdaRHIStatus FCommandList::CopyBufferToTexture(IArdaRHITexture& Destination,
+		    const FArdaRHITextureSlice& DestinationSlice,
+		    IArdaRHIBuffer& Source,
+		    const FArdaRHITextureBufferLayout& SourceLayout)
+		{
+			if (!mNative->IsOpen())
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "Texture-buffer copies require an open command list.");
+			}
+			auto* Dst = Cast<FTexture>(&Destination);
+			auto* Src = Cast<FBuffer>(&Source);
+			if (!Dst || !Src || !RetainOwned(Dst) || !RetainOwned(Src))
+			{
+				return WrongDevice();
+			}
+			if (Src->mDesc.mCpuAccess == EArdaRHICpuAccess::Read)
+			{
+				return Invalid("A CPU-read buffer cannot be the source of a texture copy.");
+			}
+			FArdaRHITextureCopyExtent Extent;
+			if (auto Status =
+			        ValidateArdaRHITextureBufferCopy(Dst->mDesc, DestinationSlice, Src->mDesc, SourceLayout, Extent);
+			    !Status)
+			{
+				return Status;
+			}
+			return mNative->CopyBufferToTexture(Dst->mNative,
+			    Dst->mDesc,
+			    DestinationSlice,
+			    Src->mNative,
+			    Src->mDesc,
+			    SourceLayout);
+		}
+
+		FArdaRHIStatus FCommandList::CopyTextureToBuffer(IArdaRHIBuffer& Destination,
+		    const FArdaRHITextureBufferLayout& DestinationLayout,
+		    IArdaRHITexture& Source,
+		    const FArdaRHITextureSlice& SourceSlice)
+		{
+			if (!mNative->IsOpen())
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "Texture-buffer copies require an open command list.");
+			}
+			auto* Dst = Cast<FBuffer>(&Destination);
+			auto* Src = Cast<FTexture>(&Source);
+			if (!Dst || !Src || !RetainOwned(Dst) || !RetainOwned(Src))
+			{
+				return WrongDevice();
+			}
+			if (Dst->mDesc.mCpuAccess == EArdaRHICpuAccess::Write)
+			{
+				return Invalid("A CPU-write buffer cannot be the destination of a texture copy.");
+			}
+			FArdaRHITextureCopyExtent Extent;
+			if (auto Status =
+			        ValidateArdaRHITextureBufferCopy(Src->mDesc, SourceSlice, Dst->mDesc, DestinationLayout, Extent);
+			    !Status)
+			{
+				return Status;
+			}
+			return mNative->CopyTextureToBuffer(Dst->mNative,
+			    Dst->mDesc,
+			    DestinationLayout,
+			    Src->mNative,
+			    Src->mDesc,
+			    SourceSlice);
+		}
+
 		FArdaRHIStatus FCommandList::ResolveTexture(IArdaRHITexture& Destination,
 		    const FArdaRHITextureSlice& DestinationSlice,
 		    IArdaRHITexture& Source,
@@ -4396,16 +4640,77 @@ namespace arda
 
 		FArdaRHIStatus FCommandList::DispatchCuda(const FArdaCudaDispatch& Dispatch)
 		{
-			if (mQueue == EArdaRHIQueueType::Copy)
-			{
-				return Invalid("CUDA kernels cannot be recorded on a copy command list.");
-			}
 			if (auto Status = ValidateArdaCudaKernels(Dispatch.mKernels,
 			        Dispatch.mBindings.size(),
 			        mDevice->GetCudaCapabilities());
 			    !Status)
 			{
 				return Status;
+			}
+			return RecordCudaBatch(Dispatch.mBindings, Dispatch.mKernels);
+		}
+
+		FArdaRHIStatus FCommandList::DispatchCudaSequence(const eastl::vector<FArdaCudaDispatch>& Dispatches)
+		{
+			eastl::vector<FArdaCudaBinding> Bindings;
+			eastl::vector<FArdaCudaKernel> Kernels;
+			const auto Capabilities = mDevice->GetCudaCapabilities();
+			for (const auto& Dispatch : Dispatches)
+			{
+				if (auto Status = ValidateArdaCudaKernels(Dispatch.mKernels, Dispatch.mBindings.size(), Capabilities);
+				    !Status)
+				{
+					return Status;
+				}
+				eastl::vector<uint32_t> Indices;
+				for (const auto& Binding : Dispatch.mBindings)
+				{
+					auto Found = eastl::find_if(Bindings.begin(),
+					    Bindings.end(),
+					    [&](const auto& Existing)
+					    {
+						    return Existing.mResource == Binding.mResource && Existing.mMipLevel == Binding.mMipLevel &&
+						        Existing.mBufferRange.mByteOffset == Binding.mBufferRange.mByteOffset &&
+						        Existing.mBufferRange.mByteSize == Binding.mBufferRange.mByteSize;
+					    });
+					if (Binding.mAccess > EArdaComputeAccess::ReadWrite)
+					{
+						return Invalid("Invalid CUDA resource access.");
+					}
+					if (Found == Bindings.end())
+					{
+						if (Bindings.size() >= UINT32_MAX)
+						{
+							return Invalid("CUDA sequence has too many resource views.");
+						}
+						Indices.push_back(static_cast<uint32_t>(Bindings.size()));
+						Bindings.push_back(Binding);
+					}
+					else
+					{
+						Indices.push_back(static_cast<uint32_t>(Found - Bindings.begin()));
+						if (Found->mAccess != Binding.mAccess)
+						{
+							Found->mAccess = EArdaComputeAccess::ReadWrite;
+						}
+					}
+				}
+				auto Kernel = Dispatch.mKernels.front();
+				for (auto& Patch : Kernel.mPatches)
+				{
+					Patch.mBindingIndex = Indices[Patch.mBindingIndex];
+				}
+				Kernels.push_back(eastl::move(Kernel));
+			}
+			return RecordCudaBatch(Bindings, Kernels);
+		}
+
+		FArdaRHIStatus FCommandList::RecordCudaBatch(const eastl::vector<FArdaCudaBinding>& Resources,
+		    const eastl::vector<FArdaCudaKernel>& Kernels)
+		{
+			if (mQueue == EArdaRHIQueueType::Copy)
+			{
+				return Invalid("CUDA kernels cannot be recorded on a copy command list.");
 			}
 			if (!mNative->IsOpen())
 			{
@@ -4416,8 +4721,16 @@ namespace arda
 			{
 				return Unsupported("D3D12 CiG requires its graphics context queue.");
 			}
+			if (!mDevice->GetCudaCapabilities())
+			{
+				return Unsupported("CUDA recording is unavailable.");
+			}
+			if (Kernels.empty())
+			{
+				return {};
+			}
 			eastl::vector<FArdaProviderCudaBinding> Bindings;
-			for (const auto& B : Dispatch.mBindings)
+			for (const auto& B : Resources)
 			{
 				if (!B.mResource)
 				{
@@ -4473,7 +4786,7 @@ namespace arda
 
 			// Both launch modes participate in ordinary graphics state tracking. Native
 			// recording emits the CUDA-specific barriers in addition to these transitions.
-			for (const auto& B : Dispatch.mBindings)
+			for (const auto& B : Resources)
 			{
 				FArdaRHIStatus Status;
 				if (auto* Buffer = Cast<FBuffer>(B.mResource.Get()))
@@ -4494,7 +4807,28 @@ namespace arda
 					return Status;
 				}
 			}
-			return mNative->DispatchCuda(Bindings, Dispatch.mKernels);
+			if (Kernels.front().mGraphBatch)
+			{
+				auto Batch = eastl::make_shared<FArdaCudaGraphBatch>();
+				Batch->mCache = Kernels.front().mGraphBatch->mCache;
+				Batch->mTimingQuery = Kernels.front().mGraphBatch->mTimingQuery;
+				Batch->mTimingRegions = Kernels.front().mGraphBatch->mTimingRegions;
+				for (const auto& Resource : Resources)
+				{
+					Batch->mResources.push_back(Resource.mResource);
+				}
+				auto NativeKernels = Kernels;
+				for (auto& Kernel : NativeKernels)
+				{
+					if (Kernel.mGraphBatch != Kernels.front().mGraphBatch)
+					{
+						return Invalid("CUDA Graph metadata must identify one common sequence batch.");
+					}
+					Kernel.mGraphBatch = Batch;
+				}
+				return mNative->DispatchCuda(Bindings, NativeKernels);
+			}
+			return mNative->DispatchCuda(Bindings, Kernels);
 		}
 
 		FArdaRHIStatus FCommandList::SetTextureState(IArdaRHITexture& Texture,
@@ -5250,7 +5584,8 @@ namespace arda
 				mFacadeAccelStructStates[AccelStruct] = {EArdaRHIResourceState::AccelStructRead,
 				    HasAnyFlags(Flags, EArdaRHIAccelStructBuildFlags::PerformUpdate)
 				        ? EArdaRHIAccelStructBuildState::Updated
-				        : EArdaRHIAccelStructBuildState::Built};
+				        : EArdaRHIAccelStructBuildState::Built,
+				    true};
 			}
 			return Status;
 		}
@@ -5302,7 +5637,8 @@ namespace arda
 				mFacadeAccelStructStates[AccelStruct] = {EArdaRHIResourceState::AccelStructRead,
 				    HasAnyFlags(Flags, EArdaRHIAccelStructBuildFlags::PerformUpdate)
 				        ? EArdaRHIAccelStructBuildState::Updated
-				        : EArdaRHIAccelStructBuildState::Built};
+				        : EArdaRHIAccelStructBuildState::Built,
+				    true};
 			}
 			return Status;
 		}
@@ -5336,7 +5672,8 @@ namespace arda
 				mFacadeAccelStructStates[AccelStruct] = {EArdaRHIResourceState::AccelStructRead,
 				    HasAnyFlags(Flags, EArdaRHIAccelStructBuildFlags::PerformUpdate)
 				        ? EArdaRHIAccelStructBuildState::Updated
-				        : EArdaRHIAccelStructBuildState::Built};
+				        : EArdaRHIAccelStructBuildState::Built,
+				    true};
 			}
 			return Status;
 		}
@@ -5360,7 +5697,8 @@ namespace arda
 			if (Status)
 			{
 				mFacadeAccelStructStates[Destination] = {EArdaRHIResourceState::AccelStructRead,
-				    EArdaRHIAccelStructBuildState::Compacted};
+				    EArdaRHIAccelStructBuildState::Compacted,
+				    true};
 			}
 			return Status;
 		}
@@ -5380,7 +5718,8 @@ namespace arda
 			if (Status)
 			{
 				mFacadeOpacityMicromapStates[Micromap] = {EArdaRHIResourceState::OpacityMicromapBuildInput,
-				    EArdaRHIAccelStructBuildState::Built};
+				    EArdaRHIAccelStructBuildState::Built,
+				    true};
 			}
 			return Status;
 		}
@@ -5404,7 +5743,8 @@ namespace arda
 			if (Status)
 			{
 				mFacadeOpacityMicromapStates[Destination] = {EArdaRHIResourceState::OpacityMicromapBuildInput,
-				    EArdaRHIAccelStructBuildState::Compacted};
+				    EArdaRHIAccelStructBuildState::Compacted,
+				    true};
 			}
 			return Status;
 		}

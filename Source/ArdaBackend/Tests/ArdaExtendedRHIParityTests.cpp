@@ -1,6 +1,7 @@
 #include "ArdaTestBackend.h"
 #include "ArdaBackend.h"
 #include "ArdaBackendProvider.h"
+#include "../../ArdaBackendImpls/ArdaGpuTimestamp.h"
 #include "PipelineStateCache/ArdaPipelineStateCache.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
 
@@ -3068,6 +3069,127 @@ namespace
 		EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 	}
 
+	void VerifyPerQueueTimerExecution(const char* BackendName)
+	{
+		using namespace arda;
+		ShutdownBackend();
+		FExtendedDiagnosticCallback Diagnostics;
+		FExtendedBackendCleanup Cleanup;
+		FArdaBackendConfiguration Configuration;
+		Configuration.mBackendName = BackendName;
+		Configuration.mbEnableValidation = true;
+		Configuration.mMessageCallback = &Diagnostics;
+		ASSERT_TRUE(ConfigureBackend(Configuration));
+		ARDA_REQUIRE_BACKEND() << GetBackendError().c_str();
+		auto Device = GetDevice();
+		ASSERT_TRUE(Device);
+		auto Timer = Device->CreateTimerQuery();
+		ASSERT_TRUE(Timer) << Timer.mStatus.mMessage.c_str();
+		const auto& Caps = Device->GetCapabilities().mQueues;
+		FArdaRHIBufferDesc Desc;
+		Desc.mByteSize = 2 * 1024 * 1024;
+		Desc.mInitialState = EArdaRHIResourceState::Common;
+		Desc.mbKeepInitialState = true;
+		auto Buffer = Device->CreateBuffer(Desc);
+		ASSERT_TRUE(Buffer) << Buffer.mStatus.mMessage.c_str();
+		std::vector<uint8_t> Bytes(static_cast<size_t>(Desc.mByteSize), 0x6b);
+		// Reuse one query across native heap/family types and return to graphics afterward.
+		for (auto Queue : {EArdaRHIQueueType::Graphics,
+		         EArdaRHIQueueType::Compute,
+		         EArdaRHIQueueType::Copy,
+		         EArdaRHIQueueType::Graphics})
+		{
+			if (!Caps.IsSupported(Queue))
+			{
+				continue;
+			}
+			SCOPED_TRACE(static_cast<unsigned>(Queue));
+			auto Commands = Device->CreateCommandList(Queue);
+			ASSERT_TRUE(Commands) << Commands.mStatus.mMessage.c_str();
+			EXPECT_EQ(Commands.mValue->BeginTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::InvalidState);
+			ASSERT_TRUE(Commands.mValue->Open());
+			if (!Caps.SupportsTimestamps(Queue))
+			{
+				EXPECT_EQ(Commands.mValue->BeginTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::Unsupported);
+				ASSERT_TRUE(Commands.mValue->Close());
+				continue;
+			}
+			EXPECT_GT(Caps.GetTimestampValidBits(Queue), 0u);
+			EXPECT_LE(Caps.GetTimestampValidBits(Queue), 64u);
+			for (unsigned Generation = 0; Generation < 2; ++Generation)
+			{
+				if (Generation)
+				{
+					ASSERT_TRUE(Commands.mValue->Open());
+				}
+				ASSERT_TRUE(Commands.mValue->BeginTimerQuery(*Timer.mValue));
+				EXPECT_EQ(Device->ResetTimerQuery(Timer.mValue).mCode, EArdaRHIResult::InvalidState);
+				ASSERT_TRUE(Commands.mValue->WriteBuffer(*Buffer.mValue, Bytes.data(), Bytes.size()));
+				ASSERT_TRUE(Commands.mValue->EndTimerQuery(*Timer.mValue));
+				ASSERT_TRUE(Commands.mValue->Close());
+				EXPECT_EQ(Commands.mValue->EndTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::InvalidState);
+				// Native results from an earlier generation are never visible before this submission.
+				auto BeforeSubmit = Device->PollTimerQuery(Timer.mValue);
+				ASSERT_TRUE(BeforeSubmit);
+				EXPECT_FALSE(BeforeSubmit.mValue);
+				EXPECT_EQ(Device->GetTimerQuerySeconds(Timer.mValue).mStatus.mCode, EArdaRHIResult::InvalidState);
+				auto Submitted = Device->ExecuteCommandList(Commands.mValue);
+				ASSERT_TRUE(Submitted) << Submitted.mStatus.mMessage.c_str();
+				auto Ready = Device->PollTimerQuery(Timer.mValue);
+				ASSERT_TRUE(Ready) << Ready.mStatus.mMessage.c_str();
+				// If the current submission is still pending after polling, its timer cannot be complete.
+				auto SubmissionReady = Device->PollSubmission(Submitted.mValue);
+				ASSERT_TRUE(SubmissionReady);
+				if (!SubmissionReady.mValue)
+				{
+					EXPECT_FALSE(Ready.mValue);
+				}
+				ASSERT_TRUE(Device->WaitForSubmission(Submitted.mValue));
+				Ready = Device->PollTimerQuery(Timer.mValue);
+				ASSERT_TRUE(Ready);
+				EXPECT_TRUE(Ready.mValue);
+				auto Seconds = Device->GetTimerQuerySeconds(Timer.mValue);
+				ASSERT_TRUE(Seconds) << Seconds.mStatus.mMessage.c_str();
+				EXPECT_TRUE(std::isfinite(Seconds.mValue));
+				EXPECT_GT(Seconds.mValue, 0.f);
+				EXPECT_FLOAT_EQ(Device->GetTimerQuerySeconds(Timer.mValue).mValue, Seconds.mValue);
+				ASSERT_TRUE(Device->ResetTimerQuery(Timer.mValue));
+				EXPECT_FALSE(Device->PollTimerQuery(Timer.mValue).mValue);
+			}
+		}
+		if (Caps.SupportsTimestamps(EArdaRHIQueueType::Graphics))
+		{
+			auto Old = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+			ASSERT_TRUE(Old);
+			ASSERT_TRUE(Old.mValue->Open());
+			ASSERT_TRUE(Old.mValue->BeginTimerQuery(*Timer.mValue));
+			ASSERT_TRUE(Old.mValue->EndTimerQuery(*Timer.mValue));
+			ASSERT_TRUE(Old.mValue->Close());
+			auto Prior = Device->ExecuteCommandList(Old.mValue);
+			ASSERT_TRUE(Prior);
+			ASSERT_TRUE(Device->WaitForSubmission(Prior.mValue));
+			ASSERT_TRUE(Device->ResetTimerQuery(Timer.mValue));
+
+			auto Current = Device->CreateCommandList(EArdaRHIQueueType::Graphics);
+			ASSERT_TRUE(Current);
+			ASSERT_TRUE(Current.mValue->Open());
+			ASSERT_TRUE(Current.mValue->BeginTimerQuery(*Timer.mValue));
+			ASSERT_TRUE(Current.mValue->EndTimerQuery(*Timer.mValue));
+			ASSERT_TRUE(Current.mValue->Close());
+			// A stale closed list must not claim the generation now recorded by another list.
+			EXPECT_EQ(Device->ExecuteCommandList(Old.mValue).mStatus.mCode, EArdaRHIResult::InvalidState);
+			EXPECT_FALSE(Device->PollTimerQuery(Timer.mValue).mValue);
+			auto Submitted = Device->ExecuteCommandList(Current.mValue);
+			ASSERT_TRUE(Submitted) << Submitted.mStatus.mMessage.c_str();
+			ASSERT_TRUE(Device->WaitForSubmission(Submitted.mValue));
+			const auto Seconds = Device->GetTimerQuerySeconds(Timer.mValue);
+			ASSERT_TRUE(Seconds) << Seconds.mStatus.mMessage.c_str();
+			EXPECT_TRUE(std::isfinite(Seconds.mValue));
+			ASSERT_TRUE(Device->ResetTimerQuery(Timer.mValue));
+		}
+		EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+	}
+
 	void VerifyShaderLibraryExecution(const char* BackendName, const std::filesystem::path& CacheDirectory = {})
 	{
 		using namespace arda;
@@ -3365,6 +3487,7 @@ namespace
 		SamplerFeedback,
 		CustomPresent,
 		Queries,
+		QueueTimestamps,
 		ShaderLibrary
 	};
 
@@ -3593,6 +3716,9 @@ namespace
 		case ECapabilityProbe::Queries:
 			VerifyQueryExecution(TestCase.mBackendName);
 			return;
+		case ECapabilityProbe::QueueTimestamps:
+			VerifyPerQueueTimerExecution(TestCase.mBackendName);
+			return;
 		case ECapabilityProbe::ShaderLibrary:
 			VerifyShaderLibraryExecution(TestCase.mBackendName);
 			return;
@@ -3708,6 +3834,7 @@ namespace
 		    ARDA_CAPABILITY("VariableRateShading", C.mbVariableRateShading, Contract),
 		    ARDA_CAPABILITY("VirtualResources", C.mbVirtualResources, HeapAliasing),
 		    ARDA_CAPABILITY("ExplicitHeaps", C.mbHeaps, HeapAliasing),
+		    ARDA_CAPABILITY("HeapCapacityAlignment", C.mHeapAllocationAlignment > 0, HeapAliasing),
 		    ARDA_CAPABILITY("StagingTextures", C.mbStagingTextures, ExtendedCommands),
 		    ARDA_CAPABILITY("TextureCopies", C.mbTextureCopies, ExtendedCommands),
 		    ARDA_CAPABILITY("TextureResolve", C.mbTextureResolve, Resolve),
@@ -3716,6 +3843,9 @@ namespace
 		    ARDA_CAPABILITY("IndirectCommands", C.mbIndirectCommands, ExtendedCommands),
 		    ARDA_CAPABILITY("AliasingBarriers", C.mbAliasingBarriers, HeapAliasing),
 		    ARDA_CAPABILITY("Queries", C.mbQueries, Queries),
+		    ARDA_CAPABILITY("GraphicsTimestamps", C.mQueues.mGraphicsTimestampValidBits != 0, QueueTimestamps),
+		    ARDA_CAPABILITY("ComputeTimestamps", C.mQueues.mComputeTimestampValidBits != 0, QueueTimestamps),
+		    ARDA_CAPABILITY("CopyTimestamps", C.mQueues.mCopyTimestampValidBits != 0, QueueTimestamps),
 		    ARDA_CAPABILITY("ShaderLibraries", C.mbShaderLibraries, ShaderLibrary),
 		    ARDA_CAPABILITY("PipelineCachePersistence", C.mbPipelineCachePersistence, PipelineCache)};
 
@@ -4016,5 +4146,35 @@ TEST(ArdaBackend, D3D12LocalShaderTableDescriptorsExecute)
 TEST(ArdaBackend, VulkanLocalShaderTableDescriptorsExecute)
 {
 	VerifyRayTracingPipelineCapabilityAndExecution("native-vulkan", true);
+}
+#endif
+
+TEST(ArdaBackend, TimestampCountersWrapAtQueueValidWidth)
+{
+	using namespace arda;
+	EXPECT_EQ(ArdaTimestampElapsedTicks((uint64_t{1} << 36) - 3, 4, 36), 7u);
+	EXPECT_EQ(ArdaTimestampElapsedTicks(UINT64_MAX - 2, 4, 64), 7u);
+	EXPECT_EQ(ArdaTimestampElapsedTicks(12, 29, 48), 17u);
+	EXPECT_EQ(ArdaTimestampElapsedTicks(12, 29, 0), 0u);
+	EXPECT_EQ(ArdaTimestampElapsedTicks(12, 29, 65), 0u);
+	FArdaRHIQueueCapabilities Caps;
+	EXPECT_FALSE(Caps.SupportsTimestamps(EArdaRHIQueueType::Graphics));
+	Caps.mGraphicsTimestampValidBits = 36;
+	Caps.mCopyTimestampValidBits = 64;
+	EXPECT_TRUE(Caps.SupportsTimestamps(EArdaRHIQueueType::Graphics));
+	EXPECT_FALSE(Caps.SupportsTimestamps(EArdaRHIQueueType::Copy));
+	Caps.mbCopy = true;
+	EXPECT_TRUE(Caps.SupportsTimestamps(EArdaRHIQueueType::Copy));
+}
+#if defined(ARDA_TEST_NATIVE_D3D12)
+TEST(ArdaBackend, D3D12PerQueueTimersPollAndReuse)
+{
+	VerifyPerQueueTimerExecution("native-d3d12");
+}
+#endif
+#if defined(ARDA_TEST_NATIVE_VULKAN)
+TEST(ArdaBackend, VulkanPerQueueTimersPollAndReuse)
+{
+	VerifyPerQueueTimerExecution("native-vulkan");
 }
 #endif

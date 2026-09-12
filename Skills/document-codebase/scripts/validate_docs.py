@@ -131,15 +131,13 @@ MODULES = (
         api_js_path="assets/arda-rdg-api.js",
         api_global="ArdaRDGApi",
         required_public_headers=(
+            "ArdaDependencyGraph.h",
+            "ArdaDependencyNode.h",
+            "ArdaDependencyGraphCuda.h",
+            "ArdaDependencyGraphExecution.h",
+            "ArdaDependencyGraphNodes.h",
+            "ArdaInductorPipeline.h",
             "ArdaRenderGraph.h",
-            "ArdaRenderGraphBlackboard.h",
-            "ArdaRenderGraphCuda.h",
-            "ArdaRenderGraphBuilder.h",
-            "ArdaRenderGraphDefinitions.h",
-            "ArdaRenderGraphLog.h",
-            "ArdaRenderGraphParameters.h",
-            "ArdaRenderGraphPass.h",
-            "ArdaRenderGraphResources.h",
         ),
     ),
 )
@@ -1144,6 +1142,19 @@ class Validator:
             preserve_lines,
             text,
         )
+        # A conventional detail namespace contains implementation helpers, even in
+        # public headers. Mask balanced bodies, preserving offsets and line numbers.
+        chars = list(text)
+        for match in re.finditer(r"\bnamespace\s+(?:[A-Za-z_]\w*::)*detail\s*\{", text):
+            depth, end = 1, match.end()
+            while end < len(text) and depth:
+                if text[end] == "{": depth += 1
+                elif text[end] == "}": depth -= 1
+                end += 1
+            if not depth:
+                for at in range(match.start(), end):
+                    if chars[at] not in "\r\n": chars[at] = " "
+        text = "".join(chars)
         text = Validator.mask_cpp_function_bodies(text)
         # A class is private until its first public label; structs are public.
         default_private = re.compile(
@@ -1241,6 +1252,8 @@ class Validator:
                 r"(?:[A-Za-z_]\w*(?:::\w+)*(?:\s*<[^;\n{}]+>)?[\s*&]+)+"
                 r"(m(?:b[A-Z]|[A-Z])[A-Za-z0-9_]*)\s*(?:[=;{\[])", text
             ):
+                if re.search(r"\bconstexpr\b", match.group(0)):
+                    continue  # Already inventoried as a constant, never a second member.
                 records.append((
                     match.group(1), header,
                     text.count("\n", 0, match.start()) + 1, "member",

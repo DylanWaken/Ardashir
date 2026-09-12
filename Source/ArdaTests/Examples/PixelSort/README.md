@@ -1,28 +1,40 @@
 # Pixel Sort
 
-A backend-only Windows example: HLSL compute noise → CUDA radix sort → fullscreen
+A Windows example built from registered dependency-graph nodes: HLSL compute noise → CUDA radix sort → fullscreen
 graphics draw → swap-chain presentation. The palette combines ink, indigo,
 lavender and coral. Resize the window to change sorting direction and kernel
 selection while the noise keeps evolving.
 
-The example's project dependencies are **ArdaBackend** and its own
-**PixelSortKernels** target. It uses native Win32 for its resizable window, WIC
-for optional PNG captures, and Vulkan headers for surface creation. It does not
-use RDG, scene modules, GLFW or ImGui. All application and shader sources live
-in this directory; build it through the repository's root CMake project.
+The example links **ArdaBackend**, **ArdaRenderGraph**, and its own
+**PixelSortKernels** target. It uses native Win32 for the window, WIC for optional
+PNG captures, and Vulkan headers for surface creation. Build it through the
+repository's root CMake project.
 
-## Follow the commented implementation
+## Follow the modular implementation
 
-1. [CMakeLists.txt](CMakeLists.txt): build native CUDA profiles and deploy graphics assets.
-2. [PixelSortOperand.h](PixelSortOperand.h) and [PixelSortOperand.cpp](PixelSortOperand.cpp):
-   define the shared parameter schema, bind compiled entries, and select a launch configuration.
-3. [PixelSortKernels.cu](PixelSortKernels.cu): register template permutations and follow the
-   stable radix sort, including boundaries, padding, shared memory and synchronization.
-4. [PixelSortRenderer.cpp](PixelSortRenderer.cpp): follow `Initialize`, `Resize`, then the
-   six numbered stages in `Render`. [PixelSort.hlsl](Shaders/PixelSort.hlsl) supplies the
-   graphics producer and presentation shaders used by those stages.
-5. [PixelSortMain.cpp](PixelSortMain.cpp) and [PixelSortWindow.cpp](PixelSortWindow.cpp):
-   connect the backend to a native window, handle capabilities/events, and release resources safely.
+1. [CMakeLists.txt](CMakeLists.txt) builds the native CUDA profile and deploys node shader assets.
+2. [ArdaPixelSortNodes.h](Public/Nodes/ArdaPixelSortNodes.h) includes individual
+   upload, noise, sort, present and readback classes. Each has a matching `.cpp`
+   under `Private/Nodes` implementing its hooks on `TArdaDependencyNode`. The base
+   owns registration, attachment and state lifetime; each node prepares only its own operation. The
+   [noise node](Private/Nodes/ArdaPixelSortNoiseNode.cpp) owns its HLSL entry,
+   layout and pipeline settings; the [sort node](Private/Nodes/ArdaPixelSortSortNode.cpp)
+   owns its CUDA operand. Shared shader-file loading is only a private utility.
+   Graph parameters retain prepared device state; the renderer needs no library
+   initialization and attaches classes through `Graph.AttachOrFind<Node>(...)`.
+3. [ArdaPixelSortOperand.h](Public/Nodes/ArdaPixelSortOperand.h) and
+   [ArdaPixelSortOperand.cpp](Private/Nodes/ArdaPixelSortOperand.cpp) define the CUDA
+   parameter schema, bind compiled entries, and select a launch configuration.
+4. [ArdaPixelSortKernels.cu](Private/Nodes/ArdaPixelSortKernels.cu) implements the
+   compiled radix variants. [ArdaPixelSort.hlsl](Private/Nodes/Shaders/ArdaPixelSort.hlsl)
+   supplies the graphics producer and presentation stages.
+5. [PixelSortRenderer.cpp](PixelSortRenderer.cpp) creates/imports graph resources,
+   attaches registered nodes, updates frame inputs, submits, and presents. It also
+   owns the independent CPU sort oracle and PNG output.
+6. [PixelSortMain.cpp](PixelSortMain.cpp) and [PixelSortWindow.cpp](PixelSortWindow.cpp)
+   connect the backend to the native window and release graph references before resize.
+
+The [shared example layout](../README.md) explains adding more registered nodes.
 
 ## Build
 
@@ -142,27 +154,34 @@ returns code **77** with a reason; workload errors return **1**.
 
 ## One frame and two compiled variants
 
-`PixelSortRenderer.cpp` records the entire frame into one public graphics
-command list:
+`FindOrCreateFrameGraph` assembles a persistent graph per swap-chain color texture
+and verification/capture configuration. It attaches consumers first to demonstrate
+that resource dependencies determine the execution order:
 
-1. Upload time/extent constants, transition the noise texture to UAV, and run
-   `NoiseCS`. Smooth value noise, domain warping and sinusoidal ridges use a
-   floating-point time parameter. Both shared textures use **RGBA8UInt** storage.
-2. Call `FPixelSortOperand::DispatchDeferred` with the same parameter schema for
-   either variant. The backend maps the retained texture fields into CUDA
-   surface objects and orders the graphics producer before CUDA.
-3. Transition both textures to pixel-shader resource state, bind the fullscreen
-   graphics pipeline, draw three vertices to the acquired back buffer, transition
-   it to Present, submit, and present.
+1. `UploadFrame` writes time/extent/display constants.
+2. `Noise` reads those constants and writes an **RGBA8UInt** texture with `NoiseCS`.
+3. `Sort` reads noise and writes a separate sorted texture. Its registered CUDA
+   callback resolves logical handles and appends the retained operand to the
+   compiler-provided sequence; the renderer never launches a kernel or creates a stream.
+4. `Present` reads the constants and both images and draws the fullscreen triangle.
+5. Optional registered readback nodes copy source/output/captured pixels to CPU staging.
 
-The public command list may contain native segments with imported semaphore or
-fence handoffs. The application does not launch CUDA separately or issue its
-own context switch. [CUDA in graphics](../../../../Docs/ArdaBackend/cuda-graphics.html)
-explains how CUDA-in-graphics and ordinary contexts share this ordering contract.
+ArdaInductor creates the compute and graphics PSOs, lowers barriers and ownership
+transfers, and submits the graphics/CUDA sequence. Graphs and per-graph binding sets
+are reused across frames. Constants, noise and output are graph-owned transients,
+so different cached frame graphs do not share writable intermediate storage.
+Frame input values are sampled before submission; changing time, channel, threshold,
+or the original-image toggle does not require an edit.
+
+Ordinary animation uses `Submit`; diagnostic readbacks use `Wait(ticket)` before
+mapping. Recycling an occupied frame slot can wait. Resize releases graphs before
+replacing the swap chain, and graph destruction retires its own outstanding work.
+[CUDA in graphics](../../../../Docs/ArdaBackend/cuda-graphics.html) explains the
+underlying CUDA-in-graphics and ordinary-context handoff contracts.
 
 `BindKernelVariants` calls the nvcc-built registration function. A C++ integer
 sequence instantiates two typed `__global__` entries, each taking only
-`FPixelSortParameters::FCuda` by value. Their host payloads describe threads,
+`FArdaPixelSortParameters::FCuda` by value. Their host payloads describe threads,
 tile length and direction; the generated build manifest describes native
 architecture support. `SelectKernel` chooses among compatible entries:
 
@@ -205,7 +224,7 @@ does not normalize or color-convert it automatically.
 
 ## Verify and capture
 
-Enable `ARDASHIR_BUILD_TESTS=ON` when configuring to register six native GPU
+Enable `ARDASHIR_BUILD_TESTS=ON` when configuring to register eight native GPU
 tests and provision optional validation layers. The test configuration also
 builds the existing repository test targets/profiles at configure time; use an
 nvcc version that supports their architecture settings.
@@ -221,7 +240,9 @@ build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend d3d
 `--verify` enables native validation, reads back both compute/CUDA textures after
 completion and compares **every RGBA pixel** with an independent CPU
 `std::stable_sort` reference. The six real Win32 resizes cover both variants,
-all RGB keys, multiple thresholds, partial tiles and multi-tile lines.
+all RGB keys, multiple thresholds, partial tiles and multi-tile lines. Two additional
+`PixelSort.d3d12.Replay` and `PixelSort.vulkan.Replay` tests execute eight same-size
+frames to exercise cached graph reuse.
 `--validation` enables graphics validation without readback. Ordinary runs do
 not require development validation layers. `--frames 0` (the default) runs
 until the window closes. `--time` freezes the clock for reproducible captures.
@@ -229,14 +250,14 @@ PNG capture reads the rendered back buffer, on the final bounded frame or the
 first frame when running indefinitely; its parent directory must already exist.
 
 Local qualification: Windows, RTX PRO 6000 Blackwell (SM 120), driver 610.62,
-nvcc 13.3.33. D3D12 automatic/ordinary mode and Vulkan
+nvcc 13.3.73. D3D12 automatic/ordinary mode and Vulkan
 automatic/ordinary/CUDA-in-graphics pass native validation and exact CPU
 comparisons. D3D12 CUDA-in-graphics surface qualification fails on this driver;
 that forced mode skips with its capability reason. Other GPUs are unqualified.
 
 ## Runtime package
 
-Keep the executable and its deployed `D3D12`, `Shaders`, and `ShaderCompiler`
+Keep the executable and its deployed `D3D12`, `Nodes/Shaders`, and `ShaderCompiler`
 directories together (`D3D12` is only needed by that provider).
 This development example compiles/caches its **HLSL graphics shaders** on first
 use in `.arda-cache/PixelSort` beside the executable, so that directory must be

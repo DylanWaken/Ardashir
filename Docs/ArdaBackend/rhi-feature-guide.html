@@ -314,21 +314,12 @@ device.WriteDescriptorTable(table.mValue, textureItem);</code></pre>
         </section>
 
         <section id="render-graph">
-          <h2>ArdaRenderGraph</h2>
-          <p><a href="../ArdaRDG/api-reference.html#api-arda-rdg-fardgbuilder-e0fc26d2"><code>FARDGBuilder</code></a> raises scheduling from imperative calls to declared pass inputs and outputs. It creates logical textures, buffers, views, and acceleration structures; registers external resources with known initial state; accepts typed pass parameters; queues uploads and extractions; and records graphics, async-compute, or copy intent.</p>
-
-          <h3>Compilation</h3>
-          <p><code>Compile</code> discovers producer/consumer dependencies, culls dead passes and resources, selects queue fallbacks from actual device capabilities, computes lifetimes, groups compatible raster work, lowers physical transitions, and emits cross-queue dependencies. Compilation happens once for deferred execution.</p>
-
-          <h3>Execution</h3>
-          <p><code>Execute</code> materializes physical resources, builds a shared transient heap where possible, records independent pass waves in parallel, inserts transitions and alias barriers, submits lists, emits queue waits, publishes extraction states, and returns <a href="../ArdaRDG/api-reference.html#api-arda-rdg-fardgexecutionresult-55e456b3"><code>FARDGExecutionResult</code></a>. Immediate mode remains available for debugging and reports that it was selected.</p>
-
-          <h3>Access and validation</h3>
-          <p>A callback using <code>FARDGPassExecutionContext</code> can request only declared physical resources. The raw command-list callback is intentionally marked unsafe because the graph cannot prove accesses to independently retained objects. When <code>mbValidateResourceStates</code> is true, execution records before-transition, forced-common, after-transition, and after-pass snapshots for every relevant range.</p>
-          <figure>
-            <img src="Assets/rdg-execution-conformance.svg" loading="lazy" alt="Render graph declarations compile into dependencies, culling, queues, lifetimes, transitions, and heap placement, then record and submit work while returning state conformance and extraction results.">
-            <figcaption>The execution report is evidence: it states which queues, heap strategy, aliasing, fallbacks, submissions, and state checkpoints actually occurred.</figcaption>
-          </figure>
+          <h2>Persistent dependency graph integration</h2>
+          <p><a href="../ArdaRDG/ArdaInductor.md"><code>FArdaDependencyGraph</code></a> holds typed nodes and resource values across frames. Register implementations in <code>FArdaNodeRegistry</code>, then edit instances only between <code>BeginGraphEdit</code> and <code>EndGraphEdit</code>.</p>
+          <p>ArdaInductor resolves resource and explicit dependencies independently of attachment order, removes dead branches, creates pipelines from stage declarations, coalesces CUDA nodes, assigns queues, and plans reusable physical storage. Its search can optimize execution cost or memory under a configured VRAM budget.</p>
+          <p><code>Submit</code> returns a frame ticket; <code>Wait</code> retires that frame and publishes readbacks. <code>Execute</code> combines both. Independent frame slots own transient storage, while imported resources and retained adapter allocations remain shared.</p>
+          <p><code>FArdaDependencyExecutionContext</code> resolves declared resources and compiler-assigned pipeline slots. <code>FArdaGraphExecuteOptions</code> controls parallel recording and state validation. <code>FArdaGraphExecutionResult</code> records accepted submissions, queue waits, state checkpoints, and completion identities. The compile result reports scheduling and memory decisions.</p>
+          <p>All graphics, CUDA, copy, and acceleration-structure graph work uses this system. Direct RHI commands remain available for applications managing their own dependencies.</p>
         </section>
 
         <section id="feedback">

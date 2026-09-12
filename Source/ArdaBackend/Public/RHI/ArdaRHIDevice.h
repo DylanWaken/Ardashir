@@ -92,6 +92,17 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "CUDA recording is unavailable.");
 		}
 
+		/** Records an ordered sequence of single-operation dispatches as one native CUDA batch.
+         * All steps are validated before capture/launch. The union of their resources is
+         * acquired once and retained through completion, including intermediate buffers.
+         * Kernels execute on one stream without intervening graphics work or CPU waits.
+         * An empty sequence is a no-op on an open supported list. Other restrictions match DispatchCuda.
+         */
+		virtual FArdaRHIStatus DispatchCudaSequence(const eastl::vector<FArdaCudaDispatch>&)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "CUDA sequence recording is unavailable.");
+		}
+
 		/**
          * Opaque device that created this command list.
          * @return The requested object pointer.
@@ -190,6 +201,26 @@ namespace arda
 		/** Copies a texture region between matching subresources. */
 		virtual FArdaRHIStatus CopyTexture(IArdaRHITexture& Destination,
 		    const FArdaRHITextureSlice& DestinationSlice,
+		    IArdaRHITexture& Source,
+		    const FArdaRHITextureSlice& SourceSlice) = 0;
+
+		/** Copies a pitched buffer region into one texture mip/layer or 3D region.
+         * Supports single-sample, uncompressed color formats. Automatic barriers temporarily
+         * transition both resources and restore their states; otherwise callers supply copy states.
+         * Source must not be a CPU-read buffer. Both resources are retained through submission.
+         */
+		virtual FArdaRHIStatus CopyBufferToTexture(IArdaRHITexture& Destination,
+		    const FArdaRHITextureSlice& DestinationSlice,
+		    IArdaRHIBuffer& Source,
+		    const FArdaRHITextureBufferLayout& SourceLayout) = 0;
+
+		/** Copies one texture mip/layer or 3D region into a pitched buffer without CPU readback.
+         * Supports single-sample, uncompressed color formats. Automatic barriers temporarily
+         * transition both resources and restore their states; otherwise callers supply copy states.
+         * Destination must not be a CPU-write buffer. Both resources survive GPU completion.
+         */
+		virtual FArdaRHIStatus CopyTextureToBuffer(IArdaRHIBuffer& Destination,
+		    const FArdaRHITextureBufferLayout& DestinationLayout,
 		    IArdaRHITexture& Source,
 		    const FArdaRHITextureSlice& SourceSlice) = 0;
 
@@ -1176,6 +1207,7 @@ namespace arda
          * @param Query The query.
          * @return The requested value and its operation status.
          */
+		/** Nonblocking readiness check for the current query use; never waits for GPU completion. */
 		[[nodiscard]] virtual TArdaRHIResult<bool> PollTimerQuery(const FArdaRHITimerQueryRef& Query) = 0;
 
 		/**
@@ -1183,6 +1215,7 @@ namespace arda
          * @param Query The query.
          * @return The requested value and its operation status.
          */
+		/** Returns completed elapsed seconds; returns InvalidState immediately while pending. */
 		[[nodiscard]] virtual TArdaRHIResult<float> GetTimerQuerySeconds(const FArdaRHITimerQueryRef& Query) = 0;
 
 		/**
@@ -1259,6 +1292,25 @@ namespace arda
 		virtual FArdaRHIStatus QueueWait(EArdaRHIQueueType WaitQueue,
 		    EArdaRHIQueueType ExecutionQueue,
 		    uint64_t Instance) = 0;
+
+		/**
+         * Queries texture allocation requirements without allocating or binding GPU memory.
+         * The backend may create a temporary unbound native resource. Creation flags, including
+         * virtual, sparse, and CUDA interoperability flags, are taken from the descriptor.
+         * @param Desc The proposed texture descriptor.
+         * @return Required size, alignment, compatible memory types, and operation status.
+         */
+		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIMemoryRequirements> QueryTextureMemoryRequirements(
+		    const FArdaRHITextureDesc& Desc) = 0;
+
+		/**
+         * Queries buffer allocation requirements without allocating or binding GPU memory.
+         * The backend may create a temporary unbound native resource.
+         * @param Desc The proposed buffer descriptor, including all intended creation flags.
+         * @return Required size, alignment, compatible memory types, and operation status.
+         */
+		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIMemoryRequirements> QueryBufferMemoryRequirements(
+		    const FArdaRHIBufferDesc& Desc) = 0;
 
 		/**
          * Returns the texture memory requirements.
@@ -1412,6 +1464,20 @@ namespace arda
          * @return A status describing whether the operation succeeded.
          */
 		virtual FArdaRHIStatus WaitForIdle() = 0;
+
+		/** Waits for a token returned by this device's ExecuteCommandList. Does not wait for later submissions. */
+		virtual FArdaRHIStatus WaitForSubmission(uint64_t Submission)
+		{
+			(void)Submission;
+			return WaitForIdle();
+		}
+
+		/** Nonblocking completion check for a submission from this device. */
+		[[nodiscard]] virtual TArdaRHIResult<bool> PollSubmission(uint64_t Submission)
+		{
+			(void)Submission;
+			return {false, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Submission polling is unavailable.")};
+		}
 
 		/**
          * Flushes dirty backend-native pipeline cache data and permanently

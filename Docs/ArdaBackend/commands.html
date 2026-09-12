@@ -268,17 +268,12 @@ command-&gt;CommitBarriers();</code></pre>
         </section>
 
         <section id="render-graph">
-          <h2>ArdaRenderGraph integration</h2>
-          <p><a class="term" data-term="arda-render-graph" href="../glossary.html#term-arda-render-graph">ArdaRenderGraph</a> raises command scheduling from imperative transitions to declared pass accesses. <code>FARDGBuilder</code> compiles live passes, resource lifetimes, queue assignments, raster groups, and <code>FARDGQueueDependency</code> values before recording.</p>
-          <ul>
-            <li>Logical textures, buffers, views, and acceleration structures are materialized at execution.</li>
-            <li>Declared access lets compilation derive boundary barriers and cross-queue waits.</li>
-            <li>Transient lifetimes permit pool reuse and safe heap aliasing when supported.</li>
-            <li><code>FARDGExecuteOptions::mbParallelRecording</code> records independent pass waves concurrently.</li>
-            <li><code>FARDGExecutionResult</code> reports submitted-list count, queue waits, pool reuse, immediate mode, virtual heaps, aliasing, and last submitted instances.</li>
-          </ul>
-          <p>Pass callbacks that use <code>FARDGPassExecutionContext</code> can validate declared physical-resource access. A raw <code>IArdaRHICommandList&amp;</code> callback can use independently retained resources, so the graph cannot prove declaration completeness. Reserve the unsafe raw path for operations the typed context cannot express.</p>
-          <p><strong>Design rationale:</strong> direct RHI recording maximizes local control but distributes hazard reasoning across call sites. A render graph centralizes whole-frame dependency knowledge and parallel scheduling, at the cost of declaration discipline and compilation machinery.</p>
+          <h2>Persistent dependency graph integration</h2>
+          <p><a href="../ArdaRDG/ArdaInductor.md"><code>FArdaDependencyGraph</code></a> holds typed nodes and resource values across frames. Register implementations in <code>FArdaNodeRegistry</code>, then edit instances only between <code>BeginGraphEdit</code> and <code>EndGraphEdit</code>.</p>
+          <p>ArdaInductor resolves resource and explicit dependencies independently of attachment order, removes dead branches, creates pipelines from stage declarations, coalesces CUDA nodes, assigns queues, and plans reusable physical storage. Its search can optimize execution cost or memory under a configured VRAM budget.</p>
+          <p><code>Submit</code> returns a frame ticket; <code>Wait</code> retires that frame and publishes readbacks. <code>Execute</code> combines both. Independent frame slots own transient storage, while imported resources and retained adapter allocations remain shared.</p>
+          <p><code>FArdaDependencyExecutionContext</code> resolves declared resources and compiler-assigned pipeline slots. <code>FArdaGraphExecuteOptions</code> controls parallel recording and state validation. <code>FArdaGraphExecutionResult</code> records accepted submissions, queue waits, state checkpoints, and completion identities. The compile result reports scheduling and memory decisions.</p>
+          <p>All graphics, CUDA, copy, and acceleration-structure graph work uses this system. Direct RHI commands remain available for applications managing their own dependencies.</p>
         </section>
 
         <section id="worked-example">

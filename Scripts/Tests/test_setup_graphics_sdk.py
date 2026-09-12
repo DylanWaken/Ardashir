@@ -4,6 +4,8 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -97,6 +99,28 @@ class SetupTests(unittest.TestCase):
         self.assertTrue(url.startswith("https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/"))
         self.assertRegex(digest, r"^[0-9a-f]{64}$")
         self.assertRegex(tag, r"^v\d+\.\d+\.\d+$")
+
+    @unittest.skipUnless(shutil.which("cmake"), "CMake cache integration")
+    def test_sdk_defaults_fill_empty_cache_and_preserve_custom_paths(self):
+        layer = self.root / "verified layer"
+        setup.write_configuration(self.root, None, None, layer)
+        defaults = self.root / "GraphicsSdkDefaults.cmake"
+        key = "ARDASHIR_VULKAN_VALIDATION_DIR"
+        result_file = self.root / "value.txt"
+        check = self.root / "check.cmake"
+        check.write_text(f'file(WRITE {setup.cmake_value(result_file)} "${{{key}}}")\n', encoding="utf-8")
+
+        def configure(*arguments):
+            result = subprocess.run(["cmake", *arguments, "-P", str(check)], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            return result_file.read_text(encoding="utf-8")
+
+        self.assertEqual(configure("-C", str(defaults)), layer.as_posix())
+        self.assertEqual(configure(f"-D{key}:PATH=", "-C", str(defaults)), layer.as_posix())
+        custom = (self.root / "custom layer").as_posix()
+        self.assertEqual(configure(f"-D{key}:PATH={custom}", "-C", str(defaults)), custom)
+        self.assertEqual(configure("-C", str(defaults), f"-D{key}:PATH=explicit"), "explicit")
+        self.assertEqual(configure(f"-D{key}:PATH={custom}", "-C", str(self.root / "GraphicsSdk.cmake")), layer.as_posix())
 
 
 if __name__ == "__main__":

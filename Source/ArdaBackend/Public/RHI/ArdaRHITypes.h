@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "ArdaRHIResource.h"
+
 #include <EASTL/string.h>
 #include <EASTL/shared_ptr.h>
 #include <EASTL/vector.h>
@@ -803,6 +805,8 @@ namespace arda
          * The token, rather than Arda, owns any native lifetime it represents.
          */
 		eastl::shared_ptr<void> mLifetimeToken;
+		/** Optional complete allocation metadata supplied by the native allocation owner. */
+		FArdaRHIMemoryAllocationInfo mMemoryAllocationInfo;
 
 		/**
          * Compares two values for equality.
@@ -811,10 +815,11 @@ namespace arda
          */
 		bool operator==(const FArdaRHINativeTextureImportDesc& O) const noexcept
 		{
-			return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType &&
-			    mNativeTypeName == O.mNativeTypeName && mBackendData == O.mBackendData && mOwnership == O.mOwnership &&
-			    mTexture == O.mTexture && mInitialState == O.mInitialState &&
-			    !mLifetimeToken.owner_before(O.mLifetimeToken) && !O.mLifetimeToken.owner_before(mLifetimeToken);
+			return mMemoryAllocationInfo == O.mMemoryAllocationInfo && mNativeObject == O.mNativeObject &&
+			    mNativeType == O.mNativeType && mNativeTypeName == O.mNativeTypeName &&
+			    mBackendData == O.mBackendData && mOwnership == O.mOwnership && mTexture == O.mTexture &&
+			    mInitialState == O.mInitialState && !mLifetimeToken.owner_before(O.mLifetimeToken) &&
+			    !O.mLifetimeToken.owner_before(mLifetimeToken);
 		}
 	};
 
@@ -840,6 +845,8 @@ namespace arda
          * The token, rather than Arda, owns any native lifetime it represents.
          */
 		eastl::shared_ptr<void> mLifetimeToken;
+		/** Optional complete allocation metadata supplied by the native allocation owner. */
+		FArdaRHIMemoryAllocationInfo mMemoryAllocationInfo;
 
 		/**
          * Compares two values for equality.
@@ -848,10 +855,11 @@ namespace arda
          */
 		bool operator==(const FArdaRHINativeBufferImportDesc& O) const noexcept
 		{
-			return mNativeObject == O.mNativeObject && mNativeType == O.mNativeType &&
-			    mNativeTypeName == O.mNativeTypeName && mBackendData == O.mBackendData && mOwnership == O.mOwnership &&
-			    mBuffer == O.mBuffer && mInitialState == O.mInitialState &&
-			    !mLifetimeToken.owner_before(O.mLifetimeToken) && !O.mLifetimeToken.owner_before(mLifetimeToken);
+			return mMemoryAllocationInfo == O.mMemoryAllocationInfo && mNativeObject == O.mNativeObject &&
+			    mNativeType == O.mNativeType && mNativeTypeName == O.mNativeTypeName &&
+			    mBackendData == O.mBackendData && mOwnership == O.mOwnership && mBuffer == O.mBuffer &&
+			    mInitialState == O.mInitialState && !mLifetimeToken.owner_before(O.mLifetimeToken) &&
+			    !O.mLifetimeToken.owner_before(mLifetimeToken);
 		}
 	};
 
@@ -876,6 +884,17 @@ namespace arda
 		uint32_t mArraySlice = 0;
 		/** Format plane containing the region. */
 		uint32_t mPlane = 0;
+	};
+
+	/** Pitched layout of one texture region in a buffer, without format conversion.
+     * Rows are contiguous within each depth slice; the slice pitch is row pitch times region height.
+     */
+	struct FArdaRHITextureBufferLayout
+	{
+		/** Offset of the first texel, aligned to 512 bytes and divisible by the texel size. */
+		uint64_t mByteOffset = 0;
+		/** Bytes between rows: nonzero, at most INT32_MAX, aligned to 256 bytes and whole texels. */
+		uint32_t mRowPitch = 0;
 	};
 
 	/** Concrete extent resolved for a texture-region copy. */
@@ -1321,6 +1340,16 @@ namespace arda
 	    const FArdaRHITextureSlice& DestinationSlice,
 	    const FArdaRHITextureDesc& SourceDesc,
 	    const FArdaRHITextureSlice& SourceSlice,
+	    FArdaRHITextureCopyExtent& OutExtent) noexcept;
+
+	/** Validates a single-sample, uncompressed color region and its pitched buffer range.
+     * Explicit extents must fit the mip; sentinel extents select the remaining mip region.
+     * The buffer must contain all addressed texels; padding after the final row is optional.
+     */
+	[[nodiscard]] FArdaRHIStatus ValidateArdaRHITextureBufferCopy(const FArdaRHITextureDesc& TextureDesc,
+	    const FArdaRHITextureSlice& Slice,
+	    const FArdaRHIBufferDesc& BufferDesc,
+	    const FArdaRHITextureBufferLayout& Layout,
 	    FArdaRHITextureCopyExtent& OutExtent) noexcept;
 
 	/**

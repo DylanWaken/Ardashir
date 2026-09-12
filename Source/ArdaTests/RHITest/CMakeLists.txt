@@ -8,13 +8,14 @@ add_executable(RHITest ${ARDA_RHI_TEST_SOURCES})
 target_compile_features(RHITest PRIVATE cxx_std_17)
 target_compile_definitions(RHITest PRIVATE
     GLFW_INCLUDE_NONE
-    ARDA_RHI_TEST_SHADER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/Shaders")
+    ARDA_RHI_TEST_SHADER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/Private/Nodes/Shaders")
 if(ARDASHIR_BACKEND_VULKAN)
     target_compile_definitions(RHITest PRIVATE ARDA_TEST_WITH_VULKAN)
 endif()
-target_include_directories(RHITest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private")
+target_include_directories(RHITest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Private" "${CMAKE_CURRENT_SOURCE_DIR}/Public")
 target_precompile_headers(RHITest PRIVATE Private/ArdaRHITestPch.h)
 target_link_libraries(RHITest PRIVATE
+    ArdaExampleNodes
     Ardashir::ArdaBackend
     Ardashir::ArdaRenderGraph
     glfw

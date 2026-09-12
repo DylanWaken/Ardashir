@@ -17,6 +17,12 @@ namespace arda
 		virtual ~IArdaProviderObject() = default;
 		[[nodiscard]] virtual const void* GetIdentity() const noexcept = 0;
 
+		/** Entire retained allocation, including parent heap capacity for placed resources. */
+		[[nodiscard]] virtual FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept
+		{
+			return {};
+		}
+
 		[[nodiscard]] virtual FArdaCudaResourceInfo GetCudaResourceInfo() const noexcept
 		{
 			return {};
@@ -217,6 +223,12 @@ namespace arda
 	class IArdaProviderCommandList
 	{
 	public:
+		/** Records a nonempty CUDA batch on one stream, with one graphics handoff/capture.
+         * Bindings contain all views used by the ordered kernels and external calls. Each
+         * operation's patches reference this table. Validate and prepare every operation
+         * before enqueue/capture. External state must retire under its owning context;
+         * providers without external-call support must reject those operations explicitly.
+         */
 		virtual FArdaRHIStatus DispatchCuda(const eastl::vector<FArdaProviderCudaBinding>&,
 		    const eastl::vector<FArdaCudaKernel>&)
 		{
@@ -249,6 +261,31 @@ namespace arda
 		    const FArdaProviderObjectRef& Source,
 		    const FArdaRHITextureDesc& SourceDesc,
 		    const FArdaRHITextureSlice& SourceSlice) = 0;
+
+		/** Optional pitched GPU buffer-to-texture copy; unsupported providers reject explicitly. */
+		virtual FArdaRHIStatus CopyBufferToTexture(const FArdaProviderObjectRef&,
+		    const FArdaRHITextureDesc&,
+		    const FArdaRHITextureSlice&,
+		    const FArdaProviderObjectRef&,
+		    const FArdaRHIBufferDesc&,
+		    const FArdaRHITextureBufferLayout&)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+			    "This provider does not support buffer-to-texture copies.");
+		}
+
+		/** Optional pitched GPU texture-to-buffer copy; unsupported providers reject explicitly. */
+		virtual FArdaRHIStatus CopyTextureToBuffer(const FArdaProviderObjectRef&,
+		    const FArdaRHIBufferDesc&,
+		    const FArdaRHITextureBufferLayout&,
+		    const FArdaProviderObjectRef&,
+		    const FArdaRHITextureDesc&,
+		    const FArdaRHITextureSlice&)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+			    "This provider does not support texture-to-buffer copies.");
+		}
+
 		virtual FArdaRHIStatus ResolveTexture(const FArdaProviderObjectRef& Destination,
 		    const FArdaRHITextureDesc& DestinationDesc,
 		    const FArdaRHITextureSlice& DestinationSlice,
@@ -514,6 +551,25 @@ namespace arda
 
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateBuffer(const FArdaRHIBufferDesc& Desc) = 0;
 		[[nodiscard]] virtual FArdaProviderObjectResult CreateHeap(const FArdaRHIHeapDesc& Desc) = 0;
+
+		/** Queries exact descriptor requirements without allocating or binding GPU memory. */
+		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIMemoryRequirements> QueryTextureMemoryRequirements(
+		    const FArdaRHITextureDesc&)
+		{
+			return {{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+			        "Texture descriptor memory queries are unsupported by this backend provider.")};
+		}
+
+		/** Queries exact descriptor requirements without allocating or binding GPU memory. */
+		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIMemoryRequirements> QueryBufferMemoryRequirements(
+		    const FArdaRHIBufferDesc&)
+		{
+			return {{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+			        "Buffer descriptor memory queries are unsupported by this backend provider.")};
+		}
+
 		[[nodiscard]] virtual TArdaRHIResult<FArdaRHIMemoryRequirements> GetTextureMemoryRequirements(
 		    const FArdaProviderObjectRef& Texture,
 		    const FArdaRHITextureDesc& Desc) = 0;
@@ -851,6 +907,14 @@ namespace arda
 		}
 
 		virtual FArdaRHIStatus WaitForIdle() = 0;
+
+		/** Nonblocking completion check; tokens must originate from this provider device. */
+		[[nodiscard]] virtual TArdaRHIResult<bool> PollSubmission(uint64_t Submission)
+		{
+			(void)Submission;
+			return {false, FArdaRHIStatus::Error(EArdaRHIResult::Unsupported, "Submission polling is unavailable.")};
+		}
+
 		virtual void RunGarbageCollection() = 0;
 
 		[[nodiscard]] virtual FArdaProviderLifetimeStats GetLifetimeStats() const noexcept

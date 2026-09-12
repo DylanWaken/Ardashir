@@ -1,3 +1,6 @@
+add_library(ArdaExampleNodes INTERFACE)
+target_include_directories(ArdaExampleNodes INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/Public")
+
 if(ARDASHIR_BUILD_RHI_TEST)
     add_subdirectory(RHITest)
 endif()

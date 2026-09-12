@@ -334,12 +334,13 @@ namespace arda
 				uint32_t Height = 0;
 				if (Window.ConsumeResize(Width, Height))
 				{
+					// Cached persistent graphs retain swap-chain attachments until invalidated.
+					Renderer.NotifyResize();
 					if (!SwapChain->Resize(Width, Height))
 					{
 						ARDA_LOG(LogCornellBox, Error, "%s", SwapChain->GetError().c_str());
 						return EXIT_FAILURE;
 					}
-					Renderer.NotifyResize();
 				}
 
 				if (!Renderer.RenderFrame(*SwapChain))

@@ -153,12 +153,12 @@ Vulkan package: TerrainGenerateCS.spv,  TerrainVS.spv,  TerrainPS.spv</code></pr
           <h3>Optional explicit cook</h3>
           <p><a href="api-reference.html#api-arda-backend-compile-shaders-by-name"><code>CompileRegisteredShaderArtifacts(output, backendNames)</code></a> resolves each stable name to one registered module and records that exact identity in the manifest. A cook force-compiles every selected job into a staging directory, then transactionally publishes artifacts, sidecars, and <code>ArdaShaderManifest.json</code>. Use separate output directories or distinct module-declared suffixes when two requested modules would otherwise produce the same artifact path.</p>
           <pre><code>ARDGExample --arda-cook-shaders CookedShaders \
-    --shader-source path/to/ARDGExample/Shaders</code></pre>
+    --shader-source path/to/ARDGExample/Private/Nodes/Shaders</code></pre>
           <p>For normal development, choose mode and cache explicitly:</p>
           <pre><code>ARDGExample --backend vulkan \
     --shader-mode ondemand \
     --shader-cache path/to/user/cache \
-    --shader-source path/to/ARDGExample/Shaders</code></pre>
+    --shader-source path/to/ARDGExample/Private/Nodes/Shaders</code></pre>
           <p>Accepted mode spellings are exactly <code>startup</code>, <code>ondemand</code>, and <code>load-only</code>. A cook bypasses cache compatibility and rewrites all selected jobs; startup ensure preserves valid <code>.arda-key</code> hits and writes no manifest.</p>
         </section>
 

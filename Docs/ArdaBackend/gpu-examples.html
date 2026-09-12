@@ -55,7 +55,7 @@
         ArdaBackend
       </nav>
       <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>Complete GPU examples</h1><p>Read the source-backed workloads behind the resource and capability recipes. Code is regenerated from the compiled tests.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#fixture">Shared fixture and application replacements</a><a href="#shader-sources">Shader interfaces paired with the workloads</a><a href="#shader-artifacts">Build the exact shader variants</a><a href="#VerifyExtendedCommands">VerifyExtendedCommands</a><a href="#NativeTransientResourcesAndDescriptorsReturnToBaseline">NativeTransientResourcesAndDescriptorsReturnToBaseline</a><a href="#VerifyExplicitHeapAliasing">VerifyExplicitHeapAliasing</a><a href="#VerifyQueryExecution">VerifyQueryExecution</a><a href="#CreateExtendedShader">CreateExtendedShader</a><a href="#VerifyShaderLibraryExecution">VerifyShaderLibraryExecution</a><a href="#VerifyBindlessDescriptorTable">VerifyBindlessDescriptorTable</a><a href="#VerifyExpandedDescriptorsAndResourceCollections">VerifyExpandedDescriptorsAndResourceCollections</a><a href="#VerifyMeshPipelineCapabilityAndExecution">VerifyMeshPipelineCapabilityAndExecution</a><a href="#VerifyAccelerationStructureLifecycleAndStateParity">VerifyAccelerationStructureLifecycleAndStateParity</a><a href="#VerifyRayTracingPipelineCapabilityAndExecution">VerifyRayTracingPipelineCapabilityAndExecution</a><a href="#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a><a href="#VerifyD3D12WorkGraphExecution">VerifyD3D12WorkGraphExecution</a><a href="#VerifyShaderBundleExecution">VerifyShaderBundleExecution</a><a href="#VerifySamplerFeedbackStateParity">VerifySamplerFeedbackStateParity</a><a href="#VerifyVulkanOpacityMicromapLifecycleAndStateParity">VerifyVulkanOpacityMicromapLifecycleAndStateParity</a><a href="#VerifyRuntimeDescriptorVersions">VerifyRuntimeDescriptorVersions</a><a href="#VerifyDirectResourceAndSamplerHeapIndexing">VerifyDirectResourceAndSamplerHeapIndexing</a><a href="#VerifyQueueBreadth">VerifyQueueBreadth</a><a href="#VerifySparseResidencyAndStreamingBudget">VerifySparseResidencyAndStreamingBudget</a><a href="#VerifyStreamingBudgetExecution">VerifyStreamingBudgetExecution</a><a href="#VerifyComputeArithmetic">VerifyComputeArithmetic</a><a href="#VerifyD3D12CustomPresentExecution">VerifyD3D12CustomPresentExecution</a><a href="#VerifyCapabilityInvariants">VerifyCapabilityInvariants</a><a href="#VerifyResolveAndPlaneTracking">VerifyResolveAndPlaneTracking</a><a href="#summary">Checkpoints</a></nav>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#fixture">Shared fixture and application replacements</a><a href="#shader-sources">Shader interfaces paired with the workloads</a><a href="#shader-artifacts">Build the exact shader variants</a><a href="#VerifyExtendedCommands">VerifyExtendedCommands</a><a href="#NativeTransientResourcesAndDescriptorsReturnToBaseline">NativeTransientResourcesAndDescriptorsReturnToBaseline</a><a href="#VerifyExplicitHeapAliasing">VerifyExplicitHeapAliasing</a><a href="#VerifyQueryExecution">VerifyQueryExecution</a><a href="#CreateExtendedShader">CreateExtendedShader</a><a href="#VerifyShaderLibraryExecution">VerifyShaderLibraryExecution</a><a href="#VerifyBindlessDescriptorTable">VerifyBindlessDescriptorTable</a><a href="#VerifyExpandedDescriptorsAndResourceCollections">VerifyExpandedDescriptorsAndResourceCollections</a><a href="#VerifyMeshPipelineCapabilityAndExecution">VerifyMeshPipelineCapabilityAndExecution</a><a href="#VerifyAccelerationStructureLifecycleAndStateParity">VerifyAccelerationStructureLifecycleAndStateParity</a><a href="#VerifyRayTracingPipelineCapabilityAndExecution">VerifyRayTracingPipelineCapabilityAndExecution</a><a href="#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a><a href="#VerifyD3D12WorkGraphExecution">VerifyD3D12WorkGraphExecution</a><a href="#VerifyShaderBundleExecution">VerifyShaderBundleExecution</a><a href="#VerifySamplerFeedbackStateParity">VerifySamplerFeedbackStateParity</a><a href="#VerifyVulkanOpacityMicromapLifecycleAndStateParity">VerifyVulkanOpacityMicromapLifecycleAndStateParity</a><a href="#VerifyRuntimeDescriptorVersions">VerifyRuntimeDescriptorVersions</a><a href="#VerifyDirectResourceAndSamplerHeapIndexing">VerifyDirectResourceAndSamplerHeapIndexing</a><a href="#VerifyQueueBreadth">VerifyQueueBreadth</a><a href="#VerifySparseResidencyAndStreamingBudget">VerifySparseResidencyAndStreamingBudget</a><a href="#VerifyStreamingBudgetExecution">VerifyStreamingBudgetExecution</a><a href="#VerifyComputeArithmetic">VerifyComputeArithmetic</a><a href="#VerifyD3D12CustomPresentExecution">VerifyD3D12CustomPresentExecution</a><a href="#VerifyCapabilityInvariants">VerifyCapabilityInvariants</a><a href="#VerifyResolveAndPlaneTracking">VerifyResolveAndPlaneTracking</a><a href="#VerifyPerQueueTimerExecution">VerifyPerQueueTimerExecution</a><a href="#summary">Checkpoints</a></nav>
 <section id="objectives"><h2>How to use these examples</h2>
 <p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
 <p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
@@ -66,6 +66,7 @@ ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
 <p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="fixture"><h2>Shared fixture and application replacements</h2><p>The workloads below are functions in the same anonymous namespace as this source-backed scaffold. It defines FExtendedDiagnosticCallback, FExtendedBackendCleanup, LoadExtendedShaderArtifact, CreateExtendedShader and the Expect*State checks. In an application, replace GoogleTest assertions with checked status handling; use a diagnostic sink that lives through ShutdownBackend, an RAII shutdown guard, and a bytecode loader rooted in your deployed shader directory.</p><p>ARDASHIR_BUILD_TESTS deploys artifacts and defines ARDA_BACKEND_TEST_SHADER_DIR. The shared ArdaTestBackend.h macro returns a GoogleTest skip only for ValidationUnavailable; see <a href="validation.html#results">validation result handling</a>. Other assertions must remain failures. The lifetime-only example uses CreateArtifactShader for the same artifact-loading operation, FCollectingDiagnosticCallback for error counting, and FExternalTestCleanup for shutdown/provider cleanup; use the scaffold equivalents when adapting it without external providers. Windows presentation examples additionally use the native surface class below.</p><details><summary>Headers, diagnostic sink, shutdown guard, loader and state assertions</summary><pre><code class="language-cpp">#include &quot;ArdaTestBackend.h&quot;
 #include &quot;ArdaBackend.h&quot;
 #include &quot;ArdaBackendProvider.h&quot;
+#include &quot;../../ArdaBackendImpls/ArdaGpuTimestamp.h&quot;
 #include &quot;PipelineStateCache/ArdaPipelineStateCache.h&quot;
 #include &quot;ShaderStructs/ArdaGlobalShaderMap.h&quot;
 
@@ -4070,6 +4071,126 @@ int main(int ArgumentCount, char** Arguments)
 		}
 	}
 	ASSERT_TRUE(Device-&gt;UnmapStagingTexture(Readback.mValue));
+	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+}</code></pre></details></section>
+<section id="VerifyPerQueueTimerExecution"><h2>VerifyPerQueueTimerExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyPerQueueTimerExecution(const char* BackendName)
+{
+	using namespace arda;
+	ShutdownBackend();
+	FExtendedDiagnosticCallback Diagnostics;
+	FExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration;
+	Configuration.mBackendName = BackendName;
+	Configuration.mbEnableValidation = true;
+	Configuration.mMessageCallback = &amp;Diagnostics;
+	ASSERT_TRUE(ConfigureBackend(Configuration));
+	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
+	auto Device = GetDevice();
+	ASSERT_TRUE(Device);
+	auto Timer = Device-&gt;CreateTimerQuery();
+	ASSERT_TRUE(Timer) &lt;&lt; Timer.mStatus.mMessage.c_str();
+	const auto&amp; Caps = Device-&gt;GetCapabilities().mQueues;
+	FArdaRHIBufferDesc Desc;
+	Desc.mByteSize = 2 * 1024 * 1024;
+	Desc.mInitialState = EArdaRHIResourceState::Common;
+	Desc.mbKeepInitialState = true;
+	auto Buffer = Device-&gt;CreateBuffer(Desc);
+	ASSERT_TRUE(Buffer) &lt;&lt; Buffer.mStatus.mMessage.c_str();
+	std::vector&lt;uint8_t&gt; Bytes(static_cast&lt;size_t&gt;(Desc.mByteSize), 0x6b);
+	// Reuse one query across native heap/family types and return to graphics afterward.
+	for (auto Queue : {EArdaRHIQueueType::Graphics,
+	         EArdaRHIQueueType::Compute,
+	         EArdaRHIQueueType::Copy,
+	         EArdaRHIQueueType::Graphics})
+	{
+		if (!Caps.IsSupported(Queue))
+		{
+			continue;
+		}
+		SCOPED_TRACE(static_cast&lt;unsigned&gt;(Queue));
+		auto Commands = Device-&gt;CreateCommandList(Queue);
+		ASSERT_TRUE(Commands) &lt;&lt; Commands.mStatus.mMessage.c_str();
+		EXPECT_EQ(Commands.mValue-&gt;BeginTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::InvalidState);
+		ASSERT_TRUE(Commands.mValue-&gt;Open());
+		if (!Caps.SupportsTimestamps(Queue))
+		{
+			EXPECT_EQ(Commands.mValue-&gt;BeginTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::Unsupported);
+			ASSERT_TRUE(Commands.mValue-&gt;Close());
+			continue;
+		}
+		EXPECT_GT(Caps.GetTimestampValidBits(Queue), 0u);
+		EXPECT_LE(Caps.GetTimestampValidBits(Queue), 64u);
+		for (unsigned Generation = 0; Generation &lt; 2; ++Generation)
+		{
+			if (Generation)
+			{
+				ASSERT_TRUE(Commands.mValue-&gt;Open());
+			}
+			ASSERT_TRUE(Commands.mValue-&gt;BeginTimerQuery(*Timer.mValue));
+			EXPECT_EQ(Device-&gt;ResetTimerQuery(Timer.mValue).mCode, EArdaRHIResult::InvalidState);
+			ASSERT_TRUE(Commands.mValue-&gt;WriteBuffer(*Buffer.mValue, Bytes.data(), Bytes.size()));
+			ASSERT_TRUE(Commands.mValue-&gt;EndTimerQuery(*Timer.mValue));
+			ASSERT_TRUE(Commands.mValue-&gt;Close());
+			EXPECT_EQ(Commands.mValue-&gt;EndTimerQuery(*Timer.mValue).mCode, EArdaRHIResult::InvalidState);
+			// Native results from an earlier generation are never visible before this submission.
+			auto BeforeSubmit = Device-&gt;PollTimerQuery(Timer.mValue);
+			ASSERT_TRUE(BeforeSubmit);
+			EXPECT_FALSE(BeforeSubmit.mValue);
+			EXPECT_EQ(Device-&gt;GetTimerQuerySeconds(Timer.mValue).mStatus.mCode, EArdaRHIResult::InvalidState);
+			auto Submitted = Device-&gt;ExecuteCommandList(Commands.mValue);
+			ASSERT_TRUE(Submitted) &lt;&lt; Submitted.mStatus.mMessage.c_str();
+			auto Ready = Device-&gt;PollTimerQuery(Timer.mValue);
+			ASSERT_TRUE(Ready) &lt;&lt; Ready.mStatus.mMessage.c_str();
+			// If the current submission is still pending after polling, its timer cannot be complete.
+			auto SubmissionReady = Device-&gt;PollSubmission(Submitted.mValue);
+			ASSERT_TRUE(SubmissionReady);
+			if (!SubmissionReady.mValue)
+			{
+				EXPECT_FALSE(Ready.mValue);
+			}
+			ASSERT_TRUE(Device-&gt;WaitForSubmission(Submitted.mValue));
+			Ready = Device-&gt;PollTimerQuery(Timer.mValue);
+			ASSERT_TRUE(Ready);
+			EXPECT_TRUE(Ready.mValue);
+			auto Seconds = Device-&gt;GetTimerQuerySeconds(Timer.mValue);
+			ASSERT_TRUE(Seconds) &lt;&lt; Seconds.mStatus.mMessage.c_str();
+			EXPECT_TRUE(std::isfinite(Seconds.mValue));
+			EXPECT_GT(Seconds.mValue, 0.f);
+			EXPECT_FLOAT_EQ(Device-&gt;GetTimerQuerySeconds(Timer.mValue).mValue, Seconds.mValue);
+			ASSERT_TRUE(Device-&gt;ResetTimerQuery(Timer.mValue));
+			EXPECT_FALSE(Device-&gt;PollTimerQuery(Timer.mValue).mValue);
+		}
+	}
+	if (Caps.SupportsTimestamps(EArdaRHIQueueType::Graphics))
+	{
+		auto Old = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+		ASSERT_TRUE(Old);
+		ASSERT_TRUE(Old.mValue-&gt;Open());
+		ASSERT_TRUE(Old.mValue-&gt;BeginTimerQuery(*Timer.mValue));
+		ASSERT_TRUE(Old.mValue-&gt;EndTimerQuery(*Timer.mValue));
+		ASSERT_TRUE(Old.mValue-&gt;Close());
+		auto Prior = Device-&gt;ExecuteCommandList(Old.mValue);
+		ASSERT_TRUE(Prior);
+		ASSERT_TRUE(Device-&gt;WaitForSubmission(Prior.mValue));
+		ASSERT_TRUE(Device-&gt;ResetTimerQuery(Timer.mValue));
+
+		auto Current = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+		ASSERT_TRUE(Current);
+		ASSERT_TRUE(Current.mValue-&gt;Open());
+		ASSERT_TRUE(Current.mValue-&gt;BeginTimerQuery(*Timer.mValue));
+		ASSERT_TRUE(Current.mValue-&gt;EndTimerQuery(*Timer.mValue));
+		ASSERT_TRUE(Current.mValue-&gt;Close());
+		// A stale closed list must not claim the generation now recorded by another list.
+		EXPECT_EQ(Device-&gt;ExecuteCommandList(Old.mValue).mStatus.mCode, EArdaRHIResult::InvalidState);
+		EXPECT_FALSE(Device-&gt;PollTimerQuery(Timer.mValue).mValue);
+		auto Submitted = Device-&gt;ExecuteCommandList(Current.mValue);
+		ASSERT_TRUE(Submitted) &lt;&lt; Submitted.mStatus.mMessage.c_str();
+		ASSERT_TRUE(Device-&gt;WaitForSubmission(Submitted.mValue));
+		const auto Seconds = Device-&gt;GetTimerQuerySeconds(Timer.mValue);
+		ASSERT_TRUE(Seconds) &lt;&lt; Seconds.mStatus.mMessage.c_str();
+		EXPECT_TRUE(std::isfinite(Seconds.mValue));
+		ASSERT_TRUE(Device-&gt;ResetTimerQuery(Timer.mValue));
+	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section><section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>
 </main>

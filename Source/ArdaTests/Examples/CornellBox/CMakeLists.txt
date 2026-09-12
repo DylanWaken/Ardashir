@@ -18,9 +18,11 @@ if(ARDASHIR_BACKEND_VULKAN)
 endif()
 target_include_directories(CornellBox PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/Private"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Public"
 )
 target_precompile_headers(CornellBox PRIVATE Private/ArdaCornellBoxPch.h)
 target_link_libraries(CornellBox PRIVATE
+    ArdaExampleNodes
     Ardashir::ArdaBackend
     Ardashir::ArdaRenderGraph
     glfw
@@ -48,7 +50,13 @@ if(ARDASHIR_BUILD_TESTS)
                 --width 320 --height 180 --samples-per-dispatch 1
                 --max-samples 2 --max-bounces 3
         )
-        list(APPEND CORNELL_BOX_GPU_TESTS CornellBox.D3D12)
+        add_test(
+            NAME CornellBox.D3D12.NoCompaction
+            COMMAND CornellBox --backend d3d12 --frames 8 --hidden --no-compaction
+                --width 320 --height 180 --samples-per-dispatch 1
+                --max-samples 8 --max-bounces 3
+        )
+        list(APPEND CORNELL_BOX_GPU_TESTS CornellBox.D3D12 CornellBox.D3D12.NoCompaction)
     endif()
     if(ARDASHIR_BACKEND_VULKAN)
         add_test(
@@ -57,7 +65,13 @@ if(ARDASHIR_BUILD_TESTS)
                 --width 320 --height 180 --samples-per-dispatch 1
                 --max-samples 2 --max-bounces 3
         )
-        list(APPEND CORNELL_BOX_GPU_TESTS CornellBox.Vulkan)
+        add_test(
+            NAME CornellBox.Vulkan.NoCompaction
+            COMMAND CornellBox --backend vulkan --frames 8 --hidden --no-compaction
+                --width 320 --height 180 --samples-per-dispatch 1
+                --max-samples 8 --max-bounces 3
+        )
+        list(APPEND CORNELL_BOX_GPU_TESTS CornellBox.Vulkan CornellBox.Vulkan.NoCompaction)
     endif()
     if(CORNELL_BOX_GPU_TESTS)
         set_tests_properties(${CORNELL_BOX_GPU_TESTS} PROPERTIES

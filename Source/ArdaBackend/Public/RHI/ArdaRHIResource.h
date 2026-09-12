@@ -10,6 +10,22 @@
 
 namespace arda
 {
+	/** Physical allocation retained by a resource. Placed objects identify their entire parent heap. */
+	struct FArdaRHIMemoryAllocationInfo
+	{
+		/** Stable within the device while the resource remains alive; shared allocations use one identity. */
+		const void* mIdentity = nullptr;
+		/** Retained allocation capacity, including native padding and unused heap ranges. */
+		uint64_t mByteSize = 0;
+		/** False when an externally imported handle does not reveal its allocation. */
+		bool mbKnown = false;
+
+		bool operator==(const FArdaRHIMemoryAllocationInfo& Other) const noexcept
+		{
+			return mIdentity == Other.mIdentity && mByteSize == Other.mByteSize && mbKnown == Other.mbKnown;
+		}
+	};
+
 	/** Representation the qualified allocation can supply to a CUDA kernel. */
 	enum class EArdaCudaRepresentation : uint8_t
 	{
@@ -107,6 +123,12 @@ namespace arda
          * @return The requested object pointer.
          */
 		[[nodiscard]] virtual const char* GetDebugName() const noexcept = 0;
+
+		/** Allocation metadata without GPU work or allocation; unknown is not a zero-byte allocation. */
+		[[nodiscard]] virtual FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept
+		{
+			return {};
+		}
 
 		/** Reads CUDA representation facts qualified for this particular native allocation.
          * @return An owned value containing representation kind, sharing admission and available

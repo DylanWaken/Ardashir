@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ArdaBackend.h"
-#include "ArdaRenderGraph.h"
+#include "ArdaDependencyGraph.h"
 
 #include <EASTL/algorithm.h>
 #include <EASTL/string.h>

@@ -563,7 +563,7 @@
   }
 
   function currentApiData() {
-    return window.ArdaCurrentApi || window.ArdaBackendApi;
+    return window.ArdaCurrentApi || window.ArdaRDGApi || window.ArdaBackendApi;
   }
 
   function apiSymbols() {

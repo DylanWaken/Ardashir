@@ -1,8 +1,8 @@
 // Pixel Sort reading guide:
 //   CMakeLists.txt           -> build native CUDA entries and deploy HLSL assets
-//   PixelSortOperand.h/.cpp  -> parameter schema, registration hook, launch policy
-//   PixelSortKernels.cu      -> typed compiled variants and the radix algorithm
-//   PixelSortRenderer.cpp   -> shared textures and one graphics/CUDA frame
+//   Public/Nodes and Private/Nodes  -> parameter schema, registration hook, launch policy
+//   Private/Nodes/ArdaPixelSortKernels.cu      -> typed compiled variants and the radix algorithm
+//   PixelSortRenderer.cpp   -> graph resources, node attachment and submission
 //   PixelSortWindow.h/.cpp   -> minimal Win32 surface adapter and resize events
 // This file connects those pieces, selects the backend/mode, and owns their lifetime.
 #include "PixelSortWindow.h"
@@ -215,8 +215,8 @@ namespace arda
 			Config.mbEnableValidation = O.mbValidation || O.mbVerify;
 			Config.mMessageCallback = &Diagnostics;
 
-			// Renderer.Initialize explicitly manages this example's editable HLSL
-			// artifacts. CUDA compilation never happens in this initialization path.
+			// Each shader node manages this example's editable HLSL
+			// artifacts on first attachment. CUDA kernels are compiled by the build.
 			Config.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 			if (!ConfigureBackend(Config))
 			{
@@ -249,16 +249,7 @@ namespace arda
 				return 77;
 			}
 
-			// Resolve deployed shaders/compiler relative to the executable so the
-			// launcher can preserve the caller's working directory (and capture path).
-			wchar_t Executable[32768];
-			const auto PathLength = GetModuleFileNameW(nullptr, Executable, 32768);
-			if (!PathLength || PathLength == 32768)
-			{
-				throw std::runtime_error("Cannot locate executable.");
-			}
 			FPixelSortRenderer Renderer(GetDevice());
-			Renderer.Initialize(Backend.mSwapChain->GetFormat(), std::filesystem::path(Executable).parent_path());
 			const char* Mode = Caps.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG ? "D3D12 CiG"
 			    : Caps.mLaunchMode == EArdaCudaLaunchMode::VulkanCiG             ? "Vulkan CiG"
 			                                                                     : "CUDA context";
@@ -292,12 +283,16 @@ namespace arda
 				}
 
 				// Resize presentation resources here, outside the window callback.
-				// Renderer.Render then recreates its shared textures/bindings, and
+				// Renderer.Render then attaches nodes to a fresh persistent graph, and
 				// SelectKernel sees the new extent on the next dispatch. Kernel
 				// registration/native compilation are not repeated when resizing.
-				if (Resized && !Backend.mSwapChain->Resize(Window.mWidth, Window.mHeight))
+				if (Resized)
 				{
-					throw std::runtime_error(Backend.mSwapChain->GetError().c_str());
+					Renderer.ReleaseFrameGraphs();
+					if (!Backend.mSwapChain->Resize(Window.mWidth, Window.mHeight))
+					{
+						throw std::runtime_error(Backend.mSwapChain->GetError().c_str());
+					}
 				}
 				const auto Now = std::chrono::steady_clock::now();
 

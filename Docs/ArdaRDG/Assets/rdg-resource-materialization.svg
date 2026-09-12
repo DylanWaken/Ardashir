@@ -1,38 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
-  <title id="title">Transient heap placement and cross-queue aliasing</title>
-  <desc id="desc">Two 128 KiB resources with disjoint logical lifetimes use offset zero in the same compatible heap. A graphics write and a later copy read of A must both finish before compute activates B. Registration order alone cannot prove this: the compute queue waits for the copy queue, then emits an aliasing barrier. Incompatible candidates fall back independently to committed resources.</desc>
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#7dd3fc"/></marker>
-    <style>text{font:19px system-ui,sans-serif;fill:#e2e8f0}.title{font-size:30px;font-weight:700}.heading{font-size:23px;font-weight:700}.small{font-size:17px;fill:#cbd5e1}.panel{fill:#18283e;stroke:#52677f;stroke-width:2}.a{fill:#23476c;stroke:#7dd3fc;stroke-width:2}.b{fill:#305344;stroke:#6ee7b7;stroke-width:2}.wait{fill:#4f3f27;stroke:#fbbf24;stroke-width:2;stroke-dasharray:7 5}.line{fill:none;stroke:#7dd3fc;stroke-width:3;marker-end:url(#arrow)}</style>
-  </defs>
-  <rect width="1200" height="760" rx="20" fill="#0b1220"/>
-  <text x="40" y="50" class="title">Reusing bytes requires GPU ordering</text>
-  <text x="40" y="85">Placement is decided on the CPU; activation is ordered on GPU queues.</text>
-  <rect x="40" y="115" width="530" height="200" rx="12" class="panel"/>
-  <text x="60" y="150" class="heading">Compatible resources, disjoint lifetimes</text>
-  <rect x="60" y="170" width="210" height="65" rx="8" class="a"/>
-  <text x="80" y="198">A: 128 KiB</text><text x="80" y="222" class="small">uses [0, 2], inclusive</text>
-  <rect x="300" y="170" width="245" height="65" rx="8" class="b"/>
-  <text x="320" y="198">B: 128 KiB</text><text x="320" y="222" class="small">uses [3, 5], inclusive</text>
-  <text x="60" y="270">Strict retirement: A.lastUse &lt; B.firstUse</text>
-  <text x="60" y="296" class="small">Same kind; compatible memory types; aligned offsets</text>
-  <path d="M575 215 H630" class="line"/>
-  <rect x="650" y="115" width="510" height="200" rx="12" class="panel"/>
-  <text x="670" y="150" class="heading">One 128 KiB heap range</text>
-  <rect x="675" y="175" width="215" height="60" class="a"/><rect x="890" y="175" width="245" height="60" class="b"/>
-  <text x="710" y="211">A is active</text><text x="925" y="211">then B is active</text>
-  <text x="670" y="270">Both bind offset 0; never use it concurrently.</text>
-  <text x="670" y="296" class="small">Capacity: 128 KiB. Saved versus separate: 128 KiB.</text>
-  <text x="40" y="365" class="heading">Registration order does not stop queues from overlapping</text>
-  <path d="M210 390 H1140" class="line"/><text x="1020" y="378" class="small">GPU time →</text>
-  <text x="45" y="441">Graphics</text><text x="45" y="526">Copy</text><text x="45" y="611">Compute</text>
-  <rect x="230" y="405" width="190" height="55" rx="8" class="a"/><text x="265" y="440">Write A</text>
-  <path d="M420 435 L455 492" class="line"/>
-  <rect x="460" y="490" width="300" height="55" rx="8" class="a"/><text x="495" y="525">Read A → durable output</text>
-  <rect x="510" y="575" width="290" height="55" rx="8" class="wait"/><text x="540" y="610">B waits for A's copy</text>
-  <path d="M760 520 H835 V580" class="line"/><text x="830" y="556" class="small">alias barrier</text>
-  <rect x="850" y="575" width="260" height="55" rx="8" class="b"/><text x="892" y="610">Activate / write B</text>
-  <text x="40" y="681">Every prior overlapping use must retire, including the last use on each separate queue.</text>
-  <text x="40" y="715" class="small">Unsupported candidates use committed fallback. Buffers and optimal textures occupy separate heap groups.</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<title id="title">Logical values to physical storage</title><desc id="desc">Native allocation requirements and GPU ordering determine reuse.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker></defs>
+<rect width="1200" height="620" rx="20" fill="#0b1424"/>
+<g font-family="system-ui,sans-serif"><text x="40" y="57" fill="#eef6ff" font-size="29" font-weight="700">Logical values to physical storage</text>
+<text x="40" y="96" fill="#b7cbe1" font-size="16">Native allocation requirements and GPU ordering determine reuse.</text>
+<rect x="40" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="60" y="198" fill="#7dd3fc" font-size="14">01</text>
+<text x="60" y="239" fill="#eef6ff" font-size="19" font-weight="700">Resource declarations</text>
+<text x="60" y="280" fill="#c4d3e5" font-size="15">Descriptor and ranges</text>
+<text x="60" y="312" fill="#c4d3e5" font-size="15">Imports or owned values</text>
+<text x="60" y="344" fill="#c4d3e5" font-size="15">Persistent/output flags</text>
+<path d="M294 274H322" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="330" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="350" y="198" fill="#7dd3fc" font-size="14">02</text>
+<text x="350" y="239" fill="#eef6ff" font-size="19" font-weight="700">Native requirements</text>
+<text x="350" y="280" fill="#c4d3e5" font-size="15">Native size and alignment</text>
+<text x="350" y="312" fill="#c4d3e5" font-size="15">Retained heap ownership</text>
+<text x="350" y="344" fill="#c4d3e5" font-size="15">Workspace and frame count</text>
+<path d="M584 274H612" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="620" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="640" y="198" fill="#7dd3fc" font-size="14">03</text>
+<text x="640" y="239" fill="#eef6ff" font-size="19" font-weight="700">Memory plan</text>
+<text x="640" y="280" fill="#c4d3e5" font-size="15">Compatible placements</text>
+<text x="640" y="312" fill="#c4d3e5" font-size="15">Proven lifetime ordering</text>
+<text x="640" y="344" fill="#c4d3e5" font-size="15">Accounted VRAM cap</text>
+<path d="M874 274H902" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="910" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="930" y="198" fill="#7dd3fc" font-size="14">04</text>
+<text x="930" y="239" fill="#eef6ff" font-size="19" font-weight="700">Retained frame pools</text>
+<text x="930" y="280" fill="#c4d3e5" font-size="15">Buffers and images</text>
+<text x="930" y="312" fill="#c4d3e5" font-size="15">Alias activation barriers</text>
+<text x="930" y="344" fill="#c4d3e5" font-size="15">Stable CUDA addresses</text>
+<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Two versions may share storage only when their GPU lifetimes are ordered and do not overlap.</text><text x="62" y="518" fill="#abc4dc" font-size="16">Imports, persistent resources and declared workspaces count toward the graph budget.</text></g></svg>

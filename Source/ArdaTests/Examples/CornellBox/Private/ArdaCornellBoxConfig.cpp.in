@@ -2,5 +2,5 @@
 
 namespace arda
 {
-	extern const char* const GArdaCornellBoxShaderSourceDirectory = R"ARDA(@CMAKE_CURRENT_SOURCE_DIR@/Shaders)ARDA";
+	extern const char* const GArdaCornellBoxShaderSourceDirectory = R"ARDA(@CMAKE_CURRENT_SOURCE_DIR@/Private/Nodes/Shaders)ARDA";
 }

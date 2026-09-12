@@ -44,6 +44,9 @@ CONTRACT_HEADERS = (
 
 COMPLETE_BACKEND_SOURCES = {
     "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaExternalCall.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaTextureBuffer.h",
     "Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h",
     "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
     "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
@@ -637,20 +640,22 @@ def main() -> int:
 
     rdg_path = repo / "Docs/assets/arda-rdg-api.js"
     rdg_current = rdg_path.read_text(encoding="utf-8-sig")
-    rdg_base = without_generated_block(rdg_current, RDG_BEGIN, RDG_END)
-    rdg_declarations = make_symbols(repo, rdg_specs(repo), "render-graph")
-    preserve_symbol_ids(rdg_declarations, evaluate_api(rdg_current, "ArdaRDGApi"))
-    rdg_symbols = select_missing(
-        rdg_declarations, evaluate_api(rdg_base, "ArdaRDGApi"),
-        {"Source/ArdaRenderGraph/Public/ArdaRenderGraphBuilder.h",
-         "Source/ArdaRenderGraph/Public/ArdaRenderGraphPass.h"},
-    )
-    rdg_block = generated_block(
-        rdg_symbols, "ArdaRDGApi", RDG_BEGIN, RDG_END
-    )
-    rdg_updated = synchronize_block(
-        rdg_current, rdg_block, RDG_BEGIN, RDG_END
-    )
+    # The persistent graph is the only authoring API. Rebuild from live declarations
+    # so removed headers and symbols cannot survive in an authored inventory base.
+    rdg_symbols = make_symbols(repo, rdg_specs(repo), "dependency graph")
+    preserve_symbol_ids(rdg_symbols, evaluate_api(rdg_current, "ArdaRDGApi"))
+    rdg_provenance = [source for source, _namespace, _component in rdg_specs(repo)]
+    rdg_inventory = {
+        "module": {"id": "arda-rdg", "name": "ArdaRenderGraph", "namespace": "arda",
+            "summary": "Persistent dependency graphs compiled by ArdaInductor for graphics, CUDA, and transfer work."},
+        "generatedFrom": f"Source/ArdaRenderGraph/Public (all {len(rdg_provenance)} unique public headers)",
+        "headerProvenance": rdg_provenance,
+        "components": [{"id": "core", "name": "Persistent graph API", "page": "api-reference.html",
+            "summary": "Typed node registration, resource dependencies, compilation, and reusable GPU execution."}],
+        "symbols": rdg_symbols,
+    }
+    rdg_updated = (f"/* Generated public source inventory for ArdaRenderGraph; derived from all {len(rdg_provenance)} public headers. */\n"
+        + "window.ArdaRDGApi = " + json.dumps(rdg_inventory, indent=2) + ";\n")
     rdg_reference_path = repo / "Docs/ArdaRDG/api-reference.html"
     rdg_reference_current = rdg_reference_path.read_text(encoding="utf-8")
     rdg_reference_updated = static_api_reference(rdg_reference_current, rdg_updated, "ArdaRDGApi", "ArdaRenderGraph", "RDG")

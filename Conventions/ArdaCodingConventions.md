@@ -12,7 +12,7 @@ project stem in type names and as the prefix for filenames.
 - Use `PascalCase` without underscores for types, functions, variables,
   constants, and enum values, except for required variable prefixes.
 - Put all project-owned APIs in the single `arda` namespace. Their `FArda`, `IArda`,
-  `EArda`, and `FARDG` names already identify the project and subsystem.
+  `EArda`, and `FArdaGraph` names already identify the project and subsystem.
 - This includes provider contracts, shared implementation helpers, tests, and
   sample programs. Use descriptive names instead of nested namespaces.
 - Keep file-local helpers in anonymous namespaces and shared internal declarations

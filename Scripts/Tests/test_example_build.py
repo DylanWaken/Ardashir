@@ -65,6 +65,26 @@ class ExampleBuildTests(unittest.TestCase):
         self.assertEqual(env, dict(os.environ))
         find.assert_not_called()
 
+    def test_local_sdk_defaults_precede_explicit_launcher_options(self):
+        defaults = self.directory / "build/graphics-sdk/GraphicsSdkDefaults.cmake"
+        defaults.parent.mkdir(parents=True)
+        defaults.touch()
+        override = "-DARDASHIR_VULKAN_VALIDATION_DIR=custom layer directory"
+        with patch.object(build, "SOURCE_DIRECTORY", self.directory), \
+                patch.object(build, "prepare_build_environment", return_value=("cmake", {})), \
+                patch.object(build.subprocess, "run") as run:
+            build.build_example("CornellBox", self.directory / "example", "Debug", [override])
+        configure = run.call_args_list[0].args[0]
+        self.assertEqual(configure[configure.index("-C") + 1], str(defaults))
+        self.assertLess(configure.index("-C"), configure.index(override))
+
+    def test_no_setup_does_not_add_a_missing_initial_cache(self):
+        with patch.object(build, "SOURCE_DIRECTORY", self.directory), \
+                patch.object(build, "prepare_build_environment", return_value=("cmake", {})), \
+                patch.object(build.subprocess, "run") as run:
+            build.build_example("CornellBox", self.directory / "example", "Debug", [])
+        self.assertNotIn("-C", run.call_args_list[0].args[0])
+
     @unittest.skipUnless(platform.system() == "Windows", "Windows executable lookup")
     def test_bundled_cmake_and_ninja_are_found_after_developer_setup(self):
         tools = self.directory / "tools"

@@ -1,36 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
-  <title id="title">ARDG system boundary from application to opaque RHI</title>
-  <desc id="desc">Application code declares passes and logical resources through ArdaRenderGraph. ARDG compiles dependencies, lifetimes, and barriers, records commands, and submits through opaque Arda RHI interfaces. Backend and native API details remain outside ARDG.</desc>
-  <defs>
-    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/></linearGradient>
-    <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker>
-    <style>.p{fill:#101a2c;stroke:#52647d;stroke-width:2}.app{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.ardg{fill:#214b45;stroke:#34d399;stroke-width:3}.rhi{fill:#3a294d;stroke:#c084fc;stroke-width:2}.note{fill:#493720;stroke:#fbbf24;stroke-width:2}.h1{font:700 30px system-ui,sans-serif;fill:#eef6ff}.h2{font:700 21px system-ui,sans-serif;fill:#eef6ff}.t{font:15px system-ui,sans-serif;fill:#c5d2e3}.s{font:13px system-ui,sans-serif;fill:#aebdd0}.flow{fill:none;stroke:#7dd3fc;stroke-width:3;marker-end:url(#a)}.dash{stroke-dasharray:8 6}</style>
-  </defs>
-  <rect width="1200" height="680" rx="24" fill="url(#bg)"/>
-  <text x="48" y="52" class="h1">ARDG system boundary</text>
-  <text x="48" y="80" class="t">Application owns intent; ARDG owns orchestration; the RHI owns device-facing implementation.</text>
-  <rect x="48" y="120" width="280" height="350" rx="18" class="app"/>
-  <text x="72" y="158" class="h2">Application / renderer</text>
-  <text x="72" y="198" class="t">- Create or import logical resources</text><text x="72" y="230" class="t">- Freeze parameter structs</text>
-  <text x="72" y="262" class="t">- Add passes and callbacks</text><text x="72" y="294" class="t">- Declare states and views</text>
-  <text x="72" y="326" class="t">- Request extraction / final state</text><text x="72" y="388" class="s">Supplies intent and recording callbacks;</text><text x="72" y="410" class="s">does not schedule queues.</text>
-  <rect x="460" y="120" width="340" height="350" rx="18" class="ardg"/>
-  <text x="484" y="158" class="h2">ArdaRenderGraph (ARDG)</text>
-  <text x="484" y="198" class="t">Build: metadata visit + hazard edges</text><text x="484" y="230" class="t">Compile: validate, cull, lower state</text>
-  <text x="484" y="262" class="t">Execute: materialize and record</text><text x="484" y="294" class="t">Submit: stable order + queue waits</text>
-  <text x="484" y="350" class="s">Owns logical registries, compiled metadata,</text><text x="484" y="372" class="s">one-shot lifecycle, and extraction publish.</text>
-  <rect x="932" y="120" width="220" height="350" rx="18" class="rhi"/>
-  <text x="956" y="158" class="h2">Opaque Arda RHI</text>
-  <text x="956" y="198" class="t">IDevice</text><text x="956" y="230" class="t">ICommandList</text><text x="956" y="262" class="t">Textures / buffers</text>
-  <text x="956" y="294" class="t">Queue submission</text><text x="956" y="326" class="t">Cross-queue waits</text>
-  <text x="956" y="388" class="s">Backend and native API details</text><text x="956" y="410" class="s">are not graph semantics.</text>
-  <path d="M328 220H450" class="flow"/><text x="350" y="205" class="s">declarations</text>
-  <path d="M800 220H922" class="flow"/><text x="818" y="205" class="s">RHI calls</text>
-  <path d="M932 400H810" class="flow dash"/><text x="826" y="426" class="s">handles + instance IDs</text>
-  <rect x="48" y="510" width="1104" height="112" rx="14" class="note"/>
-  <text x="72" y="546" class="h2">Current implementation boundary</text>
-  <text x="72" y="578" class="t">ARDG records through Arda RHI wrappers; it does not expose native backend objects as graph semantics.</text>
-  <text x="72" y="604" class="t">Execute submits work but does not wait for GPU idle or completion.</text>
-  <text x="48" y="654" class="s">Legend: blue = application | green = ARDG | purple = opaque RHI | amber = implementation note</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<title id="title">Persistent graph architecture</title><desc id="desc">Typed operations and resource values compile into native work.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker></defs>
+<rect width="1200" height="620" rx="20" fill="#0b1424"/>
+<g font-family="system-ui,sans-serif"><text x="40" y="57" fill="#eef6ff" font-size="29" font-weight="700">Persistent graph architecture</text>
+<text x="40" y="96" fill="#b7cbe1" font-size="16">Typed operations and resource values compile into native work.</text>
+<rect x="40" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="60" y="198" fill="#7dd3fc" font-size="14">01</text>
+<text x="60" y="239" fill="#eef6ff" font-size="19" font-weight="700">Node library</text>
+<text x="60" y="280" fill="#c4d3e5" font-size="15">Named typed definitions</text>
+<text x="60" y="312" fill="#c4d3e5" font-size="15">Immutable implementation</text>
+<text x="60" y="344" fill="#c4d3e5" font-size="15">Canonical parameter keys</text>
+<path d="M294 274H322" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="330" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="350" y="198" fill="#7dd3fc" font-size="14">02</text>
+<text x="350" y="239" fill="#eef6ff" font-size="19" font-weight="700">Dependency graph</text>
+<text x="350" y="280" fill="#c4d3e5" font-size="15">Versioned resources</text>
+<text x="350" y="312" fill="#c4d3e5" font-size="15">Explicit edit transactions</text>
+<text x="350" y="344" fill="#c4d3e5" font-size="15">Outputs and side effects</text>
+<path d="M584 274H612" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="620" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="640" y="198" fill="#7dd3fc" font-size="14">03</text>
+<text x="640" y="239" fill="#eef6ff" font-size="19" font-weight="700">ArdaInductor</text>
+<text x="640" y="280" fill="#c4d3e5" font-size="15">Schedule and allocation</text>
+<text x="640" y="312" fill="#c4d3e5" font-size="15">Automatic pipeline slots</text>
+<text x="640" y="344" fill="#c4d3e5" font-size="15">Retained frame program</text>
+<path d="M874 274H902" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="910" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="930" y="198" fill="#7dd3fc" font-size="14">04</text>
+<text x="930" y="239" fill="#eef6ff" font-size="19" font-weight="700">Native execution</text>
+<text x="930" y="280" fill="#c4d3e5" font-size="15">D3D12 / Vulkan / CUDA</text>
+<text x="930" y="312" fill="#c4d3e5" font-size="15">Barriers and queue waits</text>
+<text x="930" y="344" fill="#c4d3e5" font-size="15">Completion tickets</text>
+<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Public graph semantics remain separate from private native recording and allocation.</text><text x="62" y="518" fill="#abc4dc" font-size="16">Repeated frames reuse the compiled plan until a successful edit changes its revision.</text></g></svg>

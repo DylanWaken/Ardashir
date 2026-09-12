@@ -227,6 +227,77 @@ namespace arda
 		return {};
 	}
 
+	FArdaRHIStatus ValidateArdaRHITextureBufferCopy(const FArdaRHITextureDesc& TextureDesc,
+	    const FArdaRHITextureSlice& Slice,
+	    const FArdaRHIBufferDesc& BufferDesc,
+	    const FArdaRHITextureBufferLayout& Layout,
+	    FArdaRHITextureCopyExtent& OutExtent) noexcept
+	{
+		OutExtent = {};
+		const auto Invalid = [](const char* Message)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, Message);
+		};
+		if (auto Status = Validate(TextureDesc); !Status)
+		{
+			return Status;
+		}
+		const auto Dimension = TextureDesc.mDimension;
+		if ((Dimension != EArdaRHITextureDimension::Texture3D && TextureDesc.mDepth != 1) ||
+		    (Dimension == EArdaRHITextureDimension::Texture3D && TextureDesc.mArraySize != 1) ||
+		    ((Dimension == EArdaRHITextureDimension::Texture1D ||
+		         Dimension == EArdaRHITextureDimension::Texture1DArray) &&
+		        TextureDesc.mHeight != 1) ||
+		    Dimension == EArdaRHITextureDimension::Texture2DMS ||
+		    Dimension == EArdaRHITextureDimension::Texture2DMSArray ||
+		    static_cast<uint8_t>(Dimension) > static_cast<uint8_t>(EArdaRHITextureDimension::Texture3D))
+		{
+			return Invalid("Texture-buffer copy dimensions are inconsistent or multisampled.");
+		}
+		const auto& Format = GetArdaRHIFormatInfo(TextureDesc.mFormat);
+		if (!IsArdaRHIFormatKnown(TextureDesc.mFormat) || !Format.mBytesPerBlock || Format.mbDepth ||
+		    Format.mbStencil || Format.mBlockWidth != 1 || Format.mBlockHeight != 1 || TextureDesc.mSampleCount != 1 ||
+		    HasAnyFlags(TextureDesc.mUsage, EArdaRHITextureUsage::Typeless))
+		{
+			return Invalid("Texture-buffer copies require a typed, single-sample, uncompressed color format.");
+		}
+		if (HasAnyFlags(BufferDesc.mUsage, EArdaRHIBufferUsage::AccelStructStorage))
+		{
+			return Invalid("An acceleration-structure storage buffer cannot be used for texture copies.");
+		}
+		if (!Layout.mRowPitch || Layout.mRowPitch > INT32_MAX || Layout.mRowPitch % 256 || Layout.mByteOffset % 512 ||
+		    Layout.mRowPitch % Format.mBytesPerBlock || Layout.mByteOffset % Format.mBytesPerBlock)
+		{
+			return Invalid(
+			    "Texture-buffer pitch must fit INT32_MAX; pitch/offset must align to 256/512 bytes and whole texels.");
+		}
+		FArdaRHITextureCopyExtent Extent;
+		if (auto Status = ResolveArdaRHITextureCopyExtent(TextureDesc, Slice, TextureDesc, Slice, Extent); !Status)
+		{
+			return Status;
+		}
+		if ((Slice.mWidth != ArdaRHIAllSubresources && Slice.mWidth != Extent.mWidth) ||
+		    (Slice.mHeight != ArdaRHIAllSubresources && Slice.mHeight != Extent.mHeight) ||
+		    (Slice.mDepth != ArdaRHIAllSubresources && Slice.mDepth != Extent.mDepth))
+		{
+			return Invalid("Texture-buffer copy extent exceeds the selected mip region.");
+		}
+		const uint64_t RowBytes = uint64_t(Extent.mWidth) * Format.mBytesPerBlock;
+		const uint64_t Rows = uint64_t(Extent.mHeight) * Extent.mDepth;
+		if (RowBytes > Layout.mRowPitch || Layout.mByteOffset > BufferDesc.mByteSize)
+		{
+			return Invalid("Texture-buffer row pitch or byte offset is out of range.");
+		}
+		const uint64_t Available = BufferDesc.mByteSize - Layout.mByteOffset;
+		// Division bounds the final addressed row without overflowing row/slice-pitch products.
+		if (RowBytes > Available || Rows - 1 > (Available - RowBytes) / Layout.mRowPitch)
+		{
+			return Invalid("Texture-buffer copy exceeds the buffer allocation.");
+		}
+		OutExtent = Extent;
+		return {};
+	}
+
 	FArdaRHIStatus ValidateArdaRHITextureResolve(const FArdaRHITextureDesc& DestinationDesc,
 	    const FArdaRHITextureSlice& DestinationSlice,
 	    const FArdaRHITextureDesc& SourceDesc,
