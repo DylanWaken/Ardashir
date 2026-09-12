@@ -50,10 +50,10 @@ The main Arda implementation and evidence locations are:
 - `Source/ArdaBackend/Private/RHI/ArdaRHIDevice.cpp`
 - `Source/ArdaBackendImpls/D3D12/ArdaD3D12Backend.cpp`
 - `Source/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp`
-- `Source/ArdaRenderGraph/Private/ArdaRenderGraphExecutor.cpp`
+- `Source/ArdaRenderGraph/Private/ArdaInductorCommandExecutor.cpp`
 - `Source/ArdaBackend/Tests/ArdaResourceStateConformanceTests.cpp`
 - `Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp`
-- `Source/ArdaRenderGraph/Tests/ArdaGraphTests.cpp`
+- `Source/ArdaRenderGraph/Tests/ArdaInductorCommandProgramTests.cpp`
 
 Native behavior was cross-checked against the D3D12 Agility SDK 1.619.5
 headers, Vulkan-Headers 1.4.357, DXC 1.9, the local adapter feature data, the

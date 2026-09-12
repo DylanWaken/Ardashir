@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1130" viewBox="0 0 1200 1130" role="img" aria-labelledby="adaptive-title adaptive-desc">
+  <title id="adaptive-title">Optional background schedule optimization reuses the current GPU allocations</title>
+  <desc id="adaptive-desc">Submit keeps recording the accepted plan while a worker searches. Completed telemetry supplies a frozen graph and EMA cost snapshot. The worker explores a bounded set of legal candidates under the fixed memory plan and prepares an improved order using existing resources and pipelines. Rejected candidates execute no trial GPU work. A ready proposal is adopted only after polling confirms natural retirement of prior frames; otherwise the current plan continues. Adoption updates the schedule used by later submits.</desc>
+  <defs>
+    <marker id="adaptive-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L11 6 L1 11 Z" fill="#7dd3fc"/></marker>
+    <marker id="adaptive-green-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L11 6 L1 11 Z" fill="#6ee7b7"/></marker>
+    <marker id="adaptive-amber-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L11 6 L1 11 Z" fill="#f5cc8a"/></marker>
+    <style>
+      text { font-family: system-ui, sans-serif; font-size: 24px; fill: #eef6ff; }
+      .title { font-size: 34px; font-weight: 700; }
+      .heading { font-size: 26px; font-weight: 650; }
+      .small { font-size: 22px; }
+      .muted { fill: #b7cbe1; }
+      .panel { fill: #111f33; stroke: #29425f; stroke-width: 2; }
+      .card { fill: #172a43; stroke: #5cb8df; stroke-width: 2; }
+      .edge { fill: none; stroke: #7dd3fc; stroke-width: 2.5; marker-end: url(#adaptive-arrow); }
+      .accepted { fill: none; stroke: #6ee7b7; stroke-width: 2.5; marker-end: url(#adaptive-green-arrow); }
+    </style>
+  </defs>
+  <rect width="1200" height="1130" rx="20" fill="#0b1424"/>
+  <text class="title" x="40" y="58">Tune in the background; submit the accepted plan</text>
+  <text class="small muted" x="40" y="101">Optional telemetry and search · fixed graph allocations · no trial GPU execution</text>
+
+  <rect class="panel" x="40" y="138" width="1120" height="209" rx="14"/>
+  <text class="small muted" x="65" y="178">MAIN SUBMISSION PATH</text>
+  <rect class="card" x="70" y="204" width="220" height="78" rx="10"/>
+  <text class="heading" x="180" y="253" text-anchor="middle">Submit</text>
+  <path class="edge" d="M292 243 H347"/>
+  <rect class="card" x="350" y="204" width="467" height="78" rx="10"/>
+  <text class="heading" x="583" y="253" text-anchor="middle">Record current prepared plan</text>
+  <path class="edge" d="M819 243 H872"/>
+  <rect class="card" x="875" y="204" width="254" height="78" rx="10"/>
+  <text class="heading" x="1002" y="253" text-anchor="middle">GPU submissions</text>
+  <text class="small muted" x="65" y="322">This path continues while the worker searches or a candidate waits for retirement.</text>
+
+  <text class="small muted" x="410" y="398">Completed telemetry supplies a frozen snapshot</text>
+  <rect class="panel" x="40" y="423" width="1120" height="249" rx="14"/>
+  <text class="small muted" x="65" y="455">OPTIONAL WORKER</text>
+  <path class="edge" d="M375 349 V467 H230 V478" stroke-dasharray="7 5"/>
+  <rect class="card" x="80" y="481" width="300" height="158" rx="12"/>
+  <text class="heading" x="230" y="521" text-anchor="middle">Frozen snapshot</text>
+  <text class="small muted" x="230" y="562" text-anchor="middle">EMA + graph inputs</text>
+  <text class="small muted" x="230" y="601" text-anchor="middle">Fixed alias edges</text>
+  <path class="edge" d="M382 561 H447"/>
+  <rect class="card" x="450" y="481" width="300" height="158" rx="12"/>
+  <text class="heading" x="600" y="521" text-anchor="middle">Bounded search</text>
+  <text class="small muted" x="600" y="562" text-anchor="middle">Legal orders + queues</text>
+  <text class="small muted" x="600" y="601" text-anchor="middle">Fixed memory budget</text>
+  <path class="edge" d="M752 561 H817"/>
+  <rect class="card" x="820" y="481" width="300" height="158" rx="12"/>
+  <text class="heading" x="970" y="521" text-anchor="middle">Improved proposal</text>
+  <text class="small muted" x="970" y="562" text-anchor="middle">Prepare reused pool</text>
+  <text class="small muted" x="970" y="601" text-anchor="middle">Reuse resources + PSOs</text>
+
+  <path d="M600 642 V714" fill="none" stroke="#f5cc8a" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#adaptive-amber-arrow)"/>
+  <rect x="80" y="719" width="670" height="100" rx="12" fill="#342d23" stroke="#f5cc8a" stroke-width="2"/>
+  <text class="heading" x="104" y="758">No sufficient modeled improvement?</text>
+  <text class="small" x="104" y="795">Discard it. No trial GPU work.</text>
+  <path class="edge" d="M970 642 V852"/>
+
+  <rect class="card" x="805" y="857" width="330" height="126" rx="12"/>
+  <text class="heading" x="970" y="898" text-anchor="middle">Ready candidate</text>
+  <text class="small muted" x="970" y="939" text-anchor="middle">Poll frame retirement</text>
+  <path class="accepted" d="M802 921 H443"/>
+  <text class="small" x="622" y="870" text-anchor="middle" style="fill:#6ee7b7">only after</text>
+  <text class="small" x="622" y="901" text-anchor="middle" style="fill:#6ee7b7">natural retirement</text>
+  <rect x="80" y="857" width="360" height="126" rx="12" fill="#164b45" stroke="#6ee7b7" stroke-width="2"/>
+  <text class="heading" x="260" y="898" text-anchor="middle">Adopt new schedule</text>
+  <text class="small muted" x="260" y="939" text-anchor="middle">Update accepted revision</text>
+  <path class="accepted" d="M77 921 H20 V243 H66"/>
+  <text class="small muted" x="80" y="1033">Still in flight? Keep submitting the current plan.</text>
+  <text class="small muted" x="80" y="1068">Adoption adds no GPU wait; later submits use the replacement.</text>
+  <text class="small muted" x="80" y="1103">Existing frame-slot recycling rules still apply.</text>
+</svg>

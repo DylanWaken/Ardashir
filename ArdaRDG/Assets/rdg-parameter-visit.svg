@@ -1,20 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
-  <title id="title">ARDG parameter metadata enumeration and setup visit</title>
-  <desc id="desc">AddPass automatically snapshots a parameter struct through a private implementation helper and visits generated metadata in declaration order. Enumeration expands arrays and nested structs into searchable paths. Setup dispatches leaves to texture, buffer, view, uniform buffer, acceleration structure, and raster binding handlers, producing pass state and hazard edges.</desc>
-  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/></linearGradient><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker>
-    <style>.stage{fill:#101a2c;stroke:#52647d;stroke-width:2}.api{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.walk{fill:#214b45;stroke:#34d399;stroke-width:2}.out{fill:#3a294d;stroke:#c084fc;stroke-width:2}.note{fill:#493720;stroke:#fbbf24;stroke-width:2}.h1{font:700 30px system-ui,sans-serif;fill:#eef6ff}.h2{font:700 19px system-ui,sans-serif;fill:#eef6ff}.t{font:15px system-ui,sans-serif;fill:#c5d2e3}.s{font:13px system-ui,sans-serif;fill:#aebdd0}.flow{fill:none;stroke:#7dd3fc;stroke-width:3;marker-end:url(#a)}</style>
-  </defs>
-  <rect width="1200" height="760" rx="24" fill="url(#bg)"/><text x="48" y="52" class="h1">Parameter metadata to setup visit</text><text x="48" y="80" class="t">Automatic dependencies come from frozen generated metadata, not callback-code inspection.</text>
-  <rect x="48" y="120" width="250" height="180" rx="16" class="api"/><text x="72" y="157" class="h2">1 | AddPass</text><text x="72" y="185" class="t">FreezeParameters</text><text x="72" y="203" class="s">PRIVATE IMPLEMENTATION DETAIL</text><text x="72" y="225" class="t">GetStaticMetadata</text><text x="72" y="247" class="t">AddPassInternal</text><text x="72" y="265" class="s">PRIVATE IMPLEMENTATION DETAIL</text><text x="72" y="280" class="s">auto: AddPass/CreateUniformBuffer</text><text x="72" y="295" class="s">never user-callable</text>
-  <rect x="382" y="120" width="330" height="180" rx="16" class="walk"/><text x="406" y="157" class="h2">2 | Metadata.Enumerate</text><text x="406" y="191" class="t">declaration-order member loop</text><text x="406" y="221" class="t">arrays: member[index]</text><text x="406" y="251" class="t">nested: outer.inner</text><text x="406" y="280" class="s">containers omitted by default; leaves visited</text>
-  <rect x="796" y="120" width="356" height="180" rx="16" class="walk"/><text x="820" y="157" class="h2">3 | FARDGSetupContext::Visit</text><text x="820" y="191" class="t">switch EARDGParameterType</text><text x="820" y="221" class="t">resolve value + default state</text><text x="820" y="251" class="t">dispatch exact leaf handler</text><text x="820" y="280" class="s">null resource leaves are ignored</text>
-  <path d="M298 210H372" class="flow"/><path d="M712 210H786" class="flow"/>
-  <rect x="48" y="350" width="1104" height="222" rx="18" class="stage"/><text x="72" y="387" class="h2">Leaf dispatch and stored outputs</text>
-  <rect x="76" y="416" width="210" height="120" rx="12" class="out"/><text x="181" y="447" class="h2" text-anchor="middle">Texture / buffer</text><text x="181" y="477" class="s" text-anchor="middle">state + range</text><text x="181" y="503" class="s" text-anchor="middle">hazard history</text>
-  <rect x="310" y="416" width="210" height="120" rx="12" class="out"/><text x="415" y="447" class="h2" text-anchor="middle">SRV / UAV view</text><text x="415" y="477" class="s" text-anchor="middle">preserve view identity</text><text x="415" y="503" class="s" text-anchor="middle">visit backing resource</text>
-  <rect x="544" y="416" width="250" height="120" rx="12" class="out"/><text x="669" y="447" class="h2" text-anchor="middle">Uniform buffer</text><text x="669" y="477" class="s" text-anchor="middle">visited-set dedupe</text><text x="669" y="503" class="s" text-anchor="middle">recursively visit frozen contents</text>
-  <rect x="818" y="416" width="306" height="120" rx="12" class="out"/><text x="971" y="447" class="h2" text-anchor="middle">Access / raster binding</text><text x="971" y="477" class="s" text-anchor="middle">explicit state + subresources</text><text x="971" y="503" class="s" text-anchor="middle">build attachment signature</text>
-  <rect x="48" y="610" width="1104" height="92" rx="14" class="note"/><text x="72" y="644" class="h2">Implementation note</text><text x="72" y="674" class="t">Parameterless AddPass has no metadata walk and no automatic resource edges; use parameter declarations or AddDependency.</text>
-  <text x="48" y="735" class="s">Legend: blue = registration | green = metadata walk | purple = stored pass state | amber = limitation</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<title id="title">Typed node contract</title><desc id="desc">Public parameters determine identity; new instances prepare retained state before description and recording.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker></defs>
+<rect width="1200" height="620" rx="20" fill="#0b1424"/>
+<g font-family="system-ui,sans-serif"><text x="40" y="57" fill="#eef6ff" font-size="29" font-weight="700">Typed node contract</text>
+<text x="40" y="96" fill="#b7cbe1" font-size="16">Public parameters determine identity; new instances prepare retained state before description and recording.</text>
+<rect x="40" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="60" y="198" fill="#7dd3fc" font-size="14">01</text>
+<text x="60" y="239" fill="#eef6ff" font-size="19" font-weight="700">Frozen parameters</text>
+<text x="60" y="280" fill="#c4d3e5" font-size="15">Values and handles</text>
+<text x="60" y="312" fill="#c4d3e5" font-size="15">Immutable semantic refs</text>
+<text x="60" y="344" fill="#c4d3e5" font-size="15">Explicit dynamic inputs</text>
+<path d="M294 274H322" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="330" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="350" y="198" fill="#7dd3fc" font-size="14">02</text>
+<text x="350" y="239" fill="#eef6ff" font-size="19" font-weight="700">Canonical identity</text>
+<text x="350" y="280" fill="#c4d3e5" font-size="15">Full resource identities</text>
+<text x="350" y="312" fill="#c4d3e5" font-size="15">Behavior-affecting values</text>
+<text x="350" y="344" fill="#c4d3e5" font-size="15">No structure padding</text>
+<path d="M584 274H612" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="620" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="640" y="198" fill="#7dd3fc" font-size="14">03</text>
+<text x="640" y="239" fill="#eef6ff" font-size="19" font-weight="700">Node description</text>
+<text x="640" y="280" fill="#c4d3e5" font-size="15">Read/write states/ranges</text>
+<text x="640" y="312" fill="#c4d3e5" font-size="15">Pipeline slots and cost</text>
+<text x="640" y="344" fill="#c4d3e5" font-size="15">Workspace and side effects</text>
+<path d="M874 274H902" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="910" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+<text x="930" y="198" fill="#7dd3fc" font-size="14">04</text>
+<text x="930" y="239" fill="#eef6ff" font-size="19" font-weight="700">Native callback</text>
+<text x="930" y="280" fill="#c4d3e5" font-size="15">Resolve declared objects</text>
+<text x="930" y="312" fill="#c4d3e5" font-size="15">Use inferred pipelines</text>
+<text x="930" y="344" fill="#c4d3e5" font-size="15">Return execution status</text>
+<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">The key uses public parameters. New instances retain those inputs and prepared state for description and recording.</text><text x="62" y="518" fill="#abc4dc" font-size="16">Arbitrary pointers are not deep-copied. Authors own pointee immutability and synchronization.</text></g></svg>

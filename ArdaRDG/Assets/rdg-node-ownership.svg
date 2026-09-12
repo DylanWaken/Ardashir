@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="430" viewBox="0 0 940 430" role="img" aria-labelledby="title desc">
+  <title id="title">Self-contained node setup and graph ownership</title>
+  <desc id="desc">During an edit the renderer attaches a class derived from the common node base. The base registers its definition and checks identity before invoking the node's preparation hooks for a new instance. Bound graph instances strongly retain immutable state and own separate mutable instance state; the base's weak cache shares device state without keeping an unused device alive. EndGraphEdit compiles pipelines and scheduling. Replay invokes recording hooks with retained state, without repeating attachment setup.</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#607b94"/></marker></defs>
+  <rect width="940" height="430" rx="14" fill="#101d2c"/>
+  <g font-family="system-ui, sans-serif" font-size="16" fill="#e2edf7">
+    <text x="28" y="33" font-size="21" font-weight="700">Prepare once, retain in the graph, replay many times</text>
+    <rect x="28" y="65" width="245" height="105" rx="10" fill="#193b54" stroke="#6da1c2"/>
+    <text x="46" y="94" font-weight="700">Renderer: open graph edit</text>
+    <text x="46" y="121">AttachOrFind&lt;Node&gt;(...)</text>
+    <text x="46" y="147">Pass logical inputs / outputs</text>
+    <rect x="338" y="65" width="258" height="105" rx="10" fill="#193b54" stroke="#6da1c2"/>
+    <text x="356" y="94" font-weight="700">Common base / attachment</text>
+    <text x="356" y="121">Register + check identity</text>
+    <text x="356" y="147">New: call node preparation</text>
+    <rect x="662" y="65" width="250" height="105" rx="10" fill="#253e36" stroke="#79b694"/>
+    <text x="680" y="94" font-weight="700">Node's immutable FState</text>
+    <text x="680" y="121">Shaders, layouts, settings</text>
+    <text x="680" y="147">or CUDA operand</text>
+    <path d="M273 117 H333 M596 117 H657" fill="none" stroke="#607b94" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="662" y="220" width="250" height="64" rx="10" fill="#202e41" stroke="#8499b4"/>
+    <text x="680" y="245">Base cache: type + device</text>
+    <text x="680" y="270">Weak reference only</text>
+    <path d="M787 219 V175" fill="none" stroke="#607b94" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+    <rect x="338" y="220" width="258" height="95" rx="10" fill="#253e36" stroke="#79b694"/>
+    <text x="356" y="249" font-weight="700">Bound graph instance</text>
+    <text x="356" y="276">Retain parameters + FState</text>
+    <text x="356" y="301">Own private FInstanceState</text>
+    <path d="M467 170 V215" fill="none" stroke="#607b94" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M596 240 H625 V156 H657" fill="none" stroke="#79b694" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="626" y="195" font-size="13" transform="rotate(-90 626 195)">retains</text>
+    <rect x="28" y="220" width="245" height="95" rx="10" fill="#193b54" stroke="#6da1c2"/>
+    <text x="46" y="249" font-weight="700">EndGraphEdit: ArdaInductor</text>
+    <text x="46" y="276">Resolve edges, PSOs, storage</text>
+    <text x="46" y="301">Build the execution plan</text>
+    <path d="M337 267 H278" fill="none" stroke="#607b94" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M150 316 V349 H333" fill="none" stroke="#607b94" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="338" y="329" width="574" height="66" rx="10" fill="#313447" stroke="#b1a1d3"/>
+    <text x="356" y="355" font-weight="700">Execute / Submit repeatedly</text>
+    <text x="356" y="380">Use compiled work and retained state; no repeated node setup</text>
+    <text x="28" y="411" font-size="13" fill="#b8cad9">Solid arrows: call, preparation or ownership. Dashed arrow: weak cache reference.</text>
+  </g>
+</svg>

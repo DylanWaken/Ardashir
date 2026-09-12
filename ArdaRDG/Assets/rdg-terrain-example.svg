@@ -1,29 +1,55 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="920" viewBox="0 0 1400 920" role="img" aria-labelledby="title desc">
-  <title id="title">ARDGExample terrain pass resource and queue graph</title>
-  <desc id="desc">The terrain example updates and uploads settings, generates and erodes a heightmap, triangulates terrain buffers, renders terrain, and draws an overlay. DebugHeightmap is a dead read and is culled because its write-after-read edge into ErodeHeightmap is synchronization-only. Copy and asynchronous compute queue requests may fall back to graphics based on capabilities.</desc>
-  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1220"/><stop offset="1" stop-color="#17233a"/></linearGradient><marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#34d399"/></marker><marker id="y" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#fbbf24"/></marker>
-    <style>.p{fill:#101a2c;stroke:#52647d;stroke-width:2}.gfx{fill:#1f3656;stroke:#60a5fa;stroke-width:2}.compute{fill:#214b45;stroke:#34d399;stroke-width:2}.copy{fill:#3a294d;stroke:#c084fc;stroke-width:2}.dead{fill:#253247;stroke:#64748b;stroke-width:2;opacity:.65}.res{fill:#253247;stroke:#94a3b8;stroke-width:2}.note{fill:#493720;stroke:#fbbf24;stroke-width:2}.h1{font:700 30px system-ui,sans-serif;fill:#eef6ff}.h2{font:700 18px system-ui,sans-serif;fill:#eef6ff}.t{font:14px system-ui,sans-serif;fill:#c5d2e3}.s{font:12px system-ui,sans-serif;fill:#aebdd0}.data{fill:none;stroke:#34d399;stroke-width:3;marker-end:url(#g)}.sync{fill:none;stroke:#fbbf24;stroke-width:2;stroke-dasharray:7 6;marker-end:url(#y)}</style>
-  </defs>
-  <rect width="1400" height="920" rx="24" fill="url(#bg)"/><text x="48" y="52" class="h1">ARDGExample: terrain frame graph</text><text x="48" y="80" class="t">Actual pass order, dataflow, requested queues, and the intentionally dead debug read.</text>
-  <rect x="48" y="108" width="1304" height="390" rx="18" class="p"/><text x="72" y="142" class="h2">Live pass chain</text>
-  <rect x="75" y="185" width="170" height="74" rx="11" class="gfx"/><text x="160" y="215" class="h2" text-anchor="middle">Update settings</text><text x="160" y="240" class="s" text-anchor="middle">Graphics: WriteBuffer</text>
-  <rect x="285" y="185" width="170" height="74" rx="11" class="copy"/><text x="370" y="215" class="h2" text-anchor="middle">Upload settings</text><text x="370" y="240" class="s" text-anchor="middle">Copy requested</text>
-  <rect x="495" y="185" width="170" height="74" rx="11" class="compute"/><text x="580" y="215" class="h2" text-anchor="middle">Generate noise</text><text x="580" y="240" class="s" text-anchor="middle">AsyncCompute requested</text>
-  <rect x="705" y="185" width="170" height="74" rx="11" class="compute"/><text x="790" y="215" class="h2" text-anchor="middle">Erode heightmap</text><text x="790" y="240" class="s" text-anchor="middle">AsyncCompute requested</text>
-  <rect x="915" y="185" width="170" height="74" rx="11" class="compute"/><text x="1000" y="215" class="h2" text-anchor="middle">Triangulate</text><text x="1000" y="240" class="s" text-anchor="middle">AsyncCompute requested</text>
-  <rect x="1135" y="185" width="170" height="74" rx="11" class="gfx"/><text x="1220" y="215" class="h2" text-anchor="middle">Render terrain</text><text x="1220" y="240" class="s" text-anchor="middle">Graphics raster</text>
-  <path d="M245 222H275M455 222H485M665 222H695M875 222H905M1085 222H1125" class="data"/>
-  <rect x="1135" y="330" width="170" height="74" rx="11" class="gfx"/><text x="1220" y="360" class="h2" text-anchor="middle">Terrain overlay</text><text x="1220" y="385" class="s" text-anchor="middle">Graphics raster</text><path d="M1220 259V320" class="data"/>
-  <rect x="705" y="330" width="170" height="74" rx="11" class="dead"/><text x="790" y="360" class="h2" text-anchor="middle">DebugHeightmap</text><text x="790" y="385" class="s" text-anchor="middle">dead read: culled</text><path d="M665 240C690 275 730 294 760 320" class="data"/><path d="M790 330V269" class="sync"/><text x="824" y="300" class="s">WAR order only;</text><text x="824" y="316" class="s">not liveness</text>
-  <text x="75" y="460" class="s">Render also uses camera and back buffer. Overlay is the final back-buffer writer rooted at GraphEpilogue.</text>
-  <rect x="48" y="530" width="1304" height="238" rx="18" class="p"/><text x="72" y="566" class="h2">Resources carried by the chain</text>
-  <rect x="75" y="600" width="180" height="112" rx="11" class="res"/><text x="165" y="630" class="h2" text-anchor="middle">Imported</text><text x="165" y="657" class="s" text-anchor="middle">BackBuffer: Present</text><text x="165" y="680" class="s" text-anchor="middle">SettingsUpload: CopySource</text><text x="165" y="703" class="s" text-anchor="middle">Camera: ConstantBuffer</text>
-  <rect x="285" y="600" width="200" height="112" rx="11" class="res"/><text x="385" y="630" class="h2" text-anchor="middle">TerrainSettings</text><text x="385" y="657" class="s" text-anchor="middle">structured buffer</text><text x="385" y="680" class="s" text-anchor="middle">CopyDest to SRV</text>
-  <rect x="515" y="600" width="200" height="112" rx="11" class="res"/><text x="615" y="630" class="h2" text-anchor="middle">Heightmap</text><text x="615" y="657" class="s" text-anchor="middle">640 x 640 R32Float</text><text x="615" y="680" class="s" text-anchor="middle">2 mips; mip 0 view</text><text x="615" y="703" class="s" text-anchor="middle">UAV and SRV</text>
-  <rect x="745" y="600" width="200" height="112" rx="11" class="res"/><text x="845" y="630" class="h2" text-anchor="middle">TerrainVertices</text><text x="845" y="657" class="s" text-anchor="middle">UAV to VertexBuffer</text><text x="845" y="680" class="s" text-anchor="middle">made by triangulate</text>
-  <rect x="975" y="600" width="170" height="112" rx="11" class="res"/><text x="1060" y="630" class="h2" text-anchor="middle">TerrainIndices</text><text x="1060" y="657" class="s" text-anchor="middle">UAV to IndexBuffer</text><text x="1060" y="680" class="s" text-anchor="middle">made by triangulate</text>
-  <rect x="1175" y="600" width="150" height="112" rx="11" class="res"/><text x="1250" y="630" class="h2" text-anchor="middle">TerrainDepth</text><text x="1250" y="657" class="s" text-anchor="middle">D32 texture</text><text x="1250" y="680" class="s" text-anchor="middle">DepthWrite</text>
-  <rect x="48" y="798" width="1304" height="76" rx="12" class="note"/><text x="72" y="829" class="h2">Queue behavior</text><text x="72" y="855" class="t">Copy and AsyncCompute are requests: unavailable or incompatible queues fall back to Graphics. Cross-pipeline producer edges become waits.</text>
-  <text x="48" y="905" class="s">Legend: blue = graphics | purple = copy request | green = async compute / data | gray = culled | amber = synchronization</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<title id="title">Terrain assembled from individual operations</title>
+<desc id="desc">Settings upload, copy, generate, erode, triangulate, draw and overlay form a resource dependency chain. Camera upload independently feeds drawing. Separate optional vertex and index readbacks branch after triangulation. Each box is one graph node; the compiler derives execution order and barriers.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#7dd3fc"/></marker></defs>
+<rect width="1200" height="620" rx="20" fill="#0b1424"/>
+<g font-family="system-ui,sans-serif" fill="#eef6ff">
+<text x="36" y="43" font-size="27" font-weight="700">Each box is one registered graph operation</text>
+<text x="36" y="77" font-size="16" fill="#b7cbe1">Attachment order is independent of execution order. Arrows follow resource values.</text>
+<rect x="36" y="222" width="144" height="82" rx="10" fill="#172a43" stroke="#5cb8df"/>
+<text x="108.0" y="253" text-anchor="middle" font-size="16" font-weight="700">Upload settings</text>
+<text x="108.0" y="281" text-anchor="middle" font-size="14" fill="#c4d3e5">CPU bytes</text>
+<path d="M180 263H195" fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="198" y="222" width="144" height="82" rx="10" fill="#172a43" stroke="#5cb8df"/>
+<text x="270.0" y="253" text-anchor="middle" font-size="16" font-weight="700">Copy settings</text>
+<text x="270.0" y="281" text-anchor="middle" font-size="14" fill="#c4d3e5">GPU input</text>
+<path d="M342 263H357" fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="360" y="222" width="144" height="82" rx="10" fill="#172a43" stroke="#5cb8df"/>
+<text x="432.0" y="253" text-anchor="middle" font-size="16" font-weight="700">Generate</text>
+<text x="432.0" y="281" text-anchor="middle" font-size="14" fill="#c4d3e5">raw heightmap</text>
+<path d="M504 263H519" fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="522" y="222" width="144" height="82" rx="10" fill="#172a43" stroke="#5cb8df"/>
+<text x="594.0" y="253" text-anchor="middle" font-size="16" font-weight="700">Erode</text>
+<text x="594.0" y="281" text-anchor="middle" font-size="14" fill="#c4d3e5">eroded heightmap</text>
+<path d="M666 263H681" fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="684" y="222" width="144" height="82" rx="10" fill="#172a43" stroke="#5cb8df"/>
+<text x="756.0" y="253" text-anchor="middle" font-size="16" font-weight="700">Triangulate</text>
+<text x="756.0" y="281" text-anchor="middle" font-size="14" fill="#c4d3e5">vertices + indices</text>
+<path d="M828 263H843" fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="846" y="222" width="144" height="82" rx="10" fill="#172a43" stroke="#5cb8df"/>
+<text x="918.0" y="253" text-anchor="middle" font-size="16" font-weight="700">Draw terrain</text>
+<text x="918.0" y="281" text-anchor="middle" font-size="14" fill="#c4d3e5">scene color</text>
+<path d="M990 263H1005" fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="1008" y="222" width="144" height="82" rx="10" fill="#172a43" stroke="#5cb8df"/>
+<text x="1080.0" y="253" text-anchor="middle" font-size="16" font-weight="700">Overlay</text>
+<text x="1080.0" y="281" text-anchor="middle" font-size="14" fill="#c4d3e5">back buffer</text>
+<rect x="846" y="110" width="144" height="82" rx="10" fill="#172a43" stroke="#5cb8df"/>
+<text x="918.0" y="141" text-anchor="middle" font-size="16" font-weight="700">Upload camera</text>
+<text x="918.0" y="169" text-anchor="middle" font-size="14" fill="#c4d3e5">CPU matrices</text>
+<path d="M918 192V219" fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<path d="M594 222V204H874V219" fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="610" y="194" font-size="14" fill="#b7cbe1">heightmap</text>
+<rect x="546" y="378" width="190" height="82" rx="10" fill="#172a43" stroke="#5cb8df"/>
+<text x="641.0" y="409" text-anchor="middle" font-size="16" font-weight="700">Read vertices</text>
+<text x="641.0" y="437" text-anchor="middle" font-size="14" fill="#c4d3e5">optional CPU validation</text>
+<rect x="782" y="378" width="190" height="82" rx="10" fill="#172a43" stroke="#5cb8df"/>
+<text x="877.0" y="409" text-anchor="middle" font-size="16" font-weight="700">Read indices</text>
+<text x="877.0" y="437" text-anchor="middle" font-size="14" fill="#c4d3e5">optional CPU validation</text>
+<path d="M756 304V342H641V375" fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<path d="M756 342H877V375" fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<text x="36" y="355" font-size="15" fill="#b7cbe1">Solid arrows: required values</text>
+<text x="36" y="384" font-size="15" fill="#b7cbe1">Dashed arrows: optional readback branches</text>
+<rect x="36" y="498" width="1128" height="90" rx="12" fill="#152637"/>
+<text x="56" y="534" font-size="16">ArdaInductor resolves dependencies, barriers, queues, PSOs and transient lifetimes at EndGraphEdit.</text>
+<text x="56" y="566" font-size="16" fill="#b7cbe1">Replay updates CPU inputs. After first-frame validation, an edit removes only the readback branches.</text>
+</g></svg>

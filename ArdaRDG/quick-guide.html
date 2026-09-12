@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A practical, source-backed ArdaRenderGraph guide to one frame of copy, compute, raster, presentation, and capability-gated hardware ray tracing.">
+  <meta name="description" content="Keep graph configuration persistent while feeding per-frame inputs.">
   <title>Quick user's guide | ArdaRenderGraph | Ardashir</title>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
@@ -32,7 +32,7 @@
         <a aria-current="page" href="quick-guide.html">Quick user's guide</a>
         <a href="architecture.html">Architecture</a>
         <a href="resources.html">Resources</a>
-        <a href="passes.html">Passes</a>
+        <a href="passes.html">Typed nodes</a>
         <a href="compilation.html">Compilation</a>
         <a href="execution.html">Execution</a>
         <a href="debugging.html">Debugging</a>
@@ -46,683 +46,335 @@
         Quick user's guide
       </nav>
       <article>
-        <header class="page-header">
-          <p class="eyebrow">Build a useful frame, then extend it safely</p>
-          <h1>ArdaRenderGraph quick user's guide</h1>
-          <p>This is the practical path from an initialized backend to one submitted and presented frame. It combines upload/copy, compute, raster, and an optional hardware-ray-tracing branch while keeping every graph resource access visible to ARDG.</p>
-        </header>
+<header class="page-header"><p class="eyebrow">Persistent dependency graphs</p><h1>Renderer quick guide</h1><p>Keep graph configuration persistent while feeding per-frame inputs.</p></header>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">Learning objectives</a><a href="#persistent-setup">Stable device setup</a><a href="#node-authoring">Author a node class</a><a href="#node-registration">Registration examples</a><a href="#frame-resources">Cache per swap-chain image</a><a href="#parameters">Dynamic input contract</a><a href="#integrated-frame">Terrain operation sequence</a><a href="#submit">Submit and present</a><a href="#ray-tracing">Other pipeline families</a><a href="#summary">Chapter summary</a></nav>
+<section id="objectives"><h2>Learning objectives</h2><p>Attach self-contained node classes, cache a graph per acquired swap-chain image, feed dynamic uniforms safely and use automatic pipeline slots. Start with <a href="getting-started.html#lifecycle">edit transactions</a> and <a href="passes.html#freezing">parameter snapshots</a>; the <a href="../glossary.html#term-pso">pipeline-state-object glossary entry</a> explains what the compiler creates.</p></section>
+<section id="persistent-setup"><h2>Nodes own device setup</h2><p>The renderer includes node classes and attaches them inside a graph edit. Each class owns its shader registration, parameter metadata, layouts, fixed pipeline configuration and any CUDA operand. It derives from the <a href="api-reference.html#api-arda-tardadependencynode-35213481">common node template</a>, usually through a domain specialization. The base implements registration, attachment and preparation lifetime. The include-only example umbrellas need no initialization. The <a href="api-reference.html#api-arda-fardadependencygraph-attachorfind-ea35df5c">attachment API</a> checks this inheritance and routes through the base. ArdaInductor creates and caches PSOs at compilation.</p><p>Canonical identity is checked before setup: matching reattachment returns the existing instance; a name with different semantics fails. New instances invoke their preparation hooks. The base reuses live immutable state through a weak cache keyed by node type and device, while graph parameters retain strong references. Upload nodes do not initialize graphics nodes. Mutable binding sets and ray shader tables belong to separate instance state. Ordinary graph execution repeats only recording and submission. Device setup is fixed by node type/device; parameter-dependent setup belongs to the instance, and dynamic input bytes follow their own synchronization contract.</p><figure><img src="Assets/rdg-node-ownership.svg" alt="The common base checks identity and invokes node preparation; graph instances retain immutable shared state and private binding caches for replay."><figcaption>The node defines setup; the base manages its reuse and lifetime. The weak cache does not keep an unused device alive.</figcaption></figure></section>
+<section id="node-authoring"><h2>Author a node class</h2><p>A common interface lets a compiler treat heterogeneous operations uniformly. Here the interface uses <em>CRTP</em>: the concrete node is passed as the first base-template argument, so the compiler verifies static hooks without adding virtual dispatch. The <a href="api-reference.html#api-arda-fardadependencynodebase-2e1c7f13">root base</a> marks class-authored nodes; the <a href="api-reference.html#api-arda-tardadependencynode-35213481">templated base</a> implements their lifecycle. A <a href="api-reference.html#api-arda-tardacopydependencynode-4321ada9">copy specialization</a> fixes the execution domain while ArdaInductor still decides the queue. Choosing a compute base does not force async compute.</p><p>This complete operation writes one integer. It supplies stable metadata, a key covering all behavior-affecting fields, a four-byte write declaration, and a recording hook. No device setup is needed, so inherited stateless preparation is sufficient. Link this function with <code>Ardashir::ArdaRenderGraph</code> and pass an initialized RHI device. The tutorial keeps definitions together for readability; application nodes use matching files under <code>Public/Nodes</code> and <code>Private/Nodes</code>.</p><details><summary>Complete custom node and consumer-first composition</summary><pre><code>#include &quot;ArdaDependencyGraphNodes.h&quot;
 
-        <aside class="callout warning">
-          <h2>Evidence labels used throughout</h2>
-          <dl>
-            <dt><strong>DEMONSTRATED</strong></dt>
-            <dd>The complete usage pattern appears in <code>Source/ArdaTests/Examples/ARDGExample</code> or <code>Source/ArdaTests/RHITest</code>, including one-frame presentation.</dd>
-            <dt><strong>TESTED API PATH</strong></dt>
-            <dd>The API or transition path is exercised by <code>ArdaGraphTests.cpp</code> or ArdaBackend tests, but not necessarily in a presented renderer.</dd>
-            <dt><strong>INTEGRATION SKETCH / TESTED RT SAMPLE AVAILABLE</strong></dt>
-            <dd>The sequence joins tested ARDG acceleration-structure tracking to public RHI ray-tracing commands. The CornellBox example builds BLAS/TLAS, dispatches rays, and presents through ARDG on both native backends. Treat placeholders as integration work, not copy-paste proof.</dd>
-          </dl>
-        </aside>
-
-        <nav class="toc" aria-label="On this page">
-          <h2>On this page</h2>
-          <a href="#objectives">Objectives</a>
-          <a href="#prerequisites">Prerequisites and build</a>
-          <a href="#mental-model">Frame mental model</a>
-          <a href="#persistent-setup">Persistent setup</a>
-          <a href="#parameters">Two metadata systems</a>
-          <a href="#frame-resources">Per-frame resources</a>
-          <a href="#recipes">Copyable pass recipes</a>
-          <a href="#ray-tracing">Hardware ray tracing</a>
-          <a href="#integrated-frame">Integrated frame skeleton</a>
-          <a href="#queues">Queue legality and fallback</a>
-          <a href="#submit">Submit and present</a>
-          <a href="#failures">Failure handling and debug</a>
-          <a href="#cleanup">Cleanup</a>
-          <a href="#checklists">API-path checklists</a>
-          <a href="#summary">Summary and next steps</a>
-        </nav>
-
-        <section id="objectives">
-          <h2>Objectives</h2>
-          <p>After reading, a C++ graphics programmer should be able to:</p>
-          <ul>
-            <li>build and link a renderer against ArdaBackend and ArdaRenderGraph;</li>
-            <li>keep backend, window, shaders, pipeline state, geometry, and ray-tracing objects alive at the correct scope;</li>
-            <li>create exactly one <a href="api-reference.html#api-arda-rdg-fardgbuilder-e0fc26d2"><code>FARDGBuilder</code></a> for one frame;</li>
-            <li>acquire and import a swap-chain image, create transient resources and views, and extract retained outputs;</li>
-            <li>declare copy, compute, raster, and acceleration-structure states before callbacks run;</li>
-            <li>use <a href="api-reference.html#api-arda-rdg-fardgbuilder-adddispatchpass-4e159d83"><code>AddDispatchPass</code></a> for ordinary compute and generic <a href="api-reference.html#api-arda-rdg-fardgbuilder-addpass-eb5f83be"><code>AddPass</code></a> for ray-tracing commands;</li>
-            <li>understand specialized-queue fallback and keep hardware RT off unsupported paths; and</li>
-            <li>follow the required <code>PrepareSubmit → Execute → Present</code> order and diagnose failures.</li>
-          </ul>
-        </section>
-
-        <section id="prerequisites">
-          <h2>Prerequisites, link targets, and includes</h2>
-          <p>Be comfortable with command lists, PSOs, shader resource views, unordered-access views, framebuffers, GPU resource states, and <a class="term" data-term="raw-war-waw-hazards" href="../glossary.html#term-raw-war-waw-hazards">RAW/WAR/WAW hazards</a>. Read the Backend <a href="../ArdaBackend/getting-started.html">startup guide</a> and <a href="../ArdaBackend/presentation.html">presentation guide</a> if window-system integration is new.</p>
-
-          <p><strong>DEMONSTRATED.</strong> The repository's <code>ARDGExample</code> target links the two libraries and GLFW:</p>
-          <pre><code>target_link_libraries(MyRenderer PRIVATE
-    Ardashir::ArdaBackend
-    Ardashir::ArdaRenderGraph
-    glfw
-)
-
-# Public aggregate headers:
-#include "ArdaBackend.h"
-#include "ArdaRenderGraph.h"
-
-# Pipeline initializer/cache helpers used by ARDGExample:
-#include "PipelineStateCache/ArdaPipelineStateCache.h"</code></pre>
-          <p><code>ARDGExample</code> discovers jobs from registered shader permutations and can invoke an external DXC at startup or first use. Configure DXC through application compiler configuration, the build default, or <code>ARDASHIR_DXC_EXECUTABLE</code>. Run one hidden frame with <code>--backend d3d12|vulkan --frames 1 --hidden --shader-mode ondemand --shader-cache &lt;directory&gt;</code>, or explicitly cook both backends with <code>--arda-cook-shaders &lt;output-directory&gt;</code>.</p>
-        </section>
-
-        <section id="mental-model">
-          <h2>Mental model: persistent renderer, disposable graph</h2>
-          <p>The renderer owns durable device-facing objects. The graph owns one frame's logical declarations and frozen callback parameters. Commands are recorded only when <a href="api-reference.html#api-arda-rdg-fardgbuilder-execute-462d7837"><code>Execute()</code></a> lowers those declarations.</p>
-          <figure>
-            <img src="Assets/rdg-terrain-example.svg" alt="The demonstrated terrain frame copies settings, dispatches three compute passes, renders terrain, overlays a triangle, and may place copy or compute work on specialized queues.">
-            <figcaption>The demonstrated terrain renderer is the reference shape: update and copy inputs, dispatch compute work, consume the outputs in raster, and make the imported back-buffer write observable.</figcaption>
-          </figure>
-          <ol>
-            <li><strong>Persistent:</strong> window, backend, device, swap chain, shader map or loaded shader binaries, binding layouts, pipeline initializers/cached PSOs, static geometry, and optional RT pipeline/SBT/acceleration structures.</li>
-            <li><strong>Per frame:</strong> acquired framebuffer, one builder, logical imports, graph-created textures/buffers/views, parameter values, pass callbacks, compile products, and execution result.</li>
-            <li><strong>After submission:</strong> retain queue instance values and any extracted RHI references needed by later frames; discard logical graph pointers with the builder.</li>
-          </ol>
-          <figure>
-            <img src="Assets/rdg-resource-materialization.svg" alt="Logical graph resources become physical only for live work during execution, while imported resources retain externally created backing.">
-            <figcaption>Creating a logical resource does not allocate its physical backing immediately. Live graph-created resources materialize during execution; imports already have physical identity.</figcaption>
-          </figure>
-        </section>
-
-        <section id="persistent-setup">
-          <h2>Persistent setup: backend, window, shaders, and PSOs</h2>
-          <p><strong>DEMONSTRATED.</strong> Perform this once, outside the frame function:</p>
-          <ol>
-            <li>Create a window implementing the presentation window contract.</li>
-            <li>Register virtual shader roots with <a href="../ArdaBackend/api-reference.html#api-arda-backend-addshadersourcedirectorymapping-0a243cb3"><code>AddShaderSourceDirectoryMapping()</code></a> before backend initialization; choose <code>LoadOnly</code>, <code>Startup</code>, or <code>OnDemand</code> and a writable user shader cache.</li>
-            <li>Fill a backend configuration, enable validation while integrating, call <a href="../ArdaBackend/api-reference.html#api-arda-backend-configurebackend-ee733417"><code>ConfigureBackend()</code></a>, then <a href="../ArdaBackend/api-reference.html#api-arda-backend-initializebackendforpresentation-57fda7b3"><code>InitializeBackendForPresentation()</code></a>.</li>
-            <li>Read the live <a href="../ArdaBackend/api-reference.html#api-arda-backend-getdevicecontext-1ba97e9b"><code>GetDeviceContext()</code></a>; retain its device and copy its actual queue capabilities.</li>
-            <li>Initialize a <a href="../ArdaBackend/api-reference.html#api-arda-backend-fardaglobalshadermap-b7046fe0"><code>FArdaGlobalShaderMap</code></a>, or create RHI shaders from backend-specific binaries.</li>
-            <li>Create input layouts and durable binding sets. Construct a <a href="../ArdaBackend/api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>FArdaPipelineStateCache</code></a> plus compute/graphics initializers, or create a fixed graphics pipeline directly.</li>
-          </ol>
-          <pre><code>struct FRenderer
+namespace arda
 {
-    arda::FArdaRHIDeviceRef mDevice;
-    arda::FARDGQueueCapabilities mQueues;
-    arda::FArdaGlobalShaderMap mShaderMap;
-    std::unique_ptr&lt;arda::FArdaPipelineStateCache&gt; mPSOCache;
+struct FArdaSetValueParameters
+{
+    FArdaDependencyResourceHandle mOutput;
+    uint32_t mValue = 0;
+};
 
-    // Persistent shaders and initializers used by compute/raster callbacks.
-    const arda::FArdaGlobalShaderInstance* mComputeShader = nullptr;
-    const arda::FArdaGlobalShaderInstance* mCompositeShader = nullptr;
-    arda::FArdaComputePipelineStateInitializer mComputePSO;
-    arda::FArdaGraphicsPipelineStateInitializer mCompositePSO;
-
-    // Optional RT objects, created only after capability checks.
-    arda::FArdaRHIRayTracingPipelineRef mRTPipeline;
-    arda::FArdaRHIShaderTableRef mShaderTable;
-    arda::FArdaRHIAccelStructRef mBLAS;
-    arda::FArdaRHIAccelStructRef mTLAS;
-};</code></pre>
-          <aside class="callout warning">
-            <h3>RT has a different pipeline path</h3>
-            <p><strong>TESTED API PATH.</strong> Compute and raster use the Backend pipeline-state cache in <code>ARDGExample</code>. Ray tracing uses direct device <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createraytracingpipeline-0e50b396"><code>CreateRayTracingPipeline()</code></a> and <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createshadertable-eb4966a3"><code>CreateShaderTable()</code></a>. ARDG provides <a href="api-reference.html#api-arda-fardgbuilder-addraydispatchpass-5cf34761"><code>AddRayDispatchPass</code></a> for declared ray dispatch. <code>FArdaPipelineStateCache</code> provides no renderer-facing RT initializer/cache path.</p>
-          </aside>
-        </section>
-
-        <section id="parameters">
-          <h2>Two metadata systems: graph access versus shader binding</h2>
-          <p>This distinction prevents most first-integration mistakes.</p>
-          <dl>
-            <dt>ARDG parameter metadata</dt>
-            <dd><a href="api-reference.html#api-arda-rdg-ardg-begin-parameter-struct-8584afa8"><code>ARDG_BEGIN_PARAMETER_STRUCT</code></a> … <a href="api-reference.html#api-arda-rdg-ardg-end-parameter-struct-2f93ccdd"><code>ARDG_END_PARAMETER_STRUCT</code></a> generates C++ members and <a href="api-reference.html#api-arda-rdg-fardgparametermetadata-8b7ec1e7"><code>FARDGParameterMetadata</code></a>. ARDG freezes and walks it to derive dependencies, lifetimes, states, transitions, queue waits, and validated callback access.</dd>
-            <dt>Backend shader parameter metadata</dt>
-            <dd><a href="../ArdaBackend/api-reference.html#api-arda-begin-shader-parameter-struct-5dbae5b1"><code>ARDA_BEGIN_SHADER_PARAMETER_STRUCT</code></a> and <code>ARDA_SHADER_*</code> macros describe shader register slots, spaces, visibility, and binding types. The global shader map uses this metadata to make layouts; execution-context binding helpers reconcile it with the current pass's ARDG resource declarations.</dd>
-          </dl>
-          <figure>
-            <img src="Assets/rdg-parameter-visit.svg" alt="ARDG freezes a parameter struct and recursively visits resource leaves to derive access states and hazard edges before callback recording.">
-            <figcaption>ARDG metadata is scheduling input. Shader metadata is descriptor-layout input. Matching names are convenient but declaration type, order, slot, space, and visibility are the operative contracts.</figcaption>
-          </figure>
-          <pre><code>// Graph contract: logical resources and required states.
-ARDG_BEGIN_PARAMETER_STRUCT(FComputeParameters)
-    ARDG_BUFFER_SRV(mInput)
-    ARDG_TEXTURE_UAV(mOutput)
-ARDG_END_PARAMETER_STRUCT()
-
-// Shader contract: physical descriptor slots seen by the compute shader.
-ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
-    ARDA_SHADER_BUFFER_SRV(mInput, 0, 0, arda::EArdaRHIShaderStage::Compute)
-    ARDA_SHADER_TEXTURE_UAV(mOutput, 0, 0, arda::EArdaRHIShaderStage::Compute)
-ARDA_END_SHADER_PARAMETER_STRUCT()</code></pre>
-          <p><strong>Rule:</strong> every graph resource used by a callback must appear in that pass's ARDG parameters even if it is also retained by the renderer or named in shader metadata. The compiler does not inspect commands inside callbacks.</p>
-        </section>
-
-        <section id="frame-resources">
-          <h2>Per-frame resource sequence</h2>
-          <p><strong>DEMONSTRATED.</strong> Start each frame in this order:</p>
-          <ol>
-            <li>Call <a href="../ArdaBackend/api-reference.html#api-arda-backend-iardaswapchain-acquireframe-d830b77f"><code>AcquireFrame()</code></a> and verify the framebuffer has a color attachment.</li>
-            <li>Create one <a href="api-reference.html#api-arda-rdg-fardgbuilder-e0fc26d2"><code>FARDGBuilder</code></a> from <a href="api-reference.html#api-arda-rdg-makerendergraphcontext-ddc93cbb"><code>MakeRenderGraphContext()</code></a>.</li>
-            <li>Import the acquired color texture with <a href="api-reference.html#api-arda-rdg-fardgbuilder-registerexternaltexture-4853552d"><code>RegisterExternalTexture()</code></a> and truthful initial state <code>Present</code>.</li>
-            <li>Import durable geometry/upload/camera buffers with <a href="api-reference.html#api-arda-rdg-fardgbuilder-registerexternalbuffer-fa9aa334"><code>RegisterExternalBuffer()</code></a> and their real entry states.</li>
-            <li>Create transient storage with <a href="api-reference.html#api-arda-rdg-fardgbuilder-createbuffer-3391cbe2"><code>CreateBuffer()</code></a> and <a href="api-reference.html#api-arda-rdg-fardgbuilder-createtexture-1c683c9b"><code>CreateTexture()</code></a>.</li>
-            <li>Create the exact SRV/UAV identities needed by passes with <a href="api-reference.html#api-arda-rdg-fardgbuilder-createtexturesrv-907c4226"><code>CreateTextureSRV()</code></a>, <a href="api-reference.html#api-arda-rdg-fardgbuilder-createtextureuav-317de9f0"><code>CreateTextureUAV()</code></a>, <a href="api-reference.html#api-arda-rdg-fardgbuilder-createbuffersrv-faf39304"><code>CreateBufferSRV()</code></a>, and <a href="api-reference.html#api-arda-rdg-fardgbuilder-createbufferuav-e5f48288"><code>CreateBufferUAV()</code></a>.</li>
-            <li>If a graph-created result must survive, queue <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuebufferextraction-54e67cf9"><code>QueueBufferExtraction()</code></a> or <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuetextureextraction-0f2bf6f0"><code>QueueTextureExtraction()</code></a> before execution.</li>
-          </ol>
-          <p>A view declaration is not cosmetic: callback binding validation expects the same logical view identity declared by the pass. A direct <code>*_ACCESS</code> member instead names the parent resource, explicit state, and optional range.</p>
-        </section>
-
-        <section id="recipes">
-          <h2>Small copyable recipes</h2>
-          <p>These recipes report status-returning operations through the active execution context. Return the status from a callback or call <a href="api-reference.html#api-arda-fardgpassexecutioncontext-reportstatus-3c8856c0"><code>ReportStatus</code></a>, then skip dependent commands after failure. The graph retains the first failure in its execution result.</p>
-
-          <h3>Compute: bind, then auto-dispatch</h3>
-          <p><strong>DEMONSTRATED.</strong> <a href="api-reference.html#api-arda-rdg-fardgbuilder-adddispatchpass-4e159d83"><code>AddDispatchPass()</code></a> forces the Compute category, invokes the setup lambda, then automatically calls <code>Dispatch(groupX, groupY, groupZ)</code>. Do not dispatch again inside the setup callback.</p>
-          <pre><code>FComputeParameters compute;
-compute.mInput = inputSRV;
-compute.mOutput = outputUAV;
-
-graph.AddDispatchPass(
-    "ComputeOutput", &amp;compute, {groupX, groupY, 1},
-    [this](arda::FARDGPassExecutionContext&amp; context)
+class FArdaSetValueNode final
+    : public TArdaCopyDependencyNode&lt;FArdaSetValueNode, FArdaSetValueParameters&gt;
+{
+public:
+    static FArdaDependencyNodeMetadata GetMetadata()
     {
-        arda::FArdaRHIComputeState state;
-        state.mBindings = context.CreateBindingSets(*mComputeShader);
-        context.ReportStatus(
-            mPSOCache-&gt;SetComputePipelineState(
-                context.mUnsafeRawCommandList, mComputePSO, eastl::move(state)));
-    },
-    arda::EARDGPassFlags::AsyncCompute);</code></pre>
-
-          <h3>Copy: declare both ends and use a copy pass</h3>
-          <p><strong>DEMONSTRATED.</strong> Copy queues accept only copy-compatible declarations. If no copy queue exists, the graph falls back to graphics.</p>
-          <pre><code>ARDG_BEGIN_PARAMETER_STRUCT(FCopyParameters)
-    ARDG_BUFFER_ACCESS(mSource)
-    ARDG_BUFFER_ACCESS(mDestination)
-ARDG_END_PARAMETER_STRUCT()
-
-FCopyParameters copy;
-copy.mSource = {source, arda::EArdaRHIResourceState::CopySource, {}};
-copy.mDestination = {destination, arda::EArdaRHIResourceState::CopyDest, {}};
-graph.AddPass(
-    "CopyPayload", &amp;copy, arda::EARDGPassFlags::Copy,
-    [byteCount](
-        arda::FARDGPassExecutionContext&amp; context,
-        const FCopyParameters&amp; p)
+        return {&quot;tutorial.set-value&quot;, 1};
+    }
+    static eastl::string GetCanonicalKey(const FParameters&amp; P)
     {
-        context.ReportStatus(
-            context.mUnsafeRawCommandList.CopyBuffer(
-                *context.GetBuffer(p.mDestination.mBuffer), 0,
-                *context.GetBuffer(p.mSource.mBuffer), 0, byteCount));
-    });</code></pre>
-
-          <h3>Raster: attachment declaration plus compatible RHI state</h3>
-          <p><strong>DEMONSTRATED.</strong> <a href="api-reference.html#api-arda-rdg-ardg-render-target-binding-slots-04c99387"><code>ARDG_RENDER_TARGET_BINDING_SLOTS</code></a> declares attachment writes. The callback still creates or reuses a compatible framebuffer, binds its PSO, shader bindings, vertex/index buffers, viewport, and scissor, then calls <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-drawindexed-62dcf937"><code>DrawIndexed()</code></a>.</p>
-          <pre><code>ARDG_BEGIN_PARAMETER_STRUCT(FRasterParameters)
-    ARDG_TEXTURE_SRV(mLighting)
-    ARDG_BUFFER_ACCESS(mVertices)
-    ARDG_BUFFER_ACCESS(mIndices)
-    ARDG_RENDER_TARGET_BINDING_SLOTS(mTargets)
-ARDG_END_PARAMETER_STRUCT()
-
-FRasterParameters raster;
-raster.mLighting = lightingSRV;
-raster.mVertices = {vertices, arda::EArdaRHIResourceState::VertexBuffer, {}};
-raster.mIndices = {indices, arda::EArdaRHIResourceState::IndexBuffer, {}};
-raster.mTargets.mColor[0] = {backBuffer, acquiredSubresources};
-const uint32_t indexCount = meshIndexCount; // PLACEHOLDER: actual uploaded R32 index count.
-
-graph.AddPass(
-    "Composite", &amp;raster, arda::EARDGPassFlags::Raster,
-    [this, framebuffer, width, height, indexCount](
-        arda::FARDGPassExecutionContext&amp; context,
-        const FRasterParameters&amp; p)
+        eastl::string Key;
+        for (uint64_t V : {P.mOutput.mGraph, uint64_t(P.mOutput.mIndex),
+                          P.mOutput.mGeneration, uint64_t(P.mValue)})
+            Key.append(reinterpret_cast&lt;const char*&gt;(&amp;V), sizeof(V));
+        return Key;
+    }
+    static FArdaDependencyNodeDesc Describe(const FParameters&amp; P, const FState&amp;)
     {
-        (void)context.GetTexture(p.mTargets.mColor[0].mTexture);
-        arda::FArdaRHIGraphicsState state;
-        state.mFramebuffer = framebuffer;
-        state.mBindings = context.CreateBindingSets(*mCompositeShader);
-        state.mVertexBuffers.push_back({
-            arda::FArdaRHIBufferRef(context.GetBuffer(p.mVertices.mBuffer)), 0, 0});
-        state.mIndexBuffer.Reset(context.GetBuffer(p.mIndices.mBuffer));
-        state.mIndexFormat = arda::EArdaRHIFormat::R32UInt;
-        state.mViewports.push_back(
-            {0.f, float(width), 0.f, float(height), 0.f, 1.f});
-        state.mScissors.push_back(
-            {0, int32_t(width), 0, int32_t(height)});
-        context.ReportStatus(
-            mPSOCache-&gt;SetGraphicsPipelineState(
-                context.mUnsafeRawCommandList, mCompositePSO, eastl::move(state)));
-        if (context.GetStatus())
-            context.mUnsafeRawCommandList.DrawIndexed({indexCount});
-    });</code></pre>
-          <p><code>meshIndexCount</code> is an explicit application placeholder: set it to the number of <code>R32UInt</code> indices actually uploaded to <code>indices</code>, not the buffer's byte size, vertex count, or an assumed triangle count. Capturing the resulting value freezes the truthful draw count for this pass. When using a framebuffer created from graph-created attachments, resolve those textures with <code>context.GetTexture()</code> inside the callback and create the framebuffer there, as <code>ARDGExample</code> does. Reusing the acquired swap-chain framebuffer is valid when its attachments exactly match the declared slots.</p>
-        </section>
+        FArdaDependencyNodeDesc D;
+        D.mAccesses = {{P.mOutput, EArdaDependencyAccess::Write,
+                       EArdaRHIResourceState::CopyDest}};
+        D.mAccesses[0].mBufferRange = {0, sizeof(P.mValue)};
+        return D;
+    }
+    static FArdaRHIStatus Record(FArdaDependencyExecutionContext&amp; C,
+        const FParameters&amp; P, const FState&amp;, FInstanceState&amp;)
+    {
+        return C.GetCommands().WriteBuffer(*C.GetBuffer(P.mOutput),
+                                          &amp;P.mValue, sizeof(P.mValue));
+    }
+};
 
-        <section id="ray-tracing">
-          <h2>Capability-gated hardware ray tracing</h2>
-          <aside class="callout warning">
-            <h3>INTEGRATION SKETCH / TESTED RT SAMPLE AVAILABLE</h3>
-            <p>The CornellBox GPU smoke tests run BLAS/TLAS construction, shader-table ray dispatch, and presentation through ARDG on D3D12 and Vulkan. RDG conformance tests additionally read back a declared ray-dispatch buffer. The sketch below still uses application-specific descriptor and binding helpers; the implemented frame is in the repository at <code>Source/<wbr>ArdaTests/<wbr>Examples/<wbr>CornellBox/<wbr>Private/<wbr>ArdaCornellBoxRenderer.cpp</code>.</p>
-          </aside>
+FArdaRHIStatus RunSetValue(FArdaRHIDeviceRef Device)
+{
+    FArdaDependencyGraph Graph(Device);
+    if (auto S = Graph.BeginGraphEdit(); !S) return S;
+    FArdaRHIBufferDesc Desc;
+    Desc.mByteSize = sizeof(uint32_t);
+    auto Output = Graph.CreateBuffer(&quot;value&quot;, Desc);
+    if (!Output) return Output.mStatus;
+    auto Bytes = eastl::make_shared&lt;eastl::vector&lt;uint8_t&gt;&gt;();
+    auto Read = Graph.AttachOrFind&lt;FArdaGraphReadbackNode&gt;(
+        &quot;read&quot;, {Output.mValue, Bytes});
+    if (!Read) return Read.mStatus;
+    auto Write = Graph.AttachOrFind&lt;FArdaSetValueNode&gt;(
+        &quot;write&quot;, {Output.mValue, 77});
+    if (!Write) return Write.mStatus;
+    if (auto S = Graph.EndGraphEdit(); !S) return S;
+    return Graph.Execute().mStatus;
+}
+} // namespace arda
+</code></pre></details><p>The readback is attached first but executes after the write because it reads the value that the write produces. Its observable output keeps the producer from being culled. After successful synchronous execution, <code>Bytes</code> contains four bytes representing <code>uint32_t(77)</code>; the local graph and output are released on return. In a renderer, retain them and replay across frames. Changing 77 to 78 changes the node's canonical identity. Begin an edit, remove the write node, then attach the new write and its readback consumer again before ending the edit. Producer removal also removes consumers of its written resource, so the old readback handle is invalid; omitting its replacement can leave the new write unobserved and culled. The logical output resource remains available. See <a href="ArdaInductor.md#parameters-resource-versions-and-edits">the edit and removal contract</a>.</p><p>For a shader operation, forward-declare a nested <code>FState</code> in the node header and define it in the node's implementation file. Implement <a href="api-reference.html#api-arda-tardadependencynode-prepare-cc0ad885">Prepare</a> with the custom return type <code>TArdaRHIResult&lt;eastl::shared_ptr&lt;const FState&gt;&gt;</code>; load/register the selected shaders and construct layouts and fixed pipeline configuration there. Declare shader stages or pipeline requests through the description. Recording resolves the automatically assigned PSO through the execution context. The <a href="ArdaInductor.md#self-contained-node-attachment">terrain generate node</a> demonstrates this split. A custom <code>FInstanceState</code> requires <a href="api-reference.html#api-arda-tardadependencynode-createinstance-2528ba59">CreateInstance</a>, returning <code>TArdaRHIResult&lt;eastl::shared_ptr&lt;FInstanceState&gt;&gt;</code>; the <a href="ArdaInductor.md#executable-examples-and-tests">Cornell trace node</a> uses it for the shader-table cache. Parameter-dependent allocation belongs here and its GPU workspace must be declared in the description. Never hide graph-resource dependencies in state.</p><p>Native graphics, compute and copy nodes implement <code>Record</code>. A <a href="api-reference.html#api-arda-tardacudadependencynode-35bb155c">CUDA node</a> implements <code>PrepareCuda</code> with the same context, parameters and two state arguments plus the supplied sequence. Append kernels or external calls and let the compiler batch and submit them. A <a href="api-reference.html#api-arda-tardasynchronizationdependencynode-ee03fb13">synchronization node</a> can omit execution. Missing or mismatched hooks fail at compile time; <a href="api-reference.html#api-arda-tardadependencynodecontract-a4cadef5">the contract trait</a> checks them without registering anything.</p><p>Optional <a href="api-reference.html#api-arda-tardadependencynode-validate-2678def0">validation</a> runs before state preparation for a new instance. Preparation failures propagate without insertion and leave the edit open; repair and retry or cancel. Success with null state is rejected. Do not submit GPU work from preparation hooks. Shared state must be immutable, and distinct instances can record concurrently. Mutable nested frame inputs require caller synchronization. Removing a committed node retains its state until the edit commits and other owners retire, allowing cancellation to restore it.</p><p>Library authors can call inherited <a href="api-reference.html#api-arda-tardadependencynode-register-296cf60a">Register()</a> before any device exists to populate the global library. Repeating it for the same class/version succeeds; another implementation under the same name fails. Class nodes inherit attachment and registration instead of duplicating them. The lower-level <a href="api-reference.html#api-arda-fardadependencygraph-attachorfind-5ccb9fb8">named-definition API</a> remains available for dynamic adapters: it accepts the public parameter schema and performs preparation after deduplication. The base's prepared execution wrapper is private and must never be cast to the public schema.</p></section>
+<section id="node-registration"><h2>Register a library of graphics and CUDA nodes</h2>
+<p>Registration makes an operation discoverable in the global library; attachment creates a named instance with resources and parameters in a graph. These have different lifetimes. Inherited <a href="api-reference.html#api-arda-tardadependencynode-register-296cf60a">Register()</a> stores metadata and callbacks without creating a device, loading shaders, creating layouts or launching a kernel. It is useful for menus or a future graph frontend that enumerates <a href="api-reference.html#api-arda-fardanoderegistry-getnames-49b01d69">registered names</a> before a graph exists. A renderer that already knows its node classes can skip explicit registration and call <a href="api-reference.html#api-arda-fardadependencygraph-attachorfind-ea35df5c">AttachOrFind&lt;Node&gt;</a>; the base registers automatically.</p>
+<p>The following are complete registration/composition helper definitions using existing example classes. Put each recipe in its named example target so the matching node implementations, shader mappings and assets are linked. A header include alone does not supply their implementations. Call registration at library startup if desired; call attachment only inside an existing graph edit, then check <code>EndGraphEdit()</code> and execute or submit. These composition helpers deliberately leave that edit open: a failure may follow earlier successful attachments, so repair or cancel the transaction. They do not allocate or import the caller's logical resources.</p>
+<h3 id="register-terrain">Compute, indexed raster and fullscreen graphics</h3>
+<p>In <code>ARDGExample</code>, the generate node derives from the <a href="api-reference.html#api-arda-tardacomputedependencynode-c694d962">compute base</a>, while indexed drawing and fullscreen overlay derive from the <a href="api-reference.html#api-arda-tardagraphicsdependencynode-7e031f28">graphics base</a>. The registered names are <code>example.terrain.generate</code>, <code>example.terrain.draw</code> and <code>example.terrain.overlay</code>. All use native recording hooks. Generate describes a compute pipeline; draw supplies vertex/pixel shaders and vertex layout; overlay supplies its own fullscreen vertex/pixel shaders. Each class prepares those details internally, and ArdaInductor creates their independent PSOs.</p>
+<details><summary>Terrain: register three operation types and attach draw plus overlay</summary><pre><code>#include &quot;Nodes/ArdaTerrainGenerateNode.h&quot;
+#include &quot;Nodes/ArdaTerrainDrawNode.h&quot;
+#include &quot;Nodes/ArdaTerrainOverlayNode.h&quot;
 
-          <h3>Gate setup before creating any RT-only object</h3>
-          <p><strong>TESTED API PATH.</strong> Query <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-getcapabilities-0ed4a202"><code>GetCapabilities()</code></a>. <a href="../ArdaBackend/api-reference.html#api-arda-fardarhiraytracingcapabilities-mbaccelerationstructures"><code>mRayTracing.mbAccelerationStructures</code></a> gates acceleration-structure creation; full pipeline/shader-table/dispatch setup requires <a href="../ArdaBackend/api-reference.html#api-arda-fardarhiraytracingcapabilities-mbpipelineshaders"><code>mRayTracing.mbPipelineShaders</code></a>. Use the raster/compute fallback if either capability needed by your chosen path is false.</p>
-
-          <h3>Persistent RT device setup</h3>
-          <ol>
-            <li>Create BLAS and TLAS storage directly with <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createaccelstruct-fed6b987"><code>CreateAccelStruct()</code></a>.</li>
-            <li>Create ray-generation, miss, and hit shaders. Backend tests use <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createshaderlibrary-18c2932b"><code>CreateShaderLibrary()</code></a> plus <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-getshaderfromlibrary-9250734a"><code>GetShaderFromLibrary()</code></a> on D3D12 and stage-specific shader creation on Vulkan.</li>
-            <li>Create the direct RT pipeline and SBT; fill the ray-generation record with <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-setshadertableraygeneration-1b13a341"><code>SetShaderTableRayGeneration()</code></a> and the corresponding miss/hit-group records required by your pipeline.</li>
-          </ol>
-
-          <h3>Graph declarations for RT commands</h3>
-          <pre><code>ARDG_BEGIN_PARAMETER_STRUCT(FBuildBLASParameters)
-    ARDG_BUFFER_ACCESS(mVertices)
-    ARDG_BUFFER_ACCESS(mIndices)
-    ARDG_ACCEL_STRUCT_ACCESS(mBLAS)
-ARDG_END_PARAMETER_STRUCT()
-
-ARDG_BEGIN_PARAMETER_STRUCT(FBuildTLASParameters)
-    ARDG_ACCEL_STRUCT_ACCESS(mBLAS)
-    ARDG_ACCEL_STRUCT_ACCESS(mTLAS)
-ARDG_END_PARAMETER_STRUCT()
-
-ARDG_BEGIN_PARAMETER_STRUCT(FTraceParameters)
-    ARDG_ACCEL_STRUCT_ACCESS(mTLAS)
-    ARDG_TEXTURE_UAV(mOutput)
-ARDG_END_PARAMETER_STRUCT()</code></pre>
-          <p>Set geometry buffers to <code>AccelStructBuildInput</code>, BLAS/TLAS build destinations to <code>AccelStructWrite</code>, and acceleration structures consumed by TLAS construction or tracing to <code>AccelStructRead</code>. <a href="api-reference.html#api-arda-rdg-ardg-accel-struct-access-5d3edb29"><code>ARDG_ACCEL_STRUCT_ACCESS</code></a> is direct access; the state is mandatory and must not remain <code>Unknown</code>.</p>
-
-          <h3>Use generic Compute passes and the unsafe escape hatch narrowly</h3>
-          <p>Use <a href="api-reference.html#api-arda-fardgbuilder-addraydispatchpass-5cf34761"><code>AddRayDispatchPass</code></a> to run setup and dispatch only after successful setup. Generic <code>AddPass(..., EARDGPassFlags::Compute, ...)</code> also supports custom RT sequences, as shown here. Inside that generic callback:</p>
-          <ul>
-            <li>resolve graph resources through <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-getbuffer-7bf14520"><code>GetBuffer()</code></a>, <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-gettexture-835f8625"><code>GetTexture()</code></a>, and <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-getaccelstruct-63040d05"><code>GetAccelStruct()</code></a>;</li>
-            <li>populate geometry/instance descriptors from those resolved physical objects;</li>
-            <li>call <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-buildbottomlevelaccelstruct-ec03355a"><code>BuildBottomLevelAccelStruct()</code></a> and <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-buildtoplevelaccelstruct-65604af5"><code>BuildTopLevelAccelStruct()</code></a> through <a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-munsaferawcommandlist-7e7a9512"><code>mUnsafeRawCommandList</code></a>;</li>
-            <li>bind <a href="../ArdaBackend/api-reference.html#api-arda-rhi-fardarhiraytracingstate-9fa7b333"><code>FArdaRHIRayTracingState</code></a> with <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-setraytracingstate-ed9e7a1c"><code>SetRayTracingState()</code></a>, then call <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-dispatchrays-0c6f40b2"><code>DispatchRays()</code></a>.</li>
-          </ul>
-          <p><strong>Do not</strong> hide graph-owned geometry, AS, or output resources in captured RHI references. Doing so bypasses ARDG transition, hazard, lifetime, culling, and cross-queue analysis.</p>
-        </section>
-
-        <section id="integrated-frame">
-          <h2>Integrated one-frame skeleton</h2>
-          <aside class="callout">
-            <h3>Truthful placeholders</h3>
-            <p><strong>DEMONSTRATED:</strong> acquisition, imports, copy, auto-dispatch compute, raster, submission, and presentation. <strong>TESTED API PATH:</strong> acceleration-structure imports and declared transitions. <strong>INTEGRATION SKETCH / TESTED RT SAMPLE AVAILABLE:</strong> descriptor population, BLAS/TLAS commands, RT binding/SBT, and dispatch. Functions named <code>Make*</code> and <code>Bind*</code> below are application placeholders. Each callback reports status through its own execution context; graph execution combines failures before submission.</p>
-          </aside>
-          <pre><code>bool FRenderer::RenderFrame(arda::IArdaSwapChain&amp; swapChain)
+arda::FArdaRHIStatus RegisterTerrainLibrary()
 {
     using namespace arda;
+    if (auto S = FArdaTerrainGenerateNode::Register(); !S) return S;
+    if (auto S = FArdaTerrainDrawNode::Register(); !S) return S;
+    return FArdaTerrainOverlayNode::Register();
+}
 
-    arda::FArdaRHIFramebufferRef acquiredFramebuffer;
-    if (!swapChain.AcquireFrame(acquiredFramebuffer))
-        return Fail(swapChain.GetError());
+arda::FArdaRHIStatus AttachTerrainRasterNodes(
+    arda::FArdaDependencyGraph&amp; Graph,
+    const arda::FArdaTerrainDrawParameters&amp; Draw,
+    const arda::FArdaTerrainOverlayParameters&amp; Overlay)
+{
+    using namespace arda;
+    // Graph is already editing; resources and upstream producers are declared.
+    if (Overlay.mSource != Draw.mColor)
+        return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+                                    &quot;Overlay must consume the draw output.&quot;);
+    auto Compose = Graph.AttachOrFind&lt;FArdaTerrainOverlayNode&gt;(&quot;overlay&quot;, Overlay);
+    if (!Compose) return Compose.mStatus;
+    auto Raster = Graph.AttachOrFind&lt;FArdaTerrainDrawNode&gt;(&quot;draw&quot;, Draw);
+    return Raster.mStatus;
+}
+</code></pre></details>
+<p>Before this helper, fill <code>Draw</code> with heightmap, vertex/index, camera, color and depth handles plus the target extent. Set <code>Overlay.mSource = Draw.mColor</code>, set its color handle to the acquired backbuffer, and use the same extent. Declare producers for owned heightmap, geometry and camera inputs, or import initialized resources with valid entry states. Draw writes scene color; overlay consumes it. The consumer attaches first, but the resource edge enforces draw before overlay. The <a href="#integrated-frame">full terrain chain</a> also shows the separate generation, erosion, triangulation and upload operations.</p>
+<h3 id="register-rays">Acceleration-structure build and ray dispatch</h3>
+<p>Compile this recipe in <code>CornellBox</code>. Its TLAS build, ray dispatch and accumulation are independently registered native operations. The trace class uses the compute node base but declares a <code>RayTracing</code> pipeline request and acceleration-structure reads. Execution domain and pipeline family are separate: the current compiler keeps ray-tracing work on the graphics queue. It creates ray-generation, miss and hit-group PSO state from the trace node's contributions; the node privately maintains its shader table.</p>
+<details><summary>Cornell: register the ray library and attach the TLAS-to-trace dependency</summary><pre><code>#include &quot;Nodes/ArdaCornellBuildTlasNode.h&quot;
+#include &quot;Nodes/ArdaCornellTraceNode.h&quot;
+#include &quot;Nodes/ArdaCornellAccumulateNode.h&quot;
 
-    const auto&amp; acquiredDesc = acquiredFramebuffer-&gt;GetDesc();
-    if (acquiredDesc.mColorAttachments.empty() ||
-        !acquiredDesc.mColorAttachments[0].mTexture)
-        return Fail("Acquired framebuffer has no color attachment.");
-    const auto color = acquiredDesc.mColorAttachments[0];
+arda::FArdaRHIStatus RegisterCornellRayLibrary()
+{
+    using namespace arda;
+    if (auto S = FArdaCornellBuildTlasNode::Register(); !S) return S;
+    if (auto S = FArdaCornellTraceNode::Register(); !S) return S;
+    return FArdaCornellAccumulateNode::Register();
+}
 
-    // One builder for this frame only.
-    FARDGBuilder graph(MakeRenderGraphContext(arda::GetDeviceContext()));
+arda::FArdaRHIStatus AttachCornellRayNodes(
+    arda::FArdaDependencyGraph&amp; Graph,
+    const arda::FArdaCornellNodeParameters&amp; Build,
+    const arda::FArdaCornellNodeParameters&amp; Trace)
+{
+    using namespace arda;
+    // Build reads BLAS at slot 0 and writes TLAS at slot 1.
+    // Trace reads that TLAS at slot 0 and the same BLAS at slot 6.
+    if (Build.mResources[1] != Trace.mResources[0] ||
+        Build.mResources[0] != Trace.mResources[6])
+        return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+                                    &quot;Trace must consume the built scene.&quot;);
+    auto Rays = Graph.AttachOrFind&lt;FArdaCornellTraceNode&gt;(&quot;trace&quot;, Trace);
+    if (!Rays) return Rays.mStatus;
+    auto Tlas = Graph.AttachOrFind&lt;FArdaCornellBuildTlasNode&gt;(&quot;tlas&quot;, Build);
+    return Tlas.mStatus;
+}
+</code></pre></details>
+<p>Import the existing BLAS and unbuilt TLAS first. <code>Build.mResources</code> uses slot 0 for BLAS and slot 1 for TLAS. <code>Trace.mResources</code> uses slots 0–6 for TLAS, vertices, indices, materials, sample-radiance output, frame constants and BLAS respectively. Set width, height, samples and each operation's retained workspace estimate, and provide initialized imports or producers for all remaining inputs. Attach accumulation/presentation or mark the radiance output so tracing remains observable. The TLAS build declares a side effect and runs on every graph execution, including frames after sampling ends. Ray-tracing capability is required when preparing/compiling these nodes; registration alone is not a device-support probe. See <a href="ArdaInductor-Pipelines.md#describe-contributions-and-slots">ray pipeline contributions</a> and <a href="#ray-tracing">the frame lifecycle</a>.</p>
+<h3 id="register-cuda">A mixed HLSL and CUDA library</h3>
+<p>Compile this recipe in <code>PixelSort</code>, which already links its compiled CUDA kernels and node implementations. The upload is a copy-domain node, noise is native compute, radix sort uses the <a href="api-reference.html#api-arda-tardacudadependencynode-35bb155c">CUDA base</a>, and presentation is graphics. Explicit registration remains device-independent even for CUDA. Attachment prepares the operand and reports unsupported devices; the CUDA execution hook appends to the compiler-owned sequence.</p>
+<details><summary>PixelSort: register the library, then attach consumers before producers</summary><pre><code>#include &quot;Nodes/ArdaPixelSortUploadFrameNode.h&quot;
+#include &quot;Nodes/ArdaPixelSortNoiseNode.h&quot;
+#include &quot;Nodes/ArdaPixelSortSortNode.h&quot;
+#include &quot;Nodes/ArdaPixelSortPresentNode.h&quot;
 
-    auto* backBuffer = graph.RegisterExternalTexture(
-        color.mTexture, arda::EArdaRHIResourceState::Present, "BackBuffer");
-    auto* upload = graph.RegisterExternalBuffer(
-        mUploadBuffer, arda::EArdaRHIResourceState::CopySource, "Upload");
-    auto* vertices = graph.RegisterExternalBuffer(
-        mVertexBuffer, arda::EArdaRHIResourceState::AccelStructBuildInput,
-        "RT vertices");
-    auto* indices = graph.RegisterExternalBuffer(
-        mIndexBuffer, arda::EArdaRHIResourceState::AccelStructBuildInput,
-        "RT indices");
+arda::FArdaRHIStatus RegisterPixelSortLibrary()
+{
+    using namespace arda;
+    if (auto S = FArdaPixelSortUploadFrameNode::Register(); !S) return S;
+    if (auto S = FArdaPixelSortNoiseNode::Register(); !S) return S;
+    if (auto S = FArdaPixelSortSortNode::Register(); !S) return S;
+    return FArdaPixelSortPresentNode::Register();
+}
 
-    arda::FArdaRHIBufferDesc workDesc = MakeWorkBufferDesc();
-    workDesc.mDebugName = "Frame.Work";
-    auto* work = graph.CreateBuffer(workDesc);
+arda::FArdaRHIStatus AttachPixelSortNodes(
+    arda::FArdaDependencyGraph&amp; Graph,
+    const arda::FArdaPixelSortNodeParameters&amp; P)
+{
+    using namespace arda;
+    // One shared frame-input object and four logical resource handles.
+    auto Present = Graph.AttachOrFind&lt;FArdaPixelSortPresentNode&gt;(&quot;present&quot;, P);
+    if (!Present) return Present.mStatus;
+    auto Sort = Graph.AttachOrFind&lt;FArdaPixelSortSortNode&gt;(&quot;sort&quot;, P);
+    if (!Sort) return Sort.mStatus;
+    auto Noise = Graph.AttachOrFind&lt;FArdaPixelSortNoiseNode&gt;(&quot;noise&quot;, P);
+    if (!Noise) return Noise.mStatus;
+    auto Upload = Graph.AttachOrFind&lt;FArdaPixelSortUploadFrameNode&gt;(&quot;upload&quot;, P);
+    return Upload.mStatus;
+}
+</code></pre></details>
+<p>Fill <code>P.mConstants</code> with the frame constant-buffer handle, <code>P.mNoise</code>/<code>P.mSorted</code> with distinct CUDA-shareable <code>RGBA8UInt</code> texture handles, and <code>P.mColor</code> with the acquired backbuffer. Noise and sorted textures must match <code>mWidth</code>/<code>mHeight</code>, use one mip/layer and one sample, and be created with <code>mbCudaInterop = true</code>. Keep the shared <code>P.mInput</code> alive and update it before recording. The resolved order is upload → HLSL noise → CUDA radix sort → graphics presentation. Consecutive CUDA nodes with compatible dependencies can coalesce into one sequence; authoring separate nodes does not require one graphics handoff per kernel. CUDA graphics-integration support depends on backend and driver, so <a href="../ArdaBackend/cuda-interop.html">qualification and fallback</a> remain relevant.</p>
+<h3 id="register-custom-cuda">Author and register another CUDA node</h3>
+<p>This complete class reuses PixelSort's precompiled operand while defining its own registry identity and immutable logical parameters. Compile it in the PixelSort target, including its existing host operand implementation and kernel library. The public source/output handles follow the same texture requirements as above. The class body is kept together here for readability; a library should put its declaration in <code>Public/Nodes</code> and its state and method definitions in <code>Private/Nodes</code>.</p>
+<details><summary>Custom CUDA node: metadata, key, validation, preparation, accesses and sequence recording</summary><pre><code>#include &quot;ArdaDependencyNode.h&quot;
+#include &quot;Nodes/ArdaPixelSortOperand.h&quot;
 
-    arda::FArdaRHITextureDesc lightingDesc = MakeLightingTextureDesc(
-        swapChain.GetWidth(), swapChain.GetHeight());
-    lightingDesc.mDebugName = "Frame.Lighting";
-    auto* lighting = graph.CreateTexture(lightingDesc);
-    FARDGTextureViewDesc lightingView{
-        lighting-&gt;GetHandle(), {0, 1, 0, 1}};
-    auto* lightingUAV =
-        graph.CreateTextureUAV("Frame.Lighting.UAV", lightingView);
-    auto* lightingSRV =
-        graph.CreateTextureSRV("Frame.Lighting.SRV", lightingView);
+namespace arda
+{
+struct FArdaTutorialSortParameters
+{
+    FArdaDependencyResourceHandle mSource;
+    FArdaDependencyResourceHandle mOutput;
+    uint32_t mWidth = 0;
+    uint32_t mHeight = 0;
+    uint32_t mChannel = 0;
+    uint32_t mThreshold = 48;
+};
 
-    // DEMONSTRATED copy path: CopySource -&gt; CopyDest.
-    FCopyParameters copy;
-    copy.mSource = {upload, arda::EArdaRHIResourceState::CopySource, {}};
-    copy.mDestination = {work, arda::EArdaRHIResourceState::CopyDest, {}};
-    graph.AddPass("UploadFrameData", &amp;copy, EARDGPassFlags::Copy,
-        [bytes = workDesc.mByteSize](
-            FARDGPassExecutionContext&amp; c, const FCopyParameters&amp; p)
-        {
-            c.ReportStatus(
-                c.mUnsafeRawCommandList.CopyBuffer(
-                    *c.GetBuffer(p.mDestination.mBuffer), 0,
-                    *c.GetBuffer(p.mSource.mBuffer), 0, bytes));
-        });
-
-    FARDGBufferViewDesc workView{work-&gt;GetHandle(), {}};
-    auto* workSRV = graph.CreateBufferSRV("Frame.Work.SRV", workView);
-
-    // DEMONSTRATED compute path. AddDispatchPass dispatches after this lambda.
-    FComputeParameters compute;
-    compute.mInput = workSRV;
-    compute.mOutput = lightingUAV;
-    graph.AddDispatchPass(
-        "ComputeLighting", &amp;compute,
-        {DivideRoundUp(lightingDesc.mWidth, 8),
-         DivideRoundUp(lightingDesc.mHeight, 8), 1},
-        [this](FARDGPassExecutionContext&amp; c)
-        {
-            arda::FArdaRHIComputeState state;
-            state.mBindings = c.CreateBindingSets(*mComputeShader);
-            c.ReportStatus(
-                mPSOCache-&gt;SetComputePipelineState(
-                    c.mUnsafeRawCommandList, mComputePSO, eastl::move(state)));
-        },
-        EARDGPassFlags::AsyncCompute);
-
-    const auto&amp; caps = mDevice-&gt;GetCapabilities();
-    const bool useRT =
-        caps.mRayTracing.mbAccelerationStructures &amp;&amp; caps.mRayTracing.mbPipelineShaders &amp;&amp;
-        mBLAS &amp;&amp; mTLAS &amp;&amp; mRTPipeline &amp;&amp; mShaderTable;
-
-    if (useRT)
+class FArdaTutorialSortNode final
+    : public TArdaCudaDependencyNode&lt;FArdaTutorialSortNode, FArdaTutorialSortParameters&gt;
+{
+public:
+    struct FState
     {
-        // TESTED API PATH: external AS import and state transitions.
-        auto* blas = graph.RegisterExternalAccelStruct(
-            mBLAS, arda::EArdaRHIResourceState::AccelStructRead);
-        auto* tlas = graph.RegisterExternalAccelStruct(
-            mTLAS, arda::EArdaRHIResourceState::AccelStructRead);
-
-        FBuildBLASParameters buildBLAS;
-        buildBLAS.mVertices = {
-            vertices, arda::EArdaRHIResourceState::AccelStructBuildInput, {}};
-        buildBLAS.mIndices = {
-            indices, arda::EArdaRHIResourceState::AccelStructBuildInput, {}};
-        buildBLAS.mBLAS = {
-            blas, arda::EArdaRHIResourceState::AccelStructWrite};
-        graph.AddPass(
-            "BuildBLAS", &amp;buildBLAS, EARDGPassFlags::Compute,
-            [](FARDGPassExecutionContext&amp; c,
-                              const FBuildBLASParameters&amp; p)
-            {
-                // SYNTHESIZED: descriptor must use c.GetBuffer(...) results.
-                auto geometry = MakeTriangleGeometry(
-                    *c.GetBuffer(p.mVertices.mBuffer),
-                    *c.GetBuffer(p.mIndices.mBuffer));
-                c.ReportStatus(
-                    c.mUnsafeRawCommandList.BuildBottomLevelAccelStruct(
-                        *c.GetAccelStruct(p.mBLAS.mAccelStruct),
-                        {geometry},
-                        arda::EArdaRHIAccelStructBuildFlags::PreferFastTrace));
-            });
-
-        FBuildTLASParameters buildTLAS;
-        buildTLAS.mBLAS = {
-            blas, arda::EArdaRHIResourceState::AccelStructRead};
-        buildTLAS.mTLAS = {
-            tlas, arda::EArdaRHIResourceState::AccelStructWrite};
-        graph.AddPass(
-            "BuildTLAS", &amp;buildTLAS, EARDGPassFlags::Compute,
-            [](FARDGPassExecutionContext&amp; c,
-                              const FBuildTLASParameters&amp; p)
-            {
-                // SYNTHESIZED: instance references the validated BLAS.
-                auto instance = MakeInstance(
-                    *c.GetAccelStruct(p.mBLAS.mAccelStruct));
-                c.ReportStatus(
-                    c.mUnsafeRawCommandList.BuildTopLevelAccelStruct(
-                        *c.GetAccelStruct(p.mTLAS.mAccelStruct),
-                        {instance},
-                        arda::EArdaRHIAccelStructBuildFlags::PreferFastTrace));
-            });
-
-        FTraceParameters trace;
-        trace.mTLAS = {
-            tlas, arda::EArdaRHIResourceState::AccelStructRead};
-        trace.mOutput = lightingUAV; // UAV write after compute UAV write.
-        graph.AddPass(
-            "TraceReflections", &amp;trace, EARDGPassFlags::Compute,
-            [this, width = lightingDesc.mWidth, height = lightingDesc.mHeight](
-                FARDGPassExecutionContext&amp; c, const FTraceParameters&amp; p)
-            {
-                auto* physicalTLAS = c.GetAccelStruct(p.mTLAS.mAccelStruct);
-                auto* physicalOutput = c.GetTexture(p.mOutput);
-                // SYNTHESIZED: BindRTResources must bind these validated
-                // objects consistently with the persistent RT pipeline/SBT.
-                arda::FArdaRHIRayTracingState state;
-                state.mShaderTable = mShaderTable;
-                state.mBindings = BindRTResources(
-                    *mDevice, *physicalTLAS, *physicalOutput);
-                c.ReportStatus(
-                    c.mUnsafeRawCommandList.SetRayTracingState(state));
-                if (c.GetStatus())
-                    c.ReportStatus(c.mUnsafeRawCommandList.DispatchRays(width, height, 1));
-            });
+        FArdaPixelSortOperand mOperand;
+        explicit FState(FArdaRHIDeviceRef Device) : mOperand(Device) {}
+    };
+    static FArdaDependencyNodeMetadata GetMetadata()
+    {
+        return {&quot;tutorial.cuda-radix&quot;, 1};
     }
-    // Else: ComputeLighting remains the explicit non-RT fallback producer.
-
-    // DEMONSTRATED raster consumption and external back-buffer write.
-    FRasterParameters raster;
-    raster.mLighting = lightingSRV;
-    raster.mVertices = {
-        vertices, arda::EArdaRHIResourceState::VertexBuffer, {}};
-    raster.mIndices = {
-        indices, arda::EArdaRHIResourceState::IndexBuffer, {}};
-    raster.mTargets.mColor[0] = {
-        backBuffer, color.mAttachment.mSubresources};
-    const uint32_t indexCount = mIndexCount; // Actual uploaded R32 index count.
-    graph.AddPass(
-        "Composite", &amp;raster, EARDGPassFlags::Raster,
-        [this, acquiredFramebuffer,
-         width = swapChain.GetWidth(), height = swapChain.GetHeight(),
-         indexCount](
-            FARDGPassExecutionContext&amp; c, const FRasterParameters&amp; p)
+    static eastl::string GetCanonicalKey(const FParameters&amp; P)
+    {
+        eastl::string Key;
+        for (auto H : {P.mSource, P.mOutput})
         {
-            auto* target = c.GetTexture(p.mTargets.mColor[0].mTexture);
-            c.ReportStatus(
-                c.mUnsafeRawCommandList.ClearTexture(
-                    *target, p.mTargets.mColor[0].mSubresources,
-                    {0.02f, 0.03f, 0.05f, 1.0f}));
-            arda::FArdaRHIGraphicsState state =
-                MakeCompositeState(acquiredFramebuffer, width, height);
-            state.mBindings = c.CreateBindingSets(*mCompositeShader);
-            state.mVertexBuffers.push_back({
-                arda::FArdaRHIBufferRef(c.GetBuffer(p.mVertices.mBuffer)), 0, 0});
-            state.mIndexBuffer.Reset(c.GetBuffer(p.mIndices.mBuffer));
-            state.mIndexFormat = arda::EArdaRHIFormat::R32UInt;
-            c.ReportStatus(
-                mPSOCache-&gt;SetGraphicsPipelineState(
-                    c.mUnsafeRawCommandList, mCompositePSO, eastl::move(state)));
-            if (c.GetStatus())
-                c.mUnsafeRawCommandList.DrawIndexed({indexCount});
-        });
+            for (uint64_t V : {H.mGraph, uint64_t(H.mIndex), H.mGeneration})
+                Key.append(reinterpret_cast&lt;const char*&gt;(&amp;V), sizeof(V));
+        }
+        for (uint32_t V : {P.mWidth, P.mHeight, P.mChannel, P.mThreshold})
+            Key.append(reinterpret_cast&lt;const char*&gt;(&amp;V), sizeof(V));
+        return Key;
+    }
+    static FArdaRHIStatus Validate(const FParameters&amp; P)
+    {
+        if (!P.mWidth || !P.mHeight || P.mChannel &gt; 2 || P.mThreshold &gt; 255 ||
+            P.mSource == P.mOutput)
+            return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+                                        &quot;Invalid radix-sort inputs.&quot;);
+        return {};
+    }
+    static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FState&gt;&gt; Prepare(FArdaRHIDeviceRef Device)
+    {
+        if (!Device)
+            return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+                                            &quot;CUDA preparation requires a device.&quot;)};
+        auto State = eastl::make_shared&lt;FState&gt;(Device);
+        if (auto S = State-&gt;mOperand.GetOperandSupport(); !S) return {{}, S};
+        return {eastl::move(State), {}};
+    }
+    static FArdaDependencyNodeDesc Describe(const FParameters&amp; P, const FState&amp;)
+    {
+        FArdaDependencyNodeDesc D;
+        D.mAccesses = {
+            {P.mSource, EArdaDependencyAccess::Read, EArdaRHIResourceState::UnorderedAccess},
+            {P.mOutput, EArdaDependencyAccess::Write, EArdaRHIResourceState::UnorderedAccess}};
+        return D;
+    }
+    static FArdaRHIStatus PrepareCuda(FArdaDependencyExecutionContext&amp; C,
+        const FParameters&amp; P, const FState&amp; State, FInstanceState&amp;, FArdaCudaSequence&amp; Sequence)
+    {
+        FArdaPixelSortParameters Host;
+        Host.mInput.mTexture = C.GetTexture(P.mSource);
+        Host.mOutput.mTexture = C.GetTexture(P.mOutput);
+        Host.mWidth = P.mWidth;
+        Host.mHeight = P.mHeight;
+        Host.mChannel = P.mChannel;
+        Host.mThreshold = P.mThreshold;
+        return Sequence.Add(State.mOperand, Host);
+    }
+};
 
-    backBuffer-&gt;SetFinalState(arda::EArdaRHIResourceState::Present);
-    swapChain.PrepareSubmit();
-    const FARDGExecutionResult&amp; submitted = graph.Execute();
-    if (!submitted.mStatus)
-        return Fail(submitted.mStatus.mMessage);
-    if (submitted.mSubmittedCommandListCount == 0)
-        return Fail("Frame graph submitted no command lists.");
-    if (!swapChain.Present())
-        return Fail(swapChain.GetError());
-    return true;
-}</code></pre>
-          <p>The declared chain is copy upload → compute UAV write → optional BLAS/TLAS build and RT UAV write → raster SRV read → back-buffer render-target write → final <code>Present</code>. The shared lighting texture produces the compute/RT-to-raster hazards; the AS declarations produce build/read transitions; the imported back-buffer write roots the visible chain.</p>
-          <p>Check <code>submitted.mStatus</code> before presentation. In these frame recipes, <code>Fail</code> is an application recovery boundary: it stops frame reuse, waits for whole-device completion or handles device loss, and only then releases application-owned frame state. This covers partial submission and the separate uniform upload. Ordinary recording callback failures prevent graph command-list submission. A <code>RecordAtSubmit</code> callback failure, or a later upload, queue-wait, or submission failure, can leave earlier work in flight. All execution failures prevent extraction publication. Repair the presentation path before another frame; skipping presentation does not cancel submitted GPU work.</p>
-          <figure>
-            <img src="Assets/rdg-hazard-edges.svg" alt="Resource reads and writes derive producer and synchronization edges, which keep observable producers live and order hazards.">
-            <figcaption>Callbacks do not create graph edges. Frozen parameter declarations do. A missing RT input or output declaration can therefore produce both a transition bug and accidental culling.</figcaption>
-          </figure>
-        </section>
+FArdaRHIStatus RegisterTutorialCudaLibrary()
+{
+    return FArdaTutorialSortNode::Register();
+}
 
-        <section id="queues">
-          <h2>Queue legality and fallback</h2>
-          <p><a href="api-reference.html#api-arda-rdg-eardgpassflags-6384e9b1"><code>EARDGPassFlags</code></a> expresses a request constrained by capabilities and states:</p>
-          <ul>
-            <li><code>Raster</code> is graphics work.</li>
-            <li><code>Copy</code> uses the copy queue only when available and all declarations are copy-compatible; otherwise it falls back to graphics.</li>
-            <li><code>Compute</code> without <code>AsyncCompute</code> uses graphics-capable compute.</li>
-            <li><code>Compute | AsyncCompute</code> requests the compute queue, but falls back to graphics if the queue is unavailable, immediate mode is active, or a state is incompatible.</li>
-            <li>RT generic passes should use <code>Compute</code>. Request <code>AsyncCompute</code> only after confirming the backend supports every RT command on that queue; capability bits for RT features are not, by themselves, a promise that a distinct compute queue is a legal RT execution queue.</li>
-          </ul>
-          <p><strong>Fallback means queue fallback, not feature emulation.</strong> ARDG can move eligible copy/compute work to graphics. It cannot emulate hardware ray tracing. The application must omit RT passes and retain a raster/compute result when RT capabilities are absent.</p>
-          <figure>
-            <img src="Assets/rdg-record-submit-timeline.svg" alt="Independent passes may record in parallel, but execution submits in stable order and inserts required cross-queue waits.">
-            <figcaption>Recording may be parallel, submission remains deterministic, and compiled cross-queue dependencies become waits. <code>Execute()</code> reports submission, not completion.</figcaption>
-          </figure>
-        </section>
+TArdaRHIResult&lt;FArdaGraphNodeHandle&gt; AttachTutorialSort(
+    FArdaDependencyGraph&amp; Graph, FArdaTutorialSortParameters Parameters)
+{
+    return Graph.AttachOrFind&lt;FArdaTutorialSortNode&gt;(&quot;tutorial-sort&quot;, Parameters);
+}
+} // namespace arda
+</code></pre></details>
+<p>Call <code>RegisterTutorialCudaLibrary()</code> only when explicit discovery is useful. During an edit, pass initialized/imported or produced source and distinct output handles to <code>AttachTutorialSort</code>. Then add a consumer or mark the output, end the edit and submit. This version freezes channel and threshold in its canonical key; changing them requires replacement during an edit, including reattaching consumers removed with the old producer. It intentionally has no native <code>Record</code> hook. An adapter using cuBLAS/cuDNN follows the same CUDA hook: construct a supported external-call operand in its private state, declare every resource and workspace, and append it to the supplied sequence. <a href="../ArdaBackend/CUDA-External-Calls.md">External-call operands</a> documents library handle/stream ownership and opt-in capture; registration cannot infer hidden library accesses.</p>
+<p>Checkpoint: registering this class twice should preserve its definition; attaching the same name and parameters twice should preserve its instance without preparing it again. Registering a different class or revision under the same name fails. Use <code>Node::GetMetadata().mName</code> with <a href="api-reference.html#api-arda-fardanoderegistry-find-b3571138">registry lookup</a> rather than repeating strings. If a tool uses the <a href="api-reference.html#api-arda-fardadependencygraph-attachorfind-5ccb9fb8">named-definition attachment</a> path, it must explicitly register the definition first and pass its public parameter type. A frozen definition name is not a device identifier, and no renderer-side shader/layout initialization is required.</p>
+</section>
+<section id="frame-resources"><h2>Cache per swap-chain image</h2><p>After <code>AcquireFrame()</code>, find the graph for that color texture. On first use, begin an edit, import color, create depth and intermediates, attach nodes and end the edit. Compile only after that image has been acquired: ArdaInductor snapshots its current uniform entry state, which may differ from the creation descriptor. Replay on later frames with the same entry state and graphics-queue ownership. Release caches before <code>Resize()</code> so old backbuffers can be released.</p></section>
+<section id="parameters"><h2>Dynamic input contract</h2><p>Terrain retains a CPU camera/time object and updates it before synchronous execution. Only upload callbacks read it; those bytes do not change dependencies, shapes or pipelines. Arbitrary pointers are not deep-copied. Concurrent submissions require separate snapshots or explicit synchronization.</p></section>
+<section id="integrated-frame"><h2>Terrain operation sequence</h2><p>Each operation has its own typed parameters and registered node: settings upload, settings copy, camera upload, heightmap generation, erosion, triangulation, drawing, and overlay composition. Generation writes a raw heightmap; erosion reads it and writes a separate eroded value. Triangulation produces vertex/index values. Drawing consumes geometry, heightmap and camera, writes scene color, and the overlay samples that color to produce the back buffer. The renderer attaches consumers before producers; <code>EndGraphEdit()</code> invokes ArdaInductor to resolve resource edges, transitions, independent pipelines, queues and intermediate storage. Every dispatch or draw is visible to the compiler. Separate logical outputs preserve the one-writer rule; their transient textures participate in memory planning and can require more storage than a combined in-place operation. Two separate first-frame readback nodes validate geometry, then are removed in an edit. Only dynamic CPU input values change on ordinary frames; the compiled graph is reused.</p><p>Inside an open edit with the three resources already declared, composition is ordinary typed operation attachment:</p><pre><code>auto Generate = Graph.AttachOrFind&lt;FArdaTerrainGenerateNode&gt;(
+    "Generate", {Settings, RawHeightmap});
+if (!Generate) return Generate.mStatus;
+auto Erode = Graph.AttachOrFind&lt;FArdaTerrainErodeNode&gt;(
+    "Erode", {RawHeightmap, Heightmap});
+if (!Erode) return Erode.mStatus;</code></pre><p>The renderer then checks <code>EndGraphEdit()</code> and submits the graph. Erode may be attached before Generate: its read of <code>RawHeightmap</code> determines the edge. The <code>Source/ArdaTests/Examples/ARDGExample/Private/ArdaTerrainRenderer.cpp</code> renderer includes resource declarations and error handling. Attachment outside an edit returns <code>InvalidState</code> before node setup. A setup failure leaves the edit open; repair the cause and retry or cancel the edit.</p><details><summary>Complete terrain compute composition with resource declarations</summary><p>Compile this function in the terrain example target, which links the three node implementations and configures their shader source mapping. Pass an initialized graphics-capable device. This small graph generates and erodes three heightmaps without a window or camera; it marks the final value as output to retain the compute chain. It owns and releases its resources when the function returns. In a renderer, keep the graph and output handle as members for further consumers and later frames.</p><pre><code>#include &quot;Nodes/ArdaTerrainUploadSettingsNode.h&quot;
+#include &quot;Nodes/ArdaTerrainGenerateNode.h&quot;
+#include &quot;Nodes/ArdaTerrainErodeNode.h&quot;
 
-        <section id="submit">
-          <h2>PrepareSubmit → Execute → Present</h2>
-          <p><strong>DEMONSTRATED.</strong> The order is exact:</p>
-          <pre><code>swapChain.PrepareSubmit();
-const arda::FARDGExecutionResult&amp; result = graph.Execute();
-if (!result.mStatus)
-    return Fail(result.mStatus.mMessage);
-if (!swapChain.Present())
-    return Fail(swapChain.GetError());</code></pre>
-          <ol>
-            <li><a href="../ArdaBackend/api-reference.html#api-arda-backend-iardaswapchain-preparesubmit-a7c52b53"><code>PrepareSubmit()</code></a> makes the acquired frame ready for the application's submission path.</li>
-            <li><a href="api-reference.html#api-arda-rdg-fardgbuilder-execute-462d7837"><code>Execute()</code></a> compiles if needed, materializes, records, inserts waits, submits, and publishes extractions.</li>
-            <li><a href="../ArdaBackend/api-reference.html#api-arda-backend-iardaswapchain-present-84764540"><code>Present()</code></a> presents the acquired image after graph submission.</li>
-          </ol>
-          <p>Successful execution does not mean GPU completion. Preserve the last submitted instances in <a href="api-reference.html#api-arda-rdg-fardgexecutionresult-55e456b3"><code>FARDGExecutionResult</code></a> for frame-resource retirement, or use <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-waitforidle-d34034da"><code>WaitForIdle()</code></a> only at conservative boundaries such as one-time upload completion and shutdown.</p>
-        </section>
+arda::FArdaRHIStatus RunTerrainCompute(arda::FArdaRHIDeviceRef Device)
+{
+    using namespace arda;
+    FArdaDependencyGraph Graph(Device);
+    if (auto S = Graph.BeginGraphEdit(); !S) return S;
 
-        <section id="failures">
-          <h2>Failure handling and debugging</h2>
-          <dl>
-            <dt>Acquire or present returns false</dt>
-            <dd><strong>Cause:</strong> presentation/surface/resize failure. <strong>Action:</strong> read <code>swapChain.GetError()</code>, stop the frame, and repair or recreate the presentation path before building another graph.</dd>
-            <dt>Backend, shader, pipeline, framebuffer, copy, build, state-bind, or dispatch status fails</dt>
-            <dd><strong>Cause:</strong> unsupported feature, invalid descriptor, incompatible state/layout, or backend error. <strong>Action:</strong> return callback status or call <code>context.ReportStatus</code>, stop draw/dispatch after failed setup, and inspect the execution result status before presentation. Ordinary recording callback failures prevent graph submission. <code>RecordAtSubmit</code> callback failures and later submission failures can leave prior work in flight; retain submitted instances until completion.</dd>
-            <dt>Fatal check during compile</dt>
-            <dd><strong>Cause:</strong> read before produce, <code>Unknown</code> direct state, conflicting same-pass access, illegal queue state, foreign logical pointer, or mutation after building. <strong>Action:</strong> fix declarations and create a fresh builder.</dd>
-            <dt>Fatal check from a context getter</dt>
-            <dd><strong>Cause:</strong> callback requested a resource or exact view absent from its frozen parameters. <strong>Action:</strong> add the access to the parameter struct and resolve it through the matching frozen member.</dd>
-            <dt>RT path fails while fallback works</dt>
-            <dd><strong>Cause:</strong> incomplete capability gate, malformed shader exports/SBT, geometry descriptor mismatch, hidden captured resource, or unsupported queue. <strong>Action:</strong> force graphics-pipeline execution, disable parallel recording, validate direct Backend RT calls independently, then reintroduce graph transitions.</dd>
-            <dt>Pass never records</dt>
-            <dd><strong>Cause:</strong> culling found no path to an external write, extraction, or deliberate <code>NeverCull</code> side effect. <strong>Action:</strong> use <a href="api-reference.html#api-arda-rdg-fardgbuilder-dumpgraph-c392d068"><code>DumpGraph()</code></a> and model the real output; do not use <code>NeverCull</code> merely to hide a missing dependency.</dd>
-            <dt>Extracted object exists but CPU data is stale</dt>
-            <dd><strong>Cause:</strong> submission was mistaken for completion. <strong>Action:</strong> wait on the relevant submitted queue instance or use device idle at a deliberately conservative boundary.</dd>
-          </dl>
-          <p>Start integration with Backend validation enabled. Use <a href="debugging.html">ARDG debug options</a>: immediate mode for serial execution, conservative barriers to expose ordering assumptions, extended lifetimes for premature-release suspicion, and first-write clobbering for uninitialized-read diagnosis. Call <a href="api-reference.html#api-arda-rdg-fardgbuilder-compile-97614587"><code>Compile()</code></a> and <code>DumpGraph()</code> before execution when you need a deterministic plan report.</p>
-        </section>
+    FArdaRHIBufferDesc Buffer;
+    Buffer.mByteSize = sizeof(FArdaTerrainSettings);
+    Buffer.mStructureStride = sizeof(FArdaTerrainSettings);
+    Buffer.mUsage = EArdaRHIBufferUsage::Structured |
+        EArdaRHIBufferUsage::ShaderResource;
+    auto Settings = Graph.CreateBuffer(&quot;settings&quot;, Buffer);
+    if (!Settings) return Settings.mStatus;
 
-        <section id="cleanup">
-          <h2>Cleanup and lifetime order</h2>
-          <h3>Every frame</h3>
-          <ol>
-            <li>Keep extraction destination variables alive through <code>Execute()</code>.</li>
-            <li>Copy required submitted queue instances and extracted RHI references into durable frame state.</li>
-            <li>Let the builder die after submission; never retain its logical pointers, views, parameter pointers, handles, compile result, or blackboard references.</li>
-            <li>Retire per-frame CPU and external resources only after their submitted GPU work completes.</li>
-          </ol>
-          <h3>Resize</h3>
-          <ol>
-            <li>Finish or safely retire work touching old swap-chain images.</li>
-            <li>Call swap-chain resize outside a live graph.</li>
-            <li>Recreate persistent framebuffer-size-dependent resources and pipeline state if their compatibility descriptors changed.</li>
-          </ol>
-          <h3>Shutdown</h3>
-          <ol>
-            <li>Stop producing frames and wait for swap-chain/device idle.</li>
-            <li>Destroy builders and per-frame state.</li>
-            <li>Release RT SBT/pipeline/AS, raster and compute PSOs, binding sets, shaders, buffers, textures, shader map, and in-memory pipeline cache.</li>
-            <li>Destroy the swap chain and window integration objects.</li>
-            <li>Call <a href="../ArdaBackend/api-reference.html#api-arda-backend-shutdownbackend-f4d11995"><code>ShutdownBackend()</code></a> while the process context still owns the device so dirty D3D12/Vulkan pipeline data is atomically flushed and persistence is disabled; then release any retained device reference.</li>
-          </ol>
-        </section>
+    FArdaRHITextureDesc Texture;
+    Texture.mWidth = ArdaTerrainHeightmapWidth;
+    Texture.mHeight = ArdaTerrainHeightmapHeight;
+    Texture.mFormat = EArdaRHIFormat::R32Float;
+    Texture.mUsage = EArdaRHITextureUsage::ShaderResource |
+        EArdaRHITextureUsage::UnorderedAccess;
+    auto Raw = Graph.CreateTexture(&quot;raw heightmap&quot;, Texture);
+    if (!Raw) return Raw.mStatus;
+    auto Heightmap = Graph.CreateTexture(&quot;eroded heightmap&quot;, Texture);
+    if (!Heightmap) return Heightmap.mStatus;
 
-        <section id="checklists">
-          <h2>Curated common API-path checklists</h2>
-          <p>These are task paths, not an API dump. Every link opens the canonical stable entry.</p>
+    // Deliberately attach the consumer before its producers.
+    auto Erode = Graph.AttachOrFind&lt;FArdaTerrainErodeNode&gt;(
+        &quot;Erode&quot;, {Raw.mValue, Heightmap.mValue});
+    if (!Erode) return Erode.mStatus;
+    auto Generate = Graph.AttachOrFind&lt;FArdaTerrainGenerateNode&gt;(
+        &quot;Generate&quot;, {Settings.mValue, Raw.mValue});
+    if (!Generate) return Generate.mStatus;
+    auto Inputs = eastl::make_shared&lt;FArdaTerrainFrameInputs&gt;();
+    auto Upload = Graph.AttachOrFind&lt;FArdaTerrainUploadSettingsNode&gt;(
+        &quot;Upload settings&quot;, {Settings.mValue, Inputs});
+    if (!Upload) return Upload.mStatus;
+    if (auto S = Graph.MarkOutput(Heightmap.mValue); !S) return S;
+    if (auto S = Graph.EndGraphEdit(); !S) return S;
 
-          <h3>Start and present one graph frame</h3>
-          <ol>
-            <li><a href="../ArdaBackend/api-reference.html#api-arda-backend-initializebackendforpresentation-57fda7b3"><code>InitializeBackendForPresentation</code></a></li>
-            <li><a href="../ArdaBackend/api-reference.html#api-arda-backend-getdevicecontext-1ba97e9b"><code>GetDeviceContext</code></a> → <a href="api-reference.html#api-arda-rdg-makerendergraphcontext-ddc93cbb"><code>MakeRenderGraphContext</code></a></li>
-            <li><a href="../ArdaBackend/api-reference.html#api-arda-backend-iardaswapchain-acquireframe-d830b77f"><code>AcquireFrame</code></a> → <a href="api-reference.html#api-arda-rdg-fardgbuilder-registerexternaltexture-4853552d"><code>RegisterExternalTexture</code></a></li>
-            <li><a href="../ArdaBackend/api-reference.html#api-arda-backend-iardaswapchain-preparesubmit-a7c52b53"><code>PrepareSubmit</code></a> → <a href="api-reference.html#api-arda-rdg-fardgbuilder-execute-462d7837"><code>Execute</code></a> → <a href="../ArdaBackend/api-reference.html#api-arda-backend-iardaswapchain-present-84764540"><code>Present</code></a></li>
-          </ol>
-
-          <h3>Create, view, use, and retain a resource</h3>
-          <ol>
-            <li><a href="api-reference.html#api-arda-rdg-fardgbuilder-createtexture-1c683c9b"><code>CreateTexture</code></a> or <a href="api-reference.html#api-arda-rdg-fardgbuilder-createbuffer-3391cbe2"><code>CreateBuffer</code></a></li>
-            <li><a href="api-reference.html#api-arda-rdg-fardgtextureviewdesc-44408d5b"><code>FARDGTextureViewDesc</code></a> / <a href="api-reference.html#api-arda-rdg-fardgbufferviewdesc-bd892a43"><code>FARDGBufferViewDesc</code></a></li>
-            <li><a href="api-reference.html#api-arda-rdg-ardg-texture-srv-10c53a6c"><code>ARDG_TEXTURE_SRV</code></a>, <a href="api-reference.html#api-arda-rdg-ardg-texture-uav-1b1072bb"><code>ARDG_TEXTURE_UAV</code></a>, <a href="api-reference.html#api-arda-rdg-ardg-buffer-srv-eae3ccce"><code>ARDG_BUFFER_SRV</code></a>, or <a href="api-reference.html#api-arda-rdg-ardg-buffer-uav-63c57fd9"><code>ARDG_BUFFER_UAV</code></a></li>
-            <li><a href="api-reference.html#api-arda-rdg-fardgpassexecutioncontext-createbindingsets-28ccb2b7"><code>CreateBindingSets</code></a></li>
-            <li><a href="api-reference.html#api-arda-rdg-fardgbuilder-queuetextureextraction-0f2bf6f0"><code>QueueTextureExtraction</code></a> or <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuebufferextraction-54e67cf9"><code>QueueBufferExtraction</code></a></li>
-          </ol>
-
-          <h3>Compute and raster</h3>
-          <ol>
-            <li><a href="api-reference.html#api-arda-rdg-fardgbuilder-adddispatchpass-4e159d83"><code>AddDispatchPass</code></a> → <a href="../ArdaBackend/api-reference.html#api-arda-backend-fardapipelinestatecache-setcomputepipelinestate-5e0a55bc"><code>SetComputePipelineState</code></a> → automatic dispatch</li>
-            <li><a href="api-reference.html#api-arda-rdg-ardg-render-target-binding-slots-04c99387"><code>ARDG_RENDER_TARGET_BINDING_SLOTS</code></a> → <a href="api-reference.html#api-arda-rdg-fardgbuilder-addpass-eb5f83be"><code>AddPass</code></a> with <code>Raster</code></li>
-            <li><a href="../ArdaBackend/api-reference.html#api-arda-backend-fardapipelinestatecache-setgraphicspipelinestate-259a2286"><code>SetGraphicsPipelineState</code></a> → <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-draw-472d77cb"><code>Draw</code></a> / <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-drawindexed-62dcf937"><code>DrawIndexed</code></a></li>
-          </ol>
-
-          <h3>Capability-gated ray tracing</h3>
-          <ol>
-            <li><a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-getcapabilities-0ed4a202"><code>GetCapabilities</code></a> → check <a href="../ArdaBackend/api-reference.html#api-arda-fardarhiraytracingcapabilities-mbaccelerationstructures"><code>mRayTracing.mbAccelerationStructures</code></a> and <a href="../ArdaBackend/api-reference.html#api-arda-fardarhiraytracingcapabilities-mbpipelineshaders"><code>mRayTracing.mbPipelineShaders</code></a></li>
-            <li><a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createaccelstruct-fed6b987"><code>CreateAccelStruct</code></a> → <a href="api-reference.html#api-arda-rdg-fardgbuilder-registerexternalaccelstruct-96cf924d"><code>RegisterExternalAccelStruct</code></a></li>
-            <li><a href="api-reference.html#api-arda-rdg-ardg-accel-struct-access-5d3edb29"><code>ARDG_ACCEL_STRUCT_ACCESS</code></a> plus buffer <code>AccelStructBuildInput</code> declarations</li>
-            <li>generic Compute <a href="api-reference.html#api-arda-rdg-fardgbuilder-addpass-eb5f83be"><code>AddPass</code></a> → validated context getters → <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-buildbottomlevelaccelstruct-ec03355a"><code>BuildBottomLevelAccelStruct</code></a> / <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-buildtoplevelaccelstruct-65604af5"><code>BuildTopLevelAccelStruct</code></a></li>
-            <li><a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createraytracingpipeline-0e50b396"><code>CreateRayTracingPipeline</code></a> → <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhidevice-createshadertable-eb4966a3"><code>CreateShaderTable</code></a> → <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-setraytracingstate-ed9e7a1c"><code>SetRayTracingState</code></a> → <a href="../ArdaBackend/api-reference.html#api-arda-rhi-iardarhicommandlist-dispatchrays-0c6f40b2"><code>DispatchRays</code></a></li>
-          </ol>
-        </section>
-
-        <section id="summary">
-          <h2>Summary and next steps</h2>
-          <ul>
-            <li>Keep the renderer persistent and each graph disposable: one builder, one frame, one execution.</li>
-            <li>ARDG parameter metadata declares scheduling and state; Backend shader metadata declares descriptor bindings.</li>
-            <li>Use automatic dispatch for ordinary compute, explicit copy-compatible states for copy, and attachment slots plus full graphics state for raster.</li>
-            <li>RT is an explicit escape-hatch integration: capability gate it, import acceleration structures, declare every AS and buffer state, use validated context getters, and issue direct RHI commands from generic Compute passes.</li>
-            <li>Specialized queues can fall back to graphics; unsupported hardware RT must fall back to another rendering algorithm.</li>
-            <li>Prepare the swap chain before graph execution, present after submission, and synchronize separately before CPU reuse or destruction.</li>
-          </ul>
-
-          <h3>Reader checkpoints</h3>
-          <ol>
-            <li>Why does an RT geometry buffer need an ARDG access declaration even when a geometry descriptor already holds an RHI reference?</li>
-            <li>Which part of <code>AddDispatchPass</code> records the dispatch call?</li>
-            <li>Why can an <code>AsyncCompute</code> request execute on graphics?</li>
-            <li>What observable output keeps the integrated frame's producer chain live?</li>
-            <li>What does a successful <code>Execute()</code> prove, and what does it not prove?</li>
-          </ol>
-
-          <h3>Next steps</h3>
-          <ul>
-            <li>Build and run <code>ARDGExample --backend vulkan --frames 1 --hidden</code> and, on Windows, repeat with D3D12.</li>
-            <li>Read <a href="passes.html">Passes and parameter declarations</a> for binding validation and <a href="execution.html">Execution</a> for recording/submission behavior.</li>
-            <li>Use <a href="debugging.html">Debugging</a> while adding your first pass, then inspect <code>DumpGraph()</code>.</li>
-            <li>Prototype RT first through direct Backend tests, then connect it to ARDG declarations exactly as labeled in this guide.</li>
-          </ul>
-        </section>
-
-        <nav class="page-nav" aria-label="Page navigation">
-          <a rel="prev" href="getting-started.html">← Previous: Getting started</a>
-          <a rel="next" href="architecture.html">Next: Architecture →</a>
-        </nav>
-      </article>
+    for (uint32_t Frame = 0; Frame != 3; ++Frame)
+    {
+        Inputs-&gt;mSettings.mTime = float(Frame) / 60.f;
+        auto Run = Graph.Execute();
+        if (!Run.mStatus) return Run.mStatus;
+    }
+    return {};
+}</code></pre><p>The upload writes a device buffer through its node callback. Compilation orders upload, generate and erode from resource accesses. Each successful synchronous execution finishes before the next change to the retained input object. The full renderer adds the geometry, camera, draw, overlay and diagnostic readback branches shown below.</p></details><figure><img src="Assets/rdg-terrain-example.svg" alt="The terrain graph gives each heightmap and color value one producer." loading="lazy"><figcaption>The terrain graph gives each heightmap and color value one producer.</figcaption></figure></section>
+<section id="submit"><h2>Submit and present</h2><p>Call <code>PrepareSubmit()</code>, execute the cached graph, check status and present. <code>Execute()</code> waits for this frame. <code>Submit()</code> and tickets allow overlap when presentation and input lifetimes permit it. Shared imports and persistent storage conservatively order frames.</p></section>
+<section id="ray-tracing"><h2>Other pipeline families</h2><p>Meshlet, ray-tracing and work-graph requests use the same model where supported. Declare acceleration structures, scratch and indirect arguments. Cornell retains static BLAS/geometry and executes a full TLAS build in every frame graph, including frames after sampling ends. Ray reads depend on that TLAS write; replaying the graph repeats the build while reusing its storage. The <a href="ArdaInductor-Pipelines.md">pipeline guide</a> covers exports, hit groups and program settings.</p></section>
+<section id="summary"><h2>Chapter summary</h2><p>Compile after image acquisition, preserve the captured entry state during replay, and release backbuffer graph caches before resize.</p></section>
+<section id="source-guide"><h2>Source and API</h2><p>Read the <a href="ArdaInductor.md">developer guide</a>, <a href="ArdaInductor-Pipelines.md">pipeline guide</a>, <a href="api-reference.html">public API reference</a> and <a href="api-reference.html">graph declarations</a>.</p></section>
+<!-- Stable destinations for existing chapter links. -->
+<span id="checklists" aria-hidden="true"></span><span id="cleanup" aria-hidden="true"></span><span id="failures" aria-hidden="true"></span><span id="mental-model" aria-hidden="true"></span><span id="prerequisites" aria-hidden="true"></span><span id="queues" aria-hidden="true"></span><span id="recipes" aria-hidden="true"></span>
+</article>
     </main>
   </div>
-  <footer class="site-footer">
-    <p>ArdaRenderGraph documentation · Practical frame guide · <a href="api-reference.html">ARDG API</a> · <a href="../ArdaBackend/api-reference.html">Backend API</a></p>
-  </footer>
+  <footer class="site-footer"><p>ArdaRenderGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
 </body>
 </html>

@@ -3,12 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A textbook-depth guide to DAG compilation and the exact fourteen-stage FARDGCompiler pipeline.">
-  <title>Compilation and scheduling | ArdaRenderGraph | Ardashir</title>
+  <meta name="description" content="ArdaInductor scheduling algorithms: dependencies, greedy seeds, bounded and exhaustive search, queue assignment, memory aliasing and EMA-driven adaptation.">
+  <title>ArdaInductor scheduling algorithms | ArdaRenderGraph | Ardashir</title>
   <link rel="stylesheet" href="../assets/site.css">
   <script src="../assets/glossary-data.js" defer></script>
   <script src="../assets/arda-rdg-api.js" defer></script>
   <script src="../assets/site.js" defer></script>
+  <style>
+    .inductor-diagram { overflow-x: auto; }
+    .inductor-diagram img { min-width: 720px; }
+  </style>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -32,437 +36,263 @@
         <a href="quick-guide.html">Quick user's guide</a>
         <a href="architecture.html">Architecture</a>
         <a href="resources.html">Resources</a>
-        <a href="passes.html">Passes</a>
+        <a href="passes.html">Typed nodes</a>
         <a aria-current="page" href="compilation.html">Compilation</a>
         <a href="execution.html">Execution</a>
         <a href="debugging.html">Debugging</a>
         <a href="api-reference.html">API reference</a>
       </nav>
     </aside>
-    <main id="main-content">
+    <main id="main-content" tabindex="-1">
       <nav class="breadcrumbs" aria-label="Breadcrumb">
         <a href="../index.html">Docs</a> /
         <a href="index.html">ArdaRenderGraph</a> /
         Compilation
       </nav>
       <article>
-        <header class="page-header">
-          <p class="eyebrow">Graph theory made executable</p>
-          <h1>Compilation and scheduling</h1>
-          <p>Compilation turns a registered pass graph into a validated, deterministic execution plan. This chapter first derives the general compiler problem, then follows the current <code>FARDGCompiler</code> in its exact fourteen-stage source order. The result is device-independent metadata: no physical allocation, command recording, barrier command, or queue submission occurs here.</p>
-        </header>
+<header class="page-header">
+  <p class="eyebrow">Persistent dependency graphs</p>
+  <h1>How ArdaInductor compiles and schedules a graph</h1>
+  <p>Follow a typed graph from resource dependencies to queue assignment, reusable GPU storage and optional scheduling improvements across frames.</p>
+</header>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2>
+  <a href="#objectives">Prerequisites and model</a><a href="#entry">Compilation stages</a><a href="#dependencies">Dependencies and culling</a><a href="#seeds">Two greedy seeds</a><a href="#search">Search modes</a><a href="#cost">Cost and objectives</a><a href="#queues">Queue assignment</a><a href="#cuda">CUDA coalescing</a><a href="#lifetimes">Memory and aliasing</a><a href="#pipelines">Pipeline inference</a><a href="#adaptive">Adaptive search</a><a href="#execution">Native execution</a><a href="#worked-example">Worked example</a><a href="#configuration">Choosing settings</a><a href="#failure">Diagnostics and limits</a><a href="#summary">Checkpoints</a><a href="#further-reading">Source and reading</a>
+</nav>
+<span id="dag-fundamentals" aria-hidden="true"></span>
+<span id="design-derivation" aria-hidden="true"></span>
+<section id="objectives">
+  <h2>Prerequisites and the scheduling model</h2>
+  <p>After this chapter you should be able to predict which nodes remain live, explain every search algorithm in the compiler, calculate a candidate's modeled cost, and explain why an allocation or queue assignment is legal. Start with <a href="architecture.html">graph architecture</a>, <a href="resources.html">resource versions</a> and <a href="../glossary.html#term-dag" data-term="dag">directed acyclic graphs</a>.</p>
+  <p>A dependency edge <code>u → v</code> requires completion of the relevant work at <code>u</code> before <code>v</code> uses its result. A <a href="../glossary.html#term-topological-order" data-term="topological-order"><em>topological order</em></a> puts every producer before its consumers. Several orders can satisfy the same graph. A <em>ready node</em> has no unscheduled predecessors; choosing among ready nodes is where a <a href="../glossary.html#term-list-scheduling" data-term="list-scheduling">list scheduler</a> makes decisions.</p>
+  <p>ArdaInductor chooses a linear order, assigns each operation to a logical GPU queue, and plans storage and synchronization. The linear order guides submission; it does not require every GPU operation to execute serially. Different queues may overlap where dependencies and physical resource ownership permit. A queue's own operations execute in order. The <a href="../glossary.html#term-makespan" data-term="makespan"><em>makespan</em></a> is the finish time of the final operation across all queues.</p>
+  <p><a href="api-reference.html#api-arda-fardainductor-261ba619"><code>FArdaInductor</code></a> compiles this graph structure and its execution plan. Registered node implementations supply their shaders, kernels, external CUDA calls and recording callbacks. Compilation can group CUDA nodes into one sequence and reuse a CUDA executable graph; kernel or library internals remain the node implementation's responsibility.</p>
+</section>
+<span id="pipeline" aria-hidden="true"></span>
+<span id="products" aria-hidden="true"></span>
+<section id="entry">
+  <h2>What happens at an edit boundary</h2>
+  <p><a href="api-reference.html#api-arda-fardadependencygraph-begingraphedit-15a00fc5"><code>BeginGraphEdit()</code></a> retires this graph's outstanding work and saves a rollback snapshot. <a href="api-reference.html#api-arda-fardadependencygraph-endgraphedit-4491de18"><code>EndGraphEdit()</code></a> invokes compilation. The accepted program persists across calls to <a href="api-reference.html#api-arda-fardadependencygraph-submit-185d63bc"><code>Submit()</code></a> or <a href="api-reference.html#api-arda-fardadependencygraph-execute-88dbe0a4"><code>Execute()</code></a>.</p>
+  <ol>
+    <li>Rebuild semantic resource edges and restore explicit dependencies; validate handles, access ranges, producers and acyclicity.</li>
+    <li>Trace observable outputs backward to find live nodes. Validate the live pipeline requests and derive native resource requirements without allocating candidate pools.</li>
+    <li>Generate two greedy orders. Depending on search mode, improve the incumbent and enumerate more legal orders.</li>
+    <li>For each order, derive resource lifetimes, try the applicable allocation policies, add required alias dependencies, assign queues and CUDA batches, and calculate cost. Reject plans exceeding the resource budget.</li>
+    <li>Materialize the accepted allocation plan, resolve PSOs and framebuffers, and lower each frame slot to commands, barriers and dependencies. Publish the new revision only after preparation succeeds.</li>
+  </ol>
+  <p>Queue assignment and memory planning are coupled: a memory dependency can remove the independence that justified async compute. Candidate evaluation accounts for this by assigning queues after memory dependencies are known. Only the chosen edit-time plan allocates graph storage. See <a href="#source-ardainductor-cpp">FArdaInductor::Compile and FScheduleSearch</a> and <a href="#source-ardainductorruntime-cpp">FArdaInductorRuntime::Prepare</a>.</p>
+  <figure><img src="Assets/rdg-compile-pipeline.svg" alt="Semantic validation and liveness precede candidate search; only the accepted plan is materialized." loading="lazy"><figcaption>Compilation separates candidate evaluation from native allocation and publication.</figcaption></figure>
+</section>
+<span id="culling-lifetimes" aria-hidden="true"></span>
+<section id="dependencies">
+  <h2>Dependency construction, cycle detection and culling</h2>
+  <p>The generic <code>TArdaDirectedGraph</code> stores dense live node/edge lists, indexed incoming and outgoing adjacency, neighbor hash maps and an endpoint-pair edge index. Handles include graph identity and generation. Expected constant-time indexed lookup avoids scanning the whole graph to find an existing endpoint pair; removing a node visits its incident edges. Hash iteration order does not define execution order.</p>
+  <p><code>ResolveDependencies</code> records one writer per logical resource version. Another node writing that same version is an error, even when its range is disjoint. A reader depends on its writer regardless of attachment order. A producer may declare several writes: buffer intervals are sorted and overlapping or touching ranges are merged, then a binary search checks containment of each read. Texture coverage currently requires a single declared write range to contain the read range; it does not union several texture boxes. Unproduced reads require external storage, including a node's self-read of a version it writes.</p>
+  <p>Explicit edges describe effects not represented by resources. Duplicate resource and explicit edges share the topology's endpoint identity. Semantic validation runs before culling, so a malformed dead branch still fails compilation. The <a href="#source-ardagraph-h">generic topological sort</a> uses Kahn's algorithm: decrement successor indegrees as ready nodes leave a handle-ordered heap. Its documented complexity is <code>O(E + V log V)</code>. If nodes remain blocked, iterative depth-first search returns a closed cycle witness; a blocked downstream node need not itself be part of the cycle.</p>
+  <p><code>LiveNodes</code> starts from side-effect nodes and writers of marked outputs, persistent resources or imports. A backward stack traversal retains all their ancestors. Other nodes enter the culled list. Live nodes are sorted by instance name, providing stable tie-breaking for compiler heuristics; generic graph traversal separately breaks ties by handle. Renaming independent nodes can therefore change an otherwise tied schedule, while attaching them in another order does not choose their data dependencies.</p>
+  <p>Removal uses resource causality as well: removing a producer removes nodes that require its produced values. A pure ordering edge alone does not make its consumer require a deleted resource. See <a href="ArdaInductor.md#parameters-resource-versions-and-edits">edit and resource-version rules</a>.</p>
+</section>
+<section id="seeds">
+  <h2>Two deterministic greedy seeds</h2>
+  <p>Every compilation evaluates both seeds, including <a href="api-reference.html#api-arda-eardainductorsearchmode-greedy-777147ff"><code>Greedy</code></a> mode. Each uses Kahn-style list scheduling and considers only ready nodes. The seed heuristic proposes an order; the configured objective decides which complete plan wins. The memory seed can therefore win in Efficiency mode, or the critical-path seed in Memory mode.</p>
+  <h3>Critical-path rank with CUDA affinity</h3>
+  <p>Let <code>c(v)</code> be the node's relative cost. Executable nodes use their declared hint or a valid measured override; stage-only declarations and pure synchronization cost zero. A reverse-topological dynamic program over semantic edges computes each remaining <a href="../glossary.html#term-critical-path" data-term="critical-path">critical-path</a> cost:</p>
+  <pre><code>rank(v) = c(v) + max(rank(s) for each successor s)
+max(empty set) = 0
+score(v) = rank(v)
+if previous chosen IR node and v are both CUDA:
+    score(v) += 2 * mCudaHandoffCost</code></pre>
+  <p>The highest score wins, with lexicographic instance-name ties. Favoring an expensive remaining path can expose downstream work earlier. The CUDA bonus encourages a run to continue even when another ready path has a slightly higher rank. This bonus examines the immediately preceding IR node; an intervening pure declaration breaks the bonus even though it will not split the final CUDA batch.</p>
+  <h3>Memory-release score</h3>
+  <p>The second seed counts remaining users of each resource. For every nonpersistent, nonexternal resource used by a ready candidate, it subtracts native requirement bytes if this would be the first encountered user and adds those bytes if this is the final remaining user:</p>
+  <pre><code>score(v) = sum(bytes(r) * [v is the final remaining user of r])
+         - sum(bytes(r) * [r has not yet been encountered])</code></pre>
+  <p>A resource first and last used at this node contributes zero. Ties again use instance name. This is a local release heuristic: it does not include heap fragmentation, frame-count multiplication or exact future packing. For example, a node releasing 12 MiB and introducing 4 MiB scores +8 MiB; one introducing 8 MiB without releasing anything scores −8 MiB. The actual allocator still evaluates the completed order. Source: <a href="#source-ardainductor-cpp">FScheduleSearch::Initialize and Greedy</a>.</p>
+</section>
+<section id="search">
+  <h2>Greedy, bounded and exhaustive search</h2>
+  <p>An <a href="../glossary.html#term-incumbent" data-term="incumbent"><em>incumbent</em></a> is the best feasible complete plan found so far. Exact objective ties keep the earlier candidate. <a href="api-reference.html#api-arda-eardainductorsearchmode-cacfaa46"><code>EArdaInductorSearchMode</code></a> controls how much work follows the two initial seeds.</p>
+  <h3>Greedy: keep the better seed</h3>
+  <p>This mode evaluates the two seed orders and returns the better feasible plan. It performs no local improvement or enumeration. A failed seed search is not a proof that every legal order fails.</p>
+  <h3>Bounded: adjacent-swap hill climbing, then backtracking</h3>
+  <p>If a feasible seed exists, <code>ImproveIncumbent</code> tries up to four left-to-right adjacent-swap passes. It swaps adjacent independent nodes in the current incumbent, reevaluates the allocation and queue plan, and accepts improvements immediately. A direct edge forbids swapping the pair; for adjacent nodes of a legal topological order, a longer path cannot lie between them. A pass with no improvement ends this phase.</p>
+  <p>This phase starts state accounting at one and is limited to the first <code>floor(mMaxSearchStates / 4)</code> states. The remaining exploration uses iterative Kahn backtracking. At each depth, it tries every unused ready node in a fixed priority list, extends the order, adjusts indegrees, and later undoes those changes. The priority list is the incumbent order at entry, or instance-name order if no feasible seed exists. Complete orders invoke the allocator; prefix extensions consume the remaining state budget.</p>
+  <p>There is no partial-order memory pruning, cost lower bound, memoization or branch-and-bound in this implementation. A large search can revisit an order already evaluated by a seed or local move. The budget limits algorithmic states rather than milliseconds, and the two seed evaluations are outside that state count.</p>
+  <h3>Exhaustive: enumerate every semantic topological order</h3>
+  <p>This mode still evaluates both seeds, skips adjacent-swap improvement, and performs the same iterative backtracking without a state cap. It has no recursive depth cutoff. An edgeless graph with <code>V</code> nodes has <code>V!</code> orders; a long dependency chain has only one. For four independent nodes, the regression test observes 24 enumerated orders plus two seed evaluations and 65 prefix/root states.</p>
+  <p>Exhaustive mode covers all semantic orders under the implemented allocator policies and queue-assignment heuristic. It does not enumerate every queue assignment or possible heap packing. <a href="api-reference.html#api-arda-fardainductorcompileresult-mbsearchcomplete-877461e6"><code>mbSearchComplete</code></a> reports reaching the root after full enumeration; <a href="api-reference.html#api-arda-fardainductorcompileresult-mbsearchexhausted-a99fcf67"><code>mbSearchExhausted</code></a> reports a bounded cutoff. Greedy leaves both false. <a href="api-reference.html#api-arda-fardainductorcompileresult-mschedulesexamined-66d574c0"><code>mSchedulesExamined</code></a> counts evaluator calls, including repeated orders and failed allocation attempts; <a href="api-reference.html#api-arda-fardainductorcompileresult-msearchstatesexamined-be126527"><code>mSearchStatesExamined</code></a> counts the root, legal local candidates and DFS prefix extensions.</p>
+  <p>A feasible incumbent remains usable after exhaustion. If none was found, the error distinguishes a search-limit failure from failure after complete enumeration. Source and regression examples: <a href="#source-ardainductor-cpp">ImproveIncumbent and Explore</a>, <a href="#source-ardainductortests-cpp">search and determinism tests</a>.</p>
+</section>
+<span id="performance" aria-hidden="true"></span>
+<section id="cost">
+  <h2>Candidate cost and objective comparison</h2>
+  <p>Candidate evaluation first derives a feasible allocation and its extra dependencies, then assigns queues. It tracks each predecessor's finish and each logical queue's tail. For semantic and allocator-added predecessors together:</p>
+  <pre><code>ready(v)  = max(finish(p) for each predecessor p)
+finish(v) = max(ready(v), queueEnd(queue(v))) + c(v)
+queueEnd(queue(v)) = finish(v)</code></pre>
+  <p>A declaration takes <code>finish(v) = ready(v)</code> without advancing a queue. Let <code>H</code> count CUDA/non-CUDA switches between consecutive executable nodes, and <code>A</code> count texture alias-activation records. The final model is:</p>
+  <pre><code>T = max(queueEnd)
+  + H * mCudaHandoffCost
+  + 2 * A * mAliasSubmissionCost
 
-        <nav class="toc" aria-label="On this page">
-          <h2>On this page</h2>
-          <a href="#objectives">Objectives and prerequisites</a>
-          <a href="#dag-fundamentals">DAG fundamentals</a>
-          <a href="#design-derivation">Design derivation</a>
-          <a href="#pipeline">The exact fourteen stages</a>
-          <a href="#products">Exact compile products</a>
-          <a href="#culling-lifetimes">Culling and lifetimes</a>
-          <a href="#barriers">Barrier lowering</a>
-          <a href="#queues-groups">Queues, async metadata, and groups</a>
-          <a href="#worked-example">Worked multi-pass example</a>
-          <a href="#performance">Performance and scaling</a>
-          <a href="#alternatives">Alternatives and platforms</a>
-          <a href="#invariants">Invariants</a>
-          <a href="#failure-modes">Failure modes</a>
-          <a href="#summary">Summary and checkpoints</a>
-          <a href="#further-reading">Further reading</a>
-        </nav>
+Efficiency: minimize (T, accounted allocation bytes)
+Memory:     minimize (accounted allocation bytes, T)</code></pre>
+  <p>Comparison is lexicographic. <a href="api-reference.html#api-arda-fardainductorcompileresult-mpeaklivebytes-d48c9322"><code>mPeakLiveBytes</code></a> and <a href="api-reference.html#api-arda-fardainductorcompileresult-maliasedbytes-b956fdb0"><code>mAliasedBytes</code></a> are diagnostics, not objective terms. The hard cap filters candidates under either objective. The factor two charges image activation and retirement helpers. Buffer alias barriers have no separate additive charge. The CUDA switch count skips declarations and does not charge an initial or final boundary just because the order starts or ends with CUDA.</p>
+  <p><code>T</code> is in relative hint units. It approximates serial execution per logical queue and dependency-permitted overlap between queues. It omits CPU recording, bandwidth saturation, GPU occupancy/contention, ordinary barrier latency and detailed per-resource handoff costs. Different logical queues can also share a native engine. Use measurements to assess actual speedup; complete model search does not prove fastest hardware execution.</p>
+</section>
+<span id="queues-groups" aria-hidden="true"></span>
+<section id="queues">
+  <h2>Copy and async-compute assignment</h2>
+  <p><code>AssignQueues</code> initially places every node on Graphics. An enabled Copy queue receives Copy-kind nodes when the device supports the queue and GPU waits. Async Compute also requires its option, queue support and GPU waits. Device-independent compilation assumes planning availability; execution still requires a qualified native device.</p>
+  <p>Eligible compute nodes have Compute kind and do not access imported acceleration structures. The compiler scans the proposed order and grows each unvisited group forward through direct eligible Compute→Compute semantic edges. The source calls this group a <em>chain</em>, but it may branch and its members need not be contiguous. A global visited set assigns each eligible node to one group.</p>
+  <p>For a group, <code>Last</code> is its latest scheduled member and <code>Join</code> is the earliest scheduled direct noneligible successor, or the end of the order. The compiler sums costs of Graphics-kind nodes before <code>Join</code> that are unordered with every group member in both directions. That <a href="../glossary.html#term-reachability" data-term="reachability">reachability</a> check includes semantic and memory dependencies. Compute is selected only if:</p>
+  <pre><code>group member count >= mMinimumAsyncChain
+Join > Last
+independent graphics cost >= mMinimumAsyncSlack</code></pre>
+  <p>Defaults are four members and four cost units. Slack here is a heuristic opportunity for overlap, not a measured time window; independent graphics earlier in the order can count. The member threshold counts eligible IR nodes, including stage-only Compute declarations, although those declarations cost zero and record no GPU interval. Imported-AS users stay on Graphics because the current graph path does not provide cross-family AS ownership transfers.</p>
+  <p>Memory alias edges can make formerly independent graphics and compute ordered and cause the group to remain on Graphics. The compiler does not evaluate all possible queue placements. See <a href="#source-ardainductor-cpp">AssignQueues</a> and <a href="#source-ardainductorqueuegputests-cpp">native queue execution tests</a>.</p>
+</section>
+<section id="cuda">
+  <h2>CUDA coalescing and retained graph replay</h2>
+  <p>Current automatic assignment keeps CUDA-kind nodes on Graphics. The compiler scans the accepted order and groups runs of executable CUDA nodes. Pure synchronization and stage-only declarations are skipped; any executable non-CUDA node ends a batch. A direct edge between successive CUDA members is not required. Grouping preserves the chosen order: moving a node across graphics work requires a legal scheduling candidate earlier in compilation.</p>
+  <p>Lowering maps the batch to one command. Its callbacks append kernel or external-library operations, in order, to one <a href="../ArdaBackend/api-reference.html#api-arda-fardacudasequence-6787ff54"><code>FArdaCudaSequence</code></a> on the framework stream. Resource declarations are aggregated, so the sequence shares its graphics/CUDA ownership interval. Individual kernels remain distinct calls; per-node telemetry uses separate regions inside the sequence.</p>
+  <p>Each frame slot retains a CUDA executable cache. <a href="api-reference.html#api-arda-fardainductoroptions-mcudagraphmode-f1abf4fc"><code>mCudaGraphMode</code></a> selects disabled capture, preferred capture with fallback, or required capture. Qualified operation/address/parameter variants can replay an existing executable. Handoff waits and signals remain outside replay so frame fence values are fresh. External calls explicitly declare capture support and revision-sensitive hidden state. CiG launches are recorded at submission time; discarding an unsubmitted CiG launch evicts its executable so a later launch cannot depend on absent work. See the <a href="../ArdaBackend/CUDA-Sequences.md">sequence contract</a> and <a href="../ArdaBackend/CUDA-External-Calls.md">external calls</a>.</p>
+</section>
+<span id="invariants" aria-hidden="true"></span>
+<section id="lifetimes">
+  <h2>Lifetime planning, packing and serialization for reuse</h2>
+  <p>A proposed order gives each used logical resource a first-use and last-use position. The planner also retains actual user nodes: disjoint list intervals alone do not prove that different GPU queues have finished accessing overlapping physical bytes. <a href="../glossary.html#term-resource-aliasing" data-term="resource-aliasing">Aliasing</a> requires both compatible storage and a completion-order proof.</p>
+  <h3>Choose the permitted reuse policy</h3>
+  <p>Efficiency without a cap permits reuse only when existing semantic reachability proves prior users finish first. Memory mode permits extra dependencies to serialize reuse. Efficiency with a hard cap evaluates both policies for every order, so a loose cap can preserve overlap while a tighter cap can admit a smaller, more serialized pool.</p>
+  <p>To reuse storage, all relevant old users must precede the new first user. When serialization is permitted, the allocator adds the missing forward edges; these become <a href="api-reference.html#api-arda-fardainductorcompileresult-mmemorydependencies-1c7fd363"><code>mMemoryDependencies</code></a> and participate in queue selection and cost. They express GPU completion ordering, not CPU sleeps. Resources whose intervals overlap in the proposed order cannot share the same bytes under this policy.</p>
+  <figure class="inductor-diagram"><img src="Assets/inductor-alias-ordering.svg" alt="Sharing bytes across queues requires all prior users to finish before the new first user, which may reduce overlap." loading="lazy"><figcaption>Memory optimization can trade queue overlap for a smaller retained pool.</figcaption></figure>
+  <h3>Place resources in deterministic slots and heaps</h3>
+  <p>Requests are processed by first-use position with resource-identifier ties. Heap placement and committed-object pooling are distinct algorithms:</p>
+  <ol>
+    <li><strong>Placed resources: minimum heap growth.</strong> For each existing heap of the same resource kind with intersecting memory-type bits, try offset zero and aligned ends of existing placements. Check every overlapping previous placement for legal reuse. Round capacity to the required heap/resource alignment. Choose least capacity growth, then lowest offset, retaining earlier heap order on remaining ties. Create a heap only when no existing one admits a candidate. Intersect its memory-type mask with each admitted resource.</li>
+    <li><strong>Committed objects: first compatible slot.</strong> Scan non-heap slots in insertion order. Reuse the first slot whose latest occupant has equal native requirements, an equal normalized descriptor and an admissible lifetime. A larger buffer is not interchangeable merely because its capacity suffices. External wrappers of one physical identity share a slot only when descriptions agree.</li>
+  </ol>
+  <p>Placed logical values keep distinct native resource objects even when they share byte ranges. Eligible buffers of different sizes/usages and textures of different formats can alias. Buffer and texture heaps are separate, avoiding buffer/image granularity conflicts. Texture overlap requires exactly one first-use boundary per occupant. The compiler currently retains every actual old user, rather than minimizing that user frontier, and checks semantic reachability by iterative breadth-first traversal. This conservative proof can cost more than testing one last list position. The greedy packer does not explore every possible packing.</p>
+  <p>Imports and persistent/output allocations are retained separately. CUDA-interoperable, CPU-visible, MSAA and render/depth-target resources take committed paths rather than the general placed-heap path. Unsupported tiled/sparse storage and versioned buffers are rejected when used because their capacity is not modeled. <a href="#source-ardainductormemory-cpp">PlanArdaInductorMemory</a> contains the exact compatibility and placement predicates; the <a href="#source-ardainductormemorytests-cpp">allocator tests</a> cover their boundaries.</p>
+  <h3>Account retained capacity, then materialize once</h3>
+  <pre><code>accounted bytes = retained imports + persistent allocations
+                + retained adapter workspaces
+                + framesInFlight * transient pool capacity</code></pre>
+  <p>Native requirements include alignment and heap capacity, not only logical payload bytes. Imported allocations are deduplicated by retained allocation identity; retaining a small placed resource can retain its entire parent heap. Unused imports and previously retained persistent allocations still count. Adapter-owned retained workspace counts even if its node is culled; graph-owned transient scratch exists only for live nodes. Unknown raw-native capacity needs explicit metadata for a hard cap, and a device-independent graph cannot enforce that cap.</p>
+  <p>The budget describes this resource pool, which persists across frames. Driver/PSO/CUDA-graph internals, hidden library allocations and unrelated process storage are outside it. <a href="api-reference.html#api-arda-fardainductorcompileresult-mpeaklivebytes-d48c9322"><code>mPeakLiveBytes</code></a> describes ordinal logical liveness, not measured process VRAM. Descriptor-only requirement queries evaluate candidates without allocating graph VRAM. The accepted plan is materialized and actual requirements are checked. A successful bounded plan always satisfies its cap; failing to find one before exhaustion is not a universal impossibility proof.</p>
+  <p>Placed buffers activate with alias barriers before normal transitions. Overlapping placed images additionally receive Graphics activation and retirement commands: prior retirement precedes activation, activation precedes every user, and every user precedes retirement. Retirement restores Graphics/Common ownership. Inactive image aliases are excluded from the final epilogue so it cannot touch bytes already assigned to another image.</p>
+</section>
+<section id="pipelines">
+  <h2>Pipeline ancestry and stable cache keys</h2>
+  <p>Each live pipeline request walks its semantic ancestry, crossing ordinary intermediate nodes. A branch stops before an upstream consumer requesting the same pipeline family; that consumer owns its completed pipeline. The terminal's contributions and unfinished stage ancestry remain eligible. Explicit groups resolve parallel alternatives; an ungrouped contribution can be shared. Conflicting shaders for the same selected stage/export fail instead of choosing by attachment order.</p>
+  <p>The resolver canonicalizes compatible shaders, binding layouts, stage settings and fixed state for graphics, meshlet, compute, ray-tracing and work-graph requests. The key writer serializes explicit little-endian 64-bit fields and length-prefixed strings, then computes a nonzero FNV-1a64 hash. Content-derived stable keys exclude node identities, debug names and inference group/slot labels. Global layouts sort by register space and semantic bytes; equivalent layouts deduplicate, while conflicting overlapping visibility fails. Ray exports and hit groups sort by name, and work-graph shaders deduplicate and sort by stage/content identity. A node can request multiple named slots and receives the resolved PSOs before recording.</p>
+  <p>There are distinct cache layers: the in-memory RHI PSO cache compares complete descriptors, including shader/layout object references, while the native persistent cache uses its own content-derived identity. Equal ArdaInductor semantic keys across newly created equivalent objects alone do not guarantee the same in-memory PSO object. Repeated requests sharing those references can reuse it. The in-memory cache coalesces concurrent identical creation, performs native creation outside its mutex, removes failed entries and evicts least-recently-used completed entries per pipeline family. Those creation-time cache waits are separate from the optional telemetry collection path. The <a href="ArdaInductor-Pipelines.md">pipeline guide</a> explains exact group, layout, family and cache rules.</p>
+</section>
+<section id="adaptive">
+  <h2>EMA-driven scheduling across graph calls</h2>
+  <p><a href="api-reference.html#api-arda-fardainductoroptions-mbenablegputiming-63717cfe"><code>mbEnableGpuTiming</code></a> and <a href="api-reference.html#api-arda-fardainductoroptions-mbenableadaptivescheduling-adf8d7c3"><code>mbEnableAdaptiveScheduling</code></a> default to false. Automatic scheduling requires timing. Supported Graphics/Compute/Copy queues use timestamp queries; CUDA uses individual semantic-node event regions inside each batch. Collection polls completion before reading timestamps. Unresolved queries stay pending, and that frame slot can skip a new timing sample rather than waiting. See <a href="ArdaInductor.md#gpu-telemetry-and-background-scheduling">backend support, configuration and telemetry errors</a>.</p>
+  <h3>EMA and conversion back to hint units</h3>
+  <p>An <a href="../glossary.html#term-exponential-moving-average" data-term="exponential-moving-average">exponential moving average</a> weights newly collected timings while retaining information from earlier samples.</p>
+  <pre><code>first sample: EMA(i) = x(i)
+later sample: EMA(i) += alpha * (x(i) - EMA(i))
 
-        <section id="objectives">
-          <h2>Objectives and prerequisites</h2>
-          <p>By the end of this chapter, you should be able to:</p>
-          <ul>
-            <li>explain why a render graph is a <a class="term" data-term="dag" href="../glossary.html#term-dag">directed acyclic graph</a> and why ArdaRenderGraph does not run a separate topological sort;</li>
-            <li>predict which passes survive <a class="term" data-term="culling" href="../glossary.html#term-culling">culling</a>, including the different roles of data and synchronization-only edges;</li>
-            <li>derive inclusive resource lifetimes in compact execution-index space;</li>
-            <li>predict queue fallback, cross-queue dependencies, logical transitions, UAV ordering, and raster-group metadata; and</li>
-            <li>distinguish compilation metadata from the physical work deferred to execution.</li>
-          </ul>
-          <p>You should already understand a <a class="term" data-term="pass" href="../glossary.html#term-pass">pass</a>, a <a class="term" data-term="logical-resource" href="../glossary.html#term-logical-resource">logical resource</a>, a <a class="term" data-term="resource-state" href="../glossary.html#term-resource-state">resource state</a>, and basic read-after-write, write-after-read, and write-after-write hazards. The glossary entry for <a class="term" data-term="raw-war-waw-hazards" href="../glossary.html#term-raw-war-waw-hazards">RAW / WAR / WAW hazards</a> is the compact reference.</p>
-          <aside class="callout">
-            <h3>Public entry point</h3>
-            <p><a href="api-reference.html#api-arda-rdg-fardgbuilder-compile-97614587"><code>FARDGBuilder::Compile</code></a> performs one-time, device-independent compilation and returns builder-owned metadata. A later call returns the cached result. Calling <code>Execute</code> also compiles first when necessary.</p>
-          </aside>
-        </section>
+E = eligible existing nodes with finite positive per-node EMA
+measuredCost(i) = EMA(i) * sum(originalHint(j), j in E)
+                        / sum(EMA(j), j in E)</code></pre>
+  <p>The default alpha is 0.2. Samples update EMA in collection order, including late frame receipts; latest-frame fields remain tied to the highest collected sequence. Full node handles distinguish identity, and an epoch change rejects receipts from a cleared profile. Raw history is a bounded ring, returned sorted by sequence and handle.</p>
+  <p>Automatic requests require eight samples per included node by default; one eligible node is enough to start. A manual <a href="api-reference.html#api-arda-fardadependencygraph-optimizefromtimingprofile-0e73ad1e"><code>OptimizeFromTimingProfile()</code></a> request requires one. Unmeasured nodes keep their hints or earlier identity-matched overrides. Normalization preserves relative cost units, so the model's reported cost is not seconds. An override is valid only while both canonical parameters and definition identity match.</p>
+  <h3>Incremental insertion search on the accepted memory pool</h3>
+  <p>The current order with its current queues establishes the baseline under the sampled cost model. The worker also reevaluates its saved best order using automatic queue assignment. Search state retains incumbent, seed, best order and cursor, resetting when graph identity, compile revision or incumbent order changes.</p>
+  <p>For <code>N</code> nodes, each neighborhood contains <code>1 + N(N−1)</code> attempted orders: one critical-path-priority topological order followed by every distinct single-node remove/insert move. This is a broader move than the edit-time adjacent swap. The critical candidate uses semantic, memory and native alias edges, breaking equal ranks by incumbent order. It has no edit-time CUDA-affinity bonus.</p>
+  <p>Every attempt, including an illegal order rejected by validation, consumes candidate budget. A strictly cheaper order becomes the saved best. At the end of a neighborhood, best becomes the next seed; if the seed did not change, that iteration stops. Later iterations revisit the neighborhood under later timings. Cursor retention lets a small budget continue through candidates instead of repeatedly restarting. The default budget is 128 attempts per job; it does not bound CPU milliseconds.</p>
+  <p>Each candidate must retain the exact node set, frame count, native allocations, sizes, offsets and alias dependencies. Alias users cannot move ahead of their accepted first-user boundary. Lifetimes are recomputed and checked for shared committed slots and overlapping heap ranges. Queues and CUDA batches can change, but the worker cannot recover parallelism prohibited by fixed alias edges or allocate a different pool.</p>
+  <pre><code>gain = baselineCost - candidateCost
+accept only when gain > 0
+             and gain >= baselineCost * mAdaptiveSchedulingMinImprovement</code></pre>
+  <p>The default <a href="api-reference.html#api-arda-fardainductoroptions-madaptiveschedulingminimprovement-97377ecb"><code>mAdaptiveSchedulingMinImprovement</code></a> is 2%. This tests modeled improvement rather than benchmarking alternative GPU executions. A complete neighborhood is not a global optimum. Source: <a href="#source-ardainductoradaptiveschedule-cpp">TuneArdaInductorSchedule</a> and <a href="#source-ardainductor-cpp">EvaluateArdaInductorFixedSchedule</a>.</p>
+  <h3>Prepare on a worker, adopt at natural completion</h3>
+  <p>At most one job runs, normally no more often than every 30 submitted frames. It snapshots graph/profile inputs, searches on a CPU worker and prepares an improved command program using retained allocations, PSOs, framebuffers and compatible queries/caches. Candidate evaluation invokes no node execution callbacks and submits no speculative GPU work.</p>
+  <p>The main thread keeps using the current program. Adoption requires matching compile revision and timing epoch plus natural completion of all frame submissions, readbacks and pending telemetry. New ordinary samples do not invalidate an older snapshot. The swap rebinds the prepared program and advances compile revision without a semantic edit. Continuous GPU saturation can defer adoption; no GPU wait is added to force the swap. Explicit edits/destruction cancel and join CPU preparation before replacing storage. Instrumentation, polling and search have nonzero costs.</p>
+  <figure class="inductor-diagram"><img src="Assets/inductor-adaptive-loop.svg" alt="Submission continues the current program while a worker searches; an improved prepared program swaps only after existing frames naturally retire." loading="lazy"><figcaption>Background search preserves the accepted physical pool and leaves GPU submission on the current program until adoption is safe.</figcaption></figure>
+</section>
+<span id="barriers" aria-hidden="true"></span>
+<section id="execution">
+  <h2>Lowering, parallel recording and deterministic submission</h2>
+  <p>The runtime contracts dependencies through pure declarations to executable producers and maps all members of a CUDA batch to one command. Physical buffer/texture identity is deduplicated so logical values sharing one committed object also share its state history. An epilogue depends on all commands and restores the graph's entry state and Graphics ownership, except inactive image aliases.</p>
+  <p>Barrier lowering merges identical state requirements, combines compatible reads and rejects conflicting writes. Textures track mip × array slice × plane cells; buffers and acceleration structures track whole-object state. Physical transition analysis follows actual identity histories and adds ownership dependencies when the last queue differs. A producer releases to Common, and the consumer acquires and transitions to its required state. This can serialize cross-queue reads even when semantic resource ranges appear independent. The cost model above does not explicitly price every such physical transition.</p>
+  <p>CPU recording groups commands into dependency levels:</p>
+  <pre><code>level(v) = 1 + max(level(producer))
+source commands begin at the first level</code></pre>
+  <p>Eligible commands in one level record in bounded groups of asynchronous CPU jobs, each owning a separate command list and result slot. Serial commands follow within the level. Ordinary recording completes before native submission; CUDA is serial and records at submission time to preserve CiG ordering. CPU recording concurrency and GPU queue overlap are separate decisions.</p>
+  <p>Submission follows deterministic program order. For each consumer, dependency tokens are reduced to the maximum producer token per source queue. Cross-queue GPU waits enforce those dependencies; same-queue FIFO supplies ordering. The frame retains its accepted queue-tail tokens, including partial-submission recovery. Readback completions publish in compiled-pass order after successful retirement; unsubmitted callback destruction cancels its promise.</p>
+  <p>Frame slots cycle through independent transient pools. Recycling an occupied slot retains the existing frame-scoped CPU wait. Shared imports, persistent resources and retained outputs conservatively order successive frames across queues, including shared reads. <a href="api-reference.html#api-arda-fardadependencygraph-iscomplete-5f863ea4"><code>IsComplete()</code></a> polls, <a href="api-reference.html#api-arda-fardadependencygraph-wait-39ef12db"><code>Wait()</code></a> retires a ticket, and <a href="api-reference.html#api-arda-fardadependencygraph-execute-88dbe0a4"><code>Execute()</code></a> is synchronous Submit/Wait. These existing waits are distinct from the nonblocking telemetry/adoption path. Sources: <a href="#source-ardainductorcommandprogram-cpp">command and barrier lowering</a>, <a href="#source-ardainductorcommandexecutor-cpp">recording waves and queue submission</a>, <a href="execution.html">execution contracts</a>.</p>
+</section>
+<section id="worked-example">
+  <h2>Worked example: expose independent work earlier</h2>
+  <p>Consider a Graphics producer <code>P</code> costing 1, its Compute consumer <code>C</code> costing 10, and independent Graphics work <code>A</code> costing 10. All are observable, only <code>P → C</code> is required, and no alias edges or CUDA penalties apply. For this small example set the async member/slack thresholds to one and assume the device supports Compute and GPU waits.</p>
+  <ol>
+    <li>For order <code>A, P, C</code>, Graphics finishes A at 10 and P at 11. C can use Compute, but its producer is ready only at 11, so it finishes at 21.</li>
+    <li>Ranks are <code>rank(P)=11</code>, <code>rank(C)=10</code>, <code>rank(A)=10</code>. Starting P first exposes C at time 1.</li>
+    <li>For <code>P, C, A</code>, C runs on Compute from 1 to 11 while Graphics runs A from 1 to 11. Modeled cost is 11. <code>P, A, C</code> also exposes the same modeled GPU overlap because C's ready time depends on P, not on A's position on another queue.</li>
+    <li>At a 2% adaptive threshold, gain is 10, greater than <code>21 × 0.02 = 0.42</code>. A prepared candidate may be adopted once frame retirement is naturally safe.</li>
+  </ol>
+  <figure class="inductor-diagram"><img src="Assets/inductor-schedule-overlap.svg" alt="Moving a short producer ahead of independent graphics exposes its compute consumer and reduces modeled makespan from 21 to 11." loading="lazy"><figcaption>This is the cost-model example covered by lifecycle tests, not a measured GPU benchmark.</figcaption></figure>
+  <p>With the default minimum group size of four, this one-node compute group would remain on Graphics. If A and C reused the same physical bytes through a required alias edge <code>A → C</code>, <code>P, C, A</code> would be illegal. A would no longer provide independent slack, and the legal orders would have a base makespan of 21. Texture aliasing can add the helper penalties described in the cost model. Reordering alone cannot remove that fixed edge during adaptive search.</p>
+  <p>For a CUDA sequence, the same reasoning applies to batch boundaries. If dependencies allow <code>G, K1, K2, G2</code>, K1 and K2 can share one batch. If a real executable graphics node must occur between them, <code>K1 → G → K2</code>, their dependency chain requires two batches. Declaring a pure synchronization node between K1 and K2 preserves ordering without splitting the batch.</p>
+</section>
+<section id="configuration">
+  <h2>Choose search effort for the workload</h2>
+  <p>Use Greedy when edit latency is the priority, Bounded for a configurable search budget, and Exhaustive for small graphs where complete model enumeration is affordable. Increasing <a href="api-reference.html#api-arda-fardainductoroptions-mmaxsearchstates-bd1d8d27"><code>mMaxSearchStates</code></a> expands edit-time exploration; adaptive search has its separate candidate budget and cadence. Neither count is a time limit.</p>
+  <p>Choose Memory when lowering accounted pool capacity is the primary goal. Add <a href="api-reference.html#api-arda-fardainductoroptions-mmaxvrambytes-18315109"><code>mMaxVramBytes</code></a> for a hard pool cap under either objective. Increasing <a href="api-reference.html#api-arda-fardainductoroptions-mframesinflight-bdce7ebd"><code>mFramesInFlight</code></a> can allow overlap but multiplies transient capacity. Supply realistic node cost hints and declare external adapter workspace so search compares meaningful plans.</p>
+  <p>Enable timing alone first to inspect per-node EMA and history. Enable automatic scheduling when repeated executions justify background search; lower sampling frequency or increase tuning interval when its overhead outweighs gains. The <a href="ArdaInductor.md#gpu-telemetry-and-background-scheduling">configuration recipe</a> checks edit statuses and shows the relevant defaults. The <a href="api-reference.html">canonical API reference</a> owns each option's complete declaration.</p>
+</section>
+<span id="results" aria-hidden="true"></span>
+<span id="alternatives" aria-hidden="true"></span>
+<span id="failure-modes" aria-hidden="true"></span>
+<section id="failure">
+  <h2>Diagnostics, scaling and implementation limits</h2>
+  <p>Use <a href="api-reference.html#api-arda-fardadependencygraph-getcompileresult-b01aae1b"><code>GetCompileResult()</code></a> to inspect chosen order, queues, batches, memory edges, allocation bytes and search-completion flags. A bounded failure with no incumbent warrants more search, a different objective, a larger cap or a smaller working set; completed enumeration only establishes failure within the current queue/allocator model. A failed edit remains open for repair or <a href="api-reference.html#api-arda-fardadependencygraph-cancelgraphedit-9df99e79"><code>CancelGraphEdit()</code></a>, which can itself need native rematerialization.</p>
+  <p><a href="api-reference.html#api-arda-fardadependencygraph-getadaptiveschedulingstats-2bdb6047"><code>GetAdaptiveSchedulingStats()</code></a> distinguishes attempted iterations, candidates, accepted swaps, errors and pending work. Pending may mean a CPU job or a prepared plan awaiting natural retirement. No accepted swap can mean no eligible positive samples, no gain above the threshold, fixed alias constraints or continuous saturation. A timing-profile clear invalidates proposals by epoch. A failed timer begin or poll can omit a sample; an unsafe failure ending an already-started native query rejects recording and preserves the provider error.</p>
+  <p>Scaling follows the actual algorithms: adjacency-based validation/liveness is inexpensive relative to search; greedy selection scans ready candidates repeatedly; allocator compatibility, overlap and reachability checks can dominate each complete-plan evaluation. Bounded search limits visited states but each state has graph-dependent cost. Exhaustive order enumeration can be factorial. Adaptive insertion neighborhoods have quadratic candidate count and still perform full feasibility/cost checks per attempt.</p>
+  <p>The current compiler includes deterministic list scheduling, local hill climbing, iterative topological backtracking, greedy allocation/alias serialization and EMA-driven insertion search. It has no ILP solver, simulated annealing, learned policy, recomputation/rematerialization scheduler, GPU A/B trial runner or multi-stream CUDA scheduling. The physical pool remains allocated between calls. These boundaries explain why more search can improve the chosen model without guaranteeing a measured speedup or every possible memory layout.</p>
+</section>
+<section id="summary">
+  <h2>Check your understanding</h2>
+  <p>Resource causality defines legal work. Search proposes orders; allocation, queue heuristics and the cost model evaluate them. Native lowering adds physical ownership and execution details. Adaptive search reuses the accepted pool and changes the program only when the replacement can be adopted safely.</p>
+  <ol>
+    <li>Why can Greedy choose a memory-release seed while the objective is Efficiency? Follow <a href="#seeds">seed generation</a> and <a href="#cost">candidate comparison</a>.</li>
+    <li>Does <a href="api-reference.html#api-arda-fardainductorcompileresult-mbsearchcomplete-877461e6"><code>mbSearchComplete</code></a> prove a globally fastest GPU schedule? Explain which choices <a href="#search">enumeration</a> actually covers.</li>
+    <li>Why can a loose cap preserve async overlap while a tight cap removes it? Follow <a href="#lifetimes">reuse policies</a> and <a href="#queues">independence checks</a>.</li>
+    <li>Why might an adaptive candidate with lower modeled cost stay pending? Identify the completion and snapshot conditions in <a href="#adaptive">adoption</a>.</li>
+    <li>In the worked example, what happens with a default minimum async group size of four, or an alias edge between A and C?</li>
+  </ol>
+</section>
+<span id="source-guide" aria-hidden="true"></span>
+<section id="further-reading">
+  <h2>Implementation and further reading</h2>
+<p>The source references below identify files in a checkout. The HTML site remains self-contained under the Docs publishing root; the <a href="ArdaInductor.md#compiler-implementation-map">developer guide provides repository-relative source links</a>.</p>
+<ul>
+<li id="source-ardagraph-h"><code>Source/ArdaGraph/Public/ArdaGraph.h</code></li>
+<li id="source-ardainductor-cpp"><code>Source/ArdaRenderGraph/Private/ArdaInductor.cpp</code></li>
+<li id="source-ardainductoradaptiveschedule-cpp"><code>Source/ArdaRenderGraph/Private/ArdaInductorAdaptiveSchedule.cpp</code></li>
+<li id="source-ardainductorcommandexecutor-cpp"><code>Source/ArdaRenderGraph/Private/ArdaInductorCommandExecutor.cpp</code></li>
+<li id="source-ardainductorcommandprogram-cpp"><code>Source/ArdaRenderGraph/Private/ArdaInductorCommandProgram.cpp</code></li>
+<li id="source-ardainductormemory-cpp"><code>Source/ArdaRenderGraph/Private/ArdaInductorMemory.cpp</code></li>
+<li id="source-ardainductorruntime-cpp"><code>Source/ArdaRenderGraph/Private/ArdaInductorRuntime.cpp</code></li>
+<li id="source-ardainductortiming-cpp"><code>Source/ArdaRenderGraph/Private/ArdaInductorTiming.cpp</code></li>
+<li id="source-ardainductoradaptivescheduletests-cpp"><code>Source/ArdaRenderGraph/Tests/ArdaInductorAdaptiveScheduleTests.cpp</code></li>
+<li id="source-ardainductorlifecycletests-cpp"><code>Source/ArdaRenderGraph/Tests/ArdaInductorLifecycleTests.cpp</code></li>
+<li id="source-ardainductormemorytests-cpp"><code>Source/ArdaRenderGraph/Tests/ArdaInductorMemoryTests.cpp</code></li>
+<li id="source-ardainductorqueuegputests-cpp"><code>Source/ArdaRenderGraph/Tests/ArdaInductorQueueGpuTests.cpp</code></li>
+<li id="source-ardainductortests-cpp"><code>Source/ArdaRenderGraph/Tests/ArdaInductorTests.cpp</code></li>
+</ul>
+  <p>The implementation is the authority for the algorithms above: <a href="#source-ardagraph-h">indexed topology and Kahn traversal</a>, <a href="#source-ardainductor-cpp">semantic compilation, search and scoring</a>, <a href="#source-ardainductormemory-cpp">native allocation planning</a>, <a href="#source-ardainductoradaptiveschedule-cpp">adaptive search</a> and <a href="#source-ardainductortiming-cpp">EMA collection and adoption</a>. Regression examples live in <a href="#source-ardainductortests-cpp">compiler tests</a>, <a href="#source-ardainductoradaptivescheduletests-cpp">adaptive tests</a> and <a href="#source-ardainductorlifecycletests-cpp">lifecycle tests</a>.</p>
+  <p><a href="https://disco.ethz.ch/courses/fs14/seminar/paper/Jochen/4.pdf">Topcuoglu, Hariri and Wu: HEFT and CPOP</a> explains upward-rank list scheduling for heterogeneous processors. ArdaInductor uses a related critical-path ranking; its fixed queue heuristics and penalty model are specific to this implementation. <a href="https://arxiv.org/abs/2312.13526">Jin et al.: New Tools for Peak Memory Scheduling</a> studies weighted one-shot computation-graph memory scheduling and proves strong hardness even for restricted graphs. Its algorithms are background reading, not additional algorithms implemented here.</p>
+  <p>Continue with the <a href="ArdaInductor.md">usage and telemetry guide</a>, <a href="ArdaInductor-Pipelines.md">pipeline inference guide</a>, <a href="execution.html">frame execution contracts</a> and <a href="debugging.html">diagnostic workflow</a>.</p>
+</section>
 
-        <section id="dag-fundamentals">
-          <h2>From a general DAG to an execution plan</h2>
-          <h3>Vertices, edges, and meaning</h3>
-          <p>A general directed graph consists of vertices and one-way edges. In a render graph, vertices are passes. An edge <var>u</var> → <var>v</var> says that <var>u</var> must precede <var>v</var>. The reason may be data flow—<var>v</var> consumes a value produced by <var>u</var>—or an ordering constraint that establishes safe sequencing without making <var>u</var>'s result semantically necessary.</p>
-          <p>A graph is acyclic when no directed path returns to its start. Every DAG has at least one <a class="term" data-term="topological-order" href="../glossary.html#term-topological-order">topological order</a>: a linear sequence in which every predecessor appears before every successor. A conventional compiler can discover this sequence with Kahn's algorithm or a depth-first traversal. If it cannot consume every vertex, a cycle exists.</p>
-
-          <h3>What a graph compiler usually derives</h3>
-          <p>Once an order exists, a general render-graph compiler can remove unreachable work, compute resource live intervals, assign queues, synthesize state transitions, and group compatible operations. Each result depends on an earlier fact:</p>
-          <ol>
-            <li>Declarations must be valid before optimization, or dead code could conceal an invalid program.</li>
-            <li>Observable outputs define the backward slice that must remain live.</li>
-            <li>Only live work should contribute to allocation intervals and transitions.</li>
-            <li>Queue selection must precede state normalization and cross-queue synchronization.</li>
-            <li>Final metadata must be internally replayable before it is published.</li>
-          </ol>
-
-          <h3>ArdaRenderGraph's stronger input contract</h3>
-          <p>ArdaRenderGraph requires every dependency edge to point strictly forward in stable pass-handle order. Consequently, <a class="term" data-term="registration-order" href="../glossary.html#term-registration-order">registration order</a> is already a valid topological order. Compilation verifies the invariant; it does not reorder passes. The final execution order is exactly the registration-order subsequence left after culling, including the synthetic boundary passes.</p>
-          <p>This is stronger than merely requiring an acyclic graph. It rejects a backward edge even when the overall graph would remain acyclic. In exchange, ordering is stable, cycle detection is reduced to a local handle comparison, and build-time hazard construction can reason only toward later passes.</p>
-          <aside class="callout">
-            <h3>Registration order is semantic</h3>
-            <p>If pass B was registered before pass A, compilation will not move A ahead of B to satisfy an A → B edge. The edge is invalid. Register producers before consumers and use <a href="api-reference.html#api-arda-rdg-fardgbuilder-adddependency-0a07e4eb"><code>AddDependency</code></a> only in that direction.</p>
-          </aside>
-        </section>
-
-        <section id="design-derivation">
-          <h2>Why the compiler has these stages</h2>
-          <p>The builder accumulates facts incrementally: stable pass and resource records, reflected access declarations, producer lists on consumers, resource readers and last producers, extraction requests, and context capabilities. These facts are convenient for registration but incomplete for execution. Compilation changes the representation rather than changing the declared algorithm.</p>
-          <dl>
-            <dt>Registration representation</dt>
-            <dd>Consumer-side predecessor lists, logical resource uses, requested pass flags, and builder-wide options.</dd>
-            <dt>Liveness representation</dt>
-            <dd>Observable roots and data-producer reachability, yielding a live registration-order subsequence.</dd>
-            <dt>State representation</dt>
-            <dd>Per-pass requirements lowered into before/after transition records with explicit ordering flags.</dd>
-            <dt>Scheduling representation</dt>
-            <dd>Selected pipelines, reverse adjacency, queue dependencies, descriptive async bounds, and raster compatibility groups.</dd>
-            <dt>Allocation representation</dt>
-            <dd>Inclusive first/last use intervals expressed in compact execution indices.</dd>
-          </dl>
-          <p>The ordering follows data dependencies between compiler phases. Pipeline selection is needed before async state normalization. Reverse edges are needed before forward async reachability. Culling must precede interval, lifetime, transition, dependency, and group output. Barrier compilation must precede transition replay. Publication is last so a failed intermediate stage never exposes a successful compiled flag.</p>
-        </section>
-
-        <section id="pipeline">
-          <h2>The exact current <code>FARDGCompiler</code> order</h2>
-          <figure>
-            <img src="Assets/rdg-compile-pipeline.svg" alt="Fourteen-stage FARDGCompiler pipeline from validation through publication">
-            <figcaption>The current source order is a contract worth reading literally: validation, extraction checks, epilogue, pipeline assignment, consumer mirroring, culling, intervals, lifetimes, barriers, transition validation, async metadata, queue dependencies, raster groups, and publication.</figcaption>
-          </figure>
-
-          <ol class="steps">
-            <li>
-              <h3>Validate before compile</h3>
-              <p>The compiler validates resource ownership flags and backing, legal initial and final states, known pass flags, texture ranges, buffer ranges, acceleration-structure accesses, extraction records, and produced-before-read behavior. Validation runs before culling, so an invalid dead pass is still invalid. Optimization is not a way to hide a broken declaration.</p>
-            </li>
-            <li>
-              <h3>Check extracted resources were produced</h3>
-              <p>A graph-owned extracted texture or buffer must have a valid last producer. External resources are exempt because their data enters the graph from outside. This stage is narrower than stage 1: it specifically prevents publishing uninitialized graph-owned storage. See the exact extraction contracts for <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuetextureextraction-920af16d"><code>QueueTextureExtraction</code></a> and <a href="api-reference.html#api-arda-rdg-fardgbuilder-queuebufferextraction-2454eb04"><code>QueueBufferExtraction</code></a>.</p>
-            </li>
-            <li>
-              <h3>Append and wire <code>GraphEpilogue</code></h3>
-              <p>The compiler appends a synthetic <a class="term" data-term="epilogue" href="../glossary.html#term-epilogue">epilogue</a>. For each external or extracted resource, its last writer becomes a data producer of the epilogue. Readers become synchronization-only producers. This distinction is deliberate: a write that determines an externally visible result must stay live; a trailing read may need ordering if it survives for another reason, but must not become live merely because the epilogue exists.</p>
-            </li>
-            <li>
-              <h3>Assign pipelines</h3>
-              <p>Every pass starts from a deterministic graphics fallback. Outside <a class="term" data-term="immediate-mode" href="../glossary.html#term-immediate-mode">immediate mode</a>, a non-sentinel pass requesting <code>Copy</code> uses the copy pipeline only if a copy queue exists and every texture and buffer declaration is a nonzero subset of <code>CopySource | CopyDest</code>; any acceleration-structure declaration rejects copy compatibility. Otherwise, a pass requesting <code>AsyncCompute</code> uses async compute only if a compute queue exists and all states are compute-compatible. Graphics-only states—render target, depth read/write, and present—reject async. A pixel-shader read is accepted only when the non-pixel read bit is also present, after which the pixel bit is removed for async execution. CPU-visible buffers and depth/stencil texture transfers also stay on graphics: fixed host-buffer states cannot use the Common-state queue handoff, and portable depth/stencil copies require a graphics-capable queue. Every failed eligibility test falls back to graphics rather than failing compilation.</p>
-              <p>The possible results are defined by <a href="api-reference.html#api-arda-rdg-eardgpipeline-188e6387"><code>EARDGPipeline</code></a>; availability comes from <a href="api-reference.html#api-arda-rdg-fardgqueuecapabilities-6104362a"><code>FARDGQueueCapabilities</code></a>.</p>
-            </li>
-            <li>
-              <h3>Build the consumer mirror</h3>
-              <p>Registration records predecessor handles on each consumer. Compilation clears reverse lists, sorts producer lists, verifies that every producer exists and has a strictly smaller handle than its consumer, and mirrors both data and synchronization edges onto producers. The products are data consumers and synchronization consumers. This is where the forward-edge invariant proves that registration order is topological and cycles are impossible.</p>
-            </li>
-            <li>
-              <h3>Cull passes</h3>
-              <p>Normal mode initially marks every non-sentinel pass dead, then starts a backward worklist from the epilogue and every pass carrying <code>NeverCull</code>. The walk follows data-producer edges only. Synchronization-only producers do not preserve <a class="term" data-term="liveness" href="../glossary.html#term-liveness">liveness</a>. Surviving passes are emitted by scanning the registry from beginning to end, so relative order never changes. Immediate mode skips the analysis and retains every pass.</p>
-            </li>
-            <li>
-              <h3>Rebuild live resource intervals</h3>
-              <p>Build-time first and last uses include declarations made by passes that may now be dead. The compiler therefore resets every resource's usage markers and replays texture, buffer, and acceleration-structure declarations in live execution order. External and extracted resources receive an additional epilogue use because graph-exit state and ownership extend through that boundary.</p>
-            </li>
-            <li>
-              <h3>Compile resource lifetimes</h3>
-              <p>Resource records store pass handles, but allocation needs positions in the compact live sequence. The compiler maps each live handle to an execution index and emits inclusive <code>[firstUse, lastUse]</code> intervals. Textures, then buffers, then acceleration structures are emitted in registry order. A texture or buffer is marked transient-eligible only when it carries the transient flag and is neither external nor extracted; acceleration structures are not transient candidates in the current implementation. Immediate mode or extended-lifetime debugging widens every interval to the full execution sequence.</p>
-            </li>
-            <li>
-              <h3>Compile barriers</h3>
-              <p>The compiler initializes unknown logical states as <code>Common</code>, replays only live passes, merges declarations that address the same tracked unit within a pass, and emits logical transition records. Textures are tracked independently per mip level × array slice. Buffers have one state slot for the whole logical buffer even though declared byte ranges remain available for bounds and execution-access validation. Acceleration structures also use whole-object state.</p>
-              <p>Equal UAV state is not a no-op: it emits a record marked for UAV ordering. Conservative-barrier mode can mark other equal, non-<code>Common</code> states as forced barriers. Conflicting states involving a write within the same pass fail; distinct compatible read-only states are combined. External and extracted resources receive graph-exit transitions on the epilogue.</p>
-            </li>
-            <li>
-              <h3>Validate transitions</h3>
-              <p>An independent replay starts from declared initial states, checks that every compiled <code>stateBefore</code> equals the replayed current state, applies <code>stateAfter</code>, and verifies that each pass's declaration is satisfied. It also verifies graph-exit final states. This stage tests compiler output rather than trusting barrier generation.</p>
-            </li>
-            <li>
-              <h3>Compile async metadata</h3>
-              <p>For each live async-compute pass, the compiler walks backward through both edge kinds across non-graphics work to find the latest reachable graphics predecessor, and forward to find the earliest reachable graphics successor. The prologue and epilogue are fallbacks. The resulting <a href="api-reference.html#api-arda-rdg-fardgpassstate-masyncfork-3c787e2a"><code>mAsyncFork</code></a> and <a href="api-reference.html#api-arda-rdg-fardgpassstate-masyncjoin-1a6866fc"><code>mAsyncJoin</code></a> are descriptive bounds only. They do not themselves insert a wait, signal, split, or submission.</p>
-            </li>
-            <li>
-              <h3>Compile queue dependencies</h3>
-              <p>For each live consumer, data and synchronization producers are combined, sorted, and deduplicated. A live edge whose endpoints use different pipelines produces one <a href="api-reference.html#api-arda-rdg-fardgqueuedependency-ccd4a634"><code>FARDGQueueDependency</code></a>; culled and same-pipeline edges produce none. These records—not fork/join descriptions—drive execution-time cross-queue waits.</p>
-            </li>
-            <li>
-              <h3>Compile raster groups</h3>
-              <p>A maximal adjacent run of graphics raster passes receives a dense group index when every pass is groupable and has an identical logical attachment signature. A non-raster pass, an async or copy pass, <code>SkipRenderPass</code>, or different bindings breaks the run. <a href="api-reference.html#api-arda-rdg-fardgpassstate-mrastergroup-50d75543"><code>mRasterGroup</code></a> and the group count describe compatibility. Execution consumes these candidates, merging command lists when physical barriers and queue dependencies permit.</p>
-            </li>
-            <li>
-              <h3>Publish compiled state</h3>
-              <p>Only after all previous stages succeed does the compiler set the builder's compiled flag and return the stable <a href="api-reference.html#api-arda-rdg-fardgcompileresult-192e7594"><code>FARDGCompileResult</code></a>. Subsequent calls return that cache. Publication last gives the builder a simple all-or-not-published boundary.</p>
-            </li>
-          </ol>
-        </section>
-
-        <section id="products">
-          <h2>Exact data products</h2>
-          <p>Compilation mutates per-pass compiler state and fills the builder-owned result. The distinction matters when inspecting a graph.</p>
-          <h3>In <a href="api-reference.html#api-arda-rdg-fardgcompileresult-192e7594"><code>FARDGCompileResult</code></a></h3>
-          <ul>
-            <li><code>mPrologue</code>: the synthetic graph-entry handle created with the builder.</li>
-            <li><code>mEpilogue</code>: the synthetic graph-exit handle appended during compilation.</li>
-            <li><code>mExecutionOrder</code>: live pass handles in deterministic registration order, including sentinels.</li>
-            <li><code>mResourceLifetimes</code>: live logical intervals, with resource kind, registry index, inclusive first/last execution indices, and transient eligibility.</li>
-            <li><code>mQueueDependencies</code>: producer, consumer, and endpoint pipelines for cross-queue edges, emitted in consumer execution order.</li>
-            <li><code>mRasterGroupCount</code>: the number of dense raster compatibility groups.</li>
-          </ul>
-          <h3>In each <code>FARDGPassState</code></h3>
-          <ul>
-            <li>sorted data and synchronization predecessor lists plus their mirrored consumer and synchronization-consumer lists;</li>
-            <li>the selected <code>mPipeline</code> and <code>mbCulled</code> result;</li>
-            <li>texture, buffer, and acceleration-structure transition vectors;</li>
-            <li>descriptive async fork and join handles; and</li>
-            <li>the raster group index and logical raster binding signature.</li>
-          </ul>
-          <aside class="callout">
-            <h3>What compilation does not produce</h3>
-            <p>There are no physical resources, command lists, submitted queue instances, fences, native barriers, or GPU completion results. A compiled transition is an instruction for later recording, not an already executed <a class="term" data-term="barrier" href="../glossary.html#term-barrier">barrier</a>.</p>
-          </aside>
-        </section>
-
-        <section id="culling-lifetimes">
-          <h2>Culling and execution-index lifetimes</h2>
-          <figure>
-            <img src="Assets/rdg-culling-lifetimes.svg" alt="Backward producer-edge culling followed by inclusive execution-index lifetimes">
-            <figcaption>Observable roots preserve their data ancestry. Ordering-only edges are honored among surviving work but do not manufacture liveness.</figcaption>
-          </figure>
-
-          <h3>Roots answer “why must this run?”</h3>
-          <p>The epilogue is a root because external and extracted writes are observable after the graph. <code>NeverCull</code> passes are roots because the caller has declared an effect outside ordinary resource reachability. Sentinels remain live as graph boundaries. Starting from those roots, following <a class="term" data-term="producer" href="../glossary.html#term-producer">producer</a> edges backward retains precisely the data ancestry needed to compute them.</p>
-          <p>A synchronization-only predecessor answers a different question: “if both passes run, what order is safe?” It does not answer “is the predecessor's result needed?” Following it during culling would turn a WAR ordering edge into false liveness and retain dead readers or writers. The compiler therefore uses both edge kinds for queue synchronization and async reachability, but only producer edges for culling.</p>
-
-          <h3>Why compact execution indices matter</h3>
-          <p>Pass handles reflect stable registration positions and can contain gaps after culling. Allocation, however, cares about the sequence that will execute. If handles 2, 5, and 9 survive, their execution indices are 0, 1, and 2 within the relevant subsequence. A lifetime ending at handle 9 therefore ends at compact index 2, not at 9.</p>
-          <p>Intervals are inclusive. Two logical transient resources can be considered non-overlapping only when one's last use is strictly less than the other's first use. External and extracted resources extend to the epilogue and are never transient candidates. The compiler computes logical opportunities; execution decides whether a compatible physical object can actually be reused.</p>
-        </section>
-
-        <section id="barriers">
-          <h2>Barrier lowering: logical state over time</h2>
-          <figure>
-            <img src="Assets/rdg-barrier-grid.svg" alt="Texture mip by array-slice state grid beside whole-buffer state tracking">
-            <figcaption>Texture subresources have independent compiler state cells. Buffer byte ranges do not: current buffer state is whole-resource.</figcaption>
-          </figure>
-
-          <h3>Textures: mip × array slice</h3>
-          <p>For a texture with <var>M</var> mips and <var>S</var> array slices, the compiler keeps <var>M × S</var> state cells. A declared subresource range is resolved against the description and expanded into those cells. Aliasing views of the same logical texture meet in the same grid. Requirements are first merged per pass and per cell, then compared with the cell's current state to produce one-cell transition records with explicit before and after states.</p>
-
-          <h3>Buffers: one state slot</h3>
-          <p>Buffer access records preserve byte ranges for validation, but barrier compilation merges all accesses to a logical buffer into one required state. Disjoint ranges cannot simultaneously carry independent states in the current model. This is conservative and portable, but can produce more whole-buffer transitions than a range-aware backend compiler.</p>
-
-          <h3>Reads, writes, UAVs, and forced barriers</h3>
-          <p><code>Unknown</code> adopts the first requirement. Equal requirements remain equal. Distinct read-only states combine as a bit mask. If either conflicting requirement writes—render target, depth write, copy destination, resolve destination, acceleration-structure write, or unordered access—the pass is invalid because one tracked unit cannot safely satisfy both states at once.</p>
-          <p>An equal state normally needs no transition, but repeated <a class="term" data-term="uav" href="../glossary.html#term-uav">UAV</a> access still needs memory ordering: completion and visibility of earlier unordered writes cannot be inferred from an unchanged state enum. Such a record carries the UAV-barrier flag. With <a href="api-reference.html#api-arda-rdg-fardgdebugoptions-mbconservativebarriers-622ad184"><code>mbConservativeBarriers</code></a>, equal non-UAV, non-<code>Common</code> states can carry a forced-barrier flag to diagnose missing ordering assumptions.</p>
-
-          <h3>Logical continuity versus physical correction</h3>
-          <p>Compilation can validate only a logical resource's declared initial state and pass-to-pass continuity. At execution, a logical transient may receive a pooled <a class="term" data-term="physical-resource" href="../glossary.html#term-physical-resource">physical resource</a> last used in a different state. The executor therefore corrects the transition's physical before-state after materialization and pool reuse are known. This is not a compiler inconsistency: logical validation proves graph declarations; execution reconciles the chosen physical identity.</p>
-        </section>
-
-        <section id="queues-groups">
-          <h2>Queues, async descriptions, and raster groups</h2>
-          <h3>Queue requests are preferences with a safe fallback</h3>
-          <p><a class="term" data-term="async-compute" href="../glossary.html#term-async-compute">Async compute</a> and copy flags request specialized execution; they do not guarantee it. They are mutually exclusive: a pass requesting <code>Copy</code> cannot also request <code>Compute</code> or <code>AsyncCompute</code>, while <code>AsyncCompute</code> requires <code>Compute</code>. Queue capability, immediate mode, sentinel status, and every declared state then determine whether the legal request selects its specialized pipeline. If that pipeline is unavailable or the pass is incompatible, the pass runs on graphics.</p>
-          <p>This fallback keeps one graph portable across a device with dedicated copy and compute queues, a device exposing only graphics, and diagnostic immediate mode. It also prevents a supposedly copy-only command list from receiving shader or acceleration-structure state.</p>
-
-          <h3>Cross-queue edges are operational</h3>
-          <p>A <a class="term" data-term="queue-dependency" href="../glossary.html#term-queue-dependency">queue dependency</a> exists only when a live edge crosses selected pipelines. Execution uses the producer's submitted queue instance to make the consumer queue wait. Same-pipeline order is already provided by that ordered queue stream. Both data edges and ordering-only edges can produce cross-queue waits.</p>
-
-          <h3>Fork and join are descriptions, not synchronization</h3>
-          <p>Async fork/join fields summarize the nearest reachable graphics boundaries around async work. They are useful for inspection, scheduling visualization, and future optimization. The current synchronization authority is the explicit queue-dependency list. Treating fork or join as an implied barrier would duplicate or invent behavior not present in the compiler.</p>
-
-          <h3>Raster groups are compatibility labels</h3>
-          <p>A raster group says that adjacent live graphics raster passes have identical logical attachments and are candidates for coordinated handling. The executor can record adjacent compatible raster callbacks in one command list. It splits at required transitions, UAV or forced barriers, new resource initialization, queue handoffs, incoming queue dependencies, buffer/acceleration-structure declarations in the next pass, and NeverParallel boundaries. Immediate mode disables merging. Vulkan can continue its active rendering scope across matching framebuffer attachments; barriers or commands that end rendering still split that native scope.</p>
-        </section>
-
-        <section id="worked-example">
-          <h2>Worked example: predict the compiled graph</h2>
-          <p>Assume normal mode, available copy and compute queues, all graph-owned resources initially <code>Common</code>, and the following registration order after the synthetic prologue. <code>Output</code> is extracted with final state <code>PixelShaderResource</code>.</p>
-          <ol>
-            <li><strong>UploadScene</strong> requests Copy, writes whole buffer <code>Scene</code> as <code>CopyDest</code>.</li>
-            <li><strong>BuildLightGrid</strong> requests AsyncCompute, reads <code>Scene</code> as <code>NonPixelShaderResource</code>, writes buffer <code>Grid</code> as UAV.</li>
-            <li><strong>Shadow</strong> is Raster, writes texture <code>ShadowMap</code> as <code>DepthWrite</code>.</li>
-            <li><strong>DeadHistogram</strong> is Compute, reads <code>ShadowMap</code> and has an ordering-only edge to <code>Tonemap</code>, but produces no consumed or external result.</li>
-            <li><strong>GBuffer</strong> is Raster, writes <code>SceneColor</code> and <code>Depth</code> with attachment signature A.</li>
-            <li><strong>Lighting</strong> is Raster, reads <code>Grid</code> and <code>ShadowMap</code>, and writes the same <code>SceneColor</code> and <code>Depth</code> attachments with signature A.</li>
-            <li><strong>Tonemap</strong> is Raster, reads <code>SceneColor</code> and writes extracted <code>Output</code> with attachment signature B.</li>
-          </ol>
-          <p>Data edges are UploadScene → BuildLightGrid, BuildLightGrid → Lighting, Shadow → Lighting, GBuffer → Lighting, and Lighting → Tonemap. Compilation appends GraphEpilogue and adds Tonemap → GraphEpilogue because Tonemap is the last producer of extracted Output. The explicit DeadHistogram → Tonemap edge is synchronization-only and therefore supplies no liveness.</p>
-
-          <h3>Prediction 1: culling and order</h3>
-          <p>GraphEpilogue retains Tonemap, which retains Lighting, which retains BuildLightGrid, Shadow, and GBuffer; BuildLightGrid retains UploadScene. DeadHistogram is reachable only through ordering-only edges, so it is culled. The compact execution order is:</p>
-          <p><code>0 Prologue, 1 UploadScene, 2 BuildLightGrid, 3 Shadow, 4 GBuffer, 5 Lighting, 6 Tonemap, 7 GraphEpilogue</code>.</p>
-          <p>No topological reordering has occurred. Removing DeadHistogram merely closes its registration-order gap.</p>
-
-          <h3>Prediction 2: pipelines and dependencies</h3>
-          <ul>
-            <li><code>UploadScene</code> selects Copy because all its states are copy-compatible.</li>
-            <li><code>BuildLightGrid</code> selects AsyncCompute because the compute queue exists and its shader/UAV states are compatible.</li>
-            <li><code>Shadow</code>, <code>GBuffer</code>, <code>Lighting</code>, and <code>Tonemap</code> select Graphics.</li>
-            <li>Queue dependency Copy → AsyncCompute is emitted for UploadScene → BuildLightGrid.</li>
-            <li>Queue dependency AsyncCompute → Graphics is emitted for BuildLightGrid → Lighting.</li>
-            <li>All other live edges are same-pipeline or sentinel relationships and need no specialized cross-queue record unless their endpoint pipelines differ.</li>
-          </ul>
-          <p>For BuildLightGrid, the latest reachable graphics predecessor is the prologue because UploadScene is copy work; its earliest reachable graphics successor is Lighting. These fork/join values describe the span, while the two queue dependencies enforce it.</p>
-
-          <h3>Prediction 3: lifetimes</h3>
-          <ul>
-            <li><code>Scene</code>: <code>[1,2]</code>.</li>
-            <li><code>Grid</code>: <code>[2,5]</code>.</li>
-            <li><code>ShadowMap</code>: <code>[3,5]</code>.</li>
-            <li><code>SceneColor</code>: <code>[4,6]</code>.</li>
-            <li><code>Depth</code>: <code>[4,5]</code>.</li>
-            <li><code>Output</code>: <code>[6,7]</code>, extended through the epilogue because it is extracted.</li>
-          </ul>
-          <p>No histogram resource receives a lifetime because its only pass was culled. Even if Output carries a transient creation flag, extraction makes its emitted transient eligibility false.</p>
-
-          <h3>Prediction 4: representative logical barriers</h3>
-          <ul>
-            <li><code>Scene</code>: Common → CopyDest at UploadScene, then CopyDest → NonPixelShaderResource at BuildLightGrid.</li>
-            <li><code>Grid</code>: Common → UnorderedAccess at BuildLightGrid, then UnorderedAccess → the graphics shader-read requirement at Lighting.</li>
-            <li><code>ShadowMap</code>: Common → DepthWrite at Shadow, then DepthWrite → shader read at Lighting for each addressed mip × slice cell.</li>
-            <li><code>SceneColor</code>: Common → RenderTarget at GBuffer; the equal RenderTarget requirement at Lighting is not a UAV barrier and is forced only in conservative mode; then RenderTarget → shader read at Tonemap.</li>
-            <li><code>Output</code>: Common → RenderTarget at Tonemap, then RenderTarget → PixelShaderResource on GraphEpilogue.</li>
-          </ul>
-          <p>If a second live pass accessed <code>Grid</code> again as UAV without changing state, its equal-state record would carry the UAV ordering flag. The before-state eventually recorded against a reused pooled buffer may be corrected at execution after the physical allocation is selected.</p>
-
-          <h3>Prediction 5: raster groups</h3>
-          <p>After culling, Shadow, GBuffer, Lighting, and Tonemap are adjacent raster passes. Shadow's attachment signature differs, so it starts group 0. GBuffer starts group 1 and Lighting joins group 1 because signature A is identical. Tonemap starts group 2 because signature B differs. The result reports three candidate groups. Execution may record GBuffer and Lighting together if their physical transitions and queue waits allow it; each callback and marker remains distinct.</p>
-        </section>
-
-        <section id="performance">
-          <h2>Performance and scaling</h2>
-          <p>Let <var>P</var> be pass count, <var>E</var> edge count, <var>R</var> resource count, and <var>C</var> the number of addressed texture mip × slice cells replayed across live passes.</p>
-          <ul>
-            <li>Validation, culling, interval replay, lifetime emission, queue dependencies, and raster grouping are broadly linear in registered records, declarations, passes, and edges.</li>
-            <li>Consumer mirroring sorts each predecessor list, costing approximately the sum of <code>d log d</code> over consumer in-degrees.</li>
-            <li>Barrier compilation expands texture ranges to cells. Its cost grows with <var>C</var>, and the current implementation also sizes and scans resource-indexed temporary arrays per live pass. Large registries with sparse per-pass use therefore carry overhead beyond the declarations themselves.</li>
-            <li>Async fork/join performs graph walks per async pass. In a dense worst case it can approach <var>A</var> × (<var>P</var> + <var>E</var>), where <var>A</var> is the number of async passes.</li>
-            <li>Memory includes adjacency lists, execution order, lifetimes, queue dependencies, pass-local transition vectors, and temporary per-subresource state grids.</li>
-          </ul>
-          <p>Deterministic registry scans and stable handles favor reproducibility and debugging. If compilation becomes measurable, profile cell expansion, sparse-resource temporary arrays, and repeated async reachability before changing graph semantics. Culling can reduce later work substantially, which is why live intervals and barriers are rebuilt after it.</p>
-        </section>
-
-        <section id="alternatives">
-          <h2>Alternatives and platform implications</h2>
-          <h3>Explicit topological sorting</h3>
-          <p>A compiler could allow dependencies in any direction and run Kahn's algorithm. That accepts more registration patterns and can expose several valid schedules, but it needs cycle diagnostics and a tie-breaking policy. It would also make “registration order is execution order” false. ArdaRenderGraph chooses the stronger forward-edge invariant for determinism and simpler construction.</p>
-
-          <h3>Scheduler-driven reordering</h3>
-          <p>A more aggressive compiler could reorder independent passes to reduce peak memory, increase queue overlap, or improve render-pass locality. Such scheduling is an optimization problem constrained by hazards and queue capabilities. The current compiler does not perform it; authors influence order by registration and dependencies.</p>
-
-          <h3>Range-aware buffer state and coalesced texture transitions</h3>
-          <p>Tracking buffer byte intervals could permit disjoint ranges in different states, while coalescing adjacent texture cells with identical transitions could shrink metadata. Both approaches increase interval bookkeeping and backend translation complexity. The current texture-cell/whole-buffer split is explicit and predictable.</p>
-
-          <h3>Backend-specific barriers</h3>
-          <p>D3D12, Vulkan, and other explicit APIs differ in state vocabulary, ownership transfer, stage masks, layouts, and barrier forms. Compilation intentionally emits RHI-level logical transitions. Execution, after physical resources and selected queues are known, maps them to platform behavior. On every physical queue change it adds a producer-side transition to <code>Common</code>, a release/acquire ownership pair, a GPU queue wait, and a consumer-side transition to the declared state. The Common boundary keeps D3D12 copy command lists within their legal state set; the paired ownership descriptors carry Vulkan resources between distinct queue families. A graphics-only device remains valid because copy and async requests fall back to graphics.</p>
-
-          <h3>Native render-pass or subpass fusion</h3>
-          <p>A backend could use raster-group metadata to build native render-pass structures or preserve attachments across callbacks. That is a later execution optimization and must remain optional across platforms. Group membership alone is not an execution guarantee.</p>
-        </section>
-
-        <section id="invariants">
-          <h2>Compiler invariants</h2>
-          <ul>
-            <li>Every dependency producer handle is valid and strictly smaller than its consumer handle.</li>
-            <li>Execution order is the live registration-order subsequence; compilation never topologically reorders it.</li>
-            <li>Validation observes all declarations before dead-pass removal.</li>
-            <li>Epilogue data producers preserve externally visible writers; epilogue synchronization producers do not preserve liveness.</li>
-            <li>Only producer edges and roots determine normal-mode liveness.</li>
-            <li>Resource lifetimes use inclusive compact execution indices, not raw pass handles.</li>
-            <li>Extracted and external resources extend through the epilogue and are not transient candidates.</li>
-            <li>Texture state is tracked per mip × array slice; buffer state is tracked per whole logical buffer.</li>
-            <li>Equal UAV state still requests ordering; conservative mode can force other equal-state barriers.</li>
-            <li>Compiled transitions form a continuous logical replay and satisfy pass and graph-exit requirements.</li>
-            <li>Specialized queue selection requires both capability and compatible states; otherwise graphics is the fallback.</li>
-            <li>Async fork/join and raster groups are descriptive metadata, not synchronization or command merging.</li>
-            <li>Physical before-state correction waits until execution knows the materialized resource identity.</li>
-            <li>The compiled flag is published only after every stage succeeds.</li>
-          </ul>
-        </section>
-
-        <section id="failure-modes">
-          <h2>Failure modes and diagnosis</h2>
-          <dl>
-            <dt>Backward, self, or invalid dependency edge</dt>
-            <dd>The consumer-mirror stage rejects it. Register the producer first and ensure both handles belong to the graph.</dd>
-            <dt>Graph-owned extraction with no producer</dt>
-            <dd>Stage 2 rejects it. Add a write that produces the resource, import an external resource when data truly enters from outside, or remove the extraction.</dd>
-            <dt>Read before production</dt>
-            <dd>Pre-compile validation catches it even if the reading pass would later be culled. Declare/import the input or repair producer order.</dd>
-            <dt>Conflicting states in one pass</dt>
-            <dd>Two views resolve to the same texture cell or whole buffer and at least one requirement writes. Split the work, correct the ranges, or use compatible read-only declarations.</dd>
-            <dt>Expected async or copy pass runs on graphics</dt>
-            <dd>Check immediate mode, queue capabilities, sentinel status, requested flags, and every state. Render-target/depth/present state forbids async; any non-copy state or acceleration structure forbids copy.</dd>
-            <dt>Dead pass unexpectedly survives</dt>
-            <dd>Look for a data path to the epilogue, a <code>NeverCull</code> flag, a data dependency from another root, or immediate mode. A synchronization-only edge by itself is not the cause.</dd>
-            <dt>Pass unexpectedly culled despite an ordering edge</dt>
-            <dd>Ordering is not liveness. Give the pass a real consumed output, make its external effect explicit with <code>NeverCull</code>, or remove it if it is genuinely dead.</dd>
-            <dt>Lifetime appears longer than resource accesses</dt>
-            <dd>External/extracted resources include the epilogue; immediate or extended-lifetime debug mode spans the full graph. Remember that indices are compact execution positions.</dd>
-            <dt>Unexpected UAV barrier with no state change</dt>
-            <dd>This is intentional memory ordering between unordered accesses. An unchanged state does not make prior writes visible by itself.</dd>
-            <dt>Logical transition starts from the “wrong” pooled state at runtime</dt>
-            <dd>Compiler metadata describes logical continuity. Execution must correct the before-state using the actual reused physical object.</dd>
-            <dt>Raster passes share a group but remain separate</dt>
-            <dd>Inspect physical transitions, incoming queue dependencies, and debug options. A compatible attachment signature is necessary but does not remove required barriers or guarantee one native render pass.</dd>
-          </dl>
-        </section>
-
-        <section id="summary">
-          <h2>Summary and checkpoints</h2>
-          <p><code>FARDGCompiler</code> is a deterministic lowering pipeline. It validates the declared program, anchors observable outputs, selects feasible queues, verifies the forward DAG, removes dead data ancestry, rebuilds live usage, derives execution-index lifetimes and logical transitions, validates those transitions, and emits scheduling descriptions. It then publishes the result once. Execution remains responsible for physical allocation, physical-state correction, command recording, queue waits, submission, and completion.</p>
-          <h3>Check your understanding</h3>
-          <ol>
-            <li>Why can a backward edge be rejected without running a general cycle detector?</li>
-            <li>Why does an epilogue reader edge preserve ordering but not liveness?</li>
-            <li>If pass handles 1, 4, and 8 survive, what are their compact execution indices?</li>
-            <li>Can two disjoint byte ranges of one buffer hold independent compiled states today?</li>
-            <li>Why does UAV → UAV still require a barrier marker?</li>
-            <li>What happens when an async-compute pass declares <code>DepthRead</code>?</li>
-            <li>Which metadata actually drives a cross-queue wait: fork/join or queue dependencies?</li>
-            <li>Does sharing a raster group imply one native render pass?</li>
-          </ol>
-          <details>
-            <summary>Checkpoint answers</summary>
-            <ol>
-              <li>Every legal edge must point from a smaller to a larger stable handle, so registration order already proves acyclicity.</li>
-              <li>A reader may need to finish before graph exit if it remains live, but its read does not produce the externally observable value.</li>
-              <li>0, 1, and 2 within that subsequence, subject to any live sentinel positions included in the actual execution order.</li>
-              <li>No. Buffer barrier state is whole-resource.</li>
-              <li>State equality says nothing about ordering and visibility of unordered writes.</li>
-              <li>It is async-incompatible and falls back to graphics.</li>
-              <li>Explicit <code>FARDGQueueDependency</code> records.</li>
-              <li>No. Execution merges only where physical barriers and queue dependencies allow; callback commands can still end a native rendering scope.</li>
-            </ol>
-          </details>
-        </section>
-
-        <section id="further-reading">
-          <h2>Further reading</h2>
-          <ul>
-            <li><a href="architecture.html">Architecture and lifecycle</a> for the declaration–compile–execute boundary.</li>
-            <li><a href="passes.html">Passes and parameter declarations</a> for the access facts consumed by compilation.</li>
-            <li><a href="execution.html">Execution and submission</a> for materialization, physical correction, command recording, waits, and submission.</li>
-            <li><a href="debugging.html">Validation and debugging</a> for immediate mode, conservative barriers, and extended lifetimes.</li>
-            <li><a href="api-reference.html#api-arda-rdg-fardgcompileresult-192e7594"><code>FARDGCompileResult</code></a>, <a href="api-reference.html#api-arda-rdg-fardgresourcelifetime-48c457ef"><code>FARDGResourceLifetime</code></a>, and <a href="api-reference.html#api-arda-rdg-fardgqueuedependency-ccd4a634"><code>FARDGQueueDependency</code></a> in the canonical API reference.</li>
-            <li><a href="../glossary.html#term-render-graph">Render graph</a>, <a href="../glossary.html#term-dependency-edge">dependency edge</a>, <a href="../glossary.html#term-extraction">extraction</a>, and <a href="../glossary.html#term-resource-aliasing">resource aliasing</a> in the glossary.</li>
-          </ul>
-        </section>
-
-        <nav class="page-nav" aria-label="Page navigation">
-          <a rel="prev" href="passes.html">← Previous: Passes</a>
-          <a rel="next" href="execution.html">Next: Execution →</a>
-        </nav>
-      </article>
+</article>
     </main>
   </div>
-  <footer class="site-footer">
-    <p>ArdaRenderGraph documentation · Compilation derives device-independent execution metadata.</p>
-  </footer>
+  <footer class="site-footer"><p>ArdaRenderGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
 </body>
 </html>

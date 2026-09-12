@@ -21,7 +21,7 @@
   <path class="flow" d="M584 165 H690"/>
   <rect class="backend" x="692" y="146" width="196" height="38" rx="8"/><text class="small" x="790" y="170">ShaderResource</text>
 
-  <text class="label" x="480" y="246">FARDGStateConformanceRecord</text>
+  <text class="label" x="480" y="246">Graph state evidence</text>
   <rect class="expected" x="32" y="270" width="206" height="104" rx="10"/>
   <text class="label" x="135" y="299">1 · RDG expected</text><text class="small" x="135" y="324">compiled transition stream</text><text class="small" x="135" y="345">range + checkpoint + state</text>
   <rect class="facade" x="262" y="270" width="206" height="104" rx="10"/>

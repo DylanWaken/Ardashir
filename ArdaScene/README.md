@@ -215,8 +215,8 @@ Required behavior:
 - invalid and stale handles never alias live records;
 - handle values do not expose pointers or storage addresses.
 
-The existing `TARDGHandle` is a type-safety precedent, but scene handles need a
-generation because the database is long-lived and supports removal.
+The generational `FArdaGraphNodeHandle` is a type-safety precedent. Scene handles
+also need generations because the database is long-lived and supports removal.
 
 ## Source identity
 
@@ -1223,7 +1223,7 @@ The representation plan is complete when:
 
 - `Source/ArdaScene/Public/ArdaScene.h`: current placeholder API.
 - `Source/ArdaScene/CMakeLists.txt`: current module dependency declaration.
-- `Source/ArdaRenderGraph/Public/ArdaRenderGraphDefinitions.h`: precedent for
+- `Source/ArdaGraph/Public/ArdaDirectedGraph.h`: precedent for
   typed handles, but not a dependency of this module.
 - `Conventions/ArdaCodingConventions.md`: naming, ownership, and public-header
   conventions.

@@ -355,7 +355,7 @@ if (!shader)
           <h3>Optional explicit cook and exact example CLI</h3>
           <p><span class="status">DEMONSTRATED</span> The example can force-cook every selected registered permutation for both backends and atomically publish <code>ArdaShaderManifest.json</code>:</p>
           <pre><code>ARDGExample --arda-cook-shaders CookedShaders \
-    --shader-source path/to/ARDGExample/Shaders</code></pre>
+    --shader-source path/to/ARDGExample/Private/Nodes/Shaders</code></pre>
           <p>Normal execution accepts <code>--shader-mode startup|ondemand|load-only</code>, <code>--shader-cache &lt;directory&gt;</code>, and <code>--shader-source &lt;directory&gt;</code>. In ARDGExample, <code>--shader-source</code> selects the physical directory mapped to the example's virtual shader root; it is not <code>FArdaShaderCompilerConfiguration::mSourceRoot</code>. Cook is optional; <code>Startup</code> and <code>OnDemand</code> preserve valid sidecar hits instead of force-recompiling.</p>
 
           <h3>Path B: direct bytecode</h3>
@@ -418,10 +418,10 @@ if (!bindings)
 
         <section id="pipelines">
           <h2>7. Create PSO initializers and a cache</h2>
-          <p><span class="status">DEMONSTRATED</span> <code>ARDGExample</code> owns one <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>FArdaPipelineStateCache</code></a> per renderer/device and keeps reusable initializers.</p>
+          <p><span class="status">TESTED API PATH</span> Direct RHI clients can own a device-bound <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-182d380c"><code>FArdaPipelineStateCache</code></a> and reusable initializers, as shown below. In <code>ARDGExample</code>, each node owns its shader/layout setup and pipeline configuration; ArdaInductor creates PSOs during graph compilation and the graph retains its pipeline cache. The renderer attaches node classes without maintaining a PSO cache. See <a href="../ArdaRDG/quick-guide.html#persistent-setup">node setup ownership</a>.</p>
           <figure>
             <img src="Assets/persistent-pso-cache.svg" alt="In-memory descriptor LRU resolving live PSO objects above a persistent backend-native disk cache, with D3D12 and Vulkan implementations and shutdown flush.">
-            <figcaption>The renderer LRU reuses live objects; the backend-native disk blob reduces driver compilation across executions. They are separate cache layers.</figcaption>
+            <figcaption>The device-bound in-memory LRU reuses live objects; the backend-native disk blob reduces driver compilation across executions. The graph owns the former when using ArdaInductor.</figcaption>
           </figure>
           <pre><code>arda::FArdaPipelineStateCache psoCache(device);
 
@@ -477,7 +477,7 @@ if (!swapChain->Present()) return Fail(swapChain->GetError());</code></pre>
 
         <section id="compute">
           <h2>9. Record compute work</h2>
-          <p><span class="status">DEMONSTRATED</span> <code>ARDGExample</code> creates a compute state, attaches a binding set, asks the cache to bind the compute PSO, and dispatches thread groups through render-graph dispatch passes.</p>
+          <p><span class="status">TESTED API PATH</span> The following direct RHI recipe binds a cached compute PSO and dispatches thread groups. In <code>ARDGExample</code>, a node callback obtains the compiled PSO from <code>Context.GetPipeline()</code>, prepares its own bindings, sets compute state and records one dispatch. ArdaInductor handles inter-node transitions and scheduling from declared resource accesses; the renderer only composes the nodes. See the <a href="../ArdaRDG/quick-guide.html#integrated-frame">terrain graph recipe</a>.</p>
           <pre><code>arda::FArdaRHIComputeState computeState;
 computeState.mBindings.push_back(computeBindingSet);
 
@@ -516,7 +516,7 @@ commandList->DrawIndexed({ indexCount });
 // Or for a procedural triangle:
 // commandList->Draw({ 3 });</code></pre>
           <p><code>meshIndexCount</code> is an application value: set it to the number of uploaded indices, not the index-buffer byte size or vertex count.</p>
-          <p>With the cache, replace <code>SetGraphicsState</code> with <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-setgraphicspipelinestate-259a2286"><code>SetGraphicsPipelineState</code></a>, passing the initializer and state. Ensure color/depth formats, sample count, input layout, and bound framebuffer are pipeline-compatible. Transition the acquired color texture from <code>Present</code> to render-target use before drawing and back to <code>Present</code> before closing; the checked-in render-graph examples declare the external texture's initial <code>Present</code> state and let the graph insert these transitions.</p>
+          <p>With the cache, replace <code>SetGraphicsState</code> with <a href="api-reference.html#api-arda-backend-fardapipelinestatecache-setgraphicspipelinestate-259a2286"><code>SetGraphicsPipelineState</code></a>, passing the initializer and state. Ensure color/depth formats, sample count, input layout, and bound framebuffer are pipeline-compatible. Transition an acquired color texture from its actual entry state to render-target use before drawing, then restore the state required by presentation. The checked-in graph examples acquire the image before compilation; the graph snapshots its current uniform entry state and restores that captured state after execution. See the <a href="../ArdaRDG/resources.html#external">import contract</a>.</p>
         </section>
 
         <div id="ray-tracing">

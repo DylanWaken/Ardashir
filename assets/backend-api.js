@@ -8,7 +8,7 @@ window.ArdaBackendApi = {
     "namespace": "arda / arda",
     "summary": "Public backend initialization, diagnostics, shader authoring, pipeline caching, presentation, and backend-neutral RHI API."
   },
-  "generatedFrom": "Source/ArdaBackend/Public (all 29 unique public headers)",
+  "generatedFrom": "Source/ArdaBackend/Public (all 32 unique public headers)",
   "headerProvenance": [
     "Source/ArdaBackend/Public/ArdaAssert.h",
     "Source/ArdaBackend/Public/ArdaBackend.h",
@@ -18,9 +18,12 @@ window.ArdaBackendApi = {
     "Source/ArdaBackend/Public/ArdaSwapChain.h",
     "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaExternalCall.h",
     "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
     "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
     "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "Source/ArdaBackend/Public/Compute/ArdaCudaTextureBuffer.h",
     "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
     "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
     "Source/ArdaBackend/Public/RHI/ArdaRHI.h",
@@ -32398,7 +32401,7 @@ window.ArdaBackendApi = {
       "kind": "constant",
       "component": "backend-modules",
       "page": "api-reference.html",
-      "signature": "inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 4",
+      "signature": "inline constexpr uint32_t ArdaBackendProviderInterfaceVersion = 9",
       "summary": "Identifies the C++ provider ABI contract expected by this ArdaBackend build.",
       "details": "A linked module publishes the same value in its descriptor. Registration rejects descriptors compiled for a different interface revision so incompatible virtual contracts never become selectable.",
       "source": "Source/ArdaBackend/Public/ArdaBackendProvider.h",
@@ -35987,8 +35990,8 @@ window.ArdaBackendApi = {
     "component": "core",
     "page": "api-reference.html",
     "signature": "virtual void BindKernelVariants(FRegistry& Registry) const = 0",
-    "summary": "Registers compiled symbols and payloads without calling CUDA.",
-    "details": "Registers compiled symbols and payloads without calling CUDA.",
+    "summary": "Registers compiled symbols or external library factories and payloads without calling CUDA.",
+    "details": "Registers compiled symbols or external library factories and payloads without calling CUDA.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -36008,8 +36011,8 @@ window.ArdaBackendApi = {
     "component": "core",
     "page": "api-reference.html",
     "signature": "virtual TArdaRHIResult<FArdaCudaKernelSelection> SelectKernel(const FParameters& Parameters, const FArdaCudaSelectionContext& Context, const FVariants& Candidates) const = 0",
-    "summary": "Chooses one compatible kernel using host metadata; can fail or explicitly return NoWork.",
-    "details": "Chooses one compatible kernel using host metadata; can fail or explicitly return NoWork.",
+    "summary": "Chooses one compatible operation using host metadata; can fail or explicitly return NoWork.",
+    "details": "Chooses one compatible operation using host metadata; can fail or explicitly return NoWork.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -36103,7 +36106,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 149
+    "sourceLine": 150
   },
   {
     "id": "api-arda-tardacomputeoperand-dispatchdeferred-054ad63a",
@@ -36113,8 +36116,8 @@ window.ArdaBackendApi = {
     "component": "core",
     "page": "api-reference.html",
     "signature": "virtual FArdaRHIStatus DispatchDeferred(IArdaRHICommandList& Commands, const FParameters& Parameters) const final",
-    "summary": "Records one selected kernel into the caller-owned list; RDG uses this path.",
-    "details": "Records one selected kernel into the caller-owned list; RDG uses this path.",
+    "summary": "Records one selected kernel or library operation into the caller-owned list; RDG uses this path.",
+    "details": "Records one selected kernel or library operation into the caller-owned list; RDG uses this path.",
     "source": "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -36124,7 +36127,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 164
+    "sourceLine": 165
   },
   {
     "id": "api-arda-tardacomputeoperand-dispatch-2a87d7a8",
@@ -36145,7 +36148,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 172
+    "sourceLine": 173
   },
   {
     "id": "api-arda-tardacomputeoperand-getdevice-a6d22968",
@@ -36166,7 +36169,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaComputeOperand"
     ],
-    "sourceLine": 211
+    "sourceLine": 212
   },
   {
     "id": "api-arda-eardacomputeparameterkind-dd17fa5d",
@@ -37324,6 +37327,132 @@ window.ArdaBackendApi = {
     "sourceLine": 321
   },
   {
+    "id": "api-arda-tardacudaexternalcall-6e71d5a3",
+    "name": "TArdaCudaExternalCall",
+    "qualifiedName": "arda::TArdaCudaExternalCall",
+    "kind": "class",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template <class ParameterType> class TArdaCudaExternalCall : public IArdaCudaExternalCall",
+    "summary": "Supplies the parameter signature and aligned typed copy for a library factory. Override PrepareCall to construct exclusive native state under the provider context. The existing operand BindKernelVariants/SelectKernel hooks also select library calls.",
+    "details": "Supplies the parameter signature and aligned typed copy for a library factory. Override PrepareCall to construct exclusive native state under the provider context. The existing operand BindKernelVariants/SelectKernel hooks also select library calls.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaExternalCall.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 16
+  },
+  {
+    "id": "api-arda-tardacudaexternalcall-fcuda-8edbd106",
+    "name": "FCuda",
+    "qualifiedName": "arda::TArdaCudaExternalCall::FCuda",
+    "kind": "alias",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "using FCuda = typename ParameterType::FCuda",
+    "summary": "Patched plain parameter object, using pointers/surfaces instead of RHI references.",
+    "details": "Patched plain parameter object, using pointers/surfaces instead of RHI references.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaExternalCall.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaExternalCall"
+    ],
+    "sourceLine": 20
+  },
+  {
+    "id": "api-arda-tardacudaexternalcall-getsignature-258319e6",
+    "name": "GetSignature",
+    "qualifiedName": "arda::TArdaCudaExternalCall::GetSignature",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaCudaKernelSignature GetSignature() const noexcept final",
+    "summary": "Reports exact parameter identity without initializing CUDA.",
+    "details": "Reports exact parameter identity without initializing CUDA.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaExternalCall.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaExternalCall"
+    ],
+    "sourceLine": 23
+  },
+  {
+    "id": "api-arda-tardacudaexternalcall-prepare-eb08c3b3",
+    "name": "Prepare",
+    "qualifiedName": "arda::TArdaCudaExternalCall::Prepare",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "TArdaRHIResult<eastl::unique_ptr<IArdaCudaPreparedCall>> Prepare(const FArdaCudaExternalCallContext& Context, const void* Parameters, size_t ParameterSize) const final",
+    "summary": "Validates borrowed inputs and copies them into an aligned typed value before preparation.",
+    "details": "Validates borrowed inputs and copies them into an aligned typed value before preparation.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaExternalCall.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaExternalCall"
+    ],
+    "sourceLine": 32
+  },
+  {
+    "id": "api-arda-tardacudaexternalcall-preparecall-32110682",
+    "name": "PrepareCall",
+    "qualifiedName": "arda::TArdaCudaExternalCall::PrepareCall",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "virtual TArdaRHIResult<eastl::unique_ptr<IArdaCudaPreparedCall>> PrepareCall( const FArdaCudaExternalCallContext& Context, const FCuda& Parameters) const = 0",
+    "summary": "Creates per-recording library state. Copy any needed values; Parameters is temporary. Resource addresses are resolved, but their contents must not be touched until Enqueue.",
+    "details": "Creates per-recording library state. Copy any needed values; Parameters is temporary. Resource addresses are resolved, but their contents must not be touched until Enqueue.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaExternalCall.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaExternalCall"
+    ],
+    "sourceLine": 53
+  },
+  {
+    "id": "api-arda-bindardacudaexternalcall-ceddccde",
+    "name": "BindArdaCudaExternalCall",
+    "qualifiedName": "arda::BindArdaCudaExternalCall",
+    "kind": "function",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template <class Payload> TArdaCudaExternalCallVariant<Payload> BindArdaCudaExternalCall(const char* Name, Payload Info, eastl::shared_ptr<const IArdaCudaExternalCall> Call, FArdaCudaKernelRequirements Requirements = {})",
+    "summary": "Binds a library factory to an operand registry without requiring nvcc or a build manifest.",
+    "details": "Binds a library factory to an operand registry without requiring nvcc or a build manifest.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaExternalCall.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 60
+  },
+  {
     "id": "api-arda-fardacudabindinghelpers-17a8e7d5",
     "name": "FArdaCudaBindingHelpers",
     "qualifiedName": "arda::FArdaCudaBindingHelpers",
@@ -37744,6 +37873,111 @@ window.ArdaBackendApi = {
     "sourceLine": 23
   },
   {
+    "id": "api-arda-tardacudaexternalcallvariant-9d056835",
+    "name": "TArdaCudaExternalCallVariant",
+    "qualifiedName": "arda::TArdaCudaExternalCallVariant",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template <class Payload> struct TArdaCudaExternalCallVariant",
+    "summary": "A library operation variant with the same typed resource schema and selection payload as kernels.",
+    "details": "A library operation variant with the same typed resource schema and selection payload as kernels.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 28
+  },
+  {
+    "id": "api-arda-tardacudaexternalcallvariant-mcall-a9db80e6",
+    "name": "mCall",
+    "qualifiedName": "arda::TArdaCudaExternalCallVariant::mCall",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "eastl::shared_ptr<const IArdaCudaExternalCall> mCall",
+    "summary": "Retained host-side factory; native state is prepared separately for each recording.",
+    "details": "Retained host-side factory; native state is prepared separately for each recording.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaExternalCallVariant"
+    ],
+    "sourceLine": 31
+  },
+  {
+    "id": "api-arda-tardacudaexternalcallvariant-mpayload-837c3914",
+    "name": "mPayload",
+    "qualifiedName": "arda::TArdaCudaExternalCallVariant::mPayload",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "Payload mPayload",
+    "summary": "User-owned selection policy data.",
+    "details": "User-owned selection policy data.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaExternalCallVariant"
+    ],
+    "sourceLine": 33
+  },
+  {
+    "id": "api-arda-tardacudaexternalcallvariant-mname-71e7d0a0",
+    "name": "mName",
+    "qualifiedName": "arda::TArdaCudaExternalCallVariant::mName",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "eastl::string mName",
+    "summary": "Unique diagnostic name within the operand registry.",
+    "details": "Unique diagnostic name within the operand registry.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaExternalCallVariant"
+    ],
+    "sourceLine": 35
+  },
+  {
+    "id": "api-arda-tardacudaexternalcallvariant-mrequirements-f8780788",
+    "name": "mRequirements",
+    "qualifiedName": "arda::TArdaCudaExternalCallVariant::mRequirements",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaCudaKernelRequirements mRequirements",
+    "summary": "Additional algorithm restrictions beyond the factory's capability check.",
+    "details": "Additional algorithm restrictions beyond the factory's capability check.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaExternalCallVariant"
+    ],
+    "sourceLine": 37
+  },
+  {
     "id": "api-arda-tardacudakernelregistry-17cd772b",
     "name": "TArdaCudaKernelRegistry",
     "qualifiedName": "arda::TArdaCudaKernelRegistry",
@@ -37762,7 +37996,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 28
+    "sourceLine": 42
   },
   {
     "id": "api-arda-tardacudakernelregistry-fvariant-9ac7dec9",
@@ -37783,7 +38017,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 31
+    "sourceLine": 45
   },
   {
     "id": "api-arda-fvariant-mid-18d6167b",
@@ -37804,7 +38038,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 33
+    "sourceLine": 47
   },
   {
     "id": "api-arda-fvariant-mentry-7cce4ae7",
@@ -37825,7 +38059,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 34
+    "sourceLine": 48
   },
   {
     "id": "api-arda-fvariant-mpayload-926be985",
@@ -37846,7 +38080,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 35
+    "sourceLine": 49
   },
   {
     "id": "api-arda-fvariant-mname-c4cff3d0",
@@ -37867,7 +38101,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 36
+    "sourceLine": 50
   },
   {
     "id": "api-arda-fvariant-mrequirements-591ac147",
@@ -37888,7 +38122,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FVariant"
     ],
-    "sourceLine": 37
+    "sourceLine": 51
+  },
+  {
+    "id": "api-arda-fvariant-mexternalcall-babab920",
+    "name": "mExternalCall",
+    "qualifiedName": "arda::FVariant::mExternalCall",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "eastl::shared_ptr<const IArdaCudaExternalCall> mExternalCall",
+    "summary": "Populated for external calls instead of mEntry.",
+    "details": "Populated for external calls instead of mEntry.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FVariant"
+    ],
+    "sourceLine": 53
   },
   {
     "id": "api-arda-tardacudakernelregistry-fvariants-a4ace94e",
@@ -37909,7 +38164,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 40
+    "sourceLine": 56
   },
   {
     "id": "api-arda-tardacudakernelregistry-add-2ecfa1d0",
@@ -37930,7 +38185,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 44
+    "sourceLine": 60
+  },
+  {
+    "id": "api-arda-tardacudakernelregistry-add-e742c2cb",
+    "name": "Add",
+    "qualifiedName": "arda::TArdaCudaKernelRegistry::Add",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIStatus Add(TArdaCudaExternalCallVariant<Payload> Variant)",
+    "summary": "Registers an external library factory without calling CUDA or requiring a native-code manifest.",
+    "details": "Registers an external library factory without calling CUDA or requiring a native-code manifest.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::TArdaCudaKernelRegistry"
+    ],
+    "sourceLine": 71
   },
   {
     "id": "api-arda-tardacudakernelregistry-freeze-6c728f0c",
@@ -37951,7 +38227,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 102
+    "sourceLine": 82
   },
   {
     "id": "api-arda-tardacudakernelregistry-getstatus-850f1b5a",
@@ -37972,7 +38248,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 113
+    "sourceLine": 92
   },
   {
     "id": "api-arda-tardacudakernelregistry-getvariants-8daa90d6",
@@ -37993,7 +38269,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 118
+    "sourceLine": 97
   },
   {
     "id": "api-arda-tardacudakernelregistry-getcompatiblevariants-0dedf1de",
@@ -38014,7 +38290,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaCudaKernelRegistry"
     ],
-    "sourceLine": 124
+    "sourceLine": 103
   },
   {
     "id": "api-arda-foreachardacudapermutation-600d36a9",
@@ -38035,7 +38311,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 158
+    "sourceLine": 203
   },
   {
     "id": "api-arda-fardacudakernelselection-af4ca8b4",
@@ -38056,7 +38332,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 164
+    "sourceLine": 209
   },
   {
     "id": "api-arda-fardacudakernelselection-mvariantid-054e23fe",
@@ -38077,7 +38353,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 166
+    "sourceLine": 211
   },
   {
     "id": "api-arda-fardacudakernelselection-mlaunch-11154ebc",
@@ -38098,7 +38374,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 167
+    "sourceLine": 212
   },
   {
     "id": "api-arda-fardacudakernelselection-mbnowork-2c062b29",
@@ -38119,7 +38395,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSelection"
     ],
-    "sourceLine": 169
+    "sourceLine": 214
   },
   {
     "id": "api-arda-fardacudaselectioncontext-7394dc65",
@@ -38140,7 +38416,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 173
+    "sourceLine": 218
   },
   {
     "id": "api-arda-fardacudaselectioncontext-mcapabilities-ebf71dac",
@@ -38161,7 +38437,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSelectionContext"
     ],
-    "sourceLine": 175
+    "sourceLine": 220
   },
   {
     "id": "api-arda-fardacudaselectioncontext-mqueue-117216c2",
@@ -38182,7 +38458,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSelectionContext"
     ],
-    "sourceLine": 176
+    "sourceLine": 221
   },
   {
     "id": "api-arda-fardacudasubmission-5f5fabac",
@@ -38203,7 +38479,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 180
+    "sourceLine": 225
   },
   {
     "id": "api-arda-fardacudasubmission-mdevice-8d294b61",
@@ -38224,7 +38500,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 182
+    "sourceLine": 227
   },
   {
     "id": "api-arda-fardacudasubmission-mqueue-8c64c3cf",
@@ -38245,7 +38521,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 183
+    "sourceLine": 228
   },
   {
     "id": "api-arda-fardacudasubmission-minstance-0a458bd7",
@@ -38266,7 +38542,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 184
+    "sourceLine": 229
   },
   {
     "id": "api-arda-fardacudasubmission-mselection-2fc30fea",
@@ -38287,7 +38563,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaSubmission"
     ],
-    "sourceLine": 185
+    "sourceLine": 230
   },
   {
     "id": "api-arda-fardacudadispatchplan-31e70bad",
@@ -38308,7 +38584,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 189
+    "sourceLine": 234
   },
   {
     "id": "api-arda-fardacudadispatchplan-mdevice-05d203af",
@@ -38329,7 +38605,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 191
+    "sourceLine": 236
   },
   {
     "id": "api-arda-fardacudadispatchplan-mqueue-c50b1a54",
@@ -38350,7 +38626,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 192
+    "sourceLine": 237
   },
   {
     "id": "api-arda-fardacudadispatchplan-mselection-2420b2de",
@@ -38371,7 +38647,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 193
+    "sourceLine": 238
   },
   {
     "id": "api-arda-fardacudadispatchplan-mdispatch-4d70e563",
@@ -38392,7 +38668,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatchPlan"
     ],
-    "sourceLine": 194
+    "sourceLine": 239
   },
   {
     "id": "api-arda-isardacudasurfaceelementsupported-225b757b",
@@ -39023,6 +39299,510 @@ window.ArdaBackendApi = {
       "arda"
     ],
     "sourceLine": 176
+  },
+  {
+    "id": "api-arda-fardacudasequencesubmission-443f67a9",
+    "name": "FArdaCudaSequenceSubmission",
+    "qualifiedName": "arda::FArdaCudaSequenceSubmission",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaSequenceSubmission",
+    "summary": "Completion identity for a sequence. A zero instance denotes an empty/all-NoWork sequence.",
+    "details": "Completion identity for a sequence. A zero instance denotes an empty/all-NoWork sequence.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 11
+  },
+  {
+    "id": "api-arda-fardacudasequencesubmission-mdevice-2a485acc",
+    "name": "mDevice",
+    "qualifiedName": "arda::FArdaCudaSequenceSubmission::mDevice",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIDeviceRef mDevice",
+    "summary": "Retains the device owning the completion identity.",
+    "details": "Retains the device owning the completion identity.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequenceSubmission"
+    ],
+    "sourceLine": 14
+  },
+  {
+    "id": "api-arda-fardacudasequencesubmission-mqueue-8ef25bce",
+    "name": "mQueue",
+    "qualifiedName": "arda::FArdaCudaSequenceSubmission::mQueue",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics",
+    "summary": "Queue on which the sequence was submitted.",
+    "details": "Queue on which the sequence was submitted.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequenceSubmission"
+    ],
+    "sourceLine": 16
+  },
+  {
+    "id": "api-arda-fardacudasequencesubmission-minstance-ffd49f29",
+    "name": "mInstance",
+    "qualifiedName": "arda::FArdaCudaSequenceSubmission::mInstance",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint64_t mInstance = 0",
+    "summary": "Queue completion identity returned by ExecuteCommandList.",
+    "details": "Queue completion identity returned by ExecuteCommandList.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequenceSubmission"
+    ],
+    "sourceLine": 18
+  },
+  {
+    "id": "api-arda-fardacudasequencesubmission-mkernelcount-aaea1dd3",
+    "name": "mKernelCount",
+    "qualifiedName": "arda::FArdaCudaSequenceSubmission::mKernelCount",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "size_t mKernelCount = 0",
+    "summary": "Number of explicit compiled kernels; excludes opaque library-internal launches and NoWork.",
+    "details": "Number of explicit compiled kernels; excludes opaque library-internal launches and NoWork.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequenceSubmission"
+    ],
+    "sourceLine": 20
+  },
+  {
+    "id": "api-arda-fardacudasequencesubmission-moperationcount-ce4ee544",
+    "name": "mOperationCount",
+    "qualifiedName": "arda::FArdaCudaSequenceSubmission::mOperationCount",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "size_t mOperationCount = 0",
+    "summary": "Number of operations (compiled kernels plus external calls), excluding NoWork.",
+    "details": "Number of operations (compiled kernels plus external calls), excluding NoWork.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequenceSubmission"
+    ],
+    "sourceLine": 22
+  },
+  {
+    "id": "api-arda-fardacudasequence-6787ff54",
+    "name": "FArdaCudaSequence",
+    "qualifiedName": "arda::FArdaCudaSequence",
+    "kind": "class",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "class FArdaCudaSequence",
+    "summary": "Builds a sequence from independently selected single-operation operands. Add freezes each step's values and retains its resources, including scratch buffers. Different operand schemas and buffer views may be mixed. Steps run in insertion order on one provider stream, with graphics synchronization around the entire sequence. The first build error is retained: a failed Add cannot silently submit a partial algorithm. Dispatch may be repeated using fresh command lists. Do not mutate while recording/submitting.",
+    "details": "Builds a sequence from independently selected single-operation operands. Add freezes each step's values and retains its resources, including scratch buffers. Different operand schemas and buffer views may be mixed. Steps run in insertion order on one provider stream, with graphics synchronization around the entire sequence. The first build error is retained: a failed Add cannot silently submit a partial algorithm. Dispatch may be repeated using fresh command lists. Do not mutate while recording/submitting.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 32
+  },
+  {
+    "id": "api-arda-fardacudasequence-fardacudasequence-d069c844",
+    "name": "FArdaCudaSequence",
+    "qualifiedName": "arda::FArdaCudaSequence::FArdaCudaSequence",
+    "kind": "constructor",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "explicit FArdaCudaSequence(FArdaRHIDeviceRef Device, EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics, eastl::shared_ptr<FArdaCudaGraphCache> GraphCache = {})",
+    "summary": "Selects a common device/queue before adding any steps. Copy queues are unsupported.",
+    "details": "Selects a common device/queue before adding any steps. Copy queues are unsupported.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequence"
+    ],
+    "sourceLine": 36
+  },
+  {
+    "id": "api-arda-fardacudasequence-getgraphcache-4b6444fa",
+    "name": "GetGraphCache",
+    "qualifiedName": "arda::FArdaCudaSequence::GetGraphCache",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] const eastl::shared_ptr<FArdaCudaGraphCache>& GetGraphCache() const noexcept",
+    "summary": "Retained native graph cache; an omitted constructor cache creates one in Prefer mode.",
+    "details": "Retained native graph cache; an omitted constructor cache creates one in Prefer mode.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequence"
+    ],
+    "sourceLine": 41
+  },
+  {
+    "id": "api-arda-fardacudasequence-add-a374dd78",
+    "name": "Add",
+    "qualifiedName": "arda::FArdaCudaSequence::Add",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "template <class OperandType> [[nodiscard]] FArdaRHIStatus Add(const OperandType& Operand, const typename OperandType::FParameters& Parameters)",
+    "summary": "Prepares and appends one operand; neither the operand nor Parameters must outlive this call.",
+    "details": "Prepares and appends one operand; neither the operand nor Parameters must outlive this call.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequence"
+    ],
+    "sourceLine": 45
+  },
+  {
+    "id": "api-arda-fardacudasequence-addplan-23bcaf52",
+    "name": "AddPlan",
+    "qualifiedName": "arda::FArdaCudaSequence::AddPlan",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaRHIStatus AddPlan(const eastl::shared_ptr<const FArdaCudaDispatchPlan>& Plan)",
+    "summary": "Copies an existing frozen plan, checking its device, queue and single-operation contract.",
+    "details": "Copies an existing frozen plan, checking its device, queue and single-operation contract.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequence"
+    ],
+    "sourceLine": 57
+  },
+  {
+    "id": "api-arda-fardacudasequence-begintimingregion-5774f1e5",
+    "name": "BeginTimingRegion",
+    "qualifiedName": "arda::FArdaCudaSequence::BeginTimingRegion",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaRHIStatus BeginTimingRegion(eastl::shared_ptr<FArdaCudaTimingQuery> Query, uint64_t RegionId)",
+    "summary": "Delimits GPU timing around subsequent Add/AddPlan operations without splitting the batch. Regions cannot nest or repeat IDs; every region in the sequence uses the same query. Omit regions entirely on unsampled executions for zero event/query operations.",
+    "details": "Delimits GPU timing around subsequent Add/AddPlan operations without splitting the batch. Regions cannot nest or repeat IDs; every region in the sequence uses the same query. Omit regions entirely on unsampled executions for zero event/query operations.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequence"
+    ],
+    "sourceLine": 63
+  },
+  {
+    "id": "api-arda-fardacudasequence-endtimingregion-86f542cd",
+    "name": "EndTimingRegion",
+    "qualifiedName": "arda::FArdaCudaSequence::EndTimingRegion",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaRHIStatus EndTimingRegion()",
+    "summary": "Performs end timing region through the public backend and RHI contract.",
+    "details": "Performs end timing region through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequence"
+    ],
+    "sourceLine": 65
+  },
+  {
+    "id": "api-arda-fardacudasequence-getstatus-a28a4a2a",
+    "name": "GetStatus",
+    "qualifiedName": "arda::FArdaCudaSequence::GetStatus",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] const FArdaRHIStatus& GetStatus() const noexcept",
+    "summary": "Returns the first construction error, if any. No GPU work is performed.",
+    "details": "Returns the first construction error, if any. No GPU work is performed.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequence"
+    ],
+    "sourceLine": 68
+  },
+  {
+    "id": "api-arda-fardacudasequence-getkernelcount-5db3b613",
+    "name": "GetKernelCount",
+    "qualifiedName": "arda::FArdaCudaSequence::GetKernelCount",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] size_t GetKernelCount() const noexcept",
+    "summary": "Returns the explicit compiled-kernel count; external calls and NoWork are omitted.",
+    "details": "Returns the explicit compiled-kernel count; external calls and NoWork are omitted.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequence"
+    ],
+    "sourceLine": 71
+  },
+  {
+    "id": "api-arda-fardacudasequence-getoperationcount-399f0b5f",
+    "name": "GetOperationCount",
+    "qualifiedName": "arda::FArdaCudaSequence::GetOperationCount",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] size_t GetOperationCount() const noexcept",
+    "summary": "Returns the compiled-kernel plus external-call count; NoWork steps are omitted.",
+    "details": "Returns the compiled-kernel plus external-call count; NoWork steps are omitted.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequence"
+    ],
+    "sourceLine": 74
+  },
+  {
+    "id": "api-arda-fardacudasequence-dispatchdeferred-5bf4577a",
+    "name": "DispatchDeferred",
+    "qualifiedName": "arda::FArdaCudaSequence::DispatchDeferred",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaRHIStatus DispatchDeferred(IArdaRHICommandList& Commands) const",
+    "summary": "Records one native batch into an open caller-owned list without submitting it.",
+    "details": "Records one native batch into an open caller-owned list without submitting it.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequence"
+    ],
+    "sourceLine": 77
+  },
+  {
+    "id": "api-arda-fardacudasequence-dispatch-a789a101",
+    "name": "Dispatch",
+    "qualifiedName": "arda::FArdaCudaSequence::Dispatch",
+    "kind": "method",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] TArdaRHIResult<FArdaCudaSequenceSubmission> Dispatch() const",
+    "summary": "Creates and submits one command list; completion covers all kernels and retained scratch.",
+    "details": "Creates and submits one command list; completion covers all kernels and retained scratch.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaSequence"
+    ],
+    "sourceLine": 80
+  },
+  {
+    "id": "api-arda-fardacudatexturebuffer-ab704cd3",
+    "name": "FArdaCudaTextureBuffer",
+    "qualifiedName": "arda::FArdaCudaTextureBuffer",
+    "kind": "struct",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaTextureBuffer",
+    "summary": "One texture region represented by a CUDA-shared linear buffer. Kernels bind mBuffer with BUFFER parameters and use the byte row/slice pitches. Copy texture data in before reading or partially updating it, then copy writable results back after the complete CUDA sequence. Padding bytes are not texels.",
+    "details": "One texture region represented by a CUDA-shared linear buffer. Kernels bind mBuffer with BUFFER parameters and use the byte row/slice pitches. Copy texture data in before reading or partially updating it, then copy writable results back after the complete CUDA sequence. Padding bytes are not texels.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaTextureBuffer.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 14
+  },
+  {
+    "id": "api-arda-fardacudatexturebuffer-mbuffer-254982fe",
+    "name": "mBuffer",
+    "qualifiedName": "arda::FArdaCudaTextureBuffer::mBuffer",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIBufferRef mBuffer",
+    "summary": "Device-local shared storage, retained by ordinary buffer bindings and copy commands.",
+    "details": "Device-local shared storage, retained by ordinary buffer bindings and copy commands.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaTextureBuffer.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTextureBuffer"
+    ],
+    "sourceLine": 17
+  },
+  {
+    "id": "api-arda-fardacudatexturebuffer-mlayout-7015f1e6",
+    "name": "mLayout",
+    "qualifiedName": "arda::FArdaCudaTextureBuffer::mLayout",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaRHITextureBufferLayout mLayout",
+    "summary": "Buffer copy offset and byte distance between rows.",
+    "details": "Buffer copy offset and byte distance between rows.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaTextureBuffer.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTextureBuffer"
+    ],
+    "sourceLine": 19
+  },
+  {
+    "id": "api-arda-fardacudatexturebuffer-mextent-af5a1ea3",
+    "name": "mExtent",
+    "qualifiedName": "arda::FArdaCudaTextureBuffer::mExtent",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "FArdaRHITextureCopyExtent mExtent",
+    "summary": "Region dimensions in texels; depth is one for a single array layer.",
+    "details": "Region dimensions in texels; depth is one for a single array layer.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaTextureBuffer.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTextureBuffer"
+    ],
+    "sourceLine": 21
+  },
+  {
+    "id": "api-arda-fardacudatexturebuffer-mslicepitch-740c8e2b",
+    "name": "mSlicePitch",
+    "qualifiedName": "arda::FArdaCudaTextureBuffer::mSlicePitch",
+    "kind": "member variable",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "uint64_t mSlicePitch = 0",
+    "summary": "Byte distance between adjacent depth slices.",
+    "details": "Byte distance between adjacent depth slices.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaTextureBuffer.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTextureBuffer"
+    ],
+    "sourceLine": 23
+  },
+  {
+    "id": "api-arda-createardacudatexturebuffer-9c28fdcf",
+    "name": "CreateArdaCudaTextureBuffer",
+    "qualifiedName": "arda::CreateArdaCudaTextureBuffer",
+    "kind": "function",
+    "component": "core",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] TArdaRHIResult<FArdaCudaTextureBuffer> CreateArdaCudaTextureBuffer(IArdaRHIDevice& Device, const FArdaRHITextureDesc& Texture, const FArdaRHITextureSlice& Slice = {})",
+    "summary": "Allocates reusable CUDA-shared storage for one mip/layer region, including 3D regions. The graphics texture itself need not enable CUDA interop. Uncompressed CUDA-compatible color formats are accepted; no surface-object support is required. This allocates storage only: use CopyTextureToBuffer/CopyBufferToTexture around the CUDA sequence.",
+    "details": "Allocates reusable CUDA-shared storage for one mip/layer region, including 3D regions. The graphics texture itself need not enable CUDA interop. Uncompressed CUDA-compatible color formats are accepted; no surface-object support is required. This allocates storage only: use CopyTextureToBuffer/CopyBufferToTexture around the CUDA sequence.",
+    "source": "Source/ArdaBackend/Public/Compute/ArdaCudaTextureBuffer.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 31
   },
   {
     "id": "api-arda-eardapipelinestatekind-64d17ed3",
@@ -40093,6 +40873,111 @@ window.ArdaBackendApi = {
     "sourceLine": 104
   },
   {
+    "id": "api-arda-fardarhiqueuecapabilities-mgraphicstimestampvalidbits-8a837edd",
+    "name": "mGraphicsTimestampValidBits",
+    "qualifiedName": "arda::FArdaRHIQueueCapabilities::mGraphicsTimestampValidBits",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mGraphicsTimestampValidBits = 0",
+    "summary": "Meaningful timestamp bits on graphics; zero means timestamp queries are unsupported.",
+    "details": "Meaningful timestamp bits on graphics; zero means timestamp queries are unsupported.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIQueueCapabilities"
+    ],
+    "sourceLine": 189
+  },
+  {
+    "id": "api-arda-fardarhiqueuecapabilities-mcomputetimestampvalidbits-072d8f9a",
+    "name": "mComputeTimestampValidBits",
+    "qualifiedName": "arda::FArdaRHIQueueCapabilities::mComputeTimestampValidBits",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mComputeTimestampValidBits = 0",
+    "summary": "Meaningful timestamp bits on compute; independent of graphics timestamp support.",
+    "details": "Meaningful timestamp bits on compute; independent of graphics timestamp support.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIQueueCapabilities"
+    ],
+    "sourceLine": 191
+  },
+  {
+    "id": "api-arda-fardarhiqueuecapabilities-mcopytimestampvalidbits-13aeec5c",
+    "name": "mCopyTimestampValidBits",
+    "qualifiedName": "arda::FArdaRHIQueueCapabilities::mCopyTimestampValidBits",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mCopyTimestampValidBits = 0",
+    "summary": "Meaningful timestamp bits on copy; copy queues may not support timestamp queries.",
+    "details": "Meaningful timestamp bits on copy; copy queues may not support timestamp queries.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIQueueCapabilities"
+    ],
+    "sourceLine": 193
+  },
+  {
+    "id": "api-arda-fardarhiqueuecapabilities-gettimestampvalidbits-e5acfcaf",
+    "name": "GetTimestampValidBits",
+    "qualifiedName": "arda::FArdaRHIQueueCapabilities::GetTimestampValidBits",
+    "kind": "method",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] uint32_t GetTimestampValidBits(EArdaRHIQueueType Queue) const noexcept",
+    "summary": "Performs get timestamp valid bits through the public backend and RHI contract.",
+    "details": "Performs get timestamp valid bits through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIQueueCapabilities"
+    ],
+    "sourceLine": 195
+  },
+  {
+    "id": "api-arda-fardarhiqueuecapabilities-supportstimestamps-f1f05e48",
+    "name": "SupportsTimestamps",
+    "qualifiedName": "arda::FArdaRHIQueueCapabilities::SupportsTimestamps",
+    "kind": "method",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] bool SupportsTimestamps(EArdaRHIQueueType Queue) const noexcept",
+    "summary": "Tests whether this queue can be timed without moving its work to another queue.",
+    "details": "Tests whether this queue can be timed without moving its work to another queue.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIQueueCapabilities"
+    ],
+    "sourceLine": 214
+  },
+  {
     "id": "api-arda-fardarhiqueuecapabilities-issupported-c81eac5c",
     "name": "IsSupported",
     "qualifiedName": "arda::FArdaRHIQueueCapabilities::IsSupported",
@@ -40111,7 +40996,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIQueueCapabilities"
     ],
-    "sourceLine": 189
+    "sourceLine": 219
   },
   {
     "id": "api-arda-fardarhiqueuecapabilities-getfamily-d3d3c06e",
@@ -40132,7 +41017,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIQueueCapabilities"
     ],
-    "sourceLine": 203
+    "sourceLine": 233
+  },
+  {
+    "id": "api-arda-fardarhicapabilities-mheapallocationalignment-f1a4ec17",
+    "name": "mHeapAllocationAlignment",
+    "qualifiedName": "arda::FArdaRHICapabilities::mHeapAllocationAlignment",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint64_t mHeapAllocationAlignment = 65536",
+    "summary": "Required capacity multiple for native explicit heaps, before resource-specific alignment.",
+    "details": "Required capacity multiple for native explicit heaps, before resource-specific alignment.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHICapabilities"
+    ],
+    "sourceLine": 406
   },
   {
     "id": "api-arda-fardarhicapabilities-mbqueries-0e79f55a",
@@ -40153,7 +41059,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 390
+    "sourceLine": 422
   },
   {
     "id": "api-arda-fardarhicapabilities-mbshaderlibraries-e76fb798",
@@ -40174,7 +41080,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 392
+    "sourceLine": 424
   },
   {
     "id": "api-arda-fardarhicapabilities-isqueuesupported-91c5c25f",
@@ -40195,7 +41101,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 396
+    "sourceLine": 428
   },
   {
     "id": "api-arda-fardarhicapabilities-evaluate-8ea63efe",
@@ -40216,7 +41122,805 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 403
+    "sourceLine": 435
+  },
+  {
+    "id": "api-arda-eardacudagraphmode-ff5809e4",
+    "name": "EArdaCudaGraphMode",
+    "qualifiedName": "arda::EArdaCudaGraphMode",
+    "kind": "enum",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "enum class EArdaCudaGraphMode : uint8_t",
+    "summary": "Policy for retaining a native CUDA Graph executable across sequence recordings.",
+    "details": "Policy for retaining a native CUDA Graph executable across sequence recordings.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 16
+  },
+  {
+    "id": "api-arda-eardacudagraphmode-disabled-451ca190",
+    "name": "Disabled",
+    "qualifiedName": "arda::EArdaCudaGraphMode::Disabled",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "Disabled",
+    "summary": "Selects the disabled backend and RHI value.",
+    "details": "Selects the disabled backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::EArdaCudaGraphMode"
+    ],
+    "sourceLine": 18
+  },
+  {
+    "id": "api-arda-eardacudagraphmode-prefer-2081e7ca",
+    "name": "Prefer",
+    "qualifiedName": "arda::EArdaCudaGraphMode::Prefer",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "Prefer",
+    "summary": "Selects the prefer backend and RHI value.",
+    "details": "Selects the prefer backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::EArdaCudaGraphMode"
+    ],
+    "sourceLine": 19
+  },
+  {
+    "id": "api-arda-eardacudagraphmode-require-04d48e87",
+    "name": "Require",
+    "qualifiedName": "arda::EArdaCudaGraphMode::Require",
+    "kind": "enumerator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "Require",
+    "summary": "Selects the require backend and RHI value.",
+    "details": "Selects the require backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::EArdaCudaGraphMode"
+    ],
+    "sourceLine": 20
+  },
+  {
+    "id": "api-arda-fardacudagraphstats-c03ba134",
+    "name": "FArdaCudaGraphStats",
+    "qualifiedName": "arda::FArdaCudaGraphStats",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaGraphStats",
+    "summary": "Cumulative counters for one retained sequence cache; recording alone can capture a graph.",
+    "details": "Cumulative counters for one retained sequence cache; recording alone can capture a graph.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 24
+  },
+  {
+    "id": "api-arda-fardacudagraphstats-mcapturecount-4e2d552c",
+    "name": "mCaptureCount",
+    "qualifiedName": "arda::FArdaCudaGraphStats::mCaptureCount",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mCaptureCount = 0",
+    "summary": "Stores capture count in this public backend and RHI value.",
+    "details": "Stores capture count in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphStats"
+    ],
+    "sourceLine": 26
+  },
+  {
+    "id": "api-arda-fardacudagraphstats-mreplaycount-19d1220a",
+    "name": "mReplayCount",
+    "qualifiedName": "arda::FArdaCudaGraphStats::mReplayCount",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mReplayCount = 0",
+    "summary": "Stores replay count in this public backend and RHI value.",
+    "details": "Stores replay count in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphStats"
+    ],
+    "sourceLine": 27
+  },
+  {
+    "id": "api-arda-fardacudagraphstats-mrebuildcount-5ec2a1c8",
+    "name": "mRebuildCount",
+    "qualifiedName": "arda::FArdaCudaGraphStats::mRebuildCount",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mRebuildCount = 0",
+    "summary": "Stores rebuild count in this public backend and RHI value.",
+    "details": "Stores rebuild count in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphStats"
+    ],
+    "sourceLine": 28
+  },
+  {
+    "id": "api-arda-fardacudagraphstats-mfallbackcount-99d5ec2b",
+    "name": "mFallbackCount",
+    "qualifiedName": "arda::FArdaCudaGraphStats::mFallbackCount",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mFallbackCount = 0",
+    "summary": "Stores fallback count in this public backend and RHI value.",
+    "details": "Stores fallback count in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphStats"
+    ],
+    "sourceLine": 29
+  },
+  {
+    "id": "api-arda-fardacudagraphstats-mcapturefailurecount-36271996",
+    "name": "mCaptureFailureCount",
+    "qualifiedName": "arda::FArdaCudaGraphStats::mCaptureFailureCount",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mCaptureFailureCount = 0",
+    "summary": "Stores capture failure count in this public backend and RHI value.",
+    "details": "Stores capture failure count in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphStats"
+    ],
+    "sourceLine": 30
+  },
+  {
+    "id": "api-arda-fardacudagraphstats-mcachehitcount-3ea4198b",
+    "name": "mCacheHitCount",
+    "qualifiedName": "arda::FArdaCudaGraphStats::mCacheHitCount",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mCacheHitCount = 0",
+    "summary": "Stores cache hit count in this public backend and RHI value.",
+    "details": "Stores cache hit count in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphStats"
+    ],
+    "sourceLine": 31
+  },
+  {
+    "id": "api-arda-fardacudagraphstats-mevictioncount-85a41917",
+    "name": "mEvictionCount",
+    "qualifiedName": "arda::FArdaCudaGraphStats::mEvictionCount",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mEvictionCount = 0",
+    "summary": "Stores eviction count in this public backend and RHI value.",
+    "details": "Stores eviction count in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphStats"
+    ],
+    "sourceLine": 32
+  },
+  {
+    "id": "api-arda-fardacudagraphstats-mcachedvariantcount-07433b7f",
+    "name": "mCachedVariantCount",
+    "qualifiedName": "arda::FArdaCudaGraphStats::mCachedVariantCount",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint32_t mCachedVariantCount = 0",
+    "summary": "Stores cached variant count in this public backend and RHI value.",
+    "details": "Stores cached variant count in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphStats"
+    ],
+    "sourceLine": 33
+  },
+  {
+    "id": "api-arda-fardacudagraphstats-mlastfallbackreason-09a6df99",
+    "name": "mLastFallbackReason",
+    "qualifiedName": "arda::FArdaCudaGraphStats::mLastFallbackReason",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mLastFallbackReason",
+    "summary": "Stores last fallback reason in this public backend and RHI value.",
+    "details": "Stores last fallback reason in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphStats"
+    ],
+    "sourceLine": 34
+  },
+  {
+    "id": "api-arda-fardacudagraphcache-e81e2148",
+    "name": "FArdaCudaGraphCache",
+    "qualifiedName": "arda::FArdaCudaGraphCache",
+    "kind": "class",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "class FArdaCudaGraphCache",
+    "summary": "Retains a bounded LRU of native executables. Exact resolved arguments and resource identities determine reuse; new variants evict the least recently recorded executable at capacity. In-flight users retain evicted entries. Use separate caches per logical batch and frame slot.",
+    "details": "Retains a bounded LRU of native executables. Exact resolved arguments and resource identities determine reuse; new variants evict the least recently recorded executable at capacity. In-flight users retain evicted entries. Use separate caches per logical batch and frame slot.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 41
+  },
+  {
+    "id": "api-arda-fardacudagraphcache-fardacudagraphcache-3e3676f5",
+    "name": "FArdaCudaGraphCache",
+    "qualifiedName": "arda::FArdaCudaGraphCache::FArdaCudaGraphCache",
+    "kind": "constructor",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "explicit FArdaCudaGraphCache(EArdaCudaGraphMode Mode = EArdaCudaGraphMode::Prefer, uint32_t MaximumCachedVariants = 4)",
+    "summary": "Constructs the backend and RHI value from the declared inputs.",
+    "details": "Constructs the backend and RHI value from the declared inputs. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphCache"
+    ],
+    "sourceLine": 44
+  },
+  {
+    "id": "api-arda-fardacudagraphcache-fardacudagraphcache-62ecdc5a",
+    "name": "~FArdaCudaGraphCache",
+    "qualifiedName": "arda::FArdaCudaGraphCache::~FArdaCudaGraphCache",
+    "kind": "destructor",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "~FArdaCudaGraphCache()",
+    "summary": "Destroys the backend and RHI object after dependent work is released.",
+    "details": "Destroys the backend and RHI object after dependent work is released. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphCache"
+    ],
+    "sourceLine": 46
+  },
+  {
+    "id": "api-arda-fardacudagraphcache-getmode-220fc5ae",
+    "name": "GetMode",
+    "qualifiedName": "arda::FArdaCudaGraphCache::GetMode",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] EArdaCudaGraphMode GetMode() const noexcept",
+    "summary": "Performs get mode through the public backend and RHI contract.",
+    "details": "Performs get mode through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphCache"
+    ],
+    "sourceLine": 47
+  },
+  {
+    "id": "api-arda-fardacudagraphcache-getmaximumcachedvariants-edaabfa8",
+    "name": "GetMaximumCachedVariants",
+    "qualifiedName": "arda::FArdaCudaGraphCache::GetMaximumCachedVariants",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] uint32_t GetMaximumCachedVariants() const noexcept",
+    "summary": "Performs get maximum cached variants through the public backend and RHI contract.",
+    "details": "Performs get maximum cached variants through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphCache"
+    ],
+    "sourceLine": 48
+  },
+  {
+    "id": "api-arda-fardacudagraphcache-getstats-6e9f44fe",
+    "name": "GetStats",
+    "qualifiedName": "arda::FArdaCudaGraphCache::GetStats",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaCudaGraphStats GetStats() const",
+    "summary": "Performs get stats through the public backend and RHI contract.",
+    "details": "Performs get stats through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphCache"
+    ],
+    "sourceLine": 49
+  },
+  {
+    "id": "api-arda-fardacudagraphcache-reset-82b8fe03",
+    "name": "Reset",
+    "qualifiedName": "arda::FArdaCudaGraphCache::Reset",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "void Reset()",
+    "summary": "Evicts all variants without resetting counters or invalidating in-flight work.",
+    "details": "Evicts all variants without resetting counters or invalidating in-flight work.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphCache"
+    ],
+    "sourceLine": 51
+  },
+  {
+    "id": "api-arda-fardacudatimingregionsample-79049837",
+    "name": "FArdaCudaTimingRegionSample",
+    "qualifiedName": "arda::FArdaCudaTimingRegionSample",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaTimingRegionSample",
+    "summary": "GPU elapsed time for an explicitly delimited region of one CUDA stream.",
+    "details": "GPU elapsed time for an explicitly delimited region of one CUDA stream.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 63
+  },
+  {
+    "id": "api-arda-fardacudatimingregionsample-mregionid-bbb2bc11",
+    "name": "mRegionId",
+    "qualifiedName": "arda::FArdaCudaTimingRegionSample::mRegionId",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mRegionId = 0",
+    "summary": "Stores region id in this public backend and RHI value.",
+    "details": "Stores region id in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTimingRegionSample"
+    ],
+    "sourceLine": 65
+  },
+  {
+    "id": "api-arda-fardacudatimingregionsample-mgpuseconds-005115cc",
+    "name": "mGpuSeconds",
+    "qualifiedName": "arda::FArdaCudaTimingRegionSample::mGpuSeconds",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "double mGpuSeconds = 0",
+    "summary": "Stores gpu seconds in this public backend and RHI value.",
+    "details": "Stores gpu seconds in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTimingRegionSample"
+    ],
+    "sourceLine": 66
+  },
+  {
+    "id": "api-arda-fardacudatimingresult-9bca8d43",
+    "name": "FArdaCudaTimingResult",
+    "qualifiedName": "arda::FArdaCudaTimingResult",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaTimingResult",
+    "summary": "Defines f arda cuda timing result in the public backend and RHI contract.",
+    "details": "Defines f arda cuda timing result in the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 69
+  },
+  {
+    "id": "api-arda-fardacudatimingresult-mbready-778a7a0f",
+    "name": "mbReady",
+    "qualifiedName": "arda::FArdaCudaTimingResult::mbReady",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbReady = false",
+    "summary": "Stores ready in this public backend and RHI value.",
+    "details": "Stores ready in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTimingResult"
+    ],
+    "sourceLine": 71
+  },
+  {
+    "id": "api-arda-fardacudatimingresult-mregions-4fb012c0",
+    "name": "mRegions",
+    "qualifiedName": "arda::FArdaCudaTimingResult::mRegions",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FArdaCudaTimingRegionSample> mRegions",
+    "summary": "Stores regions in this public backend and RHI value.",
+    "details": "Stores regions in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTimingResult"
+    ],
+    "sourceLine": 72
+  },
+  {
+    "id": "api-arda-fardacudatimingquery-69190c7c",
+    "name": "FArdaCudaTimingQuery",
+    "qualifiedName": "arda::FArdaCudaTimingQuery",
+    "kind": "class",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "class FArdaCudaTimingQuery",
+    "summary": "Optional, single-outstanding-sample event query. Poll consumes a completed sample without waiting for GPU work. The caller must first establish completion of all related graphics/CUDA submissions (for example with PollSubmission) and pass SubmissionComplete=true. False returns pending without querying events, avoiding stale recordings during CUDA Graph/CiG replay. Reuse after consumption or cancellation of an unsubmitted recording. Use one query per in-flight frame/batch. Unsupported telemetry is reported by Poll rather than preventing the CUDA work. Measurements include intervening device scheduling delays.",
+    "details": "Optional, single-outstanding-sample event query. Poll consumes a completed sample without waiting for GPU work. The caller must first establish completion of all related graphics/CUDA submissions (for example with PollSubmission) and pass SubmissionComplete=true. False returns pending without querying events, avoiding stale recordings during CUDA Graph/CiG replay. Reuse after consumption or cancellation of an unsubmitted recording. Use one query per in-flight frame/batch. Unsupported telemetry is reported by Poll rather than preventing the CUDA work. Measurements include intervening device scheduling delays.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 83
+  },
+  {
+    "id": "api-arda-fardacudatimingquery-poll-bd65a90e",
+    "name": "Poll",
+    "qualifiedName": "arda::FArdaCudaTimingQuery::Poll",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] TArdaRHIResult<FArdaCudaTimingResult> Poll(bool SubmissionComplete = false)",
+    "summary": "Performs poll through the public backend and RHI contract.",
+    "details": "Performs poll through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTimingQuery"
+    ],
+    "sourceLine": 86
+  },
+  {
+    "id": "api-arda-fardacudatimingregion-dbde0e49",
+    "name": "FArdaCudaTimingRegion",
+    "qualifiedName": "arda::FArdaCudaTimingRegion",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaTimingRegion",
+    "summary": "Half-open operation range within a sequence; empty regions are omitted.",
+    "details": "Half-open operation range within a sequence; empty regions are omitted.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 96
+  },
+  {
+    "id": "api-arda-fardacudatimingregion-mregionid-4d519f06",
+    "name": "mRegionId",
+    "qualifiedName": "arda::FArdaCudaTimingRegion::mRegionId",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mRegionId = 0",
+    "summary": "Stores region id in this public backend and RHI value.",
+    "details": "Stores region id in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTimingRegion"
+    ],
+    "sourceLine": 98
+  },
+  {
+    "id": "api-arda-fardacudatimingregion-mfirstoperation-c97f9a11",
+    "name": "mFirstOperation",
+    "qualifiedName": "arda::FArdaCudaTimingRegion::mFirstOperation",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint32_t mFirstOperation = 0",
+    "summary": "Stores first operation in this public backend and RHI value.",
+    "details": "Stores first operation in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTimingRegion"
+    ],
+    "sourceLine": 99
+  },
+  {
+    "id": "api-arda-fardacudatimingregion-mendoperation-30f11226",
+    "name": "mEndOperation",
+    "qualifiedName": "arda::FArdaCudaTimingRegion::mEndOperation",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint32_t mEndOperation = 0",
+    "summary": "Stores end operation in this public backend and RHI value.",
+    "details": "Stores end operation in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaTimingRegion"
+    ],
+    "sourceLine": 100
+  },
+  {
+    "id": "api-arda-fardacudagraphbatch-3247e5c0",
+    "name": "FArdaCudaGraphBatch",
+    "qualifiedName": "arda::FArdaCudaGraphBatch",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaGraphBatch",
+    "summary": "Provider metadata shared by every operation in one captured sequence recording. FArdaCudaSequence supplies this automatically; resources include unpatched scratch bindings.",
+    "details": "Provider metadata shared by every operation in one captured sequence recording. FArdaCudaSequence supplies this automatically; resources include unpatched scratch bindings.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 106
+  },
+  {
+    "id": "api-arda-fardacudagraphbatch-mcache-acd01245",
+    "name": "mCache",
+    "qualifiedName": "arda::FArdaCudaGraphBatch::mCache",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::shared_ptr<FArdaCudaGraphCache> mCache",
+    "summary": "Stores cache in this public backend and RHI value.",
+    "details": "Stores cache in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphBatch"
+    ],
+    "sourceLine": 108
+  },
+  {
+    "id": "api-arda-fardacudagraphbatch-mresources-a7e0e428",
+    "name": "mResources",
+    "qualifiedName": "arda::FArdaCudaGraphBatch::mResources",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FArdaRHIResourceRef> mResources",
+    "summary": "Stores resources in this public backend and RHI value.",
+    "details": "Stores resources in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphBatch"
+    ],
+    "sourceLine": 109
+  },
+  {
+    "id": "api-arda-fardacudagraphbatch-mtimingquery-2e5c9586",
+    "name": "mTimingQuery",
+    "qualifiedName": "arda::FArdaCudaGraphBatch::mTimingQuery",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::shared_ptr<FArdaCudaTimingQuery> mTimingQuery",
+    "summary": "Stores timing query in this public backend and RHI value.",
+    "details": "Stores timing query in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphBatch"
+    ],
+    "sourceLine": 110
+  },
+  {
+    "id": "api-arda-fardacudagraphbatch-mtimingregions-32a4f4e1",
+    "name": "mTimingRegions",
+    "qualifiedName": "arda::FArdaCudaGraphBatch::mTimingRegions",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FArdaCudaTimingRegion> mTimingRegions",
+    "summary": "Stores timing regions in this public backend and RHI value.",
+    "details": "Stores timing regions in this public backend and RHI value. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaGraphBatch"
+    ],
+    "sourceLine": 111
   },
   {
     "id": "api-arda-eardacudaexecutionmode-61683a2b",
@@ -40237,7 +41941,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 14
+    "sourceLine": 115
   },
   {
     "id": "api-arda-eardacudaexecutionmode-automatic-bd9b9c23",
@@ -40258,7 +41962,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaExecutionMode"
     ],
-    "sourceLine": 17
+    "sourceLine": 118
   },
   {
     "id": "api-arda-eardacudaexecutionmode-graphicsqueue-94159e71",
@@ -40279,7 +41983,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaExecutionMode"
     ],
-    "sourceLine": 19
+    "sourceLine": 120
   },
   {
     "id": "api-arda-eardacudaexecutionmode-contextswitch-2966c028",
@@ -40300,7 +42004,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaExecutionMode"
     ],
-    "sourceLine": 21
+    "sourceLine": 122
   },
   {
     "id": "api-arda-eardacudalaunchmode-3080113e",
@@ -40321,7 +42025,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 25
+    "sourceLine": 126
   },
   {
     "id": "api-arda-eardacudalaunchmode-none-b9a16eb8",
@@ -40342,7 +42046,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaLaunchMode"
     ],
-    "sourceLine": 28
+    "sourceLine": 129
   },
   {
     "id": "api-arda-eardacudalaunchmode-d3d12cig-9511c885",
@@ -40363,7 +42067,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaLaunchMode"
     ],
-    "sourceLine": 30
+    "sourceLine": 131
   },
   {
     "id": "api-arda-eardacudalaunchmode-vulkancig-fcae90fd",
@@ -40384,7 +42088,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaLaunchMode"
     ],
-    "sourceLine": 32
+    "sourceLine": 133
   },
   {
     "id": "api-arda-eardacudalaunchmode-contextswitch-aee848cd",
@@ -40405,7 +42109,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaLaunchMode"
     ],
-    "sourceLine": 34
+    "sourceLine": 135
   },
   {
     "id": "api-arda-fardacudacapabilities-2b4d1813",
@@ -40426,7 +42130,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 38
+    "sourceLine": 139
   },
   {
     "id": "api-arda-fardacudacapabilities-mlaunchmode-53f37449",
@@ -40447,7 +42151,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 41
+    "sourceLine": 142
   },
   {
     "id": "api-arda-fardacudacapabilities-mfallbackreason-70fa2fb5",
@@ -40468,7 +42172,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 43
+    "sourceLine": 144
   },
   {
     "id": "api-arda-fardacudacapabilities-mcomputecapability-9fd3960c",
@@ -40489,7 +42193,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 45
+    "sourceLine": 146
   },
   {
     "id": "api-arda-fardacudacapabilities-mmaxthreadsperblock-b106474d",
@@ -40510,7 +42214,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 47
+    "sourceLine": 148
   },
   {
     "id": "api-arda-fardacudacapabilities-mmaxblocksize-5b6c6ddd",
@@ -40531,7 +42235,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 49
+    "sourceLine": 150
   },
   {
     "id": "api-arda-fardacudacapabilities-mmaxgridsize-e6045ae6",
@@ -40552,7 +42256,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 51
+    "sourceLine": 152
   },
   {
     "id": "api-arda-fardacudacapabilities-mmaxsharedmemorybytes-67d5fff8",
@@ -40573,7 +42277,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 53
+    "sourceLine": 154
   },
   {
     "id": "api-arda-fardacudacapabilities-mbsurfaceaccess-716668ea",
@@ -40594,7 +42298,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 55
+    "sourceLine": 156
   },
   {
     "id": "api-arda-fardacudacapabilities-mblayeredsurfaceaccess-cc2b08f5",
@@ -40615,7 +42319,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 57
+    "sourceLine": 158
   },
   {
     "id": "api-arda-fardacudacapabilities-msurfaceunavailablereason-328e6377",
@@ -40636,7 +42340,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 59
+    "sourceLine": 160
   },
   {
     "id": "api-arda-fardacudacapabilities-munavailablereason-fa4f51c9",
@@ -40657,7 +42361,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 61
+    "sourceLine": 162
   },
   {
     "id": "api-arda-fardacudacapabilities-operator-bool-fff48c54",
@@ -40678,7 +42382,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaCapabilities"
     ],
-    "sourceLine": 64
+    "sourceLine": 165
   },
   {
     "id": "api-arda-eardacomputeaccess-6348bfa6",
@@ -40699,7 +42403,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 71
+    "sourceLine": 172
   },
   {
     "id": "api-arda-eardacomputeaccess-read-ecbdf367",
@@ -40720,7 +42424,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeAccess"
     ],
-    "sourceLine": 74
+    "sourceLine": 175
   },
   {
     "id": "api-arda-eardacomputeaccess-write-7f14efdc",
@@ -40741,7 +42445,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeAccess"
     ],
-    "sourceLine": 76
+    "sourceLine": 177
   },
   {
     "id": "api-arda-eardacomputeaccess-readwrite-8b38af4a",
@@ -40762,7 +42466,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeAccess"
     ],
-    "sourceLine": 78
+    "sourceLine": 179
   },
   {
     "id": "api-arda-eardacomputebindingtype-f2eadd2b",
@@ -40783,7 +42487,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 81
+    "sourceLine": 182
   },
   {
     "id": "api-arda-eardacomputebindingtype-buffer-3d8e5162",
@@ -40804,7 +42508,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeBindingType"
     ],
-    "sourceLine": 84
+    "sourceLine": 185
   },
   {
     "id": "api-arda-eardacomputebindingtype-surface-f8a3420d",
@@ -40825,7 +42529,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaComputeBindingType"
     ],
-    "sourceLine": 86
+    "sourceLine": 187
   },
   {
     "id": "api-arda-eardacudascalartype-4f4964d0",
@@ -40846,7 +42550,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 89
+    "sourceLine": 190
   },
   {
     "id": "api-arda-eardacudascalartype-uint-05714f06",
@@ -40867,7 +42571,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaScalarType"
     ],
-    "sourceLine": 92
+    "sourceLine": 193
   },
   {
     "id": "api-arda-eardacudascalartype-sint-203e34f8",
@@ -40888,7 +42592,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaScalarType"
     ],
-    "sourceLine": 94
+    "sourceLine": 195
   },
   {
     "id": "api-arda-eardacudascalartype-float-2f21c531",
@@ -40909,7 +42613,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaScalarType"
     ],
-    "sourceLine": 96
+    "sourceLine": 197
   },
   {
     "id": "api-arda-fardacudaformatinfo-809af6d3",
@@ -40930,7 +42634,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 100
+    "sourceLine": 201
   },
   {
     "id": "api-arda-fardacudaformatinfo-mscalartype-1236da86",
@@ -40951,7 +42655,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaFormatInfo"
     ],
-    "sourceLine": 103
+    "sourceLine": 204
   },
   {
     "id": "api-arda-fardacudaformatinfo-mbits-95622b75",
@@ -40972,7 +42676,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaFormatInfo"
     ],
-    "sourceLine": 105
+    "sourceLine": 206
   },
   {
     "id": "api-arda-fardacudaformatinfo-mchannels-3ff88f85",
@@ -40993,7 +42697,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaFormatInfo"
     ],
-    "sourceLine": 107
+    "sourceLine": 208
   },
   {
     "id": "api-arda-getardacudaformatinfo-ca180757",
@@ -41014,7 +42718,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 111
+    "sourceLine": 212
   },
   {
     "id": "api-arda-fardacudabinding-e0fdec99",
@@ -41035,7 +42739,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 114
+    "sourceLine": 215
   },
   {
     "id": "api-arda-fardacudabinding-mresource-99707619",
@@ -41056,7 +42760,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 117
+    "sourceLine": 218
   },
   {
     "id": "api-arda-fardacudabinding-maccess-224336b2",
@@ -41077,7 +42781,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 119
+    "sourceLine": 220
   },
   {
     "id": "api-arda-fardacudabinding-mbufferrange-dca332c8",
@@ -41098,7 +42802,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 121
+    "sourceLine": 222
   },
   {
     "id": "api-arda-fardacudabinding-mmiplevel-1786fabe",
@@ -41119,7 +42823,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBinding"
     ],
-    "sourceLine": 123
+    "sourceLine": 224
   },
   {
     "id": "api-arda-fardacudaarchitecture-42fc9ad1",
@@ -41140,7 +42844,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 127
+    "sourceLine": 228
   },
   {
     "id": "api-arda-fardacudaarchitecture-mcomputecapability-97b2d83c",
@@ -41161,7 +42865,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaArchitecture"
     ],
-    "sourceLine": 130
+    "sourceLine": 231
   },
   {
     "id": "api-arda-fardacudaarchitecture-mbexact-8ba3439d",
@@ -41182,7 +42886,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaArchitecture"
     ],
-    "sourceLine": 132
+    "sourceLine": 233
   },
   {
     "id": "api-arda-fardacudaarchitecture-supports-bde826d7",
@@ -41203,7 +42907,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaArchitecture"
     ],
-    "sourceLine": 135
+    "sourceLine": 236
   },
   {
     "id": "api-arda-fardacudabuildinfo-4d8ad014",
@@ -41224,7 +42928,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 139
+    "sourceLine": 240
   },
   {
     "id": "api-arda-fardacudabuildinfo-mname-8a9f2a87",
@@ -41245,7 +42949,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBuildInfo"
     ],
-    "sourceLine": 142
+    "sourceLine": 243
   },
   {
     "id": "api-arda-fardacudabuildinfo-midentity-c98d85b2",
@@ -41266,7 +42970,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBuildInfo"
     ],
-    "sourceLine": 144
+    "sourceLine": 245
   },
   {
     "id": "api-arda-fardacudabuildinfo-marchitectures-6cffed24",
@@ -41287,7 +42991,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBuildInfo"
     ],
-    "sourceLine": 146
+    "sourceLine": 247
   },
   {
     "id": "api-arda-fardacudabuildinfo-mbfastmath-72da9a15",
@@ -41308,7 +43012,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaBuildInfo"
     ],
-    "sourceLine": 148
+    "sourceLine": 249
   },
   {
     "id": "api-arda-fardacudalaunchconfig-277cad72",
@@ -41329,7 +43033,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 152
+    "sourceLine": 253
   },
   {
     "id": "api-arda-fardacudalaunchconfig-mgridsize-e26cc179",
@@ -41350,7 +43054,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaLaunchConfig"
     ],
-    "sourceLine": 155
+    "sourceLine": 256
   },
   {
     "id": "api-arda-fardacudalaunchconfig-mblocksize-cf7e48df",
@@ -41371,7 +43075,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaLaunchConfig"
     ],
-    "sourceLine": 157
+    "sourceLine": 258
   },
   {
     "id": "api-arda-fardacudalaunchconfig-msharedmemorybytes-9f3757aa",
@@ -41392,7 +43096,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaLaunchConfig"
     ],
-    "sourceLine": 159
+    "sourceLine": 260
   },
   {
     "id": "api-arda-fardacudakernelsignature-e13b8196",
@@ -41402,8 +43106,8 @@ window.ArdaBackendApi = {
     "component": "rhi-resources",
     "page": "api-reference.html",
     "signature": "struct FArdaCudaKernelSignature",
-    "summary": "Runtime signature of the one by-value parameter accepted by a compiled entry.",
-    "details": "Runtime signature of the one by-value parameter accepted by a compiled entry.",
+    "summary": "Runtime signature of the plain parameter accepted by a kernel or library adapter.",
+    "details": "Runtime signature of the plain parameter accepted by a kernel or library adapter.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -41413,7 +43117,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 163
+    "sourceLine": 264
   },
   {
     "id": "api-arda-fardacudakernelsignature-mtype-88773501",
@@ -41434,7 +43138,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSignature"
     ],
-    "sourceLine": 166
+    "sourceLine": 267
   },
   {
     "id": "api-arda-fardacudakernelsignature-msize-a07001bb",
@@ -41455,7 +43159,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSignature"
     ],
-    "sourceLine": 168
+    "sourceLine": 269
   },
   {
     "id": "api-arda-fardacudakernelsignature-malignment-2ee9d770",
@@ -41476,7 +43180,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSignature"
     ],
-    "sourceLine": 170
+    "sourceLine": 271
   },
   {
     "id": "api-arda-fardacudakernelsignature-mbsupported-80cc48ed",
@@ -41497,7 +43201,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelSignature"
     ],
-    "sourceLine": 172
+    "sourceLine": 273
   },
   {
     "id": "api-arda-fardacudakernellimits-e3d2af33",
@@ -41518,7 +43222,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 176
+    "sourceLine": 277
   },
   {
     "id": "api-arda-fardacudakernellimits-mmaxthreadsperblock-eddb2620",
@@ -41539,7 +43243,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelLimits"
     ],
-    "sourceLine": 179
+    "sourceLine": 280
   },
   {
     "id": "api-arda-fardacudakernellimits-mstaticsharedmemorybytes-1c529e79",
@@ -41560,7 +43264,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelLimits"
     ],
-    "sourceLine": 181
+    "sourceLine": 282
   },
   {
     "id": "api-arda-fardacudakernellimits-mmaxdynamicsharedmemorybytes-405271c8",
@@ -41581,7 +43285,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernelLimits"
     ],
-    "sourceLine": 183
+    "sourceLine": 284
   },
   {
     "id": "api-arda-iardacudakernelentry-d81012e8",
@@ -41602,7 +43306,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 190
+    "sourceLine": 291
   },
   {
     "id": "api-arda-iardacudakernelentry-iardacudakernelentry-c6434efb",
@@ -41623,7 +43327,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaCudaKernelEntry"
     ],
-    "sourceLine": 193
+    "sourceLine": 294
   },
   {
     "id": "api-arda-iardacudakernelentry-getsignature-5789fdd3",
@@ -41644,7 +43348,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaCudaKernelEntry"
     ],
-    "sourceLine": 196
+    "sourceLine": 297
   },
   {
     "id": "api-arda-iardacudakernelentry-getbuildinfo-14306c57",
@@ -41665,7 +43369,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaCudaKernelEntry"
     ],
-    "sourceLine": 199
+    "sourceLine": 300
   },
   {
     "id": "api-arda-iardacudakernelentry-getlimits-debed1c2",
@@ -41686,7 +43390,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaCudaKernelEntry"
     ],
-    "sourceLine": 202
+    "sourceLine": 303
   },
   {
     "id": "api-arda-iardacudakernelentry-launch-2a171925",
@@ -41707,7 +43411,427 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaCudaKernelEntry"
     ],
-    "sourceLine": 205
+    "sourceLine": 306
+  },
+  {
+    "id": "api-arda-iardacudaexternalcallstate-5d61ea24",
+    "name": "IArdaCudaExternalCallState",
+    "qualifiedName": "arda::IArdaCudaExternalCallState",
+    "kind": "class",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "class IArdaCudaExternalCallState",
+    "summary": "Optional context-owned library cache, such as a pool of handles or execution plans. It outlives all prepared calls from its factory and is destroyed with its CUDA context current before context teardown. Access is serialized by the provider, but outstanding submissions still need exclusive workspace/handle leases until their retirement.",
+    "details": "Optional context-owned library cache, such as a pool of handles or execution plans. It outlives all prepared calls from its factory and is destroyed with its CUDA context current before context teardown. Access is serialized by the provider, but outstanding submissions still need exclusive workspace/handle leases until their retirement.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 317
+  },
+  {
+    "id": "api-arda-iardacudaexternalcallstate-iardacudaexternalcallstate-291c0ba8",
+    "name": "~IArdaCudaExternalCallState",
+    "qualifiedName": "arda::IArdaCudaExternalCallState::~IArdaCudaExternalCallState",
+    "kind": "destructor",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual ~IArdaCudaExternalCallState() = default",
+    "summary": "Releases cached native state under its owning context after every prepared call retires.",
+    "details": "Releases cached native state under its owning context after every prepared call retires.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaExternalCallState"
+    ],
+    "sourceLine": 321
+  },
+  {
+    "id": "api-arda-fardacudaexternalcallcontext-d1386737",
+    "name": "FArdaCudaExternalCallContext",
+    "qualifiedName": "arda::FArdaCudaExternalCallContext",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaCudaExternalCallContext",
+    "summary": "Borrowed native execution identity, available only inside a library adapter. Never destroy/switch the context or stream. All work must be ordered on this stream.",
+    "details": "Borrowed native execution identity, available only inside a library adapter. Never destroy/switch the context or stream. All work must be ordered on this stream.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 327
+  },
+  {
+    "id": "api-arda-fardacudaexternalcallcontext-mcontext-b461bc9f",
+    "name": "mContext",
+    "qualifiedName": "arda::FArdaCudaExternalCallContext::mContext",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "void* mContext = nullptr",
+    "summary": "CUDA context made current by the provider for preparation and execution.",
+    "details": "CUDA context made current by the provider for preparation and execution.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaExternalCallContext"
+    ],
+    "sourceLine": 330
+  },
+  {
+    "id": "api-arda-fardacudaexternalcallcontext-mstream-eab24042",
+    "name": "mStream",
+    "qualifiedName": "arda::FArdaCudaExternalCallContext::mStream",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "void* mStream = nullptr",
+    "summary": "Non-default CUDA stream owned by this recording until GPU completion.",
+    "details": "Non-default CUDA stream owned by this recording until GPU completion.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaExternalCallContext"
+    ],
+    "sourceLine": 332
+  },
+  {
+    "id": "api-arda-fardacudaexternalcallcontext-mlaunchmode-9a844436",
+    "name": "mLaunchMode",
+    "qualifiedName": "arda::FArdaCudaExternalCallContext::mLaunchMode",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "EArdaCudaLaunchMode mLaunchMode = EArdaCudaLaunchMode::None",
+    "summary": "Qualified scheduling path; CUDA graph support alone does not imply CiG support.",
+    "details": "Qualified scheduling path; CUDA graph support alone does not imply CiG support.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaExternalCallContext"
+    ],
+    "sourceLine": 334
+  },
+  {
+    "id": "api-arda-fardacudaexternalcallcontext-mcomputecapability-3598f695",
+    "name": "mComputeCapability",
+    "qualifiedName": "arda::FArdaCudaExternalCallContext::mComputeCapability",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint32_t mComputeCapability = 0",
+    "summary": "Matched device architecture, encoded as major * ten + minor.",
+    "details": "Matched device architecture, encoded as major * ten + minor.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaExternalCallContext"
+    ],
+    "sourceLine": 336
+  },
+  {
+    "id": "api-arda-fardacudaexternalcallcontext-mstate-17ec0597",
+    "name": "mState",
+    "qualifiedName": "arda::FArdaCudaExternalCallContext::mState",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "IArdaCudaExternalCallState* mState = nullptr",
+    "summary": "Optional factory/context cache. Null during CreateContextState or for a stateless factory.",
+    "details": "Optional factory/context cache. Null during CreateContextState or for a stateless factory.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaExternalCallContext"
+    ],
+    "sourceLine": 338
+  },
+  {
+    "id": "api-arda-iardacudapreparedcall-eda24f66",
+    "name": "IArdaCudaPreparedCall",
+    "qualifiedName": "arda::IArdaCudaPreparedCall",
+    "kind": "class",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "class IArdaCudaPreparedCall",
+    "summary": "Library state for an uncaptured recording or retained graph variant, such as handles, descriptors and a frozen execution plan. Graph hits reuse the original prepared object. The provider retains this state through GPU completion and destroys it with the preparation context current, before destroying the borrowed stream. Own all native state here; do not share mutable handles or workspace across concurrent recordings.",
+    "details": "Library state for an uncaptured recording or retained graph variant, such as handles, descriptors and a frozen execution plan. Graph hits reuse the original prepared object. The provider retains this state through GPU completion and destroys it with the preparation context current, before destroying the borrowed stream. Own all native state here; do not share mutable handles or workspace across concurrent recordings.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 347
+  },
+  {
+    "id": "api-arda-iardacudapreparedcall-iardacudapreparedcall-9c9a7847",
+    "name": "~IArdaCudaPreparedCall",
+    "qualifiedName": "arda::IArdaCudaPreparedCall::~IArdaCudaPreparedCall",
+    "kind": "destructor",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual ~IArdaCudaPreparedCall() = default",
+    "summary": "Releases native state under the owning CUDA context after retirement or abandoned recording.",
+    "details": "Releases native state under the owning CUDA context after retirement or abandoned recording.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaPreparedCall"
+    ],
+    "sourceLine": 351
+  },
+  {
+    "id": "api-arda-iardacudapreparedcall-enqueue-84291661",
+    "name": "Enqueue",
+    "qualifiedName": "arda::IArdaCudaPreparedCall::Enqueue",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus Enqueue(void* Stream) = 0",
+    "summary": "Enqueues one library operation, which may launch multiple internal kernels. Use only the supplied stream (the same stream as Prepare), preserve its ordering, and return library errors as status. Do not synchronize, select a device, begin capture, or call back into the RHI. GPU-visible state must survive in this object.",
+    "details": "Enqueues one library operation, which may launch multiple internal kernels. Use only the supplied stream (the same stream as Prepare), preserve its ordering, and return library errors as status. Do not synchronize, select a device, begin capture, or call back into the RHI. GPU-visible state must survive in this object.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaPreparedCall"
+    ],
+    "sourceLine": 358
+  },
+  {
+    "id": "api-arda-iardacudaexternalcall-b1621535",
+    "name": "IArdaCudaExternalCall",
+    "qualifiedName": "arda::IArdaCudaExternalCall",
+    "kind": "class",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "class IArdaCudaExternalCall",
+    "summary": "Reusable factory for externally defined CUDA calls; requires no compiled kernel manifest. Library headers and link dependencies belong to the adapter, not the public RHI. Factories must be thread-safe and must not own context-specific native state.",
+    "details": "Reusable factory for externally defined CUDA calls; requires no compiled kernel manifest. Library headers and link dependencies belong to the adapter, not the public RHI. Factories must be thread-safe and must not own context-specific native state.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 365
+  },
+  {
+    "id": "api-arda-iardacudaexternalcall-iardacudaexternalcall-900f4fc2",
+    "name": "~IArdaCudaExternalCall",
+    "qualifiedName": "arda::IArdaCudaExternalCall::~IArdaCudaExternalCall",
+    "kind": "destructor",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual ~IArdaCudaExternalCall() = default",
+    "summary": "Destroys the host-side factory; native state belongs in IArdaCudaPreparedCall.",
+    "details": "Destroys the host-side factory; native state belongs in IArdaCudaPreparedCall.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaExternalCall"
+    ],
+    "sourceLine": 369
+  },
+  {
+    "id": "api-arda-iardacudaexternalcall-getsignature-3180957b",
+    "name": "GetSignature",
+    "qualifiedName": "arda::IArdaCudaExternalCall::GetSignature",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaCudaKernelSignature GetSignature() const noexcept = 0",
+    "summary": "Exact plain parameter schema; addresses are resolved by the provider before Prepare.",
+    "details": "Exact plain parameter schema; addresses are resolved by the provider before Prepare.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaExternalCall"
+    ],
+    "sourceLine": 372
+  },
+  {
+    "id": "api-arda-iardacudaexternalcall-getsupport-7c4c175f",
+    "name": "GetSupport",
+    "qualifiedName": "arda::IArdaCudaExternalCall::GetSupport",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus GetSupport(const FArdaCudaCapabilities& Capabilities) const",
+    "summary": "Host-only capability check. Default admits ContextSwitch and VulkanCiG, rejecting D3D12CiG until an adapter explicitly qualifies its library/version/operation. Must be deterministic, thread-safe, and must not initialize or call CUDA.",
+    "details": "Host-only capability check. Default admits ContextSwitch and VulkanCiG, rejecting D3D12CiG until an adapter explicitly qualifies its library/version/operation. Must be deterministic, thread-safe, and must not initialize or call CUDA.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaExternalCall"
+    ],
+    "sourceLine": 378
+  },
+  {
+    "id": "api-arda-iardacudaexternalcall-supportsgraphcapture-2fecb715",
+    "name": "SupportsGraphCapture",
+    "qualifiedName": "arda::IArdaCudaExternalCall::SupportsGraphCapture",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual bool SupportsGraphCapture(const FArdaCudaCapabilities&) const noexcept",
+    "summary": "Explicit opt-in to capture and repeated replay. Enqueue must use only the supplied stream, create no host callbacks or allocations, and leave all GPU-visible state alive in the prepared call. Hidden configuration must be immutable or change the revision. CiG adapters must also satisfy GetSupport's stricter restrictions. Defaults to false.",
+    "details": "Explicit opt-in to capture and repeated replay. Enqueue must use only the supplied stream, create no host callbacks or allocations, and leave all GPU-visible state alive in the prepared call. Hidden configuration must be immutable or change the revision. CiG adapters must also satisfy GetSupport's stricter restrictions. Defaults to false.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaExternalCall"
+    ],
+    "sourceLine": 385
+  },
+  {
+    "id": "api-arda-iardacudaexternalcall-getgraphcapturerevision-f15aef21",
+    "name": "GetGraphCaptureRevision",
+    "qualifiedName": "arda::IArdaCudaExternalCall::GetGraphCaptureRevision",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual uint64_t GetGraphCaptureRevision() const noexcept",
+    "summary": "Change this value whenever hidden immutable configuration affects captured work.",
+    "details": "Change this value whenever hidden immutable configuration affects captured work.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaExternalCall"
+    ],
+    "sourceLine": 391
+  },
+  {
+    "id": "api-arda-iardacudaexternalcall-checksupport-73646572",
+    "name": "CheckSupport",
+    "qualifiedName": "arda::IArdaCudaExternalCall::CheckSupport",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaRHIStatus CheckSupport(const FArdaCudaCapabilities& Capabilities) const",
+    "summary": "Calls the host support hook, translating adapter exceptions into an InvalidArgument status.",
+    "details": "Calls the host support hook, translating adapter exceptions into an InvalidArgument status.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaExternalCall"
+    ],
+    "sourceLine": 397
+  },
+  {
+    "id": "api-arda-iardacudaexternalcall-createcontextstate-020a3d03",
+    "name": "CreateContextState",
+    "qualifiedName": "arda::IArdaCudaExternalCall::CreateContextState",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual TArdaRHIResult<eastl::unique_ptr<IArdaCudaExternalCallState>> CreateContextState( const FArdaCudaExternalCallContext& Context) const",
+    "summary": "Optionally initializes a cache before first preparation on this context. Default returns null success for no cache. A non-null state retains this factory until device teardown; reuse stable factory instances to reuse caches. No declared resources may be accessed. The provider owns and destroys native state under this context, after all recordings retire.",
+    "details": "Optionally initializes a cache before first preparation on this context. Default returns null success for no cache. A non-null state retains this factory until device teardown; reuse stable factory instances to reuse caches. No declared resources may be accessed. The provider owns and destroys native state under this context, after all recordings retire.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaExternalCall"
+    ],
+    "sourceLine": 404
+  },
+  {
+    "id": "api-arda-iardacudaexternalcall-prepare-a7f69bf2",
+    "name": "Prepare",
+    "qualifiedName": "arda::IArdaCudaExternalCall::Prepare",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "virtual TArdaRHIResult<eastl::unique_ptr<IArdaCudaPreparedCall>> Prepare( const FArdaCudaExternalCallContext& Context, const void* Parameters, size_t ParameterSize) const = 0",
+    "summary": "Creates exclusive state under the supplied current context before any batch enqueue or CiG capture. Validate parameters and create handles/descriptors/plans here. Do not access declared resources or enqueue algorithm work: graphics may still own them. Copy Parameters; its storage is borrowed. Preparation may fail without executing earlier operations. A successful result must contain a non-null object.",
+    "details": "Creates exclusive state under the supplied current context before any batch enqueue or CiG capture. Validate parameters and create handles/descriptors/plans here. Do not access declared resources or enqueue algorithm work: graphics may still own them. Copy Parameters; its storage is borrowed. Preparation may fail without executing earlier operations. A successful result must contain a non-null object.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaCudaExternalCall"
+    ],
+    "sourceLine": 413
   },
   {
     "id": "api-arda-fardacudaparameterpatch-2cb3939e",
@@ -41728,7 +43852,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 212
+    "sourceLine": 420
   },
   {
     "id": "api-arda-fardacudaparameterpatch-mbindingindex-b80a6151",
@@ -41749,7 +43873,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterPatch"
     ],
-    "sourceLine": 215
+    "sourceLine": 423
   },
   {
     "id": "api-arda-fardacudaparameterpatch-moffset-bb54d7bc",
@@ -41770,7 +43894,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterPatch"
     ],
-    "sourceLine": 217
+    "sourceLine": 425
   },
   {
     "id": "api-arda-fardacudaparameterpatch-malignment-d62e79c4",
@@ -41791,7 +43915,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaParameterPatch"
     ],
-    "sourceLine": 219
+    "sourceLine": 427
   },
   {
     "id": "api-arda-fardacudakernel-f9242bfb",
@@ -41801,8 +43925,8 @@ window.ArdaBackendApi = {
     "component": "rhi-resources",
     "page": "api-reference.html",
     "signature": "struct FArdaCudaKernel : FArdaCudaLaunchConfig",
-    "summary": "One precompiled kernel and an owned, unresolved by-value CUDA parameter object.",
-    "details": "One precompiled kernel and an owned, unresolved by-value CUDA parameter object.",
+    "summary": "One CUDA operation and an owned, unresolved parameter object. Geometry applies only to compiled kernels.",
+    "details": "One CUDA operation and an owned, unresolved parameter object. Geometry applies only to compiled kernels.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -41812,7 +43936,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 223
+    "sourceLine": 431
   },
   {
     "id": "api-arda-fardacudakernel-mentry-8f92e672",
@@ -41833,7 +43957,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernel"
     ],
-    "sourceLine": 226
+    "sourceLine": 434
   },
   {
     "id": "api-arda-fardacudakernel-mparameters-2eb1ad50",
@@ -41854,7 +43978,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernel"
     ],
-    "sourceLine": 228
+    "sourceLine": 436
   },
   {
     "id": "api-arda-fardacudakernel-mpatches-a87ea994",
@@ -41875,7 +43999,49 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaKernel"
     ],
-    "sourceLine": 230
+    "sourceLine": 438
+  },
+  {
+    "id": "api-arda-fardacudakernel-mexternalcall-4203c06a",
+    "name": "mExternalCall",
+    "qualifiedName": "arda::FArdaCudaKernel::mExternalCall",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::shared_ptr<const IArdaCudaExternalCall> mExternalCall",
+    "summary": "External library factory, mutually exclusive with mEntry. May enqueue multiple internal kernels.",
+    "details": "External library factory, mutually exclusive with mEntry. May enqueue multiple internal kernels.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernel"
+    ],
+    "sourceLine": 440
+  },
+  {
+    "id": "api-arda-fardacudakernel-mgraphbatch-f296bbbb",
+    "name": "mGraphBatch",
+    "qualifiedName": "arda::FArdaCudaKernel::mGraphBatch",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::shared_ptr<const FArdaCudaGraphBatch> mGraphBatch",
+    "summary": "Optional common retained-graph metadata; ordinary raw dispatches leave this empty.",
+    "details": "Optional common retained-graph metadata; ordinary raw dispatches leave this empty.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaCudaKernel"
+    ],
+    "sourceLine": 442
   },
   {
     "id": "api-arda-fardacudadispatch-7832a24b",
@@ -41885,8 +44051,8 @@ window.ArdaBackendApi = {
     "component": "rhi-resources",
     "page": "api-reference.html",
     "signature": "struct FArdaCudaDispatch",
-    "summary": "A single kernel dispatch; multiple operations must be recorded separately.",
-    "details": "A single kernel dispatch; multiple operations must be recorded separately.",
+    "summary": "A single operation dispatch; use DispatchCudaSequence to group kernels and library calls.",
+    "details": "A single operation dispatch; use DispatchCudaSequence to group kernels and library calls.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -41896,7 +44062,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 234
+    "sourceLine": 446
   },
   {
     "id": "api-arda-fardacudadispatch-mbindings-ef7c9d8f",
@@ -41917,7 +44083,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatch"
     ],
-    "sourceLine": 237
+    "sourceLine": 449
   },
   {
     "id": "api-arda-fardacudadispatch-mkernels-9a7d2f5f",
@@ -41927,8 +44093,8 @@ window.ArdaBackendApi = {
     "component": "rhi-resources",
     "page": "api-reference.html",
     "signature": "eastl::vector<FArdaCudaKernel> mKernels",
-    "summary": "Exactly one launch. The vector preserves the provider ABI's batch representation.",
-    "details": "Exactly one launch. The vector preserves the provider ABI's batch representation.",
+    "summary": "Exactly one compiled kernel or external call. The legacy name preserves source compatibility.",
+    "details": "Exactly one compiled kernel or external call. The legacy name preserves source compatibility.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "params": [],
     "returns": "",
@@ -41938,7 +44104,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaDispatch"
     ],
-    "sourceLine": 239
+    "sourceLine": 451
   },
   {
     "id": "api-arda-validateardacudatexture-dc3d493c",
@@ -41959,7 +44125,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 243
+    "sourceLine": 455
   },
   {
     "id": "api-arda-validateardacudabuffer-dcddcda3",
@@ -41980,7 +44146,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 246
+    "sourceLine": 458
   },
   {
     "id": "api-arda-validateardacudakernels-a5864f6f",
@@ -42001,7 +44167,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 249
+    "sourceLine": 461
+  },
+  {
+    "id": "api-arda-validateardacudakernelbatch-4faaf91a",
+    "name": "ValidateArdaCudaKernelBatch",
+    "qualifiedName": "arda::ValidateArdaCudaKernelBatch",
+    "kind": "function",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaCudaKernelBatch(const eastl::vector<FArdaCudaKernel>& Kernels, size_t BindingCount, const FArdaCudaCapabilities& Capabilities)",
+    "summary": "Validates one or more ordered kernels/library calls against a shared binding table. Single-operation operands and DispatchCuda continue to use ValidateArdaCudaKernels.",
+    "details": "Validates one or more ordered kernels/library calls against a shared binding table. Single-operation operands and DispatchCuda continue to use ValidateArdaCudaKernels.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 468
   },
   {
     "id": "api-arda-fardarhibufferreadbackresult-0dc473ca",
@@ -42256,6 +44443,27 @@ window.ArdaBackendApi = {
     "sourceLine": 90
   },
   {
+    "id": "api-arda-iardarhicommandlist-dispatchcudasequence-c47078c5",
+    "name": "DispatchCudaSequence",
+    "qualifiedName": "arda::IArdaRHICommandList::DispatchCudaSequence",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus DispatchCudaSequence(const eastl::vector<FArdaCudaDispatch>&)",
+    "summary": "Records an ordered sequence of single-operation dispatches as one native CUDA batch. All steps are validated before capture/launch. The union of their resources is acquired once and retained through completion, including intermediate buffers. Kernels execute on one stream without intervening graphics work or CPU waits. An empty sequence is a no-op on an open supported list. Other restrictions match DispatchCuda.",
+    "details": "Records an ordered sequence of single-operation dispatches as one native CUDA batch. All steps are validated before capture/launch. The union of their resources is acquired once and retained through completion, including intermediate buffers. Kernels execute on one stream without intervening graphics work or CPU waits. An empty sequence is a no-op on an open supported list. Other restrictions match DispatchCuda.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHICommandList"
+    ],
+    "sourceLine": 101
+  },
+  {
     "id": "api-arda-iardarhicommandlist-copybufferhosttodevice-610205a3",
     "name": "CopyBufferHostToDevice",
     "qualifiedName": "arda::IArdaRHICommandList::CopyBufferHostToDevice",
@@ -42274,7 +44482,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 142
+    "sourceLine": 153
   },
   {
     "id": "api-arda-iardarhicommandlist-copybufferhosttodeviceasync-4871dec4",
@@ -42295,7 +44503,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 151
+    "sourceLine": 162
   },
   {
     "id": "api-arda-iardarhicommandlist-copybufferdevicetohost-034ed7d3",
@@ -42316,7 +44524,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 161
+    "sourceLine": 172
   },
   {
     "id": "api-arda-iardarhicommandlist-copybufferdevicetohostasync-2cdef6fb",
@@ -42337,7 +44545,49 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 170
+    "sourceLine": 181
+  },
+  {
+    "id": "api-arda-iardarhicommandlist-copybuffertotexture-24983139",
+    "name": "CopyBufferToTexture",
+    "qualifiedName": "arda::IArdaRHICommandList::CopyBufferToTexture",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus CopyBufferToTexture(IArdaRHITexture& Destination, const FArdaRHITextureSlice& DestinationSlice, IArdaRHIBuffer& Source, const FArdaRHITextureBufferLayout& SourceLayout) = 0",
+    "summary": "Copies a pitched buffer region into one texture mip/layer or 3D region. Supports single-sample, uncompressed color formats. Automatic barriers temporarily transition both resources and restore their states; otherwise callers supply copy states. Source must not be a CPU-read buffer. Both resources are retained through submission.",
+    "details": "Copies a pitched buffer region into one texture mip/layer or 3D region. Supports single-sample, uncompressed color formats. Automatic barriers temporarily transition both resources and restore their states; otherwise callers supply copy states. Source must not be a CPU-read buffer. Both resources are retained through submission.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHICommandList"
+    ],
+    "sourceLine": 212
+  },
+  {
+    "id": "api-arda-iardarhicommandlist-copytexturetobuffer-379c048d",
+    "name": "CopyTextureToBuffer",
+    "qualifiedName": "arda::IArdaRHICommandList::CopyTextureToBuffer",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus CopyTextureToBuffer(IArdaRHIBuffer& Destination, const FArdaRHITextureBufferLayout& DestinationLayout, IArdaRHITexture& Source, const FArdaRHITextureSlice& SourceSlice) = 0",
+    "summary": "Copies one texture mip/layer or 3D region into a pitched buffer without CPU readback. Supports single-sample, uncompressed color formats. Automatic barriers temporarily transition both resources and restore their states; otherwise callers supply copy states. Destination must not be a CPU-write buffer. Both resources survive GPU completion.",
+    "details": "Copies one texture mip/layer or 3D region into a pitched buffer without CPU readback. Supports single-sample, uncompressed color formats. Automatic barriers temporarily transition both resources and restore their states; otherwise callers supply copy states. Destination must not be a CPU-write buffer. Both resources survive GPU completion.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHICommandList"
+    ],
+    "sourceLine": 222
   },
   {
     "id": "api-arda-iardarhicommandlist-querysamplerfeedbacktexturestate-72933759",
@@ -42358,7 +44608,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 323
+    "sourceLine": 354
   },
   {
     "id": "api-arda-iardarhidevice-getcudacapabilities-50bfa86e",
@@ -42379,7 +44629,59 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 670
+    "sourceLine": 701
+  },
+  {
+    "id": "api-arda-iardarhidevice-querytexturememoryrequirements-566087c2",
+    "name": "QueryTextureMemoryRequirements",
+    "qualifiedName": "arda::IArdaRHIDevice::QueryTextureMemoryRequirements",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHIMemoryRequirements> QueryTextureMemoryRequirements( const FArdaRHITextureDesc& Desc) = 0",
+    "summary": "Queries texture allocation requirements without allocating or binding GPU memory. The backend may create a temporary unbound native resource. Creation flags, including virtual, sparse, and CUDA interoperability flags, are taken from the descriptor.",
+    "details": "Queries texture allocation requirements without allocating or binding GPU memory. The backend may create a temporary unbound native resource. Creation flags, including virtual, sparse, and CUDA interoperability flags, are taken from the descriptor.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "params": [
+      {
+        "name": "Desc",
+        "description": "The proposed texture descriptor."
+      }
+    ],
+    "returns": "Required size, alignment, compatible memory types, and operation status.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIDevice"
+    ],
+    "sourceLine": 1303
+  },
+  {
+    "id": "api-arda-iardarhidevice-querybuffermemoryrequirements-48a3cebc",
+    "name": "QueryBufferMemoryRequirements",
+    "qualifiedName": "arda::IArdaRHIDevice::QueryBufferMemoryRequirements",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHIMemoryRequirements> QueryBufferMemoryRequirements( const FArdaRHIBufferDesc& Desc) = 0",
+    "summary": "Queries buffer allocation requirements without allocating or binding GPU memory. The backend may create a temporary unbound native resource.",
+    "details": "Queries buffer allocation requirements without allocating or binding GPU memory. The backend may create a temporary unbound native resource.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "params": [
+      {
+        "name": "Desc",
+        "description": "The proposed buffer descriptor, including all intended creation flags."
+      }
+    ],
+    "returns": "Required size, alignment, compatible memory types, and operation status.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIDevice"
+    ],
+    "sourceLine": 1312
   },
   {
     "id": "api-arda-iardarhidevice-getresourcelifetimestats-18d7ae60",
@@ -42400,7 +44702,49 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 1405
+    "sourceLine": 1457
+  },
+  {
+    "id": "api-arda-iardarhidevice-waitforsubmission-96a0ae56",
+    "name": "WaitForSubmission",
+    "qualifiedName": "arda::IArdaRHIDevice::WaitForSubmission",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus WaitForSubmission(uint64_t Submission)",
+    "summary": "Waits for a token returned by this device's ExecuteCommandList. Does not wait for later submissions.",
+    "details": "Waits for a token returned by this device's ExecuteCommandList. Does not wait for later submissions.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIDevice"
+    ],
+    "sourceLine": 1469
+  },
+  {
+    "id": "api-arda-iardarhidevice-pollsubmission-655f1383",
+    "name": "PollSubmission",
+    "qualifiedName": "arda::IArdaRHIDevice::PollSubmission",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<bool> PollSubmission(uint64_t Submission)",
+    "summary": "Nonblocking completion check for a submission from this device.",
+    "details": "Nonblocking completion check for a submission from this device.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIDevice"
+    ],
+    "sourceLine": 1476
   },
   {
     "id": "api-arda-iardaproviderobject-b2180131",
@@ -42466,6 +44810,27 @@ window.ArdaBackendApi = {
     "sourceLine": 18
   },
   {
+    "id": "api-arda-iardaproviderobject-getmemoryallocationinfo-1988d6ce",
+    "name": "GetMemoryAllocationInfo",
+    "qualifiedName": "arda::IArdaProviderObject::GetMemoryAllocationInfo",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept",
+    "summary": "Entire retained allocation, including parent heap capacity for placed resources.",
+    "details": "Entire retained allocation, including parent heap capacity for placed resources.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaProviderObject"
+    ],
+    "sourceLine": 21
+  },
+  {
     "id": "api-arda-iardaproviderobject-getcudaresourceinfo-2dbccc51",
     "name": "GetCudaResourceInfo",
     "qualifiedName": "arda::IArdaProviderObject::GetCudaResourceInfo",
@@ -42484,7 +44849,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderObject"
     ],
-    "sourceLine": 20
+    "sourceLine": 26
   },
   {
     "id": "api-arda-iardaproviderobject-getdescriptorbaseindex-ecc151d7",
@@ -42505,7 +44870,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderObject"
     ],
-    "sourceLine": 25
+    "sourceLine": 31
   },
   {
     "id": "api-arda-iardaproviderobject-getworkgraphbackingmemorysize-a1e85b9b",
@@ -42526,7 +44891,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderObject"
     ],
-    "sourceLine": 30
+    "sourceLine": 36
   },
   {
     "id": "api-arda-fardaproviderobjectref-4039e389",
@@ -42547,7 +44912,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 36
+    "sourceLine": 42
   },
   {
     "id": "api-arda-fardaproviderobjectresult-5960fe50",
@@ -42568,7 +44933,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 37
+    "sourceLine": 43
   },
   {
     "id": "api-arda-fardaprovidercudabinding-a387d967",
@@ -42589,7 +44954,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 39
+    "sourceLine": 45
   },
   {
     "id": "api-arda-fardaprovidercudabinding-mobject-4ec147b6",
@@ -42610,7 +44975,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderCudaBinding"
     ],
-    "sourceLine": 41
+    "sourceLine": 47
   },
   {
     "id": "api-arda-fardaprovidercudabinding-maccess-2a52bae5",
@@ -42631,7 +44996,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderCudaBinding"
     ],
-    "sourceLine": 42
+    "sourceLine": 48
   },
   {
     "id": "api-arda-fardaprovidercudabinding-mtype-e6174f0c",
@@ -42652,7 +45017,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderCudaBinding"
     ],
-    "sourceLine": 43
+    "sourceLine": 49
   },
   {
     "id": "api-arda-fardaprovidercudabinding-mbufferrange-6dfc8dae",
@@ -42673,7 +45038,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderCudaBinding"
     ],
-    "sourceLine": 44
+    "sourceLine": 50
   },
   {
     "id": "api-arda-fardaprovidercudabinding-mmiplevel-e43cbcb1",
@@ -42694,7 +45059,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderCudaBinding"
     ],
-    "sourceLine": 45
+    "sourceLine": 51
   },
   {
     "id": "api-arda-fardaproviderlifetimestats-c31b7e3d",
@@ -42715,7 +45080,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 48
+    "sourceLine": 54
   },
   {
     "id": "api-arda-fardaproviderlifetimestats-mresourcedescriptors-f5ed2ec0",
@@ -42736,7 +45101,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderLifetimeStats"
     ],
-    "sourceLine": 50
+    "sourceLine": 56
   },
   {
     "id": "api-arda-fardaproviderlifetimestats-msamplerdescriptors-23fd52ba",
@@ -42757,7 +45122,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderLifetimeStats"
     ],
-    "sourceLine": 51
+    "sourceLine": 57
   },
   {
     "id": "api-arda-fardaproviderlifetimestats-mdescriptorsets-cb51da67",
@@ -42778,7 +45143,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderLifetimeStats"
     ],
-    "sourceLine": 52
+    "sourceLine": 58
   },
   {
     "id": "api-arda-fardaproviderlifetimestats-mpendingsubmissions-628095ea",
@@ -42799,7 +45164,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderLifetimeStats"
     ],
-    "sourceLine": 53
+    "sourceLine": 59
   },
   {
     "id": "api-arda-fardaproviderbinding-65f1e848",
@@ -42820,7 +45185,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 56
+    "sourceLine": 62
   },
   {
     "id": "api-arda-fardaproviderbinding-mitem-591f770b",
@@ -42841,7 +45206,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBinding"
     ],
-    "sourceLine": 58
+    "sourceLine": 64
   },
   {
     "id": "api-arda-fardaproviderbinding-mobject-cc9bb8c2",
@@ -42862,7 +45227,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBinding"
     ],
-    "sourceLine": 59
+    "sourceLine": 65
   },
   {
     "id": "api-arda-fardaprovidertexturetilemapping-7412891e",
@@ -42883,7 +45248,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 62
+    "sourceLine": 68
   },
   {
     "id": "api-arda-fardaprovidertexturetilemapping-mcoordinates-8300807f",
@@ -42904,7 +45269,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderTextureTileMapping"
     ],
-    "sourceLine": 64
+    "sourceLine": 70
   },
   {
     "id": "api-arda-fardaprovidertexturetilemapping-mregions-abf7c144",
@@ -42925,7 +45290,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderTextureTileMapping"
     ],
-    "sourceLine": 65
+    "sourceLine": 71
   },
   {
     "id": "api-arda-fardaprovidertexturetilemapping-mbyteoffsets-4e2df06a",
@@ -42946,7 +45311,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderTextureTileMapping"
     ],
-    "sourceLine": 66
+    "sourceLine": 72
   },
   {
     "id": "api-arda-fardaprovidertexturetilemapping-mheap-aa19500f",
@@ -42967,7 +45332,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderTextureTileMapping"
     ],
-    "sourceLine": 67
+    "sourceLine": 73
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-c6077f51",
@@ -42988,7 +45353,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 70
+    "sourceLine": 76
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-mbufferoffset-785f1747",
@@ -43009,7 +45374,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBufferTileMapping"
     ],
-    "sourceLine": 72
+    "sourceLine": 78
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-mbytesize-f758b781",
@@ -43030,7 +45395,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBufferTileMapping"
     ],
-    "sourceLine": 73
+    "sourceLine": 79
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-mheapoffset-b7235a11",
@@ -43051,7 +45416,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBufferTileMapping"
     ],
-    "sourceLine": 74
+    "sourceLine": 80
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-mheap-b248026a",
@@ -43072,7 +45437,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBufferTileMapping"
     ],
-    "sourceLine": 75
+    "sourceLine": 81
   },
   {
     "id": "api-arda-fardaproviderbuffertilemapping-mbcommit-5116c05e",
@@ -43093,7 +45458,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderBufferTileMapping"
     ],
-    "sourceLine": 76
+    "sourceLine": 82
   },
   {
     "id": "api-arda-fardaproviderframebuffertarget-7a2b92b5",
@@ -43114,7 +45479,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 79
+    "sourceLine": 85
   },
   {
     "id": "api-arda-fardaproviderframebuffertarget-mtarget-8ea5bb62",
@@ -43135,7 +45500,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderFramebufferTarget"
     ],
-    "sourceLine": 81
+    "sourceLine": 87
   },
   {
     "id": "api-arda-fardaproviderframebuffertarget-mtexture-c22548a5",
@@ -43156,7 +45521,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderFramebufferTarget"
     ],
-    "sourceLine": 82
+    "sourceLine": 88
   },
   {
     "id": "api-arda-fardaproviderframebuffercreateinfo-57521bf0",
@@ -43177,7 +45542,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 85
+    "sourceLine": 91
   },
   {
     "id": "api-arda-fardaproviderframebuffercreateinfo-mdesc-9887bb13",
@@ -43198,7 +45563,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderFramebufferCreateInfo"
     ],
-    "sourceLine": 87
+    "sourceLine": 93
   },
   {
     "id": "api-arda-fardaproviderframebuffercreateinfo-mcolors-27a3ead6",
@@ -43219,7 +45584,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderFramebufferCreateInfo"
     ],
-    "sourceLine": 88
+    "sourceLine": 94
   },
   {
     "id": "api-arda-fardaproviderframebuffercreateinfo-mdepth-f89d8783",
@@ -43240,7 +45605,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderFramebufferCreateInfo"
     ],
-    "sourceLine": 89
+    "sourceLine": 95
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-12025c95",
@@ -43261,7 +45626,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 92
+    "sourceLine": 98
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mdesc-737b749b",
@@ -43282,7 +45647,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 94
+    "sourceLine": 100
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-minputlayout-f504f475",
@@ -43303,7 +45668,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 95
+    "sourceLine": 101
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mvertexshader-1915552c",
@@ -43324,7 +45689,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 96
+    "sourceLine": 102
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mhullshader-688ed5c3",
@@ -43345,7 +45710,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 97
+    "sourceLine": 103
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mdomainshader-35b650b9",
@@ -43366,7 +45731,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 98
+    "sourceLine": 104
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mgeometryshader-0a534ed0",
@@ -43387,7 +45752,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 99
+    "sourceLine": 105
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mpixelshader-41d1d4d3",
@@ -43408,7 +45773,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 100
+    "sourceLine": 106
   },
   {
     "id": "api-arda-fardaprovidergraphicspipelinecreateinfo-mbindinglayouts-52a7ac7a",
@@ -43429,7 +45794,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsPipelineCreateInfo"
     ],
-    "sourceLine": 101
+    "sourceLine": 107
   },
   {
     "id": "api-arda-fardaprovidercomputepipelinecreateinfo-447006bc",
@@ -43450,7 +45815,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 104
+    "sourceLine": 110
   },
   {
     "id": "api-arda-fardaprovidercomputepipelinecreateinfo-mdesc-eb0289bc",
@@ -43471,7 +45836,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderComputePipelineCreateInfo"
     ],
-    "sourceLine": 106
+    "sourceLine": 112
   },
   {
     "id": "api-arda-fardaprovidercomputepipelinecreateinfo-mcomputeshader-2ccd55d4",
@@ -43492,7 +45857,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderComputePipelineCreateInfo"
     ],
-    "sourceLine": 107
+    "sourceLine": 113
   },
   {
     "id": "api-arda-fardaprovidercomputepipelinecreateinfo-mbindinglayouts-8cbb79bd",
@@ -43513,7 +45878,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderComputePipelineCreateInfo"
     ],
-    "sourceLine": 108
+    "sourceLine": 114
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-526a1814",
@@ -43534,7 +45899,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 111
+    "sourceLine": 117
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-mdesc-a4a179dc",
@@ -43555,7 +45920,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletPipelineCreateInfo"
     ],
-    "sourceLine": 113
+    "sourceLine": 119
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-mamplificationshader-8083d973",
@@ -43576,7 +45941,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletPipelineCreateInfo"
     ],
-    "sourceLine": 114
+    "sourceLine": 120
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-mmeshshader-c193b1a3",
@@ -43597,7 +45962,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletPipelineCreateInfo"
     ],
-    "sourceLine": 115
+    "sourceLine": 121
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-mpixelshader-dd96d40a",
@@ -43618,7 +45983,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletPipelineCreateInfo"
     ],
-    "sourceLine": 116
+    "sourceLine": 122
   },
   {
     "id": "api-arda-fardaprovidermeshletpipelinecreateinfo-mbindinglayouts-c9f31890",
@@ -43639,7 +46004,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletPipelineCreateInfo"
     ],
-    "sourceLine": 117
+    "sourceLine": 123
   },
   {
     "id": "api-arda-fardaproviderworkgraphpipelinecreateinfo-96bf980e",
@@ -43660,7 +46025,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 120
+    "sourceLine": 126
   },
   {
     "id": "api-arda-fardaproviderworkgraphpipelinecreateinfo-mdesc-9415df2e",
@@ -43681,7 +46046,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderWorkGraphPipelineCreateInfo"
     ],
-    "sourceLine": 122
+    "sourceLine": 128
   },
   {
     "id": "api-arda-fardaproviderworkgraphpipelinecreateinfo-mshaders-229406a0",
@@ -43702,7 +46067,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderWorkGraphPipelineCreateInfo"
     ],
-    "sourceLine": 123
+    "sourceLine": 129
   },
   {
     "id": "api-arda-fardaproviderworkgraphpipelinecreateinfo-mbindinglayouts-0383b05f",
@@ -43723,7 +46088,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderWorkGraphPipelineCreateInfo"
     ],
-    "sourceLine": 124
+    "sourceLine": 130
   },
   {
     "id": "api-arda-fardaproviderraytracingshader-8ce4412b",
@@ -43744,7 +46109,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 127
+    "sourceLine": 133
   },
   {
     "id": "api-arda-fardaproviderraytracingshader-mexportname-af270342",
@@ -43765,7 +46130,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingShader"
     ],
-    "sourceLine": 129
+    "sourceLine": 135
   },
   {
     "id": "api-arda-fardaproviderraytracingshader-mentrypoint-4aabfd92",
@@ -43786,7 +46151,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingShader"
     ],
-    "sourceLine": 130
+    "sourceLine": 136
   },
   {
     "id": "api-arda-fardaproviderraytracingshader-mshader-8fe9e74f",
@@ -43807,7 +46172,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingShader"
     ],
-    "sourceLine": 131
+    "sourceLine": 137
   },
   {
     "id": "api-arda-fardaproviderraytracingshader-mlocalbindinglayout-34ac4bb5",
@@ -43828,7 +46193,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingShader"
     ],
-    "sourceLine": 132
+    "sourceLine": 138
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-17e81ece",
@@ -43849,7 +46214,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 135
+    "sourceLine": 141
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-mexportname-162ce9d2",
@@ -43870,7 +46235,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 137
+    "sourceLine": 143
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-mclosesthit-df372986",
@@ -43891,7 +46256,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 138
+    "sourceLine": 144
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-manyhit-875d585f",
@@ -43912,7 +46277,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 139
+    "sourceLine": 145
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-mintersection-c3b81fb7",
@@ -43933,7 +46298,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 140
+    "sourceLine": 146
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-mlocalbindinglayout-e57023ac",
@@ -43954,7 +46319,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 141
+    "sourceLine": 147
   },
   {
     "id": "api-arda-fardaproviderraytracinghitgroup-mbproceduralprimitive-9df88469",
@@ -43975,7 +46340,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingHitGroup"
     ],
-    "sourceLine": 142
+    "sourceLine": 148
   },
   {
     "id": "api-arda-fardaproviderraytracingpipelinecreateinfo-d7ef976e",
@@ -43996,7 +46361,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 145
+    "sourceLine": 151
   },
   {
     "id": "api-arda-fardaproviderraytracingpipelinecreateinfo-mdesc-6d2935ee",
@@ -44017,7 +46382,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingPipelineCreateInfo"
     ],
-    "sourceLine": 147
+    "sourceLine": 153
   },
   {
     "id": "api-arda-fardaproviderraytracingpipelinecreateinfo-mshaders-94fb06d1",
@@ -44038,7 +46403,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingPipelineCreateInfo"
     ],
-    "sourceLine": 148
+    "sourceLine": 154
   },
   {
     "id": "api-arda-fardaproviderraytracingpipelinecreateinfo-mhitgroups-80dd0606",
@@ -44059,7 +46424,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingPipelineCreateInfo"
     ],
-    "sourceLine": 149
+    "sourceLine": 155
   },
   {
     "id": "api-arda-fardaproviderraytracingpipelinecreateinfo-mglobalbindinglayouts-e6d0d6e6",
@@ -44080,7 +46445,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingPipelineCreateInfo"
     ],
-    "sourceLine": 150
+    "sourceLine": 156
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-e9ad649c",
@@ -44101,7 +46466,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 153
+    "sourceLine": 159
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-mbuffer-d5418044",
@@ -44122,7 +46487,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderVertexBufferBinding"
     ],
-    "sourceLine": 155
+    "sourceLine": 161
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-mslot-b177b8b1",
@@ -44143,7 +46508,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderVertexBufferBinding"
     ],
-    "sourceLine": 156
+    "sourceLine": 162
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-moffset-a767ccd5",
@@ -44164,7 +46529,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderVertexBufferBinding"
     ],
-    "sourceLine": 157
+    "sourceLine": 163
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-mstride-cd28a636",
@@ -44185,7 +46550,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderVertexBufferBinding"
     ],
-    "sourceLine": 158
+    "sourceLine": 164
   },
   {
     "id": "api-arda-fardaprovidervertexbufferbinding-msize-d274a93d",
@@ -44206,7 +46571,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderVertexBufferBinding"
     ],
-    "sourceLine": 159
+    "sourceLine": 165
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-ac573c06",
@@ -44227,7 +46592,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 162
+    "sourceLine": 168
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mpipeline-fa712975",
@@ -44248,7 +46613,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 164
+    "sourceLine": 170
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mframebuffer-bbbc4431",
@@ -44269,7 +46634,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 165
+    "sourceLine": 171
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mbindings-c165425c",
@@ -44290,7 +46655,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 166
+    "sourceLine": 172
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mvertexbuffers-6e522833",
@@ -44311,7 +46676,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 167
+    "sourceLine": 173
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mindexbuffer-569a06f0",
@@ -44332,7 +46697,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 168
+    "sourceLine": 174
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mindexformat-915c0977",
@@ -44353,7 +46718,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 169
+    "sourceLine": 175
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mindexoffset-4e0c6184",
@@ -44374,7 +46739,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 170
+    "sourceLine": 176
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mviewports-97243e15",
@@ -44395,7 +46760,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 171
+    "sourceLine": 177
   },
   {
     "id": "api-arda-fardaprovidergraphicsstate-mscissors-44d7a44e",
@@ -44416,7 +46781,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderGraphicsState"
     ],
-    "sourceLine": 172
+    "sourceLine": 178
   },
   {
     "id": "api-arda-fardaprovidercomputestate-f67b099b",
@@ -44437,7 +46802,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 175
+    "sourceLine": 181
   },
   {
     "id": "api-arda-fardaprovidercomputestate-mpipeline-8d77ea04",
@@ -44458,7 +46823,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderComputeState"
     ],
-    "sourceLine": 177
+    "sourceLine": 183
   },
   {
     "id": "api-arda-fardaprovidercomputestate-mbindings-693b5ded",
@@ -44479,7 +46844,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderComputeState"
     ],
-    "sourceLine": 178
+    "sourceLine": 184
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-ee033772",
@@ -44500,7 +46865,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 181
+    "sourceLine": 187
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-mpipeline-a3296c10",
@@ -44521,7 +46886,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletState"
     ],
-    "sourceLine": 183
+    "sourceLine": 189
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-mframebuffer-688720f4",
@@ -44542,7 +46907,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletState"
     ],
-    "sourceLine": 184
+    "sourceLine": 190
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-mbindings-4eade614",
@@ -44563,7 +46928,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletState"
     ],
-    "sourceLine": 185
+    "sourceLine": 191
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-mviewports-cdb8dfe3",
@@ -44584,7 +46949,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletState"
     ],
-    "sourceLine": 186
+    "sourceLine": 192
   },
   {
     "id": "api-arda-fardaprovidermeshletstate-mscissors-c00f8da5",
@@ -44605,7 +46970,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderMeshletState"
     ],
-    "sourceLine": 187
+    "sourceLine": 193
   },
   {
     "id": "api-arda-fardaproviderraytracingstate-fbab2f5c",
@@ -44626,7 +46991,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 190
+    "sourceLine": 196
   },
   {
     "id": "api-arda-fardaproviderraytracingstate-mshadertable-06b203ff",
@@ -44647,7 +47012,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingState"
     ],
-    "sourceLine": 192
+    "sourceLine": 198
   },
   {
     "id": "api-arda-fardaproviderraytracingstate-mbindings-024e4a06",
@@ -44668,7 +47033,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingState"
     ],
-    "sourceLine": 193
+    "sourceLine": 199
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-051d4fa0",
@@ -44689,7 +47054,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 197
+    "sourceLine": 203
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-mdesc-cf8fa8b3",
@@ -44710,7 +47075,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingGeometry"
     ],
-    "sourceLine": 199
+    "sourceLine": 205
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-mindexbuffer-39cbe1ba",
@@ -44731,7 +47096,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingGeometry"
     ],
-    "sourceLine": 200
+    "sourceLine": 206
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-mvertexoraabbbuffer-7ec5afd8",
@@ -44752,7 +47117,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingGeometry"
     ],
-    "sourceLine": 201
+    "sourceLine": 207
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-mopacitymicromap-ff0a5518",
@@ -44773,7 +47138,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingGeometry"
     ],
-    "sourceLine": 202
+    "sourceLine": 208
   },
   {
     "id": "api-arda-fardaproviderraytracinggeometry-mopacitymicromapindexbuffer-3c648153",
@@ -44794,7 +47159,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingGeometry"
     ],
-    "sourceLine": 203
+    "sourceLine": 209
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-3db22c47",
@@ -44815,7 +47180,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 207
+    "sourceLine": 213
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-mtransform-03022a5a",
@@ -44836,7 +47201,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 209
+    "sourceLine": 215
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-minstanceid-f47748a2",
@@ -44857,7 +47222,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 210
+    "sourceLine": 216
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-minstancemask-982fcc30",
@@ -44878,7 +47243,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 211
+    "sourceLine": 217
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-minstancecontributiontohitgroupindex-b18afee7",
@@ -44899,7 +47264,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 212
+    "sourceLine": 218
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-mflags-9620db70",
@@ -44920,7 +47285,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 213
+    "sourceLine": 219
   },
   {
     "id": "api-arda-fardaproviderraytracinginstance-mbottomlevelaccelstruct-33326c1a",
@@ -44941,7 +47306,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaProviderRayTracingInstance"
     ],
-    "sourceLine": 214
+    "sourceLine": 220
   },
   {
     "id": "api-arda-iardaprovidercommandlist-7fde7436",
@@ -44962,7 +47327,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 217
+    "sourceLine": 223
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchcuda-0734acd1",
@@ -44972,8 +47337,8 @@ window.ArdaBackendApi = {
     "component": "rhi-device",
     "page": "api-reference.html",
     "signature": "virtual FArdaRHIStatus DispatchCuda(const eastl::vector<FArdaProviderCudaBinding>&, const eastl::vector<FArdaCudaKernel>&)",
-    "summary": "Performs dispatch cuda through the public backend and RHI contract.",
-    "details": "Performs dispatch cuda through the public backend and RHI contract. The signature is generated from the current public header.",
+    "summary": "Records a nonempty CUDA batch on one stream, with one graphics handoff/capture. Bindings contain all views used by the ordered kernels and external calls. Each operation's patches reference this table. Validate and prepare every operation before enqueue/capture. External state must retire under its owning context; providers without external-call support must reject those operations explicitly.",
+    "details": "Records a nonempty CUDA batch on one stream, with one graphics handoff/capture. Bindings contain all views used by the ordered kernels and external calls. Each operation's patches reference this table. Validate and prepare every operation before enqueue/capture. External state must retire under its owning context; providers without external-call support must reject those operations explicitly.",
     "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "params": [],
     "returns": "See the declared result and status contract.",
@@ -44983,7 +47348,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 220
+    "sourceLine": 232
   },
   {
     "id": "api-arda-iardaprovidercommandlist-isopen-597c4b7e",
@@ -45004,7 +47369,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 227
+    "sourceLine": 239
   },
   {
     "id": "api-arda-iardaprovidercommandlist-iardaprovidercommandlist-81ab89a4",
@@ -45025,7 +47390,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 232
+    "sourceLine": 244
   },
   {
     "id": "api-arda-iardaprovidercommandlist-open-e5e24c05",
@@ -45046,7 +47411,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 233
+    "sourceLine": 245
   },
   {
     "id": "api-arda-iardaprovidercommandlist-close-0e037725",
@@ -45067,7 +47432,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 234
+    "sourceLine": 246
   },
   {
     "id": "api-arda-iardaprovidercommandlist-reset-2e249e40",
@@ -45088,7 +47453,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 235
+    "sourceLine": 247
   },
   {
     "id": "api-arda-iardaprovidercommandlist-writebuffer-ccf06a89",
@@ -45109,7 +47474,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 236
+    "sourceLine": 248
   },
   {
     "id": "api-arda-iardaprovidercommandlist-copybuffer-1bb372e1",
@@ -45130,7 +47495,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 241
+    "sourceLine": 253
   },
   {
     "id": "api-arda-iardaprovidercommandlist-copytexture-6183ffe0",
@@ -45151,7 +47516,49 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 246
+    "sourceLine": 258
+  },
+  {
+    "id": "api-arda-iardaprovidercommandlist-copybuffertotexture-1266cedf",
+    "name": "CopyBufferToTexture",
+    "qualifiedName": "arda::IArdaProviderCommandList::CopyBufferToTexture",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus CopyBufferToTexture(const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaRHITextureSlice&, const FArdaProviderObjectRef&, const FArdaRHIBufferDesc&, const FArdaRHITextureBufferLayout&)",
+    "summary": "Optional pitched GPU buffer-to-texture copy; unsupported providers reject explicitly.",
+    "details": "Optional pitched GPU buffer-to-texture copy; unsupported providers reject explicitly.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaProviderCommandList"
+    ],
+    "sourceLine": 266
+  },
+  {
+    "id": "api-arda-iardaprovidercommandlist-copytexturetobuffer-3ca1662c",
+    "name": "CopyTextureToBuffer",
+    "qualifiedName": "arda::IArdaProviderCommandList::CopyTextureToBuffer",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus CopyTextureToBuffer(const FArdaProviderObjectRef&, const FArdaRHIBufferDesc&, const FArdaRHITextureBufferLayout&, const FArdaProviderObjectRef&, const FArdaRHITextureDesc&, const FArdaRHITextureSlice&)",
+    "summary": "Optional pitched GPU texture-to-buffer copy; unsupported providers reject explicitly.",
+    "details": "Optional pitched GPU texture-to-buffer copy; unsupported providers reject explicitly.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaProviderCommandList"
+    ],
+    "sourceLine": 278
   },
   {
     "id": "api-arda-iardaprovidercommandlist-resolvetexture-cdef4cc0",
@@ -45172,7 +47579,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 252
+    "sourceLine": 289
   },
   {
     "id": "api-arda-iardaprovidercommandlist-copytexturetostaging-b9a50ac4",
@@ -45193,7 +47600,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 258
+    "sourceLine": 295
   },
   {
     "id": "api-arda-iardaprovidercommandlist-copytexturefromstaging-62b4cfd8",
@@ -45214,7 +47621,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 264
+    "sourceLine": 301
   },
   {
     "id": "api-arda-iardaprovidercommandlist-cleartexture-26189f38",
@@ -45235,7 +47642,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 270
+    "sourceLine": 307
   },
   {
     "id": "api-arda-iardaprovidercommandlist-cleartextureuint-07f8a5de",
@@ -45256,7 +47663,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 274
+    "sourceLine": 311
   },
   {
     "id": "api-arda-iardaprovidercommandlist-clearbufferuint-5ddc1492",
@@ -45277,7 +47684,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 278
+    "sourceLine": 315
   },
   {
     "id": "api-arda-iardaprovidercommandlist-cleardepthstenciltexture-98fe5162",
@@ -45298,7 +47705,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 281
+    "sourceLine": 318
   },
   {
     "id": "api-arda-iardaprovidercommandlist-settexturestate-b3c476a7",
@@ -45319,7 +47726,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 288
+    "sourceLine": 325
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setbufferstate-f1d3ec89",
@@ -45340,7 +47747,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 292
+    "sourceLine": 329
   },
   {
     "id": "api-arda-iardaprovidercommandlist-transitiontexture-cc71d603",
@@ -45361,7 +47768,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 295
+    "sourceLine": 332
   },
   {
     "id": "api-arda-iardaprovidercommandlist-transitionbuffer-93fe2421",
@@ -45382,7 +47789,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 298
+    "sourceLine": 335
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setautomaticbarriers-b9f107c5",
@@ -45403,7 +47810,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 301
+    "sourceLine": 338
   },
   {
     "id": "api-arda-iardaprovidercommandlist-begintrackingtexturestate-8b2f15e0",
@@ -45424,7 +47831,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 302
+    "sourceLine": 339
   },
   {
     "id": "api-arda-iardaprovidercommandlist-begintrackingbufferstate-051d4ef5",
@@ -45445,7 +47852,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 306
+    "sourceLine": 343
   },
   {
     "id": "api-arda-iardaprovidercommandlist-querytexturestate-4c44fe01",
@@ -45466,7 +47873,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 309
+    "sourceLine": 346
   },
   {
     "id": "api-arda-iardaprovidercommandlist-querybufferstate-155dc9d3",
@@ -45487,7 +47894,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 313
+    "sourceLine": 350
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setuavbarriersfortexture-76e55fcd",
@@ -45508,7 +47915,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 316
+    "sourceLine": 353
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setuavbarriersforbuffer-554c049e",
@@ -45529,7 +47936,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 317
+    "sourceLine": 354
   },
   {
     "id": "api-arda-iardaprovidercommandlist-commitbarriers-f4b21963",
@@ -45550,7 +47957,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 318
+    "sourceLine": 355
   },
   {
     "id": "api-arda-iardaprovidercommandlist-aliasingbarrier-6dbf2ee2",
@@ -45571,7 +47978,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 319
+    "sourceLine": 356
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setgraphicsstate-fe28c75d",
@@ -45592,7 +47999,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 321
+    "sourceLine": 358
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setcomputestate-68b37f8f",
@@ -45613,7 +48020,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 322
+    "sourceLine": 359
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setmeshletstate-043661aa",
@@ -45634,7 +48041,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 324
+    "sourceLine": 361
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setraytracingstate-282fc8eb",
@@ -45655,7 +48062,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 330
+    "sourceLine": 367
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setpushconstants-adfbd702",
@@ -45676,7 +48083,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 336
+    "sourceLine": 373
   },
   {
     "id": "api-arda-iardaprovidercommandlist-draw-043e9e72",
@@ -45697,7 +48104,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 337
+    "sourceLine": 374
   },
   {
     "id": "api-arda-iardaprovidercommandlist-drawindexed-e2a661d1",
@@ -45718,7 +48125,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 338
+    "sourceLine": 375
   },
   {
     "id": "api-arda-iardaprovidercommandlist-drawindirect-47188b93",
@@ -45739,7 +48146,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 339
+    "sourceLine": 376
   },
   {
     "id": "api-arda-iardaprovidercommandlist-drawindexedindirect-f17803e2",
@@ -45760,7 +48167,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 343
+    "sourceLine": 380
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatch-609f38d1",
@@ -45781,7 +48188,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 347
+    "sourceLine": 384
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchindirect-6e2b0ba2",
@@ -45802,7 +48209,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 348
+    "sourceLine": 385
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchmesh-b701f055",
@@ -45823,7 +48230,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 350
+    "sourceLine": 387
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchrays-9efe03e3",
@@ -45844,7 +48251,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 356
+    "sourceLine": 393
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchraysindirect-50d34e2b",
@@ -45865,7 +48272,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 362
+    "sourceLine": 399
   },
   {
     "id": "api-arda-iardaprovidercommandlist-dispatchworkgraph-cc5bf34f",
@@ -45886,7 +48293,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 368
+    "sourceLine": 405
   },
   {
     "id": "api-arda-iardaprovidercommandlist-clearsamplerfeedbacktexture-02a1248d",
@@ -45907,7 +48314,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 378
+    "sourceLine": 415
   },
   {
     "id": "api-arda-iardaprovidercommandlist-decodesamplerfeedbacktexture-fbfacf7c",
@@ -45928,7 +48335,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 384
+    "sourceLine": 421
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setsamplerfeedbacktexturestate-9b3b7264",
@@ -45949,7 +48356,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 393
+    "sourceLine": 430
   },
   {
     "id": "api-arda-iardaprovidercommandlist-querysamplerfeedbacktexturestate-6c65792d",
@@ -45970,7 +48377,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 399
+    "sourceLine": 436
   },
   {
     "id": "api-arda-iardaprovidercommandlist-setaccelstructstate-8218c076",
@@ -45991,7 +48398,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 407
+    "sourceLine": 444
   },
   {
     "id": "api-arda-iardaprovidercommandlist-queryaccelstructstate-687e7875",
@@ -46012,7 +48419,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 413
+    "sourceLine": 450
   },
   {
     "id": "api-arda-iardaprovidercommandlist-buildbottomlevelaccelstruct-80213f7a",
@@ -46033,7 +48440,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 421
+    "sourceLine": 458
   },
   {
     "id": "api-arda-iardaprovidercommandlist-buildtoplevelaccelstruct-a7aa734d",
@@ -46054,7 +48461,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 429
+    "sourceLine": 466
   },
   {
     "id": "api-arda-iardaprovidercommandlist-buildtoplevelaccelstructfrombuffer-7f8701ed",
@@ -46075,7 +48482,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 437
+    "sourceLine": 474
   },
   {
     "id": "api-arda-iardaprovidercommandlist-compactaccelstruct-c5a4ef63",
@@ -46096,7 +48503,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 447
+    "sourceLine": 484
   },
   {
     "id": "api-arda-iardaprovidercommandlist-buildopacitymicromap-cb028c89",
@@ -46117,7 +48524,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 453
+    "sourceLine": 490
   },
   {
     "id": "api-arda-iardaprovidercommandlist-compactopacitymicromap-8abbf77f",
@@ -46138,7 +48545,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 459
+    "sourceLine": 496
   },
   {
     "id": "api-arda-iardaprovidercommandlist-queryopacitymicromapstate-d7fe6c93",
@@ -46159,7 +48566,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 465
+    "sourceLine": 502
   },
   {
     "id": "api-arda-iardaprovidercommandlist-begintimerquery-fba1e0bd",
@@ -46180,7 +48587,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 474
+    "sourceLine": 511
   },
   {
     "id": "api-arda-iardaprovidercommandlist-endtimerquery-18c57ffc",
@@ -46201,7 +48608,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 481
+    "sourceLine": 518
   },
   {
     "id": "api-arda-iardaprovidercommandlist-beginmarker-874c6f50",
@@ -46222,7 +48629,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 487
+    "sourceLine": 524
   },
   {
     "id": "api-arda-iardaprovidercommandlist-endmarker-22a2e56f",
@@ -46243,7 +48650,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 488
+    "sourceLine": 525
   },
   {
     "id": "api-arda-iardarhiproviderdevice-034a7e6a",
@@ -46264,7 +48671,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 491
+    "sourceLine": 528
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getcudacapabilities-cd57bb68",
@@ -46285,7 +48692,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 494
+    "sourceLine": 531
   },
   {
     "id": "api-arda-iardarhiproviderdevice-iardarhiproviderdevice-068316f7",
@@ -46306,7 +48713,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 499
+    "sourceLine": 536
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getcapabilities-4011ea43",
@@ -46327,7 +48734,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 500
+    "sourceLine": 537
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettextureimporttype-5b9ef5ec",
@@ -46348,7 +48755,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 501
+    "sourceLine": 538
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getbufferimporttype-28ae595c",
@@ -46369,7 +48776,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 502
+    "sourceLine": 539
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createtexture-f10acc28",
@@ -46390,7 +48797,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 504
+    "sourceLine": 541
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createsamplerfeedbacktexture-4d5e59a4",
@@ -46411,7 +48818,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 506
+    "sourceLine": 543
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbuffer-71684f5d",
@@ -46432,7 +48839,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 515
+    "sourceLine": 552
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createheap-db511049",
@@ -46453,7 +48860,49 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 516
+    "sourceLine": 553
+  },
+  {
+    "id": "api-arda-iardarhiproviderdevice-querytexturememoryrequirements-8ca6d8dd",
+    "name": "QueryTextureMemoryRequirements",
+    "qualifiedName": "arda::IArdaRHIProviderDevice::QueryTextureMemoryRequirements",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHIMemoryRequirements> QueryTextureMemoryRequirements( const FArdaRHITextureDesc&)",
+    "summary": "Queries exact descriptor requirements without allocating or binding GPU memory.",
+    "details": "Queries exact descriptor requirements without allocating or binding GPU memory.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIProviderDevice"
+    ],
+    "sourceLine": 556
+  },
+  {
+    "id": "api-arda-iardarhiproviderdevice-querybuffermemoryrequirements-e87e31a6",
+    "name": "QueryBufferMemoryRequirements",
+    "qualifiedName": "arda::IArdaRHIProviderDevice::QueryBufferMemoryRequirements",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHIMemoryRequirements> QueryBufferMemoryRequirements( const FArdaRHIBufferDesc&)",
+    "summary": "Queries exact descriptor requirements without allocating or binding GPU memory.",
+    "details": "Queries exact descriptor requirements without allocating or binding GPU memory.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIProviderDevice"
+    ],
+    "sourceLine": 565
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettexturememoryrequirements-ed014bd7",
@@ -46474,7 +48923,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 517
+    "sourceLine": 573
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getbuffermemoryrequirements-2f9ecaf1",
@@ -46495,7 +48944,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 520
+    "sourceLine": 576
   },
   {
     "id": "api-arda-iardarhiproviderdevice-bindtexturememory-d4472ff4",
@@ -46516,7 +48965,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 523
+    "sourceLine": 579
   },
   {
     "id": "api-arda-iardarhiproviderdevice-bindbuffermemory-9d0e7b7a",
@@ -46537,7 +48986,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 527
+    "sourceLine": 583
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettexturetiling-402e11c3",
@@ -46558,7 +49007,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 532
+    "sourceLine": 588
   },
   {
     "id": "api-arda-iardarhiproviderdevice-updatetexturetilemappings-39576639",
@@ -46579,7 +49028,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 539
+    "sourceLine": 595
   },
   {
     "id": "api-arda-iardarhiproviderdevice-updatebuffertilemappings-b37d4166",
@@ -46600,7 +49049,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 547
+    "sourceLine": 603
   },
   {
     "id": "api-arda-iardarhiproviderdevice-commitreservedresource-6977a80a",
@@ -46621,7 +49070,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 555
+    "sourceLine": 611
   },
   {
     "id": "api-arda-iardarhiproviderdevice-querystreamingbudget-763ebaa3",
@@ -46642,7 +49091,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 561
+    "sourceLine": 617
   },
   {
     "id": "api-arda-iardarhiproviderdevice-setstreamingbudgetreservation-837664de",
@@ -46663,7 +49112,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 568
+    "sourceLine": 624
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createstagingtexture-cbb98b08",
@@ -46684,7 +49133,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 574
+    "sourceLine": 630
   },
   {
     "id": "api-arda-iardarhiproviderdevice-mapstagingtexture-cb128204",
@@ -46705,7 +49154,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 576
+    "sourceLine": 632
   },
   {
     "id": "api-arda-iardarhiproviderdevice-unmapstagingtexture-5961467b",
@@ -46726,7 +49175,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 580
+    "sourceLine": 636
   },
   {
     "id": "api-arda-iardarhiproviderdevice-mapbuffer-035769d6",
@@ -46747,7 +49196,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 583
+    "sourceLine": 639
   },
   {
     "id": "api-arda-iardarhiproviderdevice-unmapbuffer-12b707a2",
@@ -46768,7 +49217,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 588
+    "sourceLine": 644
   },
   {
     "id": "api-arda-iardarhiproviderdevice-importtexture-9e523ca7",
@@ -46789,7 +49238,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 589
+    "sourceLine": 645
   },
   {
     "id": "api-arda-iardarhiproviderdevice-importbuffer-b3317e2d",
@@ -46810,7 +49259,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 590
+    "sourceLine": 646
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createsampler-91f56a5c",
@@ -46831,7 +49280,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 591
+    "sourceLine": 647
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createshader-5580799e",
@@ -46852,7 +49301,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 592
+    "sourceLine": 648
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbindinglayout-ee2fec4e",
@@ -46873,7 +49322,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 593
+    "sourceLine": 649
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbindlesslayout-70c7eb56",
@@ -46894,7 +49343,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 595
+    "sourceLine": 651
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbindingset-cb593977",
@@ -46915,7 +49364,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 601
+    "sourceLine": 657
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createframebuffer-2026842e",
@@ -46936,7 +49385,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 604
+    "sourceLine": 660
   },
   {
     "id": "api-arda-iardarhiproviderdevice-creategraphicspipeline-7cd5f9ae",
@@ -46957,7 +49406,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 606
+    "sourceLine": 662
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createcomputepipeline-a86255ea",
@@ -46978,7 +49427,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 608
+    "sourceLine": 664
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createmeshletpipeline-8fa2c684",
@@ -46999,7 +49448,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 611
+    "sourceLine": 667
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createraytracingpipeline-ba644131",
@@ -47020,7 +49469,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 619
+    "sourceLine": 675
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createworkgraphpipeline-4f2ce182",
@@ -47041,7 +49490,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 627
+    "sourceLine": 683
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createshadertable-e5393f8f",
@@ -47062,7 +49511,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 635
+    "sourceLine": 691
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getaccelstructbuildmemoryrequirements-e3dd5007",
@@ -47083,7 +49532,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 644
+    "sourceLine": 700
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createaccelstruct-d5e0a515",
@@ -47104,7 +49553,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 652
+    "sourceLine": 708
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getaccelstructcompactedsize-7fa4e1ad",
@@ -47125,7 +49574,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 660
+    "sourceLine": 716
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getaccelstructdeviceaddress-0b7e50f8",
@@ -47146,7 +49595,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 667
+    "sourceLine": 723
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createopacitymicromap-da8da857",
@@ -47167,7 +49616,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 672
+    "sourceLine": 728
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getopacitymicromapcompactedsize-e4dc1e7a",
@@ -47188,7 +49637,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 681
+    "sourceLine": 737
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getopacitymicromapdeviceaddress-c2051c67",
@@ -47209,7 +49658,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 688
+    "sourceLine": 744
   },
   {
     "id": "api-arda-iardarhiproviderdevice-setshadertablerecord-f3474709",
@@ -47230,7 +49679,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 693
+    "sourceLine": 749
   },
   {
     "id": "api-arda-iardarhiproviderdevice-commitshadertable-3f7946ea",
@@ -47251,7 +49700,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 702
+    "sourceLine": 758
   },
   {
     "id": "api-arda-iardarhiproviderdevice-setshadertableraygeneration-60d052cd",
@@ -47272,7 +49721,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 708
+    "sourceLine": 764
   },
   {
     "id": "api-arda-iardarhiproviderdevice-addshadertableentry-f4126265",
@@ -47293,7 +49742,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 716
+    "sourceLine": 772
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createeventquery-6b9d63f3",
@@ -47314,7 +49763,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 726
+    "sourceLine": 782
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createtimerquery-209be9cb",
@@ -47335,7 +49784,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 734
+    "sourceLine": 790
   },
   {
     "id": "api-arda-iardarhiproviderdevice-creategpufence-acabc8b8",
@@ -47356,7 +49805,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 742
+    "sourceLine": 798
   },
   {
     "id": "api-arda-iardarhiproviderdevice-signaleventquery-abcaf536",
@@ -47377,7 +49826,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 750
+    "sourceLine": 806
   },
   {
     "id": "api-arda-iardarhiproviderdevice-polleventquery-963c049f",
@@ -47398,7 +49847,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 757
+    "sourceLine": 813
   },
   {
     "id": "api-arda-iardarhiproviderdevice-waiteventquery-af7859f5",
@@ -47419,7 +49868,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 765
+    "sourceLine": 821
   },
   {
     "id": "api-arda-iardarhiproviderdevice-reseteventquery-f62057d8",
@@ -47440,7 +49889,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 772
+    "sourceLine": 828
   },
   {
     "id": "api-arda-iardarhiproviderdevice-polltimerquery-625263a7",
@@ -47461,7 +49910,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 779
+    "sourceLine": 835
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettimerqueryseconds-cbed7fa8",
@@ -47482,7 +49931,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 787
+    "sourceLine": 843
   },
   {
     "id": "api-arda-iardarhiproviderdevice-resettimerquery-94d2d31f",
@@ -47503,7 +49952,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 795
+    "sourceLine": 851
   },
   {
     "id": "api-arda-iardarhiproviderdevice-signalgpufence-155e105d",
@@ -47524,7 +49973,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 802
+    "sourceLine": 858
   },
   {
     "id": "api-arda-iardarhiproviderdevice-pollgpufence-655e8b4a",
@@ -47545,7 +49994,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 809
+    "sourceLine": 865
   },
   {
     "id": "api-arda-iardarhiproviderdevice-waitgpufence-098c8c8c",
@@ -47566,7 +50015,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 817
+    "sourceLine": 873
   },
   {
     "id": "api-arda-iardarhiproviderdevice-resetgpufence-d9f663be",
@@ -47587,7 +50036,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 824
+    "sourceLine": 880
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createcommandlist-de5f50a0",
@@ -47608,7 +50057,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 830
+    "sourceLine": 886
   },
   {
     "id": "api-arda-iardarhiproviderdevice-executecommandlist-d6b83372",
@@ -47629,7 +50078,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 833
+    "sourceLine": 889
   },
   {
     "id": "api-arda-iardarhiproviderdevice-queuewait-b756438c",
@@ -47650,7 +50099,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 837
+    "sourceLine": 893
   },
   {
     "id": "api-arda-iardarhiproviderdevice-waitforsubmission-9db274b6",
@@ -47671,7 +50120,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 847
+    "sourceLine": 903
   },
   {
     "id": "api-arda-iardarhiproviderdevice-waitforidle-78975f4f",
@@ -47692,7 +50141,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 853
+    "sourceLine": 909
+  },
+  {
+    "id": "api-arda-iardarhiproviderdevice-pollsubmission-92ffdb62",
+    "name": "PollSubmission",
+    "qualifiedName": "arda::IArdaRHIProviderDevice::PollSubmission",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<bool> PollSubmission(uint64_t Submission)",
+    "summary": "Nonblocking completion check; tokens must originate from this provider device.",
+    "details": "Nonblocking completion check; tokens must originate from this provider device.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIProviderDevice"
+    ],
+    "sourceLine": 912
   },
   {
     "id": "api-arda-iardarhiproviderdevice-rungarbagecollection-dd1b5149",
@@ -47713,7 +50183,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 854
+    "sourceLine": 918
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getlifetimestats-c16f47f3",
@@ -47734,7 +50204,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 856
+    "sourceLine": 920
   },
   {
     "id": "api-arda-iardarhiproviderdevice-flushpipelinecache-d03d5cb1",
@@ -47755,7 +50225,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 861
+    "sourceLine": 925
   },
   {
     "id": "api-arda-ardaproviderpipelinecachemaxpayloadsize-604d7834",
@@ -47863,6 +50333,111 @@ window.ArdaBackendApi = {
     "sourceLine": 55
   },
   {
+    "id": "api-arda-fardarhimemoryallocationinfo-80b4d1ca",
+    "name": "FArdaRHIMemoryAllocationInfo",
+    "qualifiedName": "arda::FArdaRHIMemoryAllocationInfo",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaRHIMemoryAllocationInfo",
+    "summary": "Physical allocation retained by a resource. Placed objects identify their entire parent heap.",
+    "details": "Physical allocation retained by a resource. Placed objects identify their entire parent heap.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResource.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 14
+  },
+  {
+    "id": "api-arda-fardarhimemoryallocationinfo-midentity-f4a461e2",
+    "name": "mIdentity",
+    "qualifiedName": "arda::FArdaRHIMemoryAllocationInfo::mIdentity",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "const void* mIdentity = nullptr",
+    "summary": "Stable within the device while the resource remains alive; shared allocations use one identity.",
+    "details": "Stable within the device while the resource remains alive; shared allocations use one identity.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResource.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIMemoryAllocationInfo"
+    ],
+    "sourceLine": 17
+  },
+  {
+    "id": "api-arda-fardarhimemoryallocationinfo-mbytesize-fa8417cf",
+    "name": "mByteSize",
+    "qualifiedName": "arda::FArdaRHIMemoryAllocationInfo::mByteSize",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mByteSize = 0",
+    "summary": "Retained allocation capacity, including native padding and unused heap ranges.",
+    "details": "Retained allocation capacity, including native padding and unused heap ranges.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResource.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIMemoryAllocationInfo"
+    ],
+    "sourceLine": 19
+  },
+  {
+    "id": "api-arda-fardarhimemoryallocationinfo-mbknown-d66120d8",
+    "name": "mbKnown",
+    "qualifiedName": "arda::FArdaRHIMemoryAllocationInfo::mbKnown",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbKnown = false",
+    "summary": "False when an externally imported handle does not reveal its allocation.",
+    "details": "False when an externally imported handle does not reveal its allocation.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResource.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIMemoryAllocationInfo"
+    ],
+    "sourceLine": 21
+  },
+  {
+    "id": "api-arda-fardarhimemoryallocationinfo-operator-15495c4f",
+    "name": "operator==",
+    "qualifiedName": "arda::FArdaRHIMemoryAllocationInfo::operator==",
+    "kind": "conversion operator",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool operator==(const FArdaRHIMemoryAllocationInfo& Other) const noexcept",
+    "summary": "Performs operator== through the public backend and RHI contract.",
+    "details": "Performs operator== through the public backend and RHI contract. The signature is generated from the current public header.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResource.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIMemoryAllocationInfo"
+    ],
+    "sourceLine": 23
+  },
+  {
     "id": "api-arda-eardacudarepresentation-169e169b",
     "name": "EArdaCudaRepresentation",
     "qualifiedName": "arda::EArdaCudaRepresentation",
@@ -47881,7 +50456,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 14
+    "sourceLine": 30
   },
   {
     "id": "api-arda-eardacudarepresentation-none-0efaaa5e",
@@ -47902,7 +50477,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaRepresentation"
     ],
-    "sourceLine": 17
+    "sourceLine": 33
   },
   {
     "id": "api-arda-eardacudarepresentation-linearbuffer-df48da9b",
@@ -47923,7 +50498,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaRepresentation"
     ],
-    "sourceLine": 19
+    "sourceLine": 35
   },
   {
     "id": "api-arda-eardacudarepresentation-surface-34effdf0",
@@ -47944,7 +50519,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaCudaRepresentation"
     ],
-    "sourceLine": 21
+    "sourceLine": 37
   },
   {
     "id": "api-arda-eardaresourcerepresentations-3bc12703",
@@ -47965,7 +50540,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 24
+    "sourceLine": 40
   },
   {
     "id": "api-arda-eardaresourcerepresentations-graphics-c4264782",
@@ -47986,7 +50561,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaResourceRepresentations"
     ],
-    "sourceLine": 27
+    "sourceLine": 43
   },
   {
     "id": "api-arda-eardaresourcerepresentations-graphicsandcuda-d473c1dd",
@@ -48007,7 +50582,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaResourceRepresentations"
     ],
-    "sourceLine": 29
+    "sourceLine": 45
   },
   {
     "id": "api-arda-fardacudaresourceinfo-b4743248",
@@ -48028,7 +50603,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 35
+    "sourceLine": 51
   },
   {
     "id": "api-arda-fardacudaresourceinfo-msupportedrepresentation-578bf14e",
@@ -48049,7 +50624,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaResourceInfo"
     ],
-    "sourceLine": 38
+    "sourceLine": 54
   },
   {
     "id": "api-arda-fardacudaresourceinfo-mrepresentations-e478d013",
@@ -48070,7 +50645,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaResourceInfo"
     ],
-    "sourceLine": 40
+    "sourceLine": 56
   },
   {
     "id": "api-arda-fardacudaresourceinfo-mbsharingenabled-7b1df5a8",
@@ -48091,7 +50666,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaCudaResourceInfo"
     ],
-    "sourceLine": 42
+    "sourceLine": 58
   },
   {
     "id": "api-arda-eardarhiresourcetype-46046253",
@@ -48112,7 +50687,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 46
+    "sourceLine": 62
   },
   {
     "id": "api-arda-eardarhiresourcetype-resourcecollection-69041e4e",
@@ -48133,7 +50708,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 67
+    "sourceLine": 83
   },
   {
     "id": "api-arda-eardarhiresourcetype-workgraphpipeline-76209e11",
@@ -48154,7 +50729,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 75
+    "sourceLine": 91
   },
   {
     "id": "api-arda-eardarhiresourcetype-shaderbundle-3d09e51f",
@@ -48175,7 +50750,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 76
+    "sourceLine": 92
   },
   {
     "id": "api-arda-eardarhiresourcetype-count-37ddfe4e",
@@ -48196,7 +50771,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceType"
     ],
-    "sourceLine": 83
+    "sourceLine": 99
+  },
+  {
+    "id": "api-arda-iardarhiresource-getmemoryallocationinfo-5d7da99c",
+    "name": "GetMemoryAllocationInfo",
+    "qualifiedName": "arda::IArdaRHIResource::GetMemoryAllocationInfo",
+    "kind": "method",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual FArdaRHIMemoryAllocationInfo GetMemoryAllocationInfo() const noexcept",
+    "summary": "Allocation metadata without GPU work or allocation; unknown is not a zero-byte allocation.",
+    "details": "Allocation metadata without GPU work or allocation; unknown is not a zero-byte allocation.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHIResource.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIResource"
+    ],
+    "sourceLine": 128
   },
   {
     "id": "api-arda-iardarhiresource-getcudaresourceinfo-4d3f9d8e",
@@ -48217,7 +50813,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIResource"
     ],
-    "sourceLine": 119
+    "sourceLine": 141
   },
   {
     "id": "api-arda-fardarhiinputlayoutdesc-operator-c68714eb",
@@ -50394,7 +52990,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 37
+    "sourceLine": 39
   },
   {
     "id": "api-arda-fardarhistatus-issuccess-a2857041",
@@ -50415,7 +53011,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStatus"
     ],
-    "sourceLine": 59
+    "sourceLine": 61
   },
   {
     "id": "api-arda-fardarhistatus-operator-bool-fe2c8aa2",
@@ -50436,7 +53032,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStatus"
     ],
-    "sourceLine": 68
+    "sourceLine": 70
   },
   {
     "id": "api-arda-fardarhistatus-success-0fa3fd49",
@@ -50457,7 +53053,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStatus"
     ],
-    "sourceLine": 77
+    "sourceLine": 79
   },
   {
     "id": "api-arda-fardarhistatus-error-0d7988fb",
@@ -50487,7 +53083,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStatus"
     ],
-    "sourceLine": 88
+    "sourceLine": 90
   },
   {
     "id": "api-arda-tardarhiresult-6ee5f0b4",
@@ -50508,7 +53104,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 96
+    "sourceLine": 98
   },
   {
     "id": "api-arda-tardarhiresult-operator-bool-edf3efc3",
@@ -50529,7 +53125,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::TArdaRHIResult"
     ],
-    "sourceLine": 107
+    "sourceLine": 109
   },
   {
     "id": "api-arda-eardarhiformat-c07fcd85",
@@ -50550,7 +53146,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 114
+    "sourceLine": 116
   },
   {
     "id": "api-arda-eardarhiformat-count-b659b747",
@@ -50571,7 +53167,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIFormat"
     ],
-    "sourceLine": 180
+    "sourceLine": 182
   },
   {
     "id": "api-arda-isardarhiformatknown-63eb8305",
@@ -50592,7 +53188,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 184
+    "sourceLine": 186
   },
   {
     "id": "api-arda-eardarhitexturedimension-5344e7d0",
@@ -50613,7 +53209,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 190
+    "sourceLine": 192
   },
   {
     "id": "api-arda-eardarhicpuaccess-33a6a547",
@@ -50634,7 +53230,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 205
+    "sourceLine": 207
   },
   {
     "id": "api-arda-eardarhiqueuetype-ad12bdda",
@@ -50655,7 +53251,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 212
+    "sourceLine": 214
   },
   {
     "id": "api-arda-eardarhiqueuetype-graphics-c5800361",
@@ -50676,7 +53272,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIQueueType"
     ],
-    "sourceLine": 214
+    "sourceLine": 216
   },
   {
     "id": "api-arda-eardarhiqueuetype-compute-653aa46e",
@@ -50697,7 +53293,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIQueueType"
     ],
-    "sourceLine": 215
+    "sourceLine": 217
   },
   {
     "id": "api-arda-eardarhiqueuetype-copy-358d254c",
@@ -50718,7 +53314,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIQueueType"
     ],
-    "sourceLine": 216
+    "sourceLine": 218
   },
   {
     "id": "api-arda-eardarhiqueuetype-count-68e420e8",
@@ -50739,7 +53335,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIQueueType"
     ],
-    "sourceLine": 217
+    "sourceLine": 219
   },
   {
     "id": "api-arda-ardarhiqueuetypecount-fc3e3c22",
@@ -50760,7 +53356,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 221
+    "sourceLine": 223
   },
   {
     "id": "api-arda-getardarhiqueueindex-1c30667b",
@@ -50781,7 +53377,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 224
+    "sourceLine": 226
   },
   {
     "id": "api-arda-eardarhipipeline-6c449681",
@@ -50802,7 +53398,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 229
+    "sourceLine": 231
   },
   {
     "id": "api-arda-eardarhipipeline-none-5a31c5cd",
@@ -50823,7 +53419,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIPipeline"
     ],
-    "sourceLine": 231
+    "sourceLine": 233
   },
   {
     "id": "api-arda-eardarhipipeline-graphics-14dacfa8",
@@ -50844,7 +53440,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIPipeline"
     ],
-    "sourceLine": 232
+    "sourceLine": 234
   },
   {
     "id": "api-arda-eardarhipipeline-asynccompute-e6f010ea",
@@ -50865,7 +53461,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIPipeline"
     ],
-    "sourceLine": 233
+    "sourceLine": 235
   },
   {
     "id": "api-arda-eardarhipipeline-copy-d069e234",
@@ -50886,7 +53482,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIPipeline"
     ],
-    "sourceLine": 234
+    "sourceLine": 236
   },
   {
     "id": "api-arda-eardarhipipeline-all-17d89e5f",
@@ -50907,7 +53503,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIPipeline"
     ],
-    "sourceLine": 235
+    "sourceLine": 237
   },
   {
     "id": "api-arda-eardarhitransitionflags-d4df726d",
@@ -50928,7 +53524,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 238
+    "sourceLine": 240
   },
   {
     "id": "api-arda-eardarhitransitionflags-none-7fa636e5",
@@ -50949,7 +53545,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHITransitionFlags"
     ],
-    "sourceLine": 240
+    "sourceLine": 242
   },
   {
     "id": "api-arda-eardarhitransitionflags-beginonly-95a72dd6",
@@ -50970,7 +53566,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHITransitionFlags"
     ],
-    "sourceLine": 241
+    "sourceLine": 243
   },
   {
     "id": "api-arda-eardarhitransitionflags-endonly-c424a756",
@@ -50991,7 +53587,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHITransitionFlags"
     ],
-    "sourceLine": 242
+    "sourceLine": 244
   },
   {
     "id": "api-arda-eardarhitransitionflags-discard-f27c9cb5",
@@ -51012,7 +53608,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHITransitionFlags"
     ],
-    "sourceLine": 243
+    "sourceLine": 245
   },
   {
     "id": "api-arda-eardarhiheaptype-3795beaf",
@@ -51033,7 +53629,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 246
+    "sourceLine": 248
   },
   {
     "id": "api-arda-eardarhibindlesslayouttype-15762f73",
@@ -51054,7 +53650,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 253
+    "sourceLine": 255
   },
   {
     "id": "api-arda-eardarhinativeresourcetype-8eb11fe5",
@@ -51075,7 +53671,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 261
+    "sourceLine": 263
   },
   {
     "id": "api-arda-eardarhinativeresourcetype-backenddefined-e2122be5",
@@ -51096,7 +53692,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHINativeResourceType"
     ],
-    "sourceLine": 264
+    "sourceLine": 266
   },
   {
     "id": "api-arda-eardarhinativeresourcetype-d3d12accelerationstructure-8ad9bfdf",
@@ -51117,7 +53713,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHINativeResourceType"
     ],
-    "sourceLine": 269
+    "sourceLine": 271
   },
   {
     "id": "api-arda-eardarhinativeresourcetype-vulkanaccelerationstructure-fb5912b6",
@@ -51138,7 +53734,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHINativeResourceType"
     ],
-    "sourceLine": 270
+    "sourceLine": 272
   },
   {
     "id": "api-arda-eardarhinativeresourcetype-vulkanopacitymicromap-98a97512",
@@ -51159,7 +53755,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHINativeResourceType"
     ],
-    "sourceLine": 271
+    "sourceLine": 273
   },
   {
     "id": "api-arda-eardarhinativeownership-9b94f06d",
@@ -51180,7 +53776,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 274
+    "sourceLine": 276
   },
   {
     "id": "api-arda-eardarhisamplerfeedbackformat-10b02bce",
@@ -51201,7 +53797,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 280
+    "sourceLine": 282
   },
   {
     "id": "api-arda-eardarhiraytracinggeometrytype-adc234e7",
@@ -51222,7 +53818,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 286
+    "sourceLine": 288
   },
   {
     "id": "api-arda-eardarhiopacitymicromapformat-039c615e",
@@ -51243,7 +53839,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 292
+    "sourceLine": 294
   },
   {
     "id": "api-arda-eardarhishaderstage-07acea35",
@@ -51264,7 +53860,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 298
+    "sourceLine": 300
   },
   {
     "id": "api-arda-eardarhishaderstage-workgraph-f2f216dc",
@@ -51285,7 +53881,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIShaderStage"
     ],
-    "sourceLine": 315
+    "sourceLine": 317
   },
   {
     "id": "api-arda-eardarhishaderstage-all-e20af426",
@@ -51306,7 +53902,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIShaderStage"
     ],
-    "sourceLine": 318
+    "sourceLine": 320
   },
   {
     "id": "api-arda-isardarhiraytracingshaderstage-ad69a256",
@@ -51327,7 +53923,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 322
+    "sourceLine": 324
   },
   {
     "id": "api-arda-eardarhiresourcestate-f09153c9",
@@ -51348,7 +53944,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 330
+    "sourceLine": 332
   },
   {
     "id": "api-arda-eardarhiresourcestate-cpuread-a5cdca53",
@@ -51369,7 +53965,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceState"
     ],
-    "sourceLine": 354
+    "sourceLine": 356
   },
   {
     "id": "api-arda-eardarhiresourcestate-discard-f69a051c",
@@ -51390,7 +53986,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceState"
     ],
-    "sourceLine": 357
+    "sourceLine": 359
   },
   {
     "id": "api-arda-eardarhiresourcestate-shadingratesource-8c822e4b",
@@ -51411,7 +54007,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIResourceState"
     ],
-    "sourceLine": 358
+    "sourceLine": 360
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-f1801836",
@@ -51432,7 +54028,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 362
+    "sourceLine": 364
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mstate-0c8a3581",
@@ -51453,7 +54049,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 365
+    "sourceLine": 367
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mnativetype-7c7f9cb7",
@@ -51474,7 +54070,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 367
+    "sourceLine": 369
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mprimarystate-1cbf380b",
@@ -51495,7 +54091,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 369
+    "sourceLine": 371
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mpipelinestagemask-b539804c",
@@ -51516,7 +54112,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 371
+    "sourceLine": 373
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-maccessmask-fe8c28a0",
@@ -51537,7 +54133,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 373
+    "sourceLine": 375
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mqueuefamily-d29ae3c6",
@@ -51558,7 +54154,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 375
+    "sourceLine": 377
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mbknown-2ee1c21a",
@@ -51579,7 +54175,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 377
+    "sourceLine": 379
   },
   {
     "id": "api-arda-fardarhinativeresourcestate-mbnativecompatible-b17ba7e7",
@@ -51600,7 +54196,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeResourceState"
     ],
-    "sourceLine": 379
+    "sourceLine": 381
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-bad94381",
@@ -51621,7 +54217,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 383
+    "sourceLine": 385
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mfacadestate-bc222999",
@@ -51642,7 +54238,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 386
+    "sourceLine": 388
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mqueue-c7a4cf55",
@@ -51663,7 +54259,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 388
+    "sourceLine": 390
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mfacadequeueowner-7dd0a789",
@@ -51684,7 +54280,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 390
+    "sourceLine": 392
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mbfacadequeueownerknown-7482b5a0",
@@ -51705,7 +54301,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 392
+    "sourceLine": 394
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mnative-c0143c09",
@@ -51726,7 +54322,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 394
+    "sourceLine": 396
   },
   {
     "id": "api-arda-fardarhiresourcestatesnapshot-mbfacadeknown-91f9024c",
@@ -51747,7 +54343,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceStateSnapshot"
     ],
-    "sourceLine": 396
+    "sourceLine": 398
   },
   {
     "id": "api-arda-eardarhitextureusage-bc4d3b43",
@@ -51768,7 +54364,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 409
+    "sourceLine": 411
   },
   {
     "id": "api-arda-eardarhibufferusage-c06a92d3",
@@ -51789,7 +54385,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 420
+    "sourceLine": 422
   },
   {
     "id": "api-arda-eardarhibufferusage-opacitymicromapbuildinput-873d91d4",
@@ -51810,7 +54406,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIBufferUsage"
     ],
-    "sourceLine": 435
+    "sourceLine": 437
   },
   {
     "id": "api-arda-eardarhiraytracinggeometryflags-018b3b3f",
@@ -51831,7 +54427,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 439
+    "sourceLine": 441
   },
   {
     "id": "api-arda-eardarhiaccelstructbuildflags-bd7f3a02",
@@ -51852,7 +54448,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 446
+    "sourceLine": 448
   },
   {
     "id": "api-arda-eardarhiopacitymicromapbuildflags-3124851b",
@@ -51873,7 +54469,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 458
+    "sourceLine": 460
   },
   {
     "id": "api-arda-eardarhisampleraddressmode-8dcdb51b",
@@ -51894,7 +54490,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 502
+    "sourceLine": 504
   },
   {
     "id": "api-arda-eardarhisamplerreduction-91bc17aa",
@@ -51915,7 +54511,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 511
+    "sourceLine": 513
   },
   {
     "id": "api-arda-eardarhiprimitivetopology-42a2c1d8",
@@ -51936,7 +54532,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 519
+    "sourceLine": 521
   },
   {
     "id": "api-arda-eardarhifillmode-4a045e06",
@@ -51957,7 +54553,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 529
+    "sourceLine": 531
   },
   {
     "id": "api-arda-eardarhicullmode-6249adbf",
@@ -51978,7 +54574,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 535
+    "sourceLine": 537
   },
   {
     "id": "api-arda-eardarhicomparisonfunc-44026d51",
@@ -51999,7 +54595,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 542
+    "sourceLine": 544
   },
   {
     "id": "api-arda-eardarhiblendfactor-a5428c81",
@@ -52020,7 +54616,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 554
+    "sourceLine": 556
   },
   {
     "id": "api-arda-eardarhibindingtype-3d3415ae",
@@ -52041,7 +54637,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 568
+    "sourceLine": 570
   },
   {
     "id": "api-arda-fardarhicolor-operator-71f5613f",
@@ -52067,7 +54663,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIColor"
     ],
-    "sourceLine": 603
+    "sourceLine": 605
   },
   {
     "id": "api-arda-fardarhitexturesubresourcerange-operator-37d0da6c",
@@ -52093,7 +54689,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureSubresourceRange"
     ],
-    "sourceLine": 630
+    "sourceLine": 632
   },
   {
     "id": "api-arda-fardarhibufferrange-operator-90a55271",
@@ -52119,7 +54715,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferRange"
     ],
-    "sourceLine": 658
+    "sourceLine": 660
   },
   {
     "id": "api-arda-fardarhitexturedesc-mbcudainterop-22edfe4a",
@@ -52140,7 +54736,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureDesc"
     ],
-    "sourceLine": 714
+    "sourceLine": 716
   },
   {
     "id": "api-arda-fardarhitexturedesc-operator-ff662b9b",
@@ -52166,7 +54762,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureDesc"
     ],
-    "sourceLine": 721
+    "sourceLine": 723
   },
   {
     "id": "api-arda-fardarhibufferdesc-mbtiled-66beebf4",
@@ -52187,7 +54783,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferDesc"
     ],
-    "sourceLine": 746
+    "sourceLine": 748
   },
   {
     "id": "api-arda-fardarhibufferdesc-mbcudainterop-fcc791fb",
@@ -52208,7 +54804,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferDesc"
     ],
-    "sourceLine": 750
+    "sourceLine": 752
   },
   {
     "id": "api-arda-fardarhibufferdesc-operator-139e7716",
@@ -52234,7 +54830,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferDesc"
     ],
-    "sourceLine": 757
+    "sourceLine": 759
   },
   {
     "id": "api-arda-fardarhiviewdesc-operator-40562ade",
@@ -52260,7 +54856,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIViewDesc"
     ],
-    "sourceLine": 777
+    "sourceLine": 779
   },
   {
     "id": "api-arda-fardarhinativetextureimportdesc-mnativetype-c8b63b8c",
@@ -52281,7 +54877,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeTextureImportDesc"
     ],
-    "sourceLine": 790
+    "sourceLine": 792
+  },
+  {
+    "id": "api-arda-fardarhinativetextureimportdesc-mmemoryallocationinfo-920456a8",
+    "name": "mMemoryAllocationInfo",
+    "qualifiedName": "arda::FArdaRHINativeTextureImportDesc::mMemoryAllocationInfo",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIMemoryAllocationInfo mMemoryAllocationInfo",
+    "summary": "Optional complete allocation metadata supplied by the native allocation owner.",
+    "details": "Optional complete allocation metadata supplied by the native allocation owner.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHINativeTextureImportDesc"
+    ],
+    "sourceLine": 809
   },
   {
     "id": "api-arda-fardarhinativetextureimportdesc-operator-10fe5966",
@@ -52307,7 +54924,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeTextureImportDesc"
     ],
-    "sourceLine": 812
+    "sourceLine": 816
   },
   {
     "id": "api-arda-fardarhinativebufferimportdesc-mnativetype-93890366",
@@ -52328,7 +54945,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeBufferImportDesc"
     ],
-    "sourceLine": 827
+    "sourceLine": 832
+  },
+  {
+    "id": "api-arda-fardarhinativebufferimportdesc-mmemoryallocationinfo-31e47666",
+    "name": "mMemoryAllocationInfo",
+    "qualifiedName": "arda::FArdaRHINativeBufferImportDesc::mMemoryAllocationInfo",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIMemoryAllocationInfo mMemoryAllocationInfo",
+    "summary": "Optional complete allocation metadata supplied by the native allocation owner.",
+    "details": "Optional complete allocation metadata supplied by the native allocation owner.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHINativeBufferImportDesc"
+    ],
+    "sourceLine": 849
   },
   {
     "id": "api-arda-fardarhinativebufferimportdesc-operator-3a1fca1c",
@@ -52354,7 +54992,70 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHINativeBufferImportDesc"
     ],
-    "sourceLine": 849
+    "sourceLine": 856
+  },
+  {
+    "id": "api-arda-fardarhitexturebufferlayout-1180d1e7",
+    "name": "FArdaRHITextureBufferLayout",
+    "qualifiedName": "arda::FArdaRHITextureBufferLayout",
+    "kind": "struct",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "struct FArdaRHITextureBufferLayout",
+    "summary": "Pitched layout of one texture region in a buffer, without format conversion. Rows are contiguous within each depth slice; the slice pitch is row pitch times region height.",
+    "details": "Pitched layout of one texture region in a buffer, without format conversion. Rows are contiguous within each depth slice; the slice pitch is row pitch times region height.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 892
+  },
+  {
+    "id": "api-arda-fardarhitexturebufferlayout-mbyteoffset-ea3dc2c3",
+    "name": "mByteOffset",
+    "qualifiedName": "arda::FArdaRHITextureBufferLayout::mByteOffset",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint64_t mByteOffset = 0",
+    "summary": "Offset of the first texel, aligned to 512 bytes and divisible by the texel size.",
+    "details": "Offset of the first texel, aligned to 512 bytes and divisible by the texel size.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHITextureBufferLayout"
+    ],
+    "sourceLine": 895
+  },
+  {
+    "id": "api-arda-fardarhitexturebufferlayout-mrowpitch-f824ee63",
+    "name": "mRowPitch",
+    "qualifiedName": "arda::FArdaRHITextureBufferLayout::mRowPitch",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mRowPitch = 0",
+    "summary": "Bytes between rows: nonzero, at most INT32_MAX, aligned to 256 bytes and whole texels.",
+    "details": "Bytes between rows: nonzero, at most INT32_MAX, aligned to 256 bytes and whole texels.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHITextureBufferLayout"
+    ],
+    "sourceLine": 897
   },
   {
     "id": "api-arda-fardarhitexturecopyextent-31d7cec6",
@@ -52375,7 +55076,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 882
+    "sourceLine": 901
   },
   {
     "id": "api-arda-fardarhitexturecopyextent-mwidth-0a82c723",
@@ -52396,7 +55097,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureCopyExtent"
     ],
-    "sourceLine": 884
+    "sourceLine": 903
   },
   {
     "id": "api-arda-fardarhitexturecopyextent-mheight-99293a46",
@@ -52417,7 +55118,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureCopyExtent"
     ],
-    "sourceLine": 885
+    "sourceLine": 904
   },
   {
     "id": "api-arda-fardarhitexturecopyextent-mdepth-02b0e101",
@@ -52438,7 +55139,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureCopyExtent"
     ],
-    "sourceLine": 886
+    "sourceLine": 905
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-00d23005",
@@ -52459,7 +55160,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 890
+    "sourceLine": 909
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-msubresources-771c6fe2",
@@ -52480,7 +55181,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 892
+    "sourceLine": 911
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mstatebefore-2a7a1fb8",
@@ -52501,7 +55202,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 893
+    "sourceLine": 912
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mstateafter-63f0b51f",
@@ -52522,7 +55223,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 894
+    "sourceLine": 913
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-msourcepipelines-35bbd2b5",
@@ -52543,7 +55244,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 895
+    "sourceLine": 914
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mdestinationpipelines-566b6e19",
@@ -52564,7 +55265,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 896
+    "sourceLine": 915
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mflags-47d1e4d2",
@@ -52585,7 +55286,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 897
+    "sourceLine": 916
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-msourcequeue-e5fe1761",
@@ -52606,7 +55307,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 899
+    "sourceLine": 918
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mdestinationqueue-9a4f67d1",
@@ -52627,7 +55328,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 901
+    "sourceLine": 920
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mbqueueownershiptransfer-f258e016",
@@ -52648,7 +55349,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 903
+    "sourceLine": 922
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-44ef599c",
@@ -52669,7 +55370,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 907
+    "sourceLine": 926
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mstatebefore-c0a52878",
@@ -52690,7 +55391,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 909
+    "sourceLine": 928
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mstateafter-41bed612",
@@ -52711,7 +55412,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 910
+    "sourceLine": 929
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-msourcepipelines-0be8e126",
@@ -52732,7 +55433,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 911
+    "sourceLine": 930
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mdestinationpipelines-bcd60bc4",
@@ -52753,7 +55454,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 912
+    "sourceLine": 931
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mflags-76d04946",
@@ -52774,7 +55475,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 913
+    "sourceLine": 932
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-msourcequeue-773a0795",
@@ -52795,7 +55496,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 914
+    "sourceLine": 933
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mdestinationqueue-a91a018e",
@@ -52816,7 +55517,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 915
+    "sourceLine": 934
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mbqueueownershiptransfer-a033b233",
@@ -52837,7 +55538,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 916
+    "sourceLine": 935
   },
   {
     "id": "api-arda-fardarhisamplerdesc-operator-ea546eef",
@@ -52863,7 +55564,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHISamplerDesc"
     ],
-    "sourceLine": 1015
+    "sourceLine": 1034
   },
   {
     "id": "api-arda-fardarhivertexattributedesc-operator-b7a3e496",
@@ -52889,7 +55590,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIVertexAttributeDesc"
     ],
-    "sourceLine": 1056
+    "sourceLine": 1075
   },
   {
     "id": "api-arda-fardarhibindinglayoutitem-operator-3851d353",
@@ -52915,7 +55616,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindingLayoutItem"
     ],
-    "sourceLine": 1079
+    "sourceLine": 1098
   },
   {
     "id": "api-arda-fardarhibindinglayoutdesc-operator-fc928092",
@@ -52941,7 +55642,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindingLayoutDesc"
     ],
-    "sourceLine": 1104
+    "sourceLine": 1123
   },
   {
     "id": "api-arda-fardarhirasterstate-operator-b9d34c2d",
@@ -52967,7 +55668,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIRasterState"
     ],
-    "sourceLine": 1141
+    "sourceLine": 1160
   },
   {
     "id": "api-arda-fardarhidepthstencilstate-operator-8b638309",
@@ -52993,7 +55694,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIDepthStencilState"
     ],
-    "sourceLine": 1164
+    "sourceLine": 1183
   },
   {
     "id": "api-arda-fardarhiblendtargetstate-operator-83b470de",
@@ -53019,7 +55720,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBlendTargetState"
     ],
-    "sourceLine": 1189
+    "sourceLine": 1208
   },
   {
     "id": "api-arda-fardarhiblendstate-operator-3e4cf690",
@@ -53045,7 +55746,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBlendState"
     ],
-    "sourceLine": 1210
+    "sourceLine": 1229
   },
   {
     "id": "api-arda-fardarhiformatinfo-mbytesperblock-0a62a65e",
@@ -53066,7 +55767,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFormatInfo"
     ],
-    "sourceLine": 1282
+    "sourceLine": 1301
   },
   {
     "id": "api-arda-fardarhiformatinfo-mblockwidth-b464f51e",
@@ -53087,7 +55788,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFormatInfo"
     ],
-    "sourceLine": 1284
+    "sourceLine": 1303
   },
   {
     "id": "api-arda-fardarhiformatinfo-mblockheight-b86f1d79",
@@ -53108,7 +55809,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFormatInfo"
     ],
-    "sourceLine": 1286
+    "sourceLine": 1305
   },
   {
     "id": "api-arda-getardarhiformatelementsize-e0b7ac06",
@@ -53129,7 +55830,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1308
+    "sourceLine": 1327
   },
   {
     "id": "api-arda-getardarhiformatplanecount-b18155e4",
@@ -53150,7 +55851,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1311
+    "sourceLine": 1330
   },
   {
     "id": "api-arda-getardarhitexturemipextent-5682a136",
@@ -53171,7 +55872,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1314
+    "sourceLine": 1333
   },
   {
     "id": "api-arda-resolveardarhitexturecopyextent-6c622bd2",
@@ -53192,7 +55893,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1320
+    "sourceLine": 1339
+  },
+  {
+    "id": "api-arda-validateardarhitexturebuffercopy-31643e1a",
+    "name": "ValidateArdaRHITextureBufferCopy",
+    "qualifiedName": "arda::ValidateArdaRHITextureBufferCopy",
+    "kind": "function",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaRHIStatus ValidateArdaRHITextureBufferCopy(const FArdaRHITextureDesc& TextureDesc, const FArdaRHITextureSlice& Slice, const FArdaRHIBufferDesc& BufferDesc, const FArdaRHITextureBufferLayout& Layout, FArdaRHITextureCopyExtent& OutExtent) noexcept",
+    "summary": "Validates a single-sample, uncompressed color region and its pitched buffer range. Explicit extents must fit the mip; sentinel extents select the remaining mip region. The buffer must contain all addressed texels; padding after the final row is optional.",
+    "details": "Validates a single-sample, uncompressed color region and its pitched buffer range. Explicit extents must fit the mip; sentinel extents select the remaining mip region. The buffer must contain all addressed texels; padding after the final row is optional.",
+    "source": "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 1349
   },
   {
     "id": "api-arda-validateardarhitextureresolve-32075b12",
@@ -53213,7 +55935,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1330
+    "sourceLine": 1359
   }
 ];
   window.ArdaBackendApi.symbols.push(...generatedSymbols);
@@ -53240,7 +55962,7 @@ window.ArdaBackendApi = {
     "ownership": "The new version retains its resources; recorded versions independently retain their previous dependencies through submission completion, including removed entries.",
     "errors": "A null, foreign-device or incompatible table is rejected with WrongDevice.",
     "threading": "Table updates and recording snapshots are serialized by the table mutex.",
-    "sourceLine": 914
+    "sourceLine": 945
   },
   {
     "id": "api-arda-rhi-iardarhidevice-writedescriptortable-16ff6b67",
@@ -53260,7 +55982,7 @@ window.ArdaBackendApi = {
     "ownership": "A successful write retains Item.mResource immediately. Recorded versions keep their dependencies when subsequent writes replace entries; submission retains them until its own queue completes. No unsafe-lifetime opt-in is required.",
     "errors": "WrongDevice rejects null/foreign resources and incompatible tables; InvalidArgument rejects undeclared slots or out-of-range array elements.",
     "threading": "Table writes and command-list snapshots are serialized by the table mutex; resource data still needs ordinary GPU barriers and queue ordering.",
-    "sourceLine": 933
+    "sourceLine": 964
   }
 ];
   for (const contract of sourceContracts) {
@@ -53279,8 +56001,8 @@ window.ArdaBackendApi.symbols.push({
   component: "presentation",
   page: "api-reference.html",
   signature: "PixelSort [--backend d3d12|vulkan] [--cuda-mode auto|context|graphics] [--width N --height N] [--channel 0|1|2 --threshold 0..255] [--frames N --hidden --verify --resize-test --validation] [--time T --capture image.png] [--help]",
-  summary: "Run the backend-only Win32 compute-noise, CUDA radix-sort and graphics-presentation example.",
-  details: "Build target PixelSort requires Windows, ARDASHIR_ENABLE_CUDA and ARDASHIR_BUILD_CUDA_KERNELS. It links ArdaBackend and its native PixelSortKernels profile. Portrait clients select 256-thread, 1024-pixel column tiles; landscape and square clients select 128-thread, 512-pixel row tiles. Bright runs are stably sorted by one RGB channel while complete RGBA pixels move together and dark boundaries remain fixed. C cycles RGB, Space pauses time, Tab toggles original, Up/Down changes the threshold and Escape closes. The window title reports the chosen direction and execution mode.",
+  summary: "Run the Win32 example with registered compute-noise, CUDA radix-sort and graphics-presentation graph nodes.",
+  details: "Build target PixelSort requires Windows, ARDASHIR_ENABLE_CUDA and ARDASHIR_BUILD_CUDA_KERNELS. It links ArdaBackend, ArdaRenderGraph and its native PixelSortKernels profile. Public/Nodes holds node interfaces and graph/CUDA parameter declarations; Private/Nodes owns shader metadata, registration and recording. The renderer assembles and submits persistent frame graphs. Portrait clients select 256-thread, 1024-pixel column tiles; landscape and square clients select 128-thread, 512-pixel row tiles. Bright runs are stably sorted by one RGB channel while complete RGBA pixels move together and dark boundaries remain fixed. C cycles RGB, Space pauses time, Tab toggles original, Up/Down changes the threshold and Escape closes. The window title reports the chosen direction and execution mode.",
   params: [
     {name: "--backend / --cuda-mode", description: "Defaults d3d12 / auto. context forces ordinary CUDA; graphics requires capability-qualified CUDA-in-graphics."},
     {name: "--width / --height", description: "Requested initial client extent, 1..8192; defaults 960x1200. Win32 may constrain actual dimensions. Selection uses actual client dimensions."},
@@ -53290,9 +56012,9 @@ window.ArdaBackendApi.symbols.push({
     {name: "--time / --capture", description: "A finite time freezes animation. Capture saves the rendered back buffer as PNG at the last bounded frame or the first indefinite frame. Parent directory must exist."}
   ],
   returns: "0 on normal completion/help; 77 when the requested backend, validation layer, CUDA mode or surface capability is unavailable; 1 on invalid input or workload failure.",
-  ownership: "Owns its window, backend, swap chain and textures. Resize, readback and shutdown wait for GPU completion. The executable statically retains both CUDA entries. Keep deployed D3D12, Shaders and ShaderCompiler directories beside it; the graphics shader cache is writable beside the executable. No runtime CUDA compiler is used.",
+  ownership: "Owns its window, backend and swap chain. Cached graphs retain imported back buffers and own transient intermediates. Readback waits on its submission ticket; resize and shutdown retire graphs before releasing resources. The executable statically retains both CUDA entries. Keep deployed D3D12, Nodes/Shaders and ShaderCompiler directories beside it; the graphics shader cache is writable beside the executable. No runtime CUDA compiler is used.",
   errors: "Reports the first RHI/CUDA failure or CPU mismatch. Missing native architecture coverage requires rebuilding the kernel profile. D3D12 CiG surfaces are unavailable on the locally tested driver; automatic mode selects ordinary context execution.",
-  threading: "One application thread records and submits the graphics list. The provider orders producer, CUDA and consumer on the GPU; normal frames perform no CPU readback or device-idle wait. CUDA blocks sort independent tiles using block barriers and warp ballots.",
+  threading: "The render thread updates inputs and submits the persistent graph. ArdaInductor invokes registered node callbacks to record commands and enforces dependencies. The provider orders producer, CUDA and consumer on the GPU; normal frames perform no CPU readback or device-idle wait, although recycling an occupied graph frame slot can wait. CUDA blocks sort independent tiles using block barriers and warp ballots.",
   source: "Source/ArdaTests/Examples/PixelSort/PixelSortMain.cpp",
   related: ["TArdaComputeOperand", "IArdaSwapChain"]
 });
