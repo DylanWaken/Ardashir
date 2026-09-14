@@ -38,6 +38,7 @@
         <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
 
         <a href="resource-recipes.html">Resource recipes</a>
+        <a href="Gpu-Allocator.md">GPU allocator</a>
         <a href="capability-recipes.html">Capability recipes</a>
         <a href="cuda-interop.html">CUDA and graphics</a>
         <a href="cuda-graphics.html">CUDA in graphics fundamentals</a>
@@ -337,7 +338,6 @@ LayoutDesc.mLayoutType = EArdaRHIBindlessLayoutType::MutableSrvUavCbv;
 LayoutDesc.mbDirectHeapIndexing = bDirectHeapIndexing;
 LayoutDesc.mbDescriptorBuffer = bDescriptorBuffer;
 LayoutDesc.mDebugName = &quot;Bounded bindless UAV table&quot;;
-LayoutDesc.mbAllowUnsafeDescriptorTableLifetime = true;
 LayoutDesc.mRegisterSpaces.push_back({0, 1, EArdaRHIBindingType::StructuredBufferUAV});
 auto Layout = Device-&gt;CreateBindlessLayout(LayoutDesc);
 ASSERT_TRUE(Layout) &lt;&lt; Layout.mStatus.mMessage.c_str();
@@ -678,6 +678,6 @@ ASSERT_TRUE(Commands);</code></pre><p>This object is not a CUDA buffer pointer o
 }</code></pre><p>This object is not a CUDA buffer pointer or surface. Use compatible source buffers/textures when an operand needs shared storage. Owning RHI references retain the object; submitted lists retain native dependencies until their queue retires.</p><p><a href="gpu-examples.html#VerifyQueryExecution">Complete example: VerifyQueryExecution</a>. Exact creation signatures and failure contracts are in the API link above.</p></section><section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>
 </main>
   </div>
-  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
+  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaInfra/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
 </body>
 </html>

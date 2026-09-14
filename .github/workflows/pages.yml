@@ -7,8 +7,8 @@ on:
     paths:
       - "Docs/**"
       - "Skills/document-codebase/**"
-      - "Source/ArdaBackend/Public/**"
-      - "Source/ArdaRenderGraph/Public/**"
+      - "Source/ArdaInfra/ArdaBackend/Public/**"
+      - "Source/ArdaInfra/ArdaRenderGraph/Public/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

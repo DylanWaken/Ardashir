@@ -1,8 +1,10 @@
+#include "ArdaTestValidation.h"
 #include "ArdaCornellBoxPch.h"
 
 #include "ArdaCornellBoxConfig.h"
 #include "ArdaCornellBoxRenderer.h"
 #include "ArdaCornellBoxWindow.h"
+#include "ArdaExampleShaders.h"
 #include "ShaderStructs/ArdaShaderDirectories.h"
 
 #include <chrono>
@@ -24,6 +26,7 @@ namespace arda
 			uint32_t mWindowWidth = 1280;
 			uint32_t mWindowHeight = 720;
 			bool mbHidden = false;
+			bool mbValidation = false;
 			bool mbFullscreen = false;
 			arda::EArdaShaderCompilationMode mShaderMode = arda::EArdaShaderCompilationMode::OnDemand;
 			std::filesystem::path mShaderCacheDirectory;
@@ -64,15 +67,15 @@ namespace arda
 			uint32_t mErrorCount = 0;
 		};
 
-		class FBackendShutdownGuard final
+		class FArdaBackendShutdownGuard final
 		{
 		public:
-			explicit FBackendShutdownGuard(eastl::unique_ptr<arda::IArdaSwapChain>& SwapChain)
+			explicit FArdaBackendShutdownGuard(eastl::unique_ptr<arda::IArdaSwapChain>& SwapChain)
 			    : mSwapChain(SwapChain)
 			{
 			}
 
-			~FBackendShutdownGuard()
+			~FArdaBackendShutdownGuard()
 			{
 				if (mSwapChain)
 				{
@@ -113,6 +116,15 @@ namespace arda
 				if (Argument == "--hidden")
 				{
 					Options.mbHidden = true;
+				}
+				else if (Argument == "--validation")
+				{
+					if constexpr (!arda::ArdaTestValidationEnabled)
+					{
+						Error = "GPU validation was disabled at build time (ARDASHIR_ENABLE_GPU_VALIDATION=OFF).";
+						return false;
+					}
+					Options.mbValidation = true;
 				}
 				else if (Argument == "--fullscreen")
 				{
@@ -275,13 +287,17 @@ namespace arda
 			FArdaMessageCallback Messages;
 			arda::FArdaBackendConfiguration Configuration;
 			Configuration.mBackendName = Options.mBackendName;
-			Configuration.mbEnableValidation = true;
+			Configuration.mbEnableValidation = Options.mbValidation;
 			Configuration.mMessageCallback = &Messages;
 			Configuration.mShaderCompilationMode = Options.mShaderMode;
 			Configuration.mShaderCacheDirectory = Options.mShaderCacheDirectory;
 			Configuration.mRequiredFeatures.mbRequireHardwareRayTracing = true;
 			Configuration.mRequiredFeatures.mbRequireRayTracingPipelines = true;
 			Configuration.mRequiredFeatures.mbRequireAccelerationStructures = true;
+
+			// Source-distributed examples retain their selected shader mode in Debug and Release.
+			ConfigureArdaExampleShaderCompiler();
+
 			if (!arda::ConfigureBackend(Configuration))
 			{
 				ARDA_LOG(LogCornellBox, Error, "%s", arda::GetBackendError().c_str());
@@ -300,7 +316,7 @@ namespace arda
 			}
 
 			eastl::unique_ptr<arda::IArdaSwapChain> SwapChain;
-			FBackendShutdownGuard Shutdown(SwapChain);
+			FArdaBackendShutdownGuard Shutdown(SwapChain);
 			const arda::EArdaInitializeResult InitializeResult =
 			    arda::InitializeBackendForPresentation(Window, Window.GetWidth(), Window.GetHeight(), SwapChain);
 			if (InitializeResult != arda::EArdaInitializeResult::Success)

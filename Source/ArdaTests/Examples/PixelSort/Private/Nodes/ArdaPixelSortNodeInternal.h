@@ -2,55 +2,33 @@
 #include "Nodes/ArdaPixelSortNodes.h"
 
 #include "ArdaExamplePaths.h"
-#include <mutex>
+#include "ArdaExampleStatus.h"
+#include "ShaderStructs/ArdaGlobalShaderMap.h"
 #include <stdexcept>
+#include <string>
 
 namespace arda
 {
-	inline void Check(FArdaRHIStatus Status)
+	inline FArdaRHIStatus ValidatePixelSortExtent(uint32_t Width, uint32_t Height)
 	{
-		if (!Status)
+		if (!Width || !Height)
 		{
-			throw std::runtime_error(Status.mMessage.c_str());
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "PixelSort requires a nonempty extent.");
 		}
+		return {};
 	}
 
-	template <class T>
-	T Take(TArdaRHIResult<T> Result)
+	inline FArdaRHIStatus PixelSortShaderError(const FArdaGlobalShaderMap& Map)
 	{
-		Check(Result.mStatus);
-		return eastl::move(Result.mValue);
+		const auto Diagnostics = Map.GetDiagnostics();
+		return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+		    Diagnostics.empty() ? "PixelSort node shader initialization failed." : Diagnostics.back().mMessage.c_str());
 	}
 
-	template <class T>
-	void Append(eastl::string& Key, T Value)
+	inline const char* GetPixelSortShaderSource()
 	{
-		Key.append(reinterpret_cast<const char*>(&Value), sizeof(Value));
+		// Register an executable-relative physical source without mutating the frozen source-directory registry.
+		static const std::string Source = (GetArdaExampleDirectory() / "Nodes/Shaders/ArdaPixelSort.hlsl").string();
+		return Source.c_str();
 	}
-
-	inline void AppendResource(eastl::string& Key, FArdaDependencyResourceHandle Resource)
-	{
-		Append(Key, Resource.mGraph);
-		Append(Key, Resource.mIndex);
-		Append(Key, Resource.mGeneration);
-	}
-
-	inline eastl::string MakePixelSortNodeKey(const FArdaPixelSortNodeParameters& P)
-	{
-		eastl::string Key;
-		for (auto R : {P.mConstants, P.mNoise, P.mSorted, P.mColor})
-		{
-			AppendResource(Key, R);
-		}
-		Append(Key, reinterpret_cast<uintptr_t>(P.mInput.get()));
-		Append(Key, P.mWidth);
-		Append(Key, P.mHeight);
-		return Key;
-	}
-
-	FArdaRHIShaderRef LoadArdaPixelSortShader(FArdaRHIDeviceRef Device,
-	    const std::filesystem::path& Directory,
-	    const char* Name,
-	    const char* Entry,
-	    EArdaRHIShaderStage Stage);
 }

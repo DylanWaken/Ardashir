@@ -156,7 +156,7 @@
         <section id="validation">
           <h2>Validation layers and callbacks</h2>
           <p><a href="api-reference.html#api-arda-backend-fardabackendconfiguration-mbenablevalidation-2f50a50d"><code>FArdaBackendConfiguration::mbEnableValidation</code></a> defaults to true. Enable validation during development, automated graphics tests, and pre-release qualification. Validation changes timing and consumes CPU/memory, so profile performance separately with it disabled.</p>
-          <pre><code>class FBackendMessages final
+          <pre><code>class FArdaBackendMessages final
     : public arda::IArdaDiagnosticCallback
 {
 public:
@@ -170,7 +170,7 @@ public:
     ConcurrentDiagnosticQueue queue;
 };
 
-FBackendMessages messages;
+FArdaBackendMessages messages;
 FArdaBackendConfiguration config;
 config.mbEnableValidation = true;
 config.mMessageCallback = &amp;messages;

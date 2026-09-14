@@ -5,7 +5,7 @@ static const uint kSphereTrianglesPerFace = kSphereFaceResolution * kSphereFaceR
 static const uint kSphereTriangleCount = kSphereFaceCount * kSphereTrianglesPerFace;
 static const uint kTriangleCount = kRoomAndBoxQuadCount * 2 + kSphereTriangleCount * 2;
 
-struct CornellVertex
+struct FArdaCornellVertex
 {
 	float3 Position;
 	float Padding;
@@ -13,7 +13,7 @@ struct CornellVertex
 	uint MaterialId;
 };
 
-struct CornellMaterial
+struct FArdaCornellMaterial
 {
 	float3 BaseColor;
 	float Roughness;
@@ -24,9 +24,9 @@ struct CornellMaterial
 	float2 Padding;
 };
 
-RWStructuredBuffer<CornellVertex> Vertices : register(u0);
+RWStructuredBuffer<FArdaCornellVertex> Vertices : register(u0);
 RWStructuredBuffer<uint> Indices : register(u1);
-RWStructuredBuffer<CornellMaterial> Materials : register(u2);
+RWStructuredBuffer<FArdaCornellMaterial> Materials : register(u2);
 
 float3 RotateZ(float3 Value, float Angle)
 {
@@ -286,9 +286,9 @@ void GetSphereTriangle(uint Sphere,
 	P2 = Center + N2 * Radius;
 }
 
-CornellVertex MakeVertex(float3 Position, float3 Normal, uint MaterialId)
+FArdaCornellVertex MakeVertex(float3 Position, float3 Normal, uint MaterialId)
 {
-	CornellVertex Vertex;
+	FArdaCornellVertex Vertex;
 	Vertex.Position = Position;
 	Vertex.Padding = 0.0;
 	Vertex.Normal = normalize(Normal);
@@ -296,14 +296,14 @@ CornellVertex MakeVertex(float3 Position, float3 Normal, uint MaterialId)
 	return Vertex;
 }
 
-CornellMaterial MakeMaterial(float3 BaseColor,
+FArdaCornellMaterial MakeMaterial(float3 BaseColor,
     float Roughness,
     float3 Emission,
     float Metallic,
     float Transmission,
     float Ior)
 {
-	CornellMaterial Material;
+	FArdaCornellMaterial Material;
 	Material.BaseColor = BaseColor;
 	Material.Roughness = Roughness;
 	Material.Emission = Emission;

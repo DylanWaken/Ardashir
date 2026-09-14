@@ -4,17 +4,29 @@
 
 namespace arda
 {
+	FArdaRHIStatus FArdaCornellUploadFrameNode::DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P)
+	{
+		FArdaRHIBufferDesc D;
+		D.mByteSize = sizeof(FArdaCornellFrameConstants);
+		D.mUsage = EArdaRHIBufferUsage::Constant;
+		return C.Buffer(P.mConstants, "Constants", D);
+	}
+
 	FArdaDependencyNodeMetadata FArdaCornellUploadFrameNode::GetMetadata()
 	{
 		return {"cornell.upload_frame", 1};
 	}
 
-	eastl::string FArdaCornellUploadFrameNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaCornellUploadFrameNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		return MakeCornellNodeKey(P);
+		FArdaDependencyKeyBuilder Key;
+		Key.Resource(P.mConstants);
+		Key.Value(reinterpret_cast<uintptr_t>(P.mFrame.get()));
+		Key.Value(P.mWorkspaceBytes);
+		return Key.Build();
 	}
 
-	FArdaRHIStatus FArdaCornellUploadFrameNode::Validate(const FParameters& P)
+	FArdaRHIStatus FArdaCornellUploadFrameNode::Validate(const FArdaParameters& P)
 	{
 		if (!P.mFrame)
 		{
@@ -23,31 +35,23 @@ namespace arda
 		return {};
 	}
 
-	FArdaDependencyNodeDesc FArdaCornellUploadFrameNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaCornellUploadFrameNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
 		D.mWorkspaceBytes = P.mWorkspaceBytes;
-		const auto Read = [&](uint32_t I, EArdaRHIResourceState State)
-		{
-			D.mAccesses.push_back({P.mResources[I], EArdaDependencyAccess::Read, State});
-		};
-		const auto Write = [&](uint32_t I, EArdaRHIResourceState State)
-		{
-			D.mAccesses.push_back({P.mResources[I], EArdaDependencyAccess::Write, State});
-		};
-		Write(0, EArdaRHIResourceState::CopyDest);
+		D.mAccesses = {{P.mConstants, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest}};
 
 		return D;
 	}
 
 	FArdaRHIStatus FArdaCornellUploadFrameNode::Record(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState)
+	    const FArdaParameters& P,
+	    const FArdaState& Prepared,
+	    FArdaInstanceState& InstanceState)
 	{
 		auto& Commands = C.GetCommands();
 
-		return Commands.WriteBuffer(*C.GetBuffer(P.mResources[0]),
+		return Commands.WriteBuffer(*C.GetBuffer(P.mConstants),
 		    &P.mFrame->mConstants,
 		    sizeof(FArdaCornellFrameConstants));
 	}

@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Declare node hardware and environment requirements, reject unsupported attachments before setup, and understand the limits of automatic feature inference.">
+  <title>Node feature requirements | ArdaRenderGraph | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaRenderGraph</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
+      <h2>ArdaRenderGraph</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="node-recipes.html">Node recipes</a>
+        <a aria-current="page" href="feature-requirements.html">Feature requirements</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="resources.html">Resources</a>
+        <a href="passes.html">Typed nodes</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="debugging.html">Debugging</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../index.html">Docs</a> / <a href="index.html">ArdaRenderGraph</a> / Feature requirements</nav>
+      <article>
+        <header class="page-header">
+          <p class="eyebrow">Self-contained node contracts</p>
+          <h1>Reject unsupported nodes at attachment</h1>
+          <p>An operation declares the hardware, features and environment it needs. The graph checks that contract before preparing a new instance and checks recognizable descriptor requirements before binding setup.</p>
+        </header>
+        <nav class="toc" aria-label="On this page">
+          <h2>On this page</h2>
+          <a href="#objectives">Objectives and prerequisites</a>
+          <a href="#fundamentals">Availability and resource effects</a>
+          <a href="#worked-example">Override the node hook</a>
+          <a href="#parameter-selection">Parameter-dependent requirements</a>
+          <a href="#architecture">Two admission phases</a>
+          <a href="#registration">One class registration contract</a>
+          <a href="#inference">What the graph infers</a>
+          <a href="#environment">CUDA and custom environment checks</a>
+          <a href="#limits">Unknown limits and queue fallback</a>
+          <a href="#failures">Failure, rollback and retry</a>
+          <a href="#modularity">Remaining modularity gaps</a>
+          <a href="#summary">Summary and checkpoints</a>
+        </nav>
+
+        <section id="objectives">
+          <h2>Learning objectives and prerequisites</h2>
+          <p>After this chapter you can author a node's admission hook, predict when a failed attachment stops setup, distinguish an explicit requirement from inferred descriptor facts, and select a fallback without hiding dependencies. Read <a href="passes.html#parameters">the typed node contract</a>, <a href="passes.html#freezing">parameter snapshots</a>, and <a href="getting-started.html#lifecycle">graph edit lifetime</a> first.</p>
+          <p>A <a href="../glossary.html#term-capability" data-term="capability">capability</a> is a qualified fact about the current device, not a promise attached to a backend name. The public <a href="../ArdaBackend/api-reference.html#api-arda-fardarhifeaturerequirements"><code>FArdaRHIFeatureRequirements</code></a> describes portable D3D12/Vulkan needs; <a href="api-reference.html#api-arda-fardadependencynoderequirements-7513e792"><code>FArdaDependencyNodeRequirements</code></a> adds CUDA and application environment checks.</p>
+        </section>
+
+        <section id="fundamentals">
+          <h2>Availability and resource effects are separate contracts</h2>
+          <p>Admission asks whether the selected environment can perform an operation. Dependency compilation asks when its inputs are available and how long its outputs live. A ray-capable device can still receive an invalid graph that omits a TLAS dependency. Likewise, a perfectly ordered graph can request a work-graph pipeline on a provider that does not implement work graphs.</p>
+          <p>All selected requirements are conjunctive: each requested feature, minimum limit and environment predicate must pass. Within a nonempty allowed-CUDA-mode list, any one listed mode is acceptable. A false requirement flag means that the node imposes no requirement on that feature; it does not require the feature to be absent. Features used conditionally are selected from immutable public parameters.</p>
+          <figure>
+            <img src="Assets/rdg-feature-integration-decision.svg" alt="Indirect draw passes device and resource checks and needs a reusable node; feedback decode first needs a graph feedback resource; VRS first needs backend support." loading="lazy">
+            <figcaption>Passing admission cannot create missing graph resource semantics. A reusable wrapper, a new logical resource and a new backend implementation solve different gaps.</figcaption>
+          </figure>
+        </section>
+
+        <section id="worked-example">
+          <h2>Override the common node hook</h2>
+          <p>The common <a href="api-reference.html#api-arda-tardadependencynode-35213481"><code>TArdaDependencyNode</code></a> base provides an empty <a href="api-reference.html#api-arda-tardadependencynode-getrequirements-defdae36"><code>GetRequirements(const FArdaParameters&amp;)</code></a>. A derived class overrides the contract by declaring the same <strong>static</strong> function. This is CRTP dispatch through the concrete node type: do not add the C++ <code>override</code> keyword or a virtual function. The signature is checked with the other node hooks.</p>
+          <p>The <a href="Examples/Nodes/WorkWriteNode.h">compiled work-graph node header</a> declares this hook. Its <a href="Examples/Nodes/WorkWriteNode.cpp">implementation</a> is:</p>
+          <pre><code class="language-cpp">FArdaDependencyNodeRequirements
+FArdaWorkWriteNode::GetRequirements(const FArdaParameters&amp;)
+{
+    FArdaDependencyNodeRequirements R;
+    R.mFeatures.mbRequireWorkGraphs = true;
+    return R;
+}</code></pre>
+          <p>The renderer still only attaches the node inside an edit. With an initialized device and the recipe implementation linked, the relevant assembly is:</p>
+          <pre><code class="language-cpp">FArdaDependencyGraph Graph(Device);
+if (auto S = Graph.BeginGraphEdit(); !S)
+    return S;
+
+auto Work = Graph.AttachOrFind&lt;FArdaWorkWriteNode&gt;("write", {{}, 123});
+if (!Work)
+    return Work.mStatus;
+
+// Continue wiring Graph.FindOutput(Work.mValue, "Output") to consumers.</code></pre>
+          <p>This excerpt stops at attachment; the <a href="node-recipes.html#work">complete work-graph recipe</a> wires a separate readback, compiles and executes. A qualified D3D12 work-graph device proceeds to output declaration and preparation. Vulkan currently returns <code>Unsupported</code> before those hooks because its provider has no work-graph implementation. The diagnostic identifies instance <code>write</code>, definition <code>recipe.work-write</code> and the missing work-graph ability.</p>
+          <p>Registering the class with <code>FArdaWorkWriteNode::Register()</code> remains device-independent and performs no admission check. Registration publishes the operation for discovery; each graph attachment checks its own environment.</p>
+        </section>
+
+        <section id="parameter-selection">
+          <h2>Select requirements from public parameters</h2>
+          <p>A TLAS build node needs top-level acceleration structures. Its update and compaction requirements depend on the requested build flags. Cornell's independent TLAS node implements the following hook:</p>
+          <pre><code class="language-cpp">FArdaDependencyNodeRequirements
+FArdaCornellBuildTlasNode::GetRequirements(const FArdaParameters&amp; P)
+{
+    FArdaDependencyNodeRequirements R;
+    R.mFeatures.mbRequireAccelerationStructures = true;
+    R.mFeatures.mbRequireTopLevelAccelerationStructures = true;
+    R.mFeatures.mbRequireAccelerationStructureUpdate = HasAnyFlags(
+        P.mBuildFlags,
+        EArdaRHIAccelStructBuildFlags::AllowUpdate |
+        EArdaRHIAccelStructBuildFlags::PerformUpdate);
+    R.mFeatures.mbRequireAccelerationStructureCompaction = HasAnyFlags(
+        P.mBuildFlags, EArdaRHIAccelStructBuildFlags::AllowCompaction);
+    return R;
+}</code></pre>
+          <p>Here <code>P.mBuildFlags</code> is part of the node's frozen public parameters and canonical identity. An ordinary build does not require update support merely because the implementation can also update. A later update still needs a compatible previously built AS and correctly declared graph accesses; passing this hook does not establish those invariants. See <a href="node-recipes.html#ray">the ray-tracing assembly</a> for BLAS/TLAS/trace dependencies.</p>
+          <p><strong>The hook runs before <code>Validate</code>, output resolution and prepared-state construction.</strong> It receives public inputs, which may include empty output handles or invalid dimensions. Select requirements defensively; do not dereference a possibly empty resource or divide by an unchecked dimension. Leave ordinary shape and argument diagnostics to <code>Validate</code>. Do not rely on a compiler-filled output handle or cast parameters to the base's private prepared schema.</p>
+        </section>
+
+        <section id="architecture">
+          <h2>Two admission phases protect different boundaries</h2>
+          <p>The attachment sequence is intentionally ordered. Explicit requirements prevent unsupported setup, while inference catches recognizable needs that become visible only after the node describes its operation.</p>
+          <ol>
+            <li><strong>Check explicit requirements.</strong> After confirming the registered definition and public parameter type, the graph calls <code>GetRequirements</code> and checks it against its current device. This happens before <code>DeclareResources</code>, <code>Validate</code>, <code>Prepare</code> and <code>CreateInstance</code>. A CUDA-kind attachment with a real device also requires a qualified CUDA launch path.</li>
+            <li><strong>Resolve outputs and identity.</strong> <code>DeclareResources</code> fills or validates logical outputs. The graph computes canonical identity. A matching existing node is checked again using its retained requirements and returned without running new preparation.</li>
+            <li><strong>Prepare a new instance.</strong> The class base validates public parameters, obtains immutable device state and creates per-instance state. It then calls <code>Describe</code>.</li>
+            <li><strong>Check inferred requirements.</strong> The graph combines explicit requirements with recognized pipeline, binding and resource facts. With a device, it checks that set before generating graph binding layouts or inserting the node. A failed check removes provisional output declarations from this attachment.</li>
+            <li><strong>Compile and execute later.</strong> A successful attachment retains its description. <code>EndGraphEdit</code> compiles dependencies, allocation and PSOs and prepares per-frame bindings/tables. Execution submits the compiled program.</li>
+          </ol>
+          <p>The retained <a href="api-reference.html#api-arda-fardadependencynodedesc-mrequirements-dd1af6fc"><code>FArdaDependencyNodeDesc::mRequirements</code></a> is <strong>graph-populated output</strong>. Do not assign explicit requirements to it in <code>Describe</code>: attachment replaces that field with the hook's result before inference. Put author requirements in the hook so they also protect early setup.</p>
+          <p>Admission itself is read-only CPU work and issues no GPU submission or wait. Inference can prevent graph binding creation, but it happens after node preparation; declare a feature explicitly if it must be checked before compiling that feature's shader or constructing its device state. Successful attachment is not the final validation of native resource formats, pipeline combinations, memory capacity or execution inputs.</p>
+        </section>
+
+        <section id="registration">
+          <h2>One class contract for registration and attachment</h2>
+          <p>Typed attachment delegates to the common class base. Attachment by registered name looks up the same class executable and checks the same public parameter type. Explicit requirements are selected from the new parameter snapshot on every call, including matching reattachments.</p>
+          <p>Override <code>GetRequirements(const FArdaParameters&amp;)</code> on the node class. For example, a node whose public parameters include <code>mSampleCount</code> can select its required descriptor capacity:</p>
+          <pre><code class="language-cpp">static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&amp; Parameters)
+{
+    FArdaDependencyNodeRequirements Requirements;
+    Requirements.mFeatures.mMinResourceDescriptors = Parameters.mSampleCount;
+    return Requirements;
+}</code></pre>
+          <p>Built-ins, application operations and CUDA operand adapters all follow this contract. The registry's executable records are framework-owned inspection data. Their constructors and registration function are private; applications cannot submit arbitrary callback records. Device preparation and instance storage are retained by the base, without a separate public execution schema.</p>
+          <p>Include every behavior-affecting parameter in the canonical key. A cached successful attachment on another device or with another parameter value is not an admission verdict for this call.</p>
+        </section>
+
+        <section id="inference">
+          <h2>What descriptor inference can recognize</h2>
+          <p>Inference examines declarations, not callback instructions or shader source. It recognizes graphics/mesh queue needs, mesh and work-graph families, ray pipeline/table use, geometry/tessellation stages, stages seeded in complete configurations, and ray configurations that permit opacity micromaps. It recognizes AS accesses, indirect argument states, shading-rate states, texture copy/resolve states and virtual/tiled resource descriptions. This closes admission holes for declared operations without requiring each author to repeat every obvious flag.</p>
+          <p>For <a href="../glossary.html#term-bindless" data-term="bindless">bindless</a> layouts, inference distinguishes resource and sampler direct indexing, runtime/unbounded arrays, update-after-bind, variable counts, descriptor buffers and capacities. It also checks whether a table needs partially bound descriptors. A table whose supplied entries are dense below its chosen size can still have holes in the full fixed layout extent; multiple banks can retain fixed extents even when one binding is variable. The relevant fact is the native declared extent, not merely the number of supplied entries.</p>
+          <p>Inference does not discover inline ray queries, native float16/int8 instructions, library versions, external algorithm constraints or all accesses hidden behind a GPU-selected index. Declare such needs explicitly. A declared indirect argument state establishes general indirect-command admission; indirect ray dispatch also needs the separate indirect-ray requirement. The provider's local shader-table payload capability does not guarantee every local descriptor model: Vulkan still requires its qualified direct-heap path for local descriptors.</p>
+          <p>A recognized capability is not a new executable operation. Sparse capability inference does not make the memory planner support tiled storage, and an opacity-micromap state does not add a missing graph micromap handle. The <a href="#modularity">modularity summary</a> explains these boundaries.</p>
+        </section>
+
+        <section id="environment">
+          <h2>CUDA and application environment checks</h2>
+          <p>CUDA uses the device's separate <a href="../ArdaBackend/api-reference.html#api-arda-fardacudacapabilities-2b4d1813"><code>FArdaCudaCapabilities</code></a> snapshot. PixelSort's surface operand explicitly returns both CUDA launch and CUDA surface requirements:</p>
+          <pre><code class="language-cpp">FArdaDependencyNodeRequirements
+FArdaPixelSortSortNode::GetRequirements(const FArdaParameters&amp;)
+{
+    FArdaDependencyNodeRequirements R;
+    R.mbRequireCuda = true;
+    R.mbRequireCudaSurfaces = true;
+    return R;
+}</code></pre>
+          <p>A buffer-only CUDA operation should not add the surface requirement. Layered surfaces have their own requirement, and minimum architecture, threads per block and dynamic shared memory can further constrain admission. A nonempty <a href="api-reference.html#api-arda-fardadependencynoderequirements-mallowedcudalaunchmodes-97f4b987"><code>mAllowedCudaLaunchModes</code></a> admits only those qualified modes. Leave it empty to accept any available framework mode; <code>None</code> is invalid as an allowed mode. Surface failure can coexist with a working buffer launch path. The hook does not create a CUDA context, change the selected mode, convert a surface kernel to a buffer kernel, or prove binary/capture compatibility.</p>
+          <p>The <code>TArdaCudaOperandNode</code> class specialization supplies this admission hook automatically. It checks CUDA launch support, surface use in the parameter schema, exact device identity and the operand's read-only <code>GetOperandSupport()</code> result, including native variant/library compatibility. Resource-dependent kernel selection still waits for physical resources during compilation. A wrong-device operand returns an unsupported-attachment diagnostic; it is not silently rebound to the graph's device.</p>
+          <p>For an application library, plugin version, driver qualification or another condition not represented by portable capabilities, add a named <a href="api-reference.html#api-arda-fardadependencyenvironmentrequirement-2bac463c"><code>FArdaDependencyEnvironmentRequirement</code></a> to <a href="api-reference.html#api-arda-fardadependencynoderequirements-menvironment-5e2abd6d"><code>mEnvironment</code></a>. Its callback receives a borrowed <code>const IArdaRHIDevice&amp;</code> and returns a status. Return success when the application condition is satisfied; otherwise return a useful reason. The graph combines that reason with the predicate name and other missing abilities.</p>
+          <p>Both requirement selection and predicates must be read-only: do not allocate GPU resources, load or initialize a mutable global service, submit commands, wait for the GPU, retain the borrowed device, or mutate external state. Query stable, already established environment facts. Predicates may be evaluated more than once during an attachment or matching reattachment, so do not make them consume state. Admission occurs on attachment, not before every execution; the application must keep required libraries and device state valid for retained nodes.</p>
+        </section>
+
+        <section id="limits">
+          <h2>Unknown limits, queue fallback and device-free analysis</h2>
+          <p>An explicit positive minimum must be proved by the reported limit. Zero for an unavailable or unqueryable capability limit is not treated as unlimited. For example, an explicit positive ray-payload minimum fails when the device cannot report that limit. Inferred ray configuration checks defer an unqueryable native payload limit to actual pipeline creation instead of inventing support. Choose explicit constraints only when the algorithm truly requires them and the environment can establish them.</p>
+          <p>The subgroup-width interval is a conservative constraint on the whole reported device interval. Requiring 32 through 32 does not request a 32-lane mode; it accepts only a device whose qualified subgroup interval fits entirely within 32 through 32. A device reporting 32 through 64 therefore fails. If an operation can tolerate both widths, state that range and make the shader correct for both.</p>
+          <p>A compute node does not automatically require a dedicated compute queue, and a copy node does not automatically require a dedicated copy queue. ArdaInductor retains its normal <a href="compilation.html">queue placement and fallback</a>, including compute/copy work on graphics when appropriate. Explicitly requiring a dedicated family turns a scheduling preference into a hard admission condition. Only do that when the operation depends on it. Queue availability and dedicated-family identity still do not guarantee simultaneous hardware execution.</p>
+          <p>A graph constructed without a device can perform device-independent semantic analysis when its explicit requirement set is empty and its other hooks need no device. Nonempty explicit feature, CUDA or environment requirements still fail; unavailable facts are never assumed supported. Descriptor-inferred requirements are retained but are not enforced without a device. This exception supports graph analysis, not GPU execution. Device-dependent shader or binding preparation may independently reject a device-free graph, so a normal prepared rendering node is not automatically suitable for that mode.</p>
+        </section>
+
+        <section id="failures">
+          <h2>Failure, rollback and retry</h2>
+          <p>Unsatisfied portable features, CUDA requirements and custom environment checks return an aggregated <code>Unsupported</code> status. The graph prefixes the diagnostic with the instance name and registered definition, making it possible to identify the operation in a large library. An empty predicate name, missing predicate function or invalid CUDA mode declaration is a malformed contract and returns <code>InvalidArgument</code>.</p>
+          <p>An early explicit rejection happens before output declaration and preparation. A later inferred rejection can occur after preparation, but no node is inserted and provisional graph outputs from that attachment are rolled back. The edit stays open for repair or cancellation. A failed reattachment does not delete the existing node or replace its parameters. Rollback cannot undo arbitrary external side effects performed by an author's hooks, which is why those hooks must follow their side-effect rules.</p>
+          <p>Respond to an unsupported feature by selecting a compatible node or parameter variant, supplying a correctly qualified device, or cancelling the edit. Do not continue using an invalid returned handle. Failed checks are not cached as permanent rejection. Repeating attachment re-evaluates the current requirements and environment; matching successful nodes continue to reuse prepared state. The graph does not automatically downgrade an algorithm or choose an unrelated fallback implementation.</p>
+          <p>Three common authoring errors are particularly misleading:</p>
+          <ul>
+            <li><strong>Requirements only in <code>Describe().mRequirements</code>:</strong> the graph overwrites this output field. Move explicit requirements into <code>GetRequirements</code>.</li>
+            <li><strong>Feature discovery inside <code>Record</code>:</strong> the node has already attached and may be part of accepted work. Move stable admission to the hook while keeping operation-specific runtime validation where needed.</li>
+            <li><strong>Omitted resources after a passing capability check:</strong> support does not establish <a href="../glossary.html#term-dependency-edge" data-term="dependency-edge">dependencies</a>. Declare indirect arguments, every possible bindless target and external-library workspace/effects.</li>
+          </ul>
+        </section>
+
+        <section id="modularity">
+          <h2>Which native features still need modular work</h2>
+          <p>The accompanying <a href="Feature-Modularity-Audit.md">repository source audit</a> maps every exposed capability group to its current integration level. That Markdown document links implementation evidence in the repository; this HTML chapter and the linked API contracts provide the admission workflow without requiring source access.</p>
+          <ul>
+            <li><strong>Already automatically represented:</strong> ordinary buffer/texture resources, shader bindings, bounded bindless declarations, shader parameters, graphics/compute/mesh/ray/work pipeline requests, ray tables, range hazards, supported queue transitions and ordinary transient allocation. CUDA operands expose their declared data effects and are coalesced into framework sequences.</li>
+            <li><strong>Existing resource model, missing generic operations:</strong> indirect draw/dispatch/rays, texture-to-texture copy, resolve and texture clears. AS imports and Cornell's AS operation nodes exist, but general node-owned AS construction and a public build/update/compaction library remain incomplete.</li>
+            <li><strong>Missing resource/effect models:</strong> sampler feedback, opacity micromaps, sparse mappings/residency, versioned resource collections and general external synchronization. Retaining a native object inside an opaque callback does not make its effects recognizable.</li>
+            <li><strong>Incomplete parameter paths:</strong> automatic ray-local bindless descriptors and their index/address relocation. Vulkan's direct-heap local descriptor restriction remains relevant even when local shader-table arguments are reported.</li>
+            <li><strong>Backend work is still required:</strong> VRS and conservative rasterization are not reported by either provider; Vulkan work graphs/feedback and D3D12 OMM are unsupported. Shader bundles are facade iteration over compute/mesh records, not a native work graph that ArdaInductor expands automatically.</li>
+          </ul>
+          <p>Use the diagram's decision process for a new operand: first establish native availability, then confirm the graph can represent every resource and effect, then package a reusable operation. Feature admission improves the first step and catches recognizable requirements; it does not silently claim completion of the other two.</p>
+        </section>
+
+        <section id="summary">
+          <h2>Summary and checkpoints</h2>
+          <p>Requirements belong to the operation's public contract. Static hook dispatch provides the same contract for every built-in, application node and operand adapter. The graph checks explicit needs before setup, infers visible descriptor needs before graph binding preparation, and preserves normal dependency, lifetime and backend validation.</p>
+          <ol>
+            <li>A work-graph node has an explicit hook. Which hooks run before Vulkan rejects it? Requirement selection runs; output declaration, validation and preparation do not.</li>
+            <li>A node's description requests a mesh pipeline but its explicit hook is empty. Can preparation already have run before rejection? Yes. Declare mesh support explicitly to protect that earlier setup.</li>
+            <li>The same node was admitted earlier, but its named environment predicate now fails. Does <code>AttachOrFind</code> reuse it successfully? No. It reports failure while preserving the existing node.</li>
+            <li>A device-free graph has empty explicit requirements and describes a ray pipeline. Are inferred requirements discarded? No. They are retained without device enforcement; other hooks must still support device-free analysis.</li>
+            <li>Two descriptors index different slots that overlap the same bytes. Can their writers run independently after admission succeeds? No. Hazard analysis resolves the underlying views.</li>
+          </ol>
+        </section>
+
+        <section id="further-reading">
+          <h2>Further reading</h2>
+          <p>Continue with <a href="node-recipes.html">complete node recipes</a>, <a href="resources.html">resource versioning and ranges</a>, <a href="compilation.html">ArdaInductor scheduling</a>, and <a href="execution.html">execution and retirement</a>. Inspect the canonical <a href="api-reference.html#api-arda-fardadependencynoderequirements-check-49c0c84f">requirement-check contract</a>, <a href="../ArdaBackend/api-reference.html#api-arda-fardarhicapabilities-evaluate">portable feature evaluation</a>, and <a href="api-reference.html#api-arda-fardadependencyenvironmentrequirement-2bac463c">environment predicate contract</a> for exact fields, errors and lifetime rules.</p>
+        </section>
+      </article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaRenderGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
+</body>
+</html>

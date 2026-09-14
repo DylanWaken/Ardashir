@@ -33,8 +33,9 @@ endif()
 
 set_target_properties(RHITest PROPERTIES FOLDER "Ardashir/Tests/RHI")
 
+ardashir_test_validation(RHITest OPTIONAL)
+
 if(ARDASHIR_BUILD_TESTS)
-    ardashir_test_validation(RHITest)
     set(RHI_GPU_TESTS)
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         add_test(
@@ -42,12 +43,15 @@ if(ARDASHIR_BUILD_TESTS)
             COMMAND RHITest --backend d3d12 --frames 1 --hidden
         )
         list(APPEND RHI_GPU_TESTS RHITest.D3D12)
+        ardashir_example_validation_test(RHITest D3D12 --frames 1 --hidden)
     endif()
     if(ARDASHIR_BACKEND_VULKAN)
         add_test(
             NAME RHITest.Vulkan
             COMMAND RHITest --backend vulkan --frames 1 --hidden)
         list(APPEND RHI_GPU_TESTS RHITest.Vulkan)
+        ardashir_example_without_validation_tests(RHITest.Vulkan)
+        ardashir_example_validation_test(RHITest Vulkan --frames 1 --hidden)
     endif()
     if(RHI_GPU_TESTS)
         set_tests_properties(${RHI_GPU_TESTS} PROPERTIES

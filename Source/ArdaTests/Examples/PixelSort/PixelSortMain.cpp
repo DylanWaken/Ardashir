@@ -1,3 +1,4 @@
+#include "ArdaTestValidation.h"
 // Pixel Sort reading guide:
 //   CMakeLists.txt           -> build native CUDA entries and deploy HLSL assets
 //   Public/Nodes and Private/Nodes  -> parameter schema, registration hook, launch policy
@@ -7,6 +8,8 @@
 // This file connects those pieces, selects the backend/mode, and owns their lifetime.
 #include "PixelSortWindow.h"
 #include "PixelSortRenderer.h"
+#include "ArdaExamplePaths.h"
+#include "ArdaExampleShaders.h"
 #include <atomic>
 #include <objbase.h>
 #include <chrono>
@@ -22,7 +25,7 @@ namespace arda
 		// Default to an animated portrait window. --frames bounds a test run;
 		// --time fixes the noise field for reproducible captures. Neither affects
 		// which CUDA images are available: that was decided during the CMake build.
-		struct FOptions
+		struct FArdaOptions
 		{
 			eastl::string mBackend = "native-d3d12";
 			EArdaCudaExecutionMode mMode = EArdaCudaExecutionMode::Automatic;
@@ -35,7 +38,7 @@ namespace arda
 		// The backend may issue callbacks from different threads. Collect errors
 		// atomically so validation failures fail the example even after submission.
 		// This object must outlive backend shutdown, which can also emit diagnostics.
-		struct FDiagnostics final : IArdaDiagnosticCallback
+		struct FArdaDiagnostics final : IArdaDiagnosticCallback
 		{
 			std::atomic<uint32_t> mErrors{0};
 
@@ -55,11 +58,11 @@ namespace arda
 		// Destruction order matters: renderer/resources, then swap chain/backend,
 		// then diagnostics/window. Keeping a small owner also handles early returns
 		// and exceptions after partial initialization without leaking the backend.
-		struct FBackendLifetime
+		struct FArdaBackendLifetime
 		{
 			eastl::unique_ptr<IArdaSwapChain> mSwapChain;
 
-			~FBackendLifetime()
+			~FArdaBackendLifetime()
 			{
 				if (mSwapChain)
 				{
@@ -86,7 +89,7 @@ namespace arda
 
 		int Run(int Count, char** Args)
 		{
-			FOptions O;
+			FArdaOptions O;
 			for (int I = 1; I < Count; ++I)
 			{
 				const std::string A = Args[I];
@@ -108,6 +111,11 @@ namespace arda
 				}
 				else if (A == "--validation")
 				{
+					if constexpr (!arda::ArdaTestValidationEnabled)
+					{
+						throw std::runtime_error(
+						    "GPU validation was disabled at build time (ARDASHIR_ENABLE_GPU_VALIDATION=OFF).");
+					}
 					O.mbValidation = true;
 				}
 				else if (A == "--resize-test")
@@ -183,6 +191,8 @@ namespace arda
 					std::puts(
 					    "PixelSort [--backend d3d12|vulkan] [--cuda-mode auto|context|graphics] [--width N --height N]\n"
 					    "  [--frames N --hidden --verify --resize-test --validation] [--channel 0|1|2 --threshold 0..255] [--time T --capture image.png]\n"
+					    "--verify compares pixels with the CPU reference without native validation layers.\n"
+					    "--validation explicitly enables native GPU validation and requires its debug layers.\n"
 					    "C: RGB sort key, Space: pause, Tab: original, Up/Down: dark-run threshold, Esc: close. Resize to change direction.");
 					return 0;
 				}
@@ -200,11 +210,11 @@ namespace arda
 			{
 				O.mFrames = 6;
 			}
-			FPixelSortWindow Window;
+			FArdaPixelSortWindow Window;
 			Window.Create(O.mWidth, O.mHeight, O.mbHidden);
 			Window.mChannel = O.mChannel;
 			Window.mThreshold = O.mThreshold;
-			FDiagnostics Diagnostics;
+			FArdaDiagnostics Diagnostics;
 
 			// Configure before creating the device. Automatic mode asks the backend
 			// for its qualified choice; context requests ordinary CUDA, graphics
@@ -212,128 +222,150 @@ namespace arda
 			FArdaBackendConfiguration Config;
 			Config.mBackendName = O.mBackend;
 			Config.mCudaExecutionMode = O.mMode;
-			Config.mbEnableValidation = O.mbValidation || O.mbVerify;
+			Config.mbEnableValidation = O.mbValidation;
 			Config.mMessageCallback = &Diagnostics;
 
-			// Each shader node manages this example's editable HLSL
-			// artifacts on first attachment. CUDA kernels are compiled by the build.
-			Config.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+			// Configure development policy once; node-owned shader maps use the common compiler and cache.
+			const auto ExampleDirectory = GetArdaExampleDirectory();
+			Config.mShaderCompilationMode = EArdaShaderCompilationMode::OnDemand;
+			Config.mShaderCacheDirectory = ExampleDirectory / ".arda-cache/PixelSort";
+			ConfigureArdaExampleShaderCompiler(ExampleDirectory / "ShaderCompiler/dxc.exe");
+
 			if (!ConfigureBackend(Config))
 			{
 				throw std::runtime_error(GetBackendError().c_str());
 			}
-			FBackendLifetime Backend;
-
-			// IArdaWindowSurface supplies an HWND or creates a VkSurfaceKHR. The
-			// backend creates the presentation device/swap chain and establishes
-			// CUDA interop for that graphics adapter; the app does not pick a
-			// separate CUDA device or import native graphics memory itself.
-			const auto Init =
-			    InitializeBackendForPresentation(Window, Window.mWidth, Window.mHeight, Backend.mSwapChain);
-			if (Init != EArdaInitializeResult::Success)
 			{
-				std::fprintf(stderr, "%s\n", GetBackendError().c_str());
-				return Init == EArdaInitializeResult::Unavailable ||
-				        Init == EArdaInitializeResult::ValidationUnavailable
-				    ? 77
-				    : 1;
-			}
-			const auto Caps = GetDevice()->GetCudaCapabilities();
+				FArdaBackendLifetime Backend;
 
-			// CUDA availability alone is insufficient for a surface-based kernel.
-			// Qualify texture/surface access before allocating shared images. Exit 77
-			// marks an unavailable test configuration, while workload failures are 1.
-			if (!Caps || !Caps.mbSurfaceAccess)
-			{
-				std::fprintf(stderr, "%s\n", (Caps ? Caps.mSurfaceUnavailableReason : Caps.mUnavailableReason).c_str());
-				return 77;
-			}
-
-			FPixelSortRenderer Renderer(GetDevice());
-			const char* Mode = Caps.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG ? "D3D12 CiG"
-			    : Caps.mLaunchMode == EArdaCudaLaunchMode::VulkanCiG             ? "Vulkan CiG"
-			                                                                     : "CUDA context";
-			std::printf("PixelSort: %s, %s, SM %u\n", O.mBackend.c_str(), Mode, Caps.mComputeCapability);
-			auto Previous = std::chrono::steady_clock::now();
-			float Time = O.mTime;
-			uint32_t Frame = 0;
-			while (Window.Pump())
-			{
-				if (O.mbResizeTest)
+				// IArdaWindowSurface supplies an HWND or creates a VkSurfaceKHR. The
+				// backend creates the presentation device/swap chain and establishes
+				// CUDA interop for that graphics adapter; the app does not pick a
+				// separate CUDA device or import native graphics memory itself.
+				const auto Init =
+				    InitializeBackendForPresentation(Window, Window.mWidth, Window.mHeight, Backend.mSwapChain);
+				if (Init != EArdaInitializeResult::Success)
 				{
-					// Exercise real window/swap-chain resizes, both orientations,
-					// all RGB keys, dark thresholds, partial tiles and multi-tile lines.
-					// --verify checks the resulting pixels against the CPU oracle.
-					constexpr uint32_t Sizes[][2] =
-					    {{321, 197}, {197, 321}, {257, 193}, {193, 257}, {1537, 197}, {197, 1537}};
-					Window.Resize(Sizes[Frame % 6][0], Sizes[Frame % 6][1]);
-					Window.Pump();
-					Window.mChannel = Frame % 3;
-					Window.mThreshold = (Frame % 3) * 48;
+					std::fprintf(stderr, "%s\n", GetBackendError().c_str());
+					return Init == EArdaInitializeResult::Unavailable ||
+					        Init == EArdaInitializeResult::ValidationUnavailable
+					    ? 77
+					    : 1;
 				}
-				const bool Resized = Window.ConsumeResize();
+				const auto Caps = GetDevice()->GetCudaCapabilities();
 
-				// Minimize produces a zero client extent. Suspend drawing until a
-				// message arrives; reset the clock so restore does not jump in time.
-				if (!Window.mWidth || !Window.mHeight)
+				// CUDA availability alone is insufficient for a surface-based kernel.
+				// Qualify texture/surface access before allocating shared images. Exit 77
+				// marks an unavailable test configuration, while workload failures are 1.
+				if (!Caps || !Caps.mbSurfaceAccess)
 				{
-					WaitMessage();
-					Previous = std::chrono::steady_clock::now();
-					continue;
+					std::fprintf(stderr,
+					    "%s\n",
+					    (Caps ? Caps.mSurfaceUnavailableReason : Caps.mUnavailableReason).c_str());
+					return 77;
 				}
 
-				// Resize presentation resources here, outside the window callback.
-				// Renderer.Render then attaches nodes to a fresh persistent graph, and
-				// SelectKernel sees the new extent on the next dispatch. Kernel
-				// registration/native compilation are not repeated when resizing.
-				if (Resized)
+				FArdaPixelSortRenderer Renderer(GetDevice());
+				const char* Mode = Caps.mLaunchMode == EArdaCudaLaunchMode::D3D12CiG ? "D3D12 CiG"
+				    : Caps.mLaunchMode == EArdaCudaLaunchMode::VulkanCiG             ? "Vulkan CiG"
+				                                                                     : "CUDA context";
+				std::printf("PixelSort: %s, %s, SM %u\n", O.mBackend.c_str(), Mode, Caps.mComputeCapability);
+				auto Previous = std::chrono::steady_clock::now();
+				float Time = O.mTime;
+				uint32_t Frame = 0;
+				while (Window.Pump())
 				{
-					Renderer.ReleaseFrameGraphs();
-					if (!Backend.mSwapChain->Resize(Window.mWidth, Window.mHeight))
+					if (O.mbResizeTest)
 					{
-						throw std::runtime_error(Backend.mSwapChain->GetError().c_str());
+						// Exercise real window/swap-chain resizes, both orientations,
+						// all RGB keys, dark thresholds, partial tiles and multi-tile lines.
+						// --verify checks the resulting pixels against the CPU oracle.
+						constexpr uint32_t Sizes[][2] =
+						    {{321, 197}, {197, 321}, {257, 193}, {193, 257}, {1537, 197}, {197, 1537}};
+						Window.Resize(Sizes[Frame % 6][0], Sizes[Frame % 6][1]);
+						if (!Window.Pump())
+						{
+							break;
+						}
+						Window.mChannel = Frame % 3;
+						Window.mThreshold = (Frame % 3) * 48;
+					}
+					const bool Resized = Window.ConsumeResize();
+
+					// Minimize produces a zero client extent. Suspend drawing until a
+					// message arrives; reset the clock so restore does not jump in time.
+					if (!Window.mWidth || !Window.mHeight)
+					{
+						WaitMessage();
+						Previous = std::chrono::steady_clock::now();
+						continue;
+					}
+
+					// Resize presentation resources here, outside the window callback.
+					// Renderer.Render then attaches nodes to a fresh persistent graph, and
+					// SelectKernel sees the new extent on the next dispatch. Kernel
+					// registration/native compilation are not repeated when resizing.
+					if (Resized)
+					{
+						Renderer.ReleaseFrameGraphs();
+						if (!Backend.mSwapChain->Resize(Window.mWidth, Window.mHeight))
+						{
+							throw std::runtime_error(Backend.mSwapChain->GetError().c_str());
+						}
+					}
+					const auto Now = std::chrono::steady_clock::now();
+
+					// Floating-point elapsed seconds drive continuous motion in NoiseCS;
+					// animation speed is independent of how many frames were rendered.
+					if (!Window.mbPaused && !O.mbFixedTime)
+					{
+						Time += std::chrono::duration<float>(Now - Previous).count();
+					}
+					Previous = Now;
+					char Title[256];
+					const bool Vertical = Window.mHeight > Window.mWidth;
+					std::snprintf(Title,
+					    sizeof(Title),
+					    "Pixel Sort | %s | %c channel | %s / %u threads | C: channel  Space: pause  Tab: original  Up/Down: threshold %u",
+					    Mode,
+					    "RGB"[Window.mChannel],
+					    Vertical ? "Vertical" : "Horizontal",
+					    Vertical ? 256 : 128,
+					    Window.mThreshold);
+					Window.SetTitle(Title);
+
+					// Capture once: the last bounded frame, or the first interactive
+					// frame. Tab changes presentation only; CUDA still sorts every frame.
+					const bool Last = O.mFrames ? Frame + 1 == O.mFrames : Frame == 0;
+					Renderer.Render(*Backend.mSwapChain,
+					    Time,
+					    Window.mChannel,
+					    Window.mThreshold,
+					    Window.mbOriginal,
+					    O.mbVerify,
+					    Last ? O.mCapture : std::filesystem::path{});
+					if (Diagnostics.mErrors)
+					{
+						throw std::runtime_error("Native graphics validation reported errors.");
+					}
+					++Frame;
+					if (O.mFrames && Frame >= O.mFrames)
+					{
+						break;
 					}
 				}
-				const auto Now = std::chrono::steady_clock::now();
 
-				// Floating-point elapsed seconds drive continuous motion in NoiseCS;
-				// animation speed is independent of how many frames were rendered.
-				if (!Window.mbPaused && !O.mbFixedTime)
+				// A bounded verification run must execute its entire frame and resize matrix.
+				if (O.mFrames && Frame != O.mFrames)
 				{
-					Time += std::chrono::duration<float>(Now - Previous).count();
+					throw std::runtime_error("PixelSort closed before completing the requested frames.");
 				}
-				Previous = Now;
-				char Title[256];
-				const bool Vertical = Window.mHeight > Window.mWidth;
-				std::snprintf(Title,
-				    sizeof(Title),
-				    "Pixel Sort | %s | %c channel | %s / %u threads | C: channel  Space: pause  Tab: original  Up/Down: threshold %u",
-				    Mode,
-				    "RGB"[Window.mChannel],
-				    Vertical ? "Vertical" : "Horizontal",
-				    Vertical ? 256 : 128,
-				    Window.mThreshold);
-				Window.SetTitle(Title);
+			}
 
-				// Capture once: the last bounded frame, or the first interactive
-				// frame. Tab changes presentation only; CUDA still sorts every frame.
-				const bool Last = O.mFrames ? Frame + 1 == O.mFrames : Frame == 0;
-				Renderer.Render(*Backend.mSwapChain,
-				    Time,
-				    Window.mChannel,
-				    Window.mThreshold,
-				    Window.mbOriginal,
-				    O.mbVerify,
-				    Last ? O.mCapture : std::filesystem::path{});
-				if (Diagnostics.mErrors)
-				{
-					throw std::runtime_error("Native graphics validation reported errors.");
-				}
-				++Frame;
-				if (O.mFrames && Frame >= O.mFrames)
-				{
-					break;
-				}
+			// Include deferred execution and resource-retirement diagnostics in the result.
+			if (Diagnostics.mErrors)
+			{
+				throw std::runtime_error("Native graphics validation reported errors during shutdown.");
 			}
 			return 0;
 		}

@@ -99,7 +99,9 @@ class ExampleBuildTests(unittest.TestCase):
         prepared = {"PATH": str(tools), "INCLUDE": "headers", "LIB": "libraries",
                     "VSCMD_ARG_TGT_ARCH": "x64"}
         original = dict(os.environ)
-        with patch.object(build, "find_visual_studio", return_value=(self.directory, None)), \
+        # Exercise discovery from an ordinary shell even when the test runner has VS tools active.
+        with patch.dict(os.environ, {"PATH": str(self.directory / "empty")}, clear=True), \
+                patch.object(build, "find_visual_studio", return_value=(self.directory, None)), \
                 patch.object(build, "developer_environment", return_value=prepared) as setup:
             cmake, env = build.prepare_build_environment({}, "Ninja")
         self.assertEqual(Path(cmake), bundle / "CMake/bin/cmake.exe")
@@ -112,7 +114,8 @@ class ExampleBuildTests(unittest.TestCase):
             build.prepare_build_environment({}, "Ninja")
             setup.assert_not_called()
         (bundle / "Ninja/ninja.exe").unlink()
-        with patch.object(build, "find_visual_studio", return_value=(self.directory, None)), \
+        with patch.dict(os.environ, {"PATH": str(self.directory / "empty")}, clear=True), \
+                patch.object(build, "find_visual_studio", return_value=(self.directory, None)), \
                 patch.object(build, "developer_environment", return_value=dict(prepared, PATH=str(tools))):
             with self.assertRaisesRegex(SystemExit, "C\\+\\+ CMake tools for Windows"):
                 build.prepare_build_environment({}, "Ninja")

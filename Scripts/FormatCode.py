@@ -10,8 +10,9 @@ import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_ROOTS = ("Source", "Shaders", "Cmake", "Docs/ArdaBackend/Examples")
+SOURCE_ROOTS = ("Source", "Shaders", "Cmake", "cmake", "Docs/ArdaBackend/Examples", "Docs/ArdaRDG/Examples")
 EXTENSIONS = {".c", ".cc", ".cpp", ".cxx", ".h", ".hpp", ".inl", ".cu", ".cuh", ".hlsl", ".hlsli"}
+EXCLUDED_DIRECTORIES = {"build", "out", "_deps", "deps", "thirdparty", "node_modules"}
 
 
 def find_formatter(explicit):
@@ -35,22 +36,49 @@ def find_formatter(explicit):
                      "or use --clang-format PATH.")
 
 
+def source_extension(path):
+    """Recognize source templates as the language they generate."""
+    return (path.with_suffix("").suffix if path.suffix.lower() == ".in" else path.suffix).lower()
+
+
+def excluded_source(path):
+    """Keep dependency trees and published source snapshots out of the authored inventory."""
+    directories = tuple(part.casefold() for part in path.parts[:-1])
+    if any(part in EXCLUDED_DIRECTORIES or part.startswith("build-") for part in directories):
+        return True
+    return (directories[:1] == ("docs",) and
+            any(directories[index:index + 2] == ("examples", "reference")
+                for index in range(len(directories) - 1)))
+
+
 def source_files(paths):
-    tracked = subprocess.run(["git", "ls-files", "-z", "--", *SOURCE_ROOTS], cwd=ROOT,
-                             check=True, capture_output=True).stdout.decode("utf-8").split("\0")
-    files = []
-    for name in tracked:
+    root = ROOT.resolve()
+    # Include newly authored files before their first git add; honor ignore rules for
+    # untracked build output while still inspecting tracked first-party sources.
+    names = subprocess.run([
+        "git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", *SOURCE_ROOTS,
+    ], cwd=root, check=True, capture_output=True).stdout.decode("utf-8").split("\0")
+    files = set()
+    for name in names:
         path = Path(name)
-        extension = path.with_suffix("").suffix if path.suffix == ".in" else path.suffix
-        if extension in EXTENSIONS:
-            files.append(ROOT / path)
+        if source_extension(path) not in EXTENSIONS or excluded_source(path):
+            continue
+        source = root / path
+        if not source.is_file():
+            continue  # A tracked source may have been removed during the current edit.
+        resolved = source.resolve()
+        if not resolved.is_relative_to(root):
+            raise SystemExit(f"Formatting sources must stay in the repository: {source}")
+        if not excluded_source(resolved.relative_to(root)):
+            files.add(resolved)
+    files = sorted(files, key=lambda path: path.relative_to(root).as_posix())
     if paths:
-        selected = [(ROOT / path).resolve() for path in paths]
+        selected = [(root / path).resolve() for path in paths]
         for path in selected:
-            if not path.is_relative_to(ROOT):
+            if not path.is_relative_to(root):
                 raise SystemExit(f"Formatting paths must stay in the repository: {path}")
             if not any(file == path or file.is_relative_to(path) for file in files):
-                raise SystemExit(f"No tracked project C++/CUDA/HLSL sources at: {path}")
+                raise SystemExit(f"No authored project C++/CUDA/HLSL sources at: {path}")
         files = [file for file in files if any(file == path or file.is_relative_to(path) for path in selected)]
     return files
 
@@ -59,7 +87,7 @@ def formatted_source(formatter, path, source):
     command = [formatter, "--style=file", "--fallback-style=none"]
     result = subprocess.run([*command, "--assume-filename=" + str(path)], input=source,
                             capture_output=True, check=True).stdout
-    if path.suffix in (".hlsl", ".hlsli"):
+    if source_extension(path) in (".hlsl", ".hlsli"):
         # clang-format 19 has no HLSL mode. Its C++ pass handles control-flow
         # braces; the C# layout pass understands HLSL's single-bracket attributes
         # and return semantics, keeping successive shader functions separate.

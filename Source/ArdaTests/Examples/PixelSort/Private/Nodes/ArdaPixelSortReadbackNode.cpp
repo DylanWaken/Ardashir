@@ -11,8 +11,10 @@ namespace arda
 		{
 			throw std::runtime_error("PixelSort readback has not been recorded.");
 		}
+
+		// Remove native row-pitch padding after completion, preserving the original pixel order.
 		const auto& Desc = Readback.mStaging->GetDesc().mTexture;
-		auto Mapped = Take(Device->MapStagingTexture(Readback.mStaging, {}, EArdaRHICpuAccess::Read));
+		auto Mapped = TakeArdaExampleValue(Device->MapStagingTexture(Readback.mStaging, {}, EArdaRHICpuAccess::Read));
 		std::vector<uint32_t> Pixels(size_t(Desc.mWidth) * Desc.mHeight);
 		for (uint32_t Y = 0; Y < Desc.mHeight; ++Y)
 		{
@@ -20,8 +22,17 @@ namespace arda
 			    static_cast<const uint8_t*>(Mapped.mData) + Y * Mapped.mRowPitch,
 			    Desc.mWidth * 4);
 		}
-		Check(Device->UnmapStagingTexture(Readback.mStaging));
+
+		CheckArdaExampleStatus(Device->UnmapStagingTexture(Readback.mStaging));
 		return Pixels;
+	}
+
+	FArdaDependencyNodeRequirements FArdaPixelSortReadbackNode::GetRequirements(const FArdaParameters&)
+	{
+		FArdaDependencyNodeRequirements R;
+		R.mFeatures.mbRequireStagingTextures = true;
+		R.mFeatures.mbRequireTextureCopies = true;
+		return R;
 	}
 
 	FArdaDependencyNodeMetadata FArdaPixelSortReadbackNode::GetMetadata()
@@ -29,15 +40,15 @@ namespace arda
 		return {"example.pixel-sort.readback", 1};
 	}
 
-	eastl::string FArdaPixelSortReadbackNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaPixelSortReadbackNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		eastl::string Key;
-		AppendResource(Key, P.mSource);
-		Append(Key, reinterpret_cast<uintptr_t>(P.mDestination.get()));
-		return Key;
+		FArdaDependencyKeyBuilder Key;
+		Key.Resource(P.mSource);
+		Key.Value(reinterpret_cast<uintptr_t>(P.mDestination.get()));
+		return Key.Build();
 	}
 
-	FArdaRHIStatus FArdaPixelSortReadbackNode::Validate(const FParameters& P)
+	FArdaRHIStatus FArdaPixelSortReadbackNode::Validate(const FArdaParameters& P)
 	{
 		if (!P.mDestination)
 		{
@@ -46,7 +57,7 @@ namespace arda
 		return {};
 	}
 
-	FArdaDependencyNodeDesc FArdaPixelSortReadbackNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaPixelSortReadbackNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
 		D.mAccesses = {{P.mSource, EArdaDependencyAccess::Read, EArdaRHIResourceState::CopySource}};
@@ -55,11 +66,13 @@ namespace arda
 	}
 
 	FArdaRHIStatus FArdaPixelSortReadbackNode::Record(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState)
+	    const FArdaParameters& P,
+	    const FArdaState& Prepared,
+	    FArdaInstanceState& InstanceState)
 	{
 		const auto Texture = C.GetTexture(P.mSource);
+
+		// Retain CPU-visible storage until the graph ticket completes and ReadPixels consumes it.
 		FArdaRHIStagingTextureDesc D;
 		D.mTexture = Texture->GetDesc();
 		D.mTexture.mbCudaInterop = false;

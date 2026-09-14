@@ -163,6 +163,8 @@
         <section id="binding-state">
           <h2>Graphics, compute, mesh, and ray-tracing state</h2>
           <p>Execution commands consume state previously bound into the command list. Arda packages related state into retained value objects rather than exposing every native state mutation independently.</p>
+          <p><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setpushconstants-a2afbe8a"><code>SetPushConstants</code></a> broadcasts one byte payload to every push block of the currently bound pipeline. For example, blocks of 16 and 32 bytes can receive the same 16-byte prefix; a 20-byte update does not fit the first block and fails. This call cannot target different values to separate blocks. ArdaInductor rejects conflicting frozen payloads within one pipeline slot.</p>
+          <p>Invalid push updates record no native update and retain an error for <code>Close()</code> and submission, even with GPU validation disabled. A later valid update does not repair that recording. Check the close result, discard the failed work with a successful <code>Reset()</code> or <code>Open()</code>, rebind state, and record valid parameters before submitting again. The canonical method entry defines byte alignment, capacity and storage lifetime.</p>
           <h3>Graphics state</h3>
           <p><a href="api-reference.html#api-arda-rhi-fardarhigraphicsstate-38f88d04"><code>FArdaRHIGraphicsState</code></a> carries the graphics pipeline, framebuffer, binding sets, vertex buffers, optional index buffer and format, viewports, and scissors. <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-setgraphicsstate-c7eb13f7"><code>SetGraphicsState</code></a> must succeed before draw calls that depend on it.</p>
           <ul>
@@ -183,6 +185,7 @@
 
         <section id="operations">
           <h2>Command families</h2>
+          <p>D3D12 workgraph pipelines retain reusable backing memory. The backend initializes it at first actual submission with a zero-record dispatch, so discarded or reordered recordings do not consume initialization. Subsequent uses on the same queue may overlap; switching queues inserts a GPU wait for the last outstanding use of that backing memory. This follows the <a href="https://microsoft.github.io/DirectX-Specs/d3d/WorkGraphs.html#backing-memory">native backing-memory restriction</a> and requires no CPU wait. Unrelated pipelines retain independent backing allocations.</p>
           <dl>
             <dt>Draw and indexed draw</dt>
             <dd><a href="api-reference.html#api-arda-rhi-iardarhicommandlist-draw-472d77cb"><code>Draw</code></a> consumes vertex/instance counts; <a href="api-reference.html#api-arda-rhi-iardarhicommandlist-drawindexed-62dcf937"><code>DrawIndexed</code></a> consumes index data and base-vertex semantics through <a href="api-reference.html#api-arda-rhi-fardarhidrawarguments-755341a9"><code>FArdaRHIDrawArguments</code></a>.</dd>

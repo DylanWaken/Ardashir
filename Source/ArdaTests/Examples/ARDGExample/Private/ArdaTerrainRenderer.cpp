@@ -10,18 +10,6 @@ namespace arda
 {
 	namespace
 	{
-		template <typename T>
-		bool TakeResult(arda::TArdaRHIResult<T>& Result, T& Output, eastl::string& Error)
-		{
-			if (!Result)
-			{
-				Error = Result.mStatus.mMessage;
-				return false;
-			}
-			Output = eastl::move(Result.mValue);
-			return true;
-		}
-
 		eastl::string ValidateTerrainReadback(const eastl::vector<uint8_t>& VertexBytes,
 		    const eastl::vector<uint8_t>& IndexBytes)
 		{
@@ -39,6 +27,7 @@ namespace arda
 				return Message;
 			}
 
+			// Validate topology and shared-cell continuity independently of the GPU triangulation path.
 			const auto* Vertices = reinterpret_cast<const FArdaTerrainVertex*>(VertexBytes.data());
 			const auto* Indices = reinterpret_cast<const uint32_t*>(IndexBytes.data());
 			constexpr uint32_t LocalIndices[6] = {0, 2, 1, 1, 2, 3};
@@ -65,6 +54,7 @@ namespace arda
 					}
 				}
 
+				// Check corner positions against the terrain grid and generated height values.
 				const uint32_t CellX = Cell % (ArdaTerrainHeightmapWidth - 1);
 				const uint32_t CellY = Cell / (ArdaTerrainHeightmapWidth - 1);
 				constexpr uint32_t CornerX[4] = {0, 1, 0, 1};
@@ -100,6 +90,7 @@ namespace arda
 					}
 				}
 
+				// Bound local slopes and detect cracks where adjacent cells share an edge.
 				const auto HeightDiff = [](float Left, float Right)
 				{
 					return std::abs(Left - Right);
@@ -157,7 +148,7 @@ namespace arda
 		}
 	}
 
-	bool FArdaTerrainRenderer::Initialize(arda::FArdaRHIDeviceRef device, arda::EArdaRHIFormat)
+	bool FArdaTerrainRenderer::Initialize(arda::FArdaRHIDeviceRef device, arda::EArdaRHIFormat, bool bVerifyTerrain)
 	{
 		mDevice = eastl::move(device);
 		if (!mDevice || !mDevice->GetCapabilities().mQueues.mbGraphics)
@@ -165,50 +156,24 @@ namespace arda
 			mError = "The initialized backend does not expose a graphics device.";
 			return false;
 		}
-		if (!CreateSettingsUploadBuffer() || !CreateCameraResources())
-		{
-			return false;
-		}
+		mbVerifyTerrain = bVerifyTerrain;
+		mbTerrainReadbackValidated = false;
 		mError.clear();
 		return true;
 	}
 
-	bool FArdaTerrainRenderer::CreateCameraResources()
-	{
-		arda::FArdaRHIBufferDesc desc;
-		desc.mByteSize = sizeof(FArdaTerrainCameraSettings);
-		desc.mUsage = arda::EArdaRHIBufferUsage::Constant;
-		desc.mInitialState = arda::EArdaRHIResourceState::ConstantBuffer;
-		desc.mbKeepInitialState = true;
-		desc.mDebugName = "Terrain camera";
-		auto buffer = mDevice->CreateBuffer(desc);
-		if (!TakeResult(buffer, mCameraBuffer, mError))
-		{
-			return false;
-		}
-		return true;
-	}
-
-	bool FArdaTerrainRenderer::CreateSettingsUploadBuffer()
-	{
-		arda::FArdaRHIBufferDesc desc;
-		desc.mByteSize = sizeof(FArdaTerrainSettings);
-		desc.mStructureStride = sizeof(FArdaTerrainSettings);
-		desc.mInitialState = arda::EArdaRHIResourceState::CopySource;
-		desc.mbKeepInitialState = true;
-		desc.mDebugName = "Terrain settings upload";
-		auto buffer = mDevice->CreateBuffer(desc);
-		return TakeResult(buffer, mSettingsUploadBuffer, mError);
-	}
-
 	void FArdaTerrainRenderer::UpdateCamera(float forward, float right, float lookX, float lookY, float deltaSeconds)
 	{
+
+		// Integrate mouse orientation and normalize movement so diagonal input preserves speed.
 		constexpr float LookSensitivity = 0.0025f;
 		constexpr float MoveSpeed = 1.1f;
 		constexpr float PitchLimit = 1.50f;
 		mElapsedSeconds += eastl::min(deltaSeconds, 0.1f);
 		mCameraYaw += lookX * LookSensitivity;
 		mCameraPitch = eastl::clamp(mCameraPitch - lookY * LookSensitivity, -PitchLimit, PitchLimit);
+
+		// Build the camera basis from the current view orientation.
 		const float cosPitch = std::cos(mCameraPitch);
 		const float forwardVector[3] = {std::cos(mCameraYaw) * cosPitch,
 		    std::sin(mCameraYaw) * cosPitch,
@@ -228,14 +193,14 @@ namespace arda
 		}
 	}
 
-	struct FArdaTerrainRenderer::FFrameGraph
+	struct FArdaTerrainRenderer::FArdaFrameGraph
 	{
 		FArdaRHITextureRef mColor;
 		FArdaDependencyGraph mGraph;
 		eastl::shared_ptr<FArdaTerrainFrameInputs> mInputs = eastl::make_shared<FArdaTerrainFrameInputs>();
 		FArdaGraphNodeHandle mVertexReadback, mIndexReadback;
 
-		explicit FFrameGraph(FArdaRHIDeviceRef Device)
+		explicit FArdaFrameGraph(FArdaRHIDeviceRef Device)
 		    : mGraph(eastl::move(Device))
 		{
 		}
@@ -251,7 +216,7 @@ namespace arda
 
 	bool FArdaTerrainRenderer::CreateFrameGraph(const FArdaRHITextureRef& Color, uint32_t Width, uint32_t Height)
 	{
-		auto Frame = std::make_unique<FFrameGraph>(mDevice);
+		auto Frame = std::make_unique<FArdaFrameGraph>(mDevice);
 		Frame->mColor = Color;
 		auto& Graph = Frame->mGraph;
 		auto Status = Graph.BeginGraphEdit();
@@ -261,6 +226,7 @@ namespace arda
 			return false;
 		}
 
+		// Keep only logical resource handles while node declarations create intermediate storage.
 		struct FArdaTerrainGraphResources
 		{
 			FArdaDependencyResourceHandle mSettingsUpload;
@@ -285,102 +251,73 @@ namespace arda
 			Destination = eastl::move(Result.mValue);
 			return true;
 		};
-		if (!Save(Graph.ImportTexture("Swap-chain color", Color), P.mColor) ||
-		    !Save(Graph.ImportBuffer("Settings upload", mSettingsUploadBuffer), P.mSettingsUpload) ||
-		    !Save(Graph.ImportBuffer("Terrain camera", mCameraBuffer), P.mCamera))
+		if (!Save(Graph.ImportTexture("Swap-chain color", Color), P.mColor))
 		{
 			return false;
 		}
-		FArdaRHIBufferDesc Buffer;
-		Buffer.mByteSize = sizeof(FArdaTerrainSettings);
-		Buffer.mStructureStride = sizeof(FArdaTerrainSettings);
-		Buffer.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource;
-		if (!Save(Graph.CreateBuffer("Terrain settings", Buffer), P.mSettings))
+
+		// Attach uploads and compute operations, forwarding each named output to its consumer.
+		FArdaGraphNodeHandle Node;
+		if (!Save(Graph.AttachOrFind<FArdaTerrainUploadSettingsNode>("Upload settings bytes", {{}, Frame->mInputs}),
+		        Node))
 		{
 			return false;
 		}
-		Buffer.mByteSize = uint64_t(ArdaTerrainVertexCount) * sizeof(FArdaTerrainVertex);
-		Buffer.mStructureStride = sizeof(FArdaTerrainVertex);
-		Buffer.mUsage =
-		    EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess | EArdaRHIBufferUsage::Vertex;
-		if (!Save(Graph.CreateBuffer("Terrain vertices", Buffer), P.mVertices))
+		P.mSettingsUpload = Graph.FindOutput(Node, "Destination");
+		if (!Save(Graph.AttachOrFind<FArdaGraphCopyNode>("Copy settings",
+		              {P.mSettingsUpload, {}, sizeof(FArdaTerrainSettings)}),
+		        Node))
 		{
 			return false;
 		}
-		Buffer.mByteSize = uint64_t(ArdaTerrainIndexCount) * sizeof(uint32_t);
-		Buffer.mStructureStride = sizeof(uint32_t);
-		Buffer.mUsage =
-		    EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess | EArdaRHIBufferUsage::Index;
-		if (!Save(Graph.CreateBuffer("Terrain indices", Buffer), P.mIndices))
+		P.mSettings = Graph.FindOutput(Node, "Destination");
+		if (!Save(Graph.AttachOrFind<FArdaTerrainUploadCameraNode>("Upload camera", {{}, Frame->mInputs}), Node))
 		{
 			return false;
 		}
-		FArdaRHITextureDesc Texture;
-		Texture.mWidth = ArdaTerrainHeightmapWidth;
-		Texture.mHeight = ArdaTerrainHeightmapHeight;
-		Texture.mFormat = EArdaRHIFormat::R32Float;
-		Texture.mUsage = EArdaRHITextureUsage::ShaderResource | EArdaRHITextureUsage::UnorderedAccess;
-		if (!Save(Graph.CreateTexture("Raw heightmap", Texture), P.mRawHeightmap) ||
-		    !Save(Graph.CreateTexture("Eroded heightmap", Texture), P.mHeightmap))
+		P.mCamera = Graph.FindOutput(Node, "Destination");
+		if (!Save(Graph.AttachOrFind<FArdaTerrainGenerateNode>("Generate heightmap", {P.mSettings}), Node))
 		{
 			return false;
 		}
-		Texture.mWidth = Width;
-		Texture.mHeight = Height;
-		Texture.mFormat = Color->GetDesc().mFormat;
-		Texture.mUsage = EArdaRHITextureUsage::RenderTarget | EArdaRHITextureUsage::ShaderResource;
-		if (!Save(Graph.CreateTexture("Terrain color before overlay", Texture), P.mSceneColor))
+		P.mRawHeightmap = Graph.FindOutput(Node, "Heightmap");
+		if (!Save(Graph.AttachOrFind<FArdaTerrainErodeNode>("Erode heightmap", {P.mRawHeightmap}), Node))
 		{
 			return false;
 		}
-		Texture.mFormat = EArdaRHIFormat::D32;
-		Texture.mUsage = EArdaRHITextureUsage::DepthStencil;
-		if (!Save(Graph.CreateTexture("Terrain depth", Texture), P.mDepth))
+		P.mHeightmap = Graph.FindOutput(Node, "Heightmap");
+		if (!Save(Graph.AttachOrFind<FArdaTerrainTriangulateNode>("Triangulate terrain", {P.mHeightmap}), Node))
 		{
 			return false;
 		}
-		const auto Attached = [this](const TArdaRHIResult<FArdaGraphNodeHandle>& Node)
-		{
-			if (!Node)
-			{
-				mError = Node.mStatus.mMessage;
-			}
-			return bool(Node);
-		};
-		// Functional composition: each operation consumes named values and produces new ones.
-		// Consumers are attached first. EndGraphEdit infers the order and all inter-node barriers.
-		if (!Attached(Graph.AttachOrFind<FArdaTerrainOverlayNode>("Composite overlay",
-		        FArdaTerrainOverlayParameters{P.mSceneColor, P.mColor, Width, Height})) ||
-		    !Attached(Graph.AttachOrFind<FArdaTerrainDrawNode>("Draw terrain",
-		        FArdaTerrainDrawParameters{P.mHeightmap,
-		            P.mVertices,
-		            P.mIndices,
-		            P.mCamera,
-		            P.mSceneColor,
-		            P.mDepth,
-		            Width,
-		            Height})) ||
-		    !Attached(Graph.AttachOrFind<FArdaTerrainTriangulateNode>("Triangulate terrain",
-		        FArdaTerrainTriangulateParameters{P.mHeightmap, P.mVertices, P.mIndices})) ||
-		    !Attached(Graph.AttachOrFind<FArdaTerrainErodeNode>("Erode heightmap",
-		        FArdaTerrainErodeParameters{P.mRawHeightmap, P.mHeightmap})) ||
-		    !Attached(Graph.AttachOrFind<FArdaTerrainGenerateNode>("Generate heightmap",
-		        FArdaTerrainGenerateParameters{P.mSettings, P.mRawHeightmap})) ||
-		    !Attached(Graph.AttachOrFind<FArdaTerrainUploadCameraNode>("Upload camera",
-		        FArdaTerrainUploadCameraParameters{P.mCamera, Frame->mInputs})) ||
-		    !Attached(Graph.AttachOrFind<FArdaTerrainUploadSettingsNode>("Upload settings bytes",
-		        FArdaTerrainUploadSettingsParameters{P.mSettingsUpload, Frame->mInputs})))
+
+		// Feed generated geometry into rasterization, then composite onto the imported back buffer.
+		P.mVertices = Graph.FindOutput(Node, "Vertices");
+		P.mIndices = Graph.FindOutput(Node, "Indices");
+		if (!Save(Graph.AttachOrFind<FArdaTerrainDrawNode>("Draw terrain",
+		              {P.mHeightmap,
+		                  P.mVertices,
+		                  P.mIndices,
+		                  P.mCamera,
+		                  {},
+		                  {},
+		                  Width,
+		                  Height,
+		                  Color->GetDesc().mFormat}),
+		        Node))
 		{
 			return false;
 		}
-		auto Copy = Graph.AttachOrFind<FArdaGraphCopyNode>("Upload settings",
-		    FArdaGraphCopyParameters{P.mSettingsUpload, P.mSettings, sizeof(FArdaTerrainSettings)});
-		if (!Copy)
+		P.mSceneColor = Graph.FindOutput(Node, "Color");
+		P.mDepth = Graph.FindOutput(Node, "Depth");
+		if (!Save(Graph.AttachOrFind<FArdaTerrainOverlayNode>("Composite overlay",
+		              {P.mSceneColor, P.mColor, Width, Height}),
+		        Node))
 		{
-			mError = Copy.mStatus.mMessage;
 			return false;
 		}
-		if (!mbTerrainReadbackValidated)
+
+		if (mbVerifyTerrain && !mbTerrainReadbackValidated)
 		{
 			if (!Save(Graph.AttachOrFind<FArdaGraphReadbackNode>("Validate vertices",
 			              FArdaGraphReadbackParameters{P.mVertices, Frame->mInputs->mVertexReadback}),
@@ -392,6 +329,8 @@ namespace arda
 				return false;
 			}
 		}
+
+		// Compile the completed dependency graph before publishing it in the frame cache.
 		Status = Graph.EndGraphEdit();
 		if (!Status)
 		{
@@ -416,7 +355,9 @@ namespace arda
 			return false;
 		}
 		const auto Color = Framebuffer->GetDesc().mColorAttachments[0].mTexture;
-		FFrameGraph* Frame = nullptr;
+
+		// Reuse one compiled graph for each swap-chain image.
+		FArdaFrameGraph* Frame = nullptr;
 		for (auto& Cached : mFrameGraphs)
 		{
 			if (Cached->mColor.Get() == Color.Get())
@@ -433,6 +374,8 @@ namespace arda
 			}
 			Frame = mFrameGraphs.back().get();
 		}
+
+		// Build the camera basis from the current view orientation.
 		const float cosPitch = std::cos(mCameraPitch);
 		const float forward[3] = {std::cos(mCameraYaw) * cosPitch,
 		    std::sin(mCameraYaw) * cosPitch,
@@ -445,6 +388,8 @@ namespace arda
 		    -(mCameraPosition[0] * right[0] + mCameraPosition[1] * right[1] + mCameraPosition[2] * right[2]),
 		    -(mCameraPosition[0] * up[0] + mCameraPosition[1] * up[1] + mCameraPosition[2] * up[2]),
 		    -(mCameraPosition[0] * forward[0] + mCameraPosition[1] * forward[1] + mCameraPosition[2] * forward[2])};
+
+		// Use a reverse-depth projection while keeping CPU camera data separate from node setup.
 		constexpr float NearPlane = 0.05f;
 		constexpr float HorizontalHalfFov = 0.78539816f;
 		const float xScale = 1.0f / std::tan(HorizontalHalfFov);
@@ -467,6 +412,7 @@ namespace arda
 		                                                       1.0f},
 		    {xScale, 0.0f, 0.0f, 0.0f, 0.0f, yScale, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, NearPlane, 0.0f}};
 
+		// Update retained frame inputs and execute the already-compiled operations.
 		Frame->mInputs->mSettings.mTime = mElapsedSeconds;
 		Frame->mInputs->mCamera = cameraSettings;
 		swapChain.PrepareSubmit();
@@ -476,7 +422,7 @@ namespace arda
 			mError = Result.mStatus.mMessage;
 			return false;
 		}
-		if (!mbTerrainReadbackValidated)
+		if (mbVerifyTerrain && !mbTerrainReadbackValidated)
 		{
 			mError = ValidateTerrainReadback(*Frame->mInputs->mVertexReadback, *Frame->mInputs->mIndexReadback);
 			if (!mError.empty())

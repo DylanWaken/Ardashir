@@ -3,16 +3,31 @@
 
 namespace arda
 {
+	/** Parameters owned by one Cornell BuildTlas node instance. */
+	struct FArdaCornellBuildTlasParameters
+	{
+		/** Input bottom-level acceleration structure. */
+		FArdaDependencyResourceHandle mBlas;
+		/** Destination top-level acceleration structure. */
+		FArdaDependencyResourceHandle mTlas;
+		/** Build policy for the top-level acceleration structure. */
+		EArdaRHIAccelStructBuildFlags mBuildFlags = EArdaRHIAccelStructBuildFlags::PreferFastTrace;
+		/** Required acceleration-structure build scratch size in bytes. */
+		uint64_t mWorkspaceBytes = 0;
+	};
+
 	class FArdaCornellBuildTlasNode final
-	    : public TArdaComputeDependencyNode<FArdaCornellBuildTlasNode, FArdaCornellNodeParameters>
+	    : public TArdaComputeDependencyNode<FArdaCornellBuildTlasNode, FArdaCornellBuildTlasParameters>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata();
-		static eastl::string GetCanonicalKey(const FParameters& Parameters);
-		static FArdaDependencyNodeDesc Describe(const FParameters& Parameters, const FState& State);
+		/** Hardware admission is checked before output declaration or device preparation. */
+		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters& Parameters);
+		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);
 		static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context,
-		    const FParameters& Parameters,
-		    const FState& State,
-		    FInstanceState& Instance);
+		    const FArdaParameters& Parameters,
+		    const FArdaState& State,
+		    FArdaInstanceState& Instance);
 	};
 }

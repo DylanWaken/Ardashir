@@ -1,4 +1,4 @@
-struct TerrainSettings
+struct FArdaTerrainSettings
 {
 	uint mWidth;
 	uint mHeight;
@@ -8,7 +8,7 @@ struct TerrainSettings
 	float3 mPadding;
 };
 
-struct TerrainVertex
+struct FArdaTerrainVertex
 {
 	float3 mPosition;
 	float mHeight;
@@ -52,13 +52,13 @@ float ValueNoise(float3 value)
 	return lerp(lower, upper, blend.z);
 }
 
-StructuredBuffer<TerrainSettings> GenerateSettings : register(t0);
+StructuredBuffer<FArdaTerrainSettings> GenerateSettings : register(t0);
 RWTexture2D<float> GenerateHeightmap : register(u0);
 
 [numthreads(8, 8, 1)]
 void GenerateNoiseHeightmapCS(uint3 dispatchThreadId: SV_DispatchThreadID)
 {
-	const TerrainSettings settings = GenerateSettings[0];
+	const FArdaTerrainSettings settings = GenerateSettings[0];
 	if (dispatchThreadId.x >= settings.mWidth || dispatchThreadId.y >= settings.mHeight)
 	{
 		return;
@@ -110,7 +110,7 @@ void ErodeHeightmapCS(uint3 dispatchThreadId: SV_DispatchThreadID)
 }
 
 Texture2D<float> TriangulationHeightmap : register(t0);
-RWStructuredBuffer<TerrainVertex> TerrainVertices : register(u0);
+RWStructuredBuffer<FArdaTerrainVertex> TerrainVertices : register(u0);
 RWStructuredBuffer<uint> TerrainIndices : register(u1);
 
 [numthreads(8, 8, 1)]
@@ -137,7 +137,7 @@ void TriangulateTerrainCS(uint3 dispatchThreadId: SV_DispatchThreadID)
 	{
 		const float sampleHeight = TriangulationHeightmap.Load(int3(coordinates[corner], 0));
 		const float2 uv = float2(coordinates[corner]) / float2(width - 1, height - 1);
-		TerrainVertex vertex;
+		FArdaTerrainVertex vertex;
 		vertex.mPosition = float3((uv.y - 0.5) * 1.45, (uv.x - 0.5) * 1.45, sampleHeight * 0.72 - 0.32);
 		vertex.mHeight = sampleHeight;
 		TerrainVertices[vertexBase + corner] = vertex;
@@ -151,13 +151,12 @@ void TriangulateTerrainCS(uint3 dispatchThreadId: SV_DispatchThreadID)
 	TerrainIndices[indexBase + 5] = vertexBase + 3;
 }
 
-struct TerrainVertexInput
+struct FArdaTerrainVertexInput
 {
 	float3 mPosition : POSITION;
-	float mHeight : HEIGHT;
 };
 
-struct TerrainVertexOutput
+struct FArdaTerrainVertexOutput
 {
 	float4 mPosition : SV_Position;
 	float2 mUV : TEXCOORD0;
@@ -170,9 +169,9 @@ cbuffer CameraSettings : register(b0)
 	row_major float4x4 Projection;
 };
 
-TerrainVertexOutput TerrainVS(TerrainVertexInput input)
+FArdaTerrainVertexOutput TerrainVS(FArdaTerrainVertexInput input)
 {
-	TerrainVertexOutput output;
+	FArdaTerrainVertexOutput output;
 	const float4 viewPosition = mul(float4(input.mPosition, 1.0), WorldToView);
 	output.mPosition = mul(viewPosition, Projection);
 	output.mUV = float2(input.mPosition.y, input.mPosition.x) / 1.45 + 0.5;
@@ -207,7 +206,7 @@ float ContourMask(float height, float interval, float thickness)
 	return 1.0 - smoothstep(filterWidth * thickness, filterWidth * (thickness + 1.0), distanceToLine);
 }
 
-float4 TerrainPS(TerrainVertexOutput input)
+float4 TerrainPS(FArdaTerrainVertexOutput input)
     : SV_Target
 {
 	const float height = SampleHeightmap(input.mUV);
@@ -232,22 +231,22 @@ float4 TerrainPS(TerrainVertexOutput input)
 	return float4(color, 1.0);
 }
 
-struct OverlayVertexOutput
+struct FArdaOverlayVertexOutput
 {
 	float4 mPosition : SV_Position;
 };
 
-OverlayVertexOutput TerrainOverlayVS(uint vertexId: SV_VertexID)
+FArdaOverlayVertexOutput TerrainOverlayVS(uint vertexId: SV_VertexID)
 {
 	const float2 positions[3] = { float2(-1.0, -1.0), float2(-1.0, 3.0), float2(3.0, -1.0) };
-	OverlayVertexOutput output;
+	FArdaOverlayVertexOutput output;
 	output.mPosition = float4(positions[vertexId], 0.0, 1.0);
 	return output;
 }
 
 Texture2D<float4> OverlaySource : register(t0);
 
-float4 TerrainOverlayPS(OverlayVertexOutput input)
+float4 TerrainOverlayPS(FArdaOverlayVertexOutput input)
     : SV_Target
 {
 	const float pulse = 0.5 + 0.5 * sin(input.mPosition.y * 0.025);

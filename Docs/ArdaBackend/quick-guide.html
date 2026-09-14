@@ -196,7 +196,7 @@ if (!device || !context.mQueueCapabilities.mbGraphics)
 
           <h3>D3D12 provider recipe</h3>
           <p><span class="status">TESTED API PATH</span> Focused backend tests exercise provider registration and external D3D12 initialization. Implement <a href="api-reference.html#api-arda-backend-iardaexternaldeviceprovider-f1c0d75e"><code>IArdaExternalDeviceProvider</code></a> and return a copied <a href="api-reference.html#api-arda-backend-fardaexternaldevicedesc-201a99ef"><code>FArdaExternalDeviceDesc</code></a> whose <code>mNativeApi</code> is <code>d3d12</code>, with a device and graphics queue. The optional token should pin the host/plugin lifetime.</p>
-          <pre><code>D3D12Provider provider(device, graphicsQueue, pluginLifetime);
+          <pre><code>FArdaD3D12Provider provider(device, graphicsQueue, pluginLifetime);
 if (!arda::RegisterExternalDeviceProvider(provider))
     return Fail(arda::GetBackendError());
 
@@ -252,10 +252,10 @@ RecordSubmitAndRetireInsideHostQueueInterval(target.mValue, data.mValue);
           <pre><code>glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 GLFWwindow* window = glfwCreateWindow(width, height, "My GPU app", nullptr, nullptr);
 
-class GlfwSurface final : public arda::IArdaWindowSurface
+class FArdaGlfwSurface final : public arda::IArdaWindowSurface
 {
 public:
-    explicit GlfwSurface(GLFWwindow* window) : mWindow(window) {}
+    explicit FArdaGlfwSurface(GLFWwindow* window) : mWindow(window) {}
 
     arda::FArdaNativeObject GetD3D12WindowHandle() const noexcept override;
     eastl::vector&lt;const char*&gt; GetVulkanInstanceExtensions() const override;
@@ -309,18 +309,18 @@ config.mShaderCacheDirectory =
 
           <h3>Register virtual source and use the configured global map</h3>
           <p><span class="status">DEMONSTRATED</span> This is the <code>ARDGExample</code> path and is convenient when typed parameters and pipeline initializers should derive from registered shaders.</p>
-          <pre><code>class FMyComputeShader final : public arda::FArdaGlobalShader
+          <pre><code>class FArdaMyComputeShader final : public arda::FArdaGlobalShader
 {
 public:
-    ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
+    ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
         ARDA_SHADER_TEXTURE_UAV(mOutput, 0, 0,
             arda::EArdaRHIShaderStage::Compute)
     ARDA_END_SHADER_PARAMETER_STRUCT()
-    ARDA_DECLARE_GLOBAL_SHADER(FMyComputeShader);
+    ARDA_DECLARE_GLOBAL_SHADER(FArdaMyComputeShader);
 };
 
 ARDA_IMPLEMENT_GLOBAL_SHADER(
-    FMyComputeShader,
+    FArdaMyComputeShader,
     "/MyApp/Shaders/MyCompute.hlsl",
     "MyComputeCS", "MainCS",
     arda::EArdaRHIShaderStage::Compute)</code></pre>
@@ -347,7 +347,7 @@ if (!shaderMap.Initialize(arda::GetDeviceContext()))
         : diagnostics.back().mMessage);
 }
 
-const auto* shader = shaderMap.Find(FMyComputeShader::GetStaticType());
+const auto* shader = shaderMap.Find(FArdaMyComputeShader::GetStaticType());
 if (!shader)
     return Fail("Registered compute shader is absent from the global map.");</code></pre>
           <p>Virtual paths must be rooted, unique, and beneath the mapped root. A shader with exactly one permutation uses the artifact stem <code>&lt;OutputStem&gt;</code>; a shader with multiple permutations uses <code>&lt;OutputStem&gt;_P&lt;PermutationId&gt;</code> for every encoded ID, including <code>_P0</code>. Append the backend extension: <code>.dxil</code> for D3D12 or <code>.spv</code> for Vulkan. The configured overload writes beneath <code>mShaderCacheDirectory</code>, and each compiled artifact receives a persistent <code>.arda-key</code> sidecar.</p>

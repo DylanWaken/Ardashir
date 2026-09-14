@@ -181,8 +181,10 @@ namespace arda
 			mError = "Failed to import Cornell BLAS resources.";
 			return false;
 		}
-		FArdaCornellNodeParameters P;
-		P.mResources = {V.mValue, I.mValue, B.mValue};
+		FArdaCornellBuildBlasParameters P;
+		P.mVertices = V.mValue;
+		P.mIndices = I.mValue;
+		P.mBlas = B.mValue;
 		P.mBuildFlags = Desc.mBuildFlags;
 		P.mVertexCount = ArdaCornellVertexCount;
 		P.mIndexCount = ArdaCornellIndexCount;
@@ -195,9 +197,11 @@ namespace arda
 			return false;
 		}
 		// Add the producer after its consumers; the compiler derives geometry -> BLAS.
-		FArdaCornellNodeParameters Geometry;
-		Geometry.mResources = {V.mValue, I.mValue, M.mValue};
-		Geometry.mWidth = (ArdaCornellTriangleCount + 63) / 64;
+		FArdaCornellGeometryParameters Geometry;
+		Geometry.mVertices = V.mValue;
+		Geometry.mIndices = I.mValue;
+		Geometry.mMaterials = M.mValue;
+		Geometry.mGroupCountX = (ArdaCornellTriangleCount + 63) / 64;
 		auto Generate = Graph.AttachOrFind<FArdaCornellGeometryNode>("GenerateCornellGeometry", Geometry);
 		if (!Generate)
 		{
@@ -233,8 +237,9 @@ namespace arda
 			mError = "Failed to import Cornell compaction resources.";
 			return false;
 		}
-		FArdaCornellNodeParameters P;
-		P.mResources = {Source.mValue, Destination.mValue};
+		FArdaCornellCompactBlasParameters P;
+		P.mSource = Source.mValue;
+		P.mDestination = Destination.mValue;
 		auto Copy = Graph.AttachOrFind<FArdaCornellCompactBlasNode>("CompactCornellBLAS", P);
 		if (!Copy)
 		{
@@ -309,6 +314,8 @@ namespace arda
 		constexpr float PitchLimit = 1.50f;
 		mCameraYaw += LookX * LookSensitivity;
 		mCameraPitch = eastl::clamp(mCameraPitch - LookY * LookSensitivity, -PitchLimit, PitchLimit);
+
+		// Derive the current camera basis before updating retained frame constants.
 		const float CosPitch = std::cos(mCameraPitch);
 		const float ForwardVector[3] = {std::cos(mCameraYaw) * CosPitch,
 		    std::sin(mCameraYaw) * CosPitch,
@@ -378,6 +385,8 @@ namespace arda
 		{
 			NotifyResize();
 		}
+
+		// Bound the dispatch by device limits, scratch storage, addressing, and the per-frame path-work budget.
 		const uint32_t RemainingSamples =
 		    mAccumulatedSamples < mSettings.mMaxSamples ? mSettings.mMaxSamples - mAccumulatedSamples : 0;
 		const uint32_t DeviceInvocationLimit = mDevice->GetCapabilities().mRayTracing.mMaxRayDispatchInvocations;
@@ -415,13 +424,16 @@ namespace arda
 				return false;
 			}
 		}
+
+		// Reuse the frame graph until its back buffer or sample-batch shape changes.
 		auto Found = eastl::find_if(mFrames.begin(),
 		    mFrames.end(),
 		    [&](const auto& F)
 		    {
 			    return F->mBackBuffer.Get() == ColorAttachment.mTexture.Get();
 		    });
-		eastl::shared_ptr<FCachedFrame> Frame = Found == mFrames.end() ? eastl::make_shared<FCachedFrame>() : *Found;
+		eastl::shared_ptr<FArdaCachedFrame> Frame =
+		    Found == mFrames.end() ? eastl::make_shared<FArdaCachedFrame>() : *Found;
 		if (!Frame->mGraph || Frame->mDispatchSamples != DispatchSamples)
 		{
 			Frame->mBackBuffer = ColorAttachment.mTexture;
@@ -434,15 +446,14 @@ namespace arda
 				mError = S.mMessage;
 				return false;
 			}
+
+			// Import persistent scene and accumulation resources; nodes own transient intermediate outputs.
 			auto T = Graph.ImportAccelerationStructure("Frame TLAS", mTlas);
 			auto B = Graph.ImportAccelerationStructure("Static BLAS", mBlas);
 			auto Back = Graph.ImportTexture("back buffer", ColorAttachment.mTexture);
 			auto Accum = Graph.ImportTexture("accumulation", mAccumulationTexture);
-			FArdaRHIBufferDesc ConstantsDesc;
-			ConstantsDesc.mByteSize = sizeof(FArdaCornellFrameConstants);
-			ConstantsDesc.mUsage = EArdaRHIBufferUsage::Constant;
-			auto Constants = Graph.CreateBuffer("frame constants", ConstantsDesc);
-			if (!Back || !Accum || !Constants || !T || !B)
+
+			if (!Back || !Accum || !T || !B)
 			{
 				mError = "Failed to declare Cornell frame resources.";
 				return false;
@@ -455,54 +466,69 @@ namespace arda
 				}
 				return bool(Result);
 			};
-			FArdaCornellNodeParameters P;
-			P.mFrame = Frame->mInput;
-			P.mResources = {Accum.mValue, Constants.mValue, Back.mValue};
-			P.mWidth = Width;
-			P.mHeight = Height;
-			if (!Attached(Graph.AttachOrFind<FArdaCornellPresentNode>("ToneMapAndPresentCornellBox", P)))
+			FArdaCornellUploadFrameParameters UploadParameters;
+			UploadParameters.mFrame = Frame->mInput;
+			auto Upload =
+			    Graph.AttachOrFind<FArdaCornellUploadFrameNode>("UpdateCornellFrameConstants", UploadParameters);
+			if (!Attached(Upload))
 			{
 				return false;
 			}
-			P.mResources = {Constants.mValue};
-			if (!Attached(Graph.AttachOrFind<FArdaCornellUploadFrameNode>("UpdateCornellFrameConstants", P)))
+			const auto Constants = Graph.FindOutput(Upload.mValue, "Constants");
+			FArdaCornellPresentParameters PresentParameters;
+			PresentParameters.mAccumulation = Accum.mValue;
+			PresentParameters.mConstants = Constants;
+			PresentParameters.mColor = Back.mValue;
+			PresentParameters.mWidth = Width;
+			PresentParameters.mHeight = Height;
+			if (!Attached(
+			        Graph.AttachOrFind<FArdaCornellPresentNode>("ToneMapAndPresentCornellBox", PresentParameters)))
 			{
 				return false;
 			}
+
+			// Attach ray generation and accumulation only while progressive sampling has work remaining.
 			if (DispatchSamples)
 			{
 				auto V = Graph.ImportBuffer("vertices", mVertexBuffer), I = Graph.ImportBuffer("indices", mIndexBuffer),
 				     M = Graph.ImportBuffer("materials", mMaterialBuffer);
-				FArdaRHIBufferDesc SamplesDesc;
-				SamplesDesc.mByteSize = BytesPerSample * DispatchSamples;
-				SamplesDesc.mStructureStride = sizeof(float) * 4;
-				SamplesDesc.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource |
-				    EArdaRHIBufferUsage::UnorderedAccess;
-				auto Samples = Graph.CreateBuffer("sample radiance", SamplesDesc);
-				if (!V || !I || !M || !T || !B || !Samples)
+
+				if (!V || !I || !M || !T || !B)
 				{
 					mError = "Failed to declare Cornell ray resources.";
 					return false;
 				}
-				P.mResources = {T.mValue, V.mValue, I.mValue, M.mValue, Samples.mValue, Constants.mValue, B.mValue};
-				P.mWidth = Width;
-				P.mHeight = Height;
-				P.mSamples = DispatchSamples;
-				if (!Attached(Graph.AttachOrFind<FArdaCornellTraceNode>("PathTraceCornellBox", P)))
+				FArdaCornellTraceParameters TraceParameters;
+				TraceParameters.mTlas = T.mValue;
+				TraceParameters.mVertices = V.mValue;
+				TraceParameters.mIndices = I.mValue;
+				TraceParameters.mMaterials = M.mValue;
+				TraceParameters.mConstants = Constants;
+				TraceParameters.mBlas = B.mValue;
+				TraceParameters.mWidth = Width;
+				TraceParameters.mHeight = Height;
+				TraceParameters.mSamples = DispatchSamples;
+				auto Trace = Graph.AttachOrFind<FArdaCornellTraceNode>("PathTraceCornellBox", TraceParameters);
+				if (!Attached(Trace))
 				{
 					return false;
 				}
-				P.mResources = {Samples.mValue, Accum.mValue, Constants.mValue};
-				P.mWidth = (Width + 7) / 8;
-				P.mHeight = (Height + 7) / 8;
-				if (!Attached(Graph.AttachOrFind<FArdaCornellAccumulateNode>("ReduceCornellSampleBatch", P)))
+				FArdaCornellAccumulateParameters AccumulateParameters;
+				AccumulateParameters.mRadiance = Graph.FindOutput(Trace.mValue, "Radiance");
+				AccumulateParameters.mAccumulation = Accum.mValue;
+				AccumulateParameters.mConstants = Constants;
+				AccumulateParameters.mGroupCountX = (Width + 7) / 8;
+				AccumulateParameters.mGroupCountY = (Height + 7) / 8;
+				if (!Attached(Graph.AttachOrFind<FArdaCornellAccumulateNode>("ReduceCornellSampleBatch",
+				        AccumulateParameters)))
 				{
 					return false;
 				}
 			}
 			// A real frame operation, even after sampling finishes. The TLAS write orders all ray reads.
-			FArdaCornellNodeParameters BuildTlas;
-			BuildTlas.mResources = {B.mValue, T.mValue};
+			FArdaCornellBuildTlasParameters BuildTlas;
+			BuildTlas.mBlas = B.mValue;
+			BuildTlas.mTlas = T.mValue;
 			BuildTlas.mBuildFlags = GetStaticBuildFlags(false);
 			BuildTlas.mWorkspaceBytes = mTlasWorkspaceBytes;
 			if (!Attached(Graph.AttachOrFind<FArdaCornellBuildTlasNode>("RebuildCornellFrameTLAS", BuildTlas)))
@@ -520,6 +546,7 @@ namespace arda
 			}
 		}
 
+		// Derive the current camera basis before updating retained frame constants.
 		const float CosPitch = std::cos(mCameraPitch);
 		const float Forward[3] = {std::cos(mCameraYaw) * CosPitch,
 		    std::sin(mCameraYaw) * CosPitch,
@@ -531,6 +558,8 @@ namespace arda
 		constexpr float HorizontalHalfFov = 0.6981317008f;
 		const float TanHalfFovX = std::tan(HorizontalHalfFov);
 		const float TanHalfFovY = TanHalfFovX * static_cast<float>(Height) / static_cast<float>(Width);
+
+		// Capture camera, sampling, and material-independent controls for this frame's upload node.
 		FArdaCornellFrameConstants Constants;
 		Constants.mCameraPositionAndTanHalfFovX = {mCameraPosition[0],
 		    mCameraPosition[1],
@@ -542,6 +571,8 @@ namespace arda
 		Constants.mImageAndSampling = {Width, Height, mAccumulatedSamples, DispatchSamples};
 		Constants.mPathAndSeed = {mSettings.mMaxBounces, mSettings.mSeed, mFrameIndex, mSettings.mMaxSamples};
 		Frame->mInput->mConstants = Constants;
+
+		// Execute the compiled graph, then advance sampling only after successful presentation.
 		SwapChain.PrepareSubmit();
 		if (!ExecuteGraph(*Frame->mGraph, "Cornell frame graph"))
 		{

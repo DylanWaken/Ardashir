@@ -10,15 +10,15 @@ cbuffer FrameConstants : register(b0)
 	uint4 PathAndSeed;
 };
 
-struct PresentVertexOutput
+struct FArdaPresentVertexOutput
 {
 	float4 Position : SV_Position;
 };
 
-PresentVertexOutput CornellPresentVS(uint VertexId: SV_VertexID)
+FArdaPresentVertexOutput CornellPresentVS(uint VertexId: SV_VertexID)
 {
 	const float2 Positions[3] = { float2(-1.0, -1.0), float2(-1.0, 3.0), float2(3.0, -1.0) };
-	PresentVertexOutput Output;
+	FArdaPresentVertexOutput Output;
 	Output.Position = float4(Positions[VertexId], 0.0, 1.0);
 	return Output;
 }
@@ -33,7 +33,7 @@ float3 AcesFitted(float3 Color)
 	return saturate((Color * (A * Color + B)) / (Color * (C * Color + D) + E));
 }
 
-float4 CornellPresentPS(PresentVertexOutput Input)
+float4 CornellPresentPS(FArdaPresentVertexOutput Input)
     : SV_Target
 {
 	const int2 Pixel = int2(Input.Position.xy);

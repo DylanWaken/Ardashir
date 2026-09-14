@@ -116,23 +116,25 @@ class ModuleConfig:
 MODULES = (
     ModuleConfig(
         name="ArdaBackend",
-        source_public_root="Source/ArdaBackend/Public",
+        source_public_root="Source/ArdaInfra/ArdaBackend/Public",
         docs_root="ArdaBackend",
         api_js_path="assets/backend-api.js",
         api_global="ArdaBackendApi",
         include_only_umbrellas=(
-            "Source/ArdaBackend/Public/RHI/ArdaRHI.h",
+            "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHI.h",
         ),
     ),
     ModuleConfig(
         name="ArdaRenderGraph",
-        source_public_root="Source/ArdaRenderGraph/Public",
+        source_public_root="Source/ArdaInfra/ArdaRenderGraph/Public",
         docs_root="ArdaRDG",
         api_js_path="assets/arda-rdg-api.js",
         api_global="ArdaRDGApi",
         required_public_headers=(
             "ArdaDependencyGraph.h",
             "ArdaDependencyNode.h",
+            "ArdaDependencyKey.h",
+            "ArdaDependencyRequirements.h",
             "ArdaDependencyGraphCuda.h",
             "ArdaDependencyGraphExecution.h",
             "ArdaDependencyGraphNodes.h",
@@ -1325,7 +1327,25 @@ class Validator:
             ))
             if not candidates:
                 continue
-            name_match = candidates[0]
+            # A function type inside a template argument is not a declaration:
+            # function<Status(Device&)> mCheck has no method named Status.
+            # Keep scanning so function<Status(Device&)> MakeCheck() still
+            # contributes the real method after its complete return type.
+            template_depth = 0
+            scanned = 0
+            name_match = None
+            for candidate in candidates:
+                for char in cleaned[scanned:candidate.start(1)]:
+                    if char == "<":
+                        template_depth += 1
+                    elif char == ">":
+                        template_depth = max(0, template_depth - 1)
+                scanned = candidate.start(1)
+                if template_depth == 0:
+                    name_match = candidate
+                    break
+            if name_match is None:
+                continue
             prefix = cleaned[:name_match.start(1)].strip()
             if not prefix or prefix.startswith("#"):
                 candidate_name = self.canonical_cpp_name(name_match.group(1))

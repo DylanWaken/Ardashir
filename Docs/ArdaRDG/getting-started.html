@@ -77,13 +77,27 @@ FArdaRHIStatus Run(FArdaRHIDeviceRef Device)
     }
     return {};
 }</code></pre></section>
+<section id="parameters"><h2>Parameters belong to each node</h2><p>Every node class declares its own <code>FArdaParameters</code> struct with only that operation's inputs and outputs. Each attached instance owns an immutable snapshot, so changing a local parameter value cannot change another node or graph. Pass a prefilled struct, an inline aggregate, or a callback that fills a fresh struct during attachment:</p><pre><code>// Inside BeginGraphEdit / EndGraphEdit, after declaring the destination buffers.
+FArdaGraphClearNode::FArdaParameters ClearParameters;
+ClearParameters.mDestination = FirstBuffer;
+ClearParameters.mValue = 7;
+auto First = Graph.AttachOrFind&lt;FArdaGraphClearNode&gt;("clear first", ClearParameters);
+if (!First) return First.mStatus;
+
+auto Second = Graph.AttachOrFind&lt;FArdaGraphClearNode&gt;("clear second",
+    [&amp;](FArdaGraphClearNode::FArdaParameters&amp; Parameters)
+    {
+        Parameters.mDestination = SecondBuffer;
+        Parameters.mValue = 42;
+    });
+if (!Second) return Second.mStatus;</code></pre><p>The callback runs synchronously once per attachment call, including reattachment, before validation or preparation. It can return <code>FArdaRHIStatus</code> to reject initialization. Do not retain its temporary reference or edit the graph inside it. Resource declaration fills omitted node-owned outputs before parameters are frozen. Deliberately shared resource or dynamic input pointees keep their documented lifetime and synchronization requirements; copying the parameter struct does not deep-copy them.</p><p>Migration: texture-to-buffer and buffer-to-texture nodes now have distinct <code>FArdaGraphTextureToBufferParameters</code> and <code>FArdaGraphBufferToTextureParameters</code> structs. Prefer <code>Node::FArdaParameters</code> at attachment sites. Cornell Box, PixelSort and triangle examples likewise use a separate schema for each node.</p></section>
 <section id="dependencies"><h2>Consumer-first attachment</h2><p>The readback reads the value produced by clear, so compilation orders clear first. Readback is observable and retains its producer. Use <code>MarkOutput()</code> for a graph-owned output without another observable consumer. Imported and persistent outputs are also roots.</p></section>
 <section id="lifecycle"><h2>Change semantics through edits</h2><p><code>AttachOrFind()</code> reuses a name only when definition and canonical key match. Replace changed operations within an edit. Removing a producer also removes resource-dependent consumers, which must be recreated as needed. Failed compilation leaves the edit open for repair or <code>CancelGraphEdit()</code>.</p></section>
-<section id="validation"><h2>Check every result</h2><p>Invalid handles, multiple producers, uncovered reads, cycles and ambiguous pipelines fail compilation. Native recording, submission and completion failures propagate through execution status. GPU work already accepted by a queue cannot be rolled back.</p></section>
+<section id="validation"><h2>Check every result</h2><p>Invalid handles, uncovered reads, contradictory dependencies, cycles and ambiguous pipelines fail compilation. For repeated writes to an overlapping region, attach writers and intervening readers in their intended order; <a href="resources.html#worked-example">the resource example</a> shows which contents each read observes. Regions with one producer still allow readers to be attached first. Native recording, submission and completion failures propagate through execution status. GPU work already accepted by a queue cannot be rolled back.</p></section>
 <section id="summary"><h2>Chapter summary</h2><p>Readback makes the clear output observable; a single successful edit produces the plan reused by all three executions.</p></section>
 <section id="source-guide"><h2>Source and API</h2><p>Read the <a href="ArdaInductor.md">developer guide</a>, <a href="ArdaInductor-Pipelines.md">pipeline guide</a>, <a href="api-reference.html">public API reference</a> and <a href="api-reference.html">graph declarations</a>.</p></section>
 <!-- Stable destinations for existing chapter links. -->
-<span id="builder" aria-hidden="true"></span><span id="checklist" aria-hidden="true"></span><span id="cleanup" aria-hidden="true"></span><span id="compile-execute" aria-hidden="true"></span><span id="failures" aria-hidden="true"></span><span id="include-context" aria-hidden="true"></span><span id="mental-model" aria-hidden="true"></span><span id="outputs" aria-hidden="true"></span><span id="parameters" aria-hidden="true"></span><span id="passes" aria-hidden="true"></span><span id="performance" aria-hidden="true"></span><span id="worked-example" aria-hidden="true"></span>
+<span id="builder" aria-hidden="true"></span><span id="checklist" aria-hidden="true"></span><span id="cleanup" aria-hidden="true"></span><span id="compile-execute" aria-hidden="true"></span><span id="failures" aria-hidden="true"></span><span id="include-context" aria-hidden="true"></span><span id="mental-model" aria-hidden="true"></span><span id="outputs" aria-hidden="true"></span><span id="passes" aria-hidden="true"></span><span id="performance" aria-hidden="true"></span><span id="worked-example" aria-hidden="true"></span>
 </article>
     </main>
   </div>

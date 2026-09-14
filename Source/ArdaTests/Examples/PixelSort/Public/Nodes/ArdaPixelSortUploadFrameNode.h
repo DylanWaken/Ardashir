@@ -4,16 +4,17 @@
 namespace arda
 {
 	class FArdaPixelSortUploadFrameNode final
-	    : public TArdaCopyDependencyNode<FArdaPixelSortUploadFrameNode, FArdaPixelSortNodeParameters>
+	    : public TArdaCopyDependencyNode<FArdaPixelSortUploadFrameNode, FArdaPixelSortUploadFrameParameters>
 	{
 	public:
 		static FArdaDependencyNodeMetadata GetMetadata();
-		static eastl::string GetCanonicalKey(const FParameters& Parameters);
-		static FArdaRHIStatus Validate(const FParameters& Parameters);
-		static FArdaDependencyNodeDesc Describe(const FParameters& Parameters, const FState& State);
+		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P);
+		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
+		static FArdaRHIStatus Validate(const FArdaParameters& Parameters);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);
 		static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context,
-		    const FParameters& Parameters,
-		    const FState& State,
-		    FInstanceState& Instance);
+		    const FArdaParameters& Parameters,
+		    const FArdaState& State,
+		    FArdaInstanceState& Instance);
 	};
 }

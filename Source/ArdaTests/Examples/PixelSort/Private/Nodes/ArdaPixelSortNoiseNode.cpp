@@ -3,70 +3,86 @@
 
 namespace arda
 {
-	struct FArdaPixelSortNoiseNode::FState
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPixelSortNoiseShaderParameters)
+		ARDA_SHADER_CONSTANT_BUFFER(mConstants, 0, 0, EArdaRHIShaderStage::Compute)
+		ARDA_SHADER_TEXTURE_UAV(mNoise, 0, 0, EArdaRHIShaderStage::Compute)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+
+	class FArdaPixelSortNoiseShader final : public FArdaGlobalShader
+	{
+	public:
+		using FArdaParameters = FArdaPixelSortNoiseShaderParameters;
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaPixelSortNoiseShader);
+	};
+
+	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaPixelSortNoiseShader,
+	    GetPixelSortShaderSource(),
+	    "PixelSortNoise",
+	    "NoiseCS",
+	    EArdaRHIShaderStage::Compute)
+
+	struct FArdaPixelSortNoiseNode::FArdaState
 	{
 		FArdaRHIDeviceRef mDevice;
-		FArdaRHIBindingLayoutRef mNoiseLayout;
+		FArdaGlobalShaderMap mShaderMap;
 		eastl::shared_ptr<const FArdaInductorPipelineConfiguration> mNoise;
 
 		FArdaRHIStatus Initialize()
 		{
-			try
+			// Resolve the node's shader through the shared shader-map compilation path.
+			if (!mShaderMap.Initialize(mDevice))
 			{
-				const auto Directory = GetArdaExampleDirectory();
+				return PixelSortShaderError(mShaderMap);
+			}
 
-				auto* State = this;
-				const auto Device = State->mDevice;
-				const auto Shader = [&](const char* Name, const char* Entry, EArdaRHIShaderStage Stage)
-				{
-					return LoadArdaPixelSortShader(Device, Directory, Name, Entry, Stage);
-				};
-				FArdaRHIBindingLayoutDesc Layout;
-				Layout.mVisibility = EArdaRHIShaderStage::Compute;
-				Layout.mItems = {{0, 1, EArdaRHIBindingType::ConstantBuffer}, {0, 1, EArdaRHIBindingType::TextureUAV}};
-				State->mNoiseLayout = Take(Device->CreateBindingLayout(Layout));
-				FArdaRHIComputePipelineDesc Compute;
-				Compute.mComputeShader = Shader("PixelSortNoise", "NoiseCS", EArdaRHIShaderStage::Compute);
-				Compute.mBindingLayouts.push_back(State->mNoiseLayout);
-				auto NoiseConfiguration = eastl::make_shared<FArdaInductorPipelineConfiguration>();
-				NoiseConfiguration->mKind = EArdaPipelineStateKind::Compute;
-				NoiseConfiguration->mCompute.mDesc = eastl::move(Compute);
-				State->mNoise = eastl::move(NoiseConfiguration);
-				return {};
-			}
-			catch (const std::exception& Error)
+			const auto* Shader = mShaderMap.Find(FArdaPixelSortNoiseShader::GetStaticType());
+			if (!Shader)
 			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, Error.what());
+				return PixelSortShaderError(mShaderMap);
 			}
+
+			// Keep only immutable pipeline inputs; the graph supplies bindings at execution.
+			auto Configuration = eastl::make_shared<FArdaInductorPipelineConfiguration>();
+			Configuration->mKind = EArdaPipelineStateKind::Compute;
+			Configuration->mCompute =
+			    FArdaComputePipelineStateInitializer::FromGlobalShader(*Shader, "PixelSort noise");
+			mNoise = eastl::move(Configuration);
+			return {};
 		}
 	};
 
-	struct FArdaPixelSortNoiseNode::FInstanceState
+	FArdaRHIStatus FArdaPixelSortNoiseNode::DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P)
 	{
-		FArdaRHIBindingSetRef mBinding;
-	};
+		FArdaRHITextureDesc D;
+		D.mWidth = P.mWidth;
+		D.mHeight = P.mHeight;
+		D.mFormat = EArdaRHIFormat::RGBA8UInt;
+		D.mbCudaInterop = true;
+		D.mUsage = EArdaRHITextureUsage::UnorderedAccess | EArdaRHITextureUsage::ShaderResource;
+		return C.Texture(P.mNoise, "Output", D);
+	}
 
 	FArdaDependencyNodeMetadata FArdaPixelSortNoiseNode::GetMetadata()
 	{
 		return {"example.pixel-sort.noise", 1};
 	}
 
-	eastl::string FArdaPixelSortNoiseNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaPixelSortNoiseNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		return MakePixelSortNodeKey(P);
+		return FArdaDependencyKeyBuilder()
+		    .Resource(P.mConstants)
+		    .Resource(P.mNoise)
+		    .Value(P.mWidth)
+		    .Value(P.mHeight)
+		    .Build();
 	}
 
-	FArdaRHIStatus FArdaPixelSortNoiseNode::Validate(const FParameters& P)
+	FArdaRHIStatus FArdaPixelSortNoiseNode::Validate(const FArdaParameters& P)
 	{
-		if (!P.mInput || !P.mWidth || !P.mHeight)
-		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-			    "PixelSort requires frame inputs and a nonempty extent.");
-		}
-		return {};
+		return ValidatePixelSortExtent(P.mWidth, P.mHeight);
 	}
 
-	TArdaRHIResult<eastl::shared_ptr<const FArdaPixelSortNoiseNode::FState>> FArdaPixelSortNoiseNode::Prepare(
+	TArdaRHIResult<eastl::shared_ptr<const FArdaPixelSortNoiseNode::FArdaState>> FArdaPixelSortNoiseNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
 		if (!Device)
@@ -74,70 +90,41 @@ namespace arda
 			return {{},
 			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
 		}
-		auto State = eastl::make_shared<FState>();
+
+		auto State = eastl::make_shared<FArdaState>();
 		State->mDevice = eastl::move(Device);
+
+		// Publish prepared state only after all node-owned setup succeeds.
 		auto Status = State->Initialize();
 		if (!Status)
 		{
 			return {{}, eastl::move(Status)};
 		}
+
 		return {eastl::move(State), {}};
 	}
 
-	TArdaRHIResult<eastl::shared_ptr<FArdaPixelSortNoiseNode::FInstanceState>> FArdaPixelSortNoiseNode::CreateInstance(
-	    FArdaRHIDeviceRef,
-	    const FParameters&,
-	    const FState&)
-	{
-		return {eastl::make_shared<FInstanceState>(), {}};
-	}
-
-	FArdaDependencyNodeDesc FArdaPixelSortNoiseNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaPixelSortNoiseNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
-		D.mAccesses = {{P.mConstants, EArdaDependencyAccess::Read, EArdaRHIResourceState::ConstantBuffer},
-		    {P.mNoise, EArdaDependencyAccess::Write, EArdaRHIResourceState::UnorderedAccess}};
+		D.BindShader<FArdaPixelSortNoiseShaderParameters>({{"mConstants", P.mConstants}, {"mNoise", P.mNoise}});
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::Compute, {}, Prepared.mNoise}};
 
 		return D;
 	}
 
 	FArdaRHIStatus FArdaPixelSortNoiseNode::Record(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState)
+	    const FArdaParameters& P,
+	    const FArdaState& Prepared,
+	    FArdaInstanceState& InstanceState)
 	{
-		FArdaRHIBindingSetDesc B;
-		B.mItems = {{0, 0, EArdaRHIBindingType::ConstantBuffer, C.GetBuffer(P.mConstants), {}}};
-
-		B.mLayout = Prepared.mNoiseLayout;
-		B.mItems.push_back({0, 0, EArdaRHIBindingType::TextureUAV, C.GetTexture(P.mNoise), {}});
-		auto& Bindings = InstanceState.mBinding;
-		bool bMatches = Bindings && Bindings->GetDesc().mLayout == B.mLayout &&
-		    Bindings->GetDesc().mItems.size() == B.mItems.size();
-		for (size_t I = 0; bMatches && I < B.mItems.size(); ++I)
+		// Bind the executor-prepared pipeline and shader arguments before dispatching this operation.
+		if (auto S = C.SetComputeState(); !S)
 		{
-			bMatches = Bindings->GetDesc().mItems[I].mResource == B.mItems[I].mResource;
-		}
-		if (!bMatches)
-		{
-			auto Created = C.GetDevice()->CreateBindingSet(B);
-			if (!Created)
-			{
-				return Created.mStatus;
-			}
-			Bindings = eastl::move(Created.mValue);
+			return S;
 		}
 
-		FArdaRHIComputeState State;
-		State.mPipeline = C.GetPipeline()->mCompute;
-		State.mBindings = {Bindings};
-		if (auto Status = C.GetCommands().SetComputeState(State); !Status)
-		{
-			return Status;
-		}
 		C.GetCommands().Dispatch((P.mWidth + 7) / 8, (P.mHeight + 7) / 8);
-
 		return {};
 	}
 }

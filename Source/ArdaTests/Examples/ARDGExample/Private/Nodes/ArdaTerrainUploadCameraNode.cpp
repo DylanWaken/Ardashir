@@ -4,22 +4,31 @@
 
 namespace arda
 {
+	FArdaRHIStatus FArdaTerrainUploadCameraNode::DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P)
+	{
+		FArdaRHIBufferDesc D;
+		D.mByteSize = sizeof(FArdaTerrainCameraSettings);
+		D.mStructureStride = 0;
+		D.mUsage = EArdaRHIBufferUsage::Constant;
+		return C.Buffer(P.mDestination, "Destination", D);
+	}
+
 	FArdaDependencyNodeMetadata FArdaTerrainUploadCameraNode::GetMetadata()
 	{
 		return {"example.terrain.upload-camera", 1};
 	}
 
-	eastl::string FArdaTerrainUploadCameraNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaTerrainUploadCameraNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		eastl::string Key;
+		FArdaDependencyKeyBuilder Key;
 
-		AppendResource(Key, P.mDestination);
-		Append(Key, reinterpret_cast<uintptr_t>(P.mInputs.get()));
+		Key.Resource(P.mDestination);
+		Key.Value(reinterpret_cast<uintptr_t>(P.mInputs.get()));
 
-		return Key;
+		return Key.Build();
 	}
 
-	FArdaRHIStatus FArdaTerrainUploadCameraNode::Validate(const FParameters& P)
+	FArdaRHIStatus FArdaTerrainUploadCameraNode::Validate(const FArdaParameters& P)
 	{
 		if (!P.mInputs)
 		{
@@ -29,7 +38,7 @@ namespace arda
 		return {};
 	}
 
-	FArdaDependencyNodeDesc FArdaTerrainUploadCameraNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaTerrainUploadCameraNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
 		D.mAccesses = {{P.mDestination, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest}};
@@ -37,9 +46,9 @@ namespace arda
 	}
 
 	FArdaRHIStatus FArdaTerrainUploadCameraNode::Record(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState)
+	    const FArdaParameters& P,
+	    const FArdaState& Prepared,
+	    FArdaInstanceState& InstanceState)
 	{
 		return C.GetCommands().WriteBuffer(*C.GetBuffer(P.mDestination),
 		    &P.mInputs->mCamera,

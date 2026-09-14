@@ -1,3 +1,4 @@
+#include "ArdaTestValidation.h"
 #include "ArdaARDGExamplePch.h"
 
 #include "ArdaARDGExampleConfig.h"
@@ -6,10 +7,12 @@
 #include "ArdaSwapChain.h"
 #include "ArdaGlfwWindow.h"
 #include "ArdaTerrainRenderer.h"
+#include "ArdaExampleShaders.h"
 #include "ShaderStructs/ArdaShaderCompiler.h"
 #include "ShaderStructs/ArdaShaderDirectories.h"
 
 #include <chrono>
+#include <cstdio>
 
 ARDA_DEFINE_LOG_CATEGORY_NAMED(LogARDGExample, "ARDGExample", Log);
 
@@ -26,6 +29,9 @@ namespace arda
 			uint32_t mWindowWidth = 1280;
 			uint32_t mWindowHeight = 720;
 			bool mbHidden = false;
+			bool mbValidation = false;
+			bool mbVerify = false;
+			bool mbHelp = false;
 			bool mbFullscreen = false;
 			std::filesystem::path mShaderCookOutputDirectory;
 			arda::EArdaShaderCompilationMode mShaderMode = arda::EArdaShaderCompilationMode::OnDemand;
@@ -100,6 +106,23 @@ namespace arda
 				if (argument == "--hidden")
 				{
 					options.mbHidden = true;
+				}
+				else if (argument == "--verify")
+				{
+					options.mbVerify = true;
+				}
+				else if (argument == "--help" || argument == "-h")
+				{
+					options.mbHelp = true;
+				}
+				else if (argument == "--validation")
+				{
+					if constexpr (!arda::ArdaTestValidationEnabled)
+					{
+						error = "GPU validation was disabled at build time (ARDASHIR_ENABLE_GPU_VALIDATION=OFF).";
+						return false;
+					}
+					options.mbValidation = true;
 				}
 				else if (argument == "--fullscreen")
 				{
@@ -270,6 +293,16 @@ namespace arda
 				ARDA_LOG(LogARDGExample, Error, "%s", error.c_str());
 				return EXIT_FAILURE;
 			}
+			if (options.mbHelp)
+			{
+				std::printf("ARDGExample [--backend d3d12|vulkan] [--frames N --hidden|--fullscreen]\n"
+				            "  [--width N --height N] [--verify] [--validation]\n"
+				            "  [--shader-mode startup|ondemand|load-only] [--shader-cache DIR] [--shader-source DIR]\n"
+				            "  [--arda-cook-shaders DIR]\n"
+				            "--verify checks terrain geometry and gradients without native validation layers.\n"
+				            "--validation explicitly enables native GPU validation and requires its debug layers.\n");
+				return EXIT_SUCCESS;
+			}
 			const std::filesystem::path executableDirectory = GetExecutableDirectory(arguments[0]);
 			if (options.mShaderCacheDirectory.empty())
 			{
@@ -296,10 +329,14 @@ namespace arda
 			FArdaMessageCallback messageCallback;
 			arda::FArdaBackendConfiguration configuration;
 			configuration.mBackendName = options.mBackendName;
-			configuration.mbEnableValidation = true;
+			configuration.mbEnableValidation = options.mbValidation;
 			configuration.mMessageCallback = &messageCallback;
 			configuration.mShaderCompilationMode = options.mShaderMode;
 			configuration.mShaderCacheDirectory = options.mShaderCacheDirectory;
+
+			// Source-distributed examples retain their selected shader mode in Debug and Release.
+			ConfigureArdaExampleShaderCompiler();
+
 			if (!arda::ConfigureBackend(configuration))
 			{
 				ARDA_LOG(LogARDGExample, Error, "%s", arda::GetBackendError().c_str());
@@ -331,7 +368,7 @@ namespace arda
 			}
 
 			FArdaTerrainRenderer renderer;
-			if (!renderer.Initialize(arda::GetDevice(), swapChain->GetFormat()))
+			if (!renderer.Initialize(arda::GetDevice(), swapChain->GetFormat(), options.mbVerify))
 			{
 				ARDA_LOG(LogARDGExample, Error, "%s", renderer.GetError().c_str());
 				return EXIT_FAILURE;

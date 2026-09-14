@@ -3,56 +3,72 @@
 
 namespace arda
 {
-	struct FArdaPixelSortPresentNode::FState
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaPixelSortPresentShaderParameters)
+		ARDA_SHADER_CONSTANT_BUFFER(mConstants, 0, 0, EArdaRHIShaderStage::Pixel)
+		ARDA_SHADER_TEXTURE_SRV(mSorted, 0, 0, EArdaRHIShaderStage::Pixel)
+		ARDA_SHADER_TEXTURE_SRV(mNoise, 1, 0, EArdaRHIShaderStage::Pixel)
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+
+	class FArdaPixelSortVertexShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaPixelSortVertexShader);
+	};
+
+	class FArdaPixelSortPixelShader final : public FArdaGlobalShader
+	{
+	public:
+		using FArdaParameters = FArdaPixelSortPresentShaderParameters;
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaPixelSortPixelShader);
+	};
+
+	ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(FArdaPixelSortVertexShader,
+	    GetPixelSortShaderSource(),
+	    "PixelSortVertex",
+	    "PresentVS",
+	    EArdaRHIShaderStage::Vertex)
+	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaPixelSortPixelShader,
+	    GetPixelSortShaderSource(),
+	    "PixelSortPixel",
+	    "PresentPS",
+	    EArdaRHIShaderStage::Pixel)
+
+	struct FArdaPixelSortPresentNode::FArdaState
 	{
 		FArdaRHIDeviceRef mDevice;
-		FArdaRHIBindingLayoutRef mPresentLayout;
+		FArdaGlobalShaderMap mShaderMap;
 		eastl::shared_ptr<const FArdaInductorPipelineConfiguration> mPresent;
 
 		FArdaRHIStatus Initialize()
 		{
-			try
+			// Keep shader discovery and loading inside the node's prepared state.
+			if (!mShaderMap.Initialize(mDevice))
 			{
-				const auto Directory = GetArdaExampleDirectory();
-
-				auto* State = this;
-				const auto Device = State->mDevice;
-				const auto Shader = [&](const char* Name, const char* Entry, EArdaRHIShaderStage Stage)
-				{
-					return LoadArdaPixelSortShader(Device, Directory, Name, Entry, Stage);
-				};
-				FArdaRHIBindingLayoutDesc Layout;
-				Layout.mVisibility = EArdaRHIShaderStage::Pixel;
-				Layout.mItems = {{0, 1, EArdaRHIBindingType::ConstantBuffer},
-				    {0, 1, EArdaRHIBindingType::TextureSRV},
-				    {1, 1, EArdaRHIBindingType::TextureSRV}};
-				State->mPresentLayout = Take(Device->CreateBindingLayout(Layout));
-				FArdaRHIGraphicsPipelineDesc Graphics;
-				Graphics.mVertexShader = Shader("PixelSortVertex", "PresentVS", EArdaRHIShaderStage::Vertex);
-				Graphics.mPixelShader = Shader("PixelSortPixel", "PresentPS", EArdaRHIShaderStage::Pixel);
-				Graphics.mBindingLayouts.push_back(State->mPresentLayout);
-				Graphics.mSampleCount = 0; // Filled from the imported color target during graph compilation.
-
-				// SV_VertexID generates a fullscreen triangle: no mesh, vertex buffer,
-				// depth attachment, or scene system is required to present the texture.
-				Graphics.mDepthStencilState.mbDepthTest = Graphics.mDepthStencilState.mbDepthWrite = false;
-				Graphics.mRasterState.mCullMode = EArdaRHICullMode::None;
-				auto PresentConfiguration = eastl::make_shared<FArdaInductorPipelineConfiguration>();
-				PresentConfiguration->mKind = EArdaPipelineStateKind::Graphics;
-				PresentConfiguration->mGraphics.mDesc = eastl::move(Graphics);
-				State->mPresent = eastl::move(PresentConfiguration);
-				return {};
+				return PixelSortShaderError(mShaderMap);
 			}
-			catch (const std::exception& Error)
+
+			const auto* Vertex = mShaderMap.Find(FArdaPixelSortVertexShader::GetStaticType());
+			const auto* Pixel = mShaderMap.Find(FArdaPixelSortPixelShader::GetStaticType());
+			if (!Vertex || !Pixel)
 			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, Error.what());
+				return PixelSortShaderError(mShaderMap);
 			}
+
+			// SV_VertexID supplies the fullscreen triangle; compilation fills target formats and samples.
+			FArdaRHIGraphicsPipelineDesc FixedState;
+			FixedState.mSampleCount = 0;
+			FixedState.mDepthStencilState.mbDepthTest = false;
+			FixedState.mDepthStencilState.mbDepthWrite = false;
+			FixedState.mRasterState.mCullMode = EArdaRHICullMode::None;
+			FixedState.mDebugName = "PixelSort presentation";
+
+			auto Configuration = eastl::make_shared<FArdaInductorPipelineConfiguration>();
+			Configuration->mKind = EArdaPipelineStateKind::Graphics;
+			Configuration->mGraphics =
+			    FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(*Vertex, Pixel, {}, FixedState);
+			mPresent = eastl::move(Configuration);
+			return {};
 		}
-	};
-
-	struct FArdaPixelSortPresentNode::FInstanceState
-	{
-		FArdaRHIBindingSetRef mBinding;
 	};
 
 	FArdaDependencyNodeMetadata FArdaPixelSortPresentNode::GetMetadata()
@@ -60,22 +76,24 @@ namespace arda
 		return {"example.pixel-sort.present", 1};
 	}
 
-	eastl::string FArdaPixelSortPresentNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaPixelSortPresentNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		return MakePixelSortNodeKey(P);
+		return FArdaDependencyKeyBuilder()
+		    .Resource(P.mConstants)
+		    .Resource(P.mNoise)
+		    .Resource(P.mSorted)
+		    .Resource(P.mColor)
+		    .Value(P.mWidth)
+		    .Value(P.mHeight)
+		    .Build();
 	}
 
-	FArdaRHIStatus FArdaPixelSortPresentNode::Validate(const FParameters& P)
+	FArdaRHIStatus FArdaPixelSortPresentNode::Validate(const FArdaParameters& P)
 	{
-		if (!P.mInput || !P.mWidth || !P.mHeight)
-		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-			    "PixelSort requires frame inputs and a nonempty extent.");
-		}
-		return {};
+		return ValidatePixelSortExtent(P.mWidth, P.mHeight);
 	}
 
-	TArdaRHIResult<eastl::shared_ptr<const FArdaPixelSortPresentNode::FState>> FArdaPixelSortPresentNode::Prepare(
+	TArdaRHIResult<eastl::shared_ptr<const FArdaPixelSortPresentNode::FArdaState>> FArdaPixelSortPresentNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
 		if (!Device)
@@ -83,29 +101,26 @@ namespace arda
 			return {{},
 			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
 		}
-		auto State = eastl::make_shared<FState>();
+
+		auto State = eastl::make_shared<FArdaState>();
 		State->mDevice = eastl::move(Device);
+
+		// Publish prepared state only after all node-owned setup succeeds.
 		auto Status = State->Initialize();
 		if (!Status)
 		{
 			return {{}, eastl::move(Status)};
 		}
+
 		return {eastl::move(State), {}};
 	}
 
-	TArdaRHIResult<eastl::shared_ptr<FArdaPixelSortPresentNode::FInstanceState>> FArdaPixelSortPresentNode::
-	    CreateInstance(FArdaRHIDeviceRef, const FParameters&, const FState&)
-	{
-		return {eastl::make_shared<FInstanceState>(), {}};
-	}
-
-	FArdaDependencyNodeDesc FArdaPixelSortPresentNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaPixelSortPresentNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
-		D.mAccesses = {{P.mConstants, EArdaDependencyAccess::Read, EArdaRHIResourceState::ConstantBuffer},
-		    {P.mNoise, EArdaDependencyAccess::Read, EArdaRHIResourceState::PixelShaderResource},
-		    {P.mSorted, EArdaDependencyAccess::Read, EArdaRHIResourceState::PixelShaderResource},
-		    {P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
+		D.BindShader<FArdaPixelSortPresentShaderParameters>(
+		    {{"mConstants", P.mConstants}, {"mNoise", P.mNoise}, {"mSorted", P.mSorted}});
+		D.mAccesses = {{P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
 		D.mColorTargets = {P.mColor};
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::Graphics, {}, Prepared.mPresent}};
 
@@ -113,45 +128,21 @@ namespace arda
 	}
 
 	FArdaRHIStatus FArdaPixelSortPresentNode::Record(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState)
+	    const FArdaParameters& P,
+	    const FArdaState& Prepared,
+	    FArdaInstanceState& InstanceState)
 	{
-		FArdaRHIBindingSetDesc B;
-		B.mItems = {{0, 0, EArdaRHIBindingType::ConstantBuffer, C.GetBuffer(P.mConstants), {}}};
-
-		B.mLayout = Prepared.mPresentLayout;
-		B.mItems.push_back({0, 0, EArdaRHIBindingType::TextureSRV, C.GetTexture(P.mSorted), {}});
-		B.mItems.push_back({1, 0, EArdaRHIBindingType::TextureSRV, C.GetTexture(P.mNoise), {}});
-		auto& Bindings = InstanceState.mBinding;
-		bool bMatches = Bindings && Bindings->GetDesc().mLayout == B.mLayout &&
-		    Bindings->GetDesc().mItems.size() == B.mItems.size();
-		for (size_t I = 0; bMatches && I < B.mItems.size(); ++I)
-		{
-			bMatches = Bindings->GetDesc().mItems[I].mResource == B.mItems[I].mResource;
-		}
-		if (!bMatches)
-		{
-			auto Created = C.GetDevice()->CreateBindingSet(B);
-			if (!Created)
-			{
-				return Created.mStatus;
-			}
-			Bindings = eastl::move(Created.mValue);
-		}
-
+		// Supply dynamic draw inputs; the executor fills the compiled pipeline, framebuffer, and bindings.
 		FArdaRHIGraphicsState State;
-		State.mPipeline = C.GetPipeline()->mGraphics;
-		State.mFramebuffer = C.GetFramebuffer();
-		State.mBindings = {Bindings};
 		State.mViewports = {{0.f, float(P.mWidth), 0.f, float(P.mHeight), 0.f, 1.f}};
 		State.mScissors = {{0, int32_t(P.mWidth), 0, int32_t(P.mHeight)}};
-		if (auto Status = C.GetCommands().SetGraphicsState(State); !Status)
+		if (auto S = C.SetGraphicsState(State); !S)
 		{
-			return Status;
+			return S;
 		}
-		C.GetCommands().Draw({3});
 
+		// Record only this node's draw; submission and cross-node ordering belong to the graph.
+		C.GetCommands().Draw({3});
 		return {};
 	}
 }

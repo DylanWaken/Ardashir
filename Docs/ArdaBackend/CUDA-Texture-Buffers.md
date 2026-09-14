@@ -99,28 +99,37 @@ nodes. The graph does not insert texture-to-buffer copies automatically.
 
 ```cpp
 // Within Graph.BeginGraphEdit() / Graph.EndGraphEdit():
-auto In = AttachArdaTextureToBuffer(Graph, "download texels", InputTexture,
-    Slice, CudaInputBuffer, Layout);
+auto In = Graph.AttachOrFind<FArdaGraphTextureToBufferNode>("download texels",
+    {InputTexture, Slice, CudaInputBuffer, Layout});
 if (!In) return In.mStatus;
 // Attach registered CUDA operand nodes that read CudaInputBuffer and write
 // separate logical output buffers. ArdaInductor coalesces the CUDA chain.
-auto Out = AttachArdaBufferToTexture(Graph, "upload texels", OutputTexture,
-    Slice, CudaOutputBuffer, Layout);
+auto Out = Graph.AttachOrFind<FArdaGraphBufferToTextureNode>("upload texels",
+    {OutputTexture, Slice, CudaOutputBuffer, Layout});
 if (!Out) return Out.mStatus;
 return Graph.MarkOutput(OutputTexture);
 ```
 
 The handles refer to resources created or imported into the current graph. The
-helpers validate the native descriptors and layout before attaching a node, declare
+node classes validate native descriptors and layout during resource declaration, derive
 texture subresources and exact copied buffer rows, and retain those declarations.
 Both transfers execute on the graphics queue and unused outputs may be culled.
-Each logical resource has one producer. Use separate output values for consecutive
-writes; duplicate imports of one native allocation cannot hide hazards.
+Single-producer regions resolve independently of attachment order. Regions with
+multiple writer nodes order overlapping writes and reads by original successful
+attachment order; disjoint regions remain independent. Repeated writes use the
+same storage. Use separate output handles when old contents must survive an
+overwrite; duplicate imports of one native resource cannot create versions or
+hide hazards. See the [repeated-write example](../ArdaRDG/resources.html#worked-example).
 
 Row padding is not produced by a texture copy. A CUDA node reading the whole buffer
 must receive fully initialized storage, or declare only the texel ranges its operand
 reads. Cropped writes do not initialize surrounding texels in a new texture. Texture
-hazards are tracked at mip/layer/plane granularity. `AttachOrFind` identifies the
+hazards are tracked at mip/layer/plane granularity. A cropped upload therefore
+declares a read/write of the selected subresource: use an imported texture whose
+surrounding texels already exist, or attach a complete subresource writer before
+the partial upload. A partial upload into an uninitialized transient texture fails
+compilation, even if a later node reads only the copied rectangle.
+`AttachOrFind` identifies the
 transfer by its name, resources, copy rectangle and pitch; changed parameters require
 an explicit edit/removal instead of silently altering a compiled node.
 

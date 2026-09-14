@@ -583,6 +583,20 @@
       "page": "capability-recipes.html#feature-extendedcommands",
       "example": "gpu-examples.html#VerifyExtendedCommands"
     },
+    "GeometryShaders": {
+      "name": "GeometryShaders",
+      "expression": "C.mbGeometryShaders",
+      "probe": "GeometryShader",
+      "page": "capability-recipes.html#feature-geometryshader",
+      "example": "gpu-examples.html#VerifyRasterStageCapabilityAndExecution"
+    },
+    "TessellationShaders": {
+      "name": "TessellationShaders",
+      "expression": "C.mbTessellationShaders",
+      "probe": "TessellationShaders",
+      "page": "capability-recipes.html#feature-tessellationshaders",
+      "example": "gpu-examples.html#VerifyRasterStageCapabilityAndExecution"
+    },
     "TextureResolve": {
       "name": "TextureResolve",
       "expression": "C.mbTextureResolve",

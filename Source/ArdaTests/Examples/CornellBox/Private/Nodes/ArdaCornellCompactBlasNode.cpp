@@ -4,42 +4,48 @@
 
 namespace arda
 {
+	FArdaDependencyNodeRequirements FArdaCornellCompactBlasNode::GetRequirements(const FArdaParameters&)
+	{
+		FArdaDependencyNodeRequirements R;
+		R.mFeatures.mbRequireAccelerationStructures = true;
+		R.mFeatures.mbRequireBottomLevelAccelerationStructures = true;
+		R.mFeatures.mbRequireAccelerationStructureCompaction = true;
+		return R;
+	}
+
 	FArdaDependencyNodeMetadata FArdaCornellCompactBlasNode::GetMetadata()
 	{
 		return {"cornell.compact_blas", 1};
 	}
 
-	eastl::string FArdaCornellCompactBlasNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaCornellCompactBlasNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		return MakeCornellNodeKey(P);
+		FArdaDependencyKeyBuilder Key;
+		Key.Resource(P.mSource);
+		Key.Resource(P.mDestination);
+		Key.Value(P.mWorkspaceBytes);
+		return Key.Build();
 	}
 
-	FArdaDependencyNodeDesc FArdaCornellCompactBlasNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaCornellCompactBlasNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
 		D.mWorkspaceBytes = P.mWorkspaceBytes;
-		const auto Read = [&](uint32_t I, EArdaRHIResourceState State)
-		{
-			D.mAccesses.push_back({P.mResources[I], EArdaDependencyAccess::Read, State});
-		};
-		const auto Write = [&](uint32_t I, EArdaRHIResourceState State)
-		{
-			D.mAccesses.push_back({P.mResources[I], EArdaDependencyAccess::Write, State});
-		};
-		Read(0, EArdaRHIResourceState::AccelStructRead);
-		Write(1, EArdaRHIResourceState::AccelStructWrite);
+		// Declare the native build or compaction inputs so the compiler owns synchronization.
+		D.mAccesses = {{P.mSource, EArdaDependencyAccess::Read, EArdaRHIResourceState::AccelStructRead},
+		    {P.mDestination, EArdaDependencyAccess::Write, EArdaRHIResourceState::AccelStructWrite}};
 
 		return D;
 	}
 
 	FArdaRHIStatus FArdaCornellCompactBlasNode::Record(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState)
+	    const FArdaParameters& P,
+	    const FArdaState& Prepared,
+	    FArdaInstanceState& InstanceState)
 	{
 		auto& Commands = C.GetCommands();
 
-		return Commands.CompactAccelStruct(*C.GetAccelerationStructure(P.mResources[1]),
-		    *C.GetAccelerationStructure(P.mResources[0]));
+		return Commands.CompactAccelStruct(*C.GetAccelerationStructure(P.mDestination),
+		    *C.GetAccelerationStructure(P.mSource));
 	}
 }

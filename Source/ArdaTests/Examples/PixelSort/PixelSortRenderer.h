@@ -8,12 +8,12 @@
 namespace arda
 {
 	/** Builds persistent graphs from the PixelSort node library; owns presentation and CPU diagnostics. */
-	class FPixelSortRenderer
+	class FArdaPixelSortRenderer
 	{
 	public:
-		explicit FPixelSortRenderer(FArdaRHIDeviceRef Device);
+		explicit FArdaPixelSortRenderer(FArdaRHIDeviceRef Device);
 		void ReleaseFrameGraphs();
-		~FPixelSortRenderer();
+		~FArdaPixelSortRenderer();
 
 		// Records and submits one frame. Verify/Capture opt into CPU readback;
 		// ordinary animation keeps pixels on the GPU. Size follows the swap chain.

@@ -1,8 +1,6 @@
 include("${REQUEST}")
 file(MAKE_DIRECTORY "${VALIDATION_ROOT}")
 file(WRITE "${VALIDATION_ROOT}/layer-path.txt" "")
-# Record an attempt even if optional provisioning fails. Reconfigure to retry.
-file(WRITE "${VALIDATION_ROOT}/attempt.stamp" "attempted\n")
 if(NOT VULKAN_ENABLED)
     return()
 endif()
@@ -15,6 +13,32 @@ if(LAYER_DIR AND NOT FORCE_PROVISION)
     return()
 endif()
 if(NOT FORCE_PROVISION)
+    # The x64 Vulkan loader discovers installed Windows layers through these
+    # registry keys, even when no SDK or environment path points at the layer.
+    # Explicit LAYER_DIR above remains authoritative; cross builds use target paths.
+    if(WIN32 AND NOT CROSS_COMPILING)
+        foreach(REGISTRY_HIVE IN ITEMS HKCU HKLM)
+            set(REGISTRY_KEY "${REGISTRY_HIVE}/SOFTWARE/Khronos/Vulkan/ExplicitLayers")
+            cmake_host_system_information(RESULT REGISTERED_MANIFESTS
+                QUERY WINDOWS_REGISTRY "${REGISTRY_KEY}" VALUE_NAMES VIEW 64)
+            foreach(REGISTERED_MANIFEST IN LISTS REGISTERED_MANIFESTS)
+                get_filename_component(REGISTERED_NAME "${REGISTERED_MANIFEST}" NAME)
+                if(NOT REGISTERED_NAME STREQUAL "VkLayer_khronos_validation.json")
+                    continue()
+                endif()
+                cmake_host_system_information(RESULT LAYER_DISABLED
+                    QUERY WINDOWS_REGISTRY "${REGISTRY_KEY}"
+                    VALUE "${REGISTERED_MANIFEST}" VIEW 64)
+                if(LAYER_DISABLED STREQUAL "0" AND EXISTS "${REGISTERED_MANIFEST}")
+                    get_filename_component(LAYER_DIR "${REGISTERED_MANIFEST}" DIRECTORY)
+                    file(WRITE "${VALIDATION_ROOT}/layer-path.txt" "${LAYER_DIR}\n")
+                    message(STATUS "Using registered Vulkan validation layers: ${LAYER_DIR}")
+                    return()
+                endif()
+            endforeach()
+        endforeach()
+    endif()
+
     find_file(LAYER_MANIFEST VkLayer_khronos_validation.json
         PATHS "${VALIDATION_ROOT}/install/bin"
             "${VALIDATION_ROOT}/install/share/vulkan/explicit_layer.d"
@@ -33,7 +57,7 @@ if(NOT FORCE_PROVISION)
     endif()
 endif()
 if(NOT PROVISION OR CROSS_COMPILING)
-    message(STATUS "Vulkan validation provisioning is disabled; runtime-dependent tests can skip.")
+    message(STATUS "No local Vulkan validation layer selected; use the system loader or run SetupGraphicsSDK.py to install one. Source provisioning is disabled.")
     return()
 endif()
 

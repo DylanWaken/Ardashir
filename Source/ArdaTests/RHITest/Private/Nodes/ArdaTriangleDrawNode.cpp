@@ -1,157 +1,92 @@
 #include "ArdaRHITestPch.h"
 #include "Nodes/ArdaTriangleDrawNode.h"
-#include "ArdaDependencyGraphNodes.h"
-#include <cstring>
-#include "ShaderStructs/ArdaShaderCompiler.h"
 #include "ShaderStructs/ArdaGlobalShaderMap.h"
-
-#include "ArdaExamplePaths.h"
 
 namespace arda
 {
-	struct FArdaTriangleDrawNode::FState
+	class FArdaTriangleVertexShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaTriangleVertexShader);
+	};
+
+	class FArdaTrianglePixelShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaTrianglePixelShader);
+	};
+
+	ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(FArdaTriangleVertexShader,
+	    ARDA_RHI_TEST_SHADER_SOURCE_DIR "/ArdaTriangle.hlsl",
+	    "TriangleVS",
+	    "VSMain",
+	    EArdaRHIShaderStage::Vertex)
+	ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(FArdaTrianglePixelShader,
+	    ARDA_RHI_TEST_SHADER_SOURCE_DIR "/ArdaTriangle.hlsl",
+	    "TrianglePS",
+	    "PSMain",
+	    EArdaRHIShaderStage::Pixel)
+
+	struct FArdaTriangleDrawNode::FArdaState
 	{
 		FArdaRHIDeviceRef mDevice;
+		FArdaGlobalShaderMap mShaderMap;
 		eastl::shared_ptr<const FArdaInductorPipelineConfiguration> mConfiguration;
-		eastl::string mError;
 
-		static bool LoadBinary(const std::filesystem::path& path, eastl::vector<uint8_t>& binary, eastl::string& error)
+		FArdaRHIStatus ShaderError() const
 		{
-			const std::string pathString = path.string();
-			const eastl::string displayPath(pathString.data(), pathString.size());
-			std::ifstream stream(path, std::ios::binary | std::ios::ate);
-			if (!stream)
-			{
-				error = "Unable to open shader: " + displayPath;
-				return false;
-			}
-			const auto size = stream.tellg();
-			if (size <= 0)
-			{
-				error = "Shader is empty: " + displayPath;
-				return false;
-			}
-			binary.resize(static_cast<size_t>(size));
-			stream.seekg(0);
-			stream.read(reinterpret_cast<char*>(binary.data()), size);
-			if (!stream)
-			{
-				error = "Unable to read shader: " + displayPath;
-				binary.clear();
-				return false;
-			}
-			return true;
-		}
-
-		bool InitializeShaders()
-		{
-			const auto Device = mDevice;
-			const auto ShaderDirectory = GetArdaExampleDirectory();
-			const std::filesystem::path shaderCache = ShaderDirectory / ".arda-cache" / "shaders";
-			const std::string shaderSource =
-			    (std::filesystem::path(ARDA_RHI_TEST_SHADER_SOURCE_DIR) / "ArdaTriangle.hlsl").string();
-			arda::FArdaShaderTypeRegistration vertexRegistration("RHITestTriangleVertex",
-			    shaderSource.c_str(),
-			    "TriangleVS",
-			    "VSMain",
-			    arda::EArdaRHIShaderStage::Vertex,
-			    nullptr);
-			arda::FArdaShaderTypeRegistration pixelRegistration("RHITestTrianglePixel",
-			    shaderSource.c_str(),
-			    "TrianglePS",
-			    "PSMain",
-			    arda::EArdaRHIShaderStage::Pixel,
-			    nullptr);
-			const arda::FArdaShaderCompilerConfiguration previousCompiler = arda::GetShaderCompilerConfiguration();
-			arda::FArdaShaderCompilerConfiguration runtimeCompiler = previousCompiler;
-			runtimeCompiler.mbCompileMissingArtifacts = true;
-			runtimeCompiler.mbCompileOutdatedArtifacts = true;
-			arda::ConfigureShaderCompiler(runtimeCompiler);
-			const arda::FArdaShaderCompileResult compileResult = arda::EnsureRegisteredShaderArtifacts(shaderCache,
-			    arda::GetBackendConfiguration().mBackendName.c_str());
-			arda::ConfigureShaderCompiler(previousCompiler);
-			if (!compileResult)
-			{
-				mError = compileResult.mDiagnostics.empty() ? "Ardashir failed to compile the triangle shaders."
-				                                            : compileResult.mDiagnostics.front().mMessage;
-				return false;
-			}
-
-			const char* ArtifactExtension =
-			    arda::GetShaderArtifactExtension(arda::GetBackendConfiguration().mBackendName.c_str());
-			eastl::vector<uint8_t> vertexBinary;
-			eastl::vector<uint8_t> pixelBinary;
-			if (!LoadBinary(shaderCache / (std::string("TriangleVS") + ArtifactExtension), vertexBinary, mError) ||
-			    !LoadBinary(shaderCache / (std::string("TrianglePS") + ArtifactExtension), pixelBinary, mError))
-			{
-				return false;
-			}
-
-			arda::FArdaRHIShaderDesc shaderDesc;
-			shaderDesc.mStage = arda::EArdaRHIShaderStage::Vertex;
-			shaderDesc.mBytecode = vertexBinary.data();
-			shaderDesc.mBytecodeSize = vertexBinary.size();
-			shaderDesc.mEntryPoint = "VSMain";
-			shaderDesc.mDebugName = "Triangle vertex shader";
-			auto vertexShader = Device->CreateShader(shaderDesc);
-			shaderDesc.mStage = arda::EArdaRHIShaderStage::Pixel;
-			shaderDesc.mBytecode = pixelBinary.data();
-			shaderDesc.mBytecodeSize = pixelBinary.size();
-			shaderDesc.mEntryPoint = "PSMain";
-			shaderDesc.mDebugName = "Triangle pixel shader";
-			auto pixelShader = Device->CreateShader(shaderDesc);
-			if (!vertexShader || !pixelShader)
-			{
-				mError = "RHI failed to create the triangle shaders.";
-				return false;
-			}
-			const auto VertexShader = eastl::move(vertexShader.mValue);
-			const auto PixelShader = eastl::move(pixelShader.mValue);
-
-			eastl::vector<arda::FArdaRHIVertexAttributeDesc> attributes(2);
-			attributes[0].mSemanticName = "POSITION";
-			attributes[0].mFormat = arda::EArdaRHIFormat::RG32Float;
-			attributes[0].mOffset = offsetof(FArdaTriangleVertex, mPosition);
-			attributes[0].mElementStride = sizeof(FArdaTriangleVertex);
-			attributes[1].mSemanticName = "COLOR";
-			attributes[1].mFormat = arda::EArdaRHIFormat::RGB32Float;
-			attributes[1].mOffset = offsetof(FArdaTriangleVertex, mColor);
-			attributes[1].mElementStride = sizeof(FArdaTriangleVertex);
-			auto inputLayout = Device->CreateInputLayout(attributes);
-			if (!inputLayout)
-			{
-				mError = inputLayout.mStatus.mMessage;
-				return false;
-			}
-			const auto InputLayout = eastl::move(inputLayout.mValue);
-
-			auto Configuration = eastl::make_shared<FArdaInductorPipelineConfiguration>();
-			Configuration->mKind = EArdaPipelineStateKind::Graphics;
-			auto& pipelineDesc = Configuration->mGraphics.mDesc;
-			pipelineDesc.mInputLayout = InputLayout;
-			pipelineDesc.mVertexShader = VertexShader;
-			pipelineDesc.mPixelShader = PixelShader;
-			pipelineDesc.mDepthStencilState.mbDepthTest = false;
-			pipelineDesc.mDepthStencilState.mbDepthWrite = false;
-			pipelineDesc.mRasterState.mCullMode = EArdaRHICullMode::None;
-			pipelineDesc.mDebugName = "Triangle pipeline";
-			mConfiguration = eastl::move(Configuration);
-
-			mError.clear();
-			return true;
+			const auto Diagnostics = mShaderMap.GetDiagnostics();
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+			    Diagnostics.empty() ? "Triangle node shader initialization failed."
+			                        : Diagnostics.back().mMessage.c_str());
 		}
 
 		FArdaRHIStatus Initialize()
 		{
-			try
+			// The shader map owns compilation, artifact loading, and RHI shader creation.
+			if (!mShaderMap.Initialize(mDevice))
 			{
-				return InitializeShaders() ? FArdaRHIStatus{}
-				                           : FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, mError.c_str());
+				return ShaderError();
 			}
-			catch (const std::exception& Error)
+
+			const auto* VertexShader = mShaderMap.Find(FArdaTriangleVertexShader::GetStaticType());
+			const auto* PixelShader = mShaderMap.Find(FArdaTrianglePixelShader::GetStaticType());
+			if (!VertexShader || !PixelShader)
 			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, Error.what());
+				return ShaderError();
 			}
+
+			// Describe the vertex stream once; graph compilation completes attachment formats.
+			eastl::vector<FArdaRHIVertexAttributeDesc> Attributes(2);
+			Attributes[0].mSemanticName = "POSITION";
+			Attributes[0].mFormat = EArdaRHIFormat::RG32Float;
+			Attributes[0].mOffset = offsetof(FArdaTriangleVertex, mPosition);
+			Attributes[0].mElementStride = sizeof(FArdaTriangleVertex);
+			Attributes[1].mSemanticName = "COLOR";
+			Attributes[1].mFormat = EArdaRHIFormat::RGB32Float;
+			Attributes[1].mOffset = offsetof(FArdaTriangleVertex, mColor);
+			Attributes[1].mElementStride = sizeof(FArdaTriangleVertex);
+			auto InputLayout = mDevice->CreateInputLayout(Attributes);
+			if (!InputLayout)
+			{
+				return InputLayout.mStatus;
+			}
+
+			FArdaRHIGraphicsPipelineDesc FixedState;
+			FixedState.mDepthStencilState.mbDepthTest = false;
+			FixedState.mDepthStencilState.mbDepthWrite = false;
+			FixedState.mRasterState.mCullMode = EArdaRHICullMode::None;
+			FixedState.mSampleCount = 0;
+			FixedState.mDebugName = "Triangle pipeline";
+
+			auto Configuration = eastl::make_shared<FArdaInductorPipelineConfiguration>();
+			Configuration->mKind = EArdaPipelineStateKind::Graphics;
+			Configuration->mGraphics = FArdaGraphicsPipelineStateInitializer::FromGlobalShaders(*VertexShader,
+			    PixelShader,
+			    InputLayout.mValue,
+			    FixedState);
+			mConfiguration = eastl::move(Configuration);
+			return {};
 		}
 	};
 
@@ -160,25 +95,18 @@ namespace arda
 		return {"example.triangle.draw", 1};
 	}
 
-	eastl::string FArdaTriangleDrawNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaTriangleDrawNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		eastl::string K;
-		auto Add = [&K](auto Value)
-		{
-			K.append(reinterpret_cast<const char*>(&Value), sizeof(Value));
-		};
-		for (auto H : {P.mColor, P.mVertices, P.mIndices})
-		{
-			Add(H.mGraph);
-			Add(H.mIndex);
-			Add(H.mGeneration);
-		}
-		Add(P.mWidth);
-		Add(P.mHeight);
-		return K;
+		return FArdaDependencyKeyBuilder()
+		    .Resource(P.mColor)
+		    .Resource(P.mVertices)
+		    .Resource(P.mIndices)
+		    .Value(P.mWidth)
+		    .Value(P.mHeight)
+		    .Build();
 	}
 
-	TArdaRHIResult<eastl::shared_ptr<const FArdaTriangleDrawNode::FState>> FArdaTriangleDrawNode::Prepare(
+	TArdaRHIResult<eastl::shared_ptr<const FArdaTriangleDrawNode::FArdaState>> FArdaTriangleDrawNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
 		if (!Device)
@@ -186,17 +114,21 @@ namespace arda
 			return {{},
 			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
 		}
-		auto State = eastl::make_shared<FState>();
+
+		auto State = eastl::make_shared<FArdaState>();
 		State->mDevice = eastl::move(Device);
+
+		// Publish prepared state only after all node-owned setup succeeds.
 		auto Status = State->Initialize();
 		if (!Status)
 		{
 			return {{}, eastl::move(Status)};
 		}
+
 		return {eastl::move(State), {}};
 	}
 
-	FArdaDependencyNodeDesc FArdaTriangleDrawNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaTriangleDrawNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc R;
 		R.mAccesses = {{P.mVertices, EArdaDependencyAccess::Read, EArdaRHIResourceState::VertexBuffer},
@@ -208,28 +140,30 @@ namespace arda
 	}
 
 	FArdaRHIStatus FArdaTriangleDrawNode::Record(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState)
+	    const FArdaParameters& P,
+	    const FArdaState& Prepared,
+	    FArdaInstanceState& InstanceState)
 	{
 		auto Status = C.GetCommands().ClearTexture(*C.GetTexture(P.mColor), {}, {0.025f, 0.035f, 0.06f, 1.f});
 		if (!Status)
 		{
 			return Status;
 		}
+
+		// Supply dynamic draw inputs; the executor fills the compiled pipeline, framebuffer, and bindings.
 		FArdaRHIGraphicsState State;
-		State.mPipeline = C.GetPipeline()->mGraphics;
-		State.mFramebuffer = C.GetFramebuffer();
 		State.mVertexBuffers.push_back({C.GetBuffer(P.mVertices), 0, 0});
 		State.mIndexBuffer = C.GetBuffer(P.mIndices);
 		State.mIndexFormat = EArdaRHIFormat::R16UInt;
 		State.mViewports.push_back({0.f, float(P.mWidth), 0.f, float(P.mHeight), 0.f, 1.f});
 		State.mScissors.push_back({0, int32_t(P.mWidth), 0, int32_t(P.mHeight)});
-		Status = C.GetCommands().SetGraphicsState(State);
+		Status = C.SetGraphicsState(State);
 		if (!Status)
 		{
 			return Status;
 		}
+
+		// Record only this node's draw; submission and cross-node ordering belong to the graph.
 		C.GetCommands().DrawIndexed({3});
 		return {};
 	}

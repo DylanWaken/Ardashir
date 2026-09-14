@@ -5,15 +5,15 @@
 
 namespace arda
 {
-	struct FArdaTriangleRenderer::FFrameGraph
+	struct FArdaTriangleRenderer::FArdaFrameGraph
 	{
 		FArdaRHITextureRef mColor;
 		FArdaDependencyGraph mGraph;
-		FArdaTriangleNodeParameters mDrawParameters;
+		FArdaTriangleDrawParameters mDrawParameters;
 		FArdaGraphNodeHandle mVertexUpload;
 		FArdaGraphNodeHandle mIndexUpload;
 
-		explicit FFrameGraph(FArdaRHIDeviceRef Device)
+		explicit FArdaFrameGraph(FArdaRHIDeviceRef Device)
 		    : mGraph(eastl::move(Device))
 		{
 		}
@@ -38,6 +38,7 @@ namespace arda
 
 		(void)swapChainFormat;
 
+		// Keep geometry in imported buffers so one-time uploads can be retired after the first frame.
 		arda::FArdaRHIBufferDesc bufferDesc;
 		bufferDesc.mByteSize = sizeof(ArdaTriangleVertices);
 		bufferDesc.mUsage = arda::EArdaRHIBufferUsage::Vertex;
@@ -80,7 +81,8 @@ namespace arda
 		}
 		const auto colorAttachment = framebufferDesc.mColorAttachments[0];
 
-		FFrameGraph* Frame = nullptr;
+		// Look up the persistent graph belonging to this swap-chain image.
+		FArdaFrameGraph* Frame = nullptr;
 		for (auto& Cached : mFrameGraphs)
 		{
 			if (Cached->mColor.Get() == colorAttachment.mTexture.Get())
@@ -90,7 +92,7 @@ namespace arda
 		}
 		if (!Frame)
 		{
-			auto Created = std::make_unique<FFrameGraph>(mDevice);
+			auto Created = std::make_unique<FArdaFrameGraph>(mDevice);
 			Created->mColor = colorAttachment.mTexture;
 			auto& Graph = Created->mGraph;
 			auto Status = Graph.BeginGraphEdit();
@@ -99,6 +101,8 @@ namespace arda
 				mError = Status.mMessage;
 				return false;
 			}
+
+			// Wire imported geometry and the acquired color target into the registered draw node.
 			auto Color = Graph.ImportTexture("Swap-chain color", Created->mColor);
 			auto V = Graph.ImportBuffer("Triangle vertices", mVertexBuffer);
 			auto I = Graph.ImportBuffer("Triangle indices", mIndexBuffer);
@@ -117,8 +121,8 @@ namespace arda
 			if (!mbGeometryUploaded)
 			{
 				// Attach independent uploads after their consumer. ArdaInductor orders them before drawing.
-				auto Vertices = Graph.AttachOrFind<FArdaTriangleVertexUploadNode>("Upload vertices", V.mValue);
-				auto Indices = Graph.AttachOrFind<FArdaTriangleIndexUploadNode>("Upload indices", I.mValue);
+				auto Vertices = Graph.AttachOrFind<FArdaTriangleVertexUploadNode>("Upload vertices", {V.mValue});
+				auto Indices = Graph.AttachOrFind<FArdaTriangleIndexUploadNode>("Upload indices", {I.mValue});
 				if (!Vertices || !Indices)
 				{
 					mError = !Vertices ? Vertices.mStatus.mMessage : Indices.mStatus.mMessage;
@@ -127,6 +131,8 @@ namespace arda
 				Created->mVertexUpload = Vertices.mValue;
 				Created->mIndexUpload = Indices.mValue;
 			}
+
+			// Compile the graph before adding the new frame to the replay cache.
 			Status = Graph.EndGraphEdit();
 			if (!Status)
 			{
@@ -136,6 +142,8 @@ namespace arda
 			Frame = Created.get();
 			mFrameGraphs.push_back(std::move(Created));
 		}
+
+		// Execute compiled work before presenting or removing completed one-time operations.
 		swapChain.PrepareSubmit();
 		const auto Result = Frame->mGraph.Execute();
 		if (!Result.mStatus)
@@ -164,6 +172,8 @@ namespace arda
 			}
 			if (Status)
 			{
+
+				// Compile the graph before adding the new frame to the replay cache.
 				Status = Graph.EndGraphEdit();
 			}
 			if (!Status)

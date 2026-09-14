@@ -12,7 +12,7 @@
 
 namespace arda
 {
-	FPixelSortWindow::~FPixelSortWindow()
+	FArdaPixelSortWindow::~FArdaPixelSortWindow()
 	{
 		// Main's owner ordering has already destroyed the swap chain/Vulkan surface.
 		if (mWindow)
@@ -25,7 +25,7 @@ namespace arda
 		}
 	}
 
-	void FPixelSortWindow::Create(uint32_t Width, uint32_t Height, bool Hidden)
+	void FArdaPixelSortWindow::Create(uint32_t Width, uint32_t Height, bool Hidden)
 	{
 		// Work in client-area pixels for swap-chain extents and kernel selection.
 		// Account for borders so the requested image size is not the outer window size.
@@ -68,7 +68,7 @@ namespace arda
 		mbResize = false;
 	}
 
-	bool FPixelSortWindow::Pump()
+	bool FArdaPixelSortWindow::Pump()
 	{
 		// Drain events without blocking normal animation. Main uses WaitMessage
 		// only when minimized; a hidden test window still pumps and renders frames.
@@ -85,14 +85,14 @@ namespace arda
 		return !mbClosed;
 	}
 
-	bool FPixelSortWindow::ConsumeResize()
+	bool FArdaPixelSortWindow::ConsumeResize()
 	{
 		const bool Changed = mbResize;
 		mbResize = false;
 		return Changed;
 	}
 
-	void FPixelSortWindow::Resize(uint32_t Width, uint32_t Height)
+	void FArdaPixelSortWindow::Resize(uint32_t Width, uint32_t Height)
 	{
 		// Used by --resize-test to trigger the same WM_SIZE path as an interactive
 		// resize. This changes the native window; main handles GPU resizing later.
@@ -110,18 +110,18 @@ namespace arda
 		}
 	}
 
-	void FPixelSortWindow::SetTitle(const char* Title)
+	void FArdaPixelSortWindow::SetTitle(const char* Title)
 	{
 		SetWindowTextA(mWindow, Title);
 	}
 
-	LRESULT CALLBACK FPixelSortWindow::Procedure(HWND Window, UINT Message, WPARAM W, LPARAM L)
+	LRESULT CALLBACK FArdaPixelSortWindow::Procedure(HWND Window, UINT Message, WPARAM W, LPARAM L)
 	{
-		auto* Self = reinterpret_cast<FPixelSortWindow*>(GetWindowLongPtrW(Window, GWLP_USERDATA));
+		auto* Self = reinterpret_cast<FArdaPixelSortWindow*>(GetWindowLongPtrW(Window, GWLP_USERDATA));
 		if (Message == WM_NCCREATE)
 		{
 			// Connect Win32's callback to the C++ instance passed to CreateWindowEx.
-			Self = static_cast<FPixelSortWindow*>(reinterpret_cast<CREATESTRUCTW*>(L)->lpCreateParams);
+			Self = static_cast<FArdaPixelSortWindow*>(reinterpret_cast<CREATESTRUCTW*>(L)->lpCreateParams);
 			SetWindowLongPtrW(Window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(Self));
 		}
 		if (!Self)
@@ -180,19 +180,19 @@ namespace arda
 		return DefWindowProcW(Window, Message, W, L);
 	}
 
-	FArdaNativeObject FPixelSortWindow::GetD3D12WindowHandle() const noexcept
+	FArdaNativeObject FArdaPixelSortWindow::GetD3D12WindowHandle() const noexcept
 	{
 		return FArdaNativeObject(mWindow);
 	}
 
 	// These two extensions let the backend create an instance supporting a Win32
 	// presentation surface; no other platform surface extension is needed here.
-	eastl::vector<const char*> FPixelSortWindow::GetVulkanInstanceExtensions() const
+	eastl::vector<const char*> FArdaPixelSortWindow::GetVulkanInstanceExtensions() const
 	{
 		return {"VK_KHR_surface", "VK_KHR_win32_surface"};
 	}
 
-	FArdaNativeObject FPixelSortWindow::CreateVulkanSurface(FArdaNativeObject Instance, eastl::string& Error)
+	FArdaNativeObject FArdaPixelSortWindow::CreateVulkanSurface(FArdaNativeObject Instance, eastl::string& Error)
 	{
 #if defined(ARDA_PIXEL_SORT_VULKAN)
 		// Resolve the surface entry point against the backend's own VkInstance.

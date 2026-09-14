@@ -4,7 +4,7 @@
 
 namespace arda
 {
-	struct FAddParameters
+	struct FArdaAddParameters
 	{
 		const unsigned int* Input;
 		unsigned int* Output;
@@ -12,7 +12,7 @@ namespace arda
 		unsigned int Bias;
 	};
 
-	__global__ void AddArdaValues(FAddParameters P)
+	__global__ void AddArdaValues(FArdaAddParameters P)
 	{
 		const unsigned int Index = blockIdx.x * blockDim.x + threadIdx.x;
 		if (Index < P.Count)

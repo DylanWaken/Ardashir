@@ -8,20 +8,20 @@
 
 namespace eastl
 {
-	class ArdaEASTLAllocator
+	class FArdaEASTLAllocator
 	{
 	public:
-		explicit ArdaEASTLAllocator(const char* = nullptr) noexcept
+		explicit FArdaEASTLAllocator(const char* = nullptr) noexcept
 		{
 		}
 
-		ArdaEASTLAllocator(const ArdaEASTLAllocator&) noexcept = default;
+		FArdaEASTLAllocator(const FArdaEASTLAllocator&) noexcept = default;
 
-		ArdaEASTLAllocator(const ArdaEASTLAllocator&, const char*) noexcept
+		FArdaEASTLAllocator(const FArdaEASTLAllocator&, const char*) noexcept
 		{
 		}
 
-		ArdaEASTLAllocator& operator=(const ArdaEASTLAllocator&) noexcept = default;
+		FArdaEASTLAllocator& operator=(const FArdaEASTLAllocator&) noexcept = default;
 
 		[[nodiscard]] void* allocate(std::size_t Size, int = 0)
 		{
@@ -83,23 +83,23 @@ namespace eastl
 		}
 	};
 
-	[[nodiscard]] inline ArdaEASTLAllocator* GetArdaEASTLAllocator() noexcept
+	[[nodiscard]] inline FArdaEASTLAllocator* GetArdaEASTLAllocator() noexcept
 	{
-		static ArdaEASTLAllocator Allocator;
+		static FArdaEASTLAllocator Allocator;
 		return &Allocator;
 	}
 
-	inline bool operator==(const ArdaEASTLAllocator&, const ArdaEASTLAllocator&) noexcept
+	inline bool operator==(const FArdaEASTLAllocator&, const FArdaEASTLAllocator&) noexcept
 	{
 		return true;
 	}
 
-	inline bool operator!=(const ArdaEASTLAllocator&, const ArdaEASTLAllocator&) noexcept
+	inline bool operator!=(const FArdaEASTLAllocator&, const FArdaEASTLAllocator&) noexcept
 	{
 		return false;
 	}
 }
 
 #define EASTL_USER_DEFINED_ALLOCATOR 1
-#define EASTLAllocatorType eastl::ArdaEASTLAllocator
+#define EASTLAllocatorType eastl::FArdaEASTLAllocator
 #define EASTLAllocatorDefault eastl::GetArdaEASTLAllocator

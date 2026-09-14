@@ -4,22 +4,32 @@
 
 namespace arda
 {
+	FArdaRHIStatus FArdaTerrainUploadSettingsNode::DeclareResources(FArdaDependencyResourceContext& C,
+	    FArdaParameters& P)
+	{
+		FArdaRHIBufferDesc D;
+		D.mByteSize = sizeof(FArdaTerrainSettings);
+		D.mStructureStride = sizeof(FArdaTerrainSettings);
+		D.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource;
+		return C.Buffer(P.mDestination, "Destination", D);
+	}
+
 	FArdaDependencyNodeMetadata FArdaTerrainUploadSettingsNode::GetMetadata()
 	{
 		return {"example.terrain.upload-settings", 1};
 	}
 
-	eastl::string FArdaTerrainUploadSettingsNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaTerrainUploadSettingsNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		eastl::string Key;
+		FArdaDependencyKeyBuilder Key;
 
-		AppendResource(Key, P.mDestination);
-		Append(Key, reinterpret_cast<uintptr_t>(P.mInputs.get()));
+		Key.Resource(P.mDestination);
+		Key.Value(reinterpret_cast<uintptr_t>(P.mInputs.get()));
 
-		return Key;
+		return Key.Build();
 	}
 
-	FArdaRHIStatus FArdaTerrainUploadSettingsNode::Validate(const FParameters& P)
+	FArdaRHIStatus FArdaTerrainUploadSettingsNode::Validate(const FArdaParameters& P)
 	{
 		if (!P.mInputs)
 		{
@@ -29,7 +39,8 @@ namespace arda
 		return {};
 	}
 
-	FArdaDependencyNodeDesc FArdaTerrainUploadSettingsNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaTerrainUploadSettingsNode::Describe(const FArdaParameters& P,
+	    const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
 		D.mAccesses = {{P.mDestination, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest}};
@@ -37,9 +48,9 @@ namespace arda
 	}
 
 	FArdaRHIStatus FArdaTerrainUploadSettingsNode::Record(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState)
+	    const FArdaParameters& P,
+	    const FArdaState& Prepared,
+	    FArdaInstanceState& InstanceState)
 	{
 		return C.GetCommands().WriteBuffer(*C.GetBuffer(P.mDestination),
 		    &P.mInputs->mSettings,

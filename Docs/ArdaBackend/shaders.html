@@ -109,7 +109,7 @@
 
 Entry point                 Stage       Output stem
 GenerateNoiseHeightmapCS    Compute     TerrainGenerateCS
-TerrainVS                   Vertex      TerrainVS
+TerrainVS                   FArdaVertex      TerrainVS
 TerrainPS                   Pixel       TerrainPS
 
 D3D12 package: TerrainGenerateCS.dxil, TerrainVS.dxil, TerrainPS.dxil
@@ -221,19 +221,19 @@ if (!resolved)
         <section id="registration">
           <h2>Deferred static registration and commit</h2>
           <p>Global shader classes use static registration nodes so declarations can live near renderer code without requiring a manually maintained central list. Static initialization order across translation units is not a reliable publication order, so construction only appends a pending <a href="api-reference.html#api-arda-backend-fardashadertyperegistration-345ad6f5"><code>arda::FArdaShaderTypeRegistration</code></a>. Publication is a separate deterministic operation.</p>
-          <pre><code>class FBlurCS final : public arda::FArdaGlobalShader
+          <pre><code>class FArdaBlurCS final : public arda::FArdaGlobalShader
 {
 public:
-    using FParameters = FBlurParameters;
-    ARDA_DECLARE_GLOBAL_SHADER(FBlurCS);
+    using FArdaParameters = FArdaBlurParameters;
+    ARDA_DECLARE_GLOBAL_SHADER(FArdaBlurCS);
 };
 
 ARDA_IMPLEMENT_GLOBAL_SHADER(
-    FBlurCS,
+    FArdaBlurCS,
     "/Project/Post/Blur.hlsl", // exact virtual source filename
     "BlurCS",                  // packaged artifact stem
     "BlurMain",                // bytecode entry point
-    arda::EArdaRHIShaderStage::Compute);</code></pre>
+    arda::EArdaRHIShaderFArdaStage::Compute);</code></pre>
           <p><a href="api-reference.html#api-arda-backend-fardashadertyperegistration-commitall-8af2b7c3"><code>arda::FArdaShaderTypeRegistration::CommitAll</code></a> sorts candidates by type name and identity hash, validates all candidates, then publishes the whole set. It rejects empty identities, missing virtual sources, invalid parameter metadata, duplicate class names, and duplicate artifact identities.</p>
           <p>The current identity hash includes source path, output stem, entry point, and stage. Parameter layout is validated during commit but is not part of that hash. Two classes that point to the same source, output, entry, and stage collide even if their C++ parameter declarations differ. That rule prevents two CPU contracts from silently claiming one executable artifact.</p>
           <figure>
@@ -248,9 +248,9 @@ ARDA_IMPLEMENT_GLOBAL_SHADER(
           <p>This resembles reflection but has a crucial direction: the C++ declaration generates metadata. ArdaBackend does not inspect DXIL or SPIR-V to infer it. Therefore metadata can build layouts without backend-specific reflection libraries and remains available in stripped builds. The tradeoff is duplicated truth: HLSL and C++ can disagree while each is internally valid.</p>
 
           <h3>Worked declaration</h3>
-          <pre><code>using Stage = arda::EArdaRHIShaderStage;
+          <pre><code>using FArdaStage = arda::EArdaRHIShaderStage;
 
-struct alignas(16) FDispatchPushConstants
+struct alignas(16) FArdaDispatchPushConstants
 {
     uint32_t mWidth = 0;
     uint32_t mHeight = 0;
@@ -258,19 +258,19 @@ struct alignas(16) FDispatchPushConstants
     uint32_t mPadding = 0;
 };
 
-ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FBlurInputs)
+ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaBlurInputs)
     ARDA_SHADER_TEXTURE_SRV_ARRAY(
-        mMipInputs, 0, 1, 4, Stage::Compute)
+        mMipInputs, 0, 1, 4, FArdaStage::Compute)
     ARDA_SHADER_SAMPLER(
-        mLinearClamp, 0, 1, Stage::Compute)
+        mLinearClamp, 0, 1, FArdaStage::Compute)
 ARDA_END_SHADER_PARAMETER_STRUCT()
 
-ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FBlurParameters)
-    ARDA_SHADER_PARAMETER_STRUCT(FBlurInputs, mInputs)
+ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaBlurParameters)
+    ARDA_SHADER_PARAMETER_STRUCT(FArdaBlurInputs, mInputs)
     ARDA_SHADER_BUFFER_UAV(
-        mOutput, 0, 2, Stage::Compute)
+        mOutput, 0, 2, FArdaStage::Compute)
     ARDA_SHADER_PUSH_CONSTANTS(
-        FDispatchPushConstants, mDispatch, 0, 3, Stage::Compute)
+        FArdaDispatchPushConstants, mDispatch, 0, 3, FArdaStage::Compute)
 ARDA_END_SHADER_PARAMETER_STRUCT()</code></pre>
           <p>The nested struct flattens in declaration order. <code>mInputs.mMipInputs</code> resolves to four texture SRVs beginning at <code>t0, space1</code>; <code>mInputs.mLinearClamp</code> resolves to <code>s0, space1</code>; <code>mOutput</code> resolves to <code>u0, space2</code>; and <code>mDispatch</code> becomes a push-constant item in space 3. <a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-findflattenedmember-24aa7063"><code>arda::FArdaShaderParameterMetadata::FindFlattenedMember</code></a> can return the leaf and its absolute offset from the root C++ object.</p>
 
@@ -295,10 +295,10 @@ overlap iff A.start &lt; B.end and B.start &lt; A.end
           </figure>
 
           <h3>Offset derivation for nested members</h3>
-          <p>Suppose <code>FBlurParameters::mInputs</code> begins at byte 0 and <code>FBlurInputs::mLinearClamp</code> begins at byte 32. Flattening computes:</p>
+          <p>Suppose <code>FArdaBlurParameters::mInputs</code> begins at byte 0 and <code>FArdaBlurInputs::mLinearClamp</code> begins at byte 32. Flattening computes:</p>
           <pre><code>absoluteOffset(mInputs.mLinearClamp)
-    = offsetof(FBlurParameters, mInputs)
-    + offsetof(FBlurInputs, mLinearClamp)
+    = offsetof(FArdaBlurParameters, mInputs)
+    + offsetof(FArdaBlurInputs, mLinearClamp)
     = 0 + 32
     = 32 bytes</code></pre>
           <p>For a resource-reference array, element <var>i</var> is read from <code>absoluteOffset + i × elementStride</code>. This is a CPU object-layout calculation used to retrieve RHI references; it is not the offset of a texture inside GPU memory.</p>
@@ -323,7 +323,7 @@ overlap iff A.start &lt; B.end and B.start &lt; A.end
           <h2>Binding layouts versus binding sets</h2>
           <p>A binding layout is a schema: it says that a stage-visible register space contains particular slot ranges and resource kinds. A binding set is an instance: it supplies concrete textures, buffers, samplers, or acceleration structures for one layout. In database terms, the layout resembles a table definition and the set resembles a row.</p>
           <p><a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-buildbindinglayoutdescs-b4df1d86"><code>arda::FArdaShaderParameterMetadata::BuildBindingLayoutDescs</code></a> emits one descriptor for each unique <code>(register space, exact visibility mask)</code> pair. All matching members become items in that descriptor. Consequently, one shader can own multiple layouts even when it has only one parameter struct.</p>
-          <pre><code>const auto&amp; metadata = FBlurParameters::GetStaticMetadata();
+          <pre><code>const auto&amp; metadata = FArdaBlurParameters::GetStaticMetadata();
 eastl::vector&lt;arda::FArdaRHIBindingLayoutDesc&gt; layoutDescs;
 if (auto status = metadata.BuildBindingLayoutDescs(layoutDescs); !status)
     return Report(status.mMessage);
@@ -337,7 +337,7 @@ for (const auto&amp; desc : layoutDescs)
     layouts.push_back(eastl::move(result.mValue));
 }</code></pre>
           <p>The global shader map performs that layout creation once for initialized shader instances. At use time, populate a parameter struct and call <a href="api-reference.html#api-arda-backend-fardashaderparametermetadata-createbindingset-9f1c23fe"><code>arda::FArdaShaderParameterMetadata::CreateBindingSet</code></a> for each relevant layout. It verifies that the selected layout equals one generated from the metadata, expands arrays, rejects null resources, and requires every layout item to be completely populated.</p>
-          <pre><code>FBlurParameters parameters;
+          <pre><code>FArdaBlurParameters parameters;
 parameters.mInputs.mMipInputs[0] = mip0;
 parameters.mInputs.mMipInputs[1] = mip1;
 parameters.mInputs.mMipInputs[2] = mip2;
@@ -347,7 +347,7 @@ parameters.mOutput = outputBuffer;
 parameters.mDispatch = { width, height, radius, 0 };
 
 arda::FArdaRHIBindingSetRef set;
-auto status = FBlurParameters::GetStaticMetadata().CreateBindingSet(
+auto status = FArdaBlurParameters::GetStaticMetadata().CreateBindingSet(
     *device, &amp;parameters, resourceLayout, set);
 if (!status)
     return Report(status.mMessage);</code></pre>
@@ -389,7 +389,7 @@ if (!shaderMap.Initialize(
     return false;
 }
 
-const auto* blur = shaderMap.Find(FBlurCS::GetStaticType());
+const auto* blur = shaderMap.Find(FArdaBlurCS::GetStaticType());
 if (!blur)
     return false;
 

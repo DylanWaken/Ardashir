@@ -3,6 +3,7 @@
 Start at [the overview](index.html). The backend guides include:
 
 - [Resource recipes](resource-recipes.html): every RHI resource kind, allocation and ownership, with usage examples.
+- [GPU allocator](Gpu-Allocator.md): device-wide heap and resource reuse, submission leases, retention controls, diagnostics, and the backend memory planner.
 - [Capability recipes](capability-recipes.html): every predicate in the native capability conformance matrix, its guard and executable workload.
 - [How CUDA works with graphics](cuda-graphics.html): general concepts, shared memory, graphics/CUDA handoffs, execution modes, lifetime and performance.
 - [CUDA operands and both launch methods](cuda-interop.html#launch-methods): precompiled typed variants, registered and triple-chevron launches, runtime validation, RDG scheduling and submission lifetime.

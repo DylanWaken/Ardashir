@@ -112,10 +112,10 @@ an existing Visual Studio build cannot be converted to Ninja in place.
 `--nvcc` also sets the backend's include directory to the toolkit's `include`
 folder; `--cuda-include-dir` overrides that location. Existing builds reuse
 their compiler and architecture cache unless overridden. New builds disable
-other examples and tests; add `--cmake-arg=-DARDASHIR_BUILD_TESTS=ON` to provision
-validation for verification. Repeated `--cmake-arg=-DNAME=VALUE` options pass
-additional settings to CMake. Use a fresh directory when changing generators
-or CUDA compilers.
+other examples and tests; add `--cmake-arg=-DARDASHIR_BUILD_TESTS=ON` to register
+the GPU tests. Verification does not require validation layers. Repeated
+`--cmake-arg=-DNAME=VALUE` options pass additional settings to CMake. Use a fresh
+directory when changing generators or CUDA compilers.
 
 A previous `CMAKE_CUDA_COMPILER=NOTFOUND` is retried on the next configure.
 Successful compiler selections stay cached. CMake now reports the underlying
@@ -155,8 +155,9 @@ returns code **77** with a reason; workload errors return **1**.
 ## One frame and two compiled variants
 
 `FindOrCreateFrameGraph` assembles a persistent graph per swap-chain color texture
-and verification/capture configuration. It attaches consumers first to demonstrate
-that resource dependencies determine the execution order:
+and verification/capture configuration. Each node accepts its own parameter struct;
+the renderer supplies prefilled structs or inline aggregates and connects output
+handles explicitly. Resource dependencies determine the execution order:
 
 1. `UploadFrame` writes time/extent/display constants.
 2. `Noise` reads those constants and writes an **RGBA8UInt** texture with `NoiseCS`.
@@ -170,8 +171,10 @@ ArdaInductor creates the compute and graphics PSOs, lowers barriers and ownershi
 transfers, and submits the graphics/CUDA sequence. Graphs and per-graph binding sets
 are reused across frames. Constants, noise and output are graph-owned transients,
 so different cached frame graphs do not share writable intermediate storage.
-Frame input values are sampled before submission; changing time, channel, threshold,
-or the original-image toggle does not require an edit.
+Upload and sort retain separate dynamic input structs within each cached frame graph.
+The renderer updates time and the original-image toggle in the upload input, and
+channel and threshold in the sort input before submission. Recording samples those
+values without requiring a graph edit.
 
 Ordinary animation uses `Submit`; diagnostic readbacks use `Wait(ticket)` before
 mapping. Recycling an occupied frame slot can wait. Resize releases graphs before
@@ -181,7 +184,7 @@ underlying CUDA-in-graphics and ordinary-context handoff contracts.
 
 `BindKernelVariants` calls the nvcc-built registration function. A C++ integer
 sequence instantiates two typed `__global__` entries, each taking only
-`FArdaPixelSortParameters::FCuda` by value. Their host payloads describe threads,
+`FArdaPixelSortParameters::FArdaCuda` by value. Their host payloads describe threads,
 tile length and direction; the generated build manifest describes native
 architecture support. `SelectKernel` chooses among compatible entries:
 
@@ -224,10 +227,10 @@ does not normalize or color-convert it automatically.
 
 ## Verify and capture
 
-Enable `ARDASHIR_BUILD_TESTS=ON` when configuring to register eight native GPU
-tests and provision optional validation layers. The test configuration also
-builds the existing repository test targets/profiles at configure time; use an
-nvcc version that supports their architecture settings.
+Enable `ARDASHIR_BUILD_TESTS=ON` when configuring to register the native GPU
+tests. Building PixelSort does not depend on validation-layer provisioning.
+The test configuration also builds the existing repository test targets/profiles
+at configure time; use an nvcc version that supports their architecture settings.
 
 ```powershell
 ctest --test-dir build/pixel-sort -R '^PixelSort\.' --output-on-failure
@@ -237,15 +240,19 @@ build/pixel-sort/Source/ArdaTests/Examples/PixelSort/PixelSort.exe --backend d3d
   --width 900 --height 1200 --time 4 --frames 1 --capture portrait.png
 ```
 
-`--verify` enables native validation, reads back both compute/CUDA textures after
-completion and compares **every RGBA pixel** with an independent CPU
+`--verify` reads back both compute/CUDA textures after completion and compares
+**every RGBA pixel** with an independent CPU
 `std::stable_sort` reference. The six real Win32 resizes cover both variants,
 all RGB keys, multiple thresholds, partial tiles and multi-tile lines. Two additional
 `PixelSort.d3d12.Replay` and `PixelSort.vulkan.Replay` tests execute eight same-size
 frames to exercise cached graph reuse.
-`--validation` enables graphics validation without readback. Ordinary runs do
-not require development validation layers. `--frames 0` (the default) runs
-until the window closes. `--time` freezes the clock for reproducible captures.
+`--validation` independently enables native GPU validation and can be combined
+with `--verify`. It requires an `ARDASHIR_ENABLE_GPU_VALIDATION=ON` build;
+OFF builds reject the flag. Ordinary runs and `--verify` do not require development
+validation layers. Existing GPU CTest cases cover ordinary runs; separate
+`Validation` cases add `--validation` in ON builds, including asynchronous replay.
+`--frames 0` (the default) runs until the window closes. `--time` freezes the
+clock for reproducible captures.
 PNG capture reads the rendered back buffer, on the final bounded frame or the
 first frame when running indefinitely; its parent directory must already exist.
 

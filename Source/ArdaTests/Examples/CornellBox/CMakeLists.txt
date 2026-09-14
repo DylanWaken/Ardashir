@@ -40,8 +40,9 @@ endif()
 
 set_target_properties(CornellBox PROPERTIES FOLDER "Ardashir/Tests/Examples/CornellBox")
 
+ardashir_test_validation(CornellBox OPTIONAL)
+
 if(ARDASHIR_BUILD_TESTS)
-    ardashir_test_validation(CornellBox)
     set(CORNELL_BOX_GPU_TESTS)
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         add_test(
@@ -57,6 +58,8 @@ if(ARDASHIR_BUILD_TESTS)
                 --max-samples 8 --max-bounces 3
         )
         list(APPEND CORNELL_BOX_GPU_TESTS CornellBox.D3D12 CornellBox.D3D12.NoCompaction)
+        ardashir_example_validation_test(CornellBox D3D12 --frames 2 --hidden
+            --width 320 --height 180 --samples-per-dispatch 1 --max-samples 2 --max-bounces 3)
     endif()
     if(ARDASHIR_BACKEND_VULKAN)
         add_test(
@@ -72,6 +75,9 @@ if(ARDASHIR_BUILD_TESTS)
                 --max-samples 8 --max-bounces 3
         )
         list(APPEND CORNELL_BOX_GPU_TESTS CornellBox.Vulkan CornellBox.Vulkan.NoCompaction)
+        ardashir_example_without_validation_tests(CornellBox.Vulkan CornellBox.Vulkan.NoCompaction)
+        ardashir_example_validation_test(CornellBox Vulkan --frames 2 --hidden
+            --width 320 --height 180 --samples-per-dispatch 1 --max-samples 2 --max-bounces 3)
     endif()
     if(CORNELL_BOX_GPU_TESTS)
         set_tests_properties(${CORNELL_BOX_GPU_TESTS} PROPERTIES

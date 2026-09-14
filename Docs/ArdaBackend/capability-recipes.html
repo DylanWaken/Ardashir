@@ -38,6 +38,7 @@
         <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
 
         <a href="resource-recipes.html">Resource recipes</a>
+        <a href="Gpu-Allocator.md">GPU allocator</a>
         <a href="capability-recipes.html">Capability recipes</a>
         <a href="cuda-interop.html">CUDA and graphics</a>
         <a href="cuda-graphics.html">CUDA in graphics fundamentals</a>
@@ -55,7 +56,7 @@
         ArdaBackend
       </nav>
       <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>Capability recipes</h1><p>Admit every capability in the native conformance matrix and follow its executable usage example.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#feature-raytracingpipeline">Dispatch ray-tracing stages</a><a href="#feature-accelerationstructure">Build, update and compact acceleration structures</a><a href="#feature-inlinerayquery">Trace rays from an ordinary compute shader</a><a href="#feature-raytracingscene">Use hit groups, local arguments and indirect rays</a><a href="#feature-opacitymicromap">Build Vulkan opacity micromaps</a><a href="#feature-bindless">Address descriptors by array index</a><a href="#feature-runtimedescriptors">Update descriptors without rewriting recorded work</a><a href="#feature-expandeddescriptors">Use resource collections</a><a href="#feature-directresourceheap">Index the resource descriptor heap</a><a href="#feature-directresourceandsamplerheaps">Index resource and sampler heaps together</a><a href="#feature-descriptorbuffer">Use native descriptor-buffer storage</a><a href="#feature-queuebreadth">Order work across queue families</a><a href="#feature-sparseresidency">Map reserved buffers and textures</a><a href="#feature-streamingbudget">Observe and reserve a streaming budget</a><a href="#feature-subgroup">Use subgroup arithmetic</a><a href="#feature-float16">Select native half-precision arithmetic</a><a href="#feature-int8">Select packed integer dot products</a><a href="#feature-instancebuffer">Build a TLAS from instance data</a><a href="#feature-meshshader">Rasterize mesh-shader output</a><a href="#feature-workgraph">Dispatch a D3D12 work graph</a><a href="#feature-samplerfeedback">Decode native sampler feedback</a><a href="#feature-shaderbundle">Dispatch a shader bundle</a><a href="#feature-custompresent">Integrate a custom presentation callback</a><a href="#feature-contract">Unsupported raster policy</a><a href="#feature-heapaliasing">Reuse explicit GPU memory</a><a href="#feature-extendedcommands">Copy, stage, transition and dispatch indirectly</a><a href="#feature-resolve">Resolve multisampling and select planes</a><a href="#feature-queries">Measure and observe submitted work</a><a href="#feature-queuetimestamps">Poll per-queue GPU execution times</a><a href="#feature-shaderlibrary">Execute an entry point from a library</a><a href="#feature-pipelinecache">Persist native pipeline compilation</a><a href="#summary">Checkpoints</a></nav>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#feature-raytracingpipeline">Dispatch ray-tracing stages</a><a href="#feature-accelerationstructure">Build, update and compact acceleration structures</a><a href="#feature-inlinerayquery">Trace rays from an ordinary compute shader</a><a href="#feature-raytracingscene">Use hit groups, local arguments and indirect rays</a><a href="#feature-opacitymicromap">Build Vulkan opacity micromaps</a><a href="#feature-bindless">Address descriptors by array index</a><a href="#feature-runtimedescriptors">Update descriptors without rewriting recorded work</a><a href="#feature-expandeddescriptors">Use resource collections</a><a href="#feature-directresourceheap">Index the resource descriptor heap</a><a href="#feature-directresourceandsamplerheaps">Index resource and sampler heaps together</a><a href="#feature-descriptorbuffer">Use native descriptor-buffer storage</a><a href="#feature-queuebreadth">Order work across queue families</a><a href="#feature-sparseresidency">Map reserved buffers and textures</a><a href="#feature-streamingbudget">Observe and reserve a streaming budget</a><a href="#feature-subgroup">Use subgroup arithmetic</a><a href="#feature-float16">Select native half-precision arithmetic</a><a href="#feature-int8">Select packed integer dot products</a><a href="#feature-instancebuffer">Build a TLAS from instance data</a><a href="#feature-meshshader">Rasterize mesh-shader output</a><a href="#feature-workgraph">Dispatch a D3D12 work graph</a><a href="#feature-samplerfeedback">Decode native sampler feedback</a><a href="#feature-shaderbundle">Dispatch a shader bundle</a><a href="#feature-custompresent">Integrate a custom presentation callback</a><a href="#feature-contract">Unsupported raster policy</a><a href="#feature-heapaliasing">Reuse explicit GPU memory</a><a href="#feature-extendedcommands">Copy, stage, transition and dispatch indirectly</a><a href="#feature-geometryshader">Generate geometry before rasterization</a><a href="#feature-tessellationshaders">Evaluate tessellated patches</a><a href="#feature-resolve">Resolve multisampling and select planes</a><a href="#feature-queries">Measure and observe submitted work</a><a href="#feature-queuetimestamps">Poll per-queue GPU execution times</a><a href="#feature-shaderlibrary">Execute an entry point from a library</a><a href="#feature-pipelinecache">Persist native pipeline compilation</a><a href="#summary">Checkpoints</a></nav>
 <section id="objectives"><h2>How to use these examples</h2>
 <p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
 <p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
@@ -172,11 +173,11 @@ const bool UpdateUnusedDescriptorsWhilePending = C.mDescriptors.mbUpdateUnusedWh
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -300,6 +301,15 @@ const bool QueueFamilyOwnershipTransfer = C.mQueues.mbQueueFamilyOwnershipTransf
 const bool GraphicsQueueFamilyIndex = C.mQueues.mGraphicsFamily != arda::ArdaRHIInvalidQueueFamily;
 const bool ComputeQueueFamilyIndex = C.mQueues.mComputeFamily != arda::ArdaRHIInvalidQueueFamily;
 const bool CopyQueueFamilyIndex = C.mQueues.mCopyFamily != arda::ArdaRHIInvalidQueueFamily;</code></pre><pre><code class="language-cpp">const FArdaRHICapabilities&amp; Capabilities = Device-&gt;GetCapabilities();
+const bool bD3D12 = std::strcmp(BackendName, &quot;native-d3d12&quot;) == 0;
+if (bD3D12)
+{
+	FArdaRHIFeatureRequirements Requirements;
+	Requirements.mbRequireTimelineSynchronization = true;
+	Requirements.mbRequireGpuQueueWaits = true;
+	const auto Admission = Device-&gt;RequireFeatures(Requirements);
+	ASSERT_TRUE(Admission) &lt;&lt; Admission.mMessage.c_str();
+}
 if (Capabilities.mQueues.mbCopy)
 {
 	FArdaRHIBufferDesc BufferDesc;
@@ -384,11 +394,11 @@ const bool MaximumSubgroupSize = C.mMachineLearning.mSubgroupMaxSize &gt; 0;</co
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -471,11 +481,11 @@ const bool NativeFloat16 = C.mMachineLearning.mbNativeFloat16;</code></pre><pre>
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -558,11 +568,11 @@ const bool NativeInt8 = C.mMachineLearning.mbNativeInt8;</code></pre><pre><code 
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -745,16 +755,16 @@ const bool CustomPresent = C.mbCustomPresent;</code></pre><pre><code class="lang
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedBackendCleanup Cleanup;
-	FWin32TestSurface Surface;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaWin32TestSurface Surface;
 	ASSERT_TRUE(Surface.IsValid());
 
-	FExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedDiagnosticCallback Diagnostics;
 	IArdaBackendModule* Module = FindBackendModule(&quot;native-d3d12&quot;);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -775,7 +785,7 @@ const bool CustomPresent = C.mbCustomPresent;</code></pre><pre><code class="lang
 	const FArdaRHIStatus Support = Device-&gt;QueryCustomPresentSupport();
 	ASSERT_TRUE(Support) &lt;&lt; Support.mMessage.c_str();
 
-	auto Tracker = eastl::make_shared&lt;FCustomPresentTracker&gt;();
+	auto Tracker = eastl::make_shared&lt;FArdaCustomPresentTracker&gt;();
 	SwapChain-&gt;SetCustomPresent(Tracker);
 	ASSERT_EQ(SwapChain-&gt;GetCustomPresent().get(), Tracker.get());
 	EXPECT_EQ(Tracker-&gt;mResizeCount, 1u);
@@ -855,6 +865,112 @@ TextureDesc.mDebugName = &quot;Extended copy destination&quot;;
 auto Destination = Device-&gt;CreateTexture(TextureDesc);
 ASSERT_TRUE(Source);
 ASSERT_TRUE(Destination);</code></pre><p><a href="gpu-examples.html#VerifyExtendedCommands">Complete usage and output checks: VerifyExtendedCommands</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
+<section id="feature-geometryshader"><h2>Generate geometry before rasterization</h2><p>Require geometry shaders and supply mGeometryShader in the graphics pipeline. The executable probe renders a full-screen triangle: its geometry stage changes the vertex color from red to green, and every readback pixel must be green. A successful vertex/pixel pipeline alone does not qualify this feature.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
+const bool GeometryShaders = C.mbGeometryShaders;</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
+    BackendName,
+    &quot;ArdaRasterStageVS&quot;,
+    &quot;RasterStageVS&quot;,
+    EArdaRHIShaderStage::Vertex);
+auto Pixel = CreateExtendedShader(*Device,
+    BackendName,
+    &quot;ArdaRasterStagePS&quot;,
+    &quot;RasterStagePS&quot;,
+    EArdaRHIShaderStage::Pixel);
+ASSERT_TRUE(Vertex) &lt;&lt; Vertex.mStatus.mMessage.c_str();
+ASSERT_TRUE(Pixel) &lt;&lt; Pixel.mStatus.mMessage.c_str();
+FArdaRHIGraphicsPipelineDesc PipelineDesc;
+PipelineDesc.mDebugName =
+    bTessellation ? &quot;Hull/domain capability conformance&quot; : &quot;Geometry capability conformance&quot;;
+PipelineDesc.mVertexShader = Vertex.mValue;
+PipelineDesc.mPixelShader = Pixel.mValue;
+PipelineDesc.mColorFormats = {EArdaRHIFormat::RGBA8UNorm};
+PipelineDesc.mRasterState.mCullMode = EArdaRHICullMode::None;
+PipelineDesc.mDepthStencilState.mbDepthTest = false;
+PipelineDesc.mDepthStencilState.mbDepthWrite = false;
+if (bTessellation)
+{
+	auto Hull = CreateExtendedShader(*Device,
+	    BackendName,
+	    &quot;ArdaRasterStageHS&quot;,
+	    &quot;RasterStageHS&quot;,
+	    EArdaRHIShaderStage::Hull);
+	auto Domain = CreateExtendedShader(*Device,
+	    BackendName,
+	    &quot;ArdaRasterStageDS&quot;,
+	    &quot;RasterStageDS&quot;,
+	    EArdaRHIShaderStage::Domain);
+	ASSERT_TRUE(Hull) &lt;&lt; Hull.mStatus.mMessage.c_str();
+	ASSERT_TRUE(Domain) &lt;&lt; Domain.mStatus.mMessage.c_str();
+	PipelineDesc.mHullShader = Hull.mValue;
+	PipelineDesc.mDomainShader = Domain.mValue;
+	PipelineDesc.mTopology = EArdaRHIPrimitiveTopology::PatchList;
+	PipelineDesc.mPatchControlPoints = 3;
+}
+else
+{
+	auto Geometry = CreateExtendedShader(*Device,
+	    BackendName,
+	    &quot;ArdaRasterStageGS&quot;,
+	    &quot;RasterStageGS&quot;,
+	    EArdaRHIShaderStage::Geometry);
+	ASSERT_TRUE(Geometry) &lt;&lt; Geometry.mStatus.mMessage.c_str();
+	PipelineDesc.mGeometryShader = Geometry.mValue;
+}
+auto Pipeline = Device-&gt;CreateGraphicsPipeline(PipelineDesc);
+ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRasterStageCapabilityAndExecution">Complete usage and output checks: VerifyRasterStageCapabilityAndExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
+<section id="feature-tessellationshaders"><h2>Evaluate tessellated patches</h2><p>Require tessellation shaders, provide both hull and domain stages, and use PatchList topology with matching mPatchControlPoints. The probe tessellates a three-control-point patch; its hull stage supplies green and its domain stage adds blue. Every readback pixel must be cyan, proving the selected stages execute.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
+const bool TessellationShaders = C.mbTessellationShaders;</code></pre><pre><code class="language-cpp">auto Vertex = CreateExtendedShader(*Device,
+    BackendName,
+    &quot;ArdaRasterStageVS&quot;,
+    &quot;RasterStageVS&quot;,
+    EArdaRHIShaderStage::Vertex);
+auto Pixel = CreateExtendedShader(*Device,
+    BackendName,
+    &quot;ArdaRasterStagePS&quot;,
+    &quot;RasterStagePS&quot;,
+    EArdaRHIShaderStage::Pixel);
+ASSERT_TRUE(Vertex) &lt;&lt; Vertex.mStatus.mMessage.c_str();
+ASSERT_TRUE(Pixel) &lt;&lt; Pixel.mStatus.mMessage.c_str();
+FArdaRHIGraphicsPipelineDesc PipelineDesc;
+PipelineDesc.mDebugName =
+    bTessellation ? &quot;Hull/domain capability conformance&quot; : &quot;Geometry capability conformance&quot;;
+PipelineDesc.mVertexShader = Vertex.mValue;
+PipelineDesc.mPixelShader = Pixel.mValue;
+PipelineDesc.mColorFormats = {EArdaRHIFormat::RGBA8UNorm};
+PipelineDesc.mRasterState.mCullMode = EArdaRHICullMode::None;
+PipelineDesc.mDepthStencilState.mbDepthTest = false;
+PipelineDesc.mDepthStencilState.mbDepthWrite = false;
+if (bTessellation)
+{
+	auto Hull = CreateExtendedShader(*Device,
+	    BackendName,
+	    &quot;ArdaRasterStageHS&quot;,
+	    &quot;RasterStageHS&quot;,
+	    EArdaRHIShaderStage::Hull);
+	auto Domain = CreateExtendedShader(*Device,
+	    BackendName,
+	    &quot;ArdaRasterStageDS&quot;,
+	    &quot;RasterStageDS&quot;,
+	    EArdaRHIShaderStage::Domain);
+	ASSERT_TRUE(Hull) &lt;&lt; Hull.mStatus.mMessage.c_str();
+	ASSERT_TRUE(Domain) &lt;&lt; Domain.mStatus.mMessage.c_str();
+	PipelineDesc.mHullShader = Hull.mValue;
+	PipelineDesc.mDomainShader = Domain.mValue;
+	PipelineDesc.mTopology = EArdaRHIPrimitiveTopology::PatchList;
+	PipelineDesc.mPatchControlPoints = 3;
+}
+else
+{
+	auto Geometry = CreateExtendedShader(*Device,
+	    BackendName,
+	    &quot;ArdaRasterStageGS&quot;,
+	    &quot;RasterStageGS&quot;,
+	    EArdaRHIShaderStage::Geometry);
+	ASSERT_TRUE(Geometry) &lt;&lt; Geometry.mStatus.mMessage.c_str();
+	PipelineDesc.mGeometryShader = Geometry.mValue;
+}
+auto Pipeline = Device-&gt;CreateGraphicsPipeline(PipelineDesc);
+ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyRasterStageCapabilityAndExecution">Complete usage and output checks: VerifyRasterStageCapabilityAndExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section>
 <section id="feature-resolve"><h2>Resolve multisampling and select planes</h2><p>Resolve requires compatible formats and sample counts; copying bytes is not an MSAA resolve. Plane selection matters for depth/stencil views. The example validates both resolved pixels and the independently tracked native/facade states.</p><p>Read <a href="api-reference.html#api-arda-rhi-fardarhicapabilities-51cdbe80"><code>FArdaRHICapabilities</code></a> from <a href="api-reference.html#api-arda-rhi-iardarhidevice-3a07bb85"><code>IArdaRHIDevice</code></a> and select only the abilities used by your workload. These are the exact predicates used by the executable conformance matrix:</p><pre><code class="language-cpp">const auto&amp; C = Device-&gt;GetCapabilities();
 const bool TextureResolve = C.mbTextureResolve;</code></pre><pre><code class="language-cpp">FArdaRHITextureDesc SourceDesc;
 SourceDesc.mDebugName = &quot;Extended MSAA resolve source&quot;;
@@ -889,11 +1005,11 @@ const bool CopyTimestamps = C.mQueues.mCopyTimestampValidBits != 0;</code></pre>
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
 	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
@@ -1015,6 +1131,6 @@ auto Shader = Device-&gt;GetShaderFromLibrary(Library.mValue,
 ASSERT_TRUE(Shader) &lt;&lt; Shader.mStatus.mMessage.c_str();</code></pre><p><a href="gpu-examples.html#VerifyShaderLibraryExecution">Complete usage and output checks: VerifyShaderLibraryExecution</a>. For each named predicate, run <code>ArdaBackendTests --gtest_filter=*AdvertisedCapabilityConforms/*_NAME</code>, replacing NAME with the predicate name above. The test chooses the corresponding native branch and workload parameters.</p></section><section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>
 </main>
   </div>
-  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
+  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaInfra/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
 </body>
 </html>

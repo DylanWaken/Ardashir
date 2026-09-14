@@ -1,7 +1,7 @@
 static const float kPi = 3.14159265358979323846;
 static const float kRayEpsilon = 0.0015;
 
-struct CornellVertex
+struct FArdaCornellVertex
 {
 	float3 Position;
 	float Padding;
@@ -9,7 +9,7 @@ struct CornellVertex
 	uint MaterialId;
 };
 
-struct CornellMaterial
+struct FArdaCornellMaterial
 {
 	float3 BaseColor;
 	float Roughness;
@@ -20,7 +20,7 @@ struct CornellMaterial
 	float2 Padding;
 };
 
-struct CornellPayload
+struct FArdaCornellPayload
 {
 	float3 Normal;
 	float T;
@@ -31,9 +31,9 @@ struct CornellPayload
 };
 
 RaytracingAccelerationStructure Scene : register(t0);
-StructuredBuffer<CornellVertex> Vertices : register(t1);
+StructuredBuffer<FArdaCornellVertex> Vertices : register(t1);
 StructuredBuffer<uint> Indices : register(t2);
-StructuredBuffer<CornellMaterial> Materials : register(t3);
+StructuredBuffer<FArdaCornellMaterial> Materials : register(t3);
 RWStructuredBuffer<float4> SampleRadiance : register(u0);
 
 cbuffer FrameConstants : register(b0)
@@ -125,7 +125,7 @@ float SmithMask(float NdotX, float Alpha)
 	return NdotX / max(NdotX * (1.0 - K) + K, 1.0e-6);
 }
 
-void EvaluateBsdf(CornellMaterial Material, float3 Normal, float3 View, float3 Light, out float3 F, out float Pdf)
+void EvaluateBsdf(FArdaCornellMaterial Material, float3 Normal, float3 View, float3 Light, out float3 F, out float Pdf)
 {
 	const float NdotV = saturate(dot(Normal, View));
 	const float NdotL = saturate(dot(Normal, Light));
@@ -154,7 +154,7 @@ void EvaluateBsdf(CornellMaterial Material, float3 Normal, float3 View, float3 L
 	}
 }
 
-bool SampleBsdf(CornellMaterial Material,
+bool SampleBsdf(FArdaCornellMaterial Material,
     float3 Normal,
     float3 IncomingDirection,
     bool FrontFace,
@@ -237,13 +237,13 @@ bool IsVisible(float3 Origin, float3 Direction, float Distance)
 	Ray.Direction = Direction;
 	Ray.TMin = kRayEpsilon;
 	Ray.TMax = max(Distance - kRayEpsilon * 2.0, kRayEpsilon);
-	CornellPayload Payload;
-	Payload.Normal = 0.0;
-	Payload.T = 0.0;
-	Payload.MaterialId = 0;
-	Payload.Hit = 1;
-	Payload.FrontFace = 1;
-	Payload.Padding = 0;
+	FArdaCornellPayload FArdaPayload;
+	FArdaPayload.Normal = 0.0;
+	FArdaPayload.T = 0.0;
+	FArdaPayload.MaterialId = 0;
+	FArdaPayload.Hit = 1;
+	FArdaPayload.FrontFace = 1;
+	FArdaPayload.Padding = 0;
 	TraceRay(Scene,
 	    RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
 	    0xff,
@@ -251,8 +251,8 @@ bool IsVisible(float3 Origin, float3 Direction, float Distance)
 	    0,
 	    0,
 	    Ray,
-	    Payload);
-	return Payload.Hit == 0;
+	    FArdaPayload);
+	return FArdaPayload.Hit == 0;
 }
 
 float3 TracePath(float3 Origin, float3 Direction, inout uint Rng)
@@ -270,22 +270,22 @@ float3 TracePath(float3 Origin, float3 Direction, inout uint Rng)
 		Ray.Direction = Direction;
 		Ray.TMin = kRayEpsilon;
 		Ray.TMax = 10000.0;
-		CornellPayload Payload;
-		Payload.Normal = 0.0;
-		Payload.T = 0.0;
-		Payload.MaterialId = 0;
-		Payload.Hit = 0;
-		Payload.FrontFace = 1;
-		Payload.Padding = 0;
-		TraceRay(Scene, RAY_FLAG_FORCE_OPAQUE, 0xff, 0, 0, 0, Ray, Payload);
-		if (Payload.Hit == 0)
+		FArdaCornellPayload FArdaPayload;
+		FArdaPayload.Normal = 0.0;
+		FArdaPayload.T = 0.0;
+		FArdaPayload.MaterialId = 0;
+		FArdaPayload.Hit = 0;
+		FArdaPayload.FrontFace = 1;
+		FArdaPayload.Padding = 0;
+		TraceRay(Scene, RAY_FLAG_FORCE_OPAQUE, 0xff, 0, 0, 0, Ray, FArdaPayload);
+		if (FArdaPayload.Hit == 0)
 		{
 			break;
 		}
 
-		const float3 Position = Origin + Direction * Payload.T;
-		const float3 Normal = normalize(Payload.Normal);
-		const CornellMaterial Material = Materials[Payload.MaterialId];
+		const float3 Position = Origin + Direction * FArdaPayload.T;
+		const float3 Normal = normalize(FArdaPayload.Normal);
+		const FArdaCornellMaterial Material = Materials[FArdaPayload.MaterialId];
 		const float EmissionStrength = max(Material.Emission.x, max(Material.Emission.y, Material.Emission.z));
 		if (EmissionStrength > 0.0)
 		{
@@ -293,7 +293,7 @@ float3 TracePath(float3 Origin, float3 Direction, inout uint Rng)
 			if (Bounce > 0 && !LastDelta)
 			{
 				const float CosLight = max(dot(float3(0, 0, -1), -Direction), 1.0e-6);
-				const float LightPdf = Payload.T * Payload.T / max(CameraUpAndLightArea.w * CosLight, 1.0e-6);
+				const float LightPdf = FArdaPayload.T * FArdaPayload.T / max(CameraUpAndLightArea.w * CosLight, 1.0e-6);
 				Weight = PowerHeuristic(LastBsdfPdf, LightPdf);
 			}
 			Radiance += Throughput * Material.Emission * Weight;
@@ -329,7 +329,7 @@ float3 TracePath(float3 Origin, float3 Direction, inout uint Rng)
 		if (!SampleBsdf(Material,
 		        Normal,
 		        Direction,
-		        Payload.FrontFace != 0,
+		        FArdaPayload.FrontFace != 0,
 		        Rng,
 		        NewDirection,
 		        BsdfWeight,
@@ -382,21 +382,21 @@ void CornellRayGen()
 }
 
 [shader("miss")]
-void CornellMiss(inout CornellPayload Payload)
+void CornellMiss(inout FArdaCornellPayload FArdaPayload)
 {
-	Payload.Hit = 0;
+	FArdaPayload.Hit = 0;
 }
 
 [shader("closesthit")]
-void CornellClosestHit(inout CornellPayload Payload, BuiltInTriangleIntersectionAttributes Attributes)
+void CornellClosestHit(inout FArdaCornellPayload FArdaPayload, BuiltInTriangleIntersectionAttributes Attributes)
 {
 	const uint Primitive = PrimitiveIndex();
 	const uint I0 = Indices[Primitive * 3 + 0];
 	const uint I1 = Indices[Primitive * 3 + 1];
 	const uint I2 = Indices[Primitive * 3 + 2];
-	const CornellVertex V0 = Vertices[I0];
-	const CornellVertex V1 = Vertices[I1];
-	const CornellVertex V2 = Vertices[I2];
+	const FArdaCornellVertex V0 = Vertices[I0];
+	const FArdaCornellVertex V1 = Vertices[I1];
+	const FArdaCornellVertex V2 = Vertices[I2];
 	const float3 Barycentrics = float3(1.0 - Attributes.barycentrics.x - Attributes.barycentrics.y,
 	    Attributes.barycentrics.x,
 	    Attributes.barycentrics.y);
@@ -406,9 +406,9 @@ void CornellClosestHit(inout CornellPayload Payload, BuiltInTriangleIntersection
 	{
 		Normal = -Normal;
 	}
-	Payload.Normal = Normal;
-	Payload.T = RayTCurrent();
-	Payload.MaterialId = V0.MaterialId;
-	Payload.Hit = 1;
-	Payload.FrontFace = FrontFace ? 1 : 0;
+	FArdaPayload.Normal = Normal;
+	FArdaPayload.T = RayTCurrent();
+	FArdaPayload.MaterialId = V0.MaterialId;
+	FArdaPayload.Hit = 1;
+	FArdaPayload.FrontFace = FrontFace ? 1 : 0;
 }

@@ -15,7 +15,7 @@ namespace arda
 
 // One field list generates both sides of the launch ABI:
 //   FArdaPixelSortParameters        : retained RHI texture views + host scalar values
-//   FArdaPixelSortParameters::FCuda : CUDA surface handles + copied scalar values
+//   FArdaPixelSortParameters::FArdaCuda : CUDA surface handles + copied scalar values
 // SURFACE declares the exact storage format and access used by the kernel.
 // VALUE declares plain launch data; do not hide resource pointers in VALUE fields.
 // BUFFER is available for typed buffer views, but this example needs only surfaces.
@@ -55,12 +55,12 @@ namespace arda
 
 		// Called once per operand, including when GetOperandSupport is queried.
 		// Register all compiled choices here; do not inspect a frame or launch work.
-		void BindKernelVariants(FRegistry&) const override;
+		void BindKernelVariants(FArdaRegistry&) const override;
 
 		// Called for each dispatch with compatible variants and host parameters.
 		// Return an ID and grid/block sizes; selection must have no side effects.
-		TArdaRHIResult<FArdaCudaKernelSelection> SelectKernel(const FParameters&,
+		TArdaRHIResult<FArdaCudaKernelSelection> SelectKernel(const FArdaParameters&,
 		    const FArdaCudaSelectionContext&,
-		    const FVariants&) const override;
+		    const FArdaVariants&) const override;
 	};
 }

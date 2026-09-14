@@ -42,8 +42,9 @@ endif()
 
 set_target_properties(ARDGExample PROPERTIES FOLDER "Ardashir/Tests/Examples/ARDGExample")
 
+ardashir_test_validation(ARDGExample OPTIONAL)
+
 if(ARDASHIR_BUILD_TESTS)
-    ardashir_test_validation(ARDGExample)
     set(ARDG_EXAMPLE_GPU_TESTS)
     if(WIN32 AND ARDASHIR_BACKEND_D3D12)
         add_test(
@@ -54,15 +55,24 @@ if(ARDASHIR_BUILD_TESTS)
             NAME ARDGExample.D3D12.MultiFrameLifetime
             COMMAND ARDGExample --backend d3d12 --frames 120 --hidden
         )
+        add_test(NAME ARDGExample.D3D12.Verify
+            COMMAND ARDGExample --backend d3d12 --frames 3 --hidden --verify)
         list(APPEND ARDG_EXAMPLE_GPU_TESTS
             ARDGExample.D3D12
-            ARDGExample.D3D12.MultiFrameLifetime)
+            ARDGExample.D3D12.MultiFrameLifetime
+            ARDGExample.D3D12.Verify)
+        ardashir_example_validation_test(ARDGExample D3D12 --frames 3 --hidden)
     endif()
     if(ARDASHIR_BACKEND_VULKAN)
         add_test(
             NAME ARDGExample.Vulkan
             COMMAND ARDGExample --backend vulkan --frames 3 --hidden)
         list(APPEND ARDG_EXAMPLE_GPU_TESTS ARDGExample.Vulkan)
+        add_test(NAME ARDGExample.Vulkan.Verify
+            COMMAND ARDGExample --backend vulkan --frames 3 --hidden --verify)
+        list(APPEND ARDG_EXAMPLE_GPU_TESTS ARDGExample.Vulkan.Verify)
+        ardashir_example_without_validation_tests(ARDGExample.Vulkan ARDGExample.Vulkan.Verify)
+        ardashir_example_validation_test(ARDGExample Vulkan --frames 3 --hidden)
     endif()
     if(ARDG_EXAMPLE_GPU_TESTS)
         set_tests_properties(${ARDG_EXAMPLE_GPU_TESTS} PROPERTIES

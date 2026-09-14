@@ -1,35 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
-<title id="title">Dependencies follow resource values</title><desc id="desc">Single-producer semantics make attachment order independent of execution.</desc>
-<defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker></defs>
-<rect width="1200" height="620" rx="20" fill="#0b1424"/>
-<g font-family="system-ui,sans-serif"><text x="40" y="57" fill="#eef6ff" font-size="29" font-weight="700">Dependencies follow resource values</text>
-<text x="40" y="96" fill="#b7cbe1" font-size="16">Single-producer semantics make attachment order independent of execution.</text>
-<rect x="40" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
-<text x="60" y="198" fill="#7dd3fc" font-size="14">01</text>
-<text x="60" y="239" fill="#eef6ff" font-size="19" font-weight="700">Input value</text>
-<text x="60" y="280" fill="#c4d3e5" font-size="15">External or graph-owned</text>
-<text x="60" y="312" fill="#c4d3e5" font-size="15">Readers declare a handle</text>
-<text x="60" y="344" fill="#c4d3e5" font-size="15">Owned reads need coverage</text>
-<path d="M294 274H322" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="330" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
-<text x="350" y="198" fill="#7dd3fc" font-size="14">02</text>
-<text x="350" y="239" fill="#eef6ff" font-size="19" font-weight="700">Producer operation</text>
-<text x="350" y="280" fill="#c4d3e5" font-size="15">Writes one new version</text>
-<text x="350" y="312" fill="#c4d3e5" font-size="15">May contain a sequence</text>
-<text x="350" y="344" fill="#c4d3e5" font-size="15">Internal barriers explicit</text>
-<path d="M584 274H612" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="620" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
-<text x="640" y="198" fill="#7dd3fc" font-size="14">03</text>
-<text x="640" y="239" fill="#eef6ff" font-size="19" font-weight="700">Output version</text>
-<text x="640" y="280" fill="#c4d3e5" font-size="15">One producing node</text>
-<text x="640" y="312" fill="#c4d3e5" font-size="15">Declared bytes/subresources</text>
-<text x="640" y="344" fill="#c4d3e5" font-size="15">All readers depend on it</text>
-<path d="M874 274H902" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="910" y="162" width="250" height="226" rx="14" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
-<text x="930" y="198" fill="#7dd3fc" font-size="14">04</text>
-<text x="930" y="239" fill="#eef6ff" font-size="19" font-weight="700">Consumer operations</text>
-<text x="930" y="280" fill="#c4d3e5" font-size="15">One or several readers</text>
-<text x="930" y="312" fill="#c4d3e5" font-size="15">Attach in any order</text>
-<text x="930" y="344" fill="#c4d3e5" font-size="15">Compiler derives edges</text>
-<rect x="40" y="432" width="1120" height="130" rx="12" fill="#152637"/><text x="62" y="476" fill="#d8e6f4" font-size="16">Successive algorithm stages use distinct logical versions. Multiple producers on one handle fail.</text><text x="62" y="518" fill="#abc4dc" font-size="16">Non-resource ordering uses explicit AddDependency edges; arda.sync provides a named join.</text></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Resource ordering with one or several writers</title>
+  <desc id="desc">With one producer a reader follows its writer regardless of attachment order. With repeated writes to one region, Write1, Read1, Write2 and Read2 execute in their attachment order and reuse the same resource. Disjoint ranges have independent producers.</desc>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#7dd3fc"/></marker></defs>
+  <rect width="1200" height="720" rx="20" fill="#0b1424"/>
+  <g font-family="system-ui,sans-serif" fill="#eef6ff">
+    <text x="40" y="55" font-size="29" font-weight="700">The writer count matters per overlapping region</text>
+    <text x="40" y="88" font-size="17" fill="#b7cbe1">Arrows are required execution dependencies. Unrelated work may run between them.</text>
+    <rect x="40" y="115" width="1120" height="155" rx="12" fill="#152637"/>
+    <text x="62" y="146" font-size="20" font-weight="700">One writer</text>
+    <text x="62" y="182" font-size="17" fill="#c4d3e5">Attach Read1, then Write1.</text>
+    <text x="62" y="213" font-size="17" fill="#c4d3e5">The read still consumes Write1.</text>
+    <rect x="580" y="168" width="200" height="58" rx="10" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+    <text x="680" y="204" text-anchor="middle" font-size="20">Write1</text>
+    <path d="M792 197H850" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="864" y="168" width="200" height="58" rx="10" fill="#172a43" stroke="#5cb8df" stroke-width="2"/>
+    <text x="964" y="204" text-anchor="middle" font-size="20">Read1</text>
+    <rect x="40" y="292" width="1120" height="195" rx="12" fill="#152637"/>
+    <text x="62" y="324" font-size="20" font-weight="700">Repeated writers on the same region: attach in the order shown</text>
+    <g fill="#172a43" stroke="#5cb8df" stroke-width="2">
+      <rect x="82" y="353" width="205" height="58" rx="10"/>
+      <rect x="362" y="353" width="205" height="58" rx="10"/>
+      <rect x="642" y="353" width="205" height="58" rx="10"/>
+      <rect x="922" y="353" width="205" height="58" rx="10"/>
+    </g>
+    <g text-anchor="middle" font-size="20">
+      <text x="184" y="389">Write1</text><text x="464" y="389">Read1</text>
+      <text x="744" y="389">Write2</text><text x="1024" y="389">Read2</text>
+    </g>
+    <g stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)">
+      <path d="M299 382H348"/><path d="M579 382H628"/><path d="M859 382H908"/>
+    </g>
+    <text x="62" y="448" font-size="17" fill="#c4d3e5">Read1 finishes before the overwrite. Read2 sees Write2. One handle, one physical graph resource.</text>
+    <rect x="40" y="509" width="1120" height="160" rx="12" fill="#152637"/>
+    <text x="62" y="542" font-size="20" font-weight="700">Disjoint regions</text>
+    <text x="62" y="579" font-size="17" fill="#c4d3e5">A writes [0,128), B writes [128,256).</text>
+    <text x="62" y="611" font-size="17" fill="#c4d3e5">No dependency between A and B.</text>
+    <g fill="#172a43" stroke="#5cb8df" stroke-width="2">
+      <rect x="620" y="535" width="150" height="45" rx="8"/>
+      <rect x="620" y="600" width="150" height="45" rx="8"/>
+      <rect x="898" y="567" width="222" height="45" rx="8"/>
+    </g>
+    <g text-anchor="middle" font-size="19">
+      <text x="695" y="564">Write A</text><text x="695" y="629">Write B</text>
+      <text x="1009" y="596">Read [0,256)</text>
+    </g>
+    <g fill="none" stroke="#7dd3fc" stroke-width="2" marker-end="url(#arrow)">
+      <path d="M782 558H830L884 584"/><path d="M782 623H830L884 597"/>
+    </g>
+  </g>
+</svg>

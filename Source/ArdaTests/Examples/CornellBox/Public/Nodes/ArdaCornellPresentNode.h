@@ -3,18 +3,35 @@
 
 namespace arda
 {
+	/** Parameters owned by one Cornell Present node instance. */
+	struct FArdaCornellPresentParameters
+	{
+		/** Input accumulated radiance texture. */
+		FArdaDependencyResourceHandle mAccumulation;
+		/** Input frame constant buffer. */
+		FArdaDependencyResourceHandle mConstants;
+		/** Output render-target texture. */
+		FArdaDependencyResourceHandle mColor;
+		/** Viewport and scissor width in pixels. */
+		uint32_t mWidth = 1;
+		/** Viewport and scissor height in pixels. */
+		uint32_t mHeight = 1;
+		/** Scratch memory reserved while recording this node. */
+		uint64_t mWorkspaceBytes = 0;
+	};
+
 	class FArdaCornellPresentNode final
-	    : public TArdaGraphicsDependencyNode<FArdaCornellPresentNode, FArdaCornellNodeParameters>
+	    : public TArdaGraphicsDependencyNode<FArdaCornellPresentNode, FArdaCornellPresentParameters>
 	{
 	public:
-		struct FState;
+		struct FArdaState;
 		static FArdaDependencyNodeMetadata GetMetadata();
-		static eastl::string GetCanonicalKey(const FParameters& Parameters);
-		static TArdaRHIResult<eastl::shared_ptr<const FState>> Prepare(FArdaRHIDeviceRef Device);
-		static FArdaDependencyNodeDesc Describe(const FParameters& Parameters, const FState& State);
+		static eastl::string GetCanonicalKey(const FArdaParameters& Parameters);
+		static TArdaRHIResult<eastl::shared_ptr<const FArdaState>> Prepare(FArdaRHIDeviceRef Device);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters& Parameters, const FArdaState& State);
 		static FArdaRHIStatus Record(FArdaDependencyExecutionContext& Context,
-		    const FParameters& Parameters,
-		    const FState& State,
-		    FInstanceState& Instance);
+		    const FArdaParameters& Parameters,
+		    const FArdaState& State,
+		    FArdaInstanceState& Instance);
 	};
 }

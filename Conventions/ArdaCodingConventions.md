@@ -16,7 +16,7 @@ project stem in type names and as the prefix for filenames.
 - This includes provider contracts, shared implementation helpers, tests, and
   sample programs. Use descriptive names instead of nested namespaces.
 - Keep file-local helpers in anonymous namespaces and shared internal declarations
-  in private headers. The `ArdaNamespaceBoundary` build check enforces this rule.
+  in private headers.
 - Do not add public module namespace chains or parallel alias facades. Clients
   can write `using namespace arda;` locally; never put this directive in a public header.
 - Name types and variables with nouns.
@@ -56,11 +56,22 @@ class FRenderGraph;
 ```
 
 This rule applies to classes, structs, enums, unions, aliases, interfaces, and
-class or alias templates. It does not apply to fundamental types, template
-parameters, or third-party types.
+class or alias templates, including private, nested, function-local, test and
+shader types. Project-defined aliases must retain the stem even when scoped
+inside another Arda type. Do not preserve old unprefixed names as compatibility
+aliases: they recreate the integration ambiguity this rule prevents.
 
-Module-specific conventions may replace the `Arda` stem for types in their
-module and take precedence over this section:
+Fundamental types, template parameters and names owned by third-party APIs are
+exempt. For example, the GLFW-owned `GLFWwindow` forward declaration must retain
+its exact ABI name. Required third-party protocol members retain the spellings
+specified by that API.
+
+Run `python Scripts/CheckTypeNames.py` to audit the authored C++, CUDA and shader
+inventory, including local types and parameter-struct macros. The project test
+runner executes this check before configuring the build. Generated reference
+copies are refreshed from their canonical sources instead of audited separately.
+
+Module conventions supplement this rule; they must retain the `Arda` stem:
 
 - [ArdaRenderGraph Coding Conventions](Modules/ArdaRenderGraph.md)
 
@@ -111,7 +122,7 @@ template <typename InElementType>
 class TArdaContainer
 {
 public:
-    using ElementType = InElementType;
+    using FArdaElementType = InElementType;
 };
 ```
 
@@ -151,7 +162,7 @@ public:
   one line. Separate function/type definitions with a blank line, and leave blank
   lines between major declaration groups and logical stages inside long functions.
 - Keep pointer and reference symbols next to the type:
-  `ArdaDevice* Device`, `const ArdaConfig& Configuration`.
+  `FArdaDevice* Device`, `const FArdaConfig& Configuration`.
 - Keep lines readable; split long expressions by logical structure.
 - Use the root `.clang-format` with **clang-format 19** for mechanical formatting.
   Keep the existing Arda type/member names; formatting is not an API rename.

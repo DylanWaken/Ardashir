@@ -4,7 +4,7 @@
 
 namespace arda
 {
-	struct FArdaPixelSortSortNode::FState
+	struct FArdaPixelSortSortNode::FArdaState
 	{
 		FArdaRHIDeviceRef mDevice;
 		eastl::shared_ptr<FArdaPixelSortOperand> mOperand;
@@ -13,11 +13,9 @@ namespace arda
 		{
 			try
 			{
-				auto* State = this;
-				const auto Device = State->mDevice;
-				State->mOperand = eastl::make_shared<FArdaPixelSortOperand>(Device);
-				Check(State->mOperand->GetOperandSupport());
-				return {};
+				// The operand owns native variant registration and architecture qualification.
+				mOperand = eastl::make_shared<FArdaPixelSortOperand>(mDevice);
+				return mOperand->GetOperandSupport();
 			}
 			catch (const std::exception& Error)
 			{
@@ -26,27 +24,52 @@ namespace arda
 		}
 	};
 
+	FArdaRHIStatus FArdaPixelSortSortNode::DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P)
+	{
+		FArdaRHITextureDesc D;
+		D.mWidth = P.mWidth;
+		D.mHeight = P.mHeight;
+		D.mFormat = EArdaRHIFormat::RGBA8UInt;
+		D.mbCudaInterop = true;
+		D.mUsage = EArdaRHITextureUsage::UnorderedAccess | EArdaRHITextureUsage::ShaderResource;
+		return C.Texture(P.mSorted, "Output", D);
+	}
+
+	FArdaDependencyNodeRequirements FArdaPixelSortSortNode::GetRequirements(const FArdaParameters&)
+	{
+		FArdaDependencyNodeRequirements R;
+		R.mbRequireCuda = true;
+		R.mbRequireCudaSurfaces = true;
+		return R;
+	}
+
 	FArdaDependencyNodeMetadata FArdaPixelSortSortNode::GetMetadata()
 	{
 		return {"example.pixel-sort.radix", 1};
 	}
 
-	eastl::string FArdaPixelSortSortNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaPixelSortSortNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		return MakePixelSortNodeKey(P);
+		return FArdaDependencyKeyBuilder()
+		    .Resource(P.mNoise)
+		    .Resource(P.mSorted)
+		    .Value(reinterpret_cast<uintptr_t>(P.mInput.get()))
+		    .Value(P.mWidth)
+		    .Value(P.mHeight)
+		    .Build();
 	}
 
-	FArdaRHIStatus FArdaPixelSortSortNode::Validate(const FParameters& P)
+	FArdaRHIStatus FArdaPixelSortSortNode::Validate(const FArdaParameters& P)
 	{
-		if (!P.mInput || !P.mWidth || !P.mHeight)
+		if (!P.mInput)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-			    "PixelSort requires frame inputs and a nonempty extent.");
+			    "PixelSort sorting requires dynamic sort inputs.");
 		}
-		return {};
+		return ValidatePixelSortExtent(P.mWidth, P.mHeight);
 	}
 
-	TArdaRHIResult<eastl::shared_ptr<const FArdaPixelSortSortNode::FState>> FArdaPixelSortSortNode::Prepare(
+	TArdaRHIResult<eastl::shared_ptr<const FArdaPixelSortSortNode::FArdaState>> FArdaPixelSortSortNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
 		if (!Device)
@@ -54,17 +77,21 @@ namespace arda
 			return {{},
 			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
 		}
-		auto State = eastl::make_shared<FState>();
+
+		auto State = eastl::make_shared<FArdaState>();
 		State->mDevice = eastl::move(Device);
+
+		// Publish prepared state only after all node-owned setup succeeds.
 		auto Status = State->Initialize();
 		if (!Status)
 		{
 			return {{}, eastl::move(Status)};
 		}
+
 		return {eastl::move(State), {}};
 	}
 
-	FArdaDependencyNodeDesc FArdaPixelSortSortNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaPixelSortSortNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
 		D.mAccesses = {{P.mNoise, EArdaDependencyAccess::Read, EArdaRHIResourceState::UnorderedAccess},
@@ -74,9 +101,9 @@ namespace arda
 	}
 
 	FArdaRHIStatus FArdaPixelSortSortNode::PrepareCuda(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState,
+	    const FArdaParameters& P,
+	    const FArdaState& Prepared,
+	    FArdaInstanceState& InstanceState,
 	    FArdaCudaSequence& Sequence)
 	{
 		if (Prepared.mDevice != C.GetDevice())
@@ -84,6 +111,8 @@ namespace arda
 			return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
 			    "PixelSort node library belongs to another device.");
 		}
+
+		// Sample frame-varying values and resolve graph textures into the operand's typed arguments.
 		FArdaPixelSortParameters Host;
 		Host.mInput.mTexture = C.GetTexture(P.mNoise);
 		Host.mOutput.mTexture = C.GetTexture(P.mSorted);

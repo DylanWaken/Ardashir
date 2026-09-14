@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Provision Ardashir's graphics SDK components locally; Python 3.10+, no pip.
+"""Provision Ardashir's graphics SDK components; Python 3.10+, no pip.
 
 Downloads only missing compatible components. D3D12 uses the pinned Agility
 NuGet package (headers, runtime and matching debug layer). Vulkan uses headers
 and Khronos validation, including an existing LunarG SDK when available.
 Vulkan validation source builds reuse Cmake/ProvisionValidation.cmake.
+Windows setup installs/registers validation machine-wide (Administrator required).
+Use --local-only for project-local setup, or --check for read-only discovery.
 This does not install GPU drivers, Visual Studio, or the base Windows SDK.
 """
 from __future__ import annotations
@@ -26,6 +28,8 @@ import zipfile
 import xml.etree.ElementTree as ET
 
 REPO = Path(__file__).resolve().parent
+VALIDATION_MANIFEST = "VkLayer_khronos_validation.json"
+VALIDATION_REGISTRY_KEY = r"SOFTWARE\Khronos\Vulkan\ExplicitLayers"
 
 
 def cmake_value(value: str | Path) -> str:
@@ -144,21 +148,159 @@ def layer_library(directory: Path) -> Path:
     return library.resolve()
 
 
-def registered_layers() -> list[Path]:
+def registered_layers(system_only: bool = False) -> list[Path]:
     if os.name != "nt":
         return []
     import winreg
     result = []
-    for hive in (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE):
+    hives = (winreg.HKEY_LOCAL_MACHINE,) if system_only else (winreg.HKEY_CURRENT_USER, winreg.HKEY_LOCAL_MACHINE)
+    for hive in hives:
         try:
-            with winreg.OpenKey(hive, r"SOFTWARE\Khronos\Vulkan\ExplicitLayers") as key:
+            with winreg.OpenKey(hive, VALIDATION_REGISTRY_KEY, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as key:
                 for index in range(winreg.QueryInfoKey(key)[1]):
-                    name, enabled, _ = winreg.EnumValue(key, index)
-                    if enabled == 0 and Path(name).name == "VkLayer_khronos_validation.json":
+                    name, enabled, kind = winreg.EnumValue(key, index)
+                    if enabled == 0 and kind == winreg.REG_DWORD and Path(name).name == VALIDATION_MANIFEST:
                         result.append(Path(name).parent)
         except OSError:
             pass
     return result
+
+
+def windows_administrator() -> bool:
+    return os.name == "nt" and bool(ctypes.windll.shell32.IsUserAnAdmin())
+
+
+def system_validation_root() -> Path:
+    import winreg
+    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion",
+                        0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as key:
+        program_files = Path(winreg.QueryValueEx(key, "ProgramFilesDir")[0])
+    return program_files / "Ardashir/VulkanValidation"
+
+
+def reject_redirected_path(path: Path) -> None:
+    # An administrator must not install through a pre-existing junction/symlink.
+    for part in (path, *path.parents):
+        try:
+            if getattr(part.lstat(), "st_file_attributes", 0) & 0x400 or part.is_symlink():
+                raise RuntimeError(f"System validation destination contains a reparse point: {part}")
+        except FileNotFoundError:
+            pass
+
+
+def protect_install_directory(directory: Path) -> None:
+    reject_redirected_path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    # Reset previous explicit grants, then retain only administrator/system write
+    # access and ordinary-user read/execute access. SID syntax is locale independent.
+    for arguments in (["/reset"], ["/inheritance:r", "/grant:r", "*S-1-5-18:(OI)(CI)F",
+                                  "*S-1-5-32-544:(OI)(CI)F", "*S-1-5-32-545:(OI)(CI)RX"]):
+        subprocess.run(["icacls.exe", str(directory), *arguments, "/q"], check=True, capture_output=True)
+
+
+def write_installed_file(path: Path, data: bytes) -> None:
+    reject_redirected_path(path)
+    if path.is_file() and path.read_bytes() == data:
+        return
+    # Publish a complete file atomically, retaining inherited Program Files ACLs.
+    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as stream:
+        temporary = Path(stream.name)
+        stream.write(data)
+    try:
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def probe_vulkan_validation() -> None:
+    """Called in a fresh process: vkCreateInstance must actually load validation."""
+    class InstanceCreateInfo(ctypes.Structure):
+        _fields_ = [("sType", ctypes.c_uint32), ("pNext", ctypes.c_void_p), ("flags", ctypes.c_uint32),
+                    ("pApplicationInfo", ctypes.c_void_p), ("enabledLayerCount", ctypes.c_uint32),
+                    ("ppEnabledLayerNames", ctypes.POINTER(ctypes.c_char_p)),
+                    ("enabledExtensionCount", ctypes.c_uint32),
+                    ("ppEnabledExtensionNames", ctypes.POINTER(ctypes.c_char_p))]
+    loader = ctypes.WinDLL("vulkan-1.dll")
+    create = loader.vkCreateInstance
+    create.argtypes = [ctypes.POINTER(InstanceCreateInfo), ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    create.restype = ctypes.c_int32
+    destroy = loader.vkDestroyInstance
+    destroy.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    destroy.restype = None
+    names = (ctypes.c_char_p * 1)(b"VK_LAYER_KHRONOS_validation")
+    info = InstanceCreateInfo(sType=1, enabledLayerCount=1, ppEnabledLayerNames=names)
+    instance = ctypes.c_void_p()
+    result = create(ctypes.byref(info), None, ctypes.byref(instance))
+    if result != 0:
+        raise RuntimeError(f"Vulkan loader could not create an instance with Khronos validation (VkResult {result}).")
+    destroy(instance, None)
+
+
+def verify_system_validation() -> None:
+    environment = dict(os.environ)
+    # Verify registry discovery independently of this shell's local SDK paths.
+    for name in ("VK_LAYER_PATH", "VK_ADD_LAYER_PATH"):
+        environment.pop(name, None)
+    result = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--_probe-vulkan"],
+                            env=environment, capture_output=True, text=True, timeout=30)
+    if result.returncode:
+        raise RuntimeError("System Vulkan validation verification failed:\n" + (result.stderr or result.stdout).strip())
+
+
+def register_system_validation(manifest: Path, root: Path) -> None:
+    import winreg
+    with winreg.CreateKeyEx(winreg.HKEY_LOCAL_MACHINE, VALIDATION_REGISTRY_KEY, 0,
+                           winreg.KEY_READ | winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY) as key:
+        previous = {}
+        for index in range(winreg.QueryInfoKey(key)[1]):
+            name, value, kind = winreg.EnumValue(key, index)
+            path = Path(name)
+            if path.name == VALIDATION_MANIFEST and path.is_absolute() and path.is_relative_to(root):
+                previous[name] = (value, kind)
+        try:
+            winreg.SetValueEx(key, str(manifest), 0, winreg.REG_DWORD, 0)
+            for name in previous:
+                if name != str(manifest):
+                    winreg.DeleteValue(key, name)
+            verify_system_validation()
+        except (OSError, RuntimeError, subprocess.SubprocessError):
+            # Roll back only registrations owned by this installer. Other SDKs
+            # remain untouched, including disabled entries and their value types.
+            if str(manifest) not in previous:
+                try:
+                    winreg.DeleteValue(key, str(manifest))
+                except FileNotFoundError:
+                    pass
+            for name, (value, kind) in previous.items():
+                winreg.SetValueEx(key, name, 0, kind, value)
+            raise
+
+
+def install_system_validation(source: Path) -> Path:
+    if not windows_administrator():
+        raise RuntimeError("Windows system-wide validation setup requires Administrator privileges. "
+                           "Run this script in an Administrator terminal, or use --local-only.")
+    library = layer_library(source)
+    manifest = json.loads((source / VALIDATION_MANIFEST).read_text(encoding="utf-8"))
+    manifest["layer"]["library_path"] = ".\\" + library.name
+    # Include adjacent runtime dependencies (but not SDK executables or PDBs).
+    files = {path.name: path.read_bytes() for path in sorted(library.parent.glob("*.dll"))}
+    files[library.name] = library.read_bytes()
+    files[VALIDATION_MANIFEST] = (json.dumps(manifest, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    digest = hashlib.sha256()
+    for name, content in sorted(files.items()):
+        digest.update(name.encode("utf-8") + b"\0" + hashlib.sha256(content).digest())
+    root = system_validation_root()
+    protect_install_directory(root)
+    # Content-addressed versions avoid overwriting a DLL in use by another app.
+    destination = root / digest.hexdigest()
+    protect_install_directory(destination)
+    for name, content in files.items():
+        write_installed_file(destination / name, content)
+    layer_library(destination)
+    register_system_validation(destination / VALIDATION_MANIFEST, root)
+    print(f"System-wide Vulkan validation registered and loader-verified: {destination}", flush=True)
+    return destination
 
 
 def find_layer(candidates: list[Path]) -> Path | None:
@@ -265,12 +407,25 @@ def write_configuration(root: Path, agility: Path | None, headers: Path | None, 
                                   'endif()' for key, value in variables.items()) + "\n", encoding="utf-8")
     powershell = "# Dot-source this file in the shell that runs graphics applications.\n"
     shell = "# Source this file in the shell that runs graphics applications.\n"
-    if layer:
+    if layer and layer.resolve() not in {path.resolve() for path in registered_layers()}:
         ps_path = str(layer).replace("'", "''")
         sh_path = str(layer).replace("'", "'\"'\"'")
-        powershell += (f"if ($env:VK_LAYER_PATH) {{ Write-Warning 'VK_LAYER_PATH remains authoritative; clear it to use this layer.' }}\n"
-                       f"$env:VK_ADD_LAYER_PATH = '{ps_path}' + $(if ($env:VK_ADD_LAYER_PATH) {{ [IO.Path]::PathSeparator + $env:VK_ADD_LAYER_PATH }} else {{ '' }})\n")
-        shell += f"export VK_ADD_LAYER_PATH='{sh_path}'${{VK_ADD_LAYER_PATH:+:$VK_ADD_LAYER_PATH}}\n"
+        powershell += (
+            "if (-not (Test-Path Env:VK_LAYER_PATH)) {\n"
+            f"  if (($env:VK_ADD_LAYER_PATH -split [regex]::Escape([IO.Path]::PathSeparator)) -notcontains '{ps_path}') {{\n"
+            f"    $env:VK_ADD_LAYER_PATH = '{ps_path}' + $(if ($env:VK_ADD_LAYER_PATH) {{ [IO.Path]::PathSeparator + $env:VK_ADD_LAYER_PATH }} else {{ '' }})\n"
+            "  }\n}\n")
+        shell += (
+            'if [ "${VK_LAYER_PATH+x}" != x ]; then\n'
+            '  case ":${VK_ADD_LAYER_PATH-}:" in\n'
+            f"    *:'{sh_path}':*) ;;\n"
+            f"    *) export VK_ADD_LAYER_PATH='{sh_path}'${{VK_ADD_LAYER_PATH:+:$VK_ADD_LAYER_PATH}} ;;\n"
+            "  esac\nfi\n")
+    elif layer:
+        # Adding a registered manifest through the environment discovers it a
+        # second time and makes the loader emit duplicate-layer warnings.
+        powershell += "# This validation layer is registered with the system loader; no path override is needed.\n"
+        shell += "# This validation layer is registered with the system loader; no path override is needed.\n"
     (root / "ActivateGraphicsSDK.ps1").write_text(powershell, encoding="utf-8")
     (root / "activate-graphics-sdk.sh").write_text(shell, encoding="utf-8")
     print(f'\nUse this setup in a project build:\n  cmake -S "{REPO}" -B build/dev -C "{config}"')
@@ -287,6 +442,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--backend", choices=("all", "d3d12", "vulkan"), default="all")
     parser.add_argument("--generator", help="CMake generator for a missing validation-layer source build")
     parser.add_argument("--check", action="store_true", help="read-only discovery; no downloads, builds or generated files")
+    parser.add_argument("--local-only", action="store_true", help="skip Windows system-wide validation installation/registration")
     options = parser.parse_args(argv)
     if platform.system() not in ("Windows", "Linux") or platform.machine().lower() not in ("amd64", "x86_64") or sys.maxsize <= 2**32:
         parser.error("This project's native SDK setup supports 64-bit Python on Windows/Linux x64.")
@@ -364,10 +520,20 @@ def main(argv: list[str] | None = None) -> int:
     if missing:
         print("Missing: " + ", ".join(missing), file=sys.stderr)
         return 1
+    if layer and os.name == "nt" and not options.local_only:
+        if options.check:
+            if not find_layer(registered_layers(system_only=True)):
+                print("Missing: system-wide Vulkan validation registration. Run SetupGraphicsSDK.py "
+                      "in an Administrator terminal, or use --local-only to check only local components.", file=sys.stderr)
+                return 1
+            verify_system_validation()
+            print("System-wide Vulkan validation: loader verification passed.")
+        else:
+            layer = install_system_validation(layer)
     if not options.check:
         root.mkdir(parents=True, exist_ok=True)
         write_configuration(root, agility, headers, layer)
-    if layer and os.name == "nt" and ctypes.windll.shell32.IsUserAnAdmin():
+    if layer and options.local_only and windows_administrator():
         print("Warning: this process is elevated. Vulkan ignores VK_LAYER_PATH and VK_ADD_LAYER_PATH "
               "in elevated applications. A loadable local DLL does not establish loader visibility; "
               "run examples from a non-elevated terminal, or use a system-installed validation layer.")
@@ -377,7 +543,10 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     try:
-        raise SystemExit(main())
-    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
+        if sys.argv[1:] == ["--_probe-vulkan"]:
+            probe_vulkan_validation()
+        else:
+            raise SystemExit(main())
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         print(f"Graphics SDK setup failed: {error}", file=sys.stderr)
         raise SystemExit(1)

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320" role="img" aria-labelledby="title desc">
+<title id="title">Pipeline stages travel through dependency ancestry</title>
+<desc id="desc">Vertex and pixel stage providers reach a pure join and then two graphics consumers. Equal complete state gives both draws one cached graphics pipeline despite different color resources. Inference stops at an upstream completed consumer of the same family.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#334155"/></marker></defs>
+<rect width="800" height="320" rx="12" fill="#f8fafc"/>
+<g font-family="system-ui,sans-serif" fill="#172554" font-size="16" text-anchor="middle">
+<rect x="30" y="40" width="175" height="60" rx="5" fill="#dbeafe" stroke="#2563eb"/>
+<text x="118" y="65">Vertex provider</text><text x="118" y="87">stage only</text>
+<rect x="30" y="160" width="175" height="60" rx="5" fill="#dbeafe" stroke="#2563eb"/>
+<text x="118" y="185">Pixel provider</text><text x="118" y="207">stage only</text>
+<rect x="265" y="100" width="165" height="60" rx="5" fill="#e2e8f0" stroke="#475569"/>
+<text x="347" y="125">Pure join</text><text x="347" y="147">no shader</text>
+<rect x="480" y="40" width="125" height="60" rx="5" fill="#dcfce7" stroke="#15803d"/>
+<text x="542" y="65">Draw A</text><text x="542" y="87">color A</text>
+<rect x="480" y="160" width="125" height="60" rx="5" fill="#dcfce7" stroke="#15803d"/>
+<text x="542" y="185">Draw B</text><text x="542" y="207">color B</text>
+<rect x="665" y="100" width="110" height="60" rx="5" fill="#fef3c7" stroke="#92400e"/>
+<text x="720" y="125">One PSO</text><text x="720" y="147">reused</text>
+<text x="400" y="265">Solid arrows: graph dependencies. Dashed arrows: cache lookup.</text>
+<text x="400" y="290">Same shaders, layouts, attachment formats and fixed state are required.</text>
+</g>
+<g fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)">
+<path d="M205 70 L235 70 L235 118 L262 118"/><path d="M205 190 L235 190 L235 144 L262 144"/>
+<path d="M430 118 L450 118 L450 70 L477 70"/><path d="M430 144 L450 144 L450 190 L477 190"/>
+<path stroke-dasharray="5 4" d="M605 70 L637 70 L637 118 L662 118"/>
+<path stroke-dasharray="5 4" d="M605 190 L637 190 L637 144 L662 144"/>
+</g></svg>

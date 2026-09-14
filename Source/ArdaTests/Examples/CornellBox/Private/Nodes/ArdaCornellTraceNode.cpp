@@ -5,7 +5,7 @@
 namespace arda
 {
 #define ARDA_CORNELL_RAY_PARAMETERS()                                                                                  \
-	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)                                                                    \
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)                                                                \
 		ARDA_SHADER_ACCELERATION_STRUCTURE(mScene, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                     \
 		ARDA_SHADER_BUFFER_SRV(mVertices, 1, 0, arda::EArdaRHIShaderStage::AllRayTracing)                              \
 		ARDA_SHADER_BUFFER_SRV(mIndices, 2, 0, arda::EArdaRHIShaderStage::AllRayTracing)                               \
@@ -37,7 +37,7 @@ namespace arda
 
 #undef ARDA_CORNELL_RAY_PARAMETERS
 
-	struct FArdaCornellTraceNode::FState
+	struct FArdaCornellTraceNode::FArdaState
 	{
 		FArdaRHIDeviceRef mDevice;
 		FArdaGlobalShaderMap mShaderMap;
@@ -46,10 +46,12 @@ namespace arda
 
 		FArdaRHIStatus Initialize()
 		{
+			// Load the node-owned shader types through the common device shader map.
 			if (!mShaderMap.Initialize(mDevice))
 			{
 				return CornellShaderError(mShaderMap);
 			}
+
 			const auto* Shader0 = mShaderMap.Find(FArdaCornellRayGenerationShader::GetStaticType());
 			if (!Shader0)
 			{
@@ -78,12 +80,6 @@ namespace arda
 		}
 	};
 
-	struct FArdaCornellTraceNode::FInstanceState
-	{
-		FArdaRHIRayTracingPipelineRef mTablePipeline;
-		FArdaRHIShaderTableRef mShaderTable;
-	};
-
 	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaCornellRayGenerationShader,
 	    "/ArdaTests/CornellBox/CornellPathTracer.hlsl",
 	    "CornellRayGen",
@@ -100,17 +96,53 @@ namespace arda
 	    "CornellClosestHit",
 	    arda::EArdaRHIShaderStage::ClosestHit)
 
+	FArdaRHIStatus FArdaCornellTraceNode::DeclareResources(FArdaDependencyResourceContext& C, FArdaParameters& P)
+	{
+		if (!P.mWidth || !P.mHeight || !P.mSamples || uint64_t(P.mWidth) * P.mHeight > UINT64_MAX / 16 / P.mSamples)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Invalid ray output extent.");
+		}
+
+		FArdaRHIBufferDesc D;
+		D.mByteSize = uint64_t(P.mWidth) * P.mHeight * P.mSamples * 16;
+		D.mStructureStride = 16;
+		D.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource |
+		    EArdaRHIBufferUsage::UnorderedAccess;
+		return C.Buffer(P.mRadiance, "Radiance", D);
+	}
+
+	FArdaDependencyNodeRequirements FArdaCornellTraceNode::GetRequirements(const FArdaParameters&)
+	{
+		FArdaDependencyNodeRequirements R;
+		R.mFeatures.mbRequireRayTracingPipelines = true;
+		R.mFeatures.mbRequireAccelerationStructures = true;
+		R.mFeatures.mbRequirePersistentShaderTables = true;
+		return R;
+	}
+
 	FArdaDependencyNodeMetadata FArdaCornellTraceNode::GetMetadata()
 	{
 		return {"cornell.trace", 1};
 	}
 
-	eastl::string FArdaCornellTraceNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaCornellTraceNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		return MakeCornellNodeKey(P);
+		FArdaDependencyKeyBuilder Key;
+		Key.Resource(P.mTlas);
+		Key.Resource(P.mVertices);
+		Key.Resource(P.mIndices);
+		Key.Resource(P.mMaterials);
+		Key.Resource(P.mRadiance);
+		Key.Resource(P.mConstants);
+		Key.Resource(P.mBlas);
+		Key.Value(P.mWidth);
+		Key.Value(P.mHeight);
+		Key.Value(P.mSamples);
+		Key.Value(P.mWorkspaceBytes);
+		return Key.Build();
 	}
 
-	TArdaRHIResult<eastl::shared_ptr<const FArdaCornellTraceNode::FState>> FArdaCornellTraceNode::Prepare(
+	TArdaRHIResult<eastl::shared_ptr<const FArdaCornellTraceNode::FArdaState>> FArdaCornellTraceNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
 		if (!Device)
@@ -118,44 +150,31 @@ namespace arda
 			return {{},
 			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
 		}
-		auto State = eastl::make_shared<FState>();
+
+		auto State = eastl::make_shared<FArdaState>();
 		State->mDevice = eastl::move(Device);
+
+		// Publish prepared state only after all node-owned setup succeeds.
 		auto Status = State->Initialize();
 		if (!Status)
 		{
 			return {{}, eastl::move(Status)};
 		}
+
 		return {eastl::move(State), {}};
 	}
 
-	TArdaRHIResult<eastl::shared_ptr<FArdaCornellTraceNode::FInstanceState>> FArdaCornellTraceNode::CreateInstance(
-	    FArdaRHIDeviceRef,
-	    const FParameters&,
-	    const FState&)
-	{
-		return {eastl::make_shared<FInstanceState>(), {}};
-	}
-
-	FArdaDependencyNodeDesc FArdaCornellTraceNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaCornellTraceNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
 		D.mWorkspaceBytes = P.mWorkspaceBytes;
-		const auto Read = [&](uint32_t I, EArdaRHIResourceState State)
-		{
-			D.mAccesses.push_back({P.mResources[I], EArdaDependencyAccess::Read, State});
-		};
-		const auto Write = [&](uint32_t I, EArdaRHIResourceState State)
-		{
-			D.mAccesses.push_back({P.mResources[I], EArdaDependencyAccess::Write, State});
-		};
-		Read(0, EArdaRHIResourceState::AccelStructRead);
-		Read(6, EArdaRHIResourceState::AccelStructRead);
-		for (uint32_t I = 1; I < 4; ++I)
-		{
-			Read(I, EArdaRHIResourceState::ShaderResource);
-		}
-		Write(4, EArdaRHIResourceState::UnorderedAccess);
-		Read(5, EArdaRHIResourceState::ConstantBuffer);
+		D.BindShader<FArdaCornellRayGenerationShader::FArdaParameters>({{"mScene", P.mTlas},
+		    {"mVertices", P.mVertices},
+		    {"mIndices", P.mIndices},
+		    {"mMaterials", P.mMaterials},
+		    {"mSampleRadiance", P.mRadiance},
+		    {"mFrame", P.mConstants}});
+		D.mAccesses = {{P.mBlas, EArdaDependencyAccess::Read, EArdaRHIResourceState::AccelStructRead}};
 
 		D.mPipelineStages = Prepared.mStages;
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::RayTracing, {}, Prepared.mConfiguration}};
@@ -164,93 +183,16 @@ namespace arda
 	}
 
 	FArdaRHIStatus FArdaCornellTraceNode::Record(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState)
+	    const FArdaParameters& P,
+	    const FArdaState&,
+	    FArdaInstanceState&)
 	{
-		auto& Commands = C.GetCommands();
-		const auto* Pipeline = C.GetPipeline();
-		if (!Pipeline)
-		{
-			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
-			    "Cornell pipeline inference produced no pipeline.");
-		}
-		FArdaRHIBindingSetDesc Binding;
-		for (const auto& Stage : Prepared.mStages)
-		{
-			if (!Binding.mLayout && !Stage.mBindingLayouts.empty())
-			{
-				Binding.mLayout = Stage.mBindingLayouts[0];
-			}
-		}
-		const auto Bind = [&](uint32_t Slot, EArdaRHIBindingType Type, FArdaRHIResourceRef Resource)
-		{
-			FArdaRHIBindingItem I;
-			I.mSlot = Slot;
-			I.mType = Type;
-			I.mResource = eastl::move(Resource);
-			Binding.mItems.push_back(eastl::move(I));
-		};
-		const auto Buffer = [&](uint32_t I)
-		{
-			return FArdaRHIResourceRef(C.GetBuffer(P.mResources[I]).Get());
-		};
-		const auto Texture = [&](uint32_t I)
-		{
-			return FArdaRHIResourceRef(C.GetTexture(P.mResources[I]).Get());
-		};
-
-		Bind(0,
-		    EArdaRHIBindingType::RayTracingAccelStruct,
-		    FArdaRHIResourceRef(C.GetAccelerationStructure(P.mResources[0]).Get()));
-		for (uint32_t I = 1; I < 4; ++I)
-		{
-			Bind(I, EArdaRHIBindingType::StructuredBufferSRV, Buffer(I));
-		}
-		Bind(0, EArdaRHIBindingType::StructuredBufferUAV, Buffer(4));
-		Bind(0, EArdaRHIBindingType::ConstantBuffer, Buffer(5));
-		auto Bound = C.GetDevice()->CreateBindingSet(Binding);
-		if (!Bound)
-		{
-			return Bound.mStatus;
-		}
-		if (InstanceState.mTablePipeline != Pipeline->mRayTracing)
-		{
-			FArdaRHIShaderTableDesc Desc;
-			Desc.mMaxEntries = 3;
-			Desc.mbPersistent = true;
-			Desc.mDebugName = "Cornell shader table";
-			auto Table = C.GetDevice()->CreateShaderTable(Pipeline->mRayTracing, Desc);
-			if (!Table)
-			{
-				return Table.mStatus;
-			}
-			if (auto S = C.GetDevice()->SetShaderTableRayGeneration(Table.mValue, "CornellRayGen"); !S)
-			{
-				return S;
-			}
-			if (auto R = C.GetDevice()->AddShaderTableMiss(Table.mValue, "CornellMiss"); !R)
-			{
-				return R.mStatus;
-			}
-			if (auto R = C.GetDevice()->AddShaderTableHitGroup(Table.mValue, "CornellHitGroup"); !R)
-			{
-				return R.mStatus;
-			}
-			if (auto S = C.GetDevice()->CommitShaderTable(Table.mValue); !S)
-			{
-				return S;
-			}
-			InstanceState.mShaderTable = eastl::move(Table.mValue);
-			InstanceState.mTablePipeline = Pipeline->mRayTracing;
-		}
-		FArdaRHIRayTracingState State;
-		State.mShaderTable = InstanceState.mShaderTable;
-		State.mBindings = {Bound.mValue};
-		if (auto S = Commands.SetRayTracingState(State); !S)
+		// Resolve the compiled ray pipeline and its graph-owned shader table for this execution.
+		if (auto S = C.SetRayTracingState(); !S)
 		{
 			return S;
 		}
-		return Commands.DispatchRays(P.mWidth, P.mHeight, P.mSamples);
+
+		return C.GetCommands().DispatchRays(P.mWidth, P.mHeight, P.mSamples);
 	}
 }

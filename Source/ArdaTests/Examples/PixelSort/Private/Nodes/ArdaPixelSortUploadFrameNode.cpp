@@ -13,27 +13,42 @@ namespace arda
 
 	static_assert(sizeof(FArdaPixelSortConstants) == 16);
 
+	FArdaRHIStatus FArdaPixelSortUploadFrameNode::DeclareResources(FArdaDependencyResourceContext& C,
+	    FArdaParameters& P)
+	{
+		FArdaRHIBufferDesc D;
+		D.mByteSize = 256;
+		D.mUsage = EArdaRHIBufferUsage::Constant;
+		return C.Buffer(P.mConstants, "Constants", D);
+	}
+
 	FArdaDependencyNodeMetadata FArdaPixelSortUploadFrameNode::GetMetadata()
 	{
 		return {"example.pixel-sort.upload", 1};
 	}
 
-	eastl::string FArdaPixelSortUploadFrameNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaPixelSortUploadFrameNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		return MakePixelSortNodeKey(P);
+		return FArdaDependencyKeyBuilder()
+		    .Resource(P.mConstants)
+		    .Value(reinterpret_cast<uintptr_t>(P.mInput.get()))
+		    .Value(P.mWidth)
+		    .Value(P.mHeight)
+		    .Build();
 	}
 
-	FArdaRHIStatus FArdaPixelSortUploadFrameNode::Validate(const FParameters& P)
+	FArdaRHIStatus FArdaPixelSortUploadFrameNode::Validate(const FArdaParameters& P)
 	{
-		if (!P.mInput || !P.mWidth || !P.mHeight)
+		if (!P.mInput)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
-			    "PixelSort requires frame inputs and a nonempty extent.");
+			    "PixelSort frame upload requires dynamic upload inputs.");
 		}
-		return {};
+		return ValidatePixelSortExtent(P.mWidth, P.mHeight);
 	}
 
-	FArdaDependencyNodeDesc FArdaPixelSortUploadFrameNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaPixelSortUploadFrameNode::Describe(const FArdaParameters& P,
+	    const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
 		D.mAccesses = {{P.mConstants, EArdaDependencyAccess::Write, EArdaRHIResourceState::CopyDest}};
@@ -42,11 +57,10 @@ namespace arda
 	}
 
 	FArdaRHIStatus FArdaPixelSortUploadFrameNode::Record(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState)
+	    const FArdaParameters& P,
+	    const FArdaState& Prepared,
+	    FArdaInstanceState& InstanceState)
 	{
-
 		const FArdaPixelSortConstants Constants{P.mWidth, P.mHeight, P.mInput->mTime, P.mInput->mbOriginal ? 1u : 0u};
 		return C.GetCommands().WriteBuffer(*C.GetBuffer(P.mConstants), &Constants, sizeof(Constants));
 	}

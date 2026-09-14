@@ -25,13 +25,13 @@ namespace arda
 		}
 
 	private:
-		struct FFrameGraph;
+		struct FArdaFrameGraph;
 
 		arda::FArdaRHIDeviceRef mDevice;
 		bool mbGeometryUploaded = false;
 		arda::FArdaRHIBufferRef mVertexBuffer;
 		arda::FArdaRHIBufferRef mIndexBuffer;
-		std::vector<std::unique_ptr<FFrameGraph>> mFrameGraphs;
+		std::vector<std::unique_ptr<FArdaFrameGraph>> mFrameGraphs;
 		eastl::string mError;
 	};
 }

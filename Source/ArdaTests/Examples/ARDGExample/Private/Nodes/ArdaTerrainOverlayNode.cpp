@@ -13,31 +13,33 @@ namespace arda
 	class FArdaTerrainOverlayPixelShader final : public arda::FArdaGlobalShader
 	{
 	public:
-		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FParameters)
+		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
 			ARDA_SHADER_TEXTURE_SRV(mSource, 0, 0, arda::EArdaRHIShaderStage::Pixel)
 		ARDA_END_SHADER_PARAMETER_STRUCT()
 		ARDA_DECLARE_GLOBAL_SHADER(FArdaTerrainOverlayPixelShader);
 	};
 
-	struct FArdaTerrainOverlayNode::FState
+	struct FArdaTerrainOverlayNode::FArdaState
 	{
 		FArdaRHIDeviceRef mDevice;
 		FArdaGlobalShaderMap mShaderMap;
 		eastl::shared_ptr<const FArdaInductorPipelineConfiguration> mConfiguration;
-		FArdaRHIBindingLayoutRef mLayout;
 
 		FArdaRHIStatus Initialize()
 		{
+			// Load the node-owned shader types through the common device shader map.
 			if (!mShaderMap.Initialize(mDevice))
 			{
 				return TerrainShaderError(mShaderMap);
 			}
+
 			const auto* mOverlayVertexShader = mShaderMap.Find(FArdaTerrainOverlayVertexShader::GetStaticType());
 			const auto* mOverlayPixelShader = mShaderMap.Find(FArdaTerrainOverlayPixelShader::GetStaticType());
 			if (!mOverlayVertexShader || !mOverlayPixelShader)
 			{
 				return TerrainShaderError(mShaderMap);
 			}
+
 			auto Configuration = eastl::make_shared<FArdaInductorPipelineConfiguration>();
 			Configuration->mKind = EArdaPipelineStateKind::Graphics;
 			arda::FArdaRHIGraphicsPipelineDesc overlayFixedState;
@@ -52,7 +54,6 @@ namespace arda
 			        mOverlayPixelShader,
 			        {},
 			        overlayFixedState);
-			mLayout = mOverlayPixelShader->GetBindingLayouts()[0];
 			mConfiguration = eastl::move(Configuration);
 			return {};
 		}
@@ -74,19 +75,19 @@ namespace arda
 		return {"example.terrain.overlay", 1};
 	}
 
-	eastl::string FArdaTerrainOverlayNode::GetCanonicalKey(const FParameters& P)
+	eastl::string FArdaTerrainOverlayNode::GetCanonicalKey(const FArdaParameters& P)
 	{
-		eastl::string Key;
+		FArdaDependencyKeyBuilder Key;
 
-		AppendResource(Key, P.mSource);
-		AppendResource(Key, P.mColor);
-		Append(Key, P.mWidth);
-		Append(Key, P.mHeight);
+		Key.Resource(P.mSource);
+		Key.Resource(P.mColor);
+		Key.Value(P.mWidth);
+		Key.Value(P.mHeight);
 
-		return Key;
+		return Key.Build();
 	}
 
-	TArdaRHIResult<eastl::shared_ptr<const FArdaTerrainOverlayNode::FState>> FArdaTerrainOverlayNode::Prepare(
+	TArdaRHIResult<eastl::shared_ptr<const FArdaTerrainOverlayNode::FArdaState>> FArdaTerrainOverlayNode::Prepare(
 	    FArdaRHIDeviceRef Device)
 	{
 		if (!Device)
@@ -94,21 +95,25 @@ namespace arda
 			return {{},
 			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, "This node requires an initialized device.")};
 		}
-		auto State = eastl::make_shared<FState>();
+
+		auto State = eastl::make_shared<FArdaState>();
 		State->mDevice = eastl::move(Device);
+
+		// Publish prepared state only after all node-owned setup succeeds.
 		auto Status = State->Initialize();
 		if (!Status)
 		{
 			return {{}, eastl::move(Status)};
 		}
+
 		return {eastl::move(State), {}};
 	}
 
-	FArdaDependencyNodeDesc FArdaTerrainOverlayNode::Describe(const FParameters& P, const FState& Prepared)
+	FArdaDependencyNodeDesc FArdaTerrainOverlayNode::Describe(const FArdaParameters& P, const FArdaState& Prepared)
 	{
 		FArdaDependencyNodeDesc D;
-		D.mAccesses = {{P.mSource, EArdaDependencyAccess::Read, EArdaRHIResourceState::PixelShaderResource},
-		    {P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
+		D.BindShader<FArdaTerrainOverlayPixelShader::FArdaParameters>({{"mSource", P.mSource}});
+		D.mAccesses = {{P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
 		D.mPipelines = {{"default", 0, EArdaPipelineStateKind::Graphics, {}, Prepared.mConfiguration}};
 		D.mEstimatedCost = 8;
 		D.mColorTargets = {P.mColor};
@@ -116,29 +121,20 @@ namespace arda
 	}
 
 	FArdaRHIStatus FArdaTerrainOverlayNode::Record(FArdaDependencyExecutionContext& C,
-	    const FParameters& P,
-	    const FState& Prepared,
-	    FInstanceState& InstanceState)
+	    const FArdaParameters& P,
+	    const FArdaState& Prepared,
+	    FArdaInstanceState& InstanceState)
 	{
-		FArdaTerrainOverlayPixelShader::FParameters Shader;
-		Shader.mSource = C.GetTexture(P.mSource);
-		FArdaRHIBindingSetRef Bindings;
-		auto Status = CreateBindings(C, Shader, Prepared.mLayout, Bindings);
-		if (!Status)
-		{
-			return Status;
-		}
+		// Supply dynamic draw inputs; the executor fills the compiled pipeline, framebuffer, and bindings.
 		FArdaRHIGraphicsState State;
-		State.mPipeline = C.GetPipeline()->mGraphics;
-		State.mFramebuffer = C.GetFramebuffer();
-		State.mBindings = {Bindings};
 		State.mViewports = {{0.f, float(P.mWidth), 0.f, float(P.mHeight), 0.f, 1.f}};
 		State.mScissors = {{0, int32_t(P.mWidth), 0, int32_t(P.mHeight)}};
-		Status = C.GetCommands().SetGraphicsState(State);
-		if (!Status)
+		if (auto S = C.SetGraphicsState(State); !S)
 		{
-			return Status;
+			return S;
 		}
+
+		// Record only this node's draw; submission and cross-node ordering belong to the graph.
 		C.GetCommands().Draw({3});
 		return {};
 	}

@@ -15,7 +15,7 @@ its shader assets beneath `Nodes/Shaders` beside the executable.
 
 Each operation has its own header and implementation file. Its class derives from
 `TArdaDependencyNode<Derived, Parameters, Kind>` through a domain specialization
-such as `TArdaComputeDependencyNode`. The base exposes `FParameters` and implements
+such as `TArdaComputeDependencyNode`. The base exposes `FArdaParameters` and implements
 registration and attachment. The
 renderer includes the selected node headers (or an include-only umbrella) and
 calls the graph's typed attachment API inside an edit:
@@ -36,10 +36,11 @@ no node-library object or renderer-side registration/initialization call.
 Each node implements `GetMetadata`, `GetCanonicalKey`, `Describe`, and `Record`
 (or `PrepareCuda` for CUDA). The base checks these hooks at compile time and
 registers a device-independent definition on first attachment. Nodes with setup
-declare a private implementation of nested `FState` and supply `Prepare(Device)`
-for their shaders, layouts, operand and pipeline configuration. Nodes with mutable
-binding caches declare `FInstanceState` and supply `CreateInstance`. Stateless
-defaults cover upload/copy nodes. Optional `Validate` checks inputs before setup.
+declare a private implementation of nested `FArdaState` and supply `Prepare(Device)`
+for their shaders, layouts, operand and pipeline configuration. Nodes needing
+mutable runtime state can declare `FArdaInstanceState` and supply `CreateInstance`;
+the graph prepares shader bindings. Stateless defaults cover upload/copy nodes.
+Optional `Validate` checks inputs before setup.
 
 The graph rejects attachment outside an edit, then resolves definition/name/key
 identity before preparing any new instance. Identical reattachment skips setup;
@@ -52,13 +53,20 @@ belongs in `CreateInstance`, with GPU memory accounted for in `Describe`.
 
 ArdaInductor creates/caches actual PSOs at `EndGraphEdit`, infers dependencies and
 batches CUDA work. Graph replay does not rerun node setup or registry lookup.
-Per-instance binding sets and the path tracer's shader table are also internal to
-their nodes. Upload/readback nodes can attach without initializing unrelated shaders.
+The graph/executor prepares binding sets and the path tracer's shader table per
+compiled frame slot. Upload/readback nodes can attach without initializing unrelated shaders.
 
 Camera/window control, resource sizing, graph composition, presentation, and CPU
 verification belong in the renderer. Shader classes, binding metadata, kernel
 selection, command recording, and fixed pipeline settings belong in each node's
 implementation file.
+
+Executable startup selects compiler policy through the shared
+`ConfigureArdaExampleShaderCompiler` helper in `../Public/ArdaExampleShaders.h`.
+These source-distributed samples allow missing/outdated shader compilation in
+both Debug and Release. Terrain and Cornell Box still honor `--shader-mode load-only`,
+which requires cooked artifacts and never compiles them. This explicit sample policy
+does not change the backend's Release default of disabling automatic compilation.
 
 Registration is per operation, not per renderer or whole application. Terrain
 uses seven distinct parameter types for settings upload, camera upload,
@@ -89,8 +97,10 @@ determined by the node class and graph device, not exposed in renderer parameter
 
 The renderer attaches consumers before producers and calls `EndGraphEdit` once.
 ArdaInductor resolves the edges and pipelines then; it does not infer dependencies
-from attachment order. Frame input changes reuse the plan. First-frame readback
-nodes are removed through an edit after numerical validation.
+from attachment order. Frame input changes reuse the plan. `ARDGExample --verify`
+enables first-frame geometry and gradient readback checks; their nodes are removed
+through an edit after verification. Ordinary viewer runs omit those diagnostics.
+`RunARDGExample.py` forwards `--verify`, which is independent of `--validation`.
 
 Cornell assembles geometry generation and the BLAS build in one setup graph.
 Compaction needs the completed BLAS size on the CPU, so an optional second setup
@@ -129,8 +139,13 @@ An optional `Node::Register()` lets a library enumerate definitions before any
 device exists. Describe every resource access
 and pipeline contribution. The canonical key must cover frozen resources and
 settings; mutable frame inputs are sampled during recording on the render thread.
-Keep those inputs alive and avoid changing them during recording. Binding caches
-are private node state and refresh if a compiled resource's native identity changes.
+Keep those inputs alive and avoid changing them during recording. Nodes declare
+outputs in DeclareResources and map shader metadata to logical arguments in
+Describe. The graph allocates the outputs and prepares binding sets, bindless
+tables, shader parameters and ray tables per compiled frame slot. Recording uses
+the execution context's prepared state; node callbacks do not create binding sets.
+Renderers wire named outputs with FindOutput. See the
+[self-contained node recipes](../../../Docs/ArdaRDG/node-recipes.html).
 
 Frame graphs retain swap-chain textures. Release those graphs before resizing the
 swap chain. Triangle, terrain, and Cornell use synchronous `Execute`; Pixel Sort
@@ -142,3 +157,20 @@ configuration identity remains valid.
 See the [ArdaInductor guide](../../../Docs/ArdaRDG/ArdaInductor.md) for the graph
 contract and the [compilation chapter](../../../Docs/ArdaRDG/compilation.html) for
 scheduling and pipeline inference.
+
+## GPU validation build policy
+
+ARDGExample, CornellBox, RHITest and PixelSort run without native GPU validation
+by default. Pass `--validation` to request it. PixelSort `--verify` independently
+runs its CPU/GPU comparisons; ARDGExample `--verify` checks terrain geometry and
+gradients. Building an example does not depend on validation-layer
+provisioning. Existing GPU CTest cases cover ordinary runs; separate `Validation`
+cases pass `--validation` explicitly in ON builds.
+
+All examples honor `-DARDASHIR_ENABLE_GPU_VALIDATION=OFF`, including builds with
+unit tests disabled, and reject `--validation` in those builds. The default is
+`ON` for both Debug and Release. OFF disables native debug-layer requests and
+provisioning while preserving result verification and assertions. Use separate
+build directories to retain both versions. The Python launchers preserve the
+configured CMake option. Dedicated GPU test executables retain their strict
+validation policy.

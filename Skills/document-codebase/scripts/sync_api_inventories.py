@@ -25,41 +25,41 @@ RDG_END = "/* END GENERATED ARDA RDG API GAPS */"
 
 CONTRACT_HEADERS = (
     (
-        "Source/ArdaBackend/Public/ArdaBackendProvider.h",
+        "Source/ArdaInfra/ArdaBackend/Public/ArdaBackendProvider.h",
         "arda",
         "backend-modules",
     ),
-    ("Source/ArdaBackend/Public/ArdaSwapChain.h", "arda", "presentation"),
+    ("Source/ArdaInfra/ArdaBackend/Public/ArdaSwapChain.h", "arda", "presentation"),
     (
-        "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+        "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
         "arda",
         "rhi-device",
     ),
     (
-        "Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
+        "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
         "arda",
         "pipelines",
     ),
 )
 
 COMPLETE_BACKEND_SOURCES = {
-    "Source/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
-    "Source/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
-    "Source/ArdaBackend/Public/Compute/ArdaCudaExternalCall.h",
-    "Source/ArdaBackend/Public/Compute/ArdaCudaTextureBuffer.h",
-    "Source/ArdaBackend/Public/Compute/ArdaComputeParameters.h",
-    "Source/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
-    "Source/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
-    "Source/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
-    "Source/ArdaBackend/Public/RHI/ArdaRHICuda.h",
-    "Source/ArdaBackend/Public/RHI/ArdaRHIResource.h",
-    "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
-    "Source/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
-    "Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
-    "Source/ArdaBackend/Public/RHI/ArdaRHIResources.h",
-    "Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
-    "Source/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
-    "Source/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaComputeOperand.h",
+    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaSequence.h",
+    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaExternalCall.h",
+    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaTextureBuffer.h",
+    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaComputeParameters.h",
+    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaParameters.h",
+    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaKernelVariants.h",
+    "Source/ArdaInfra/ArdaBackend/Public/Compute/ArdaCudaKernelBinding.cuh",
+    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICuda.h",
+    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResource.h",
+    "Source/ArdaInfra/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateCache.h",
+    "Source/ArdaInfra/ArdaBackend/Public/PipelineStateCache/ArdaPipelineStateInitializer.h",
+    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
+    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
 }
 
 CALLABLE_KINDS = {
@@ -270,7 +270,7 @@ def description(name: str, kind: str, domain: str) -> Tuple[str, str]:
 def backend_specs(repo: Path) -> List[Tuple[str, str, str]]:
     overrides = {item[0]: item for item in CONTRACT_HEADERS}
     specs: List[Tuple[str, str, str]] = []
-    for header in sorted(p for p in (repo / "Source/ArdaBackend/Public").rglob("*") if p.suffix in {".h", ".cuh"}):
+    for header in sorted(p for p in (repo / "Source/ArdaInfra/ArdaBackend/Public").rglob("*") if p.suffix in {".h", ".cuh"}):
         source = header.relative_to(repo).as_posix()
         if source in overrides:
             specs.append(overrides[source])
@@ -330,7 +330,7 @@ def source_contract(raw: str, line: int) -> Dict[str, object]:
 def rdg_specs(repo: Path) -> List[Tuple[str, str, str]]:
     return [
         (header.relative_to(repo).as_posix(), "arda", "core")
-        for header in sorted((repo / "Source/ArdaRenderGraph/Public").rglob("*.h"))
+        for header in sorted((repo / "Source/ArdaInfra/ArdaRenderGraph/Public").rglob("*.h"))
     ]
 
 
@@ -510,8 +510,8 @@ def generated_block(
 
 def synchronize_backend(asset: str, block: str, public_header_count: int) -> str:
     asset = re.sub(
-        r'"generatedFrom": "Source/ArdaBackend/Public \(all \d+ unique public headers\)"',
-        f'"generatedFrom": "Source/ArdaBackend/Public (all {public_header_count} unique public headers)"',
+        r'"generatedFrom": "Source/ArdaInfra/ArdaBackend/Public \(all \d+ unique public headers\)"',
+        f'"generatedFrom": "Source/ArdaInfra/ArdaBackend/Public (all {public_header_count} unique public headers)"',
         asset,
     )
     provenance_end = asset.index("\n  ],", asset.index('"headerProvenance"'))
@@ -626,7 +626,7 @@ def main() -> int:
     backend_block = generated_block(
         backend_symbols, "ArdaBackendApi", BACKEND_BEGIN, BACKEND_END, contracts
     )
-    header_count = len(list((repo / "Source/ArdaBackend/Public").rglob("*.h")))
+    header_count = len(list((repo / "Source/ArdaInfra/ArdaBackend/Public").rglob("*.h")))
     backend_updated = synchronize_backend(
         backend_current, backend_block, header_count
     )
@@ -648,7 +648,7 @@ def main() -> int:
     rdg_inventory = {
         "module": {"id": "arda-rdg", "name": "ArdaRenderGraph", "namespace": "arda",
             "summary": "Persistent dependency graphs compiled by ArdaInductor for graphics, CUDA, and transfer work."},
-        "generatedFrom": f"Source/ArdaRenderGraph/Public (all {len(rdg_provenance)} unique public headers)",
+        "generatedFrom": f"Source/ArdaInfra/ArdaRenderGraph/Public (all {len(rdg_provenance)} unique public headers)",
         "headerProvenance": rdg_provenance,
         "components": [{"id": "core", "name": "Persistent graph API", "page": "api-reference.html",
             "summary": "Typed node registration, resource dependencies, compilation, and reusable GPU execution."}],

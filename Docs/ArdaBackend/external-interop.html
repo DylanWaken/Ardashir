@@ -130,10 +130,10 @@
           <h2>D3D12 device adoption</h2>
           <p><span class="status">TESTED API PATH</span> Focused backend tests exercise the D3D12 external-provider path. The host supplies one required <code>ID3D12Device*</code> and required graphics <code>ID3D12CommandQueue*</code>. Compute and copy queues are optional; absent queues are reported as unavailable capabilities. For Arda-managed presentation, supply a window surface and initialize the swap-chain path described in <a href="#presentation">presentation ownership</a>.</p>
           <p>The native D3D12 module retains COM references needed by its wrapper, but this never transfers host ownership to Arda. The host must still preserve device/plugin invariants and must not release or invalidate native state while any Arda wrapper or GPU submission can use it.</p>
-          <pre><code>class D3D12Provider final : public arda::IArdaExternalDeviceProvider
+          <pre><code>class FArdaD3D12Provider final : public arda::IArdaExternalDeviceProvider
 {
 public:
-    D3D12Provider(ID3D12Device* device,
+    FArdaD3D12Provider(ID3D12Device* device,
                   ID3D12CommandQueue* graphics,
                   eastl::shared_ptr&lt;void&gt; hostLifetime)
         : mLifetime(eastl::move(hostLifetime))
@@ -263,7 +263,7 @@ for (const char* name : { "dynamicRendering", "synchronization2", "timelineSemap
         <section id="worked-example">
           <h2>Worked example: device startup and named import</h2>
           <p>The following D3D12-oriented sequence uses real public calls; helper and provider implementations remain host-specific. The same lifecycle applies to Vulkan after filling its stricter descriptor.</p>
-          <pre><code>D3D12Provider deviceProvider(nativeDevice, graphicsQueue, pluginLifetime);
+          <pre><code>FArdaD3D12Provider deviceProvider(nativeDevice, graphicsQueue, pluginLifetime);
 EngineResources resourceProvider(nativeDevice, pluginLifetime); // Name: "Engine"
 
 if (!arda::RegisterExternalDeviceProvider(deviceProvider) ||

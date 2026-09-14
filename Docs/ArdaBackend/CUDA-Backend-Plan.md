@@ -6,7 +6,7 @@ The current design is implemented in the native D3D12/Vulkan providers and the R
 
 An operand dispatch launches exactly one precompiled kernel. Authors implement `BindKernelVariants()` and `SelectKernel()` plus a diagnostic name. `Dispatch()`, `DispatchDeferred()`, `PrepareDispatch()` and support validation belong to the framework and cannot be overridden. Algorithms needing several kernels can compose these operands with `FArdaCudaSequence`, or attach registered CUDA nodes to `FArdaDependencyGraph` for automatic batching, keeping one stream and one graphics handoff around the whole sequence. See [CUDA sequences](CUDA-Sequences.md) for usage and validation rules.
 
-`ARDA_CUDA_PARAMETER_STRUCT` generates a host resource/value representation and its plain `FCuda` argument type from one field list. `TArdaDependencyCudaParameters` rebinds the same fields to logical graph accesses. Every bound kernel accepts the exact `FCuda` type by value as its only parameter.
+`ARDA_CUDA_PARAMETER_STRUCT` generates a host resource/value representation and its plain `FArdaCuda` argument type from one field list. `TArdaDependencyCudaParameters` rebinds the same fields to logical graph accesses. Every bound kernel accepts the exact `FArdaCuda` type by value as its only parameter.
 
 Schema eligibility, unsupported host values, signatures, native coverage, resource formats/ranges/alignment and ownership are runtime checks with error statuses. Normal C++/CUDA syntax and template rules still apply. Nontrivial values and raw scalar pointers are rejected; authors must not hide host pointers or dependencies inside plain value aggregates.
 
@@ -38,11 +38,10 @@ Ship linked native code and required runtime libraries, with a compatible instal
 
 ## Dependency graph integration
 
-`RegisterArdaCudaOperandNode` installs a typed operand definition in the singleton
-registry. `TArdaDependencyCudaParameters` binds its schema to graph resource values.
+`TArdaCudaOperandNode` specializes the common node class contract; a derived
+class supplies its registry metadata and attachments retain the device-bound operand. `TArdaDependencyCudaParameters` binds its schema to graph resource values.
 ArdaInductor derives resource dependencies, coalesces eligible CUDA chains, prepares
-all steps, and retains a native capture cache per frame slot and batch. Each resource
-value has one producer, and attachment order does not define execution order.
+all steps, and retains a native capture cache per frame slot and batch. Single-producer regions resolve independently of attachment order. Regions with multiple writer nodes order overlapping reads and writes by original successful attachment order, using the same resource storage. See the [repeated-write rules](../ArdaRDG/resources.html#worked-example).
 
 D3D12 CiG batches use ordered graphics-queue capture/submission. Failures can occur
 after earlier work submitted; frame receipts retain accepted submissions until
@@ -63,7 +62,7 @@ Other architectures, Linux, alternate drivers, arbitrary external CUDA libraries
 
 ## Reproduction
 
-Use the [build-time nvcc lookup recipe](cuda-interop.html#nvcc-build), then build `ArdaBackendTests`, `ArdaBackendPublicHeaders` and `ArdaGraphTests`. Run the backend executable with `--gtest_filter=ArdaCompute*:ArdaCuda*:*ArdaCudaGpu*`, followed by the broader backend/RHI/RDG regression suites. Configure another build with CUDA disabled for the SDK-free contract. Native validation must be available; distinguish its explicit capability skips from executed tests.
+Use the [build-time nvcc lookup recipe](cuda-interop.html#nvcc-build), then build `ArdaBackendTests`, `ArdaBackendPublicHeaders` and `ArdaGraphTests`. Run the backend executable with `--gtest_filter=ArdaCompute*:ArdaCuda*:*FArdaCudaGpu*`, followed by the broader backend/RHI/RDG regression suites. Configure another build with CUDA disabled for the SDK-free contract. Native validation must be available; distinguish its explicit capability skips from executed tests.
 
 Documentation is generated from the Python sources named in [README.md](README.md). Regenerate inventories/recipes, run `validate_docs.py`, check responsive and no-JavaScript reading, and use a fresh Docs-only reader before publishing.
 

@@ -57,7 +57,7 @@ namespace arda
 
 		arda::FArdaRHIDeviceRef mDevice;
 
-		struct FCachedFrame
+		struct FArdaCachedFrame
 		{
 			FArdaRHITextureRef mBackBuffer;
 			uint32_t mDispatchSamples = 0;
@@ -65,7 +65,7 @@ namespace arda
 			std::unique_ptr<FArdaDependencyGraph> mGraph;
 		};
 
-		eastl::vector<eastl::shared_ptr<FCachedFrame>> mFrames;
+		eastl::vector<eastl::shared_ptr<FArdaCachedFrame>> mFrames;
 
 		arda::FArdaRHIBufferRef mVertexBuffer;
 		arda::FArdaRHIBufferRef mIndexBuffer;

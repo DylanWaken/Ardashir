@@ -22,7 +22,7 @@ target_include_directories(PixelSortKernels PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}
 # Step 2: compile the renderer and node library with the host C++ compiler.
 # The graph owns GPU execution; the window uses Win32 and capture uses WIC.
 add_executable(PixelSort PixelSortMain.cpp PixelSortWindow.cpp PixelSortRenderer.cpp
-    Private/Nodes/ArdaPixelSortOperand.cpp Private/Nodes/ArdaPixelSortShader.cpp
+    Private/Nodes/ArdaPixelSortOperand.cpp
     Private/Nodes/ArdaPixelSortUploadFrameNode.cpp
     Private/Nodes/ArdaPixelSortNoiseNode.cpp
     Private/Nodes/ArdaPixelSortSortNode.cpp
@@ -59,11 +59,12 @@ set_target_properties(PixelSortShaders PROPERTIES FOLDER "Ardashir/Tests/Example
 if(ARDASHIR_BACKEND_D3D12)
     ardashir_deploy_d3d12_agility(PixelSort)
 endif()
+ardashir_test_validation(PixelSort OPTIONAL)
+
 if(ARDASHIR_BUILD_TESTS)
     # Opt-in development validation and exact CPU/GPU comparisons. Each test
     # resizes a real hidden window six times to cover both variants and edge tiles.
     # Exit 77 means the selected backend/mode is unavailable, rather than a sort failure.
-    ardashir_test_validation(PixelSort)
     foreach(Backend IN ITEMS d3d12 vulkan)
         string(TOUPPER "${Backend}" BackendOption)
         if(ARDASHIR_BACKEND_${BackendOption})
@@ -78,6 +79,27 @@ if(ARDASHIR_BUILD_TESTS)
                     --hidden --verify --width 197 --height 321 --frames 8)
             set_tests_properties(PixelSort.${Backend}.Replay PROPERTIES
                 LABELS "gpu;cuda;example" SKIP_RETURN_CODE 77 TIMEOUT 90 RUN_SERIAL TRUE)
+
+            # Exercise submission/replay without the CPU oracle's per-frame wait.
+            # Process shutdown retires GPU work and checks deferred validation errors.
+            add_test(NAME PixelSort.${Backend}.AsyncReplay
+                COMMAND PixelSort --backend ${Backend} --cuda-mode auto
+                    --hidden --width 197 --height 321 --frames 12)
+            set_tests_properties(PixelSort.${Backend}.AsyncReplay PROPERTIES
+                LABELS "gpu;cuda;example" SKIP_RETURN_CODE 77 TIMEOUT 90 RUN_SERIAL TRUE)
+            if(Backend STREQUAL "vulkan")
+                ardashir_example_without_validation_tests(PixelSort.vulkan.auto PixelSort.vulkan.context
+                    PixelSort.vulkan.graphics PixelSort.vulkan.Replay PixelSort.vulkan.AsyncReplay)
+            endif()
+            ardashir_example_validation_test(PixelSort ${Backend} --cuda-mode auto
+                --hidden --verify --resize-test --frames 6)
+            if(ARDASHIR_ENABLE_GPU_VALIDATION)
+                add_test(NAME PixelSort.${Backend}.AsyncReplay.Validation
+                    COMMAND PixelSort --backend ${Backend} --cuda-mode auto
+                        --hidden --validation --width 197 --height 321 --frames 12)
+                set_tests_properties(PixelSort.${Backend}.AsyncReplay.Validation PROPERTIES
+                    LABELS "gpu;cuda;example;validation" SKIP_RETURN_CODE 77 TIMEOUT 90 RUN_SERIAL TRUE)
+            endif()
         endif()
     endforeach()
 endif()

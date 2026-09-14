@@ -1,9 +1,12 @@
+#include "ArdaTestValidation.h"
 #include "ArdaRHITestPch.h"
 
 #include "ArdaBackend.h"
 #include "ArdaSwapChain.h"
 #include "ArdaGlfwWindow.h"
 #include "ArdaTriangleRenderer.h"
+#include "ArdaExamplePaths.h"
+#include "ArdaExampleShaders.h"
 
 #include <cstdlib>
 
@@ -20,6 +23,7 @@ namespace arda
 			eastl::string mBackendName;
 			uint32_t mFrameLimit = 0;
 			bool mbHidden = false;
+			bool mbValidation = false;
 		};
 
 		class FArdaMessageCallback final : public arda::IArdaDiagnosticCallback
@@ -89,6 +93,15 @@ namespace arda
 				{
 					options.mbHidden = true;
 				}
+				else if (argument == "--validation")
+				{
+					if constexpr (!arda::ArdaTestValidationEnabled)
+					{
+						error = "GPU validation was disabled at build time (ARDASHIR_ENABLE_GPU_VALIDATION=OFF).";
+						return false;
+					}
+					options.mbValidation = true;
+				}
 				else if (argument == "--backend" && index + 1 < argumentCount)
 				{
 					const eastl::string_view backendArgument(arguments[++index]);
@@ -148,8 +161,13 @@ namespace arda
 			FArdaMessageCallback messageCallback;
 			arda::FArdaBackendConfiguration configuration;
 			configuration.mBackendName = options.mBackendName;
-			configuration.mbEnableValidation = true;
+			configuration.mbEnableValidation = options.mbValidation;
 			configuration.mMessageCallback = &messageCallback;
+			configuration.mShaderCacheDirectory = GetArdaExampleDirectory() / ".arda-cache" / "shaders";
+
+			// The executable selects development compilation policy; each node owns its shader registrations.
+			ConfigureArdaExampleShaderCompiler();
+
 			if (!arda::ConfigureBackend(configuration))
 			{
 				const eastl::string backendError = arda::GetBackendError();

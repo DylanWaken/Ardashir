@@ -13,11 +13,11 @@ namespace ARDA_CUDA_BUILD_NAMESPACE
 	// Sorting stops at tile edges: this is an image effect, not a whole-image sort.
 	// Independent tiles need no cross-block synchronization or second kernel launch.
 	//
-	// Every registered entry takes exactly FArdaPixelSortParameters::FCuda by value.
+	// Every registered entry takes exactly FArdaPixelSortParameters::FArdaCuda by value.
 	// P's texture members are provider-resolved CUDA surface objects, not pointers
 	// to the host RHI wrappers. All variants share this ABI despite template choices.
 	template <int Threads, bool Vertical>
-	__global__ void RadixSort(arda::FArdaPixelSortParameters::FCuda P)
+	__global__ void RadixSort(arda::FArdaPixelSortParameters::FArdaCuda P)
 	{
 		constexpr int Items = 4, Tile = Threads * Items, Warps = Threads / 32;
 
@@ -162,7 +162,7 @@ namespace ARDA_CUDA_BUILD_NAMESPACE
 		}
 	}
 
-	void BindPixelSort(arda::FArdaPixelSortOperand::FRegistry& Registry)
+	void BindPixelSort(arda::FArdaPixelSortOperand::FArdaRegistry& Registry)
 	{
 		// This host function runs once during operand binding. integer_sequence
 		// supplies compile-time constants so nvcc instantiates both __global__

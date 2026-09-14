@@ -73,7 +73,10 @@ python Scripts/Examples/RunCornellBox.py d3d12 build Debug --samples-per-dispatc
 
 The executable accepts `--backend`, `--width`, `--height`, `--frames`, `--hidden`,
 `--fullscreen`, `--samples-per-dispatch` (`--spp` is retained as an alias),
-`--max-samples`, `--max-bounces`, `--exposure`, `--seed`, and `--no-compaction`.
+`--max-samples`, `--max-bounces`, `--exposure`, `--seed`, `--no-compaction`, and
+`--validation`. Native GPU validation is disabled for ordinary runs; requesting
+`--validation` requires an `ARDASHIR_ENABLE_GPU_VALIDATION=ON` build and available
+validation layers.
 The defaults launch eight samples per pixel concurrently and stop at 1024 samples
 per pixel. The renderer caps a batch against the native ray-dispatch limit and a
 256 MiB transient-radiance budget. It also bounds the worst-case path segments

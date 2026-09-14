@@ -6,21 +6,21 @@
 // (and kernel entries) linked; an unreferenced registration object can be discarded.
 namespace arda_cuda_pixel_sort
 {
-	void BindPixelSort(arda::FArdaPixelSortOperand::FRegistry&);
+	void BindPixelSort(arda::FArdaPixelSortOperand::FArdaRegistry&);
 }
 
 namespace arda
 {
 	// The helper registers typed entry wrappers and payloads, not GPU work.
 	// Registry errors are retained and reported when the base freezes bindings.
-	void FArdaPixelSortOperand::BindKernelVariants(FRegistry& Registry) const
+	void FArdaPixelSortOperand::BindKernelVariants(FArdaRegistry& Registry) const
 	{
 		arda_cuda_pixel_sort::BindPixelSort(Registry);
 	}
 
-	TArdaRHIResult<FArdaCudaKernelSelection> FArdaPixelSortOperand::SelectKernel(const FParameters& P,
+	TArdaRHIResult<FArdaCudaKernelSelection> FArdaPixelSortOperand::SelectKernel(const FArdaParameters& P,
 	    const FArdaCudaSelectionContext&,
-	    const FVariants& Candidates) const
+	    const FArdaVariants& Candidates) const
 	{
 		// The framework checks the common schema/resource contract. These checks
 		// express this algorithm's additional rules: one nonempty 2D image,

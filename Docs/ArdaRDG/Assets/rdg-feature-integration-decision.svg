@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 510" role="img" aria-labelledby="feature-title feature-desc">
+  <title id="feature-title">A capability check and a graph representation answer different questions</title>
+  <desc id="feature-desc">A supported indirect draw already has ordinary buffer resources, so it needs a reusable operation exposing its arguments and effects. Supported D3D12 feedback decode has a dedicated feedback object absent from the graph, so it needs a logical resource and transition model before a reusable operation. VRS is not reported by either provider and first needs backend implementation.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#526982"/></marker>
+  </defs>
+  <style>
+    text { font-family: system-ui, sans-serif; fill: #152e48; }
+    .title { font-size: 21px; font-weight: 700; }
+    .heading { font-size: 16px; font-weight: 700; }
+    .label { font-size: 15px; }
+    .small { font-size: 13px; }
+    .box { fill: #f1f6fb; stroke: #7590ab; stroke-width: 1.5; rx: 9; }
+    .admitted { fill: #eef7f1; stroke: #568469; stroke-width: 1.5; rx: 9; }
+    .missing { fill: #fff5e8; stroke: #a77c42; stroke-width: 1.5; rx: 9; }
+    .arrow { fill: none; stroke: #526982; stroke-width: 2; marker-end: url(#arrow); }
+  </style>
+  <rect width="940" height="510" fill="#ffffff" rx="12"/>
+  <text x="28" y="36" class="title">Choose the missing layer before designing the node</text>
+  <text x="28" y="62" class="label">Follow each operation through device admission and resource recognition.</text>
+  <text x="34" y="105" class="heading">Proposed operation</text>
+  <text x="278" y="105" class="heading">Device admission</text>
+  <text x="520" y="105" class="heading">Graph representation</text>
+  <text x="762" y="105" class="heading">Required work</text>
+
+  <rect x="28" y="126" width="191" height="82" class="box"/>
+  <text x="43" y="154" class="heading">Indirect draw</text>
+  <text x="43" y="178" class="small">GPU-written arguments</text>
+  <path d="M219 167 H265" class="arrow"/>
+  <rect x="274" y="126" width="190" height="82" class="admitted"/>
+  <text x="289" y="154" class="heading">Indirect supported</text>
+  <text x="289" y="178" class="small">Qualified on this device</text>
+  <path d="M464 167 H510" class="arrow"/>
+  <rect x="519" y="126" width="198" height="82" class="admitted"/>
+  <text x="534" y="154" class="heading">Buffer reads/writes</text>
+  <text x="534" y="178" class="small">Already tracked by ranges</text>
+  <path d="M717 167 H749" class="arrow"/>
+  <rect x="758" y="126" width="154" height="82" class="box"/>
+  <text x="771" y="154" class="heading">Reusable node</text>
+  <text x="771" y="178" class="small">Declare all inputs</text>
+
+  <rect x="28" y="232" width="191" height="94" class="box"/>
+  <text x="43" y="261" class="heading">Feedback decode</text>
+  <text x="43" y="286" class="small">Feedback object → texture</text>
+  <path d="M219 279 H265" class="arrow"/>
+  <rect x="274" y="232" width="190" height="94" class="admitted"/>
+  <text x="289" y="261" class="heading">D3D12 tier passes</text>
+  <text x="289" y="286" class="small">Native operation exists</text>
+  <path d="M464 279 H510" class="arrow"/>
+  <rect x="519" y="232" width="198" height="94" class="missing"/>
+  <text x="534" y="261" class="heading">Feedback kind missing</text>
+  <text x="534" y="286" class="small">No lifetime/state lowering</text>
+  <path d="M717 279 H749" class="arrow"/>
+  <rect x="758" y="232" width="154" height="94" class="missing"/>
+  <text x="771" y="256" class="heading">Resource model</text>
+  <text x="771" y="279" class="small">+ state lowering</text>
+  <text x="771" y="301" class="small">+ reusable node</text>
+
+  <rect x="28" y="350" width="191" height="82" class="box"/>
+  <text x="43" y="378" class="heading">Variable rate shading</text>
+  <text x="43" y="402" class="small">Shading-rate attachment</text>
+  <path d="M219 391 H265" class="arrow"/>
+  <rect x="274" y="350" width="190" height="82" class="missing"/>
+  <text x="289" y="378" class="heading">Capability fails</text>
+  <text x="289" y="402" class="small">Neither provider reports it</text>
+  <path d="M464 391 H749" class="arrow"/>
+  <text x="517" y="377" class="small">Reject at attachment</text>
+  <rect x="758" y="350" width="154" height="82" class="missing"/>
+  <text x="771" y="378" class="heading">Backend first</text>
+  <text x="771" y="402" class="small">A wrapper cannot fix it</text>
+
+  <text x="28" y="471" class="label">A passing feature requirement proves availability; declared resources prove ordering and lifetime.</text>
+  <text x="28" y="493" class="small">The audit describes the current repository. Optional native features still depend on the selected device and driver.</text>
+</svg>

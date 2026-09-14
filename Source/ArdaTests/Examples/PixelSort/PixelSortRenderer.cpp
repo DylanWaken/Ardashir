@@ -1,4 +1,5 @@
 #include "PixelSortRenderer.h"
+#include "ArdaExampleStatus.h"
 #include <Windows.h>
 #include <wincodec.h>
 #include <wrl/client.h>
@@ -12,21 +13,6 @@ namespace arda
 {
 	namespace
 	{
-		void Check(FArdaRHIStatus Status)
-		{
-			if (!Status)
-			{
-				throw std::runtime_error(Status.mMessage.c_str());
-			}
-		}
-
-		template <class T>
-		T Take(TArdaRHIResult<T> Result)
-		{
-			Check(Result.mStatus);
-			return eastl::move(Result.mValue);
-		}
-
 		uint32_t Luma(uint32_t Pixel)
 		{
 			return (54 * (Pixel & 255) + 183 * ((Pixel >> 8) & 255) + 19 * ((Pixel >> 16) & 255)) >> 8;
@@ -167,7 +153,7 @@ namespace arda
 		}
 	}
 
-	struct FPixelSortRenderer::FArdaFrameGraph
+	struct FArdaPixelSortRenderer::FArdaFrameGraph
 	{
 		explicit FArdaFrameGraph(FArdaRHIDeviceRef Device)
 		    : mGraph(eastl::move(Device))
@@ -176,7 +162,8 @@ namespace arda
 
 		FArdaDependencyGraph mGraph;
 		FArdaRHITextureRef mColor;
-		eastl::shared_ptr<FArdaPixelSortFrameInput> mInput;
+		eastl::shared_ptr<FArdaPixelSortUploadFrameInput> mUploadInput;
+		eastl::shared_ptr<FArdaPixelSortSortInput> mSortInput;
 		eastl::shared_ptr<FArdaPixelSortReadback> mNoiseReadback;
 		eastl::shared_ptr<FArdaPixelSortReadback> mSortedReadback;
 		eastl::shared_ptr<FArdaPixelSortReadback> mFrameReadback;
@@ -184,25 +171,28 @@ namespace arda
 		bool mbCapture = false;
 	};
 
-	FPixelSortRenderer::FPixelSortRenderer(FArdaRHIDeviceRef Device)
+	FArdaPixelSortRenderer::FArdaPixelSortRenderer(FArdaRHIDeviceRef Device)
 	    : mDevice(eastl::move(Device))
 	{
 	}
 
-	FPixelSortRenderer::~FPixelSortRenderer() = default;
+	FArdaPixelSortRenderer::~FArdaPixelSortRenderer() = default;
 
-	void FPixelSortRenderer::ReleaseFrameGraphs()
+	void FArdaPixelSortRenderer::ReleaseFrameGraphs()
 	{
 		// Graph destruction retires its own tickets before releasing imported back buffers.
 		mFrames.clear();
 	}
 
-	FPixelSortRenderer::FArdaFrameGraph& FPixelSortRenderer::FindOrCreateFrameGraph(const FArdaRHITextureRef& Color,
+	FArdaPixelSortRenderer::FArdaFrameGraph& FArdaPixelSortRenderer::FindOrCreateFrameGraph(
+	    const FArdaRHITextureRef& Color,
 	    uint32_t Width,
 	    uint32_t Height,
 	    bool bVerify,
 	    bool bCapture)
 	{
+
+		// Reuse a compiled graph while its back buffer and diagnostic outputs are unchanged.
 		auto Found = std::find_if(mFrames.begin(),
 		    mFrames.end(),
 		    [&](const auto& Frame)
@@ -213,49 +203,57 @@ namespace arda
 		{
 			return **Found;
 		}
+
+		// Assemble the upload, graphics noise, CUDA sort, and presentation dependency chain.
 		auto Frame = std::make_unique<FArdaFrameGraph>(mDevice);
 		Frame->mColor = Color;
 		Frame->mbVerify = bVerify;
 		Frame->mbCapture = bCapture;
 		auto& Graph = Frame->mGraph;
-		Check(Graph.BeginGraphEdit());
-		FArdaPixelSortNodeParameters P;
-		P.mWidth = Width;
-		P.mHeight = Height;
-		Frame->mInput = P.mInput;
-		P.mColor = Take(Graph.ImportTexture("Swap-chain color", Color));
-		FArdaRHIBufferDesc Constants;
-		Constants.mByteSize = 256;
-		Constants.mUsage = EArdaRHIBufferUsage::Constant;
-		P.mConstants = Take(Graph.CreateBuffer("Frame constants", Constants));
-		FArdaRHITextureDesc Texture;
-		Texture.mWidth = Width;
-		Texture.mHeight = Height;
-		Texture.mFormat = EArdaRHIFormat::RGBA8UInt;
-		Texture.mbCudaInterop = true;
-		Texture.mUsage = EArdaRHITextureUsage::UnorderedAccess | EArdaRHITextureUsage::ShaderResource;
-		P.mNoise = Take(Graph.CreateTexture("Animated noise", Texture));
-		P.mSorted = Take(Graph.CreateTexture("Sorted pixels", Texture));
+		CheckArdaExampleStatus(Graph.BeginGraphEdit());
+		const auto ColorTarget = TakeArdaExampleValue(Graph.ImportTexture("Swap-chain color", Color));
+		FArdaPixelSortUploadFrameParameters UploadParameters;
+		UploadParameters.mWidth = Width;
+		UploadParameters.mHeight = Height;
+		Frame->mUploadInput = UploadParameters.mInput;
+		const auto Upload =
+		    TakeArdaExampleValue(Graph.AttachOrFind<FArdaPixelSortUploadFrameNode>("Upload frame", UploadParameters));
+		const auto Constants = Graph.FindOutput(Upload, "Constants");
 
-		// Attach consumers first: resource dependencies recover upload -> noise -> CUDA -> presentation.
-		Take(Graph.AttachOrFind<FArdaPixelSortPresentNode>("Present pixels", P));
-		Take(Graph.AttachOrFind<FArdaPixelSortSortNode>("Radix sort", P));
-		Take(Graph.AttachOrFind<FArdaPixelSortNoiseNode>("Generate noise", P));
-		Take(Graph.AttachOrFind<FArdaPixelSortUploadFrameNode>("Upload frame", P));
+		const auto Noise = TakeArdaExampleValue(
+		    Graph.AttachOrFind<FArdaPixelSortNoiseNode>("Generate noise", {Constants, {}, Width, Height}));
+		const auto NoiseTexture = Graph.FindOutput(Noise, "Output");
+
+		FArdaPixelSortSortParameters SortParameters;
+		SortParameters.mNoise = NoiseTexture;
+		SortParameters.mWidth = Width;
+		SortParameters.mHeight = Height;
+		Frame->mSortInput = SortParameters.mInput;
+		const auto Sort =
+		    TakeArdaExampleValue(Graph.AttachOrFind<FArdaPixelSortSortNode>("Radix sort", SortParameters));
+		const auto SortedTexture = Graph.FindOutput(Sort, "Output");
+		TakeArdaExampleValue(Graph.AttachOrFind<FArdaPixelSortPresentNode>("Present pixels",
+		    {Constants, NoiseTexture, SortedTexture, ColorTarget, Width, Height}));
+
+		// Add CPU-visible outputs only for requested verification or image capture.
 		if (bVerify)
 		{
 			Frame->mNoiseReadback = eastl::make_shared<FArdaPixelSortReadback>();
 			Frame->mSortedReadback = eastl::make_shared<FArdaPixelSortReadback>();
-			Take(Graph.AttachOrFind<FArdaPixelSortReadbackNode>("Read noise", {P.mNoise, Frame->mNoiseReadback}));
-			Take(Graph.AttachOrFind<FArdaPixelSortReadbackNode>("Read sorted pixels",
-			    {P.mSorted, Frame->mSortedReadback}));
+			TakeArdaExampleValue(
+			    Graph.AttachOrFind<FArdaPixelSortReadbackNode>("Read noise", {NoiseTexture, Frame->mNoiseReadback}));
+			TakeArdaExampleValue(Graph.AttachOrFind<FArdaPixelSortReadbackNode>("Read sorted pixels",
+			    {SortedTexture, Frame->mSortedReadback}));
 		}
 		if (bCapture)
 		{
 			Frame->mFrameReadback = eastl::make_shared<FArdaPixelSortReadback>();
-			Take(Graph.AttachOrFind<FArdaPixelSortReadbackNode>("Capture frame", {P.mColor, Frame->mFrameReadback}));
+			TakeArdaExampleValue(
+			    Graph.AttachOrFind<FArdaPixelSortReadbackNode>("Capture frame", {ColorTarget, Frame->mFrameReadback}));
 		}
-		Check(Graph.EndGraphEdit());
+
+		// Compile before replacing the cached graph so attachment failures leave it intact.
+		CheckArdaExampleStatus(Graph.EndGraphEdit());
 		if (Found == mFrames.end())
 		{
 			mFrames.push_back(std::move(Frame));
@@ -265,7 +263,7 @@ namespace arda
 		return **Found;
 	}
 
-	void FPixelSortRenderer::Render(IArdaSwapChain& SwapChain,
+	void FArdaPixelSortRenderer::Render(IArdaSwapChain& SwapChain,
 	    float Time,
 	    uint32_t Channel,
 	    uint32_t Threshold,
@@ -282,17 +280,24 @@ namespace arda
 		const auto Width = SwapChain.GetWidth();
 		const auto Height = SwapChain.GetHeight();
 		auto& Frame = FindOrCreateFrameGraph(Color, Width, Height, Verify, !Capture.empty());
-		*Frame.mInput = {Time, Channel, Threshold, Original};
+
+		// Sample frame-varying parameters without changing graph topology or pipeline identity.
+		*Frame.mUploadInput = {Time, Original};
+		*Frame.mSortInput = {Channel, Threshold};
+
+		// Submit asynchronous graph work and present the acquired image.
 		SwapChain.PrepareSubmit();
-		const auto Ticket = Take(Frame.mGraph.Submit());
+		const auto Ticket = TakeArdaExampleValue(Frame.mGraph.Submit());
 		if (!SwapChain.Present())
 		{
 			throw std::runtime_error(SwapChain.GetError().c_str());
 		}
+
+		// Consume readbacks only after completion of the submitted frame.
 		if (Verify || !Capture.empty())
 		{
 			// Only diagnostics require immediate CPU completion; ordinary frames keep the ticket in the graph.
-			Check(Frame.mGraph.Wait(Ticket).mStatus);
+			CheckArdaExampleStatus(Frame.mGraph.Wait(Ticket).mStatus);
 			if (Verify)
 			{
 				VerifySort(FArdaPixelSortReadbackNode::ReadPixels(mDevice, *Frame.mNoiseReadback),

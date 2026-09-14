@@ -62,14 +62,4 @@ namespace arda
 		FArdaCornellFrameConstants mConstants;
 	};
 
-	struct FArdaCornellNodeParameters
-	{
-		eastl::array<FArdaDependencyResourceHandle, 7> mResources{};
-		eastl::shared_ptr<FArdaCornellFrameInput> mFrame;
-		uint32_t mWidth = 1, mHeight = 1, mSamples = 1;
-		uint32_t mVertexCount = 0, mIndexCount = 0, mVertexStride = 0;
-		EArdaRHIAccelStructBuildFlags mBuildFlags = EArdaRHIAccelStructBuildFlags::PreferFastTrace;
-		uint64_t mWorkspaceBytes = 0;
-	};
-
 }

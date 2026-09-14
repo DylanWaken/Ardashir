@@ -24,6 +24,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("configuration", nargs="?", default="Debug")
     parser.add_argument("--frames", type=int)
     parser.add_argument("--hidden", action="store_true")
+    parser.add_argument("--validation", action="store_true", help="Enable native GPU validation; requires installed debug layers.")
     parser.add_argument("--fullscreen", action="store_true")
     parser.add_argument("--width", type=int, default=1280)
     parser.add_argument("--height", type=int, default=720)
@@ -94,6 +95,8 @@ def main() -> int:
         run_arguments.extend(("--frames", str(arguments.frames)))
     if arguments.hidden:
         run_arguments.append("--hidden")
+    if arguments.validation:
+        run_arguments.append("--validation")
     if arguments.fullscreen:
         run_arguments.append("--fullscreen")
     if arguments.no_compaction:

@@ -8,10 +8,10 @@ namespace arda
 	// its own window library can implement the same IArdaWindowSurface interface
 	// instead; the renderer and CUDA operand need no knowledge of HWND/VkSurfaceKHR.
 	// Keep the window alive until the swap chain and backend have been destroyed.
-	class FPixelSortWindow final : public IArdaWindowSurface
+	class FArdaPixelSortWindow final : public IArdaWindowSurface
 	{
 	public:
-		~FPixelSortWindow();
+		~FArdaPixelSortWindow();
 		void Create(uint32_t Width, uint32_t Height, bool Hidden);
 
 		bool Pump();

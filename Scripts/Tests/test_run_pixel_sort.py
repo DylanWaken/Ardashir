@@ -58,6 +58,15 @@ class PixelSortLauncherTests(unittest.TestCase):
             launcher.main(["d3d12", str(self.build), "Debug", "--run-only"])
         self.assertEqual(run.call_args.args[0][0], str(executable))
 
+    def test_verification_does_not_implicitly_request_native_validation(self):
+        for options in ([], ["--verify"], ["--validation"], ["--verify", "--validation"]):
+            with self.subTest(options=options), patch.object(
+                    launcher.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+                launcher.main(["vulkan", str(self.build), "--run-only", *options])
+            command = run.call_args.args[0]
+            self.assertEqual("--validation" in command, "--validation" in options)
+            self.assertEqual("--verify" in command, "--verify" in options)
+
     def test_missing_binary_does_not_fall_back_to_old_location_or_build(self):
         self.executable.unlink()
         stale = self.build / "Examples" / "PixelSort" / "PixelSort.exe"

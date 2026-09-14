@@ -2,6 +2,7 @@
 
 import argparse
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -30,6 +31,8 @@ def main() -> int:
     arguments = parse_arguments()
     source_directory = Path(__file__).resolve().parent.parent
     build_directory = arguments.build_directory.resolve()
+
+    subprocess.run([sys.executable, str(source_directory / "Scripts/CheckTypeNames.py")], check=True)
 
     print(f'Configuring tests in "{build_directory}"...')
     subprocess.run(
