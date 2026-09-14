@@ -14,7 +14,7 @@
     <text x="356" y="121">Register + check identity</text>
     <text x="356" y="147">New: call node preparation</text>
     <rect x="662" y="65" width="250" height="105" rx="10" fill="#253e36" stroke="#79b694"/>
-    <text x="680" y="94" font-weight="700">Node's immutable FState</text>
+    <text x="680" y="94" font-weight="700">Node's immutable FArdaState</text>
     <text x="680" y="121">Shaders, layouts, settings</text>
     <text x="680" y="147">or CUDA operand</text>
     <path d="M273 117 H333 M596 117 H657" fill="none" stroke="#607b94" stroke-width="2" marker-end="url(#arrow)"/>
@@ -24,8 +24,8 @@
     <path d="M787 219 V175" fill="none" stroke="#607b94" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
     <rect x="338" y="220" width="258" height="95" rx="10" fill="#253e36" stroke="#79b694"/>
     <text x="356" y="249" font-weight="700">Bound graph instance</text>
-    <text x="356" y="276">Retain parameters + FState</text>
-    <text x="356" y="301">Own private FInstanceState</text>
+    <text x="356" y="276">Retain parameters + FArdaState</text>
+    <text x="356" y="301">Own private FArdaInstanceState</text>
     <path d="M467 170 V215" fill="none" stroke="#607b94" stroke-width="2" marker-end="url(#arrow)"/>
     <path d="M596 240 H625 V156 H657" fill="none" stroke="#79b694" stroke-width="2" marker-end="url(#arrow)"/>
     <text x="626" y="195" font-size="13" transform="rotate(-90 626 195)">retains</text>

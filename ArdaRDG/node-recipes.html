@@ -1,0 +1,1273 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Self-contained GPU nodes, automatic binding preparation, pipeline inference and range-aware dependencies.">
+  <title>Self-contained node recipes | ArdaRenderGraph | Ardashir</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/glossary-data.js" defer></script>
+  <script src="../assets/arda-rdg-api.js" defer></script>
+  <script src="../assets/backend-api.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <a class="site-brand" href="../index.html">Ardashir Docs</a>
+    <nav aria-label="Primary">
+      <a href="index.html">ArdaRenderGraph</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="quick-guide.html">Quick guide</a>
+      <a href="api-reference.html">API</a>
+      <a href="../glossary.html">Glossary</a>
+    </nav>
+  </header>
+  <div class="site-layout">
+    <aside class="sidebar" aria-label="ArdaRenderGraph pages">
+      <h2>ArdaRenderGraph</h2>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a href="getting-started.html">Getting started</a>
+        <a href="node-recipes.html">Node recipes</a>
+        <a href="feature-requirements.html">Feature requirements</a>
+        <a href="quick-guide.html">Quick user's guide</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="resources.html">Resources</a>
+        <a href="passes.html">Typed nodes</a>
+        <a href="compilation.html">Compilation</a>
+        <a href="execution.html">Execution</a>
+        <a href="debugging.html">Debugging</a>
+        <a href="api-reference.html">API reference</a>
+      </nav>
+    </aside>
+    <main id="main-content">
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href="../index.html">Docs</a> /
+        <a href="index.html">ArdaRenderGraph</a> /
+        Node recipes
+      </nav>
+      <article><header class="page-header"><p class="eyebrow">Author operations; compose graphs</p><h1>Self-contained node recipes</h1><p>Register compute, CUDA, ray tracing, mesh, rasterization and work-graph operations. Let compilation prepare their resources, bindings, descriptor indices and shader tables.</p></header>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">Prerequisites</a><a href="#model">Programming model</a><a href="#compute">Compute shader</a><a href="#cuda">CUDA</a><a href="#ray">Ray tracing</a><a href="#mesh">Mesh shader</a><a href="#raster">Rasterization</a><a href="#work">Work graph</a><a href="#bindless">Bindless ranges</a><a href="#pipelines">Pipeline assignment and reuse</a><a href="#failures">Failures</a><a href="#summary">Checkpoints</a></nav>
+<section id="objectives"><h2>Learning objectives and prerequisites</h2><p>After this chapter you can write a node library, assemble its operations without native binding setup, predict when resources create dependencies, and diagnose pipeline or descriptor errors. Read <a href="getting-started.html#lifecycle">edit transactions</a>, <a href="passes.html#freezing">parameter snapshots</a> and <a href="resources.html">logical versus physical resources</a> first. The examples require an initialized RHI device, supported GPU features and shader compilation or deployed shader artifacts.</p></section>
+<section id="model"><h2>The compiler owns physical preparation</h2><p>A shader argument is a reference to a logical value before it is a GPU descriptor. A node describes what it reads and produces; an edge constrains when a value becomes available. Separating those facts from physical addresses lets the compiler schedule work and choose allocations before building descriptors. Putting allocation or descriptor creation in every recording callback would prevent that separation and repeat CPU work during replay.</p><p>The common <a href="api-reference.html#api-arda-tardadependencynode-35213481"><code>TArdaDependencyNode</code></a> base supplies registration, attachment and preparation lifetime. Domain specializations fix the operation's execution domain, while the compiler still chooses its native queue. Implement metadata, semantic identity, resource declarations, description and recording in each node's files. A class can use inherited stateless hooks when it needs no setup.</p><ol>
+<li>Override static <a href="api-reference.html#api-arda-tardadependencynode-getrequirements-defdae36"><code>GetRequirements</code></a> for hardware or library prerequisites. The graph checks explicit needs before output declaration, validation and preparation, and checks recognizable descriptor needs after <code>Describe</code>. See <a href="feature-requirements.html#worked-example">the compiled hook examples</a>; unsupported attachment returns a named diagnostic without inserting the node.</li>
+<li>In <code>DeclareResources</code>, declare named outputs through <a href="api-reference.html#api-arda-fardadependencyresourcecontext-b766a08b"><code>FArdaDependencyResourceContext</code></a>. An empty handle creates a graph-owned logical resource; a supplied handle is checked against the output requirements. Failed attachment rolls back newly declared outputs.</li>
+<li>The base computes canonical identity after output resolution. Include every behavior-affecting field in the key. Matching reattachment returns the existing instance; a name collision with different semantics fails.</li>
+<li><code>Prepare</code> loads the node's shaders and immutable configuration. The base's weak cache shares live state for the same node type and device. Resource-dependent instance setup is separate.</li>
+<li><code>Describe</code> returns <a href="api-reference.html#api-arda-fardadependencynodedesc-a41f6f7e"><code>FArdaDependencyNodeDesc</code></a>. Use <code>BindShader&lt;Shader::FArdaParameters&gt;</code> to map named metadata leaves to graph resources and frozen push-constant bytes. Shader metadata generates layouts and accesses. Declare copy, framebuffer and external-library accesses explicitly.</li>
+<li><code>EndGraphEdit</code> resolves resource edges, schedules and allocates, infers PSOs, then prepares fixed bindings, bindless tables, parameter relocations and ray tables separately for each compiled frame slot.</li>
+<li><code>Record</code> calls the context's state helper and supplies draw or dispatch arguments. <a href="api-reference.html#api-arda-fardadependencyexecutioncontext-80b152bc"><code>FArdaDependencyExecutionContext</code></a> supplies the prepared PSO, framebuffer, bindings, parameters and shader table. Ordinary replay reuses them.</li></ol>
+<p>Publish classes by calling <code>MyNode::Register()</code> before discovery, or just use typed <code>Graph.AttachOrFind&lt;MyNode&gt;</code>, which registers on demand. Device setup occurs at attachment, not global registry discovery. Graph parameters retain prepared state; compiled frames retain physical objects until GPU retirement. Keep a graph across frames. Changing shapes, resource identities or frozen values requires an edit; changing synchronized external input contents does not.</p>
+<figure><img src="Assets/rdg-resource-materialization.svg" alt="Logical graph resources are assigned physical memory during compilation before execution." loading="lazy"><figcaption>Descriptors are prepared after physical addresses are known, separately for each reusable frame slot.</figcaption></figure></section>
+<section id="compute"><h2>Compute shader</h2><p>One dispatch writes the frozen value 123 to a graph-owned four-byte buffer. A separate readback node makes the result observable. The shader parameter struct declares both the push constant and UAV; the graph supplies their native bindings.</p><p>These are compiled recipe sources, built into <code>ArdaGraphTests</code>. In an application, compile all four node .cpp files and <a href="Examples/AssembleNodes.cpp">the assembly file</a> (it defines all four recipes and the shared registration function), or extract only the assembly function for your selected node, include <a href="Examples/Nodes/RecipeNodeSupport.h">the private recipe support header</a>, link <code>Ardashir::ArdaRenderGraph</code>, and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as an absolute path to <a href="Examples/Nodes/Shaders/ComputeWrite.hlsl">the shader directory</a>. Enable on-demand compilation for development, or deploy matching artifacts for load-only mode.</p><p>Registration: <code>FArdaComputeWriteNode::Register()</code> publishes the type; <a href="Examples/AssembleNodes.cpp">RegisterRecipeLibrary</a> registers all four native recipes together. The renderer only attaches operations and wires their output handles:</p><pre><code>FArdaRHIStatus RunComputeRecipe(FArdaRHIDeviceRef Device)
+	{
+		FArdaDependencyGraph Graph(Device);
+		if (auto S = Graph.BeginGraphEdit(); !S)
+		{
+			return S;
+		}
+		auto Compute = Graph.AttachOrFind&lt;FArdaComputeWriteNode&gt;(&quot;write&quot;, {{}, 123});
+		if (!Compute)
+		{
+			return Compute.mStatus;
+		}
+		auto Bytes = eastl::make_shared&lt;eastl::vector&lt;uint8_t&gt;&gt;();
+		auto Read =
+		    Graph.AttachOrFind&lt;FArdaGraphReadbackNode&gt;(&quot;read&quot;, {Graph.FindOutput(Compute.mValue, &quot;Output&quot;), Bytes});
+		if (!Read)
+		{
+			return Read.mStatus;
+		}
+		if (auto S = Graph.EndGraphEdit(); !S)
+		{
+			return S;
+		}
+		for (unsigned Frame = 0; Frame &lt; 3; ++Frame)
+		{
+			const auto Run = Graph.Execute();
+			if (!Run.mStatus)
+			{
+				return Run.mStatus;
+			}
+			uint32_t Value = 0;
+			if (Bytes-&gt;size() != sizeof(Value))
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Unexpected readback size.&quot;);
+			}
+			std::memcpy(&amp;Value, Bytes-&gt;data(), sizeof(Value));
+			if (Value != 123)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Unexpected compute-graph output.&quot;);
+			}
+		}
+		return {};
+	}</code></pre><details><summary>ComputeWriteNode.h</summary><p><a href="Examples/Nodes/ComputeWriteNode.h">Source file</a></p><pre><code>#pragma once
+#include &quot;ArdaDependencyNode.h&quot;
+
+namespace arda
+{
+	struct FArdaComputeWriteParameters
+	{
+		FArdaDependencyResourceHandle mOutput;
+		uint32_t mValue = 0;
+	};
+
+	class FArdaComputeWriteNode final
+	    : public TArdaComputeDependencyNode&lt;FArdaComputeWriteNode, FArdaComputeWriteParameters&gt;
+	{
+	public:
+		struct FArdaState;
+		static FArdaDependencyNodeMetadata GetMetadata();
+		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P);
+		static eastl::string GetCanonicalKey(const FArdaParameters&amp; P);
+		static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaState&gt;&gt; Prepare(FArdaRHIDeviceRef Device);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&amp; P, const FArdaState&amp; State);
+		static FArdaRHIStatus Record(FArdaDependencyExecutionContext&amp; C,
+		    const FArdaParameters&amp; P,
+		    const FArdaState&amp; State,
+		    FArdaInstanceState&amp; Instance);
+	};
+}</code></pre></details><details><summary>ComputeWriteNode.cpp</summary><p><a href="Examples/Nodes/ComputeWriteNode.cpp">Source file</a></p><pre><code>#include &quot;ComputeWriteNode.h&quot;
+#include &quot;RecipeNodeSupport.h&quot;
+#include &lt;cstring&gt;
+
+namespace arda
+{
+	class FArdaRecipeComputeShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
+			ARDA_SHADER_PUSH_CONSTANTS(uint32_t, mValue, 0, 0, EArdaRHIShaderStage::Compute)
+			ARDA_SHADER_BUFFER_UAV(mOutput, 0, 0, EArdaRHIShaderStage::Compute)
+		ARDA_END_SHADER_PARAMETER_STRUCT()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaRecipeComputeShader);
+	};
+	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaRecipeComputeShader,
+	    ARDA_RDG_RECIPE_SHADER_DIR &quot;/ComputeWrite.hlsl&quot;,
+	    &quot;RecipeCompute&quot;,
+	    &quot;RecipeCS&quot;,
+	    EArdaRHIShaderStage::Compute)
+
+	struct FArdaComputeWriteNode::FArdaState
+	{
+		FArdaGlobalShaderMap mShaders;
+		FArdaInductorPipelineContribution mStage;
+		eastl::shared_ptr&lt;const FArdaInductorPipelineConfiguration&gt; mConfiguration;
+	};
+
+	FArdaRHIStatus FArdaComputeWriteNode::DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P)
+	{
+		FArdaRHIBufferDesc D;
+		D.mByteSize = D.mStructureStride = sizeof(uint32_t);
+		D.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
+		return C.Buffer(P.mOutput, &quot;Output&quot;, D);
+	}
+
+	FArdaDependencyNodeMetadata FArdaComputeWriteNode::GetMetadata()
+	{
+		return {&quot;recipe.compute-write&quot;, 1};
+	}
+
+	eastl::string FArdaComputeWriteNode::GetCanonicalKey(const FArdaParameters&amp; P)
+	{
+		FArdaDependencyKeyBuilder Key;
+		Key.Resource(P.mOutput);
+		Key.Value(P.mValue); // CPU input record is frozen with this instance.
+		return Key.Build();
+	}
+
+	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaComputeWriteNode::FArdaState&gt;&gt; FArdaComputeWriteNode::Prepare(
+	    FArdaRHIDeviceRef Device)
+	{
+		if (!Device)
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Compute preparation needs a device.&quot;)};
+		}
+
+		auto State = eastl::make_shared&lt;FArdaState&gt;();
+		if (!State-&gt;mShaders.Initialize(Device))
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+
+		const auto* Shader = State-&gt;mShaders.Find(FArdaRecipeComputeShader::GetStaticType());
+		if (!Shader)
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+		State-&gt;mStage.mShader = Shader-&gt;GetShader();
+		State-&gt;mStage.mBindingLayouts = Shader-&gt;GetBindingLayouts();
+		auto Config = eastl::make_shared&lt;FArdaInductorPipelineConfiguration&gt;();
+		Config-&gt;mKind = EArdaPipelineStateKind::Compute;
+		State-&gt;mConfiguration = eastl::move(Config);
+		return {eastl::move(State), {}};
+	}
+
+	FArdaDependencyNodeDesc FArdaComputeWriteNode::Describe(const FArdaParameters&amp; P, const FArdaState&amp; State)
+	{
+		FArdaDependencyNodeDesc D;
+		FArdaDependencyShaderValue Value;
+		Value.mMember = &quot;mValue&quot;;
+		Value.mBytes.resize(sizeof(P.mValue));
+		std::memcpy(Value.mBytes.data(), &amp;P.mValue, sizeof(P.mValue));
+		D.BindShader&lt;FArdaRecipeComputeShader::FArdaParameters&gt;({{&quot;mOutput&quot;, P.mOutput}}, &quot;default&quot;, {Value});
+		D.mPipelineStages = {State.mStage};
+		D.mPipelines = {{&quot;default&quot;, 0, EArdaPipelineStateKind::Compute, {}, State.mConfiguration}};
+		return D;
+	}
+
+	FArdaRHIStatus FArdaComputeWriteNode::Record(FArdaDependencyExecutionContext&amp; C,
+	    const FArdaParameters&amp; P,
+	    const FArdaState&amp; State,
+	    FArdaInstanceState&amp;)
+	{
+		// Bind the executor-prepared pipeline and shader arguments before dispatching this operation.
+		if (auto S = C.SetComputeState(); !S)
+		{
+			return S;
+		}
+
+		C.GetCommands().Dispatch(1, 1, 1);
+		return {};
+	}
+}</code></pre></details></section>
+<section id="mesh"><h2>Mesh shader / meshlet pipeline</h2><p>The node privately registers mesh and pixel shaders, declares an offscreen color output, supplies raster state and requests a Meshlet pipeline. Two instances retain different output textures but share one matching PSO. The GPU test checks creation and replay; it does not compare rendered pixels.</p><p>These are compiled recipe sources, built into <code>ArdaGraphTests</code>. In an application, compile all four node .cpp files and <a href="Examples/AssembleNodes.cpp">the assembly file</a> (it defines all four recipes and the shared registration function), or extract only the assembly function for your selected node, include <a href="Examples/Nodes/RecipeNodeSupport.h">the private recipe support header</a>, link <code>Ardashir::ArdaRenderGraph</code>, and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as an absolute path to <a href="Examples/Nodes/Shaders/MeshTriangle.hlsl">the shader directory</a>. Enable on-demand compilation for development, or deploy matching artifacts for load-only mode.</p><p>Registration: <code>FArdaMeshTriangleNode::Register()</code> publishes the type; <a href="Examples/AssembleNodes.cpp">RegisterRecipeLibrary</a> registers all four native recipes together. The renderer only attaches operations and wires their output handles:</p><pre><code>FArdaRHIStatus RunMeshRecipe(FArdaRHIDeviceRef Device)
+	{
+		FArdaDependencyGraph Graph(Device);
+		if (auto S = Graph.BeginGraphEdit(); !S)
+		{
+			return S;
+		}
+		auto First = Graph.AttachOrFind&lt;FArdaMeshTriangleNode&gt;(&quot;mesh A&quot;, {});
+		if (!First)
+		{
+			return First.mStatus;
+		}
+		auto Second = Graph.AttachOrFind&lt;FArdaMeshTriangleNode&gt;(&quot;mesh B&quot;, {});
+		if (!Second)
+		{
+			return Second.mStatus;
+		}
+		if (auto S = Graph.MarkOutput(Graph.FindOutput(First.mValue, &quot;Color&quot;)); !S)
+		{
+			return S;
+		}
+		if (auto S = Graph.MarkOutput(Graph.FindOutput(Second.mValue, &quot;Color&quot;)); !S)
+		{
+			return S;
+		}
+		if (auto S = Graph.EndGraphEdit(); !S)
+		{
+			return S;
+		}
+		// Two instances, matching shader/layout references and attachment formats: one mesh PSO.
+		const auto Compiled = Graph.GetPipelineCacheStats();
+		if (Compiled.mMeshletEntries != 1 || Compiled.mHits &lt; 1)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Expected mesh PSO reuse.&quot;);
+		}
+		for (unsigned Frame = 0; Frame &lt; 3; ++Frame)
+		{
+			const auto Run = Graph.Execute();
+			if (!Run.mStatus)
+			{
+				return Run.mStatus;
+			}
+		}
+		return {}; // These offscreen textures are released with Graph. Retain Graph in a renderer.
+	}</code></pre><details><summary>MeshTriangleNode.h</summary><p><a href="Examples/Nodes/MeshTriangleNode.h">Source file</a></p><pre><code>#pragma once
+#include &quot;ArdaDependencyNode.h&quot;
+
+namespace arda
+{
+	struct FArdaMeshTriangleParameters
+	{
+		FArdaDependencyResourceHandle mColor;
+		uint32_t mWidth = 64, mHeight = 64;
+	};
+
+	class FArdaMeshTriangleNode final
+	    : public TArdaGraphicsDependencyNode&lt;FArdaMeshTriangleNode, FArdaMeshTriangleParameters&gt;
+	{
+	public:
+		struct FArdaState;
+		static FArdaDependencyNodeMetadata GetMetadata();
+		/** Hardware admission is checked before output declaration or device preparation. */
+		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&amp; Parameters);
+		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P);
+		static eastl::string GetCanonicalKey(const FArdaParameters&amp; P);
+		static FArdaRHIStatus Validate(const FArdaParameters&amp; P);
+		static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaState&gt;&gt; Prepare(FArdaRHIDeviceRef Device);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&amp; P, const FArdaState&amp; State);
+		static FArdaRHIStatus Record(FArdaDependencyExecutionContext&amp; C,
+		    const FArdaParameters&amp; P,
+		    const FArdaState&amp; State,
+		    FArdaInstanceState&amp; Instance);
+	};
+}</code></pre></details><details><summary>MeshTriangleNode.cpp</summary><p><a href="Examples/Nodes/MeshTriangleNode.cpp">Source file</a></p><pre><code>#include &quot;MeshTriangleNode.h&quot;
+#include &quot;RecipeNodeSupport.h&quot;
+
+namespace arda
+{
+	class FArdaRecipeMeshShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaRecipeMeshShader);
+	};
+
+	class FArdaRecipePixelShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaRecipePixelShader);
+	};
+	ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(FArdaRecipeMeshShader,
+	    ARDA_RDG_RECIPE_SHADER_DIR &quot;/MeshTriangle.hlsl&quot;,
+	    &quot;RecipeMesh&quot;,
+	    &quot;RecipeMS&quot;,
+	    EArdaRHIShaderStage::Mesh)
+	ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(FArdaRecipePixelShader,
+	    ARDA_RDG_RECIPE_SHADER_DIR &quot;/MeshTriangle.hlsl&quot;,
+	    &quot;RecipePixel&quot;,
+	    &quot;RecipePS&quot;,
+	    EArdaRHIShaderStage::Pixel)
+
+	struct FArdaMeshTriangleNode::FArdaState
+	{
+		FArdaGlobalShaderMap mShaders;
+		eastl::vector&lt;FArdaInductorPipelineContribution&gt; mStages;
+		eastl::shared_ptr&lt;const FArdaInductorPipelineConfiguration&gt; mConfiguration;
+	};
+
+	FArdaRHIStatus FArdaMeshTriangleNode::DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P)
+	{
+		FArdaRHITextureDesc D;
+		D.mWidth = P.mWidth;
+		D.mHeight = P.mHeight;
+		D.mFormat = EArdaRHIFormat::RGBA8UNorm;
+		D.mUsage = EArdaRHITextureUsage::RenderTarget;
+		return C.Texture(P.mColor, &quot;Color&quot;, D);
+	}
+
+	FArdaDependencyNodeRequirements FArdaMeshTriangleNode::GetRequirements(const FArdaParameters&amp;)
+	{
+		FArdaDependencyNodeRequirements R;
+		R.mFeatures.mbRequireMeshShaders = true;
+		return R;
+	}
+
+	FArdaDependencyNodeMetadata FArdaMeshTriangleNode::GetMetadata()
+	{
+		return {&quot;recipe.mesh-triangle&quot;, 1};
+	}
+
+	eastl::string FArdaMeshTriangleNode::GetCanonicalKey(const FArdaParameters&amp; P)
+	{
+		FArdaDependencyKeyBuilder Key;
+		Key.Resource(P.mColor);
+		Key.Value(P.mWidth);
+		Key.Value(P.mHeight);
+		return Key.Build();
+	}
+
+	FArdaRHIStatus FArdaMeshTriangleNode::Validate(const FArdaParameters&amp; P)
+	{
+		if (!P.mWidth || !P.mHeight)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Mesh target extent must be nonzero.&quot;);
+		}
+		return {};
+	}
+
+	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaMeshTriangleNode::FArdaState&gt;&gt; FArdaMeshTriangleNode::Prepare(
+	    FArdaRHIDeviceRef Device)
+	{
+		if (!Device)
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Mesh preparation needs a device.&quot;)};
+		}
+
+		auto State = eastl::make_shared&lt;FArdaState&gt;();
+		if (!State-&gt;mShaders.Initialize(Device))
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+
+		const auto* Mesh = State-&gt;mShaders.Find(FArdaRecipeMeshShader::GetStaticType());
+		const auto* Pixel = State-&gt;mShaders.Find(FArdaRecipePixelShader::GetStaticType());
+		if (!Mesh || !Pixel)
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+		for (const auto* Shader : {Mesh, Pixel})
+		{
+			FArdaInductorPipelineContribution Stage;
+			Stage.mShader = Shader-&gt;GetShader();
+			State-&gt;mStages.push_back(eastl::move(Stage));
+		}
+		auto Config = eastl::make_shared&lt;FArdaInductorPipelineConfiguration&gt;();
+		Config-&gt;mKind = EArdaPipelineStateKind::Meshlet;
+		auto&amp; Desc = Config-&gt;mMeshlet.mDesc;
+		Desc.mRasterState.mCullMode = EArdaRHICullMode::None;
+		Desc.mDepthStencilState.mbDepthTest = false;
+		Desc.mDepthStencilState.mbDepthWrite = false;
+		Desc.mSampleCount = 0; // ArdaInductor completes formats and samples from the framebuffer.
+		State-&gt;mConfiguration = eastl::move(Config);
+		return {eastl::move(State), {}};
+	}
+
+	FArdaDependencyNodeDesc FArdaMeshTriangleNode::Describe(const FArdaParameters&amp; P, const FArdaState&amp; State)
+	{
+		FArdaDependencyNodeDesc D;
+		D.mAccesses = {{P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
+		D.mColorTargets = {P.mColor};
+		D.mPipelineStages = State.mStages;
+		D.mPipelines = {{&quot;default&quot;, 0, EArdaPipelineStateKind::Meshlet, {}, State.mConfiguration}};
+		return D;
+	}
+
+	FArdaRHIStatus FArdaMeshTriangleNode::Record(FArdaDependencyExecutionContext&amp; C,
+	    const FArdaParameters&amp; P,
+	    const FArdaState&amp;,
+	    FArdaInstanceState&amp;)
+	{
+		auto Color = C.GetTexture(P.mColor);
+		if (auto S = C.GetCommands().ClearTexture(*Color, {}, {0.f, 0.f, 0.f, 1.f}); !S)
+		{
+			return S;
+		}
+		FArdaRHIMeshletState State;
+		State.mViewports = {{0.f, float(P.mWidth), 0.f, float(P.mHeight), 0.f, 1.f}};
+		State.mScissors = {{0, int32_t(P.mWidth), 0, int32_t(P.mHeight)}};
+		if (auto S = C.SetMeshletState(State); !S)
+		{
+			return S;
+		}
+
+		return C.GetCommands().DispatchMesh(1, 1, 1);
+	}
+}</code></pre></details></section>
+<section id="raster"><h2>Rasterization</h2><p>This vertex-ID triangle needs no uploaded vertex buffer. The node owns vertex and pixel shaders and the framebuffer output declaration. Real geometry uploads can be separate nodes whose outputs feed declared vertex/index reads. Two instances below reuse one graphics PSO.</p><p>These are compiled recipe sources, built into <code>ArdaGraphTests</code>. In an application, compile all four node .cpp files and <a href="Examples/AssembleNodes.cpp">the assembly file</a> (it defines all four recipes and the shared registration function), or extract only the assembly function for your selected node, include <a href="Examples/Nodes/RecipeNodeSupport.h">the private recipe support header</a>, link <code>Ardashir::ArdaRenderGraph</code>, and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as an absolute path to <a href="Examples/Nodes/Shaders/RasterTriangle.hlsl">the shader directory</a>. Enable on-demand compilation for development, or deploy matching artifacts for load-only mode.</p><p>Registration: <code>FArdaRasterTriangleNode::Register()</code> publishes the type; <a href="Examples/AssembleNodes.cpp">RegisterRecipeLibrary</a> registers all four native recipes together. The renderer only attaches operations and wires their output handles:</p><pre><code>FArdaRHIStatus RunRasterRecipe(FArdaRHIDeviceRef Device)
+	{
+		FArdaDependencyGraph Graph(Device);
+		if (auto S = Graph.BeginGraphEdit(); !S)
+		{
+			return S;
+		}
+		auto First = Graph.AttachOrFind&lt;FArdaRasterTriangleNode&gt;(&quot;raster A&quot;, {});
+		if (!First)
+		{
+			return First.mStatus;
+		}
+		auto Second = Graph.AttachOrFind&lt;FArdaRasterTriangleNode&gt;(&quot;raster B&quot;, {});
+		if (!Second)
+		{
+			return Second.mStatus;
+		}
+		if (auto S = Graph.MarkOutput(Graph.FindOutput(First.mValue, &quot;Color&quot;)); !S)
+		{
+			return S;
+		}
+		if (auto S = Graph.MarkOutput(Graph.FindOutput(Second.mValue, &quot;Color&quot;)); !S)
+		{
+			return S;
+		}
+		if (auto S = Graph.EndGraphEdit(); !S)
+		{
+			return S;
+		}
+		// Two instances, matching shader/layout references and attachment formats: one raster PSO.
+		const auto Compiled = Graph.GetPipelineCacheStats();
+		if (Compiled.mGraphicsEntries != 1 || Compiled.mHits &lt; 1)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Expected raster PSO reuse.&quot;);
+		}
+		for (unsigned Frame = 0; Frame &lt; 3; ++Frame)
+		{
+			const auto Run = Graph.Execute();
+			if (!Run.mStatus)
+			{
+				return Run.mStatus;
+			}
+		}
+		return {}; // These offscreen textures are released with Graph. Retain Graph in a renderer.
+	}</code></pre><details><summary>RasterTriangleNode.h</summary><p><a href="Examples/Nodes/RasterTriangleNode.h">Source file</a></p><pre><code>#pragma once
+#include &quot;ArdaDependencyNode.h&quot;
+
+namespace arda
+{
+	struct FArdaRasterTriangleParameters
+	{
+		FArdaDependencyResourceHandle mColor;
+		uint32_t mWidth = 64, mHeight = 64;
+	};
+
+	class FArdaRasterTriangleNode final
+	    : public TArdaGraphicsDependencyNode&lt;FArdaRasterTriangleNode, FArdaRasterTriangleParameters&gt;
+	{
+	public:
+		struct FArdaState;
+		static FArdaDependencyNodeMetadata GetMetadata();
+		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P);
+		static eastl::string GetCanonicalKey(const FArdaParameters&amp; P);
+		static FArdaRHIStatus Validate(const FArdaParameters&amp; P);
+		static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaState&gt;&gt; Prepare(FArdaRHIDeviceRef Device);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&amp; P, const FArdaState&amp; State);
+		static FArdaRHIStatus Record(FArdaDependencyExecutionContext&amp; C,
+		    const FArdaParameters&amp; P,
+		    const FArdaState&amp; State,
+		    FArdaInstanceState&amp; Instance);
+	};
+}</code></pre></details><details><summary>RasterTriangleNode.cpp</summary><p><a href="Examples/Nodes/RasterTriangleNode.cpp">Source file</a></p><pre><code>#include &quot;RasterTriangleNode.h&quot;
+#include &quot;RecipeNodeSupport.h&quot;
+
+namespace arda
+{
+	class FArdaRecipeRasterVertexShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaRecipeRasterVertexShader);
+	};
+
+	class FArdaRecipeRasterPixelShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaRecipeRasterPixelShader);
+	};
+	ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(FArdaRecipeRasterVertexShader,
+	    ARDA_RDG_RECIPE_SHADER_DIR &quot;/RasterTriangle.hlsl&quot;,
+	    &quot;RecipeVertex&quot;,
+	    &quot;RecipeVS&quot;,
+	    EArdaRHIShaderStage::Vertex)
+	ARDA_IMPLEMENT_GLOBAL_SHADER_WITHOUT_PARAMETERS(FArdaRecipeRasterPixelShader,
+	    ARDA_RDG_RECIPE_SHADER_DIR &quot;/RasterTriangle.hlsl&quot;,
+	    &quot;RecipeRasterPixel&quot;,
+	    &quot;RecipeRasterPS&quot;,
+	    EArdaRHIShaderStage::Pixel)
+
+	struct FArdaRasterTriangleNode::FArdaState
+	{
+		FArdaGlobalShaderMap mShaders;
+		eastl::vector&lt;FArdaInductorPipelineContribution&gt; mStages;
+		eastl::shared_ptr&lt;const FArdaInductorPipelineConfiguration&gt; mConfiguration;
+	};
+
+	FArdaRHIStatus FArdaRasterTriangleNode::DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P)
+	{
+		FArdaRHITextureDesc D;
+		D.mWidth = P.mWidth;
+		D.mHeight = P.mHeight;
+		D.mFormat = EArdaRHIFormat::RGBA8UNorm;
+		D.mUsage = EArdaRHITextureUsage::RenderTarget;
+		return C.Texture(P.mColor, &quot;Color&quot;, D);
+	}
+
+	FArdaDependencyNodeMetadata FArdaRasterTriangleNode::GetMetadata()
+	{
+		return {&quot;recipe.raster-triangle&quot;, 1};
+	}
+
+	eastl::string FArdaRasterTriangleNode::GetCanonicalKey(const FArdaParameters&amp; P)
+	{
+		FArdaDependencyKeyBuilder Key;
+		Key.Resource(P.mColor);
+		Key.Value(P.mWidth);
+		Key.Value(P.mHeight);
+		return Key.Build();
+	}
+
+	FArdaRHIStatus FArdaRasterTriangleNode::Validate(const FArdaParameters&amp; P)
+	{
+		if (!P.mWidth || !P.mHeight)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Raster target extent must be nonzero.&quot;);
+		}
+		return {};
+	}
+
+	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaRasterTriangleNode::FArdaState&gt;&gt; FArdaRasterTriangleNode::Prepare(
+	    FArdaRHIDeviceRef Device)
+	{
+		if (!Device)
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Raster preparation needs a device.&quot;)};
+		}
+
+		auto State = eastl::make_shared&lt;FArdaState&gt;();
+		if (!State-&gt;mShaders.Initialize(Device))
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+
+		const auto* FArdaVertex = State-&gt;mShaders.Find(FArdaRecipeRasterVertexShader::GetStaticType());
+		const auto* Pixel = State-&gt;mShaders.Find(FArdaRecipeRasterPixelShader::GetStaticType());
+		if (!FArdaVertex || !Pixel)
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+		for (const auto* Shader : {FArdaVertex, Pixel})
+		{
+			FArdaInductorPipelineContribution Stage;
+			Stage.mShader = Shader-&gt;GetShader();
+			State-&gt;mStages.push_back(eastl::move(Stage));
+		}
+		auto Config = eastl::make_shared&lt;FArdaInductorPipelineConfiguration&gt;();
+		Config-&gt;mKind = EArdaPipelineStateKind::Graphics;
+		auto&amp; Desc = Config-&gt;mGraphics.mDesc;
+		Desc.mRasterState.mCullMode = EArdaRHICullMode::None;
+		Desc.mDepthStencilState.mbDepthTest = false;
+		Desc.mDepthStencilState.mbDepthWrite = false;
+		Desc.mSampleCount = 0; // ArdaInductor completes formats and samples from the framebuffer.
+		State-&gt;mConfiguration = eastl::move(Config);
+		return {eastl::move(State), {}};
+	}
+
+	FArdaDependencyNodeDesc FArdaRasterTriangleNode::Describe(const FArdaParameters&amp; P, const FArdaState&amp; State)
+	{
+		FArdaDependencyNodeDesc D;
+		D.mAccesses = {{P.mColor, EArdaDependencyAccess::Write, EArdaRHIResourceState::RenderTarget}};
+		D.mColorTargets = {P.mColor};
+		D.mPipelineStages = State.mStages;
+		D.mPipelines = {{&quot;default&quot;, 0, EArdaPipelineStateKind::Graphics, {}, State.mConfiguration}};
+		return D;
+	}
+
+	FArdaRHIStatus FArdaRasterTriangleNode::Record(FArdaDependencyExecutionContext&amp; C,
+	    const FArdaParameters&amp; P,
+	    const FArdaState&amp;,
+	    FArdaInstanceState&amp;)
+	{
+		auto Color = C.GetTexture(P.mColor);
+		if (auto S = C.GetCommands().ClearTexture(*Color, {}, {0.f, 0.f, 0.f, 1.f}); !S)
+		{
+			return S;
+		}
+
+		// Supply dynamic draw inputs; the executor fills the compiled pipeline, framebuffer, and bindings.
+		FArdaRHIGraphicsState State;
+		State.mViewports = {{0.f, float(P.mWidth), 0.f, float(P.mHeight), 0.f, 1.f}};
+		State.mScissors = {{0, int32_t(P.mWidth), 0, int32_t(P.mHeight)}};
+		if (auto S = C.SetGraphicsState(State); !S)
+		{
+			return S;
+		}
+		FArdaRHIDrawArguments Draw;
+		Draw.mVertexCount = 3;
+		// Record only this node&#x27;s draw; submission and cross-node ordering belong to the graph.
+		C.GetCommands().Draw(Draw);
+		return {};
+	}
+}</code></pre></details></section>
+<section id="work"><h2>Work graph</h2><p>A CPU entry record drives one work-graph node that writes 123. Global resource bindings are generated from the shader struct. The RHI creates program backing storage. Entry records supply scalar inputs: global graph push-constant arguments are rejected for work graphs. D3D12 requires work-graph support; the current Vulkan backend returns Unsupported.</p><p>These are compiled recipe sources, built into <code>ArdaGraphTests</code>. In an application, compile all four node .cpp files and <a href="Examples/AssembleNodes.cpp">the assembly file</a> (it defines all four recipes and the shared registration function), or extract only the assembly function for your selected node, include <a href="Examples/Nodes/RecipeNodeSupport.h">the private recipe support header</a>, link <code>Ardashir::ArdaRenderGraph</code>, and define <code>ARDA_RDG_RECIPE_SHADER_DIR</code> as an absolute path to <a href="Examples/Nodes/Shaders/WorkWrite.hlsl">the shader directory</a>. Enable on-demand compilation for development, or deploy matching artifacts for load-only mode.</p><p>Registration: <code>FArdaWorkWriteNode::Register()</code> publishes the type; <a href="Examples/AssembleNodes.cpp">RegisterRecipeLibrary</a> registers all four native recipes together. The renderer only attaches operations and wires their output handles:</p><pre><code>FArdaRHIStatus RunWorkRecipe(FArdaRHIDeviceRef Device)
+	{
+		FArdaDependencyGraph Graph(Device);
+		if (auto S = Graph.BeginGraphEdit(); !S)
+		{
+			return S;
+		}
+		auto Work = Graph.AttachOrFind&lt;FArdaWorkWriteNode&gt;(&quot;write&quot;, {{}, 123});
+		if (!Work)
+		{
+			return Work.mStatus;
+		}
+		auto Bytes = eastl::make_shared&lt;eastl::vector&lt;uint8_t&gt;&gt;();
+		auto Read =
+		    Graph.AttachOrFind&lt;FArdaGraphReadbackNode&gt;(&quot;read&quot;, {Graph.FindOutput(Work.mValue, &quot;Output&quot;), Bytes});
+		if (!Read)
+		{
+			return Read.mStatus;
+		}
+		if (auto S = Graph.EndGraphEdit(); !S)
+		{
+			return S;
+		}
+		for (unsigned Frame = 0; Frame &lt; 3; ++Frame)
+		{
+			const auto Run = Graph.Execute();
+			if (!Run.mStatus)
+			{
+				return Run.mStatus;
+			}
+			uint32_t Value = 0;
+			if (Bytes-&gt;size() != sizeof(Value))
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Unexpected readback size.&quot;);
+			}
+			std::memcpy(&amp;Value, Bytes-&gt;data(), sizeof(Value));
+			if (Value != 123)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Unexpected work-graph output.&quot;);
+			}
+		}
+		return {};
+	}</code></pre><details><summary>WorkWriteNode.h</summary><p><a href="Examples/Nodes/WorkWriteNode.h">Source file</a></p><pre><code>#pragma once
+#include &quot;ArdaDependencyNode.h&quot;
+
+namespace arda
+{
+	struct FArdaWorkWriteParameters
+	{
+		FArdaDependencyResourceHandle mOutput;
+		uint32_t mValue = 0;
+	};
+
+	class FArdaWorkWriteNode final : public TArdaComputeDependencyNode&lt;FArdaWorkWriteNode, FArdaWorkWriteParameters&gt;
+	{
+	public:
+		struct FArdaState;
+		static FArdaDependencyNodeMetadata GetMetadata();
+		/** Hardware admission is checked before output declaration or device preparation. */
+		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&amp; Parameters);
+		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P);
+		static eastl::string GetCanonicalKey(const FArdaParameters&amp; P);
+		static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaState&gt;&gt; Prepare(FArdaRHIDeviceRef Device);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&amp; P, const FArdaState&amp; State);
+		static FArdaRHIStatus Record(FArdaDependencyExecutionContext&amp; C,
+		    const FArdaParameters&amp; P,
+		    const FArdaState&amp; State,
+		    FArdaInstanceState&amp; Instance);
+	};
+}</code></pre></details><details><summary>WorkWriteNode.cpp</summary><p><a href="Examples/Nodes/WorkWriteNode.cpp">Source file</a></p><pre><code>#include &quot;WorkWriteNode.h&quot;
+#include &quot;RecipeNodeSupport.h&quot;
+
+namespace arda
+{
+	class FArdaRecipeWorkShader final : public FArdaGlobalShader
+	{
+	public:
+		ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)
+			ARDA_SHADER_BUFFER_UAV(mOutput, 0, 0, EArdaRHIShaderStage::WorkGraph)
+		ARDA_END_SHADER_PARAMETER_STRUCT()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaRecipeWorkShader);
+	};
+	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaRecipeWorkShader,
+	    ARDA_RDG_RECIPE_SHADER_DIR &quot;/WorkWrite.hlsl&quot;,
+	    &quot;RecipeWork&quot;,
+	    &quot;RecipeEntry&quot;,
+	    EArdaRHIShaderStage::WorkGraph)
+
+	struct FArdaWorkWriteNode::FArdaState
+	{
+		FArdaGlobalShaderMap mShaders;
+		FArdaInductorPipelineContribution mStage;
+		eastl::shared_ptr&lt;const FArdaInductorPipelineConfiguration&gt; mConfiguration;
+	};
+
+	FArdaRHIStatus FArdaWorkWriteNode::DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P)
+	{
+		FArdaRHIBufferDesc D;
+		D.mByteSize = D.mStructureStride = sizeof(uint32_t);
+		D.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::UnorderedAccess;
+		return C.Buffer(P.mOutput, &quot;Output&quot;, D);
+	}
+
+	FArdaDependencyNodeRequirements FArdaWorkWriteNode::GetRequirements(const FArdaParameters&amp;)
+	{
+		FArdaDependencyNodeRequirements R;
+		R.mFeatures.mbRequireWorkGraphs = true;
+		return R;
+	}
+
+	FArdaDependencyNodeMetadata FArdaWorkWriteNode::GetMetadata()
+	{
+		return {&quot;recipe.work-write&quot;, 1};
+	}
+
+	eastl::string FArdaWorkWriteNode::GetCanonicalKey(const FArdaParameters&amp; P)
+	{
+		FArdaDependencyKeyBuilder Key;
+		Key.Resource(P.mOutput);
+		Key.Value(P.mValue); // CPU input record is frozen with this instance.
+		return Key.Build();
+	}
+
+	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaWorkWriteNode::FArdaState&gt;&gt; FArdaWorkWriteNode::Prepare(
+	    FArdaRHIDeviceRef Device)
+	{
+		if (!Device)
+		{
+			return {{}, FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;Work-graph preparation needs a device.&quot;)};
+		}
+
+		auto State = eastl::make_shared&lt;FArdaState&gt;();
+		if (!State-&gt;mShaders.Initialize(Device))
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+
+		const auto* Shader = State-&gt;mShaders.Find(FArdaRecipeWorkShader::GetStaticType());
+		if (!Shader)
+		{
+			return {{}, ShaderError(State-&gt;mShaders)};
+		}
+		State-&gt;mStage.mShader = Shader-&gt;GetShader();
+		State-&gt;mStage.mBindingLayouts = Shader-&gt;GetBindingLayouts();
+		auto Config = eastl::make_shared&lt;FArdaInductorPipelineConfiguration&gt;();
+		Config-&gt;mKind = EArdaPipelineStateKind::WorkGraph;
+		Config-&gt;mWorkGraph.mDesc.mProgramName = &quot;RecipeProgram&quot;;
+		Config-&gt;mWorkGraph.mDesc.mEntryPoint = &quot;RecipeEntry&quot;;
+		Config-&gt;mWorkGraph.mDesc.mMaxInputRecords = 1;
+		State-&gt;mConfiguration = eastl::move(Config);
+		return {eastl::move(State), {}};
+	}
+
+	FArdaDependencyNodeDesc FArdaWorkWriteNode::Describe(const FArdaParameters&amp; P, const FArdaState&amp; State)
+	{
+		FArdaDependencyNodeDesc D;
+		D.BindShader&lt;FArdaRecipeWorkShader::FArdaParameters&gt;({{&quot;mOutput&quot;, P.mOutput}});
+		D.mPipelineStages = {State.mStage};
+		D.mPipelines = {{&quot;default&quot;, 0, EArdaPipelineStateKind::WorkGraph, {}, State.mConfiguration}};
+		return D;
+	}
+
+	FArdaRHIStatus FArdaWorkWriteNode::Record(FArdaDependencyExecutionContext&amp; C,
+	    const FArdaParameters&amp; P,
+	    const FArdaState&amp; State,
+	    FArdaInstanceState&amp;)
+	{
+		return C.DispatchWorkGraph(&amp;P.mValue, 1, sizeof(P.mValue));
+	}
+}</code></pre></details></section>
+<section id="cuda"><h2>CUDA operation and graphics composition</h2><p>Build the runnable example from a repository checkout with Visual Studio x64 build tools and an installed CUDA toolkit: <code>python Scripts/Examples/RunPixelSort.py vulkan --hidden --frames 3 --verify</code>. The script configures the <code>PixelSort</code> CMake target, enables CUDA kernel generation, locates the build tools and deploys shaders. Choose <code>d3d12</code> for the other backend. The command runs the complete example; the excerpts here are node-authoring references, not a separate standalone project.</p><p>For the operation's complete implementation, follow the <a href="Examples/Reference/ArdaPixelSortNodeParameters.h">graph parameters</a>, <a href="Examples/Reference/ArdaPixelSortNodeInternal.h">private helpers</a>, <a href="Examples/Reference/ArdaPixelSortOperand.cpp">operand implementation</a> and <a href="Examples/Reference/ArdaPixelSortKernels.cu">CUDA kernel registration and kernel source</a>. These are documentation snapshots of the original files. The example target's generated <code>pixel_sort</code> CUDA profile supplies the host registration symbol referenced by the operand.</p><p>CUDA launches do not use graphics PSOs or descriptor tables. A CUDA node supplies an operand to a compiler-coalesced sequence. Logical resources determine dependencies and graphics/CUDA handoffs. The operand schema resolves native CUDA buffers or surfaces; compatible adjacent nodes share an acquisition and release. This is batching of ordered calls on one stream, not kernel fusion.</p><p>The complete PixelSort node below owns operand construction, declares a CUDA-shareable output texture and contributes one radix operation. Its <code>PrepareCuda</code> fills the operand's typed host parameters from resolved graph textures. The <code>TArdaCudaOperandNode</code> specialization of the common class base derives accesses and native resource arguments directly from an operand's schema; see <a href="ArdaInductor.md#automatic-cuda-batches">automatic CUDA batches</a>. cuBLAS/cuDNN-style calls use the <a href="../ArdaBackend/CUDA-External-Calls.md">external-call operand contract</a>; capture must be explicitly supported by the adapter and library configuration.</p><p>In the <a href="Examples/Reference/PixelSortRenderer.cpp">complete renderer</a>, attach UploadFrame, take its <code>Constants</code> output, attach Noise with that handle, pass Noise's <code>Output</code> into Sort, and pass Sort's <code>Output</code> into Present. Import only external targets and persistent inputs. <code>FArdaPixelSortSortNode::Register()</code> supports library discovery; typed attachment does it automatically. The operand implementation and kernel are linked by the example's CMake target.</p><details><summary>ArdaPixelSortSortNode.h</summary><p><a href="Examples/Reference/ArdaPixelSortSortNode.h">Source file</a></p><pre><code>#pragma once
+#include &quot;ArdaPixelSortNodeParameters.h&quot;
+
+namespace arda
+{
+	class FArdaPixelSortSortNode final
+	    : public TArdaCudaDependencyNode&lt;FArdaPixelSortSortNode, FArdaPixelSortSortParameters&gt;
+	{
+	public:
+		struct FArdaState;
+		static FArdaDependencyNodeMetadata GetMetadata();
+		/** Hardware admission is checked before output declaration or device preparation. */
+		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&amp; Parameters);
+		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P);
+		static eastl::string GetCanonicalKey(const FArdaParameters&amp; Parameters);
+		static FArdaRHIStatus Validate(const FArdaParameters&amp; Parameters);
+		static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaState&gt;&gt; Prepare(FArdaRHIDeviceRef Device);
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&amp; Parameters, const FArdaState&amp; State);
+		static FArdaRHIStatus PrepareCuda(FArdaDependencyExecutionContext&amp; Context,
+		    const FArdaParameters&amp; Parameters,
+		    const FArdaState&amp; State,
+		    FArdaInstanceState&amp; Instance,
+		    FArdaCudaSequence&amp; Sequence);
+	};
+}</code></pre></details><details><summary>ArdaPixelSortSortNode.cpp</summary><p><a href="Examples/Reference/ArdaPixelSortSortNode.cpp">Source file</a></p><pre><code>#include &quot;Nodes/ArdaPixelSortSortNode.h&quot;
+#include &quot;ArdaPixelSortNodeInternal.h&quot;
+#include &quot;Nodes/ArdaPixelSortOperand.h&quot;
+
+namespace arda
+{
+	struct FArdaPixelSortSortNode::FArdaState
+	{
+		FArdaRHIDeviceRef mDevice;
+		eastl::shared_ptr&lt;FArdaPixelSortOperand&gt; mOperand;
+
+		FArdaRHIStatus Initialize()
+		{
+			try
+			{
+				// The operand owns native variant registration and architecture qualification.
+				mOperand = eastl::make_shared&lt;FArdaPixelSortOperand&gt;(mDevice);
+				return mOperand-&gt;GetOperandSupport();
+			}
+			catch (const std::exception&amp; Error)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, Error.what());
+			}
+		}
+	};
+
+	FArdaRHIStatus FArdaPixelSortSortNode::DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P)
+	{
+		FArdaRHITextureDesc D;
+		D.mWidth = P.mWidth;
+		D.mHeight = P.mHeight;
+		D.mFormat = EArdaRHIFormat::RGBA8UInt;
+		D.mbCudaInterop = true;
+		D.mUsage = EArdaRHITextureUsage::UnorderedAccess | EArdaRHITextureUsage::ShaderResource;
+		return C.Texture(P.mSorted, &quot;Output&quot;, D);
+	}
+
+	FArdaDependencyNodeRequirements FArdaPixelSortSortNode::GetRequirements(const FArdaParameters&amp;)
+	{
+		FArdaDependencyNodeRequirements R;
+		R.mbRequireCuda = true;
+		R.mbRequireCudaSurfaces = true;
+		return R;
+	}
+
+	FArdaDependencyNodeMetadata FArdaPixelSortSortNode::GetMetadata()
+	{
+		return {&quot;example.pixel-sort.radix&quot;, 1};
+	}
+
+	eastl::string FArdaPixelSortSortNode::GetCanonicalKey(const FArdaParameters&amp; P)
+	{
+		return FArdaDependencyKeyBuilder()
+		    .Resource(P.mNoise)
+		    .Resource(P.mSorted)
+		    .Value(reinterpret_cast&lt;uintptr_t&gt;(P.mInput.get()))
+		    .Value(P.mWidth)
+		    .Value(P.mHeight)
+		    .Build();
+	}
+
+	FArdaRHIStatus FArdaPixelSortSortNode::Validate(const FArdaParameters&amp; P)
+	{
+		if (!P.mInput)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    &quot;PixelSort sorting requires dynamic sort inputs.&quot;);
+		}
+		return ValidatePixelSortExtent(P.mWidth, P.mHeight);
+	}
+
+	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaPixelSortSortNode::FArdaState&gt;&gt; FArdaPixelSortSortNode::Prepare(
+	    FArdaRHIDeviceRef Device)
+	{
+		if (!Device)
+		{
+			return {{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;This node requires an initialized device.&quot;)};
+		}
+
+		auto State = eastl::make_shared&lt;FArdaState&gt;();
+		State-&gt;mDevice = eastl::move(Device);
+
+		// Publish prepared state only after all node-owned setup succeeds.
+		auto Status = State-&gt;Initialize();
+		if (!Status)
+		{
+			return {{}, eastl::move(Status)};
+		}
+
+		return {eastl::move(State), {}};
+	}
+
+	FArdaDependencyNodeDesc FArdaPixelSortSortNode::Describe(const FArdaParameters&amp; P, const FArdaState&amp; Prepared)
+	{
+		FArdaDependencyNodeDesc D;
+		D.mAccesses = {{P.mNoise, EArdaDependencyAccess::Read, EArdaRHIResourceState::UnorderedAccess},
+		    {P.mSorted, EArdaDependencyAccess::Write, EArdaRHIResourceState::UnorderedAccess}};
+
+		return D;
+	}
+
+	FArdaRHIStatus FArdaPixelSortSortNode::PrepareCuda(FArdaDependencyExecutionContext&amp; C,
+	    const FArdaParameters&amp; P,
+	    const FArdaState&amp; Prepared,
+	    FArdaInstanceState&amp; InstanceState,
+	    FArdaCudaSequence&amp; Sequence)
+	{
+		if (Prepared.mDevice != C.GetDevice())
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
+			    &quot;PixelSort node library belongs to another device.&quot;);
+		}
+
+		// Sample frame-varying values and resolve graph textures into the operand&#x27;s typed arguments.
+		FArdaPixelSortParameters Host;
+		Host.mInput.mTexture = C.GetTexture(P.mNoise);
+		Host.mOutput.mTexture = C.GetTexture(P.mSorted);
+		Host.mWidth = P.mWidth;
+		Host.mHeight = P.mHeight;
+		Host.mChannel = P.mInput-&gt;mChannel;
+		Host.mThreshold = P.mInput-&gt;mThreshold;
+		return Sequence.Add(*Prepared.mOperand, Host);
+	}
+}</code></pre></details><p>See the <a href="Examples/Reference/ArdaPixelSortOperand.h">operand schema</a> for its surface arguments. A surface unsupported by the selected interop path returns a capability error; a required staging copy remains an explicit graph operation. CUDA single-stream execution preserves call order even when graph nodes have independent data.</p></section>
+<section id="ray"><h2>Ray tracing and automatic shader tables</h2><p>Build and run from a repository checkout with Visual Studio x64 build tools: <code>python Scripts/Examples/RunCornellBox.py vulkan</code>. This configures and builds the <code>CornellBox</code> CMake target with its shared example nodes, public/private include paths, PCH, shader mappings and GLFW support. A ray-tracing-capable device is required; use <code>d3d12</code> for the other backend. The launcher runs the complete renderer. The trace excerpts alone require the surrounding example target.</p><p>Documentation snapshots provide the missing authoring context: <a href="Examples/Reference/ArdaCornellNodeParameters.h">graph parameters and frame data</a>, <a href="Examples/Reference/ArdaCornellNodeInternal.h">private node helpers</a>, <a href="Examples/Reference/ArdaCornellBoxPch.h">PCH includes</a> and <a href="Examples/Reference/CornellPathTracer.hlsl">ray shader code</a>. The target maps <code>/ArdaTests/CornellBox</code> to its node shader directory; do not treat that virtual shader path as a filesystem root.</p><p>The Cornell trace class privately registers ray generation, miss and closest-hit shaders. It names the ray exports and hit group, declares radiance output and maps shader metadata to TLAS, scene buffers and frame constants. The renderer does not allocate a shader table. With one ray-generation export, compilation creates a table containing that export followed by all miss, hit-group and callable records in the resolved pipeline's deterministic order.</p><p>Use <code>FArdaCornellTraceNode::Register()</code> for discovery or typed attachment for automatic registration. The <a href="Examples/Reference/ArdaCornellBoxRenderer.cpp">complete Cornell renderer</a> imports persistent geometry and acceleration structures, attaches UploadFrame, BuildTLAS, Trace, Accumulate and Present, and wires their declared outputs. BuildTLAS executes every graph call. Its TLAS write orders Trace's TLAS read even if the builder is attached later. BLAS construction/compaction and geometry uploads remain separate operations with their own dependencies.</p><details><summary>ArdaCornellTraceNode.h</summary><p><a href="Examples/Reference/ArdaCornellTraceNode.h">Source file</a></p><pre><code>#pragma once
+#include &quot;ArdaCornellNodeParameters.h&quot;
+
+namespace arda
+{
+	/** Parameters owned by one Cornell Trace node instance. */
+	struct FArdaCornellTraceParameters
+	{
+		/** Input scene top-level acceleration structure. */
+		FArdaDependencyResourceHandle mTlas;
+		/** Input vertex buffer. */
+		FArdaDependencyResourceHandle mVertices;
+		/** Input index buffer. */
+		FArdaDependencyResourceHandle mIndices;
+		/** Input material buffer. */
+		FArdaDependencyResourceHandle mMaterials;
+		/** Output sample radiance buffer; leave empty for graph allocation. */
+		FArdaDependencyResourceHandle mRadiance;
+		/** Input frame constant buffer. */
+		FArdaDependencyResourceHandle mConstants;
+		/** Input bottom-level acceleration structure referenced by the scene. */
+		FArdaDependencyResourceHandle mBlas;
+		/** Ray dispatch width in pixels. */
+		uint32_t mWidth = 1;
+		/** Ray dispatch height in pixels. */
+		uint32_t mHeight = 1;
+		/** Samples traced per pixel in this dispatch. */
+		uint32_t mSamples = 1;
+		/** Scratch memory reserved while recording this node. */
+		uint64_t mWorkspaceBytes = 0;
+	};
+
+	class FArdaCornellTraceNode final
+	    : public TArdaComputeDependencyNode&lt;FArdaCornellTraceNode, FArdaCornellTraceParameters&gt;
+	{
+	public:
+		struct FArdaState;
+		static FArdaDependencyNodeMetadata GetMetadata();
+		/** Hardware admission is checked before output declaration or device preparation. */
+		static FArdaDependencyNodeRequirements GetRequirements(const FArdaParameters&amp; Parameters);
+		static FArdaRHIStatus DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P);
+		static eastl::string GetCanonicalKey(const FArdaParameters&amp; Parameters);
+		static TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaState&gt;&gt; Prepare(FArdaRHIDeviceRef Device);
+
+		static FArdaDependencyNodeDesc Describe(const FArdaParameters&amp; Parameters, const FArdaState&amp; State);
+		static FArdaRHIStatus Record(FArdaDependencyExecutionContext&amp; Context,
+		    const FArdaParameters&amp; Parameters,
+		    const FArdaState&amp; State,
+		    FArdaInstanceState&amp; Instance);
+	};
+}</code></pre></details><details><summary>ArdaCornellTraceNode.cpp</summary><p><a href="Examples/Reference/ArdaCornellTraceNode.cpp">Source file</a></p><pre><code>#include &quot;ArdaCornellBoxPch.h&quot;
+#include &quot;Nodes/ArdaCornellTraceNode.h&quot;
+#include &quot;ArdaCornellNodeInternal.h&quot;
+
+namespace arda
+{
+#define ARDA_CORNELL_RAY_PARAMETERS()                                                                                  \
+	ARDA_BEGIN_SHADER_PARAMETER_STRUCT(FArdaParameters)                                                                \
+		ARDA_SHADER_ACCELERATION_STRUCTURE(mScene, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                     \
+		ARDA_SHADER_BUFFER_SRV(mVertices, 1, 0, arda::EArdaRHIShaderStage::AllRayTracing)                              \
+		ARDA_SHADER_BUFFER_SRV(mIndices, 2, 0, arda::EArdaRHIShaderStage::AllRayTracing)                               \
+		ARDA_SHADER_BUFFER_SRV(mMaterials, 3, 0, arda::EArdaRHIShaderStage::AllRayTracing)                             \
+		ARDA_SHADER_BUFFER_UAV(mSampleRadiance, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                        \
+		ARDA_SHADER_UNIFORM_BUFFER(mFrame, 0, 0, arda::EArdaRHIShaderStage::AllRayTracing)                             \
+	ARDA_END_SHADER_PARAMETER_STRUCT()
+
+	class FArdaCornellRayGenerationShader final : public arda::FArdaGlobalShader
+	{
+	public:
+		ARDA_CORNELL_RAY_PARAMETERS()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaCornellRayGenerationShader);
+	};
+
+	class FArdaCornellMissShader final : public arda::FArdaGlobalShader
+	{
+	public:
+		ARDA_CORNELL_RAY_PARAMETERS()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaCornellMissShader);
+	};
+
+	class FArdaCornellClosestHitShader final : public arda::FArdaGlobalShader
+	{
+	public:
+		ARDA_CORNELL_RAY_PARAMETERS()
+		ARDA_DECLARE_GLOBAL_SHADER(FArdaCornellClosestHitShader);
+	};
+
+#undef ARDA_CORNELL_RAY_PARAMETERS
+
+	struct FArdaCornellTraceNode::FArdaState
+	{
+		FArdaRHIDeviceRef mDevice;
+		FArdaGlobalShaderMap mShaderMap;
+		eastl::vector&lt;FArdaInductorPipelineContribution&gt; mStages;
+		eastl::shared_ptr&lt;const FArdaInductorPipelineConfiguration&gt; mConfiguration;
+
+		FArdaRHIStatus Initialize()
+		{
+			// Load the node-owned shader types through the common device shader map.
+			if (!mShaderMap.Initialize(mDevice))
+			{
+				return CornellShaderError(mShaderMap);
+			}
+
+			const auto* Shader0 = mShaderMap.Find(FArdaCornellRayGenerationShader::GetStaticType());
+			if (!Shader0)
+			{
+				return CornellShaderError(mShaderMap);
+			}
+			mStages.push_back(CornellShaderStage(Shader0, &quot;CornellRayGen&quot;));
+			const auto* Shader1 = mShaderMap.Find(FArdaCornellMissShader::GetStaticType());
+			if (!Shader1)
+			{
+				return CornellShaderError(mShaderMap);
+			}
+			mStages.push_back(CornellShaderStage(Shader1, &quot;CornellMiss&quot;));
+			const auto* Shader2 = mShaderMap.Find(FArdaCornellClosestHitShader::GetStaticType());
+			if (!Shader2)
+			{
+				return CornellShaderError(mShaderMap);
+			}
+			mStages.push_back(CornellShaderStage(Shader2, &quot;&quot;, &quot;CornellHitGroup&quot;));
+			auto Ray = eastl::make_shared&lt;FArdaInductorPipelineConfiguration&gt;();
+			Ray-&gt;mKind = EArdaPipelineStateKind::RayTracing;
+			Ray-&gt;mRayTracing.mDesc.mMaxPayloadSize = 32;
+			Ray-&gt;mRayTracing.mDesc.mMaxAttributeSize = 8;
+			Ray-&gt;mRayTracing.mDesc.mMaxRecursionDepth = 1;
+			mConfiguration = eastl::move(Ray);
+			return {};
+		}
+	};
+
+	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaCornellRayGenerationShader,
+	    &quot;/ArdaTests/CornellBox/CornellPathTracer.hlsl&quot;,
+	    &quot;CornellRayGen&quot;,
+	    &quot;CornellRayGen&quot;,
+	    arda::EArdaRHIShaderStage::RayGeneration)
+	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaCornellMissShader,
+	    &quot;/ArdaTests/CornellBox/CornellPathTracer.hlsl&quot;,
+	    &quot;CornellMiss&quot;,
+	    &quot;CornellMiss&quot;,
+	    arda::EArdaRHIShaderStage::Miss)
+	ARDA_IMPLEMENT_GLOBAL_SHADER(FArdaCornellClosestHitShader,
+	    &quot;/ArdaTests/CornellBox/CornellPathTracer.hlsl&quot;,
+	    &quot;CornellClosestHit&quot;,
+	    &quot;CornellClosestHit&quot;,
+	    arda::EArdaRHIShaderStage::ClosestHit)
+
+	FArdaRHIStatus FArdaCornellTraceNode::DeclareResources(FArdaDependencyResourceContext&amp; C, FArdaParameters&amp; P)
+	{
+		if (!P.mWidth || !P.mHeight || !P.mSamples || uint64_t(P.mWidth) * P.mHeight &gt; UINT64_MAX / 16 / P.mSamples)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, &quot;Invalid ray output extent.&quot;);
+		}
+
+		FArdaRHIBufferDesc D;
+		D.mByteSize = uint64_t(P.mWidth) * P.mHeight * P.mSamples * 16;
+		D.mStructureStride = 16;
+		D.mUsage = EArdaRHIBufferUsage::Structured | EArdaRHIBufferUsage::ShaderResource |
+		    EArdaRHIBufferUsage::UnorderedAccess;
+		return C.Buffer(P.mRadiance, &quot;Radiance&quot;, D);
+	}
+
+	FArdaDependencyNodeRequirements FArdaCornellTraceNode::GetRequirements(const FArdaParameters&amp;)
+	{
+		FArdaDependencyNodeRequirements R;
+		R.mFeatures.mbRequireRayTracingPipelines = true;
+		R.mFeatures.mbRequireAccelerationStructures = true;
+		R.mFeatures.mbRequirePersistentShaderTables = true;
+		return R;
+	}
+
+	FArdaDependencyNodeMetadata FArdaCornellTraceNode::GetMetadata()
+	{
+		return {&quot;cornell.trace&quot;, 1};
+	}
+
+	eastl::string FArdaCornellTraceNode::GetCanonicalKey(const FArdaParameters&amp; P)
+	{
+		FArdaDependencyKeyBuilder Key;
+		Key.Resource(P.mTlas);
+		Key.Resource(P.mVertices);
+		Key.Resource(P.mIndices);
+		Key.Resource(P.mMaterials);
+		Key.Resource(P.mRadiance);
+		Key.Resource(P.mConstants);
+		Key.Resource(P.mBlas);
+		Key.Value(P.mWidth);
+		Key.Value(P.mHeight);
+		Key.Value(P.mSamples);
+		Key.Value(P.mWorkspaceBytes);
+		return Key.Build();
+	}
+
+	TArdaRHIResult&lt;eastl::shared_ptr&lt;const FArdaCornellTraceNode::FArdaState&gt;&gt; FArdaCornellTraceNode::Prepare(
+	    FArdaRHIDeviceRef Device)
+	{
+		if (!Device)
+		{
+			return {{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidState, &quot;This node requires an initialized device.&quot;)};
+		}
+
+		auto State = eastl::make_shared&lt;FArdaState&gt;();
+		State-&gt;mDevice = eastl::move(Device);
+
+		// Publish prepared state only after all node-owned setup succeeds.
+		auto Status = State-&gt;Initialize();
+		if (!Status)
+		{
+			return {{}, eastl::move(Status)};
+		}
+
+		return {eastl::move(State), {}};
+	}
+
+	FArdaDependencyNodeDesc FArdaCornellTraceNode::Describe(const FArdaParameters&amp; P, const FArdaState&amp; Prepared)
+	{
+		FArdaDependencyNodeDesc D;
+		D.mWorkspaceBytes = P.mWorkspaceBytes;
+		D.BindShader&lt;FArdaCornellRayGenerationShader::FArdaParameters&gt;({{&quot;mScene&quot;, P.mTlas},
+		    {&quot;mVertices&quot;, P.mVertices},
+		    {&quot;mIndices&quot;, P.mIndices},
+		    {&quot;mMaterials&quot;, P.mMaterials},
+		    {&quot;mSampleRadiance&quot;, P.mRadiance},
+		    {&quot;mFrame&quot;, P.mConstants}});
+		D.mAccesses = {{P.mBlas, EArdaDependencyAccess::Read, EArdaRHIResourceState::AccelStructRead}};
+
+		D.mPipelineStages = Prepared.mStages;
+		D.mPipelines = {{&quot;default&quot;, 0, EArdaPipelineStateKind::RayTracing, {}, Prepared.mConfiguration}};
+
+		return D;
+	}
+
+	FArdaRHIStatus FArdaCornellTraceNode::Record(FArdaDependencyExecutionContext&amp; C,
+	    const FArdaParameters&amp; P,
+	    const FArdaState&amp;,
+	    FArdaInstanceState&amp;)
+	{
+		// Resolve the compiled ray pipeline and its graph-owned shader table for this execution.
+		if (auto S = C.SetRayTracingState(); !S)
+		{
+			return S;
+		}
+
+		return C.GetCommands().DispatchRays(P.mWidth, P.mHeight, P.mSamples);
+	}
+}</code></pre></details><p>For several ray-generation exports or custom record order, declare <a href="api-reference.html#api-arda-fardadependencyshadertable-99dd1a01"><code>FArdaDependencyShaderTable</code></a>. Each record's <code>mRecordIndex</code> is dense and zero-based <em>within its category</em>: raygen 0, miss 0, hit-group 0 are three different valid records. The graph converts them to the RHI's flat record array. Exports must exist with the correct stage; holes and duplicate category/index pairs fail compilation.</p><p>Per-record <code>mLocalBindings</code> can declare metadata and logical resource arguments. The compiler generates its local layout, associates it with the export or hit group, derives its resource reads/writes and creates a local binding set for each frame slot. Raw local argument bytes use <code>mLocalArguments</code>. Native limits still apply: D3D12 supports these fixed local layouts; the current Vulkan backend requires direct-heap local descriptors and rejects this fixed-local-binding path. Global fixed bindings and automatically generated tables are supported on both tested backends. A default record with required local resources needs an explicit declaration supplying them.</p></section>
+<section id="bindless"><h2>Bindless indices are addresses, not dependencies</h2><p>A descriptor index selects a view. Two different indices may alias the same bytes, and two views of the same buffer may cover disjoint bytes. The compiler therefore resolves <a href="api-reference.html#api-arda-fardadependencybindlesstable-cb4c93b1"><code>FArdaDependencyBindlessTable</code></a> entries to resource identity and view ranges before creating dependency edges. Tables are immutable and node-local: different nodes can populate different entries of the same compatible layout. A zero capacity selects one past the greatest populated index, within the declared maximum.</p><pre><code>// Inside Describe; P.mBuffer is a shared 256-byte logical buffer.
+FArdaDependencyBindlessTable T;
+T.mName = &quot;tiles&quot;;
+T.mCapacity = 2;
+T.mLayout.mVisibility = EArdaRHIShaderStage::Compute;
+T.mLayout.mRegisterSpace = 0;
+T.mLayout.mMaxCapacity = 2;
+T.mLayout.mRegisterSpaces = {{0, 2, EArdaRHIBindingType::StructuredBufferUAV}};
+FArdaDependencyBindlessEntry E;
+E.mArrayElement = P.mDescriptorIndex;
+E.mType = EArdaRHIBindingType::StructuredBufferUAV;
+E.mResource = P.mBuffer;
+E.mView.mBufferRange = {P.mByteOffset, 128};
+E.mAccess = EArdaDependencyAccess::Write;
+T.mEntries = {E};
+D.mBindlessTables = {T};
+// A: index 0, offset 0. B: index 1, offset 128.
+// Both can request the same compute shader and pipeline configuration.</code></pre><figure class="diagram-scroll" tabindex="0" role="region" aria-label="Scrollable dependency diagram"><img width="800" height="350" src="Assets/rdg-bindless-ranges.svg" alt="Two writers cover disjoint halves of one buffer; a whole-buffer reader joins both, while a reader of the right half depends only on its writer." loading="lazy"><figcaption>Hazards follow resolved storage intervals. Descriptor numbers alone never prove independence.</figcaption></figure>
+<p>For buffer intervals A=[0,128) and B=[128,256), the intersection is empty, so neither writer depends on the other. A whole-buffer reader depends on both; a reader of B depends only on B. Removing A removes consumers that require A's bytes and preserves B-only consumers. Changing B to [64,192) creates a region [64,128) with repeated writes. Its overlapping writers and readers follow original successful attachment order; the portions written by only one node retain attachment-independent producer-to-reader ordering. A whole-buffer read still needs coverage beyond byte 192. Texture views use the product of mip, array-slice and plane ranges; arbitrary pixel rectangles are not tracked. See <a href="resources.html#worked-example">the repeated-write example</a>.</p>
+<p>Declare every entry a shader might select, including GPU-selected indices. Use an unrestricted resource view when the accessed range is unknown. Sparse holes must never be indexed. An SRV cannot be declared as a writer. A descriptor table is not itself a data dependency: its populated entries supply those dependencies. Undeclared shader access is outside the graph contract.</p>
+<p>To supply an index through shader parameters, put a <a href="api-reference.html#api-arda-fardadependencydescriptorindex-cb8f074c"><code>FArdaDependencyDescriptorIndex</code></a> relocation in a named <a href="api-reference.html#api-arda-fardadependencyshadervalue-6f13edc5"><code>FArdaDependencyShaderValue</code></a>. Identify the table, slot, type and populated array element, plus the byte offset of a uint32 field in that value's bytes. Compilation patches the field after table allocation and the state helper applies the prepared push constants. Ordinary indices are table-relative; absolute heap indices require a direct-heap table with exactly one descriptor bank. Invalid entries or offsets fail compilation.</p>
+<p>Independence permits scheduling freedom; it does not guarantee simultaneous GPU occupancy. The executor omits same-state buffer UAV barriers between disjoint ranges while tracking every outstanding unsynchronized access. The RHI still tracks buffer state and queue ownership for the whole buffer, so cross-queue ownership or state changes can impose waits even for disjoint bytes. Separate buffers offer more freedom across queues. Textures track native subresources. Explicit edges, memory-budget ordering and the single CUDA stream can also serialize otherwise independent work.</p>
+<p>The compiler compares relevant writer ranges per resource, then validates read coverage: buffer intervals are sorted and merged, and texture coverage is checked over mip/slice/plane cells. Graph-owned reads require complete initialized coverage, possibly from several disjoint producers; imported resources may provide initial contents. Range granularity reduces false edges at the cost of compilation work proportional to access counts and texture subresource cells. Descriptor population is a compilation cost, not free: the current RHI writes table entries individually. Measure large-table compilation separately from steady-state replay.</p>
+<p>The <a href="Examples/Reference/ArdaInductorGpuTests.cpp">bindless GPU conformance test</a> exercises two disjoint UAV views, relocated indices, numerical readback, PSO sharing and repeated table reuse on D3D12 and Vulkan.</p></section>
+<section id="pipelines"><h2>Automatic assignment and stable reuse</h2><p>A pipeline request identifies a family and a local slot. Inference walks dependency ancestry, including through intermediate nodes without shader contributions. It stops at an earlier consumer of the same family, because that consumer already owns a completed pipeline. Stage-only providers set <code>mbPipelineStageOnly</code>, declare no GPU resource work and use a synchronization-domain node class that may omit Record. Connect them with dependency edges; merely attaching a provider nearby does not associate it with a draw.</p>
+<figure class="diagram-scroll" tabindex="0" role="region" aria-label="Scrollable dependency diagram"><img width="800" height="320" src="Assets/rdg-pipeline-ancestry.svg" alt="Shader providers reach two draw consumers through an intermediate dependency node, producing one reusable PSO when complete pipeline state matches." loading="lazy"><figcaption>Dependency ancestry determines stage membership; complete pipeline semantics determine PSO reuse.</figcaption></figure>
+<p>For example, a vertex provider and pixel provider can feed a pure join, which feeds two draws. Each draw declares its own color output and requests Graphics. Both requests see the same stages through the join. Matching attachment formats and fixed state produce the same stable key and reuse one native PSO. The compiled raster and mesh recipes above test the simpler equivalent case where each consumer owns its stage contributions.</p>
+<p>The stable key serializes shader content identities, layout semantics, fixed/program state, ray exports and attachment formats deterministically. It excludes node IDs, debug names, slot/group labels and resource addresses. Generated layouts are interned by the graph. The native in-memory cache also verifies shader/layout object compatibility; a matching hash alone does not authorize reuse. Keeping shader objects in shared node preparation state supports reuse across instances. Replacing RGBA8 with another attachment format, changing blend state or changing shader content creates a different pattern.</p>
+<p>Multiple named contribution groups require a selected request group; an ungrouped contribution is shared. Conflicting shaders for one stage/export fail rather than selecting an ancestor by distance or attachment order. See <a href="ArdaInductor-Pipelines.md">the complete inference rules</a> and <a href="compilation.html#pipelines">the compiler chapter</a> for normalization and boundary behavior.</p></section>
+<section id="failures"><h2>Registration and compilation failures</h2><ul>
+<li><strong>Missing shader member or wrong descriptor type:</strong> attachment or compilation reports an argument/layout error. Supply every resource leaf and array element exactly once, using the shader's metadata, and match push-constant byte sizes.</li>
+<li><strong>Hidden allocation or descriptor mutation in Record:</strong> the compiler cannot account for hidden hazards and replay may use stale bindings. Declare outputs and tables before compilation; keep opaque library workspace in the node's workspace estimate and declare all its data access.</li>
+<li><strong>Repeated writes:</strong> on regions with multiple distinct writer nodes, attach writes and intervening reads in the intended order. Reads consume the preceding writer; an owned read before the first write fails, while imported storage may supply initial contents. ReadWrite needs incoming initialized coverage. Finding a node does not reorder it, and an explicit dependency cannot oppose inferred hazards. Repeated writes reuse one resource; declare separate output handles if older contents must remain available.</li>
+<li><strong>Incorrect bindless independence:</strong> different indices that resolve to overlapping storage still conflict. Narrow a view only when the shader actually stays inside it; shader control flow is not analyzed. Indexing a hole or undeclared resource cannot be made safe by scheduling.</li>
+<li><strong>Ambiguous pipeline or missing stage:</strong> correct the contribution dependencies, select a group or split conflicting consumers. Stage-only nodes cannot own resource accesses, bindings or render targets.</li>
+<li><strong>Invalid ray table:</strong> supply exactly one selected raygen, known exports with the right category and dense category-relative indices. Declare required local arguments explicitly; respect backend local-binding support.</li>
+<li><strong>Stale identity:</strong> the same instance name with a changed canonical key fails. Remove and replace it inside an edit. Include resources, dimensions, shader choices and frozen parameters in the key. Do not mutate an aliased configuration after attachment.</li>
+<li><strong>Unsupported hardware or artifacts:</strong> check the returned status and device capabilities. Work graphs currently require D3D12; CUDA must be enabled and its interop path supported. On-demand shader loading needs source directories; load-only needs deployed matching artifacts.</li></ul>
+<p>A failed compile leaves the edit open: correct the declaration and end the edit again, or cancel it. Inspect the graph's <a href="debugging.html">diagnostic exports</a> and enable native GPU validation while debugging descriptor or synchronization problems. A successful topology check alone does not validate shader indexing behavior.</p></section>
+<section id="summary"><h2>Summary and checkpoints</h2><p>Node classes own operation definitions; the graph owns physical preparation. Resource views determine dependencies, dependency ancestry determines pipeline membership, and normalized state determines reuse. Replay uses retained per-frame objects, while edits rebuild changed semantics.</p><ol><li>Why can descriptor indices 3 and 7 still conflict? Resolve their views before comparing ranges.</li><li>What changes when a reader covers both halves of a shared output? It joins both producers and must have complete coverage.</li><li>Why can two independent buffer ranges still wait across queues? Buffer state and ownership are native whole-object constraints.</li><li>When do two draws reuse a pipeline? Their complete normalized state and retained native shader/layout objects must be compatible.</li><li>Where is a missing ray-local resource supplied? In an explicit shader-table record declaration before compilation.</li></ol></section>
+<section id="further-reading"><h2>Further reading</h2><p>Continue with <a href="compilation.html">scheduling and memory algorithms</a>, <a href="execution.html">retirement and execution</a>, <a href="ArdaInductor-Bindings.md">the binding preparation contract</a>, <a href="../ArdaBackend/CUDA-Sequences.md">CUDA sequences</a> and the <a href="api-reference.html">centralized graph API reference</a>. The <a href="../glossary.html#term-pso">PSO</a>, <a href="../glossary.html#term-topological-order">topological order</a> and <a href="../glossary.html#term-resource-aliasing">resource aliasing</a> glossary entries explain the underlying terms.</p></section></article>
+    </main>
+  </div>
+  <footer class="site-footer"><p>ArdaRenderGraph · Persistent typed nodes, ArdaInductor compilation and native frame execution.</p></footer>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 350" role="img" aria-labelledby="title desc">
+<title id="title">Bindless dependencies follow resolved byte ranges</title>
+<desc id="desc">Writer A covers bytes zero through 127 and writer B covers bytes 128 through 255 of the same buffer. There is no edge between the writers. A whole-buffer reader joins both. A right-half reader depends only on B. Different descriptor indices that alias bytes still conflict.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#334155"/></marker></defs>
+<rect width="800" height="350" rx="12" fill="#f8fafc"/>
+<g font-family="system-ui,sans-serif" fill="#172554" font-size="17" text-anchor="middle">
+<text x="400" y="30" font-weight="700">One allocation; two independent produced regions</text>
+<rect x="65" y="55" width="330" height="70" rx="5" fill="#dbeafe" stroke="#2563eb"/>
+<rect x="405" y="55" width="330" height="70" rx="5" fill="#dcfce7" stroke="#15803d"/>
+<text x="230" y="82">A writes [0, 128)</text><text x="230" y="108">descriptor index 0</text>
+<text x="570" y="82">B writes [128, 256)</text><text x="570" y="108">descriptor index 1</text>
+<rect x="170" y="206" width="290" height="64" rx="5" fill="#e2e8f0" stroke="#475569"/>
+<text x="315" y="232">Reader of [0, 256)</text><text x="315" y="255">waits for A and B</text>
+<rect x="505" y="206" width="250" height="64" rx="5" fill="#e2e8f0" stroke="#475569"/>
+<text x="630" y="232">Reader of [128, 256)</text><text x="630" y="255">waits only for B</text>
+<text x="400" y="310" font-size="16">Different index + overlapping bytes = a hazard.</text>
+<text x="400" y="334" font-size="15">Arrows are data dependencies. Native whole-buffer queue transfers may add waits.</text>
+</g>
+<g fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)">
+<path d="M230 125 L230 168 L290 168 L290 203"/>
+<path d="M570 125 L570 155 L360 155 L360 203"/>
+<path d="M570 125 L570 177 L630 177 L630 203"/>
+</g></svg>

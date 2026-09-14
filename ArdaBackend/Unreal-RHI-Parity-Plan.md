@@ -43,17 +43,17 @@ The main Unreal research locations were:
 
 The main Arda implementation and evidence locations are:
 
-- `Source/ArdaBackend/Public/RHI/ArdaRHICapabilities.h`
-- `Source/ArdaBackend/Public/RHI/ArdaRHIDevice.h`
-- `Source/ArdaBackend/Public/RHI/ArdaRHIResources.h`
-- `Source/ArdaBackend/Public/RHI/ArdaRHIProvider.h`
-- `Source/ArdaBackend/Private/RHI/ArdaRHIDevice.cpp`
-- `Source/ArdaBackendImpls/D3D12/ArdaD3D12Backend.cpp`
-- `Source/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp`
-- `Source/ArdaRenderGraph/Private/ArdaInductorCommandExecutor.cpp`
-- `Source/ArdaBackend/Tests/ArdaResourceStateConformanceTests.cpp`
-- `Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp`
-- `Source/ArdaRenderGraph/Tests/ArdaInductorCommandProgramTests.cpp`
+- `Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h`
+- `Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h`
+- `Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h`
+- `Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h`
+- `Source/ArdaInfra/ArdaBackend/Private/RHI/ArdaRHIDevice.cpp`
+- `Source/ArdaInfra/ArdaBackendImpls/D3D12/ArdaD3D12Backend.cpp`
+- `Source/ArdaInfra/ArdaBackendImpls/Vulkan/ArdaVulkanBackend.cpp`
+- `Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorCommandExecutor.cpp`
+- `Source/ArdaInfra/ArdaBackend/Tests/ArdaResourceStateConformanceTests.cpp`
+- `Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp`
+- `Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorCommandProgramTests.cpp`
 
 Native behavior was cross-checked against the D3D12 Agility SDK 1.619.5
 headers, Vulkan-Headers 1.4.357, DXC 1.9, the local adapter feature data, the

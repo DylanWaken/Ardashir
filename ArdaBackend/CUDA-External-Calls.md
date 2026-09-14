@@ -3,7 +3,7 @@
 Compute operands can select an external CUDA operation, including cuBLAS and cuDNN
 functions, through the same API used for a compiled kernel. An external operation
 may enqueue several kernels. It works with `Dispatch`, `DispatchDeferred`,
-`RegisterArdaCudaOperandNode`, `FArdaCudaSequence`, and `FArdaDependencyGraph`. Mixing library calls
+`TArdaCudaOperandNode`, `FArdaCudaSequence`, and `FArdaDependencyGraph`. Mixing library calls
 and compiled kernels in one sequence preserves one native batch and one stream.
 
 The framework supplies the CUDA context, stream, typed resource bindings and
@@ -15,13 +15,13 @@ library. The public framework headers remain usable without the CUDA SDK.
 ## Binding and execution contract
 
 Include `Compute/ArdaCudaExternalCall.h`. Derive an adapter from
-`TArdaCudaExternalCall<FParameters>`, where `FParameters` is an ordinary
+`TArdaCudaExternalCall<FArdaParameters>`, where `FArdaParameters` is an ordinary
 `ARDA_CUDA_PARAMETER_STRUCT` schema. Implement:
 
 ```cpp
 TArdaRHIResult<eastl::unique_ptr<IArdaCudaPreparedCall>> PrepareCall(
     const FArdaCudaExternalCallContext& Context,
-    const FParameters::FCuda& Parameters) const override;
+    const FArdaParameters::FArdaCuda& Parameters) const override;
 ```
 
 `Context` exposes opaque `mContext` and `mStream` handles, `mLaunchMode`,
@@ -52,7 +52,7 @@ There are two different preparation stages:
 The registered variant is selected through the existing operand hooks:
 
 ```cpp
-// In the operand's BindKernelVariants(FRegistry& Registry):
+// In the operand's BindKernelVariants(FArdaRegistry& Registry):
 eastl::shared_ptr<const IArdaCudaExternalCall> Call =
     eastl::make_shared<FArdaAxpyCall>();
 Registry.Add(BindArdaCudaExternalCall("cublas.saxpy", uint32_t{0}, Call));
@@ -104,7 +104,7 @@ static FArdaRHIStatus CheckBlas(cublasStatus_t Status)
 class FArdaAxpyPrepared final : public IArdaCudaPreparedCall
 {
 public:
-    explicit FArdaAxpyPrepared(FArdaAxpyParameters::FCuda Parameters)
+    explicit FArdaAxpyPrepared(FArdaAxpyParameters::FArdaCuda Parameters)
         : mParameters(Parameters) {}
 
     ~FArdaAxpyPrepared() override
@@ -133,7 +133,7 @@ public:
     }
 
     cublasHandle_t mHandle = nullptr;
-    FArdaAxpyParameters::FCuda mParameters;
+    FArdaAxpyParameters::FArdaCuda mParameters;
 };
 
 class FArdaAxpyCall final : public TArdaCudaExternalCall<FArdaAxpyParameters>
@@ -141,7 +141,7 @@ class FArdaAxpyCall final : public TArdaCudaExternalCall<FArdaAxpyParameters>
 public:
     TArdaRHIResult<eastl::unique_ptr<IArdaCudaPreparedCall>> PrepareCall(
         const FArdaCudaExternalCallContext&,
-        const FArdaAxpyParameters::FCuda& Parameters) const override
+        const FArdaAxpyParameters::FArdaCuda& Parameters) const override
     {
         if (Parameters.mCount <= 0 || !Parameters.mX || !Parameters.mY ||
             !Parameters.mWorkspace || !Parameters.mWorkspaceBytes ||
@@ -282,7 +282,7 @@ static FArdaRHIStatus CheckDnn(cudnnStatus_t Status)
 class FArdaDnnAddPrepared final : public IArdaCudaPreparedCall
 {
 public:
-    explicit FArdaDnnAddPrepared(FArdaDnnParameters::FCuda Parameters)
+    explicit FArdaDnnAddPrepared(FArdaDnnParameters::FArdaCuda Parameters)
         : mParameters(Parameters) {}
 
     ~FArdaDnnAddPrepared() override
@@ -305,7 +305,7 @@ public:
 
     cudnnHandle_t mHandle = nullptr;
     cudnnTensorDescriptor_t mTensor = nullptr;
-    FArdaDnnParameters::FCuda mParameters;
+    FArdaDnnParameters::FArdaCuda mParameters;
 };
 
 class FArdaDnnAddCall final : public TArdaCudaExternalCall<FArdaDnnParameters>
@@ -313,7 +313,7 @@ class FArdaDnnAddCall final : public TArdaCudaExternalCall<FArdaDnnParameters>
 public:
     TArdaRHIResult<eastl::unique_ptr<IArdaCudaPreparedCall>> PrepareCall(
         const FArdaCudaExternalCallContext&,
-        const FArdaDnnParameters::FCuda& Parameters) const override
+        const FArdaDnnParameters::FArdaCuda& Parameters) const override
     {
         if (Parameters.mCount <= 0 || !Parameters.mX || !Parameters.mY)
         {

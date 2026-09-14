@@ -2,12 +2,12 @@
 
 Persistent dependency-graph nodes describe shader contributions and request pipeline slots.
 `EndGraphEdit()` infers each live request and creates or reuses its native PSO before `Execute()` records commands.
-Recording callbacks receive the resolved PSO through `FArdaDependencyExecutionContext`; they still supply resource bindings and draw/dispatch arguments.
-The public contracts are [ArdaInductorPipeline.h](../../Source/ArdaRenderGraph/Public/ArdaInductorPipeline.h) and [ArdaDependencyGraph.h](../../Source/ArdaRenderGraph/Public/ArdaDependencyGraph.h).
+Recording callbacks receive the resolved PSO through `FArdaDependencyExecutionContext`; state helpers apply compiler-prepared bindings and shader parameters, while callbacks supply draw/dispatch arguments.
+The public contracts are [ArdaInductorPipeline.h](../../Source/ArdaInfra/ArdaRenderGraph/Public/ArdaInductorPipeline.h) and [ArdaDependencyGraph.h](../../Source/ArdaInfra/ArdaRenderGraph/Public/ArdaDependencyGraph.h).
 
 ## Describe contributions and slots
 
-A registered `TArdaDependencyNodeDefinition<Parameters>` returns `FArdaDependencyNodeDesc` from `mDescribe`.
+A registered class derived from `TArdaDependencyNode` returns `FArdaDependencyNodeDesc` from its static `Describe` hook.
 Add any number of `FArdaInductorPipelineContribution` values to `mPipelineStages` and requests to `mPipelines`.
 Each contribution retains a shader; `IArdaRHIShader::GetStage()` supplies its stage and `GetPersistentCacheHash()` supplies its content identity.
 Each request selects `mKind`, optional `mGroup`, and a consumer-local `mSlot`.
@@ -17,7 +17,7 @@ The graph assigns `mTerminalNodeId`, so ordinary node descriptions leave it unse
 For example, this description assumes typed parameters contain an output resource, compute shader, and compatible global layouts:
 
 ```cpp
-Definition.mDescribe = [](const FComputeParameters& P)
+FArdaDependencyNodeDesc FArdaComputeNode::Describe(const FArdaParameters& P, const FArdaState& State)
 {
     FArdaDependencyNodeDesc Desc;
     Desc.mAccesses.push_back({P.mOutput,
@@ -31,12 +31,12 @@ Definition.mDescribe = [](const FComputeParameters& P)
     Request.mSlot = "default";
     Desc.mPipelines.push_back(eastl::move(Request));
     return Desc;
-};
+}
 ```
 
-The definition also needs its normal canonical parameter-key visitor and recording callback.
+The node class also supplies GetMetadata, GetCanonicalKey and its domain execution hook.
 Its key must cover every behavior-affecting parameter, including shader contents, layout semantics, resource versions, and dispatch dimensions.
-Returning a PSO request does not declare resource accesses: describe those separately in `mAccesses`.
+Returning a PSO request alone does not declare resource accesses. Shader argument schemas and bindless entries derive their own accesses; copy, attachment and opaque-library work still declare `mAccesses`. See [class-authored recipes](node-recipes.html).
 
 ## Ancestry, intermediate nodes, and ambiguity
 
@@ -50,8 +50,8 @@ Attachment order and node numbering do not choose the winning shader.
 Missing dependency IDs and cycles are checked throughout the terminal's ancestry, including beyond pipeline boundaries; stage compatibility and shader identities are checked only inside its bounded inference region.
 
 For a node that only contributes stages, set `mbPipelineStageOnly = true` and connect it to its consumers.
-It requires no recording callback and records no separate GPU commands; its live descendants use the inferred PSO.
-Stage-only descriptions must leave `mAccesses`, `mColorTargets`, and `mDepthTarget` empty; put resource work in executable nodes.
+Use a synchronization-domain class, which may omit Record and records no separate GPU commands; its live descendants use the inferred PSO.
+Stage-only descriptions must leave resource accesses, shader binding/table declarations and framebuffer targets empty; put resource work in executable nodes.
 An unconsumed declaration has no reason to keep an otherwise dead branch alive.
 
 The grouping rules are explicit:
@@ -140,16 +140,16 @@ The lower-level device descriptor-cache counters measure a different layer.
 
 ## Use the resolved pipeline when recording
 
-During node recording, call `Context.GetPipeline("default")` or another declared slot name. Class hooks receive public parameters and state separately; lower-level definition callbacks receive their prepared execution parameters.
+During node recording, call `Context.GetPipeline("default")` or another declared slot name. Class hooks receive public parameters, immutable device state and private instance state separately. The base owns their retained storage.
 The returned `FArdaInductorResolvedPipeline` has the corresponding typed reference, such as `mCompute` or `mGraphics`; an unknown slot returns null.
-Resolve declared resources with `GetBuffer()`/`GetTexture()`, build binding sets compatible with the resolved pipeline's layouts, and bind the appropriate RHI state.
+Use the context state helpers for compute, graphics, meshlet and ray tracing. They supply the inferred PSO, prepared bindings, framebuffer and shader parameters. Work-graph dispatch has a matching helper; [automatic binding preparation](ArdaInductor-Bindings.md) describes table and local-record handling.
 For graphics/mesh state, use `Context.GetFramebuffer()` for the compiled attachments.
 Then issue the normal draw, dispatch, ray, or work-graph command through `GetCommands()`.
 For compute specifically, check `SetComputeState()`'s status, call the void `Dispatch()` method, then return `FArdaRHIStatus{}`.
 
-See [ArdaInductorGpuTests.cpp](../../Source/ArdaRenderGraph/Tests/ArdaInductorGpuTests.cpp) for a complete typed compute node, bindings, consumer-before-producer attachment, and three-frame numerical readback.
-[ArdaInductorPipelineTests.cpp](../../Source/ArdaRenderGraph/Tests/ArdaInductorPipelineTests.cpp) covers intermediate ancestry, groups, layout conflicts, tessellation pairs, ray exports, work-graph identity, and invalid configurations without a GPU.
-The implementation is in [ArdaInductorPipeline.cpp](../../Source/ArdaRenderGraph/Private/ArdaInductorPipeline.cpp); [ArdaInductorRuntime.cpp](../../Source/ArdaRenderGraph/Private/ArdaInductorRuntime.cpp) connects inference to compilation and execution.
+See [ArdaInductorGpuTests.cpp](../../Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorGpuTests.cpp) for a complete typed compute node, bindings, consumer-before-producer attachment, and three-frame numerical readback.
+[ArdaInductorPipelineTests.cpp](../../Source/ArdaInfra/ArdaRenderGraph/Tests/ArdaInductorPipelineTests.cpp) covers intermediate ancestry, groups, layout conflicts, tessellation pairs, ray exports, work-graph identity, and invalid configurations without a GPU.
+The implementation is in [ArdaInductorPipeline.cpp](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorPipeline.cpp); [ArdaInductorRuntime.cpp](../../Source/ArdaInfra/ArdaRenderGraph/Private/ArdaInductorRuntime.cpp) connects inference to compilation and execution.
 
 ## Native API references
 

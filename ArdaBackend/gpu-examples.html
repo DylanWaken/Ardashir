@@ -38,6 +38,7 @@
         <a href="rhi.html">RHI types &amp; resources</a><a href="rhi-feature-guide.html">RHI feature guide</a>
 
         <a href="resource-recipes.html">Resource recipes</a>
+        <a href="Gpu-Allocator.md">GPU allocator</a>
         <a href="capability-recipes.html">Capability recipes</a>
         <a href="cuda-interop.html">CUDA and graphics</a>
         <a href="cuda-graphics.html">CUDA in graphics fundamentals</a>
@@ -55,7 +56,7 @@
         ArdaBackend
       </nav>
       <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>Complete GPU examples</h1><p>Read the source-backed workloads behind the resource and capability recipes. Code is regenerated from the compiled tests.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#fixture">Shared fixture and application replacements</a><a href="#shader-sources">Shader interfaces paired with the workloads</a><a href="#shader-artifacts">Build the exact shader variants</a><a href="#VerifyExtendedCommands">VerifyExtendedCommands</a><a href="#NativeTransientResourcesAndDescriptorsReturnToBaseline">NativeTransientResourcesAndDescriptorsReturnToBaseline</a><a href="#VerifyExplicitHeapAliasing">VerifyExplicitHeapAliasing</a><a href="#VerifyQueryExecution">VerifyQueryExecution</a><a href="#CreateExtendedShader">CreateExtendedShader</a><a href="#VerifyShaderLibraryExecution">VerifyShaderLibraryExecution</a><a href="#VerifyBindlessDescriptorTable">VerifyBindlessDescriptorTable</a><a href="#VerifyExpandedDescriptorsAndResourceCollections">VerifyExpandedDescriptorsAndResourceCollections</a><a href="#VerifyMeshPipelineCapabilityAndExecution">VerifyMeshPipelineCapabilityAndExecution</a><a href="#VerifyAccelerationStructureLifecycleAndStateParity">VerifyAccelerationStructureLifecycleAndStateParity</a><a href="#VerifyRayTracingPipelineCapabilityAndExecution">VerifyRayTracingPipelineCapabilityAndExecution</a><a href="#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a><a href="#VerifyD3D12WorkGraphExecution">VerifyD3D12WorkGraphExecution</a><a href="#VerifyShaderBundleExecution">VerifyShaderBundleExecution</a><a href="#VerifySamplerFeedbackStateParity">VerifySamplerFeedbackStateParity</a><a href="#VerifyVulkanOpacityMicromapLifecycleAndStateParity">VerifyVulkanOpacityMicromapLifecycleAndStateParity</a><a href="#VerifyRuntimeDescriptorVersions">VerifyRuntimeDescriptorVersions</a><a href="#VerifyDirectResourceAndSamplerHeapIndexing">VerifyDirectResourceAndSamplerHeapIndexing</a><a href="#VerifyQueueBreadth">VerifyQueueBreadth</a><a href="#VerifySparseResidencyAndStreamingBudget">VerifySparseResidencyAndStreamingBudget</a><a href="#VerifyStreamingBudgetExecution">VerifyStreamingBudgetExecution</a><a href="#VerifyComputeArithmetic">VerifyComputeArithmetic</a><a href="#VerifyD3D12CustomPresentExecution">VerifyD3D12CustomPresentExecution</a><a href="#VerifyCapabilityInvariants">VerifyCapabilityInvariants</a><a href="#VerifyResolveAndPlaneTracking">VerifyResolveAndPlaneTracking</a><a href="#VerifyPerQueueTimerExecution">VerifyPerQueueTimerExecution</a><a href="#summary">Checkpoints</a></nav>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#fixture">Shared fixture and application replacements</a><a href="#shader-sources">Shader interfaces paired with the workloads</a><a href="#shader-artifacts">Build the exact shader variants</a><a href="#VerifyExtendedCommands">VerifyExtendedCommands</a><a href="#NativeTransientResourcesAndDescriptorsReturnToBaseline">NativeTransientResourcesAndDescriptorsReturnToBaseline</a><a href="#VerifyExplicitHeapAliasing">VerifyExplicitHeapAliasing</a><a href="#VerifyQueryExecution">VerifyQueryExecution</a><a href="#CreateExtendedShader">CreateExtendedShader</a><a href="#VerifyShaderLibraryExecution">VerifyShaderLibraryExecution</a><a href="#VerifyBindlessDescriptorTable">VerifyBindlessDescriptorTable</a><a href="#VerifyExpandedDescriptorsAndResourceCollections">VerifyExpandedDescriptorsAndResourceCollections</a><a href="#VerifyMeshPipelineCapabilityAndExecution">VerifyMeshPipelineCapabilityAndExecution</a><a href="#VerifyAccelerationStructureLifecycleAndStateParity">VerifyAccelerationStructureLifecycleAndStateParity</a><a href="#VerifyRayTracingPipelineCapabilityAndExecution">VerifyRayTracingPipelineCapabilityAndExecution</a><a href="#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a><a href="#VerifyD3D12WorkGraphExecution">VerifyD3D12WorkGraphExecution</a><a href="#VerifyShaderBundleExecution">VerifyShaderBundleExecution</a><a href="#VerifySamplerFeedbackStateParity">VerifySamplerFeedbackStateParity</a><a href="#VerifyVulkanOpacityMicromapLifecycleAndStateParity">VerifyVulkanOpacityMicromapLifecycleAndStateParity</a><a href="#VerifyRuntimeDescriptorVersions">VerifyRuntimeDescriptorVersions</a><a href="#VerifyDirectResourceAndSamplerHeapIndexing">VerifyDirectResourceAndSamplerHeapIndexing</a><a href="#VerifyQueueBreadth">VerifyQueueBreadth</a><a href="#VerifySparseResidencyAndStreamingBudget">VerifySparseResidencyAndStreamingBudget</a><a href="#VerifyStreamingBudgetExecution">VerifyStreamingBudgetExecution</a><a href="#VerifyComputeArithmetic">VerifyComputeArithmetic</a><a href="#VerifyD3D12CustomPresentExecution">VerifyD3D12CustomPresentExecution</a><a href="#VerifyCapabilityInvariants">VerifyCapabilityInvariants</a><a href="#VerifyRasterStageCapabilityAndExecution">VerifyRasterStageCapabilityAndExecution</a><a href="#VerifyResolveAndPlaneTracking">VerifyResolveAndPlaneTracking</a><a href="#VerifyPerQueueTimerExecution">VerifyPerQueueTimerExecution</a><a href="#summary">Checkpoints</a></nav>
 <section id="objectives"><h2>How to use these examples</h2>
 <p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
 <p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
@@ -63,7 +64,7 @@
 <p>Short snippets are literal excerpts from compiled GoogleTest workloads. They use ASSERT_TRUE/EXPECT_EQ to make failures visible. Adapt those checks to your application's status handling. Variables and helpers are initialized in each linked complete example; snippets are not separate standalone programs. The complete examples show allocation, binding, execution, readback assertions and cleanup.</p>
 <pre><code class="language-shell">cmake --build build --config Debug --target ArdaBackendTests
 ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
-<p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="fixture"><h2>Shared fixture and application replacements</h2><p>The workloads below are functions in the same anonymous namespace as this source-backed scaffold. It defines FExtendedDiagnosticCallback, FExtendedBackendCleanup, LoadExtendedShaderArtifact, CreateExtendedShader and the Expect*State checks. In an application, replace GoogleTest assertions with checked status handling; use a diagnostic sink that lives through ShutdownBackend, an RAII shutdown guard, and a bytecode loader rooted in your deployed shader directory.</p><p>ARDASHIR_BUILD_TESTS deploys artifacts and defines ARDA_BACKEND_TEST_SHADER_DIR. The shared ArdaTestBackend.h macro returns a GoogleTest skip only for ValidationUnavailable; see <a href="validation.html#results">validation result handling</a>. Other assertions must remain failures. The lifetime-only example uses CreateArtifactShader for the same artifact-loading operation, FCollectingDiagnosticCallback for error counting, and FExternalTestCleanup for shutdown/provider cleanup; use the scaffold equivalents when adapting it without external providers. Windows presentation examples additionally use the native surface class below.</p><details><summary>Headers, diagnostic sink, shutdown guard, loader and state assertions</summary><pre><code class="language-cpp">#include &quot;ArdaTestBackend.h&quot;
+<p>Use the platform's actual executable directory for direct --gtest_filter runs. Shader artifacts and fixtures are deployed by the test build. Missing validation skips dependent GPU tests; see <a href="validation.html">validation setup and failure diagnosis</a>. A capability skip is not evidence that the skipped operation ran.</p></section><section id="fixture"><h2>Shared fixture and application replacements</h2><p>The workloads below are functions in the same anonymous namespace as this source-backed scaffold. It defines FArdaExtendedDiagnosticCallback, FArdaExtendedBackendCleanup, LoadExtendedShaderArtifact, CreateExtendedShader and the Expect*State checks. In an application, replace GoogleTest assertions with checked status handling; use a diagnostic sink that lives through ShutdownBackend, an RAII shutdown guard, and a bytecode loader rooted in your deployed shader directory.</p><p>ARDASHIR_BUILD_TESTS deploys artifacts and defines ARDA_BACKEND_TEST_SHADER_DIR. The shared ArdaTestBackend.h macro returns a GoogleTest skip only for ValidationUnavailable; see <a href="validation.html#results">validation result handling</a>. Other assertions must remain failures. The lifetime-only example uses CreateArtifactShader for the same artifact-loading operation, FArdaCollectingDiagnosticCallback for error counting, and FArdaExternalTestCleanup for shutdown/provider cleanup; use the scaffold equivalents when adapting it without external providers. Windows presentation examples additionally use the native surface class below.</p><details><summary>Headers, diagnostic sink, shutdown guard, loader and state assertions</summary><pre><code class="language-cpp">#include &quot;ArdaTestBackend.h&quot;
 #include &quot;ArdaBackend.h&quot;
 #include &quot;ArdaBackendProvider.h&quot;
 #include &quot;../../ArdaBackendImpls/ArdaGpuTimestamp.h&quot;
@@ -102,7 +103,7 @@ ctest --test-dir build -C Debug -R ArdaBackend --output-on-failure</code></pre>
 
 namespace
 {
-	class FExtendedDiagnosticCallback final : public arda::IArdaDiagnosticCallback
+	class FArdaExtendedDiagnosticCallback final : public arda::IArdaDiagnosticCallback
 	{
 	public:
 		void Message(arda::EArdaDiagnosticSeverity Severity, const char* Message) override
@@ -126,24 +127,24 @@ namespace
 		std::atomic&lt;uint32_t&gt; mErrorCount{0};
 	};
 
-	class FExtendedBackendCleanup final
+	class FArdaExtendedBackendCleanup final
 	{
 	public:
-		~FExtendedBackendCleanup()
+		~FArdaExtendedBackendCleanup()
 		{
 			arda::ShutdownBackend();
 
 			// Configuration borrows the diagnostic sink. Clear it before the
 			// enclosing scope destroys that sink or another test initializes.
-			static_cast&lt;void&gt;(arda::ConfigureBackend(arda::FArdaBackendConfiguration{}));
+			static_cast&lt;void&gt;(arda::ConfigureBackend(arda::MakeArdaTestBackendConfiguration()));
 		}
 	};
 
 #if defined(_WIN32)
-	class FWin32TestSurface final : public arda::IArdaWindowSurface
+	class FArdaWin32TestSurface final : public arda::IArdaWindowSurface
 	{
 	public:
-		FWin32TestSurface()
+		FArdaWin32TestSurface()
 		{
 			mWindow = CreateWindowExW(0,
 			    L&quot;STATIC&quot;,
@@ -159,7 +160,7 @@ namespace
 			    nullptr);
 		}
 
-		~FWin32TestSurface() override
+		~FArdaWin32TestSurface() override
 		{
 			if (mWindow)
 			{
@@ -232,7 +233,7 @@ namespace
 		HWND mWindow = nullptr;
 	};
 
-	class FCustomPresentTracker final : public arda::IArdaCustomPresent
+	class FArdaCustomPresentTracker final : public arda::IArdaCustomPresent
 	{
 	public:
 		void OnBackBufferResize(uint32_t Width, uint32_t Height) override
@@ -420,10 +421,114 @@ void AddFallbackCS(uint3 Thread: SV_DispatchThreadID)
 		Output[Thread.x] = Input[Thread.x] + 18;
 	}
 }
+</code></pre></details><details id="shader-ardapushconstantbroadcasttest"><summary>ArdaPushConstantBroadcastTest.hlsl</summary><pre><code class="language-hlsl">cbuffer FirstPushBlock : register(b0)
+{
+	uint FirstValue;
+};
+
+cbuffer SecondPushBlock : register(b1)
+{
+	uint SecondValue;
+};
+
+cbuffer ThirdPushBlock : register(b0, space3)
+{
+	uint ThirdValue;
+};
+
+RWStructuredBuffer&lt;uint&gt; Outputs[2] : register(u0);
+RWStructuredBuffer&lt;uint&gt; OtherSpaceOutput : register(u0, space3);
+
+[numthreads(1, 1, 1)]
+void PushConstantBroadcastCS(uint3 Thread: SV_DispatchThreadID)
+{
+	// Distinct stores make each block and descriptor-array element observable through readback.
+	Outputs[0][0] = FirstValue;
+	Outputs[1][0] = SecondValue;
+	OtherSpaceOutput[0] = ThirdValue;
+}
+
+[numthreads(1, 1, 1)]
+void PushConstantReplayCS(uint3 Thread: SV_DispatchThreadID)
+{
+	Outputs[0][0] = FirstValue;
+}
+</code></pre></details><details id="shader-ardarasterstagetest"><summary>ArdaRasterStageTest.hlsl</summary><pre><code class="language-hlsl">// Executable geometry and tessellation capability conformance.
+struct FArdaRasterVertex
+{
+	float4 Position : SV_Position;
+	float4 Color : COLOR0;
+};
+
+FArdaRasterVertex RasterStageVS(uint VertexId: SV_VertexID)
+{
+	const float2 Positions[3] = { float2(-1, -1), float2(-1, 3), float2(3, -1) };
+	FArdaRasterVertex V;
+	V.Position = float4(Positions[VertexId], 0, 1);
+	V.Color = float4(1, 0, 0, 1);
+	return V;
+}
+
+[maxvertexcount(3)]
+void RasterStageGS(triangle FArdaRasterVertex Input[3], inout TriangleStream&lt;FArdaRasterVertex&gt; Output)
+{
+	for (uint I = 0; I &lt; 3; ++I)
+	{
+		FArdaRasterVertex V = Input[I];
+		V.Color = float4(0, 1, 0, 1);
+		Output.Append(V);
+	}
+	Output.RestartStrip();
+}
+
+struct FArdaTessellationFactors
+{
+	float Edges[3] : SV_TessFactor;
+	float Inside : SV_InsideTessFactor;
+};
+
+FArdaTessellationFactors RasterStagePatchConstants(InputPatch&lt;FArdaRasterVertex, 3&gt; Input)
+{
+	FArdaTessellationFactors Factors;
+	Factors.Edges[0] = Factors.Edges[1] = Factors.Edges[2] = Factors.Inside = 2;
+	return Factors;
+}
+
+[domain(&quot;tri&quot;)]
+[partitioning(&quot;integer&quot;)]
+[outputtopology(&quot;triangle_cw&quot;)]
+[outputcontrolpoints(3)]
+[patchconstantfunc(&quot;RasterStagePatchConstants&quot;)]
+FArdaRasterVertex RasterStageHS(InputPatch&lt;FArdaRasterVertex, 3&gt; Input, uint ControlPoint: SV_OutputControlPointID)
+{
+	FArdaRasterVertex V = Input[ControlPoint];
+	// The domain shader must receive the hull shader&#x27;s changed color.
+	V.Color = float4(0, 1, 0, 1);
+	return V;
+}
+
+[domain(&quot;tri&quot;)]
+FArdaRasterVertex RasterStageDS(FArdaTessellationFactors Factors,
+    float3 Barycentric: SV_DomainLocation,
+    const OutputPatch&lt;FArdaRasterVertex, 3&gt; Patch)
+{
+	FArdaRasterVertex V;
+	V.Position =
+	    Patch[0].Position * Barycentric.x + Patch[1].Position * Barycentric.y + Patch[2].Position * Barycentric.z;
+	V.Color = Patch[0].Color;
+	V.Color.b = 1;
+	return V;
+}
+
+float4 RasterStagePS(FArdaRasterVertex Input)
+    : SV_Target
+{
+	return Input.Color;
+}
 </code></pre></details><details id="shader-ardaraytracingtest"><summary>ArdaRayTracingTest.hlsl</summary><pre><code class="language-hlsl">RWStructuredBuffer&lt;uint&gt; RayOutput : register(u0);
 RaytracingAccelerationStructure RayScene : register(t0);
 
-struct FKnownRayPayload
+struct FArdaKnownRayPayload
 {
 	uint Value;
 };
@@ -451,13 +556,13 @@ void RayGen()
 }
 
 [shader(&quot;miss&quot;)]
-void KnownMiss(inout FKnownRayPayload payload)
+void KnownMiss(inout FArdaKnownRayPayload payload)
 {
 	payload.Value = 0xB055u ^ (ARDA_RECORD_VALUE(0x22222222u) ^ 0x22222222u);
 }
 
 [shader(&quot;closesthit&quot;)]
-void KnownClosestHit(inout FKnownRayPayload payload, BuiltInTriangleIntersectionAttributes attributes)
+void KnownClosestHit(inout FArdaKnownRayPayload payload, BuiltInTriangleIntersectionAttributes attributes)
 {
 	payload.Value =
 	    (0xC105E57u ^ (ARDA_RECORD_VALUE(0x33333333u) ^ 0x33333333u)) + (attributes.barycentrics.x &gt;= 0.0 ? 0u : 1u);
@@ -472,7 +577,7 @@ void KnownSceneRayGen()
 	ray.Direction = float3(0.0, 0.0, 1.0);
 	ray.TMin = 0.001;
 	ray.TMax = 10.0;
-	FKnownRayPayload payload;
+	FArdaKnownRayPayload payload;
 	payload.Value = 0;
 	TraceRay(RayScene, RAY_FLAG_NONE, 0xff, 0, 1, 0, ray, payload);
 	RayOutput[index] = payload.Value ^ (ARDA_RECORD_VALUE(0x11111111u) ^ 0x11111111u);
@@ -534,7 +639,7 @@ void DirectHeapSamplerTestCS(uint3 dispatchThreadId: SV_DispatchThreadID)
 	DirectHeapOutput[dispatchThreadId.x] = value.r &gt; 0.2 ? 0x5A4D : 0;
 }
 
-struct WorkGraphInputRecord
+struct FArdaWorkGraphInputRecord
 {
 	uint Value;
 };
@@ -545,7 +650,7 @@ RWStructuredBuffer&lt;uint&gt; WorkGraphOutput : register(u0);
 [NodeLaunch(&quot;broadcasting&quot;)]
 [NodeDispatchGrid(1, 1, 1)]
 [NumThreads(1, 1, 1)]
-void WorkGraphMain(DispatchNodeInputRecord&lt;WorkGraphInputRecord&gt; inputRecord)
+void WorkGraphMain(DispatchNodeInputRecord&lt;FArdaWorkGraphInputRecord&gt; inputRecord)
 {
 	WorkGraphOutput[0] = inputRecord.Get().Value;
 }
@@ -571,7 +676,7 @@ float4 PipelineStateTestPS()
 	return float4(1.0, 0.0, 1.0, 1.0);
 }
 
-struct MeshPipelineVertex
+struct FArdaMeshPipelineVertex
 {
 	float4 Position : SV_Position;
 };
@@ -579,7 +684,7 @@ struct MeshPipelineVertex
 [outputtopology(&quot;triangle&quot;)]
 [numthreads(1, 1, 1)]
 void MeshPipelineTestMS(uint3 groupThreadId: SV_GroupThreadID,
-    out vertices MeshPipelineVertex vertices[3],
+    out vertices FArdaMeshPipelineVertex vertices[3],
     out indices uint3 triangles[1])
 {
 	SetMeshOutputCounts(3, 1);
@@ -627,6 +732,7 @@ float4 BindingSpacePS()
 }
 </code></pre></details></section>
 <section id="shader-artifacts"><h2>Build the exact shader variants</h2><p>ArdaLocalRayTracingTest is compiled from ArdaRayTracingTest.hlsl with ARDA_LOCAL_RECORDS defined by EnableLocalRecords. This selects the native local-record ABI; the ordinary ArdaRayTracingTest variant uses fallback constants. Preserve that distinction when testing local argument bytes: omitting the define can produce the expected constants without reading the host records.</p><p>The source-backed test environment below pairs each artifact name, source, entry point and compilation hook, then calls EnsureRegisteredShaderArtifacts for each linked backend. This also supplies the resource-collection and graphics-fallback variants used above. CMake supplies the source and output directory definitions; application deployments should use their own writable compiler cache and deployable artifact directory. See <a href="shaders.html">shader registration and compilation</a> for the application workflow.</p><details><summary>Artifact registrations and compilation environment</summary><pre><code class="language-cpp">#include &quot;ArdaBackend.h&quot;
+#include &quot;ArdaTestValidation.h&quot;
 #include &quot;ArdaBackendProvider.h&quot;
 #include &quot;ShaderStructs/ArdaShaderCompiler.h&quot;
 
@@ -653,96 +759,145 @@ namespace
 		void SetUp() override
 		{
 			using namespace arda;
-			using Stage = arda::EArdaRHIShaderStage;
+			using FArdaStage = arda::EArdaRHIShaderStage;
+			ASSERT_TRUE(ConfigureBackend(MakeArdaTestBackendConfiguration()));
 
 			const std::filesystem::path SourceDirectory = ARDA_BACKEND_TEST_SHADER_SOURCE_DIR;
 			const std::string StructSource = (SourceDirectory / &quot;ArdaShaderStructTest.hlsl&quot;).string();
 			const std::string RayTracingSource = (SourceDirectory / &quot;ArdaRayTracingTest.hlsl&quot;).string();
+			const auto RasterStageSource = (SourceDirectory / &quot;ArdaRasterStageTest.hlsl&quot;).string();
+			FArdaShaderTypeRegistration RasterVertex(&quot;ArdaRasterStageVS&quot;,
+			    RasterStageSource.c_str(),
+			    &quot;ArdaRasterStageVS&quot;,
+			    &quot;RasterStageVS&quot;,
+			    FArdaStage::Vertex,
+			    nullptr);
+			FArdaShaderTypeRegistration RasterGeometry(&quot;ArdaRasterStageGS&quot;,
+			    RasterStageSource.c_str(),
+			    &quot;ArdaRasterStageGS&quot;,
+			    &quot;RasterStageGS&quot;,
+			    FArdaStage::Geometry,
+			    nullptr);
+			FArdaShaderTypeRegistration RasterHull(&quot;ArdaRasterStageHS&quot;,
+			    RasterStageSource.c_str(),
+			    &quot;ArdaRasterStageHS&quot;,
+			    &quot;RasterStageHS&quot;,
+			    FArdaStage::Hull,
+			    nullptr);
+			FArdaShaderTypeRegistration RasterDomain(&quot;ArdaRasterStageDS&quot;,
+			    RasterStageSource.c_str(),
+			    &quot;ArdaRasterStageDS&quot;,
+			    &quot;RasterStageDS&quot;,
+			    FArdaStage::Domain,
+			    nullptr);
+			FArdaShaderTypeRegistration RasterPixel(&quot;ArdaRasterStagePS&quot;,
+			    RasterStageSource.c_str(),
+			    &quot;ArdaRasterStagePS&quot;,
+			    &quot;RasterStagePS&quot;,
+			    FArdaStage::Pixel,
+			    nullptr);
 
 			FArdaShaderTypeRegistration Compute(&quot;ArdaBackendTestCompute&quot;,
 			    StructSource.c_str(),
 			    &quot;ArdaShaderStructTest&quot;,
 			    &quot;ShaderStructTestCS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr);
+			const auto PushConstantSource = (SourceDirectory / &quot;ArdaPushConstantBroadcastTest.hlsl&quot;).string();
+			FArdaShaderTypeRegistration PushConstants(&quot;ArdaPushConstantBroadcastTest&quot;,
+			    PushConstantSource.c_str(),
+			    &quot;ArdaPushConstantBroadcastTest&quot;,
+			    &quot;PushConstantBroadcastCS&quot;,
+			    FArdaStage::Compute,
+			    nullptr,
+			    1,
+			    &amp;CompileOnlyForD3D12);
+			FArdaShaderTypeRegistration PushConstantReplay(&quot;ArdaPushConstantReplayTest&quot;,
+			    PushConstantSource.c_str(),
+			    &quot;ArdaPushConstantReplayTest&quot;,
+			    &quot;PushConstantReplayCS&quot;,
+			    FArdaStage::Compute,
+			    nullptr,
+			    1,
+			    &amp;CompileOnlyForD3D12);
 			const auto CudaFallbackSource = (SourceDirectory / &quot;ArdaCudaFallback.hlsl&quot;).string();
 			FArdaShaderTypeRegistration CudaFallback(&quot;ArdaCudaFallback&quot;,
 			    CudaFallbackSource.c_str(),
 			    &quot;ArdaCudaFallback&quot;,
 			    &quot;AddFallbackCS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr);
 			FArdaShaderTypeRegistration ResourceCollection(&quot;ArdaResourceCollection&quot;,
 			    StructSource.c_str(),
 			    &quot;ArdaResourceCollection&quot;,
 			    &quot;ResourceCollectionCS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr);
 			FArdaShaderTypeRegistration VulkanLayoutCompute(&quot;ArdaBackendTestVulkanLayoutCompute&quot;,
 			    StructSource.c_str(),
 			    &quot;ArdaVulkanLayoutTest&quot;,
 			    &quot;VulkanLayoutTestCS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr);
 			FArdaShaderTypeRegistration DirectHeapSamplerCompute(&quot;ArdaBackendTestDirectHeapSamplerCompute&quot;,
 			    StructSource.c_str(),
 			    &quot;ArdaDirectHeapSamplerTest&quot;,
 			    &quot;DirectHeapSamplerTestCS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr);
 			FArdaShaderTypeRegistration Vertex(&quot;ArdaBackendTestVertex&quot;,
 			    StructSource.c_str(),
 			    &quot;ArdaPipelineStateTestVS&quot;,
 			    &quot;PipelineStateTestVS&quot;,
-			    Stage::Vertex,
+			    FArdaStage::Vertex,
 			    nullptr);
 			FArdaShaderTypeRegistration Pixel(&quot;ArdaBackendTestPixel&quot;,
 			    StructSource.c_str(),
 			    &quot;ArdaPipelineStateTestPS&quot;,
 			    &quot;PipelineStateTestPS&quot;,
-			    Stage::Pixel,
+			    FArdaStage::Pixel,
 			    nullptr);
 			FArdaShaderTypeRegistration Mesh(&quot;ArdaBackendTestMesh&quot;,
 			    StructSource.c_str(),
 			    &quot;ArdaMeshPipelineTestMS&quot;,
 			    &quot;MeshPipelineTestMS&quot;,
-			    Stage::Mesh,
+			    FArdaStage::Mesh,
 			    nullptr);
 			FArdaShaderTypeRegistration MeshPixel(&quot;ArdaBackendTestMeshPixel&quot;,
 			    StructSource.c_str(),
 			    &quot;ArdaMeshPipelineTestPS&quot;,
 			    &quot;MeshPipelineTestPS&quot;,
-			    Stage::Pixel,
+			    FArdaStage::Pixel,
 			    nullptr);
 			FArdaShaderTypeRegistration MeshTablePixel(&quot;ArdaMeshTablePixel&quot;,
 			    StructSource.c_str(),
 			    &quot;ArdaMeshTablePS&quot;,
 			    &quot;MeshTablePS&quot;,
-			    Stage::Pixel,
+			    FArdaStage::Pixel,
 			    nullptr);
 			FArdaShaderTypeRegistration BindingSpaceVertex(&quot;ArdaBackendTestBindingSpaceVertex&quot;,
 			    StructSource.c_str(),
 			    &quot;ArdaBindingSpaceVS&quot;,
 			    &quot;BindingSpaceVS&quot;,
-			    Stage::Vertex,
+			    FArdaStage::Vertex,
 			    nullptr);
 			FArdaShaderTypeRegistration BindingSpacePixel(&quot;ArdaBackendTestBindingSpacePixel&quot;,
 			    StructSource.c_str(),
 			    &quot;ArdaBindingSpacePS&quot;,
 			    &quot;BindingSpacePS&quot;,
-			    Stage::Pixel,
+			    FArdaStage::Pixel,
 			    nullptr);
 			FArdaShaderTypeRegistration RayGeneration(&quot;ArdaBackendTestRayGeneration&quot;,
 			    RayTracingSource.c_str(),
 			    &quot;ArdaRayTracingTest&quot;,
 			    &quot;RayGen&quot;,
-			    Stage::RayGeneration,
+			    FArdaStage::RayGeneration,
 			    nullptr);
 			FArdaShaderTypeRegistration LocalRayGeneration(&quot;ArdaBackendLocalRayGeneration&quot;,
 			    RayTracingSource.c_str(),
 			    &quot;ArdaLocalRayTracingTest&quot;,
 			    &quot;KnownSceneRayGen&quot;,
-			    Stage::RayGeneration,
+			    FArdaStage::RayGeneration,
 			    nullptr,
 			    1,
 			    nullptr,
@@ -751,7 +906,7 @@ namespace
 			    StructSource.c_str(),
 			    &quot;ArdaWorkGraphTest&quot;,
 			    &quot;WorkGraphMain&quot;,
-			    Stage::WorkGraph,
+			    FArdaStage::WorkGraph,
 			    nullptr,
 			    1,
 			    &amp;CompileOnlyForD3D12);
@@ -787,38 +942,38 @@ namespace
 			    ComputeSource.c_str(),
 			    &quot;ArdaSubgroup&quot;,
 			    &quot;SubgroupCS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr);
 			FArdaShaderTypeRegistration Float16(&quot;ArdaFloat16&quot;,
 			    ComputeSource.c_str(),
 			    &quot;ArdaFloat16&quot;,
 			    &quot;Float16CS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr);
 			FArdaShaderTypeRegistration Int8(&quot;ArdaInt8&quot;,
 			    ComputeSource.c_str(),
 			    &quot;ArdaInt8&quot;,
 			    &quot;Int8CS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr);
 			FArdaShaderTypeRegistration RuntimeDescriptors(&quot;ArdaRuntimeDescriptors&quot;,
 			    ComputeSource.c_str(),
 			    &quot;ArdaRuntimeDescriptors&quot;,
 			    &quot;RuntimeDescriptorsCS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr);
 			FArdaShaderTypeRegistration InlineRayQuery(&quot;ArdaInlineRayQuery&quot;,
 			    ComputeSource.c_str(),
 			    &quot;ArdaInlineRayQuery&quot;,
 			    &quot;InlineRayQueryCS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr);
 			const auto FeedbackSource = (SourceDirectory / &quot;ArdaSamplerFeedbackConformance.hlsl&quot;).string();
 			FArdaShaderTypeRegistration SamplerFeedback(&quot;ArdaSamplerFeedback&quot;,
 			    FeedbackSource.c_str(),
 			    &quot;ArdaSamplerFeedback&quot;,
 			    &quot;SamplerFeedbackCS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr,
 			    1,
 			    &amp;CompileOnlyForD3D12);
@@ -826,7 +981,7 @@ namespace
 			    FeedbackSource.c_str(),
 			    &quot;ArdaSamplerFeedbackRegion&quot;,
 			    &quot;SamplerFeedbackRegionCS&quot;,
-			    Stage::Compute,
+			    FArdaStage::Compute,
 			    nullptr,
 			    1,
 			    &amp;CompileOnlyForD3D12);
@@ -882,19 +1037,19 @@ int main(int ArgumentCount, char** Arguments)
 	return RUN_ALL_TESTS();
 }
 </code></pre></details></section>
-<section id="VerifyExtendedCommands"><h2>VerifyExtendedCommands</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyExtendedCommands(const char* BackendName)
+<section id="VerifyExtendedCommands"><h2>VerifyExtendedCommands</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyExtendedCommands(const char* BackendName)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(BackendName);
 	ASSERT_NE(Module, nullptr);
 
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -1111,11 +1266,11 @@ int main(int ArgumentCount, char** Arguments)
 	ASSERT_TRUE(Device-&gt;WaitForIdle());
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="NativeTransientResourcesAndDescriptorsReturnToBaseline"><h2>NativeTransientResourcesAndDescriptorsReturnToBaseline</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaBackendTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
+<section id="NativeTransientResourcesAndDescriptorsReturnToBaseline"><h2>NativeTransientResourcesAndDescriptorsReturnToBaseline</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaBackendTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">TEST(ArdaBackend, NativeTransientResourcesAndDescriptorsReturnToBaseline)
 {
 	using namespace arda;
 
-	FExternalTestCleanup Cleanup;
+	FArdaExternalTestCleanup Cleanup;
 	size_t TestedBackends = 0;
 	for (const FArdaBackendModuleDescriptor&amp; Module : EnumerateBackendModules())
 	{
@@ -1124,7 +1279,7 @@ int main(int ArgumentCount, char** Arguments)
 			continue;
 		}
 		ShutdownBackend();
-		FArdaBackendConfiguration Configuration;
+		FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 		Configuration.mBackendName = Module.mName;
 		Configuration.mbEnableValidation = false;
 		Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
@@ -1354,18 +1509,18 @@ int main(int ArgumentCount, char** Arguments)
 	}
 	EXPECT_GT(TestedBackends, 0u);
 }</code></pre></details></section>
-<section id="VerifyExplicitHeapAliasing"><h2>VerifyExplicitHeapAliasing</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyExplicitHeapAliasing(const char* BackendName)
+<section id="VerifyExplicitHeapAliasing"><h2>VerifyExplicitHeapAliasing</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyExplicitHeapAliasing(const char* BackendName)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(BackendName);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
 	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
@@ -1434,16 +1589,16 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_EQ(ActualPattern, SecondPattern);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyQueryExecution"><h2>VerifyQueryExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyQueryExecution(const char* BackendName)
+<section id="VerifyQueryExecution"><h2>VerifyQueryExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyQueryExecution(const char* BackendName)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
 	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
@@ -1507,7 +1662,7 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_FALSE(Device-&gt;PollGpuFence(Fence.mValue).mValue);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="CreateExtendedShader"><h2>CreateExtendedShader</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">arda::TArdaRHIResult&lt;arda::FArdaRHIShaderRef&gt; CreateExtendedShader(arda::IArdaRHIDevice&amp; Device,
+<section id="CreateExtendedShader"><h2>CreateExtendedShader</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">arda::TArdaRHIResult&lt;arda::FArdaRHIShaderRef&gt; CreateExtendedShader(arda::IArdaRHIDevice&amp; Device,
     const char* BackendName,
     const char* Artifact,
     const char* EntryPoint,
@@ -1530,17 +1685,17 @@ int main(int ArgumentCount, char** Arguments)
 	Desc.mDebugName = Artifact;
 	return Device.CreateShader(Desc);
 }</code></pre></details></section>
-<section id="VerifyShaderLibraryExecution"><h2>VerifyShaderLibraryExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyShaderLibraryExecution(const char* BackendName, const std::filesystem::path&amp; CacheDirectory = {})
+<section id="VerifyShaderLibraryExecution"><h2>VerifyShaderLibraryExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyShaderLibraryExecution(const char* BackendName, const std::filesystem::path&amp; CacheDirectory = {})
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
 	Configuration.mPipelineCacheDirectory = CacheDirectory;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -1605,20 +1760,20 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_EQ(Value, 0xA2DAu);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyBindlessDescriptorTable"><h2>VerifyBindlessDescriptorTable</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyBindlessDescriptorTable(const char* BackendName,
+<section id="VerifyBindlessDescriptorTable"><h2>VerifyBindlessDescriptorTable</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyBindlessDescriptorTable(const char* BackendName,
     bool bDirectHeapIndexing = false,
     bool bDescriptorBuffer = false)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(BackendName);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -1626,6 +1781,13 @@ int main(int ArgumentCount, char** Arguments)
 	FArdaRHIDeviceRef Device = GetDevice();
 	ASSERT_TRUE(Device);
 	ASSERT_TRUE(Device-&gt;GetCapabilities().mDescriptors.mbBindless);
+	if (std::strcmp(BackendName, &quot;native-d3d12&quot;) == 0)
+	{
+		FArdaRHIFeatureRequirements Requirements;
+		Requirements.mbRequireDescriptorHeap = true;
+		const auto Admission = Device-&gt;RequireFeatures(Requirements);
+		ASSERT_TRUE(Admission) &lt;&lt; Admission.mMessage.c_str();
+	}
 	if (bDirectHeapIndexing &amp;&amp; !Device-&gt;GetCapabilities().mDescriptors.mbDirectResourceHeapIndexing)
 	{
 		GTEST_SKIP() &lt;&lt; &quot;Direct native resource-heap indexing is unavailable.&quot;;
@@ -1647,7 +1809,6 @@ int main(int ArgumentCount, char** Arguments)
 	LayoutDesc.mbDirectHeapIndexing = bDirectHeapIndexing;
 	LayoutDesc.mbDescriptorBuffer = bDescriptorBuffer;
 	LayoutDesc.mDebugName = &quot;Bounded bindless UAV table&quot;;
-	LayoutDesc.mbAllowUnsafeDescriptorTableLifetime = true;
 	LayoutDesc.mRegisterSpaces.push_back({0, 1, EArdaRHIBindingType::StructuredBufferUAV});
 	auto Layout = Device-&gt;CreateBindlessLayout(LayoutDesc);
 	ASSERT_TRUE(Layout) &lt;&lt; Layout.mStatus.mMessage.c_str();
@@ -1706,17 +1867,17 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_EQ(InvalidWrite.mCode, EArdaRHIResult::InvalidArgument);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyExpandedDescriptorsAndResourceCollections"><h2>VerifyExpandedDescriptorsAndResourceCollections</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyExpandedDescriptorsAndResourceCollections(const char* BackendName)
+<section id="VerifyExpandedDescriptorsAndResourceCollections"><h2>VerifyExpandedDescriptorsAndResourceCollections</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyExpandedDescriptorsAndResourceCollections(const char* BackendName)
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(BackendName);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
 	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
@@ -1845,18 +2006,18 @@ int main(int ArgumentCount, char** Arguments)
 	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyMeshPipelineCapabilityAndExecution"><h2>VerifyMeshPipelineCapabilityAndExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyMeshPipelineCapabilityAndExecution(const char* BackendName, bool bBundle = false)
+<section id="VerifyMeshPipelineCapabilityAndExecution"><h2>VerifyMeshPipelineCapabilityAndExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyMeshPipelineCapabilityAndExecution(const char* BackendName, bool bBundle = false)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(BackendName);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -2012,18 +2173,18 @@ int main(int ArgumentCount, char** Arguments)
 	ASSERT_TRUE(Device-&gt;UnmapStagingTexture(Readback.mValue));
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyAccelerationStructureLifecycleAndStateParity"><h2>VerifyAccelerationStructureLifecycleAndStateParity</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyAccelerationStructureLifecycleAndStateParity(const char* BackendName)
+<section id="VerifyAccelerationStructureLifecycleAndStateParity"><h2>VerifyAccelerationStructureLifecycleAndStateParity</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyAccelerationStructureLifecycleAndStateParity(const char* BackendName)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(BackendName);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -2146,18 +2307,18 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_EQ(CompactBlas.mValue-&gt;GetBuildState(), EArdaRHIAccelStructBuildState::Compacted);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyRayTracingPipelineCapabilityAndExecution"><h2>VerifyRayTracingPipelineCapabilityAndExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRayTracingPipelineCapabilityAndExecution(const char* BackendName, bool bLocalDescriptors = false)
+<section id="VerifyRayTracingPipelineCapabilityAndExecution"><h2>VerifyRayTracingPipelineCapabilityAndExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRayTracingPipelineCapabilityAndExecution(const char* BackendName, bool bLocalDescriptors = false)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(BackendName);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -2281,20 +2442,20 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_EQ(Value, 0xA11CEu);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect"><h2>VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(const char* BackendName,
+<section id="VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect"><h2>VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect(const char* BackendName,
     bool bInlineQuery = false,
     bool bInstanceBuffer = false)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(BackendName);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -2561,15 +2722,15 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_EQ(Actual[1], 0xB055u);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyD3D12WorkGraphExecution"><h2>VerifyD3D12WorkGraphExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyD3D12WorkGraphExecution()
+<section id="VerifyD3D12WorkGraphExecution"><h2>VerifyD3D12WorkGraphExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyD3D12WorkGraphExecution()
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = &quot;native-d3d12&quot;;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -2637,15 +2798,15 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_EQ(Value, InputRecord);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyShaderBundleExecution"><h2>VerifyShaderBundleExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyShaderBundleExecution(const char* BackendName)
+<section id="VerifyShaderBundleExecution"><h2>VerifyShaderBundleExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyShaderBundleExecution(const char* BackendName)
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -2732,18 +2893,18 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_EQ(ValueB, 0xA2DAu);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifySamplerFeedbackStateParity"><h2>VerifySamplerFeedbackStateParity</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifySamplerFeedbackStateParity(bool bMipRegionUsed = false)
+<section id="VerifySamplerFeedbackStateParity"><h2>VerifySamplerFeedbackStateParity</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifySamplerFeedbackStateParity(bool bMipRegionUsed = false)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(&quot;native-d3d12&quot;);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -2937,16 +3098,16 @@ int main(int ArgumentCount, char** Arguments)
 	ASSERT_TRUE(Device-&gt;UnmapStagingTexture(Readback.mValue));
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyVulkanOpacityMicromapLifecycleAndStateParity"><h2>VerifyVulkanOpacityMicromapLifecycleAndStateParity</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyVulkanOpacityMicromapLifecycleAndStateParity()
+<section id="VerifyVulkanOpacityMicromapLifecycleAndStateParity"><h2>VerifyVulkanOpacityMicromapLifecycleAndStateParity</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyVulkanOpacityMicromapLifecycleAndStateParity()
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = &quot;native-vulkan&quot;;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
 	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
@@ -2981,16 +3142,16 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_NE(Micromap.mValue-&gt;GetDeviceAddress(), 0u);
 	EXPECT_EQ(Micromap.mValue-&gt;GetBuildState(), EArdaRHIAccelStructBuildState::Unbuilt);
 
-	struct FMicromapTriangle
+	struct FArdaMicromapTriangle
 	{
 		uint32_t mDataOffset;
 		uint16_t mSubdivisionLevel;
 		uint16_t mFormat;
 	};
 
-	static_assert(sizeof(FMicromapTriangle) == 8);
+	static_assert(sizeof(FArdaMicromapTriangle) == 8);
 	const uint8_t EncodedOpacity = 0xff;
-	const FMicromapTriangle Triangle = {0, 0, static_cast&lt;uint16_t&gt;(EArdaRHIOpacityMicromapFormat::TwoState)};
+	const FArdaMicromapTriangle Triangle = {0, 0, static_cast&lt;uint16_t&gt;(EArdaRHIOpacityMicromapFormat::TwoState)};
 
 	const float Vertices[9] = {-1.f, -1.f, 0.f, 0.f, 1.f, 0.f, 1.f, -1.f, 0.f};
 	FArdaRHIBufferDesc VertexDesc;
@@ -3180,15 +3341,15 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_EQ(TraversalValues[1], 0xB055u);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyRuntimeDescriptorVersions"><h2>VerifyRuntimeDescriptorVersions</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRuntimeDescriptorVersions(const char* BackendName)
+<section id="VerifyRuntimeDescriptorVersions"><h2>VerifyRuntimeDescriptorVersions</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRuntimeDescriptorVersions(const char* BackendName)
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -3283,16 +3444,16 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_EQ(Second, 0xA2DBu);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyDirectResourceAndSamplerHeapIndexing"><h2>VerifyDirectResourceAndSamplerHeapIndexing</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyDirectResourceAndSamplerHeapIndexing(const char* BackendName, bool bDescriptorBuffer = false)
+<section id="VerifyDirectResourceAndSamplerHeapIndexing"><h2>VerifyDirectResourceAndSamplerHeapIndexing</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyDirectResourceAndSamplerHeapIndexing(const char* BackendName, bool bDescriptorBuffer = false)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -3408,18 +3569,18 @@ int main(int ArgumentCount, char** Arguments)
 	EXPECT_EQ(Value, 0x5A4Du);
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyQueueBreadth"><h2>VerifyQueueBreadth</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyQueueBreadth(const char* BackendName)
+<section id="VerifyQueueBreadth"><h2>VerifyQueueBreadth</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyQueueBreadth(const char* BackendName)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(BackendName);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -3428,6 +3589,15 @@ int main(int ArgumentCount, char** Arguments)
 	ASSERT_TRUE(Device);
 
 	const FArdaRHICapabilities&amp; Capabilities = Device-&gt;GetCapabilities();
+	const bool bD3D12 = std::strcmp(BackendName, &quot;native-d3d12&quot;) == 0;
+	if (bD3D12)
+	{
+		FArdaRHIFeatureRequirements Requirements;
+		Requirements.mbRequireTimelineSynchronization = true;
+		Requirements.mbRequireGpuQueueWaits = true;
+		const auto Admission = Device-&gt;RequireFeatures(Requirements);
+		ASSERT_TRUE(Admission) &lt;&lt; Admission.mMessage.c_str();
+	}
 	if (Capabilities.mQueues.mbCopy)
 	{
 		FArdaRHIBufferDesc BufferDesc;
@@ -3481,6 +3651,13 @@ int main(int ArgumentCount, char** Arguments)
 		uint32_t Actual = 0;
 		std::memcpy(&amp;Actual, Readback.data(), sizeof(Actual));
 		EXPECT_EQ(Actual, Expected);
+		if (bD3D12)
+		{
+			// The existing graphics readback completed after its GPU wait on this copy timeline.
+			const auto Completed = Device-&gt;PollSubmission(Submission.mValue);
+			ASSERT_TRUE(Completed) &lt;&lt; Completed.mStatus.mMessage.c_str();
+			EXPECT_TRUE(Completed.mValue);
+		}
 	}
 	else
 	{
@@ -3549,17 +3726,17 @@ int main(int ArgumentCount, char** Arguments)
 	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifySparseResidencyAndStreamingBudget"><h2>VerifySparseResidencyAndStreamingBudget</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifySparseResidencyAndStreamingBudget(const char* BackendName)
+<section id="VerifySparseResidencyAndStreamingBudget"><h2>VerifySparseResidencyAndStreamingBudget</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifySparseResidencyAndStreamingBudget(const char* BackendName)
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(BackendName);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
 	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
@@ -3708,16 +3885,16 @@ int main(int ArgumentCount, char** Arguments)
 	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyStreamingBudgetExecution"><h2>VerifyStreamingBudgetExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyStreamingBudgetExecution(const char* BackendName)
+<section id="VerifyStreamingBudgetExecution"><h2>VerifyStreamingBudgetExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyStreamingBudgetExecution(const char* BackendName)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
 	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
@@ -3736,15 +3913,15 @@ int main(int ArgumentCount, char** Arguments)
 	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyComputeArithmetic"><h2>VerifyComputeArithmetic</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyComputeArithmetic(const char* BackendName, const char* Artifact, const char* Entry)
+<section id="VerifyComputeArithmetic"><h2>VerifyComputeArithmetic</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyComputeArithmetic(const char* BackendName, const char* Artifact, const char* Entry)
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -3822,21 +3999,21 @@ int main(int ArgumentCount, char** Arguments)
 	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyD3D12CustomPresentExecution"><h2>VerifyD3D12CustomPresentExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyD3D12CustomPresentExecution()
+<section id="VerifyD3D12CustomPresentExecution"><h2>VerifyD3D12CustomPresentExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyD3D12CustomPresentExecution()
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedBackendCleanup Cleanup;
-	FWin32TestSurface Surface;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaWin32TestSurface Surface;
 	ASSERT_TRUE(Surface.IsValid());
 
-	FExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedDiagnosticCallback Diagnostics;
 	IArdaBackendModule* Module = FindBackendModule(&quot;native-d3d12&quot;);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -3857,7 +4034,7 @@ int main(int ArgumentCount, char** Arguments)
 	const FArdaRHIStatus Support = Device-&gt;QueryCustomPresentSupport();
 	ASSERT_TRUE(Support) &lt;&lt; Support.mMessage.c_str();
 
-	auto Tracker = eastl::make_shared&lt;FCustomPresentTracker&gt;();
+	auto Tracker = eastl::make_shared&lt;FArdaCustomPresentTracker&gt;();
 	SwapChain-&gt;SetCustomPresent(Tracker);
 	ASSERT_EQ(SwapChain-&gt;GetCustomPresent().get(), Tracker.get());
 	EXPECT_EQ(Tracker-&gt;mResizeCount, 1u);
@@ -3890,7 +4067,7 @@ int main(int ArgumentCount, char** Arguments)
 	ShutdownBackend();
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyCapabilityInvariants"><h2>VerifyCapabilityInvariants</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyCapabilityInvariants(const arda::FArdaRHICapabilities&amp; Caps)
+<section id="VerifyCapabilityInvariants"><h2>VerifyCapabilityInvariants</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyCapabilityInvariants(const arda::FArdaRHICapabilities&amp; Caps)
 {
 	using namespace arda;
 	const auto&amp; Ray = Caps.mRayTracing;
@@ -3970,18 +4147,154 @@ int main(int ArgumentCount, char** Arguments)
 		EXPECT_GE(MachineLearning.mSubgroupMaxSize, MachineLearning.mSubgroupMinSize);
 	}
 }</code></pre></details></section>
-<section id="VerifyResolveAndPlaneTracking"><h2>VerifyResolveAndPlaneTracking</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyResolveAndPlaneTracking(const char* BackendName)
+<section id="VerifyRasterStageCapabilityAndExecution"><h2>VerifyRasterStageCapabilityAndExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRasterStageCapabilityAndExecution(const char* BackendName, bool bTessellation)
 {
 	using namespace arda;
 
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
 	IArdaBackendModule* Module = FindBackendModule(BackendName);
 	ASSERT_NE(Module, nullptr);
-	FArdaBackendConfiguration Configuration;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
+	Configuration.mMessageCallback = &amp;Diagnostics;
+	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+	ASSERT_TRUE(ConfigureBackend(Configuration));
+	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
+	FArdaRHIDeviceRef Device = GetDevice();
+	ASSERT_TRUE(Device);
+	FArdaRHIFeatureRequirements Requirements;
+	Requirements.mbRequireGeometryShaders = !bTessellation;
+	Requirements.mbRequireTessellationShaders = bTessellation;
+	const auto Admission = Device-&gt;RequireFeatures(Requirements);
+	ASSERT_TRUE(Admission) &lt;&lt; Admission.mMessage.c_str();
+
+	auto Vertex = CreateExtendedShader(*Device,
+	    BackendName,
+	    &quot;ArdaRasterStageVS&quot;,
+	    &quot;RasterStageVS&quot;,
+	    EArdaRHIShaderStage::Vertex);
+	auto Pixel = CreateExtendedShader(*Device,
+	    BackendName,
+	    &quot;ArdaRasterStagePS&quot;,
+	    &quot;RasterStagePS&quot;,
+	    EArdaRHIShaderStage::Pixel);
+	ASSERT_TRUE(Vertex) &lt;&lt; Vertex.mStatus.mMessage.c_str();
+	ASSERT_TRUE(Pixel) &lt;&lt; Pixel.mStatus.mMessage.c_str();
+	FArdaRHIGraphicsPipelineDesc PipelineDesc;
+	PipelineDesc.mDebugName =
+	    bTessellation ? &quot;Hull/domain capability conformance&quot; : &quot;Geometry capability conformance&quot;;
+	PipelineDesc.mVertexShader = Vertex.mValue;
+	PipelineDesc.mPixelShader = Pixel.mValue;
+	PipelineDesc.mColorFormats = {EArdaRHIFormat::RGBA8UNorm};
+	PipelineDesc.mRasterState.mCullMode = EArdaRHICullMode::None;
+	PipelineDesc.mDepthStencilState.mbDepthTest = false;
+	PipelineDesc.mDepthStencilState.mbDepthWrite = false;
+	if (bTessellation)
+	{
+		auto Hull = CreateExtendedShader(*Device,
+		    BackendName,
+		    &quot;ArdaRasterStageHS&quot;,
+		    &quot;RasterStageHS&quot;,
+		    EArdaRHIShaderStage::Hull);
+		auto Domain = CreateExtendedShader(*Device,
+		    BackendName,
+		    &quot;ArdaRasterStageDS&quot;,
+		    &quot;RasterStageDS&quot;,
+		    EArdaRHIShaderStage::Domain);
+		ASSERT_TRUE(Hull) &lt;&lt; Hull.mStatus.mMessage.c_str();
+		ASSERT_TRUE(Domain) &lt;&lt; Domain.mStatus.mMessage.c_str();
+		PipelineDesc.mHullShader = Hull.mValue;
+		PipelineDesc.mDomainShader = Domain.mValue;
+		PipelineDesc.mTopology = EArdaRHIPrimitiveTopology::PatchList;
+		PipelineDesc.mPatchControlPoints = 3;
+	}
+	else
+	{
+		auto Geometry = CreateExtendedShader(*Device,
+		    BackendName,
+		    &quot;ArdaRasterStageGS&quot;,
+		    &quot;RasterStageGS&quot;,
+		    EArdaRHIShaderStage::Geometry);
+		ASSERT_TRUE(Geometry) &lt;&lt; Geometry.mStatus.mMessage.c_str();
+		PipelineDesc.mGeometryShader = Geometry.mValue;
+	}
+	auto Pipeline = Device-&gt;CreateGraphicsPipeline(PipelineDesc);
+	ASSERT_TRUE(Pipeline) &lt;&lt; Pipeline.mStatus.mMessage.c_str();
+
+	FArdaRHITextureDesc TargetDesc;
+	TargetDesc.mDebugName = &quot;Raster stage native render target&quot;;
+	TargetDesc.mWidth = TargetDesc.mHeight = 4;
+	TargetDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	TargetDesc.mUsage = EArdaRHITextureUsage::RenderTarget;
+	TargetDesc.mInitialState = EArdaRHIResourceState::RenderTarget;
+	auto Target = Device-&gt;CreateTexture(TargetDesc);
+	ASSERT_TRUE(Target) &lt;&lt; Target.mStatus.mMessage.c_str();
+	FArdaRHIFramebufferDesc FramebufferDesc;
+	FramebufferDesc.mColorAttachments.push_back({Target.mValue, {}});
+	auto Framebuffer = Device-&gt;CreateFramebuffer(FramebufferDesc);
+	ASSERT_TRUE(Framebuffer) &lt;&lt; Framebuffer.mStatus.mMessage.c_str();
+	FArdaRHIStagingTextureDesc ReadbackDesc;
+	ReadbackDesc.mTexture = TargetDesc;
+	ReadbackDesc.mCpuAccess = EArdaRHICpuAccess::Read;
+	auto Readback = Device-&gt;CreateStagingTexture(ReadbackDesc);
+	ASSERT_TRUE(Readback) &lt;&lt; Readback.mStatus.mMessage.c_str();
+
+	auto Commands = Device-&gt;CreateCommandList(EArdaRHIQueueType::Graphics);
+	ASSERT_TRUE(Commands);
+	ASSERT_TRUE(Commands.mValue-&gt;Open());
+	ASSERT_TRUE(Commands.mValue-&gt;ClearTexture(*Target.mValue, {}, {0, 0, 0, 1}));
+	FArdaRHIGraphicsState State;
+	State.mPipeline = Pipeline.mValue;
+	State.mFramebuffer = Framebuffer.mValue;
+	State.mViewports = {{0, 4, 0, 4, 0, 1}};
+	State.mScissors = {{0, 4, 0, 4}};
+	ASSERT_TRUE(Commands.mValue-&gt;SetGraphicsState(State));
+	FArdaRHIDrawArguments Draw;
+	Draw.mVertexCount = 3;
+	Commands.mValue-&gt;Draw(Draw);
+	ASSERT_TRUE(Commands.mValue-&gt;SetTextureState(*Target.mValue, {}, EArdaRHIResourceState::CopySource));
+	Commands.mValue-&gt;CommitBarriers();
+	FArdaRHITextureSlice Slice;
+	Slice.mWidth = Slice.mHeight = 4;
+	Slice.mDepth = 1;
+	ASSERT_TRUE(Commands.mValue-&gt;CopyTextureToStaging(*Readback.mValue, Slice, *Target.mValue, Slice));
+	ASSERT_TRUE(Commands.mValue-&gt;Close());
+	ASSERT_TRUE(Device-&gt;ExecuteCommandList(Commands.mValue));
+	ASSERT_TRUE(Device-&gt;WaitForIdle());
+
+	auto Mapping = Device-&gt;MapStagingTexture(Readback.mValue, Slice, EArdaRHICpuAccess::Read);
+	ASSERT_TRUE(Mapping) &lt;&lt; Mapping.mStatus.mMessage.c_str();
+	ASSERT_GE(Mapping.mValue.mRowPitch, 16u);
+	for (uint32_t Y = 0; Y &lt; 4; ++Y)
+	{
+		const auto* Row = static_cast&lt;const uint8_t*&gt;(Mapping.mValue.mData) + Y * Mapping.mValue.mRowPitch;
+		for (uint32_t X = 0; X &lt; 4; ++X)
+		{
+			// VS emits red; GS must replace it with green, or HS+DS must produce cyan.
+			EXPECT_LE(Row[X * 4], 1u);
+			EXPECT_GE(Row[X * 4 + 1], 254u);
+			EXPECT_NEAR(Row[X * 4 + 2], bTessellation ? 255 : 0, 1);
+			EXPECT_EQ(Row[X * 4 + 3], 255u);
+		}
+	}
+	ASSERT_TRUE(Device-&gt;UnmapStagingTexture(Readback.mValue));
+	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+}</code></pre></details></section>
+<section id="VerifyResolveAndPlaneTracking"><h2>VerifyResolveAndPlaneTracking</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyResolveAndPlaneTracking(const char* BackendName)
+{
+	using namespace arda;
+
+	ShutdownBackend();
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	IArdaBackendModule* Module = FindBackendModule(BackendName);
+	ASSERT_NE(Module, nullptr);
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
+	Configuration.mBackendName = Module-&gt;GetDescriptor().mName;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
@@ -4073,15 +4386,15 @@ int main(int ArgumentCount, char** Arguments)
 	ASSERT_TRUE(Device-&gt;UnmapStagingTexture(Readback.mValue));
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
-<section id="VerifyPerQueueTimerExecution"><h2>VerifyPerQueueTimerExecution</h2><p>Source: <code>Source/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyPerQueueTimerExecution(const char* BackendName)
+<section id="VerifyPerQueueTimerExecution"><h2>VerifyPerQueueTimerExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyPerQueueTimerExecution(const char* BackendName)
 {
 	using namespace arda;
 	ShutdownBackend();
-	FExtendedDiagnosticCallback Diagnostics;
-	FExtendedBackendCleanup Cleanup;
-	FArdaBackendConfiguration Configuration;
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	FArdaBackendConfiguration Configuration = arda::MakeArdaTestBackendConfiguration();
 	Configuration.mBackendName = BackendName;
-	Configuration.mbEnableValidation = true;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
 	Configuration.mMessageCallback = &amp;Diagnostics;
 	ASSERT_TRUE(ConfigureBackend(Configuration));
 	ARDA_REQUIRE_BACKEND() &lt;&lt; GetBackendError().c_str();
@@ -4195,6 +4508,6 @@ int main(int ArgumentCount, char** Arguments)
 }</code></pre></details></section><section id="summary"><h2>Checkpoints and further reading</h2><p>Before submitting work, identify the exact capability, allocation usage, binding layout and producer/consumer states. Keep referenced objects alive through GPU completion. Select an explicit alternative when admission fails; do not reinterpret an opaque handle or suppress an unrelated validation error.</p><ol><li>Why can a supported resource creation still fail?</li><li>Which fence proves that aliased memory can be reused?</li><li>Why does a texture view not imply CUDA surface support?</li><li>How do you distinguish an unavailable feature from a malformed descriptor?</li></ol><p>Continue with <a href="rhi-feature-guide.html">feature mechanisms and native differences</a>, <a href="cuda-interop.html">CUDA operands and graphics alternatives</a>, <a href="diagnostics.html">diagnostics</a>, and the <a href="api-reference.html">canonical API reference</a>.</p></section></article>
 </main>
   </div>
-  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
+  <footer class="site-footer"><p>ArdaBackend documentation · Source boundary: <code>Source/ArdaInfra/ArdaBackend</code> · <a href="api-reference.html">API reference</a></p></footer>
 </body>
 </html>

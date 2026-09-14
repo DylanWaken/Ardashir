@@ -110,7 +110,7 @@
           <h3>Ardashir/application audience</h3>
           <p>Application and renderer code uses <code>ArdaBackend.h</code>, the RHI headers, shader APIs, and optional external-provider APIs. It may select a module by stable name with <a href="api-reference.html#api-arda-backend-configurebackend-42d0f49a"><code>ConfigureBackend(const char*)</code></a>, or leave <code>mBackendName</code> empty and select the highest-priority module compatible with <code>mBackend</code>.</p>
           <h3>Backend implementer audience</h3>
-          <p>A backend library includes <code>ArdaBackendProvider.h</code> and implements <a href="api-reference.html#api-arda-backend-iardabackendmodule-83673c0b"><code>IArdaBackendModule</code></a> plus <a href="api-reference.html#api-arda-iardabackendruntime-b02a9dac"><code>IArdaBackendRuntime</code></a>. Native SDK or engine headers belong in that library. Do not add their types to <code>Source/ArdaBackend/Public</code>; carry them as <code>FArdaNativeObject</code>, stable named objects, or module-owned private state.</p>
+          <p>A backend library includes <code>ArdaBackendProvider.h</code> and implements <a href="api-reference.html#api-arda-backend-iardabackendmodule-83673c0b"><code>IArdaBackendModule</code></a> plus <a href="api-reference.html#api-arda-iardabackendruntime-b02a9dac"><code>IArdaBackendRuntime</code></a>. Native SDK or engine headers belong in that library. Do not add their types to <code>Source/ArdaInfra/ArdaBackend/Public</code>; carry them as <code>FArdaNativeObject</code>, stable named objects, or module-owned private state.</p>
           <p>This keeps the public binary and include boundary independent of Vulkan, D3D12, Unreal, Unity, and Godot. It also makes an implementation replaceable by changing build options and linked registration functions rather than rewriting Ardashir call sites.</p>
         </section>
 
@@ -171,7 +171,7 @@ if (!arda::ConfigureBackend(config) ||
             <li><code>ARDASHIR_BACKEND_D3D12</code> does the same for <code>Ardashir::ArdaBackendD3D12</code> on Windows; and</li>
             <li><code>Ardashir::ArdaBackend</code> contains the shared concrete RHI facade, provider contract, and persistence utilities. There is no additional common/native target.</li>
           </ul>
-          <p>A custom module supplies a CMake target and an unqualified registration function in namespace <code>arda</code>. In a parent project, create the target before adding Ardashir so <code>Source/ArdaBackend</code> can resolve it:</p>
+          <p>A custom module supplies a CMake target and an unqualified registration function in namespace <code>arda</code>. In a parent project, create the target before adding Ardashir so <code>Source/ArdaInfra/ArdaBackend</code> can resolve it:</p>
           <pre><code># Parent CMakeLists.txt
 add_library(MyEngineArdaBackend STATIC
     MyEngineArdaBackend.cpp
@@ -190,7 +190,7 @@ add_subdirectory(path/to/Ardashir)</code></pre>
   -DARDASHIR_BACKEND_D3D12=OFF \
   -DARDASHIR_BACKEND_MODULE_TARGETS=MyEngineArdaBackend \
   -DARDASHIR_BACKEND_REGISTRATION_FUNCTIONS=RegisterMyEngineArdaBackend</code></pre>
-          <p>For multiple values, pass CMake semicolon-separated lists in the same order. The target must already exist before <code>Source/ArdaBackend</code> is configured. The function name is validated as a C++ identifier and must be link-visible to ArdaBackend. If a shared-library/plugin integration needs runtime unload, wrap this static registration scheme with explicit plugin load/unload coordination and refuse unload while active or referenced.</p>
+          <p>For multiple values, pass CMake semicolon-separated lists in the same order. The target must already exist before <code>Source/ArdaInfra/ArdaBackend</code> is configured. The function name is validated as a C++ identifier and must be link-visible to ArdaBackend. If a shared-library/plugin integration needs runtime unload, wrap this static registration scheme with explicit plugin load/unload coordination and refuse unload while active or referenced.</p>
         </section>
 
         <section id="external-devices">
@@ -244,7 +244,7 @@ add_subdirectory(path/to/Ardashir)</code></pre>
           <p>This skeleton shows responsibility placement. Native details intentionally remain in the module library.</p>
           <pre><code>namespace arda
 {
-class FMyRuntime final : public IArdaBackendRuntime
+class FArdaMyRuntime final : public IArdaBackendRuntime
 {
 public:
     FArdaSwapChainCreateResult CreateSwapChain(
@@ -255,12 +255,12 @@ public:
 
 // The provider implements the public backend SPI; ArdaBackend supplies the
 // concrete IArdaRHIDevice facade around it.
-class FMyProviderDevice final : public arda::IArdaRHIProviderDevice
+class FArdaMyProviderDevice final : public arda::IArdaRHIProviderDevice
 {
     // Implement the provider operations required by the backend contract.
 };
 
-class FMyModule final : public IArdaBackendModule
+class FArdaMyModule final : public IArdaBackendModule
 {
 public:
     const FArdaBackendModuleDescriptor&amp; GetDescriptor() const noexcept override;
@@ -274,7 +274,7 @@ public:
 
 bool RegisterMyEngineArdaBackend()
 {
-    static FMyModule module; // Library lifetime must cover all uses.
+    static FArdaMyModule module; // Library lifetime must cover all uses.
     return RegisterBackendModule(module);
 }
 } // namespace arda</code></pre>

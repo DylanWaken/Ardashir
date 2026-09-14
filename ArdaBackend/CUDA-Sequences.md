@@ -67,13 +67,19 @@ or `AddPlan` is sticky and prevents later submission of a partial algorithm.
 
 ## Persistent dependency graph
 
-Include `ArdaRenderGraph.h`. Register an operand once under a device-specific node
-name, then attach typed nodes inside an edit transaction. ArdaInductor derives
+Include `ArdaRenderGraph.h`. Define an operand-node class and attach its device-bound
+operand and logical arguments inside an edit transaction. ArdaInductor derives
 resource dependencies and coalesces consecutive eligible CUDA nodes into one batch.
 
 ```cpp
+class FArdaAddNode final : public TArdaCudaOperandNode<FArdaAddNode, FArdaAddOperand>
+{
+public:
+    static FArdaDependencyNodeMetadata GetMetadata() { return {"app.add", 1}; }
+};
+
+auto Operand = eastl::make_shared<FArdaAddOperand>(Device);
 FArdaDependencyGraph Graph(Device);
-if (auto S = RegisterArdaCudaOperandNode("app.add", Operand); !S) return S;
 if (auto S = Graph.BeginGraphEdit(); !S) return S;
 // Input is an imported resource; Middle and Output are separate logical buffer values.
 TArdaDependencyCudaParameters<FArdaAddParameters> P;
@@ -81,11 +87,11 @@ P.mCount = Count;
 P.mInput.mResource = Input;
 P.mOutput.mResource = Middle;
 P.mBias = 7;
-if (auto N = Graph.AttachOrFind("add seven", "app.add", P); !N) return N.mStatus;
+if (auto N = Graph.AttachOrFind<FArdaAddNode>("add seven", {Operand, P}); !N) return N.mStatus;
 P.mInput.mResource = Middle;
 P.mOutput.mResource = Output;
 P.mBias = 11;
-if (auto N = Graph.AttachOrFind("add eleven", "app.add", P); !N) return N.mStatus;
+if (auto N = Graph.AttachOrFind<FArdaAddNode>("add eleven", {Operand, P}); !N) return N.mStatus;
 if (auto S = Graph.MarkOutput(Output); !S) return S;
 if (auto S = Graph.EndGraphEdit(); !S) return S;
 return Graph.Execute().mStatus;
@@ -93,10 +99,9 @@ return Graph.Execute().mStatus;
 
 `Input`, `Middle`, and `Output` are `FArdaDependencyResourceHandle` values created
 or imported in the same edit transaction. Their buffers require CUDA sharing.
-The graph owns immutable parameter copies and registered definitions. Each logical
-value has one producer; attachment order does not define execution order.
-Unregister device-bound definitions when their library lifetime ends; existing
-graphs retain their definitions until retired.
+The graph owns immutable parameter copies and registered definitions. The example uses one producer per region, so consumers can be attached first. Repeated writers to the same region instead follow original successful attachment order, with each read consuming the preceding contents. Repeated writes reuse storage; separate handles preserve separate values. See the [write-read-write example](../ArdaRDG/resources.html#worked-example).
+Class registration is device-independent. Each graph retains its operand parameter
+until its node and accepted GPU work retire.
 
 `FArdaInductorOptions::mCudaGraphMode` selects capture policy. Each compiled batch
 has a retained native graph cache per frame slot, and `GetCudaGraphStats()` reports

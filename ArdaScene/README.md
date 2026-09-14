@@ -1223,7 +1223,7 @@ The representation plan is complete when:
 
 - `Source/ArdaScene/Public/ArdaScene.h`: current placeholder API.
 - `Source/ArdaScene/CMakeLists.txt`: current module dependency declaration.
-- `Source/ArdaGraph/Public/ArdaDirectedGraph.h`: precedent for
+- `Source/ArdaInfra/ArdaGraph/Public/ArdaDirectedGraph.h`: precedent for
   typed handles, but not a dependency of this module.
 - `Conventions/ArdaCodingConventions.md`: naming, ownership, and public-header
   conventions.
