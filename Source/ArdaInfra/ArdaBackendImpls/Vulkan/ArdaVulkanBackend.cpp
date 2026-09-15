@@ -2283,7 +2283,11 @@ namespace arda
 			    uint64_t,
 			    size_t,
 			    EArdaRHIAccelStructBuildFlags) override;
+			FArdaRHIStatus CopyAccelStruct(const FArdaProviderObjectRef&, const FArdaProviderObjectRef&) override;
 			FArdaRHIStatus CompactAccelStruct(const FArdaProviderObjectRef&, const FArdaProviderObjectRef&) override;
+			FArdaRHIStatus RecordAccelStructCopy(const FArdaProviderObjectRef& Destination,
+			    const FArdaProviderObjectRef& Source,
+			    vk::CopyAccelerationStructureModeKHR Mode);
 			FArdaRHIStatus BuildOpacityMicromap(const FArdaProviderObjectRef&) override;
 			FArdaRHIStatus CompactOpacityMicromap(const FArdaProviderObjectRef&,
 			    const FArdaProviderObjectRef&) override;
@@ -2389,7 +2393,9 @@ namespace arda
 			std::unordered_map<const void*, eastl::vector<EArdaRHIResourceState>> mTextureExpectedStartStates;
 			std::unordered_map<const void*, eastl::vector<vk::PipelineStageFlags2>> mTextureStageMasks;
 			std::unordered_map<const void*, eastl::vector<vk::AccessFlags2>> mTextureAccessMasks;
+			std::unordered_map<const void*, eastl::vector<uint8_t>> mTextureTouchedSubresources;
 			std::unordered_map<const void*, uint32_t> mTextureQueueFamilies;
+			std::unordered_map<const void*, bool> mTextureQueueFamilyWritten;
 			std::unordered_map<FArdaVulkanBuffer*, FArdaBufferTracking> mBufferStates;
 
 			struct FArdaAccelStructTracking
@@ -6480,6 +6486,9 @@ namespace arda
 				mTextureExpectedStartStates.clear();
 				mTextureStageMasks.clear();
 				mTextureAccessMasks.clear();
+				mTextureTouchedSubresources.clear();
+				mTextureQueueFamilies.clear();
+				mTextureQueueFamilyWritten.clear();
 				mBufferStates.clear();
 				mAccelStructStates.clear();
 				mOpacityMicromapStates.clear();
@@ -7347,7 +7356,9 @@ namespace arda
 			    eastl::vector<EArdaRHIResourceState>(SubresourceCount, EArdaRHIResourceState::Unknown));
 			mTextureStageMasks.emplace(Texture.GetIdentity(), eastl::move(StageMasks));
 			mTextureAccessMasks.emplace(Texture.GetIdentity(), eastl::move(AccessMasks));
+			mTextureTouchedSubresources.emplace(Texture.GetIdentity(), eastl::vector<uint8_t>(SubresourceCount, 0));
 			mTextureQueueFamilies.emplace(Texture.GetIdentity(), QueueFamily);
+			mTextureQueueFamilyWritten.emplace(Texture.GetIdentity(), false);
 			return mTextureLayouts.emplace(Texture.GetIdentity(), eastl::move(Layouts)).first->second;
 		}
 
@@ -7410,11 +7421,26 @@ namespace arda
 			{
 				FArdaVulkanTexture* Texture = Entry.second;
 				std::lock_guard<std::mutex> Lock(Texture->mLayoutMutex);
-				Texture->mLayouts = mTextureLayouts.at(Entry.first);
-				Texture->mAbstractStates = mTextureAbstractStates.at(Entry.first);
-				Texture->mStageMasks = mTextureStageMasks.at(Entry.first);
-				Texture->mAccessMasks = mTextureAccessMasks.at(Entry.first);
-				Texture->mQueueFamily = mTextureQueueFamilies.at(Entry.first);
+				const auto& Touched = mTextureTouchedSubresources.at(Entry.first);
+				const auto& Layouts = mTextureLayouts.at(Entry.first);
+				const auto& States = mTextureAbstractStates.at(Entry.first);
+				const auto& Stages = mTextureStageMasks.at(Entry.first);
+				const auto& Access = mTextureAccessMasks.at(Entry.first);
+				// Other submitted lists may already have changed untouched subresources.
+				for (size_t Index = 0; Index < Touched.size(); ++Index)
+				{
+					if (Touched[Index])
+					{
+						Texture->mLayouts[Index] = Layouts[Index];
+						Texture->mAbstractStates[Index] = States[Index];
+						Texture->mStageMasks[Index] = Stages[Index];
+						Texture->mAccessMasks[Index] = Access[Index];
+					}
+				}
+				if (mTextureQueueFamilyWritten.at(Entry.first))
+				{
+					Texture->mQueueFamily = mTextureQueueFamilies.at(Entry.first);
+				}
 			}
 			for (const auto& Entry : mBufferStates)
 			{
@@ -7499,6 +7525,7 @@ namespace arda
 			auto& AbstractStates = mTextureAbstractStates.at(Texture->GetIdentity());
 			auto& StageMasks = mTextureStageMasks.at(Texture->GetIdentity());
 			auto& AccessMasks = mTextureAccessMasks.at(Texture->GetIdentity());
+			auto& Touched = mTextureTouchedSubresources.at(Texture->GetIdentity());
 			const vk::ImageLayout NewLayout =
 			    ToImageLayout(State, ImageAspect(Desc.mFormat) != vk::ImageAspectFlagBits::eColor);
 			const FArdaVulkanSyncState NewSync = ToVulkanSyncState(State);
@@ -7529,6 +7556,7 @@ namespace arda
 				AbstractStates[Index] = State;
 				StageMasks[Index] = NewSync.mStages;
 				AccessMasks[Index] = NewSync.mAccess;
+				Touched[Index] = 1;
 			}
 			if (!Barriers.empty())
 			{
@@ -7641,6 +7669,7 @@ namespace arda
 					auto& Layouts = GetTrackedTextureLayouts(*Texture, Desc);
 					auto& Stages = mTextureStageMasks.at(Texture->GetIdentity());
 					auto& Access = mTextureAccessMasks.at(Texture->GetIdentity());
+					auto& Touched = mTextureTouchedSubresources.at(Texture->GetIdentity());
 					eastl::vector<vk::ImageMemoryBarrier2> Barriers;
 					Barriers.reserve(
 					    static_cast<size_t>(Range.mMipLevelCount) * Range.mArraySliceCount * Range.mPlaneCount);
@@ -7660,12 +7689,14 @@ namespace arda
 						Barrier.subresourceRange =
 						    vk::ImageSubresourceRange(ImageAspect(Desc.mFormat, Plane), MipLevel, 1, ArraySlice, 1);
 						Barriers.push_back(Barrier);
+						Touched[Index] = 1;
 					}
 					vk::DependencyInfo Dependency;
 					Dependency.imageMemoryBarrierCount = static_cast<uint32_t>(Barriers.size());
 					Dependency.pImageMemoryBarriers = Barriers.data();
 					mCommandBuffer.pipelineBarrier2(Dependency);
 					mTextureQueueFamilies[Texture->GetIdentity()] = DestinationFamily;
+					mTextureQueueFamilyWritten[Texture->GetIdentity()] = true;
 					if (bBegin)
 					{
 						return {};
@@ -7780,6 +7811,7 @@ namespace arda
 			auto& ExpectedStartStates = mTextureExpectedStartStates.at(Texture->GetIdentity());
 			auto& StageMasks = mTextureStageMasks.at(Texture->GetIdentity());
 			auto& AccessMasks = mTextureAccessMasks.at(Texture->GetIdentity());
+			auto& Touched = mTextureTouchedSubresources.at(Texture->GetIdentity());
 			const vk::ImageLayout Layout =
 			    ToImageLayout(State, ImageAspect(Desc.mFormat) != vk::ImageAspectFlagBits::eColor);
 			const FArdaVulkanSyncState Sync = ToVulkanSyncState(State);
@@ -7788,6 +7820,7 @@ namespace arda
 				const size_t Index = TextureSubresourceIndex(Desc, MipLevel, ArraySlice, Plane);
 				ExpectedStartStates[Index] = State;
 				AbstractStates[Index] = State;
+				Touched[Index] = 1;
 				if (Layouts[Index] != vk::ImageLayout::eUndefined)
 				{
 					Layouts[Index] = Layout;
@@ -9063,36 +9096,73 @@ namespace arda
 			return RecordAccelStructBuild(Object, Build, Ranges, Flags);
 		}
 
+		FArdaRHIStatus FArdaVulkanCommandList::CopyAccelStruct(const FArdaProviderObjectRef& DestinationObject,
+		    const FArdaProviderObjectRef& SourceObject)
+		{
+			return RecordAccelStructCopy(DestinationObject, SourceObject, vk::CopyAccelerationStructureModeKHR::eClone);
+		}
+
 		FArdaRHIStatus FArdaVulkanCommandList::CompactAccelStruct(const FArdaProviderObjectRef& DestinationObject,
 		    const FArdaProviderObjectRef& SourceObject)
+		{
+			return RecordAccelStructCopy(DestinationObject,
+			    SourceObject,
+			    vk::CopyAccelerationStructureModeKHR::eCompact);
+		}
+
+		FArdaRHIStatus FArdaVulkanCommandList::RecordAccelStructCopy(const FArdaProviderObjectRef& DestinationObject,
+		    const FArdaProviderObjectRef& SourceObject,
+		    vk::CopyAccelerationStructureModeKHR Mode)
 		{
 			auto* Destination = dynamic_cast<FArdaVulkanAccelStruct*>(DestinationObject.get());
 			auto* Source = dynamic_cast<FArdaVulkanAccelStruct*>(SourceObject.get());
 			if (!Destination || !Source || !Destination->mAccelStruct || !Source->mAccelStruct)
 			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice,
-				    "The Vulkan AS compaction resources are invalid.");
+				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice, "The Vulkan AS copy resources are invalid.");
 			}
 			EndRendering();
 			vk::CopyAccelerationStructureInfoKHR Copy;
 			Copy.src = Source->mAccelStruct;
 			Copy.dst = Destination->mAccelStruct;
-			Copy.mode = vk::CopyAccelerationStructureModeKHR::eCompact;
+			Copy.mode = Mode;
 			mCommandBuffer.copyAccelerationStructureKHR(Copy);
 			vk::MemoryBarrier2 Barrier;
 			Barrier.srcStageMask = vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR;
 			Barrier.srcAccessMask = vk::AccessFlagBits2::eAccelerationStructureWriteKHR;
-			Barrier.dstStageMask = vk::PipelineStageFlagBits2::eRayTracingShaderKHR;
-			Barrier.dstAccessMask = vk::AccessFlagBits2::eAccelerationStructureReadKHR;
+			Barrier.dstStageMask = vk::PipelineStageFlagBits2::eAllCommands;
+			Barrier.dstAccessMask = vk::AccessFlagBits2::eAccelerationStructureReadKHR |
+			    vk::AccessFlagBits2::eAccelerationStructureWriteKHR;
 			vk::DependencyInfo Dependency;
 			Dependency.memoryBarrierCount = 1;
 			Dependency.pMemoryBarriers = &Barrier;
 			mCommandBuffer.pipelineBarrier2(Dependency);
+			if (Destination->mQueryPool)
+			{
+				mCommandBuffer.resetQueryPool(Destination->mQueryPool, 0, 1);
+				mCommandBuffer.writeAccelerationStructuresPropertiesKHR(1,
+				    &Destination->mAccelStruct,
+				    vk::QueryType::eAccelerationStructureCompactedSizeKHR,
+				    Destination->mQueryPool,
+				    0);
+				Destination->mbCompactedSizePending = true;
+			}
 			Retain(DestinationObject);
 			Retain(SourceObject);
-			mAccelStructStates[Destination] = {EArdaRHIResourceState::AccelStructRead,
-			    EArdaRHIAccelStructBuildState::Compacted,
-			    true};
+			auto BuildState = EArdaRHIAccelStructBuildState::Compacted;
+			if (Mode == vk::CopyAccelerationStructureModeKHR::eClone)
+			{
+				const auto Existing = mAccelStructStates.find(Source);
+				if (Existing != mAccelStructStates.end())
+				{
+					BuildState = Existing->second.mBuildState;
+				}
+				else
+				{
+					std::lock_guard<std::mutex> Lock(Source->mStateMutex);
+					BuildState = Source->mBuildState;
+				}
+			}
+			mAccelStructStates[Destination] = {EArdaRHIResourceState::AccelStructRead, BuildState, true};
 			return {};
 		}
 

@@ -298,6 +298,62 @@ namespace arda
 		return {};
 	}
 
+	TArdaRHIResult<FArdaRHITextureBufferFootprint> GetArdaRHITextureBufferFootprint(
+	    const FArdaRHITextureDesc& TextureDesc,
+	    const FArdaRHITextureSlice& Slice) noexcept
+	{
+		const auto Invalid = [](const char* Message)
+		{
+			return TArdaRHIResult<FArdaRHITextureBufferFootprint>{{},
+			    FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, Message)};
+		};
+		if (auto Status = Validate(TextureDesc); !Status)
+		{
+			return {{}, Status};
+		}
+		const uint32_t ElementSize = GetArdaRHIFormatElementSize(TextureDesc.mFormat);
+		if (!ElementSize)
+		{
+			return Invalid("Texture-buffer copies require a typed, single-sample, uncompressed color format.");
+		}
+		FArdaRHITextureBufferFootprint Footprint;
+		if (auto Status = ResolveArdaRHITextureCopyExtent(TextureDesc, Slice, TextureDesc, Slice, Footprint.mExtent);
+		    !Status)
+		{
+			return {{}, Status};
+		}
+		uint32_t Divisor = 256;
+		for (uint32_t Remainder = ElementSize; Remainder;)
+		{
+			const uint32_t Next = Divisor % Remainder;
+			Divisor = Remainder;
+			Remainder = Next;
+		}
+		const uint64_t Alignment = uint64_t(256 / Divisor) * ElementSize;
+		Footprint.mRowBytes = uint64_t(Footprint.mExtent.mWidth) * ElementSize;
+		Footprint.mRowCount = uint64_t(Footprint.mExtent.mHeight) * Footprint.mExtent.mDepth;
+		const uint64_t RowPitch = ((Footprint.mRowBytes - 1) / Alignment + 1) * Alignment;
+		if (RowPitch > INT32_MAX)
+		{
+			return Invalid("Texture-buffer row pitch exceeds the portable INT32_MAX limit.");
+		}
+		Footprint.mLayout.mRowPitch = static_cast<uint32_t>(RowPitch);
+		if (Footprint.mRowCount - 1 > (UINT64_MAX - Footprint.mRowBytes) / RowPitch)
+		{
+			return Invalid("Texture-buffer footprint size overflows uint64_t.");
+		}
+		Footprint.mByteSize = (Footprint.mRowCount - 1) * RowPitch + Footprint.mRowBytes;
+		FArdaRHIBufferDesc BufferDesc;
+		BufferDesc.mByteSize = Footprint.mByteSize;
+		if (auto Status =
+		        ValidateArdaRHITextureBufferCopy(TextureDesc, Slice, BufferDesc, Footprint.mLayout, Footprint.mExtent);
+		    !Status)
+		{
+			return {{}, Status};
+		}
+		return {Footprint, {}};
+	}
+
 	FArdaRHIStatus ValidateArdaRHITextureResolve(const FArdaRHITextureDesc& DestinationDesc,
 	    const FArdaRHITextureSlice& DestinationSlice,
 	    const FArdaRHITextureDesc& SourceDesc,

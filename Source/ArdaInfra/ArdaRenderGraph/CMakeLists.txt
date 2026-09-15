@@ -4,7 +4,7 @@ target_link_libraries(ArdaRenderGraph
     PRIVATE Ardashir::ArdaTrace)
 
 # Every public graph header must compile without access to execution internals.
-file(GLOB ARDA_GRAPH_PUBLIC_HEADERS CONFIGURE_DEPENDS
+file(GLOB_RECURSE ARDA_GRAPH_PUBLIC_HEADERS CONFIGURE_DEPENDS
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/Public" "${CMAKE_CURRENT_SOURCE_DIR}/Public/*.h")
 set(ARDA_GRAPH_HEADER_TARGETS)
 foreach(ARDA_GRAPH_PUBLIC_HEADER IN LISTS ARDA_GRAPH_PUBLIC_HEADERS)

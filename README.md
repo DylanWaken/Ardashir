@@ -28,6 +28,9 @@ module remains a separate CMake library with its existing public include names.
   dependency graphs compiled by ArdaInductor. Typed registered nodes declare
   resources; compilation resolves dependencies, pipelines, CUDA batches, queue
   scheduling, and memory budgets. See the [graph guide](Docs/ArdaRDG/ArdaInductor.md).
+  Its [node library](Source/ArdaInfra/ArdaRenderGraph/README.md) provides buffer
+  and texture uploads, copies, readbacks, and clears, plus native BLAS/TLAS
+  cloning and compaction.
 
 - **[ArdaScene](Docs/ArdaScene/README.md)** — Planned engine-neutral scene
   representation for standalone and hosted ray-traced rendering.

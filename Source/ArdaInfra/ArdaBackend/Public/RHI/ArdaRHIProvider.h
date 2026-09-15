@@ -481,6 +481,13 @@ namespace arda
 			    "Acceleration structures are unsupported by this backend provider.");
 		}
 
+		/** Native same-kind acceleration-structure clone; facade validates source state and capacity. */
+		virtual FArdaRHIStatus CopyAccelStruct(const FArdaProviderObjectRef&, const FArdaProviderObjectRef&)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+			    "Acceleration-structure cloning is unsupported by this backend provider.");
+		}
+
 		virtual FArdaRHIStatus CompactAccelStruct(const FArdaProviderObjectRef&, const FArdaProviderObjectRef&)
 		{
 			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,

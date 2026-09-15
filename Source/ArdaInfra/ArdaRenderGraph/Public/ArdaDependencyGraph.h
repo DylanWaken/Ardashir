@@ -651,6 +651,17 @@ namespace arda
 		    eastl::shared_ptr<eastl::vector<uint8_t>> Destination,
 		    uint64_t SourceOffset = 0,
 		    uint64_t Size = ArdaRHIWholeBuffer) const;
+		/** Records a graphics-queue texture readback with completion-safe publication.
+		 * Resource must declare the selected subresource in CopySource state. Supports typed,
+		 * single-sample, uncompressed color regions. Output contains tightly packed rows in increasing
+		 * Y order, followed by increasing Z slices; native row padding is removed after completion.
+		 * The retained destination follows ReadbackBuffer's successful-frame and failure semantics.
+		 * Declare mTransientWorkspaceBytes at least GetArdaRHITextureBufferFootprint(...).mValue.mByteSize.
+		 * The graph budgets and allocates this workspace per frame; its UAV state is restored after recording.
+		 */
+		FArdaRHIStatus ReadbackTexture(FArdaDependencyResourceHandle Resource,
+		    eastl::shared_ptr<eastl::vector<uint8_t>> Destination,
+		    const FArdaRHITextureSlice& Slice = {}) const;
 		FArdaRHITextureRef GetTexture(FArdaDependencyResourceHandle Resource) const;
 		/** Returns a declared acceleration structure access for the current node. */
 		FArdaRHIAccelStructRef GetAccelerationStructure(FArdaDependencyResourceHandle Resource) const;

@@ -1449,6 +1449,7 @@ namespace arda
 			    uint64_t,
 			    size_t,
 			    EArdaRHIAccelStructBuildFlags) override;
+			FArdaRHIStatus CopyAccelStruct(IArdaRHIAccelStruct&, IArdaRHIAccelStruct&) override;
 			FArdaRHIStatus CompactAccelStruct(IArdaRHIAccelStruct&, IArdaRHIAccelStruct&) override;
 			FArdaRHIStatus DispatchShaderBundle(IArdaRHIShaderBundle&) override;
 			FArdaRHIStatus DispatchWorkGraph(IArdaRHIWorkGraphPipeline&,
@@ -1502,6 +1503,9 @@ namespace arda
 			FArdaRHIStatus ResolveBindings(const eastl::vector<FArdaRHIBindingSetRef>& Bindings,
 			    eastl::vector<FArdaProviderObjectRef>& OutBindings) const;
 			eastl::vector<EArdaRHIResourceState>& GetFacadeTextureStates(FArdaTexture& Texture) const;
+			void StoreTextureState(FArdaTexture& Texture,
+			    const FArdaRHITextureSubresourceRange& Range,
+			    EArdaRHIResourceState State);
 			FArdaRHIDeviceImpl* mDevice = nullptr;
 			EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics;
 			eastl::unique_ptr<IArdaProviderCommandList> mNative;
@@ -1513,6 +1517,7 @@ namespace arda
 			mutable std::unordered_map<const FArdaResource*, FArdaRHIResourceRef> mRetainedResources;
 			eastl::vector<FArdaPendingBufferCopyCompletion> mCopyCompletions;
 			mutable std::unordered_map<FArdaTexture*, eastl::vector<EArdaRHIResourceState>> mFacadeTextureStates;
+			std::unordered_map<FArdaTexture*, eastl::vector<uint8_t>> mTouchedTextureStates;
 			mutable std::unordered_map<FArdaBuffer*, EArdaRHIResourceState> mFacadeBufferStates;
 			mutable std::unordered_map<FArdaSamplerFeedbackTexture*, EArdaRHIResourceState>
 			    mFacadeSamplerFeedbackStates;
@@ -4463,6 +4468,7 @@ namespace arda
 			mRecordingStatus = {};
 			mCopyCompletions.clear();
 			mFacadeTextureStates.clear();
+			mTouchedTextureStates.clear();
 			mFacadeBufferStates.clear();
 			mFacadeSamplerFeedbackStates.clear();
 			mFacadeTextureQueueOwners.clear();
@@ -4504,12 +4510,41 @@ namespace arda
 			return mFacadeTextureStates.emplace(&Texture, eastl::move(States)).first->second;
 		}
 
+		void FArdaCommandList::StoreTextureState(FArdaTexture& Texture,
+		    const FArdaRHITextureSubresourceRange& Range,
+		    EArdaRHIResourceState State)
+		{
+			auto& States = GetFacadeTextureStates(Texture);
+			auto& Touched = mTouchedTextureStates[&Texture];
+			if (Touched.empty())
+			{
+				Touched.assign(States.size(), 0);
+			}
+			StoreFacadeTextureState(States, Texture.mDesc, Range, State);
+			for (const auto [MipLevel, ArraySlice, Plane] : FArdaTextureSubresources(Range.Resolve(Texture.mDesc)))
+			{
+				Touched[TextureStateIndex(Texture.mDesc, MipLevel, ArraySlice, Plane)] = 1;
+			}
+		}
+
 		void FArdaCommandList::CommitFacadeStates()
 		{
-			for (auto& Entry : mFacadeTextureStates)
+			for (const auto& Entry : mTouchedTextureStates)
 			{
 				std::lock_guard<std::mutex> Lock(Entry.first->mFacadeStateMutex);
-				Entry.first->mFacadeStates = Entry.second;
+				auto& Submitted = Entry.first->mFacadeStates;
+				if (Submitted.empty())
+				{
+					Submitted.assign(Entry.second.size(), Entry.first->mDesc.mInitialState);
+				}
+				// Lists can record independently against the same texture. Only publish ranges this list touched.
+				for (size_t Index = 0; Index < Entry.second.size(); ++Index)
+				{
+					if (Entry.second[Index])
+					{
+						Submitted[Index] = mFacadeTextureStates.at(Entry.first)[Index];
+					}
+				}
 			}
 			for (const auto& Entry : mFacadeTextureQueueOwners)
 			{
@@ -5163,7 +5198,7 @@ namespace arda
 			const FArdaRHIStatus Status = mNative->SetTextureState(Native->mNative, Native->mDesc, Range, State);
 			if (Status)
 			{
-				StoreFacadeTextureState(GetFacadeTextureStates(*Native), Native->mDesc, Range, State);
+				StoreTextureState(*Native, Range, State);
 			}
 			return Status;
 		}
@@ -5210,10 +5245,7 @@ namespace arda
 			}
 			if (Status && !HasAnyFlags(Transition.mFlags, EArdaRHITransitionFlags::BeginOnly))
 			{
-				StoreFacadeTextureState(GetFacadeTextureStates(*Native),
-				    Native->mDesc,
-				    Transition.mSubresources,
-				    Transition.mStateAfter);
+				StoreTextureState(*Native, Transition.mSubresources, Transition.mStateAfter);
 			}
 			return Status;
 		}
@@ -5343,7 +5375,7 @@ namespace arda
 					    EArdaRHIResourceState::Unknown);
 				}
 				StoreFacadeTextureState(Expected, Native->mDesc, Range, State);
-				StoreFacadeTextureState(GetFacadeTextureStates(*Native), Native->mDesc, Range, State);
+				StoreTextureState(*Native, Range, State);
 			}
 			return Status;
 		}
@@ -6015,6 +6047,42 @@ namespace arda
 			return Status;
 		}
 
+		FArdaRHIStatus FArdaCommandList::CopyAccelStruct(IArdaRHIAccelStruct& DestinationResource,
+		    IArdaRHIAccelStruct& SourceResource)
+		{
+			auto* Destination = Cast<FArdaAccelStruct>(&DestinationResource);
+			auto* Source = Cast<FArdaAccelStruct>(&SourceResource);
+			if (!Destination || !Source || !RetainOwned(Destination) || !RetainOwned(Source))
+			{
+				return WrongDevice();
+			}
+			if (mQueue != EArdaRHIQueueType::Graphics && mQueue != EArdaRHIQueueType::Compute)
+			{
+				return Invalid("Acceleration-structure cloning requires a graphics or compute queue.");
+			}
+			if (Destination == Source || Destination->mDesc.mbTopLevel != Source->mDesc.mbTopLevel ||
+			    Destination->mDesc.mBuildFlags != Source->mDesc.mBuildFlags ||
+			    Destination->mRequirements.mResultSize < Source->mRequirements.mResultSize)
+			{
+				return Invalid(
+				    "Acceleration-structure cloning requires a distinct matching destination with sufficient result storage.");
+			}
+			const auto Existing = mFacadeAccelStructStates.find(Source);
+			const auto BuildState =
+			    Existing != mFacadeAccelStructStates.end() ? Existing->second.mBuildState : Source->GetBuildState();
+			if (BuildState == EArdaRHIAccelStructBuildState::Unbuilt)
+			{
+				return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+				    "Acceleration-structure cloning requires a built source.");
+			}
+			const FArdaRHIStatus Status = mNative->CopyAccelStruct(Destination->mNative, Source->mNative);
+			if (Status)
+			{
+				mFacadeAccelStructStates[Destination] = {EArdaRHIResourceState::AccelStructRead, BuildState, true};
+			}
+			return Status;
+		}
+
 		FArdaRHIStatus FArdaCommandList::CompactAccelStruct(IArdaRHIAccelStruct& DestinationResource,
 		    IArdaRHIAccelStruct& SourceResource)
 		{
@@ -6262,8 +6330,7 @@ namespace arda
 			if (Status)
 			{
 				mFacadeSamplerFeedbackStates[Feedback] = EArdaRHIResourceState::ResolveSource;
-				auto& States = GetFacadeTextureStates(*Destination);
-				eastl::fill(States.begin(), States.end(), EArdaRHIResourceState::ResolveDest);
+				StoreTextureState(*Destination, {}, EArdaRHIResourceState::ResolveDest);
 			}
 			return Status;
 		}

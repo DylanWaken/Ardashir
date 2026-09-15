@@ -1439,7 +1439,11 @@ namespace arda
 			    uint64_t,
 			    size_t,
 			    EArdaRHIAccelStructBuildFlags) override;
+			FArdaRHIStatus CopyAccelStruct(const FArdaProviderObjectRef&, const FArdaProviderObjectRef&) override;
 			FArdaRHIStatus CompactAccelStruct(const FArdaProviderObjectRef&, const FArdaProviderObjectRef&) override;
+			FArdaRHIStatus RecordAccelStructCopy(const FArdaProviderObjectRef& Destination,
+			    const FArdaProviderObjectRef& Source,
+			    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE Mode);
 			FArdaRHIStatus BeginTimerQuery(const FArdaProviderObjectRef&) override;
 			FArdaRHIStatus EndTimerQuery(const FArdaProviderObjectRef&) override;
 
@@ -1488,6 +1492,7 @@ namespace arda
 				eastl::vector<EArdaRHIResourceState> mAbstractStates;
 				eastl::vector<D3D12_RESOURCE_STATES> mNativeStates;
 				eastl::vector<EArdaRHIResourceState> mExpectedStartStates;
+				eastl::vector<uint8_t> mTouchedSubresources;
 			};
 
 			struct FArdaBufferTracking
@@ -1535,6 +1540,7 @@ namespace arda
 			FArdaRHIStatus RecordAccelStructBuild(const FArdaProviderObjectRef&,
 			    const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS&,
 			    EArdaRHIAccelStructBuildFlags);
+			bool BeginAccelStructCompactedSizeWrite(FArdaD3D12AccelStruct& AccelStruct);
 			void CancelTimerQueries();
 
 			void SelectPushConstantPipeline(FArdaD3D12Pipeline* Pipeline)
@@ -1559,6 +1565,7 @@ namespace arda
 			std::unordered_map<FArdaD3D12Texture*, FArdaTextureTracking> mTextureStates;
 			std::unordered_map<FArdaD3D12Buffer*, FArdaBufferTracking> mBufferStates;
 			std::unordered_map<FArdaD3D12AccelStruct*, FArdaAccelStructTracking> mAccelStructStates;
+			std::unordered_map<FArdaD3D12AccelStruct*, bool> mCompactedSizeStartStates;
 			FArdaD3D12Pipeline* mBoundGraphicsPipeline = nullptr;
 			FArdaD3D12Pipeline* mBoundComputePipeline = nullptr;
 			FArdaD3D12ShaderTable* mBoundShaderTable = nullptr;
@@ -5361,6 +5368,7 @@ namespace arda
 			mTextureStates.clear();
 			mBufferStates.clear();
 			mAccelStructStates.clear();
+			mCompactedSizeStartStates.clear();
 			mBoundGraphicsPipeline = nullptr;
 			mBoundComputePipeline = nullptr;
 			mBoundShaderTable = nullptr;
@@ -5409,6 +5417,7 @@ namespace arda
 				Tracking.mNativeStates = Texture.mNativeStates;
 			}
 			Tracking.mExpectedStartStates.assign(Tracking.mAbstractStates.size(), EArdaRHIResourceState::Unknown);
+			Tracking.mTouchedSubresources.assign(Tracking.mAbstractStates.size(), 0);
 			return mTextureStates.emplace(&Texture, eastl::move(Tracking)).first->second;
 		}
 
@@ -5431,6 +5440,15 @@ namespace arda
 
 		FArdaRHIStatus FArdaD3D12CommandList::ValidateTrackedStartStates() const
 		{
+			for (const auto& Entry : mCompactedSizeStartStates)
+			{
+				std::lock_guard<std::mutex> Lock(Entry.first->mStateMutex);
+				if (Entry.second != Entry.first->mbCompactedSizePending)
+				{
+					return FArdaRHIStatus::Error(EArdaRHIResult::InvalidState,
+					    "D3D12 acceleration-structure query-buffer start state differs at submission.");
+				}
+			}
 			for (const auto& Entry : mTextureStates)
 			{
 				std::lock_guard<std::mutex> Lock(Entry.first->mStateMutex);
@@ -5462,11 +5480,24 @@ namespace arda
 
 		void FArdaD3D12CommandList::CommitTrackedStates()
 		{
+			for (const auto& Entry : mCompactedSizeStartStates)
+			{
+				std::lock_guard<std::mutex> Lock(Entry.first->mStateMutex);
+				Entry.first->mbCompactedSizePending = true;
+			}
 			for (auto& Entry : mTextureStates)
 			{
 				std::lock_guard<std::mutex> Lock(Entry.first->mStateMutex);
-				Entry.first->mAbstractStates = Entry.second.mAbstractStates;
-				Entry.first->mNativeStates = Entry.second.mNativeStates;
+				// Independently recorded lists can update disjoint mips, layers or planes.
+				// Publishing their full captured vectors would overwrite each other's changes.
+				for (size_t Index = 0; Index < Entry.second.mTouchedSubresources.size(); ++Index)
+				{
+					if (Entry.second.mTouchedSubresources[Index])
+					{
+						Entry.first->mAbstractStates[Index] = Entry.second.mAbstractStates[Index];
+						Entry.first->mNativeStates[Index] = Entry.second.mNativeStates[Index];
+					}
+				}
 			}
 			for (const auto& Entry : mBufferStates)
 			{
@@ -5575,6 +5606,7 @@ namespace arda
 			{
 				Tracking.mAbstractStates.assign(D3D12TextureStateCount(Desc), Desc.mInitialState);
 				Tracking.mNativeStates.assign(D3D12TextureStateCount(Desc), ToD3D12State(Desc.mInitialState));
+				Tracking.mTouchedSubresources.assign(D3D12TextureStateCount(Desc), 0);
 			}
 			for (const auto [MipLevel, ArraySlice, Plane] : FArdaTextureSubresources(Range))
 			{
@@ -5592,6 +5624,7 @@ namespace arda
 					Tracking.mNativeStates[Subresource] = NewState;
 				}
 				Tracking.mAbstractStates[Subresource] = State;
+				Tracking.mTouchedSubresources[Subresource] = 1;
 			}
 			if (!Barriers.empty())
 			{
@@ -6481,6 +6514,7 @@ namespace arda
 			{
 				const uint32_t Subresource =
 				    ArdaD3D12CalcSubresource(MipLevel, ArraySlice, Plane, Desc.mMipLevels, Desc.mArraySize);
+				Tracking.mTouchedSubresources[Subresource] = 1;
 				if (Tracking.mNativeStates[Subresource] == StateAfter)
 				{
 					continue;
@@ -6578,6 +6612,7 @@ namespace arda
 				Tracking.mExpectedStartStates[Subresource] = State;
 				Tracking.mAbstractStates[Subresource] = State;
 				Tracking.mNativeStates[Subresource] = ToD3D12State(State);
+				Tracking.mTouchedSubresources[Subresource] = 1;
 			}
 			return {};
 		}
@@ -7209,6 +7244,17 @@ namespace arda
 			return {};
 		}
 
+		bool FArdaD3D12CommandList::BeginAccelStructCompactedSizeWrite(FArdaD3D12AccelStruct& AccelStruct)
+		{
+			if (mCompactedSizeStartStates.find(&AccelStruct) != mCompactedSizeStartStates.end())
+			{
+				return true;
+			}
+			std::lock_guard<std::mutex> Lock(AccelStruct.mStateMutex);
+			mCompactedSizeStartStates.emplace(&AccelStruct, AccelStruct.mbCompactedSizePending);
+			return AccelStruct.mbCompactedSizePending;
+		}
+
 		FArdaRHIStatus FArdaD3D12CommandList::RecordAccelStructBuild(const FArdaProviderObjectRef& Object,
 		    const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS& Input,
 		    EArdaRHIAccelStructBuildFlags Flags)
@@ -7257,7 +7303,7 @@ namespace arda
 
 			if (AccelStruct->mCompactedSizeGpu)
 			{
-				if (AccelStruct->mbCompactedSizePending)
+				if (BeginAccelStructCompactedSizeWrite(*AccelStruct))
 				{
 					D3D12_RESOURCE_BARRIER ToUav{};
 					ToUav.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -7284,7 +7330,6 @@ namespace arda
 				    AccelStruct->mCompactedSizeGpu.Get(),
 				    0,
 				    sizeof(uint64_t));
-				AccelStruct->mbCompactedSizePending = true;
 			}
 			Retain(Object);
 			mAccelStructStates[AccelStruct] = {EArdaRHIResourceState::AccelStructRead,
@@ -7393,33 +7438,92 @@ namespace arda
 			return RecordAccelStructBuild(Object, Inputs, Flags);
 		}
 
+		FArdaRHIStatus FArdaD3D12CommandList::CopyAccelStruct(const FArdaProviderObjectRef& DestinationObject,
+		    const FArdaProviderObjectRef& SourceObject)
+		{
+			return RecordAccelStructCopy(DestinationObject,
+			    SourceObject,
+			    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_CLONE);
+		}
+
 		FArdaRHIStatus FArdaD3D12CommandList::CompactAccelStruct(const FArdaProviderObjectRef& DestinationObject,
 		    const FArdaProviderObjectRef& SourceObject)
+		{
+			return RecordAccelStructCopy(DestinationObject,
+			    SourceObject,
+			    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_COMPACT);
+		}
+
+		FArdaRHIStatus FArdaD3D12CommandList::RecordAccelStructCopy(const FArdaProviderObjectRef& DestinationObject,
+		    const FArdaProviderObjectRef& SourceObject,
+		    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE Mode)
 		{
 			auto* Destination = dynamic_cast<FArdaD3D12AccelStruct*>(DestinationObject.get());
 			auto* Source = dynamic_cast<FArdaD3D12AccelStruct*>(SourceObject.get());
 			if (!Destination || !Source || !Destination->mResource || !Source->mResource)
 			{
-				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice, "D3D12 AS compaction resources are invalid.");
+				return FArdaRHIStatus::Error(EArdaRHIResult::WrongDevice, "D3D12 AS copy resources are invalid.");
 			}
 			ComPtr<ID3D12GraphicsCommandList4> RayCommands;
 			const HRESULT Result = mCommandList.As(&RayCommands);
 			if (FAILED(Result))
 			{
-				return D3D12Failure("The D3D12 command list does not support AS compaction.", Result);
+				return D3D12Failure("The D3D12 command list does not support AS copies.", Result);
 			}
 			RayCommands->CopyRaytracingAccelerationStructure(Destination->mResource->GetGPUVirtualAddress(),
 			    Source->mResource->GetGPUVirtualAddress(),
-			    D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_COMPACT);
+			    Mode);
 			D3D12_RESOURCE_BARRIER Barrier{};
 			Barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
 			Barrier.UAV.pResource = Destination->mResource.Get();
 			mCommandList->ResourceBarrier(1, &Barrier);
+			if (Destination->mCompactedSizeGpu)
+			{
+				if (BeginAccelStructCompactedSizeWrite(*Destination))
+				{
+					D3D12_RESOURCE_BARRIER ToUav{};
+					ToUav.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+					ToUav.Transition.pResource = Destination->mCompactedSizeGpu.Get();
+					ToUav.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
+					ToUav.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+					ToUav.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+					mCommandList->ResourceBarrier(1, &ToUav);
+				}
+				D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC Post{};
+				Post.DestBuffer = Destination->mCompactedSizeGpu->GetGPUVirtualAddress();
+				Post.InfoType = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_COMPACTED_SIZE;
+				const D3D12_GPU_VIRTUAL_ADDRESS Address = Destination->mResource->GetGPUVirtualAddress();
+				RayCommands->EmitRaytracingAccelerationStructurePostbuildInfo(&Post, 1, &Address);
+				D3D12_RESOURCE_BARRIER ToCopy{};
+				ToCopy.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				ToCopy.Transition.pResource = Destination->mCompactedSizeGpu.Get();
+				ToCopy.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+				ToCopy.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+				ToCopy.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+				mCommandList->ResourceBarrier(1, &ToCopy);
+				mCommandList->CopyBufferRegion(Destination->mCompactedSizeReadback.Get(),
+				    0,
+				    Destination->mCompactedSizeGpu.Get(),
+				    0,
+				    sizeof(uint64_t));
+			}
 			Retain(DestinationObject);
 			Retain(SourceObject);
-			mAccelStructStates[Destination] = {EArdaRHIResourceState::AccelStructRead,
-			    EArdaRHIAccelStructBuildState::Compacted,
-			    true};
+			auto BuildState = EArdaRHIAccelStructBuildState::Compacted;
+			if (Mode == D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE_CLONE)
+			{
+				const auto Existing = mAccelStructStates.find(Source);
+				if (Existing != mAccelStructStates.end())
+				{
+					BuildState = Existing->second.mBuildState;
+				}
+				else
+				{
+					std::lock_guard<std::mutex> Lock(Source->mStateMutex);
+					BuildState = Source->mBuildState;
+				}
+			}
+			mAccelStructStates[Destination] = {EArdaRHIResourceState::AccelStructRead, BuildState, true};
 			return {};
 		}
 

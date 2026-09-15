@@ -597,6 +597,16 @@ namespace arda
 		    size_t InstanceCount,
 		    EArdaRHIAccelStructBuildFlags Flags) = 0;
 
+		/** Clones a built BLAS or TLAS into a distinct same-kind destination with matching build flags
+		 * and at least the source result allocation size. Preserves built/updated/compacted state;
+		 * referenced BLAS addresses are unchanged. Requires a graphics or compute command list.
+		 */
+		virtual FArdaRHIStatus CopyAccelStruct(IArdaRHIAccelStruct&, IArdaRHIAccelStruct&)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::Unsupported,
+			    "Acceleration-structure cloning is unsupported by this command list.");
+		}
+
 		/** Copies a built acceleration structure into a compact-size destination. */
 		virtual FArdaRHIStatus CompactAccelStruct(IArdaRHIAccelStruct& Destination, IArdaRHIAccelStruct& Source) = 0;
 

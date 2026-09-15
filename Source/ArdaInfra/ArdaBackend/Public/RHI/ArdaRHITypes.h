@@ -905,6 +905,21 @@ namespace arda
 		uint32_t mDepth = 0;
 	};
 
+	/** Portable pitched buffer footprint for one texture region. */
+	struct FArdaRHITextureBufferFootprint
+	{
+		/** Concrete copied extent in texels. */
+		FArdaRHITextureCopyExtent mExtent;
+		/** Zero-based buffer layout, aligned for both D3D12 and Vulkan copies. */
+		FArdaRHITextureBufferLayout mLayout;
+		/** Number of meaningful bytes in each row, excluding padding. */
+		uint64_t mRowBytes = 0;
+		/** Total rows across all depth slices in the region. */
+		uint64_t mRowCount = 0;
+		/** Minimum allocation size, excluding padding after the final row. */
+		uint64_t mByteSize = 0;
+	};
+
 	/** Explicit texture transition including expected state and pipeline domains. */
 	struct FArdaRHITextureTransitionDesc
 	{
@@ -1351,6 +1366,15 @@ namespace arda
 	    const FArdaRHIBufferDesc& BufferDesc,
 	    const FArdaRHITextureBufferLayout& Layout,
 	    FArdaRHITextureCopyExtent& OutExtent) noexcept;
+
+	/** Resolves a portable buffer footprint for a typed, single-sample, uncompressed color region.
+	 * Row pitch aligns to 256 bytes and whole texels, including formats with twelve-byte texels.
+	 * Explicit extents must fit the mip; sentinel extents select its remaining region.
+	 * @return A validated footprint, or an error for unsupported regions or overflowing sizes.
+	 */
+	[[nodiscard]] TArdaRHIResult<FArdaRHITextureBufferFootprint> GetArdaRHITextureBufferFootprint(
+	    const FArdaRHITextureDesc& TextureDesc,
+	    const FArdaRHITextureSlice& Slice) noexcept;
 
 	/**
      * Validates a whole-subresource multisample resolve and returns its extent.

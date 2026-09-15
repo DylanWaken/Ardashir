@@ -8,6 +8,8 @@
 #include <EASTL/unordered_set.h>
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -159,6 +161,102 @@ namespace arda
 		// native list (or its submitted completion thread). Failed recording destroys
 		// that owner and makes the registered future ready with broken_promise.
 		return GetCommands().CopyBufferDeviceToHostAsync(*Buffer, eastl::move(Callback), SourceOffset, Size);
+	}
+
+	FArdaRHIStatus FArdaDependencyExecutionContext::ReadbackTexture(FArdaDependencyResourceHandle Resource,
+	    eastl::shared_ptr<eastl::vector<uint8_t>> Destination,
+	    const FArdaRHITextureSlice& Slice) const
+	{
+		if (!Destination)
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument, "Readback destination is null.");
+		}
+		if (!mGraph || !mFrame || !mPass || !mGraph->mbExecuting)
+		{
+			return RuntimeError("Graph readback requires an active node callback.");
+		}
+		auto Callback =
+		    mFrame->mActive->mReadbackCompletions.Register(eastl::move(Destination), mPass->GetPass().GetIndex());
+		auto& Commands = GetCommands();
+		// The graph prepares the workspace in UAV state; graphics supports each required transition.
+		if (Commands.GetQueueType() != EArdaRHIQueueType::Graphics)
+		{
+			return RuntimeError("Texture readback requires a graphics-queue node.");
+		}
+		const auto Texture = GetTexture(Resource);
+		if (!Texture)
+		{
+			return mPass->GetStatus();
+		}
+		const auto Resolved = GetArdaRHITextureBufferFootprint(Texture->GetDesc(), Slice);
+		if (!Resolved)
+		{
+			return Resolved.mStatus;
+		}
+		const auto Footprint = Resolved.mValue;
+		if (Footprint.mByteSize > std::numeric_limits<eastl::vector<uint8_t>::size_type>::max())
+		{
+			return FArdaRHIStatus::Error(EArdaRHIResult::InvalidArgument,
+			    "Texture readback footprint exceeds the host vector size limit.");
+		}
+		const auto Buffer = GetWorkspaceBuffer();
+		if (!Buffer || Buffer->GetDesc().mByteSize < Footprint.mByteSize)
+		{
+			return RuntimeError("Texture readback requires transient workspace containing the full pitched footprint.");
+		}
+		if (auto Status = Commands.SetBufferState(*Buffer, EArdaRHIResourceState::CopyDest); !Status)
+		{
+			return Status;
+		}
+		Commands.CommitBarriers();
+		if (auto Status = Commands.CopyTextureToBuffer(*Buffer, Footprint.mLayout, *Texture, Slice); !Status)
+		{
+			return Status;
+		}
+		if (auto Status = Commands.SetBufferState(*Buffer, EArdaRHIResourceState::CopySource); !Status)
+		{
+			return Status;
+		}
+		Commands.CommitBarriers();
+		const auto ReadbackStatus = Commands.CopyBufferDeviceToHostAsync(
+		    *Buffer,
+		    [Callback = eastl::move(Callback), Footprint](FArdaRHIBufferReadbackResult Result)
+		    {
+			    if (Result)
+			    {
+				    if (Result.mValue.size() != Footprint.mByteSize)
+				    {
+					    // Report malformed native output without allocating inside a completion callback.
+					    Result.mStatus.mCode = EArdaRHIResult::BackendFailure;
+				    }
+				    else
+				    {
+					    // Compact in place so completion never allocates or leaves a promise unresolved.
+					    for (uint64_t Row = 1; Row < Footprint.mRowCount; ++Row)
+					    {
+						    std::memmove(Result.mValue.data() + Row * Footprint.mRowBytes,
+						        Result.mValue.data() + Row * Footprint.mLayout.mRowPitch,
+						        static_cast<size_t>(Footprint.mRowBytes));
+					    }
+					    Result.mValue.resize(
+					        static_cast<eastl::vector<uint8_t>::size_type>(Footprint.mRowBytes * Footprint.mRowCount));
+				    }
+			    }
+			    Callback(eastl::move(Result));
+		    },
+		    0,
+		    Footprint.mByteSize);
+		if (!ReadbackStatus)
+		{
+			return ReadbackStatus;
+		}
+		// The CPU copy is now encoded; restore the state expected by the graph before scratch aliasing.
+		if (auto Status = Commands.SetBufferState(*Buffer, EArdaRHIResourceState::UnorderedAccess); !Status)
+		{
+			return Status;
+		}
+		Commands.CommitBarriers();
+		return {};
 	}
 
 	FArdaRHIDeviceRef FArdaDependencyExecutionContext::GetDevice() const
@@ -913,6 +1011,9 @@ namespace arda
 						}
 					}
 				}
+				// AS lifecycle state comes from accepted build/copy submissions, not a generic write declaration.
+				// Record after ordered producers submit so native and facade source validation observe that state.
+				const bool RecordAtSubmit = bCuda || !Accesses.mAccelerationStructures.empty();
 				const auto Pass = Frame->mLowered->AppendCommand(
 				    HeadNode.mName,
 				    Queue,
@@ -995,7 +1096,7 @@ namespace arda
 					    }
 				    },
 				    bCuda,
-				    bCuda);
+				    RecordAtSubmit);
 				for (auto Handle : Nodes)
 				{
 					Passes.emplace(Handle.GetIndex(), Pass);
