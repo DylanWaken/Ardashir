@@ -61,6 +61,7 @@
         <nav class="toc" aria-label="On this page">
           <h2>On this page</h2>
           <a href="#objectives">Objectives and prerequisites</a>
+          <a href="#fault-snapshots">Bounded fault snapshots</a>
           <a href="#taxonomy">Layered error taxonomy</a>
           <a href="#recoverability">Recoverable and invariant failures</a>
           <a href="#channels">Diagnostic channels</a>
@@ -271,6 +272,17 @@ ResetLogOutput();</code></pre>
             <li>Capture the first validation error; later cascades often describe consequences.</li>
           </ul>
           <p>Targeted serialization can localize a fault but is not a fix. Remove diagnostic waits and restore the original schedule after identifying the violated lifetime or synchronization rule.</p>
+        </section>
+        <section id="fault-snapshots">
+          <h2>Capture bounded evidence without waiting for a broken GPU</h2>
+          <p><a href="api-reference.html#api-arda-iardarhidevice-capturediagnosticsnapshot-714e4fa8"><code>CaptureDiagnosticSnapshot</code></a> copies adapter and driver identity, observed native status, queue progress, recent submitted markers and available native fault records into an owned <a href="api-reference.html#api-arda-fardarhidiagnosticsnapshot-b3c772c0"><code>FArdaRHIDiagnosticSnapshot</code></a>. It submits no GPU commands and performs no GPU wait. Lists and strings are bounded, and truncation is explicit. Keep the snapshot after releasing the device; its strings do not borrow native callback storage.</p>
+          <p>D3D12 reads DRED breadcrumbs and page-fault/allocation evidence when available. Vulkan queries device-fault data only when that extension was actually enabled and device loss has been reported. Adopted devices depend on what the host enabled. Recent submitted markers are fallback context, not proof that the GPU executed the marker. An unavailable native report, unknown completion value, or a successful capture is not evidence that the device is healthy.</p>
+          <h3>Recovery recipe</h3>
+          <p>Preserve the first failing status, capture the snapshot, and store it beside the application's frame and operand identifiers. Inspect its device status and native error, distinguish submitted from completed queue values, and use marker provenance to narrow the workload. Fix invalid input by recreating the recording after reset. Device removal requires application-directed resource recreation; this API does not recover the device automatically. Serialize capture with final shutdown.</p>
+          <p>A Vulkan wait or D3D12 retirement signal can fail recoverably even while submitted work remains pending. Normal garbage collection retries retirement without freeing live storage. If all completion checks continue to fail at final shutdown, Arda reports the condition and retains the native provider/context and host owner in quarantine. Later provider initialization or garbage collection retries bounded checks. Without a later completion or device-loss proof, exceptional retention lasts until process exit. This explicit policy avoids both unsafe destruction and endless destructor retry; it is not a claim that arbitrary driver failures are leak-free.</p>
+          <p>For leak investigation, repeat an allocate-record-submit-reopen-complete-trim cycle and compare resource, descriptor, pending-submission and allocator counts to the baseline. A growing pending queue, a reusable cache and a lost native owner have different causes. The regression suite combines these loops with injected initialization and recoverable-wait failures; physical device loss still needs separate hardware testing.</p>
+          <p>Measure live resources by kind, descriptor counts and <code>mPendingSubmissions</code> through <a href="api-reference.html#api-arda-iardarhidevice-getresourcelifetimestats-18d7ae60"><code>GetResourceLifetimeStats</code></a>. Use <a href="api-reference.html#api-arda-iardarhidevice-getgpuallocatorstats-ca88276e"><code>GetGpuAllocatorStats</code></a> for managed live/cached storage, then <a href="api-reference.html#api-arda-iardarhidevice-trimgpuallocator-28300a15"><code>TrimGpuAllocator</code></a> after completion to compare idle baselines. Managed allocator statistics do not represent total driver VRAM; native streaming budget telemetry answers that broader question.</p>
+          <p><strong>Checkpoint:</strong> why does an out-of-memory fence-wait result provide neither completion proof nor permission to release sparse backing?</p>
         </section>
         <section id="workflow">
           <h2>A systematic debugging workflow</h2>

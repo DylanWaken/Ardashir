@@ -604,6 +604,27 @@
       "page": "capability-recipes.html#feature-resolve",
       "example": "gpu-examples.html#VerifyResolveAndPlaneTracking"
     },
+    "IndirectFirstInstance": {
+      "name": "IndirectFirstInstance",
+      "expression": "C.mbIndirectFirstInstance",
+      "probe": "IndirectFirstInstance",
+      "page": "capability-recipes.html#feature-indirectfirstinstance",
+      "example": "gpu-examples.html#VerifyRasterStageCapabilityAndExecution"
+    },
+    "FormatSupport": {
+      "name": "FormatSupport",
+      "expression": "C.mbFormatSupportReported",
+      "probe": "ResourceAdmission",
+      "page": "capability-recipes.html#feature-resourceadmission",
+      "example": "gpu-examples.html#VerifyResourceAdmissionFacts"
+    },
+    "ResourceLimits": {
+      "name": "ResourceLimits",
+      "expression": "C.mLimits.mMaxTexture1D || C.mLimits.mMaxTexture2D || C.mLimits.mMaxTexture3D || C.mLimits.mMaxTextureCube || C.mLimits.mMaxTextureArrayLayers || C.mLimits.mMaxColorAttachments || C.mLimits.mMaxViewports || C.mLimits.mMaxVertexAttributes || C.mLimits.mMaxVertexBindings || C.mLimits.mMaxVertexStride || C.mLimits.mMaxComputeWorkGroupInvocations || C.mLimits.mMaxBufferSize || C.mLimits.mMaxUniformBufferRange || C.mLimits.mMaxStorageBufferRange || C.mLimits.mMinUniformBufferOffsetAlignment || C.mLimits.mMinStorageBufferOffsetAlignment",
+      "probe": "ResourceAdmission",
+      "page": "capability-recipes.html#feature-resourceadmission",
+      "example": "gpu-examples.html#VerifyResourceAdmissionFacts"
+    },
     "Queries": {
       "name": "Queries",
       "expression": "C.mbQueries",

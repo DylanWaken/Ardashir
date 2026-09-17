@@ -8,7 +8,7 @@ window.ArdaBackendApi = {
     "namespace": "arda / arda",
     "summary": "Public backend initialization, diagnostics, shader authoring, pipeline caching, presentation, and backend-neutral RHI API."
   },
-  "generatedFrom": "Source/ArdaInfra/ArdaBackend/Public (all 34 unique public headers)",
+  "generatedFrom": "Source/ArdaInfra/ArdaBackend/Public (all 35 unique public headers)",
   "headerProvenance": [
     "Source/ArdaInfra/ArdaBackend/Public/Allocator/ArdaGpuAllocator.h",
     "Source/ArdaInfra/ArdaBackend/Public/Allocator/ArdaMemoryPlanner.h",
@@ -32,6 +32,7 @@ window.ArdaBackendApi = {
     "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
     "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICuda.h",
     "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
     "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIFwd.h",
     "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
     "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProviderPipelineCache.h",
@@ -42777,8 +42778,8 @@ window.ArdaBackendApi = {
     "component": "rhi-types",
     "page": "api-reference.html",
     "signature": "MeshAndAmplificationShaders",
-    "summary": "Mesh and optional amplification shader stages are available.",
-    "details": "Mesh and optional amplification shader stages are available.",
+    "summary": "Both mesh and amplification shader stages are available.",
+    "details": "Both mesh and amplification shader stages are available.",
     "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
     "params": [],
     "returns": "",
@@ -42789,6 +42790,846 @@ window.ArdaBackendApi = {
       "arda::EArdaRHIMeshShaderTier"
     ],
     "sourceLine": 33
+  },
+  {
+    "id": "api-arda-eardarhimeshshadertier-meshshadersonly-33522de2",
+    "name": "MeshShadersOnly",
+    "qualifiedName": "arda::EArdaRHIMeshShaderTier::MeshShadersOnly",
+    "kind": "enumerator",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "MeshShadersOnly",
+    "summary": "Mesh shaders are available without amplification shaders; numeric values are not tier ordering.",
+    "details": "Mesh shaders are available without amplification shaders; numeric values are not tier ordering.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::EArdaRHIMeshShaderTier"
+    ],
+    "sourceLine": 35
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-5433ed57",
+    "name": "FArdaRHIDeviceLimits",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits",
+    "kind": "struct",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "struct FArdaRHIDeviceLimits",
+    "summary": "Immutable device limits. Zero means unreported, rather than an unlimited or supported operation.",
+    "details": "Immutable device limits. Zero means unreported, rather than an unlimited or supported operation.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 39
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxtexture1d-86a9cc36",
+    "name": "mMaxTexture1D",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxTexture1D",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxTexture1D = 0",
+    "summary": "Maximum width of a one-dimensional texture.",
+    "details": "Maximum width of a one-dimensional texture.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 42
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxtexture2d-7047c4b7",
+    "name": "mMaxTexture2D",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxTexture2D",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxTexture2D = 0",
+    "summary": "Maximum width or height of a two-dimensional texture.",
+    "details": "Maximum width or height of a two-dimensional texture.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 44
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxtexture3d-d380f772",
+    "name": "mMaxTexture3D",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxTexture3D",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxTexture3D = 0",
+    "summary": "Maximum width, height, or depth of a volume texture.",
+    "details": "Maximum width, height, or depth of a volume texture.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 46
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxtexturecube-91fca383",
+    "name": "mMaxTextureCube",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxTextureCube",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxTextureCube = 0",
+    "summary": "Maximum width or height of a cube face.",
+    "details": "Maximum width or height of a cube face.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 48
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxtexturearraylayers-f5728463",
+    "name": "mMaxTextureArrayLayers",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxTextureArrayLayers",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxTextureArrayLayers = 0",
+    "summary": "Maximum array layers, counting each cube face as one layer.",
+    "details": "Maximum array layers, counting each cube face as one layer.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 50
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxcolorattachments-cae339a2",
+    "name": "mMaxColorAttachments",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxColorAttachments",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxColorAttachments = 0",
+    "summary": "Maximum simultaneous color attachments.",
+    "details": "Maximum simultaneous color attachments.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 52
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxviewports-9bd15b50",
+    "name": "mMaxViewports",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxViewports",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxViewports = 0",
+    "summary": "Maximum simultaneous viewports and scissors.",
+    "details": "Maximum simultaneous viewports and scissors.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 54
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxviewportdimensions-7f56528c",
+    "name": "mMaxViewportDimensions",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxViewportDimensions",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxViewportDimensions[2]{}",
+    "summary": "Maximum viewport width and height; zero means unreported.",
+    "details": "Maximum viewport width and height; zero means unreported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 56
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mviewportbounds-64a2db31",
+    "name": "mViewportBounds",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mViewportBounds",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "float mViewportBounds[2]{}",
+    "summary": "Minimum and maximum viewport coordinates, including the far edge; a zero pair is unreported.",
+    "details": "Minimum and maximum viewport coordinates, including the far edge; a zero pair is unreported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 58
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxvertexattributes-dde74a66",
+    "name": "mMaxVertexAttributes",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxVertexAttributes",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxVertexAttributes = 0",
+    "summary": "Maximum vertex attributes in one input layout.",
+    "details": "Maximum vertex attributes in one input layout.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 60
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxvertexbindings-f58c7dda",
+    "name": "mMaxVertexBindings",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxVertexBindings",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxVertexBindings = 0",
+    "summary": "Maximum vertex buffer binding slots.",
+    "details": "Maximum vertex buffer binding slots.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 62
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxvertexstride-61f05fa8",
+    "name": "mMaxVertexStride",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxVertexStride",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxVertexStride = 0",
+    "summary": "Maximum vertex element stride in bytes.",
+    "details": "Maximum vertex element stride in bytes.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 64
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxcomputeworkgroupcount-025cc631",
+    "name": "mMaxComputeWorkGroupCount",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxComputeWorkGroupCount",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxComputeWorkGroupCount[3]{}",
+    "summary": "Maximum dispatched work-group count on the X, Y, and Z axes.",
+    "details": "Maximum dispatched work-group count on the X, Y, and Z axes.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 66
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxcomputeworkgroupsize-693c7af0",
+    "name": "mMaxComputeWorkGroupSize",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxComputeWorkGroupSize",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxComputeWorkGroupSize[3]{}",
+    "summary": "Maximum shader work-group size on the X, Y, and Z axes.",
+    "details": "Maximum shader work-group size on the X, Y, and Z axes.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 68
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxcomputeworkgroupinvocations-d5a5855e",
+    "name": "mMaxComputeWorkGroupInvocations",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxComputeWorkGroupInvocations",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mMaxComputeWorkGroupInvocations = 0",
+    "summary": "Maximum invocations in one shader work group.",
+    "details": "Maximum invocations in one shader work group.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 70
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxbuffersize-fdfe4930",
+    "name": "mMaxBufferSize",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxBufferSize",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint64_t mMaxBufferSize = 0",
+    "summary": "Maximum native buffer allocation size in bytes.",
+    "details": "Maximum native buffer allocation size in bytes.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 72
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxuniformbufferrange-fd76abb5",
+    "name": "mMaxUniformBufferRange",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxUniformBufferRange",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint64_t mMaxUniformBufferRange = 0",
+    "summary": "Maximum bytes addressed by one uniform-buffer binding.",
+    "details": "Maximum bytes addressed by one uniform-buffer binding.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 74
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mmaxstoragebufferrange-a09b1eca",
+    "name": "mMaxStorageBufferRange",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMaxStorageBufferRange",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint64_t mMaxStorageBufferRange = 0",
+    "summary": "Maximum bytes addressed by one storage-buffer binding.",
+    "details": "Maximum bytes addressed by one storage-buffer binding.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 76
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mminuniformbufferoffsetalignment-9d51960a",
+    "name": "mMinUniformBufferOffsetAlignment",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMinUniformBufferOffsetAlignment",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint64_t mMinUniformBufferOffsetAlignment = 0",
+    "summary": "Required uniform-buffer binding offset alignment in bytes.",
+    "details": "Required uniform-buffer binding offset alignment in bytes.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 78
+  },
+  {
+    "id": "api-arda-fardarhidevicelimits-mminstoragebufferoffsetalignment-5c6ddc1c",
+    "name": "mMinStorageBufferOffsetAlignment",
+    "qualifiedName": "arda::FArdaRHIDeviceLimits::mMinStorageBufferOffsetAlignment",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint64_t mMinStorageBufferOffsetAlignment = 0",
+    "summary": "Required storage-buffer binding offset alignment in bytes.",
+    "details": "Required storage-buffer binding offset alignment in bytes.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDeviceLimits"
+    ],
+    "sourceLine": 80
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-1483e8e4",
+    "name": "FArdaRHIFormatSupport",
+    "qualifiedName": "arda::FArdaRHIFormatSupport",
+    "kind": "struct",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "struct FArdaRHIFormatSupport",
+    "summary": "Device support for a typed format. Facts are independent; combined shape/usage admission remains native.",
+    "details": "Device support for a typed format. Facts are independent; combined shape/usage admission remains native.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 84
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mnativeformat-e213d026",
+    "name": "mNativeFormat",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mNativeFormat",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint64_t mNativeFormat = 0",
+    "summary": "Native API format identifier, or zero when the format has no supported native mapping.",
+    "details": "Native API format identifier, or zero when the format has no supported native mapping.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 87
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbtexture1d-fd1ce135",
+    "name": "mbTexture1D",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbTexture1D",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbTexture1D = false",
+    "summary": "One-dimensional textures can use this format.",
+    "details": "One-dimensional textures can use this format.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 89
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbtexture2d-cf4703a3",
+    "name": "mbTexture2D",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbTexture2D",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbTexture2D = false",
+    "summary": "Two-dimensional textures can use this format.",
+    "details": "Two-dimensional textures can use this format.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 91
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbtexture3d-f345b02f",
+    "name": "mbTexture3D",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbTexture3D",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbTexture3D = false",
+    "summary": "Volume textures can use this format.",
+    "details": "Volume textures can use this format.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 93
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbtexturecube-242bb102",
+    "name": "mbTextureCube",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbTextureCube",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbTextureCube = false",
+    "summary": "Cube textures can use this format.",
+    "details": "Cube textures can use this format.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 95
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbshaderresource-cc52df18",
+    "name": "mbShaderResource",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbShaderResource",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbShaderResource = false",
+    "summary": "Texture shader-resource views and shader reads are supported.",
+    "details": "Texture shader-resource views and shader reads are supported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 97
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbfilterable-9205d5df",
+    "name": "mbFilterable",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbFilterable",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbFilterable = false",
+    "summary": "Sampled textures support linear filtering.",
+    "details": "Sampled textures support linear filtering.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 99
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbstorage-18c8fc2e",
+    "name": "mbStorage",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbStorage",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbStorage = false",
+    "summary": "Typed storage-image/unordered-access texture views are supported.",
+    "details": "Typed storage-image/unordered-access texture views are supported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 101
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbstorageload-45ab9d75",
+    "name": "mbStorageLoad",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbStorageLoad",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbStorageLoad = false",
+    "summary": "Typed storage texture loads are supported.",
+    "details": "Typed storage texture loads are supported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 103
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbstoragestore-88b49d35",
+    "name": "mbStorageStore",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbStorageStore",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbStorageStore = false",
+    "summary": "Typed storage texture stores are supported.",
+    "details": "Typed storage texture stores are supported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 105
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbcolorattachment-e217b34c",
+    "name": "mbColorAttachment",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbColorAttachment",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbColorAttachment = false",
+    "summary": "Color render-target attachments are supported.",
+    "details": "Color render-target attachments are supported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 107
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbdepthstencilattachment-5f20be7e",
+    "name": "mbDepthStencilAttachment",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbDepthStencilAttachment",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbDepthStencilAttachment = false",
+    "summary": "Depth/stencil attachments are supported.",
+    "details": "Depth/stencil attachments are supported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 109
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbblendable-6099da76",
+    "name": "mbBlendable",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbBlendable",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbBlendable = false",
+    "summary": "Color attachment blending is supported.",
+    "details": "Color attachment blending is supported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 111
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbvertexbuffer-0c7338ad",
+    "name": "mbVertexBuffer",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbVertexBuffer",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbVertexBuffer = false",
+    "summary": "Vertex input attributes are supported.",
+    "details": "Vertex input attributes are supported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 113
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbbuffershaderresource-721b9a01",
+    "name": "mbBufferShaderResource",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbBufferShaderResource",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbBufferShaderResource = false",
+    "summary": "Typed buffer shader-resource views are supported.",
+    "details": "Typed buffer shader-resource views are supported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 115
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-mbbufferstorage-4852d31b",
+    "name": "mbBufferStorage",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mbBufferStorage",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbBufferStorage = false",
+    "summary": "Typed buffer unordered-access/storage views are supported.",
+    "details": "Typed buffer unordered-access/storage views are supported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 117
+  },
+  {
+    "id": "api-arda-fardarhiformatsupport-msamplecounts-a57992ea",
+    "name": "mSampleCounts",
+    "qualifiedName": "arda::FArdaRHIFormatSupport::mSampleCounts",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint32_t mSampleCounts = 0",
+    "summary": "Supported texture sample counts: each count is its own bit (1 | 2 | 4 ...); zero means none.",
+    "details": "Supported texture sample counts: each count is its own bit (1 | 2 | 4 ...); zero means none.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFormatSupport"
+    ],
+    "sourceLine": 119
   },
   {
     "id": "api-arda-eardarhiworkgraphtier-none-d5104181",
@@ -42809,7 +43650,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIWorkGraphTier"
     ],
-    "sourceLine": 38
+    "sourceLine": 124
   },
   {
     "id": "api-arda-eardarhiworkgraphtier-computenodes-e930798c",
@@ -42830,7 +43671,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIWorkGraphTier"
     ],
-    "sourceLine": 40
+    "sourceLine": 126
   },
   {
     "id": "api-arda-eardarhiworkgraphtier-meshnodes-93e58130",
@@ -42851,7 +43692,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHIWorkGraphTier"
     ],
-    "sourceLine": 42
+    "sourceLine": 128
   },
   {
     "id": "api-arda-eardarhisamplerfeedbacktier-none-46ee4636",
@@ -42872,7 +43713,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHISamplerFeedbackTier"
     ],
-    "sourceLine": 47
+    "sourceLine": 133
   },
   {
     "id": "api-arda-eardarhisamplerfeedbacktier-restrictedaddressingandviews-534889bd",
@@ -42893,7 +43734,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHISamplerFeedbackTier"
     ],
-    "sourceLine": 49
+    "sourceLine": 135
   },
   {
     "id": "api-arda-eardarhisamplerfeedbacktier-unrestrictedaddressingandviews-5784020c",
@@ -42914,7 +43755,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::EArdaRHISamplerFeedbackTier"
     ],
-    "sourceLine": 51
+    "sourceLine": 137
   },
   {
     "id": "api-arda-fardarhiraytracingcapabilities-mmaxraydispatchinvocations-f5785031",
@@ -42935,7 +43776,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIRayTracingCapabilities"
     ],
-    "sourceLine": 98
+    "sourceLine": 184
   },
   {
     "id": "api-arda-fardarhiraytracingcapabilities-gettier-89f106cc",
@@ -42956,7 +43797,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIRayTracingCapabilities"
     ],
-    "sourceLine": 104
+    "sourceLine": 190
   },
   {
     "id": "api-arda-fardarhiqueuecapabilities-mgraphicstimestampvalidbits-8a837edd",
@@ -42977,7 +43818,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIQueueCapabilities"
     ],
-    "sourceLine": 189
+    "sourceLine": 275
   },
   {
     "id": "api-arda-fardarhiqueuecapabilities-mcomputetimestampvalidbits-072d8f9a",
@@ -42998,7 +43839,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIQueueCapabilities"
     ],
-    "sourceLine": 191
+    "sourceLine": 277
   },
   {
     "id": "api-arda-fardarhiqueuecapabilities-mcopytimestampvalidbits-13aeec5c",
@@ -43019,7 +43860,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIQueueCapabilities"
     ],
-    "sourceLine": 193
+    "sourceLine": 279
   },
   {
     "id": "api-arda-fardarhiqueuecapabilities-gettimestampvalidbits-e5acfcaf",
@@ -43040,7 +43881,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIQueueCapabilities"
     ],
-    "sourceLine": 195
+    "sourceLine": 281
   },
   {
     "id": "api-arda-fardarhiqueuecapabilities-supportstimestamps-f1f05e48",
@@ -43061,7 +43902,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIQueueCapabilities"
     ],
-    "sourceLine": 214
+    "sourceLine": 300
   },
   {
     "id": "api-arda-fardarhiqueuecapabilities-issupported-c81eac5c",
@@ -43082,7 +43923,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIQueueCapabilities"
     ],
-    "sourceLine": 219
+    "sourceLine": 305
   },
   {
     "id": "api-arda-fardarhiqueuecapabilities-getfamily-d3d3c06e",
@@ -43103,7 +43944,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIQueueCapabilities"
     ],
-    "sourceLine": 233
+    "sourceLine": 319
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiregeometryshaders-ad191d75",
@@ -43124,7 +43965,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 310
+    "sourceLine": 396
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiretessellationshaders-cdc239d4",
@@ -43145,7 +43986,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 312
+    "sourceLine": 398
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequireinlinerayqueries-044a19e0",
@@ -43166,7 +44007,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 344
+    "sourceLine": 430
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirebottomlevelaccelerationstructures-9758b2ed",
@@ -43187,7 +44028,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 346
+    "sourceLine": 432
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiretoplevelaccelerationstructures-0bd5905d",
@@ -43208,7 +44049,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 348
+    "sourceLine": 434
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequireindirecttoplevelbuild-42957834",
@@ -43229,7 +44070,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 350
+    "sourceLine": 436
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirepersistentshadertables-29968479",
@@ -43250,7 +44091,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 352
+    "sourceLine": 438
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirebindless-06f476ca",
@@ -43271,7 +44112,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 354
+    "sourceLine": 440
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequireruntimedescriptorarrays-065fbee9",
@@ -43292,7 +44133,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 356
+    "sourceLine": 442
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirepartiallybounddescriptors-bf2168de",
@@ -43313,7 +44154,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 358
+    "sourceLine": 444
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequireupdateunusedwhilepending-9d2521d2",
@@ -43334,7 +44175,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 360
+    "sourceLine": 446
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirevariabledescriptorcount-1276b04f",
@@ -43355,7 +44196,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 362
+    "sourceLine": 448
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiredirectsamplerheapindexing-832d3b38",
@@ -43376,7 +44217,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 364
+    "sourceLine": 450
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiredescriptorbuffer-4e23f830",
@@ -43397,7 +44238,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 366
+    "sourceLine": 452
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiredescriptorheap-f8a5484e",
@@ -43418,7 +44259,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 368
+    "sourceLine": 454
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiregraphicsqueue-38a4a854",
@@ -43439,7 +44280,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 370
+    "sourceLine": 456
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirecomputequeue-1181d4be",
@@ -43460,7 +44301,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 372
+    "sourceLine": 458
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirecopyqueue-7ba4c1c8",
@@ -43481,7 +44322,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 374
+    "sourceLine": 460
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiretimelinesynchronization-5acf7230",
@@ -43502,7 +44343,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 376
+    "sourceLine": 462
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirequeuefamilyownershiptransfer-52778e5b",
@@ -43523,7 +44364,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 378
+    "sourceLine": 464
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiresparsebindingqueue-1faeee10",
@@ -43544,7 +44385,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 380
+    "sourceLine": 466
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirereservedbuffers-d8200bc9",
@@ -43565,7 +44406,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 382
+    "sourceLine": 468
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirereservedtexture2d-48bd69b5",
@@ -43586,7 +44427,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 384
+    "sourceLine": 470
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirereservedtexture3d-e46ccbea",
@@ -43607,7 +44448,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 386
+    "sourceLine": 472
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirealiasedmappings-c4ab33f4",
@@ -43628,7 +44469,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 388
+    "sourceLine": 474
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirebudgetreservation-6b89490b",
@@ -43649,7 +44490,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 390
+    "sourceLine": 476
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequireresourcecollections-9f575d93",
@@ -43670,7 +44511,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 392
+    "sourceLine": 478
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequireconservativerasterization-529acf3b",
@@ -43691,7 +44532,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 394
+    "sourceLine": 480
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirevariablerateshading-6eb7cad5",
@@ -43712,7 +44553,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 396
+    "sourceLine": 482
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirevirtualresources-09256f91",
@@ -43733,7 +44574,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 398
+    "sourceLine": 484
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequireheaps-37e14151",
@@ -43754,7 +44595,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 400
+    "sourceLine": 486
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirestagingtextures-d8a7bd09",
@@ -43775,7 +44616,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 402
+    "sourceLine": 488
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiretexturecopies-7a1585e3",
@@ -43796,7 +44637,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 404
+    "sourceLine": 490
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiretextureresolve-6995788e",
@@ -43817,7 +44658,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 406
+    "sourceLine": 492
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequireexplicittransitions-568884d7",
@@ -43838,7 +44679,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 408
+    "sourceLine": 494
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiresplittransitions-6f07f350",
@@ -43859,7 +44700,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 410
+    "sourceLine": 496
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequireindirectcommands-1c0cb945",
@@ -43880,7 +44721,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 412
+    "sourceLine": 498
+  },
+  {
+    "id": "api-arda-fardarhifeaturerequirements-mbrequireindirectfirstinstance-02361bd4",
+    "name": "mbRequireIndirectFirstInstance",
+    "qualifiedName": "arda::FArdaRHIFeatureRequirements::mbRequireIndirectFirstInstance",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbRequireIndirectFirstInstance = false",
+    "summary": "Indirect arguments must support a nonzero first-instance value.",
+    "details": "Indirect arguments must support a nonzero first-instance value.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFeatureRequirements"
+    ],
+    "sourceLine": 500
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirealiasingbarriers-9997684f",
@@ -43901,7 +44763,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 414
+    "sourceLine": 502
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirequeries-e67f3dd0",
@@ -43922,7 +44784,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 416
+    "sourceLine": 504
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequireshaderlibraries-bd0b1b52",
@@ -43943,7 +44805,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 418
+    "sourceLine": 506
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirepipelinecachepersistence-7ea9bc02",
@@ -43964,7 +44826,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 420
+    "sourceLine": 508
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequiresubgroupoperations-9fa979f4",
@@ -43985,7 +44847,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 422
+    "sourceLine": 510
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mbrequirebufferdeviceaddress-d4c8e69d",
@@ -44006,7 +44868,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 424
+    "sourceLine": 512
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mminraytracingtier-00b3c900",
@@ -44027,7 +44889,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 429
+    "sourceLine": 517
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mminmeshshadertier-463cd281",
@@ -44048,7 +44910,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 431
+    "sourceLine": 519
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mminworkgraphtier-ceed2945",
@@ -44069,7 +44931,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 433
+    "sourceLine": 521
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mminsamplerfeedbacktier-f7fc44dc",
@@ -44090,7 +44952,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 435
+    "sourceLine": 523
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mminresourcedescriptors-3718d050",
@@ -44111,7 +44973,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 437
+    "sourceLine": 525
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mminsamplerdescriptors-6a4962fb",
@@ -44132,7 +44994,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 439
+    "sourceLine": 527
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mminrayrecursiondepth-60340d42",
@@ -44153,7 +45015,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 441
+    "sourceLine": 529
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mminraypayloadsize-db0d5cde",
@@ -44174,7 +45036,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 443
+    "sourceLine": 531
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mminraydispatchinvocations-bf489535",
@@ -44195,7 +45057,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 445
+    "sourceLine": 533
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mmingraphicstimestampvalidbits-56d3a402",
@@ -44216,7 +45078,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 447
+    "sourceLine": 535
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mmincomputetimestampvalidbits-ef234bc2",
@@ -44237,7 +45099,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 449
+    "sourceLine": 537
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mmincopytimestampvalidbits-57230a3a",
@@ -44258,7 +45120,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 451
+    "sourceLine": 539
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mminsubgroupsize-4cd86661",
@@ -44279,7 +45141,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 458
+    "sourceLine": 546
   },
   {
     "id": "api-arda-fardarhifeaturerequirements-mmaxsubgroupsize-48a2a72c",
@@ -44300,7 +45162,49 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFeatureRequirements"
     ],
-    "sourceLine": 460
+    "sourceLine": 548
+  },
+  {
+    "id": "api-arda-fardarhicapabilities-mlimits-22ec6cc3",
+    "name": "mLimits",
+    "qualifiedName": "arda::FArdaRHICapabilities::mLimits",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "FArdaRHIDeviceLimits mLimits",
+    "summary": "Native resource and work-dispatch limits used by common admission checks.",
+    "details": "Native resource and work-dispatch limits used by common admission checks.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHICapabilities"
+    ],
+    "sourceLine": 586
+  },
+  {
+    "id": "api-arda-fardarhicapabilities-mbformatsupportreported-16eaf570",
+    "name": "mbFormatSupportReported",
+    "qualifiedName": "arda::FArdaRHICapabilities::mbFormatSupportReported",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbFormatSupportReported = false",
+    "summary": "QueryFormatSupport returns authoritative native format facts, including unsupported formats.",
+    "details": "QueryFormatSupport returns authoritative native format facts, including unsupported formats.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHICapabilities"
+    ],
+    "sourceLine": 588
   },
   {
     "id": "api-arda-fardarhicapabilities-mbgeometryshaders-8f32fa5f",
@@ -44321,7 +45225,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 522
+    "sourceLine": 614
   },
   {
     "id": "api-arda-fardarhicapabilities-mbtessellationshaders-48bd5fa6",
@@ -44342,7 +45246,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 524
+    "sourceLine": 616
   },
   {
     "id": "api-arda-fardarhicapabilities-mheapallocationalignment-f1a4ec17",
@@ -44363,7 +45267,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 534
+    "sourceLine": 626
+  },
+  {
+    "id": "api-arda-fardarhicapabilities-mbindirectfirstinstance-2f8dbdf6",
+    "name": "mbIndirectFirstInstance",
+    "qualifiedName": "arda::FArdaRHICapabilities::mbIndirectFirstInstance",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "bool mbIndirectFirstInstance = false",
+    "summary": "Indirect draw arguments may contain a nonzero first-instance value.",
+    "details": "Indirect draw arguments may contain a nonzero first-instance value.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHICapabilities"
+    ],
+    "sourceLine": 640
   },
   {
     "id": "api-arda-fardarhicapabilities-mbqueries-0e79f55a",
@@ -44384,7 +45309,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 550
+    "sourceLine": 644
   },
   {
     "id": "api-arda-fardarhicapabilities-mbshaderlibraries-e76fb798",
@@ -44405,7 +45330,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 552
+    "sourceLine": 646
+  },
+  {
+    "id": "api-arda-fardarhicapabilities-supportsmeshshadertier-d96d34ea",
+    "name": "SupportsMeshShaderTier",
+    "qualifiedName": "arda::FArdaRHICapabilities::SupportsMeshShaderTier",
+    "kind": "method",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] bool SupportsMeshShaderTier(EArdaRHIMeshShaderTier Required) const noexcept",
+    "summary": "Tests stage support without relying on the ABI-preserved mesh-tier numeric values.",
+    "details": "Tests stage support without relying on the ABI-preserved mesh-tier numeric values.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHICapabilities"
+    ],
+    "sourceLine": 651
   },
   {
     "id": "api-arda-fardarhicapabilities-isqueuesupported-91c5c25f",
@@ -44426,7 +45372,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 556
+    "sourceLine": 666
   },
   {
     "id": "api-arda-fardarhicapabilities-evaluate-8ea63efe",
@@ -44447,7 +45393,49 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHICapabilities"
     ],
-    "sourceLine": 563
+    "sourceLine": 673
+  },
+  {
+    "id": "api-arda-validateresourcecapabilities-8f5df282",
+    "name": "ValidateResourceCapabilities",
+    "qualifiedName": "arda::ValidateResourceCapabilities",
+    "kind": "function",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaRHIStatus ValidateResourceCapabilities(const FArdaRHITextureDesc& Desc, const FArdaRHICapabilities& Capabilities, const FArdaRHIFormatSupport& FormatSupport) noexcept",
+    "summary": "Validates portable shape plus reported device limits and format uses; unreported limits are not inferred.",
+    "details": "Validates portable shape plus reported device limits and format uses; unreported limits are not inferred.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 826
+  },
+  {
+    "id": "api-arda-validateresourcecapabilities-d3d08ad9",
+    "name": "ValidateResourceCapabilities",
+    "qualifiedName": "arda::ValidateResourceCapabilities",
+    "kind": "function",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaRHIStatus ValidateResourceCapabilities(const FArdaRHIBufferDesc& Desc, const FArdaRHICapabilities& Capabilities, const FArdaRHIFormatSupport& FormatSupport) noexcept",
+    "summary": "Validates allocation admission; uniform/storage binding-range limits apply to views, not whole buffers.",
+    "details": "Validates allocation admission; uniform/storage binding-range limits apply to views, not whole buffers.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 831
   },
   {
     "id": "api-arda-eardacudagraphmode-ff5809e4",
@@ -47534,7 +48522,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 17
+    "sourceLine": 18
   },
   {
     "id": "api-arda-fardarhihosttodevicecopycallback-d00cda4e",
@@ -47555,7 +48543,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 20
+    "sourceLine": 21
   },
   {
     "id": "api-arda-fardarhidevicetohostcopycallback-9abd91f8",
@@ -47576,7 +48564,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 23
+    "sourceLine": 24
   },
   {
     "id": "api-arda-fardarhistagingtexturemapping-mdepthpitch-07f4db47",
@@ -47597,7 +48585,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIStagingTextureMapping"
     ],
-    "sourceLine": 33
+    "sourceLine": 34
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-0cba00f9",
@@ -47618,7 +48606,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 62
+    "sourceLine": 63
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-mliveresources-c0a19b2c",
@@ -47639,7 +48627,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 64
+    "sourceLine": 65
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-mresourcedescriptors-26d37523",
@@ -47660,7 +48648,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 65
+    "sourceLine": 66
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-msamplerdescriptors-43ad0d76",
@@ -47681,7 +48669,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 66
+    "sourceLine": 67
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-mdescriptorsets-db6e5eee",
@@ -47702,7 +48690,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 67
+    "sourceLine": 68
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-mpendingsubmissions-4e4be1d1",
@@ -47723,7 +48711,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 68
+    "sourceLine": 69
   },
   {
     "id": "api-arda-fardarhiresourcelifetimestats-getliveresourcecount-65007d3b",
@@ -47744,7 +48732,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIResourceLifetimeStats"
     ],
-    "sourceLine": 70
+    "sourceLine": 71
   },
   {
     "id": "api-arda-iardarhicommandlist-dispatchcuda-69460b3b",
@@ -47765,7 +48753,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 91
+    "sourceLine": 92
   },
   {
     "id": "api-arda-iardarhicommandlist-dispatchcudasequence-c47078c5",
@@ -47786,7 +48774,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 102
+    "sourceLine": 103
   },
   {
     "id": "api-arda-iardarhicommandlist-copybufferhosttodevice-610205a3",
@@ -47807,7 +48795,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 154
+    "sourceLine": 167
   },
   {
     "id": "api-arda-iardarhicommandlist-copybufferhosttodeviceasync-4871dec4",
@@ -47828,7 +48816,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 163
+    "sourceLine": 176
   },
   {
     "id": "api-arda-iardarhicommandlist-copybufferdevicetohost-034ed7d3",
@@ -47849,7 +48837,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 173
+    "sourceLine": 186
   },
   {
     "id": "api-arda-iardarhicommandlist-copybufferdevicetohostasync-2cdef6fb",
@@ -47870,7 +48858,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 182
+    "sourceLine": 195
   },
   {
     "id": "api-arda-iardarhicommandlist-copybuffertotexture-24983139",
@@ -47891,7 +48879,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 213
+    "sourceLine": 226
   },
   {
     "id": "api-arda-iardarhicommandlist-copytexturetobuffer-379c048d",
@@ -47912,7 +48900,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 223
+    "sourceLine": 236
   },
   {
     "id": "api-arda-iardarhicommandlist-querysamplerfeedbacktexturestate-72933759",
@@ -47933,7 +48921,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHICommandList"
     ],
-    "sourceLine": 355
+    "sourceLine": 368
+  },
+  {
+    "id": "api-arda-iardarhicommandlist-copyaccelstruct-e4d84800",
+    "name": "CopyAccelStruct",
+    "qualifiedName": "arda::IArdaRHICommandList::CopyAccelStruct",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus CopyAccelStruct(IArdaRHIAccelStruct&, IArdaRHIAccelStruct&)",
+    "summary": "Clones a built BLAS or TLAS into a distinct same-kind destination with matching build flags and at least the source result allocation size. Preserves built/updated/compacted state; referenced BLAS addresses are unchanged. Requires a graphics or compute command list.",
+    "details": "Clones a built BLAS or TLAS into a distinct same-kind destination with matching build flags and at least the source result allocation size. Preserves built/updated/compacted state; referenced BLAS addresses are unchanged. Requires a graphics or compute command list.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHICommandList"
+    ],
+    "sourceLine": 650
   },
   {
     "id": "api-arda-iardarhidevice-getcudacapabilities-50bfa86e",
@@ -47954,7 +48963,49 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 710
+    "sourceLine": 766
+  },
+  {
+    "id": "api-arda-iardarhidevice-queryformatsupport-d3e518ba",
+    "name": "QueryFormatSupport",
+    "qualifiedName": "arda::IArdaRHIDevice::QueryFormatSupport",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat) const noexcept",
+    "summary": "Returns native per-format facts without creating resources; zero facts mean unavailable/unreported.",
+    "details": "Returns native per-format facts without creating resources; zero facts mean unavailable/unreported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIDevice"
+    ],
+    "sourceLine": 778
+  },
+  {
+    "id": "api-arda-iardarhidevice-capturediagnosticsnapshot-714e4fa8",
+    "name": "CaptureDiagnosticSnapshot",
+    "qualifiedName": "arda::IArdaRHIDevice::CaptureDiagnosticSnapshot",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHIDiagnosticSnapshot> CaptureDiagnosticSnapshot() const",
+    "summary": "Captures bounded native device status, queue progress, recent markers and available fault data. Does not submit or wait for GPU work; unavailable native fault facilities are explicitly reported. Snapshot strings and records are owned by the result. Serialize shutdown with this call.",
+    "details": "Captures bounded native device status, queue progress, recent markers and available fault data. Does not submit or wait for GPU work; unavailable native fault facilities are explicitly reported. Snapshot strings and records are owned by the result. Serialize shutdown with this call.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIDevice"
+    ],
+    "sourceLine": 788
   },
   {
     "id": "api-arda-iardarhidevice-createplacedtexture-128384ae",
@@ -47975,7 +49026,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 801
+    "sourceLine": 873
   },
   {
     "id": "api-arda-iardarhidevice-createplacedbuffer-1411dbc2",
@@ -47996,7 +49047,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 820
+    "sourceLine": 892
   },
   {
     "id": "api-arda-iardarhidevice-getgpuallocatorstats-ca88276e",
@@ -48017,7 +49068,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 837
+    "sourceLine": 909
   },
   {
     "id": "api-arda-iardarhidevice-setgpuallocatoroptions-8447463d",
@@ -48038,7 +49089,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 843
+    "sourceLine": 915
   },
   {
     "id": "api-arda-iardarhidevice-trimgpuallocator-28300a15",
@@ -48048,18 +49099,18 @@ window.ArdaBackendApi = {
     "component": "rhi-device",
     "page": "api-reference.html",
     "signature": "virtual void TrimGpuAllocator()",
-    "summary": "Releases idle cached storage. Pending GPU dependencies and active leases remain retained.",
-    "details": "Releases idle cached storage. Pending GPU dependencies and active leases remain retained.",
+    "summary": "Releases idle cached storage after polling native retirement. Active leases and unproven GPU work remain retained.",
+    "details": "Releases idle cached storage after polling native retirement. Active leases and unproven GPU work remain retained.",
     "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h",
     "params": [],
-    "returns": "See the declared result and status contract.",
-    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
-    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
-    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "returns": "No immediate result; query allocator and lifetime statistics to observe released storage.",
+    "ownership": "Only idle cache ownership is released; active and pending resource ownership is preserved.",
+    "errors": "This call returns no status and does not establish GPU completion. Unproven retirement remains pending.",
+    "threading": "Coordinate with device shutdown; allocator collection synchronizes its internal state.",
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 849
+    "sourceLine": 925
   },
   {
     "id": "api-arda-iardarhidevice-querytexturememoryrequirements-566087c2",
@@ -48085,7 +49136,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 1367
+    "sourceLine": 1443
   },
   {
     "id": "api-arda-iardarhidevice-querybuffermemoryrequirements-48a3cebc",
@@ -48111,7 +49162,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 1376
+    "sourceLine": 1452
   },
   {
     "id": "api-arda-iardarhidevice-getresourcelifetimestats-18d7ae60",
@@ -48132,7 +49183,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 1521
+    "sourceLine": 1626
   },
   {
     "id": "api-arda-iardarhidevice-waitforsubmission-96a0ae56",
@@ -48153,7 +49204,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 1533
+    "sourceLine": 1638
   },
   {
     "id": "api-arda-iardarhidevice-pollsubmission-655f1383",
@@ -48174,7 +49225,448 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIDevice"
     ],
-    "sourceLine": 1540
+    "sourceLine": 1645
+  },
+  {
+    "id": "api-arda-ardarhimaxdiagnosticentries-9ad98742",
+    "name": "ArdaRHIMaxDiagnosticEntries",
+    "qualifiedName": "arda::ArdaRHIMaxDiagnosticEntries",
+    "kind": "constant",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "inline constexpr uint32_t ArdaRHIMaxDiagnosticEntries = 64",
+    "summary": "Maximum entries retained in each diagnostic list; excess native records are reported as truncated.",
+    "details": "Maximum entries retained in each diagnostic list; excess native records are reported as truncated.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 12
+  },
+  {
+    "id": "api-arda-fardarhiqueuediagnostic-6fca1013",
+    "name": "FArdaRHIQueueDiagnostic",
+    "qualifiedName": "arda::FArdaRHIQueueDiagnostic",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaRHIQueueDiagnostic",
+    "summary": "Queue progress observed without submitting or waiting for GPU work.",
+    "details": "Queue progress observed without submitting or waiting for GPU work.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 15
+  },
+  {
+    "id": "api-arda-fardarhiqueuediagnostic-mqueue-323c9707",
+    "name": "mQueue",
+    "qualifiedName": "arda::FArdaRHIQueueDiagnostic::mQueue",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics",
+    "summary": "Queue whose submission counters are reported.",
+    "details": "Queue whose submission counters are reported.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIQueueDiagnostic"
+    ],
+    "sourceLine": 18
+  },
+  {
+    "id": "api-arda-fardarhiqueuediagnostic-mlastsubmitted-89f713b7",
+    "name": "mLastSubmitted",
+    "qualifiedName": "arda::FArdaRHIQueueDiagnostic::mLastSubmitted",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mLastSubmitted = 0",
+    "summary": "Most recently submitted native queue timeline/fence value, zero before any work.",
+    "details": "Most recently submitted native queue timeline/fence value, zero before any work.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIQueueDiagnostic"
+    ],
+    "sourceLine": 20
+  },
+  {
+    "id": "api-arda-fardarhiqueuediagnostic-mlastcompleted-2c8a1fa9",
+    "name": "mLastCompleted",
+    "qualifiedName": "arda::FArdaRHIQueueDiagnostic::mLastCompleted",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mLastCompleted = 0",
+    "summary": "Last observed completed value; meaningful only when mbCompletedValueKnown is true.",
+    "details": "Last observed completed value; meaningful only when mbCompletedValueKnown is true.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIQueueDiagnostic"
+    ],
+    "sourceLine": 22
+  },
+  {
+    "id": "api-arda-fardarhiqueuediagnostic-mbcompletedvalueknown-7f3af9b9",
+    "name": "mbCompletedValueKnown",
+    "qualifiedName": "arda::FArdaRHIQueueDiagnostic::mbCompletedValueKnown",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbCompletedValueKnown = false",
+    "summary": "False when native completion could not be queried, including a removed device.",
+    "details": "False when native completion could not be queried, including a removed device.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIQueueDiagnostic"
+    ],
+    "sourceLine": 24
+  },
+  {
+    "id": "api-arda-fardarhifaultdiagnostic-a3a047d2",
+    "name": "FArdaRHIFaultDiagnostic",
+    "qualifiedName": "arda::FArdaRHIFaultDiagnostic",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaRHIFaultDiagnostic",
+    "summary": "One native page-fault/address record; interpretation is described by the backend.",
+    "details": "One native page-fault/address record; interpretation is described by the backend.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 28
+  },
+  {
+    "id": "api-arda-fardarhifaultdiagnostic-maddress-a8442cb4",
+    "name": "mAddress",
+    "qualifiedName": "arda::FArdaRHIFaultDiagnostic::mAddress",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "uint64_t mAddress = 0",
+    "summary": "Native GPU virtual address, or zero for a fault without an address.",
+    "details": "Native GPU virtual address, or zero for a fault without an address.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFaultDiagnostic"
+    ],
+    "sourceLine": 31
+  },
+  {
+    "id": "api-arda-fardarhifaultdiagnostic-mdescription-19002d41",
+    "name": "mDescription",
+    "qualifiedName": "arda::FArdaRHIFaultDiagnostic::mDescription",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mDescription",
+    "summary": "Native fault category, address precision or object description.",
+    "details": "Native fault category, address precision or object description.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIFaultDiagnostic"
+    ],
+    "sourceLine": 33
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-b3c772c0",
+    "name": "FArdaRHIDiagnosticSnapshot",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot",
+    "kind": "struct",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "struct FArdaRHIDiagnosticSnapshot",
+    "summary": "Best-effort diagnostic evidence with bounded owned strings and lists. Capturing a snapshot performs no GPU submission or wait and does not recreate the device. Unsupported native crash facilities leave mbNativeFaultDataAvailable false; that is not a clean-health proof. Queue counters and markers are observations, not synchronization primitives or a coherent global GPU stop.",
+    "details": "Best-effort diagnostic evidence with bounded owned strings and lists. Capturing a snapshot performs no GPU submission or wait and does not recreate the device. Unsupported native crash facilities leave mbNativeFaultDataAvailable false; that is not a clean-health proof. Queue counters and markers are observations, not synchronization primitives or a coherent global GPU stop.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 42
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-mbackendname-7c73bc3a",
+    "name": "mBackendName",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot::mBackendName",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mBackendName",
+    "summary": "Stable provider name such as native-d3d12 or native-vulkan.",
+    "details": "Stable provider name such as native-d3d12 or native-vulkan.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDiagnosticSnapshot"
+    ],
+    "sourceLine": 45
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-madaptername-f220bbd5",
+    "name": "mAdapterName",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot::mAdapterName",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mAdapterName",
+    "summary": "Native adapter description.",
+    "details": "Native adapter description.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDiagnosticSnapshot"
+    ],
+    "sourceLine": 47
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-mdriverversion-36f4c3bc",
+    "name": "mDriverVersion",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot::mDriverVersion",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::string mDriverVersion",
+    "summary": "Native driver version when available, otherwise empty.",
+    "details": "Native driver version when available, otherwise empty.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDiagnosticSnapshot"
+    ],
+    "sourceLine": 49
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-mdevicestatus-66ef4e70",
+    "name": "mDeviceStatus",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot::mDeviceStatus",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "EArdaRHIResult mDeviceStatus = EArdaRHIResult::Success",
+    "summary": "Best-effort device status; Success means no reported error at capture time.",
+    "details": "Best-effort device status; Success means no reported error at capture time.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDiagnosticSnapshot"
+    ],
+    "sourceLine": 51
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-mnativeerrorcode-aca09dd5",
+    "name": "mNativeErrorCode",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot::mNativeErrorCode",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "int64_t mNativeErrorCode = 0",
+    "summary": "Provider-specific HRESULT or VkResult associated with the observed failure.",
+    "details": "Provider-specific HRESULT or VkResult associated with the observed failure.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDiagnosticSnapshot"
+    ],
+    "sourceLine": 53
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-mbnativefaultdataavailable-2d8abadb",
+    "name": "mbNativeFaultDataAvailable",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot::mbNativeFaultDataAvailable",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbNativeFaultDataAvailable = false",
+    "summary": "Whether native DRED/device-fault data was obtained, independent of marker availability.",
+    "details": "Whether native DRED/device-fault data was obtained, independent of marker availability.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDiagnosticSnapshot"
+    ],
+    "sourceLine": 55
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-mbtruncated-e607fe16",
+    "name": "mbTruncated",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot::mbTruncated",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "bool mbTruncated = false",
+    "summary": "True if an entry limit or bounded string length omitted diagnostic data.",
+    "details": "True if an entry limit or bounded string length omitted diagnostic data.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDiagnosticSnapshot"
+    ],
+    "sourceLine": 57
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-mqueues-e70322e5",
+    "name": "mQueues",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot::mQueues",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FArdaRHIQueueDiagnostic> mQueues",
+    "summary": "Native progress for supported queues.",
+    "details": "Native progress for supported queues.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDiagnosticSnapshot"
+    ],
+    "sourceLine": 59
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-mbreadcrumbs-028196da",
+    "name": "mBreadcrumbs",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot::mBreadcrumbs",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<eastl::string> mBreadcrumbs",
+    "summary": "Recent submitted markers and available native crash breadcrumbs; descriptions identify their provenance.",
+    "details": "Recent submitted markers and available native crash breadcrumbs; descriptions identify their provenance.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDiagnosticSnapshot"
+    ],
+    "sourceLine": 61
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-mfaults-d29ab267",
+    "name": "mFaults",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot::mFaults",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<FArdaRHIFaultDiagnostic> mFaults",
+    "summary": "Native address faults when the driver exposes them.",
+    "details": "Native address faults when the driver exposes them.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDiagnosticSnapshot"
+    ],
+    "sourceLine": 63
+  },
+  {
+    "id": "api-arda-fardarhidiagnosticsnapshot-mmessages-816f1eb8",
+    "name": "mMessages",
+    "qualifiedName": "arda::FArdaRHIDiagnosticSnapshot::mMessages",
+    "kind": "member variable",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "eastl::vector<eastl::string> mMessages",
+    "summary": "Native diagnostic details and unavailable-data explanations.",
+    "details": "Native diagnostic details and unavailable-data explanations.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHIDiagnosticSnapshot"
+    ],
+    "sourceLine": 65
   },
   {
     "id": "api-arda-iardaproviderobject-b2180131",
@@ -51915,6 +53407,27 @@ window.ArdaBackendApi = {
     "sourceLine": 474
   },
   {
+    "id": "api-arda-iardaprovidercommandlist-copyaccelstruct-9c9e8cae",
+    "name": "CopyAccelStruct",
+    "qualifiedName": "arda::IArdaProviderCommandList::CopyAccelStruct",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "virtual FArdaRHIStatus CopyAccelStruct(const FArdaProviderObjectRef&, const FArdaProviderObjectRef&)",
+    "summary": "Native same-kind acceleration-structure clone; facade validates source state and capacity.",
+    "details": "Native same-kind acceleration-structure clone; facade validates source state and capacity.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaProviderCommandList"
+    ],
+    "sourceLine": 485
+  },
+  {
     "id": "api-arda-iardaprovidercommandlist-compactaccelstruct-c5a4ef63",
     "name": "CompactAccelStruct",
     "qualifiedName": "arda::IArdaProviderCommandList::CompactAccelStruct",
@@ -51933,7 +53446,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 484
+    "sourceLine": 491
   },
   {
     "id": "api-arda-iardaprovidercommandlist-buildopacitymicromap-cb028c89",
@@ -51954,7 +53467,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 490
+    "sourceLine": 497
   },
   {
     "id": "api-arda-iardaprovidercommandlist-compactopacitymicromap-8abbf77f",
@@ -51975,7 +53488,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 496
+    "sourceLine": 503
   },
   {
     "id": "api-arda-iardaprovidercommandlist-queryopacitymicromapstate-d7fe6c93",
@@ -51996,7 +53509,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 502
+    "sourceLine": 509
   },
   {
     "id": "api-arda-iardaprovidercommandlist-begintimerquery-fba1e0bd",
@@ -52017,7 +53530,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 511
+    "sourceLine": 518
   },
   {
     "id": "api-arda-iardaprovidercommandlist-endtimerquery-18c57ffc",
@@ -52038,7 +53551,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 518
+    "sourceLine": 525
   },
   {
     "id": "api-arda-iardaprovidercommandlist-beginmarker-874c6f50",
@@ -52059,7 +53572,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 524
+    "sourceLine": 531
   },
   {
     "id": "api-arda-iardaprovidercommandlist-endmarker-22a2e56f",
@@ -52080,7 +53593,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaProviderCommandList"
     ],
-    "sourceLine": 525
+    "sourceLine": 532
   },
   {
     "id": "api-arda-iardarhiproviderdevice-034a7e6a",
@@ -52101,7 +53614,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 528
+    "sourceLine": 535
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getcudacapabilities-cd57bb68",
@@ -52122,7 +53635,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 531
+    "sourceLine": 538
   },
   {
     "id": "api-arda-iardarhiproviderdevice-iardarhiproviderdevice-068316f7",
@@ -52143,7 +53656,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 536
+    "sourceLine": 543
+  },
+  {
+    "id": "api-arda-iardarhiproviderdevice-capturediagnosticsnapshot-eaa8b418",
+    "name": "CaptureDiagnosticSnapshot",
+    "qualifiedName": "arda::IArdaRHIProviderDevice::CaptureDiagnosticSnapshot",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHIDiagnosticSnapshot> CaptureDiagnosticSnapshot() const",
+    "summary": "Captures bounded native diagnostics without GPU submission or waits.",
+    "details": "Captures bounded native diagnostics without GPU submission or waits.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIProviderDevice"
+    ],
+    "sourceLine": 546
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getcapabilities-4011ea43",
@@ -52164,7 +53698,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 537
+    "sourceLine": 551
+  },
+  {
+    "id": "api-arda-iardarhiproviderdevice-queryformatsupport-625f21c0",
+    "name": "QueryFormatSupport",
+    "qualifiedName": "arda::IArdaRHIProviderDevice::QueryFormatSupport",
+    "kind": "method",
+    "component": "rhi-device",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] virtual FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat) const noexcept",
+    "summary": "Queries independent native format facts; unknown/unsupported formats return an empty report.",
+    "details": "Queries independent native format facts; unknown/unsupported formats return an empty report.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::IArdaRHIProviderDevice"
+    ],
+    "sourceLine": 554
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettextureimporttype-5b9ef5ec",
@@ -52185,7 +53740,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 538
+    "sourceLine": 559
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getbufferimporttype-28ae595c",
@@ -52206,7 +53761,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 539
+    "sourceLine": 560
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createtexture-f10acc28",
@@ -52227,7 +53782,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 541
+    "sourceLine": 562
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createsamplerfeedbacktexture-4d5e59a4",
@@ -52248,7 +53803,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 543
+    "sourceLine": 564
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbuffer-71684f5d",
@@ -52269,7 +53824,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 552
+    "sourceLine": 573
   },
   {
     "id": "api-arda-iardarhiproviderdevice-setbufferallocator-aa2ae13c",
@@ -52290,7 +53845,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 557
+    "sourceLine": 578
   },
   {
     "id": "api-arda-iardarhiproviderdevice-allocatebuffer-35c67482",
@@ -52311,7 +53866,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 566
+    "sourceLine": 587
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createheap-db511049",
@@ -52332,7 +53887,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 572
+    "sourceLine": 593
   },
   {
     "id": "api-arda-iardarhiproviderdevice-canreusebuffer-18ba04f9",
@@ -52353,7 +53908,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 578
+    "sourceLine": 599
   },
   {
     "id": "api-arda-iardarhiproviderdevice-canreusebufferforqueue-7c8495f2",
@@ -52374,7 +53929,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 587
+    "sourceLine": 608
   },
   {
     "id": "api-arda-iardarhiproviderdevice-canreusetexture-2d123463",
@@ -52395,7 +53950,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 597
+    "sourceLine": 618
   },
   {
     "id": "api-arda-iardarhiproviderdevice-querytexturememoryrequirements-8ca6d8dd",
@@ -52416,7 +53971,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 604
+    "sourceLine": 625
   },
   {
     "id": "api-arda-iardarhiproviderdevice-querybuffermemoryrequirements-e87e31a6",
@@ -52437,7 +53992,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 613
+    "sourceLine": 634
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettexturememoryrequirements-ed014bd7",
@@ -52458,7 +54013,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 621
+    "sourceLine": 642
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getbuffermemoryrequirements-2f9ecaf1",
@@ -52479,7 +54034,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 624
+    "sourceLine": 645
   },
   {
     "id": "api-arda-iardarhiproviderdevice-bindtexturememory-d4472ff4",
@@ -52500,7 +54055,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 627
+    "sourceLine": 648
   },
   {
     "id": "api-arda-iardarhiproviderdevice-bindbuffermemory-9d0e7b7a",
@@ -52521,7 +54076,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 631
+    "sourceLine": 652
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettexturetiling-402e11c3",
@@ -52542,7 +54097,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 636
+    "sourceLine": 657
   },
   {
     "id": "api-arda-iardarhiproviderdevice-updatetexturetilemappings-39576639",
@@ -52563,7 +54118,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 643
+    "sourceLine": 664
   },
   {
     "id": "api-arda-iardarhiproviderdevice-updatebuffertilemappings-b37d4166",
@@ -52584,7 +54139,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 651
+    "sourceLine": 672
   },
   {
     "id": "api-arda-iardarhiproviderdevice-commitreservedresource-6977a80a",
@@ -52605,7 +54160,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 659
+    "sourceLine": 680
   },
   {
     "id": "api-arda-iardarhiproviderdevice-querystreamingbudget-763ebaa3",
@@ -52626,7 +54181,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 665
+    "sourceLine": 686
   },
   {
     "id": "api-arda-iardarhiproviderdevice-setstreamingbudgetreservation-837664de",
@@ -52647,7 +54202,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 672
+    "sourceLine": 693
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createstagingtexture-cbb98b08",
@@ -52668,7 +54223,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 678
+    "sourceLine": 699
   },
   {
     "id": "api-arda-iardarhiproviderdevice-mapstagingtexture-cb128204",
@@ -52689,7 +54244,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 680
+    "sourceLine": 701
   },
   {
     "id": "api-arda-iardarhiproviderdevice-unmapstagingtexture-5961467b",
@@ -52710,7 +54265,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 684
+    "sourceLine": 705
   },
   {
     "id": "api-arda-iardarhiproviderdevice-mapbuffer-035769d6",
@@ -52731,7 +54286,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 687
+    "sourceLine": 708
   },
   {
     "id": "api-arda-iardarhiproviderdevice-unmapbuffer-12b707a2",
@@ -52752,7 +54307,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 692
+    "sourceLine": 713
   },
   {
     "id": "api-arda-iardarhiproviderdevice-importtexture-9e523ca7",
@@ -52773,7 +54328,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 693
+    "sourceLine": 714
   },
   {
     "id": "api-arda-iardarhiproviderdevice-importbuffer-b3317e2d",
@@ -52794,7 +54349,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 694
+    "sourceLine": 715
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createsampler-91f56a5c",
@@ -52815,7 +54370,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 695
+    "sourceLine": 716
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createshader-5580799e",
@@ -52836,7 +54391,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 696
+    "sourceLine": 717
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbindinglayout-ee2fec4e",
@@ -52857,7 +54412,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 697
+    "sourceLine": 718
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbindlesslayout-70c7eb56",
@@ -52878,7 +54433,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 699
+    "sourceLine": 720
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createbindingset-cb593977",
@@ -52899,7 +54454,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 705
+    "sourceLine": 726
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createframebuffer-2026842e",
@@ -52920,7 +54475,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 708
+    "sourceLine": 729
   },
   {
     "id": "api-arda-iardarhiproviderdevice-creategraphicspipeline-7cd5f9ae",
@@ -52941,7 +54496,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 710
+    "sourceLine": 731
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createcomputepipeline-a86255ea",
@@ -52962,7 +54517,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 712
+    "sourceLine": 733
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createmeshletpipeline-8fa2c684",
@@ -52983,7 +54538,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 715
+    "sourceLine": 736
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createraytracingpipeline-ba644131",
@@ -53004,7 +54559,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 723
+    "sourceLine": 744
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createworkgraphpipeline-4f2ce182",
@@ -53025,7 +54580,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 731
+    "sourceLine": 752
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createshadertable-e5393f8f",
@@ -53046,7 +54601,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 739
+    "sourceLine": 760
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getaccelstructbuildmemoryrequirements-e3dd5007",
@@ -53067,7 +54622,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 748
+    "sourceLine": 769
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createaccelstruct-d5e0a515",
@@ -53088,7 +54643,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 756
+    "sourceLine": 777
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getaccelstructcompactedsize-7fa4e1ad",
@@ -53109,7 +54664,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 764
+    "sourceLine": 785
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getaccelstructdeviceaddress-0b7e50f8",
@@ -53130,7 +54685,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 771
+    "sourceLine": 792
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createopacitymicromap-da8da857",
@@ -53151,7 +54706,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 776
+    "sourceLine": 797
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getopacitymicromapcompactedsize-e4dc1e7a",
@@ -53172,7 +54727,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 785
+    "sourceLine": 806
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getopacitymicromapdeviceaddress-c2051c67",
@@ -53193,7 +54748,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 792
+    "sourceLine": 813
   },
   {
     "id": "api-arda-iardarhiproviderdevice-setshadertablerecord-f3474709",
@@ -53214,7 +54769,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 797
+    "sourceLine": 818
   },
   {
     "id": "api-arda-iardarhiproviderdevice-commitshadertable-3f7946ea",
@@ -53235,7 +54790,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 806
+    "sourceLine": 827
   },
   {
     "id": "api-arda-iardarhiproviderdevice-setshadertableraygeneration-60d052cd",
@@ -53256,7 +54811,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 812
+    "sourceLine": 833
   },
   {
     "id": "api-arda-iardarhiproviderdevice-addshadertableentry-f4126265",
@@ -53277,7 +54832,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 820
+    "sourceLine": 841
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createeventquery-6b9d63f3",
@@ -53298,7 +54853,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 830
+    "sourceLine": 851
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createtimerquery-209be9cb",
@@ -53319,7 +54874,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 838
+    "sourceLine": 859
   },
   {
     "id": "api-arda-iardarhiproviderdevice-creategpufence-acabc8b8",
@@ -53340,7 +54895,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 846
+    "sourceLine": 867
   },
   {
     "id": "api-arda-iardarhiproviderdevice-signaleventquery-abcaf536",
@@ -53361,7 +54916,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 854
+    "sourceLine": 875
   },
   {
     "id": "api-arda-iardarhiproviderdevice-polleventquery-963c049f",
@@ -53382,7 +54937,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 861
+    "sourceLine": 882
   },
   {
     "id": "api-arda-iardarhiproviderdevice-waiteventquery-af7859f5",
@@ -53403,7 +54958,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 869
+    "sourceLine": 890
   },
   {
     "id": "api-arda-iardarhiproviderdevice-reseteventquery-f62057d8",
@@ -53424,7 +54979,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 876
+    "sourceLine": 897
   },
   {
     "id": "api-arda-iardarhiproviderdevice-polltimerquery-625263a7",
@@ -53445,7 +55000,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 883
+    "sourceLine": 904
   },
   {
     "id": "api-arda-iardarhiproviderdevice-gettimerqueryseconds-cbed7fa8",
@@ -53466,7 +55021,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 891
+    "sourceLine": 912
   },
   {
     "id": "api-arda-iardarhiproviderdevice-resettimerquery-94d2d31f",
@@ -53487,7 +55042,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 899
+    "sourceLine": 920
   },
   {
     "id": "api-arda-iardarhiproviderdevice-signalgpufence-155e105d",
@@ -53508,7 +55063,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 906
+    "sourceLine": 927
   },
   {
     "id": "api-arda-iardarhiproviderdevice-pollgpufence-655e8b4a",
@@ -53529,7 +55084,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 913
+    "sourceLine": 934
   },
   {
     "id": "api-arda-iardarhiproviderdevice-waitgpufence-098c8c8c",
@@ -53550,7 +55105,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 921
+    "sourceLine": 942
   },
   {
     "id": "api-arda-iardarhiproviderdevice-resetgpufence-d9f663be",
@@ -53571,7 +55126,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 928
+    "sourceLine": 949
   },
   {
     "id": "api-arda-iardarhiproviderdevice-createcommandlist-de5f50a0",
@@ -53592,7 +55147,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 934
+    "sourceLine": 955
   },
   {
     "id": "api-arda-iardarhiproviderdevice-executecommandlist-d6b83372",
@@ -53613,7 +55168,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 937
+    "sourceLine": 958
   },
   {
     "id": "api-arda-iardarhiproviderdevice-queuewait-b756438c",
@@ -53634,7 +55189,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 941
+    "sourceLine": 962
   },
   {
     "id": "api-arda-iardarhiproviderdevice-waitforsubmission-9db274b6",
@@ -53655,7 +55210,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 951
+    "sourceLine": 972
   },
   {
     "id": "api-arda-iardarhiproviderdevice-waitforidle-78975f4f",
@@ -53676,7 +55231,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 957
+    "sourceLine": 978
   },
   {
     "id": "api-arda-iardarhiproviderdevice-pollsubmission-92ffdb62",
@@ -53697,7 +55252,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 960
+    "sourceLine": 981
   },
   {
     "id": "api-arda-iardarhiproviderdevice-rungarbagecollection-dd1b5149",
@@ -53718,7 +55273,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 966
+    "sourceLine": 987
   },
   {
     "id": "api-arda-iardarhiproviderdevice-getlifetimestats-c16f47f3",
@@ -53739,7 +55294,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 968
+    "sourceLine": 989
   },
   {
     "id": "api-arda-iardarhiproviderdevice-flushpipelinecache-d03d5cb1",
@@ -53760,7 +55315,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::IArdaRHIProviderDevice"
     ],
-    "sourceLine": 973
+    "sourceLine": 994
   },
   {
     "id": "api-arda-ardaproviderpipelinecachemaxpayloadsize-604d7834",
@@ -56570,6 +58125,27 @@ window.ArdaBackendApi = {
     "sourceLine": 1277
   },
   {
+    "id": "api-arda-validate-9ca97d1c",
+    "name": "Validate",
+    "qualifiedName": "arda::Validate",
+    "kind": "function",
+    "component": "rhi-resources",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIFramebufferDesc& Value)",
+    "summary": "Validates attachment usage, format, ranges, and matching sample counts. Different attachment extents are permitted; native rendering uses their common minimum extent. Device ownership/limits are separate.",
+    "details": "Validates attachment usage, format, ranges, and matching sample counts. Different attachment extents are permitted; native rendering uses their common minimum extent. Device ownership/limits are separate.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 1289
+  },
+  {
     "id": "api-arda-eardarhiresult-4327f686",
     "name": "EArdaRHIResult",
     "qualifiedName": "arda::EArdaRHIResult",
@@ -58740,6 +60316,132 @@ window.ArdaBackendApi = {
     "sourceLine": 905
   },
   {
+    "id": "api-arda-fardarhitexturebufferfootprint-779d38bd",
+    "name": "FArdaRHITextureBufferFootprint",
+    "qualifiedName": "arda::FArdaRHITextureBufferFootprint",
+    "kind": "struct",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "struct FArdaRHITextureBufferFootprint",
+    "summary": "Portable pitched buffer footprint for one texture region.",
+    "details": "Portable pitched buffer footprint for one texture region.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 909
+  },
+  {
+    "id": "api-arda-fardarhitexturebufferfootprint-mextent-ccab58d8",
+    "name": "mExtent",
+    "qualifiedName": "arda::FArdaRHITextureBufferFootprint::mExtent",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "FArdaRHITextureCopyExtent mExtent",
+    "summary": "Concrete copied extent in texels.",
+    "details": "Concrete copied extent in texels.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHITextureBufferFootprint"
+    ],
+    "sourceLine": 912
+  },
+  {
+    "id": "api-arda-fardarhitexturebufferfootprint-mlayout-be86bf47",
+    "name": "mLayout",
+    "qualifiedName": "arda::FArdaRHITextureBufferFootprint::mLayout",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "FArdaRHITextureBufferLayout mLayout",
+    "summary": "Zero-based buffer layout, aligned for both D3D12 and Vulkan copies.",
+    "details": "Zero-based buffer layout, aligned for both D3D12 and Vulkan copies.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHITextureBufferFootprint"
+    ],
+    "sourceLine": 914
+  },
+  {
+    "id": "api-arda-fardarhitexturebufferfootprint-mrowbytes-7af92180",
+    "name": "mRowBytes",
+    "qualifiedName": "arda::FArdaRHITextureBufferFootprint::mRowBytes",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint64_t mRowBytes = 0",
+    "summary": "Number of meaningful bytes in each row, excluding padding.",
+    "details": "Number of meaningful bytes in each row, excluding padding.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHITextureBufferFootprint"
+    ],
+    "sourceLine": 916
+  },
+  {
+    "id": "api-arda-fardarhitexturebufferfootprint-mrowcount-46ff0456",
+    "name": "mRowCount",
+    "qualifiedName": "arda::FArdaRHITextureBufferFootprint::mRowCount",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint64_t mRowCount = 0",
+    "summary": "Total rows across all depth slices in the region.",
+    "details": "Total rows across all depth slices in the region.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHITextureBufferFootprint"
+    ],
+    "sourceLine": 918
+  },
+  {
+    "id": "api-arda-fardarhitexturebufferfootprint-mbytesize-62e37917",
+    "name": "mByteSize",
+    "qualifiedName": "arda::FArdaRHITextureBufferFootprint::mByteSize",
+    "kind": "member variable",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "uint64_t mByteSize = 0",
+    "summary": "Minimum allocation size, excluding padding after the final row.",
+    "details": "Minimum allocation size, excluding padding after the final row.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda::FArdaRHITextureBufferFootprint"
+    ],
+    "sourceLine": 920
+  },
+  {
     "id": "api-arda-fardarhitexturetransitiondesc-00d23005",
     "name": "FArdaRHITextureTransitionDesc",
     "qualifiedName": "arda::FArdaRHITextureTransitionDesc",
@@ -58758,7 +60460,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 909
+    "sourceLine": 924
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-msubresources-771c6fe2",
@@ -58779,7 +60481,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 911
+    "sourceLine": 926
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mstatebefore-2a7a1fb8",
@@ -58800,7 +60502,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 912
+    "sourceLine": 927
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mstateafter-63f0b51f",
@@ -58821,7 +60523,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 913
+    "sourceLine": 928
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-msourcepipelines-35bbd2b5",
@@ -58842,7 +60544,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 914
+    "sourceLine": 929
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mdestinationpipelines-566b6e19",
@@ -58863,7 +60565,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 915
+    "sourceLine": 930
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mflags-47d1e4d2",
@@ -58884,7 +60586,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 916
+    "sourceLine": 931
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-msourcequeue-e5fe1761",
@@ -58905,7 +60607,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 918
+    "sourceLine": 933
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mdestinationqueue-9a4f67d1",
@@ -58926,7 +60628,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 920
+    "sourceLine": 935
   },
   {
     "id": "api-arda-fardarhitexturetransitiondesc-mbqueueownershiptransfer-f258e016",
@@ -58947,7 +60649,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHITextureTransitionDesc"
     ],
-    "sourceLine": 922
+    "sourceLine": 937
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-44ef599c",
@@ -58968,7 +60670,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 926
+    "sourceLine": 941
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mstatebefore-c0a52878",
@@ -58989,7 +60691,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 928
+    "sourceLine": 943
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mstateafter-41bed612",
@@ -59010,7 +60712,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 929
+    "sourceLine": 944
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-msourcepipelines-0be8e126",
@@ -59031,7 +60733,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 930
+    "sourceLine": 945
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mdestinationpipelines-bcd60bc4",
@@ -59052,7 +60754,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 931
+    "sourceLine": 946
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mflags-76d04946",
@@ -59073,7 +60775,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 932
+    "sourceLine": 947
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-msourcequeue-773a0795",
@@ -59094,7 +60796,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 933
+    "sourceLine": 948
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mdestinationqueue-a91a018e",
@@ -59115,7 +60817,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 934
+    "sourceLine": 949
   },
   {
     "id": "api-arda-fardarhibuffertransitiondesc-mbqueueownershiptransfer-a033b233",
@@ -59136,7 +60838,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBufferTransitionDesc"
     ],
-    "sourceLine": 935
+    "sourceLine": 950
   },
   {
     "id": "api-arda-fardarhisamplerdesc-operator-ea546eef",
@@ -59162,7 +60864,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHISamplerDesc"
     ],
-    "sourceLine": 1034
+    "sourceLine": 1049
   },
   {
     "id": "api-arda-fardarhivertexattributedesc-operator-b7a3e496",
@@ -59188,7 +60890,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIVertexAttributeDesc"
     ],
-    "sourceLine": 1075
+    "sourceLine": 1090
   },
   {
     "id": "api-arda-fardarhibindinglayoutitem-operator-3851d353",
@@ -59214,7 +60916,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindingLayoutItem"
     ],
-    "sourceLine": 1098
+    "sourceLine": 1113
   },
   {
     "id": "api-arda-fardarhibindinglayoutdesc-operator-fc928092",
@@ -59240,7 +60942,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBindingLayoutDesc"
     ],
-    "sourceLine": 1123
+    "sourceLine": 1138
   },
   {
     "id": "api-arda-fardarhirasterstate-operator-b9d34c2d",
@@ -59266,7 +60968,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIRasterState"
     ],
-    "sourceLine": 1160
+    "sourceLine": 1175
   },
   {
     "id": "api-arda-fardarhidepthstencilstate-operator-8b638309",
@@ -59292,7 +60994,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIDepthStencilState"
     ],
-    "sourceLine": 1183
+    "sourceLine": 1198
   },
   {
     "id": "api-arda-fardarhiblendtargetstate-operator-83b470de",
@@ -59318,7 +61020,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBlendTargetState"
     ],
-    "sourceLine": 1208
+    "sourceLine": 1223
   },
   {
     "id": "api-arda-fardarhiblendstate-operator-3e4cf690",
@@ -59344,7 +61046,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIBlendState"
     ],
-    "sourceLine": 1229
+    "sourceLine": 1244
   },
   {
     "id": "api-arda-fardarhiformatinfo-mbytesperblock-0a62a65e",
@@ -59365,7 +61067,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFormatInfo"
     ],
-    "sourceLine": 1301
+    "sourceLine": 1316
   },
   {
     "id": "api-arda-fardarhiformatinfo-mblockwidth-b464f51e",
@@ -59386,7 +61088,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFormatInfo"
     ],
-    "sourceLine": 1303
+    "sourceLine": 1318
   },
   {
     "id": "api-arda-fardarhiformatinfo-mblockheight-b86f1d79",
@@ -59407,7 +61109,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda::FArdaRHIFormatInfo"
     ],
-    "sourceLine": 1305
+    "sourceLine": 1320
   },
   {
     "id": "api-arda-getardarhiformatelementsize-e0b7ac06",
@@ -59428,7 +61130,70 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1327
+    "sourceLine": 1342
+  },
+  {
+    "id": "api-arda-getardarhivertexformatalignment-fc4d02b0",
+    "name": "GetArdaRHIVertexFormatAlignment",
+    "qualifiedName": "arda::GetArdaRHIVertexFormatAlignment",
+    "kind": "function",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] uint32_t GetArdaRHIVertexFormatAlignment(EArdaRHIFormat Format) noexcept",
+    "summary": "Vertex element/stride byte alignment: component size, or packed element size. Returns zero for unknown, depth/stencil, and compressed formats. Native vertex-format support remains a separate per-device query.",
+    "details": "Vertex element/stride byte alignment: component size, or packed element size. Returns zero for unknown, depth/stencil, and compressed formats. Native vertex-format support remains a separate per-device query.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 1348
+  },
+  {
+    "id": "api-arda-isardarhitextureviewformatcompatible-2b1f0724",
+    "name": "IsArdaRHITextureViewFormatCompatible",
+    "qualifiedName": "arda::IsArdaRHITextureViewFormatCompatible",
+    "kind": "function",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] bool IsArdaRHITextureViewFormatCompatible(const FArdaRHITextureDesc& Texture, EArdaRHIFormat ViewFormat) noexcept",
+    "summary": "Unknown inherits the texture format; other reinterpretations require Typeless and the same format family.",
+    "details": "Unknown inherits the texture format; other reinterpretations require Typeless and the same format family.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 1351
+  },
+  {
+    "id": "api-arda-resolveardarhiframebufferattachment-408dc801",
+    "name": "ResolveArdaRHIFramebufferAttachment",
+    "qualifiedName": "arda::ResolveArdaRHIFramebufferAttachment",
+    "kind": "function",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] FArdaRHIStatus ResolveArdaRHIFramebufferAttachment(const FArdaRHITextureDesc& Texture, const FArdaRHIFramebufferAttachment& Attachment, bool bDepthAttachment, FArdaRHIFramebufferAttachment& Out) noexcept",
+    "summary": "Validates and resolves an attachment's format and subresource selection. The default mip sentinel selects one mip at the base; default array and plane counts select all remaining layers/aspects. Explicit stencil-only attachments are unsupported. Ownership and device limits are checked by the facade.",
+    "details": "Validates and resolves an attachment's format and subresource selection. The default mip sentinel selects one mip at the base; default array and plane counts select all remaining layers/aspects. Explicit stencil-only attachments are unsupported. Ownership and device limits are checked by the facade.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "See the declared result and status contract.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 1358
   },
   {
     "id": "api-arda-getardarhiformatplanecount-b18155e4",
@@ -59449,7 +61214,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1330
+    "sourceLine": 1364
   },
   {
     "id": "api-arda-getardarhitexturemipextent-5682a136",
@@ -59470,7 +61235,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1333
+    "sourceLine": 1367
   },
   {
     "id": "api-arda-resolveardarhitexturecopyextent-6c622bd2",
@@ -59491,7 +61256,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1339
+    "sourceLine": 1373
   },
   {
     "id": "api-arda-validateardarhitexturebuffercopy-31643e1a",
@@ -59512,7 +61277,28 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1349
+    "sourceLine": 1383
+  },
+  {
+    "id": "api-arda-getardarhitexturebufferfootprint-34db2ee4",
+    "name": "GetArdaRHITextureBufferFootprint",
+    "qualifiedName": "arda::GetArdaRHITextureBufferFootprint",
+    "kind": "function",
+    "component": "rhi-types",
+    "page": "api-reference.html",
+    "signature": "[[nodiscard]] TArdaRHIResult<FArdaRHITextureBufferFootprint> GetArdaRHITextureBufferFootprint( const FArdaRHITextureDesc& TextureDesc, const FArdaRHITextureSlice& Slice) noexcept",
+    "summary": "Resolves a portable buffer footprint for a typed, single-sample, uncompressed color region. Row pitch aligns to 256 bytes and whole texels, including formats with twelve-byte texels. Explicit extents must fit the mip; sentinel extents select its remaining region.",
+    "details": "Resolves a portable buffer footprint for a typed, single-sample, uncompressed color region. Row pitch aligns to 256 bytes and whole texels, including formats with twelve-byte texels. Explicit extents must fit the mip; sentinel extents select its remaining region.",
+    "source": "Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h",
+    "params": [],
+    "returns": "A validated footprint, or an error for unsupported regions or overflowing sizes.",
+    "ownership": "Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.",
+    "errors": "Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.",
+    "threading": "Calls follow the synchronization rules of the owning provider device or command list.",
+    "related": [
+      "arda"
+    ],
+    "sourceLine": 1394
   },
   {
     "id": "api-arda-validateardarhitextureresolve-32075b12",
@@ -59533,7 +61319,7 @@ window.ArdaBackendApi = {
     "related": [
       "arda"
     ],
-    "sourceLine": 1359
+    "sourceLine": 1402
   },
   {
     "id": "api-arda-tardashaderpermutationtraits-fardadomain-7c9d8c2f",
@@ -59560,7 +61346,112 @@ window.ArdaBackendApi = {
   window.ArdaBackendApi.symbols.push(...generatedSymbols);
   const sourceContracts = [
   {
+    "id": "api-arda-rhi-iardarhicommandlist-open-4d45e66c",
+    "signature": "virtual FArdaRHIStatus Open() = 0",
+    "summary": "Begins a new recording generation and clears prior binding state and latched errors on success. Pending native recording storage remains retained until its submission retires.",
+    "details": "Begins a new recording generation and clears prior binding state and latched errors on success. Pending native recording storage remains retained until its submission retires.",
+    "params": [],
+    "returns": "The native open status; a failed open does not clear the facade's prior error.",
+    "ownership": "The command list retains its device and owns the new recording; earlier submitted storage has independent retirement ownership.",
+    "errors": "Native failure leaves this operation unsuccessful. Only a successful Open or Reset clears a recording error.",
+    "threading": "Externally synchronize access to this command list.",
+    "sourceLine": 128
+  },
+  {
+    "id": "api-arda-rhi-iardarhicommandlist-close-0ffddad9",
+    "signature": "virtual FArdaRHIStatus Close() = 0",
+    "summary": "Finalizes an open recording and returns any retained recording error. A successful close permits submission but proves neither GPU execution nor completion.",
+    "details": "Finalizes an open recording and returns any retained recording error. A successful close permits submission but proves neither GPU execution nor completion.",
+    "params": [],
+    "returns": "The first latched recording error, or the native close status.",
+    "ownership": "Closing preserves objects referenced by the recording; submission establishes their pending lifetime.",
+    "errors": "Closing a non-open list returns InvalidState. Invalid void work and native binding failures prevent successful submission until Open or Reset succeeds.",
+    "threading": "Externally synchronize access to this command list.",
+    "sourceLine": 138
+  },
+  {
+    "id": "api-arda-rhi-iardarhicommandlist-reset-31e55aa7",
+    "signature": "virtual FArdaRHIStatus Reset() = 0",
+    "summary": "Discards the previous recording and opens a clean recording generation on success. All pipeline state must be rebound. Pending native storage is retained independently instead of reset while the GPU can use it.",
+    "details": "Discards the previous recording and opens a clean recording generation on success. All pipeline state must be rebound. Pending native storage is retained independently instead of reset while the GPU can use it.",
+    "params": [],
+    "returns": "The native reset status; failure does not clear the prior facade error.",
+    "ownership": "The command list owns the fresh recording; submitted generations retain their own native storage and resources.",
+    "errors": "Only successful Reset or Open clears latched recording failures.",
+    "threading": "Externally synchronize access to this command list.",
+    "sourceLine": 148
+  },
+  {
+    "id": "api-arda-rhi-iardarhicommandlist-setgraphicsstate-c7eb13f7",
+    "signature": "virtual FArdaRHIStatus SetGraphicsState(const FArdaRHIGraphicsState& State) = 0",
+    "summary": "Binds graphics pipeline, framebuffer, descriptors, vertex/index streams and raster regions on an open graphics list. Formats, sample counts, selected attachment ranges, viewport/scissor limits and vertex/index usage, alignment and bounds must agree. Descriptor-bearing layouts require one matching binding set; sets are normalized into declared layout order. Omitted push-only sets are reused within the recording.",
+    "details": "Binds graphics pipeline, framebuffer, descriptors, vertex/index streams and raster regions on an open graphics list. Formats, sample counts, selected attachment ranges, viewport/scissor limits and vertex/index usage, alignment and bounds must agree. Descriptor-bearing layouts require one matching binding set; sets are normalized into declared layout order. Omitted push-only sets are reused within the recording.",
+    "params": [
+      {
+        "name": "State",
+        "description": "Complete graphics state for subsequent draws."
+      }
+    ],
+    "returns": "Success after the native bind succeeds, otherwise its admission or native failure status.",
+    "ownership": "State handles and immutable descriptor generations are retained for the recording and accepted GPU work.",
+    "errors": "Facade rejection preserves the previous binding. Native bind failure latches a failed recording because partial driver state cannot be rolled back; reset before submission.",
+    "threading": "Externally synchronize command-list recording and mutable descriptor-table updates.",
+    "sourceLine": 485
+  },
+  {
+    "id": "api-arda-rhi-iardarhicommandlist-setcomputestate-b43b4184",
+    "signature": "virtual FArdaRHIStatus SetComputeState(const FArdaRHIComputeState& State) = 0",
+    "summary": "Binds a compute pipeline and its complete descriptor state on an open graphics or compute list. Each descriptor-bearing layout requires one matching set; declaration order controls native binding. Omitted push-only sets are reused within the recording.",
+    "details": "Binds a compute pipeline and its complete descriptor state on an open graphics or compute list. Each descriptor-bearing layout requires one matching set; declaration order controls native binding. Omitted push-only sets are reused within the recording.",
+    "params": [
+      {
+        "name": "State",
+        "description": "Compute pipeline and binding sets for subsequent dispatches."
+      }
+    ],
+    "returns": "Success only after native binding succeeds.",
+    "ownership": "Pipeline handles, binding resources and immutable descriptor generations are retained for recording and accepted GPU work.",
+    "errors": "Facade rejection preserves the previous binding. Native failure latches the recording as failed. A later bind cannot repair an already latched error; successful Open or Reset is required.",
+    "threading": "Externally synchronize command-list recording and mutable descriptor-table updates.",
+    "sourceLine": 496
+  },
+  {
+    "id": "api-arda-rhi-iardarhicommandlist-setmeshletstate-a4521e99",
+    "signature": "virtual FArdaRHIStatus SetMeshletState(const FArdaRHIMeshletState& State) = 0",
+    "summary": "Binds a mesh pipeline, compatible framebuffer, raster regions and required descriptor sets on an open graphics list.",
+    "details": "Binds a mesh pipeline, compatible framebuffer, raster regions and required descriptor sets on an open graphics list.",
+    "params": [
+      {
+        "name": "State",
+        "description": "Complete mesh state for subsequent mesh dispatches."
+      }
+    ],
+    "returns": "The facade admission or native binding status.",
+    "ownership": "Referenced objects and captured descriptor generations remain retained for recording and accepted GPU work.",
+    "errors": "Unsupported stages or incompatible state are rejected before native work. Native bind failure latches the recording until successful Open or Reset.",
+    "threading": "Externally synchronize command-list recording.",
+    "sourceLine": 506
+  },
+  {
+    "id": "api-arda-rhi-iardarhicommandlist-setraytracingstate-ed9e7a1c",
+    "signature": "virtual FArdaRHIStatus SetRayTracingState(const FArdaRHIRayTracingState& State) = 0",
+    "summary": "Binds a committed shader-table generation and its required global descriptor sets on an open graphics or compute list.",
+    "details": "Binds a committed shader-table generation and its required global descriptor sets on an open graphics or compute list.",
+    "params": [
+      {
+        "name": "State",
+        "description": "Shader table and global bindings for subsequent ray dispatches."
+      }
+    ],
+    "returns": "The facade admission or native binding status.",
+    "ownership": "The bound immutable shader-table and descriptor generations remain retained even if the mutable table is later recommitted.",
+    "errors": "Missing or incompatible state is rejected before binding; native binding failure latches the recording until successful Open or Reset.",
+    "threading": "Externally synchronize command-list recording and shader-table mutation.",
+    "sourceLine": 516
+  },
+  {
     "id": "api-arda-rhi-iardarhicommandlist-setpushconstants-a2afbe8a",
+    "signature": "virtual void SetPushConstants(const void* Data, size_t Size) = 0",
     "summary": "Broadcasts bytes to the bound pipeline's push blocks. Data must be nonnull and Size must be positive, divisible by four and no larger than any bound push block. Invalid updates record no native command and cause Close() and submission to return InvalidArgument until a successful Reset()/Open(). Previous valid constants remain unchanged. These checks apply independently of native GPU validation.",
     "details": "Broadcasts bytes to the bound pipeline's push blocks. Data must be nonnull and Size must be positive, divisible by four and no larger than any bound push block. Invalid updates record no native command and cause Close() and submission to return InvalidArgument until a successful Reset()/Open(). Previous valid constants remain unchanged. These checks apply independently of native GPU validation.",
     "params": [
@@ -59577,10 +61468,70 @@ window.ArdaBackendApi = {
     "ownership": "Data is borrowed for this call and copied into the recording; the caller retains its storage.",
     "errors": "InvalidArgument is retained by Close() and submission for null data, invalid size or no bound block. Only a successful Reset()/Open() clears the error. Distinct values cannot be targeted to separate blocks.",
     "threading": "Externally synchronize command-list recording and do not update a closed or submitted recording.",
-    "sourceLine": 503
+    "sourceLine": 531
+  },
+  {
+    "id": "api-arda-rhi-iardarhicommandlist-draw-472d77cb",
+    "signature": "virtual void Draw(const FArdaRHIDrawArguments& Arguments) = 0",
+    "summary": "Draws with the most recently bound graphics pipeline in this recording generation. Requires an open graphics list. Known vertex/instance fetch ranges are checked before recording; zero vertices or instances perform no work after validation.",
+    "details": "Draws with the most recently bound graphics pipeline in this recording generation. Requires an open graphics list. Known vertex/instance fetch ranges are checked before recording; zero vertices or instances perform no work after validation.",
+    "params": [
+      {
+        "name": "Args",
+        "description": "Vertex and instance counts plus start offsets."
+      }
+    ],
+    "returns": "No immediate result; inspect Close before submitting the recording.",
+    "ownership": "Previously bound resources remain retained by the recording; this call transfers no caller storage.",
+    "errors": "Invalid work records no native draw and latches an error returned by Close and submission until Open or Reset succeeds.",
+    "threading": "Externally synchronize command-list recording.",
+    "sourceLine": 542
+  },
+  {
+    "id": "api-arda-rhi-iardarhicommandlist-drawindexed-62dcf937",
+    "signature": "virtual void DrawIndexed(const FArdaRHIDrawArguments& Arguments) = 0",
+    "summary": "Draws indexed geometry with the most recently bound graphics pipeline on an open graphics list. Requires an aligned R16UInt or R32UInt index buffer and an in-bounds index range. GPU index values and base-vertex accesses remain the caller's responsibility. Zero indices or instances perform no work after validation.",
+    "details": "Draws indexed geometry with the most recently bound graphics pipeline on an open graphics list. Requires an aligned R16UInt or R32UInt index buffer and an in-bounds index range. GPU index values and base-vertex accesses remain the caller's responsibility. Zero indices or instances perform no work after validation.",
+    "params": [
+      {
+        "name": "Args",
+        "description": "Index and instance counts plus index, base-vertex and instance offsets."
+      }
+    ],
+    "returns": "No immediate result; inspect Close before submitting the recording.",
+    "ownership": "Bound index/vertex resources remain retained by the recording; this call transfers no caller storage.",
+    "errors": "Invalid work records no native draw and latches an error returned by Close and submission until Open or Reset succeeds.",
+    "threading": "Externally synchronize command-list recording.",
+    "sourceLine": 554
+  },
+  {
+    "id": "api-arda-rhi-iardarhicommandlist-dispatch-bd749b8e",
+    "signature": "virtual void Dispatch(uint32_t GroupsX, uint32_t GroupsY = 1, uint32_t GroupsZ = 1) = 0",
+    "summary": "Dispatches the most recently bound compute pipeline on an open graphics or compute list. Group counts must fit the reported device limits. Any zero axis performs no work after state and limit validation.",
+    "details": "Dispatches the most recently bound compute pipeline on an open graphics or compute list. Group counts must fit the reported device limits. Any zero axis performs no work after state and limit validation.",
+    "params": [
+      {
+        "name": "GroupsX",
+        "description": "Number of workgroups on the X axis."
+      },
+      {
+        "name": "GroupsY",
+        "description": "Number of workgroups on the Y axis."
+      },
+      {
+        "name": "GroupsZ",
+        "description": "Number of workgroups on the Z axis."
+      }
+    ],
+    "returns": "No immediate result; inspect Close before submitting the recording.",
+    "ownership": "Previously bound resources remain retained by the recording; no caller storage is transferred.",
+    "errors": "Invalid work records no native dispatch and latches an error returned by Close and submission until Open or Reset succeeds. Later binds do not repair it.",
+    "threading": "Externally synchronize command-list recording.",
+    "sourceLine": 581
   },
   {
     "id": "api-arda-rhi-iardarhidevice-resizedescriptortable-d9644495",
+    "signature": "virtual FArdaRHIStatus ResizeDescriptorTable(const FArdaRHIDescriptorTableRef& Table, uint32_t NewSize, bool bKeepContents = true) = 0",
     "summary": "Publishes a resized table version without changing previously recorded versions.",
     "details": "Publishes a resized table version without changing previously recorded versions.",
     "params": [
@@ -59601,10 +61552,11 @@ window.ArdaBackendApi = {
     "ownership": "The new version retains its resources; recorded versions independently retain their previous dependencies through submission completion, including removed entries.",
     "errors": "A null, foreign-device or incompatible table is rejected with WrongDevice.",
     "threading": "Table updates and recording snapshots are serialized by the table mutex.",
-    "sourceLine": 1009
+    "sourceLine": 1085
   },
   {
     "id": "api-arda-rhi-iardarhidevice-writedescriptortable-16ff6b67",
+    "signature": "virtual FArdaRHIStatus WriteDescriptorTable(const FArdaRHIDescriptorTableRef& Table, const FArdaRHIBindingItem& Item) = 0",
     "summary": "Replaces one descriptor by publishing a retained table version.",
     "details": "Replaces one descriptor by publishing a retained table version.",
     "params": [
@@ -59621,10 +61573,98 @@ window.ArdaBackendApi = {
     "ownership": "A successful write retains Item.mResource immediately. Recorded versions keep their dependencies when subsequent writes replace entries; submission retains them until its own queue completes. No unsafe-lifetime opt-in is required.",
     "errors": "WrongDevice rejects null/foreign resources and incompatible tables; InvalidArgument rejects undeclared slots or out-of-range array elements.",
     "threading": "Table writes and command-list snapshots are serialized by the table mutex; resource data still needs ordinary GPU barriers and queue ordering.",
-    "sourceLine": 1028
+    "sourceLine": 1104
+  },
+  {
+    "id": "api-arda-rhi-iardarhidevice-updatetexturetilemappings-a7663c27",
+    "signature": "virtual FArdaRHIStatus UpdateTextureTileMappings(const FArdaRHITextureRef& Texture, const eastl::vector<FArdaRHITextureTileMapping>& Mappings, EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) = 0",
+    "summary": "Updates sparse texture mappings, retaining replaced backing until native retirement is proven. Synchronize other-queue accesses before remapping. Vulkan rejects overlapping ranges within one batch and spatial tiles while an opaque prefix is active. CommitReservedResource with zero bytes fully unbinds before a mode switch; explicit opaque mip-tail ranges remain interoperable.",
+    "details": "Updates sparse texture mappings, retaining replaced backing until native retirement is proven. Synchronize other-queue accesses before remapping. Vulkan rejects overlapping ranges within one batch and spatial tiles while an opaque prefix is active. CommitReservedResource with zero bytes fully unbinds before a mode switch; explicit opaque mip-tail ranges remain interoperable.",
+    "params": [
+      {
+        "name": "Texture",
+        "description": "Reserved texture whose mappings are changed."
+      },
+      {
+        "name": "Mappings",
+        "description": "Tile ranges, heap offsets and optional backing heaps; an absent heap unmaps the range."
+      },
+      {
+        "name": "Queue",
+        "description": "Queue on which mapping changes are ordered."
+      }
+    ],
+    "returns": "Admission or native mapping/wait status.",
+    "ownership": "Live ranges retain their heaps; accepted operations retain previous and replacement backing until retirement proof.",
+    "errors": "Pre-submit rejection preserves prior mappings. A recoverable wait/signal failure can follow native acceptance; accepted state remains owned and GC/idle retries retirement.",
+    "threading": "Serialize mapping changes and order all other-queue accesses before remapping.",
+    "sourceLine": 1531
+  },
+  {
+    "id": "api-arda-iardarhidevice-updatebuffertilemappings",
+    "signature": "virtual FArdaRHIStatus UpdateBufferTileMappings(const FArdaRHIBufferRef& Buffer, const eastl::vector<FArdaRHIBufferTileMapping>& Mappings, EArdaRHIQueueType Queue = EArdaRHIQueueType::Copy)",
+    "summary": "Updates sparse buffer mappings, splitting prior range ownership on partial replacement or unmap.",
+    "details": "Updates sparse buffer mappings, splitting prior range ownership on partial replacement or unmap.",
+    "params": [
+      {
+        "name": "Buffer",
+        "description": "Reserved buffer whose mappings are changed."
+      },
+      {
+        "name": "Mappings",
+        "description": "Buffer tile ranges and optional backing heaps."
+      },
+      {
+        "name": "Queue",
+        "description": "Queue on which mapping changes are ordered."
+      }
+    ],
+    "returns": "Admission or native mapping/wait status.",
+    "ownership": "Live mappings and accepted pending work retain their backing heaps until retirement proof.",
+    "errors": "Pre-submit rejection preserves prior mappings. A recoverable wait/signal failure can follow native acceptance; GC/idle retries retirement without freeing live backing.",
+    "threading": "Serialize mapping changes and order all other-queue accesses before remapping.",
+    "sourceLine": 1545
+  },
+  {
+    "id": "api-arda-iardarhidevice-commitreservedresource",
+    "signature": "virtual FArdaRHIStatus CommitReservedResource(const FArdaRHIResourceRef& Resource, uint64_t ByteCount, EArdaRHIQueueType Queue = EArdaRHIQueueType::Copy)",
+    "summary": "Grows or shrinks a reserved resource's committed prefix while preserving still-mapped bytes. Clamp to resource capacity before tile alignment, so UINT64_MAX requests full capacity. Growth fills only missing ranges; shrinking unmaps the suffix. Recommitted, previously unmapped bytes are undefined. Vulkan returns Unsupported for a nonzero opaque image prefix while spatial tiles remain mapped; fully unbind with zero bytes before switching modes. Buffers and explicit opaque mip tails remain interoperable.",
+    "details": "Grows or shrinks a reserved resource's committed prefix while preserving still-mapped bytes. Clamp to resource capacity before tile alignment, so UINT64_MAX requests full capacity. Growth fills only missing ranges; shrinking unmaps the suffix. Recommitted, previously unmapped bytes are undefined. Vulkan returns Unsupported for a nonzero opaque image prefix while spatial tiles remain mapped; fully unbind with zero bytes before switching modes. Buffers and explicit opaque mip tails remain interoperable.",
+    "params": [
+      {
+        "name": "Resource",
+        "description": "Reserved texture or buffer to commit."
+      },
+      {
+        "name": "ByteCount",
+        "description": "Desired prefix byte count; zero fully unbinds and UINT64_MAX requests full capacity."
+      },
+      {
+        "name": "Queue",
+        "description": "Queue on which mapping changes are ordered."
+      }
+    ],
+    "returns": "Admission or native mapping/wait status.",
+    "ownership": "Live mapped ranges retain backing; old and replacement owners survive accepted pending operations until completion or device-loss proof.",
+    "errors": "Pre-submit failure preserves mappings. A post-acceptance wait/signal error returns failure while retaining the accepted mapping; GC/idle retries retirement. Unproven final-shutdown work is quarantined.",
+    "threading": "Serialize mapping changes and synchronize all other-queue accesses before remapping.",
+    "sourceLine": 1564
+  },
+  {
+    "id": "api-arda-iardarhidevice-querystreamingbudget",
+    "signature": "[[nodiscard]] virtual TArdaRHIResult<FArdaRHIStreamingBudget> QueryStreamingBudget(bool = true) const",
+    "summary": "Returns current native streaming budget telemetry. The Boolean selects local memory when true (the default), or non-local memory when false. These observations can change immediately.",
+    "details": "Returns current native streaming budget telemetry. The Boolean selects local memory when true (the default), or non-local memory when false. These observations can change immediately.",
+    "params": [],
+    "returns": "An owned budget snapshot and its query status.",
+    "ownership": "The returned snapshot owns its values and retains no native allocations.",
+    "errors": "Unsupported providers return Unsupported; native query failures return their status.",
+    "threading": "Coordinate with device shutdown; this query establishes no GPU ordering.",
+    "sourceLine": 1578
   },
   {
     "id": "api-arda-iardarhiworkgraphpipeline",
+    "signature": "class IArdaRHIWorkGraphPipeline : public virtual IArdaRHIResource",
     "summary": "Retains the program and reusable backing memory. D3D12 initializes backing memory once, at the first actual submission, with a zero-record dispatch in an additional command list and GPU fence signal. Discarded recordings do not consume initialization. Same-queue reuse may overlap; cross-queue reuse waits on the last outstanding use of this backing memory through a GPU fence, without CPU waits.",
     "details": "Retains the program and reusable backing memory. D3D12 initializes backing memory once, at the first actual submission, with a zero-record dispatch in an additional command list and GPU fence signal. Discarded recordings do not consume initialization. Same-queue reuse may overlap; cross-queue reuse waits on the last outstanding use of this backing memory through a GPU fence, without CPU waits.",
     "params": [],

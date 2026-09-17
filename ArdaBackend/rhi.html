@@ -63,6 +63,8 @@
         <nav class="toc" aria-label="On this page">
           <h2>On this page</h2>
           <a href="#objectives">Learning objectives</a>
+          <a href="#sparse-retirement">Sparse ownership and retirement</a>
+          <a href="#native-admission">Native resource admission</a>
           <a href="#prerequisites">Prerequisites</a>
           <a href="#fundamentals">Storage fundamentals</a>
           <a href="#textures">Textures and subresources</a>
@@ -263,6 +265,21 @@ if (caps.mbTiledTextures &amp;&amp; caps.mbHeaps)
     EnableSparseTextureStreaming(*device);</code></pre>
         </section>
 
+        <section id="native-admission">
+          <h2>Separate descriptor validity from native support</h2>
+          <p>Descriptor validity describes an internally meaningful resource: cube faces are square and grouped by six, mip counts fit the extent, multisampling uses one mip, and CPU upload memory cannot be a GPU-write destination. The shared validators check these rules before allocation, native import and memory-requirement queries. Arda graph uses the same descriptors and reaches the same checks when materializing its automatically planned resources.</p>
+          <p>Native support is a separate question. <a href="api-reference.html#api-arda-fardarhidevicelimits-5433ed57"><code>FArdaRHIDeviceLimits</code></a> reports immutable device limits, and <a href="api-reference.html#api-arda-iardarhidevice-queryformatsupport-d3e518ba"><code>QueryFormatSupport</code></a> reports native format, dimensions, shader/storage/attachment support and sample counts. A zero limit means unreported, never unlimited. Native providers set <code>mbFormatSupportReported</code>; providers that omit the query retain the older portable validation path. On a reporting provider, an unsupported format is rejected before native resource creation. The sample-count mask uses the sample count as its bit value: test <code>support.mSampleCounts &amp; 4u</code> for four samples.</p>
+          <p>For example, first validate a 2D four-sample render target's shape, then query its format's attachment and sample support, then create it and inspect the returned status. Do not infer storage-image support from filterability, or amplification-stage support from a mesh shader. <a href="api-reference.html#api-arda-fardarhicapabilities-supportsmeshshadertier-d96d34ea"><code>SupportsMeshShaderTier</code></a> compares the semantic mesh tier; enum numeric ordering is intentionally not tier ordering. Buffer binding range limits apply to the selected view, not to the entire allocation.</p>
+        </section>
+        <section id="sparse-retirement">
+          <h2>Preserve mapped data and retire replaced backing</h2>
+          <p>A reserved resource owns virtual addresses; heap mappings supply its physical storage. Arda tracks half-open mapped ranges, splitting an old range when only part is replaced or unmapped. A heap remains retained while any live range references it, and retired ownership remains retained while accepted GPU work could still use it. Merely keeping every heap ever mapped would be safe for execution but unbounded for streaming.</p>
+          <p>Consider a four-tile buffer with its first two tiles committed and containing data. Growing the prefix to three tiles allocates only the missing third tile; the first two tiles retain their bytes. Repeating the same request preserves all three. Shrinking to one tile unmaps the suffix; growing again does not restore the discarded bytes. The prefix request is clamped before alignment, so <code>UINT64_MAX</code> means full capacity without integer wraparound.</p>
+          <p><a href="api-reference.html#api-arda-rhi-iardarhidevice-updatetexturetilemappings-a7663c27"><code>UpdateTextureTileMappings</code></a>, <a href="api-reference.html#api-arda-iardarhidevice-updatebuffertilemappings"><code>UpdateBufferTileMappings</code></a> and <a href="api-reference.html#api-arda-iardarhidevice-commitreservedresource"><code>CommitReservedResource</code></a> use the same ownership map. Synchronize other queues before changing mappings; range ownership does not replace GPU ordering. Pre-submit validation or native rejection leaves the old mapping intact. After Vulkan accepts a bind, a recoverable wait error reports failure while retaining the accepted new mapping and the old in-flight ownership. Run garbage collection or wait for idle later to retire it once completion is known. Never free pending memory merely because a wait reported out-of-memory.</p>
+          <p>Resources also retain a device-generation identity. A stale resource cannot become valid on a replacement device just because its facade uses the same address. Command lists strongly retain the facade device; other cached resources retain the generation token without introducing device-reference cycles.</p>
+          <p>Vulkan cannot translate an opaque image-prefix byte offset into a spatial tile coordinate. A nonzero prefix commit therefore returns <code>Unsupported</code> while spatial tiles are mapped; spatial tile mapping returns <code>Unsupported</code> while an opaque prefix is active. Fully unbind with <code>CommitReservedResource(0)</code> before switching modes. Explicit opaque mip-tail ranges have known byte offsets and remain interoperable. Buffer mappings do not have this restriction.</p>
+          <p><strong>Checkpoint:</strong> after unmapping half of a heap's tiles, what two independent reasons can keep that heap alive? See <a href="Gpu-Allocator.md">allocator accounting</a> and <a href="diagnostics.html#fault-snapshots">failure snapshots</a>.</p>
+        </section>
         <section id="worked-example">
           <p>The <a href="resource-recipes.html">resource recipe chapter</a> covers every resource kind, including heaps, queries, all pipeline families, shader tables and native specialized resources. Each recipe links the complete compiled workload and its canonical API contract.</p>
           <h2>Worked example: offscreen color with mip-specific views</h2>

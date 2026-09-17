@@ -866,6 +866,7 @@
 <li><a href="#api-arda-iardaprovidercommandlist-commitbarriers-f4b21963">arda::IArdaProviderCommandList::CommitBarriers <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardaprovidercommandlist-compactaccelstruct-c5a4ef63">arda::IArdaProviderCommandList::CompactAccelStruct <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardaprovidercommandlist-compactopacitymicromap-8abbf77f">arda::IArdaProviderCommandList::CompactOpacityMicromap <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardaprovidercommandlist-copyaccelstruct-9c9e8cae">arda::IArdaProviderCommandList::CopyAccelStruct <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardaprovidercommandlist-copybuffer-1bb372e1">arda::IArdaProviderCommandList::CopyBuffer <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardaprovidercommandlist-copybuffertotexture-1266cedf">arda::IArdaProviderCommandList::CopyBufferToTexture <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardaprovidercommandlist-copytexture-6183ffe0">arda::IArdaProviderCommandList::CopyTexture <span class="api-kind">method</span></a></li>
@@ -935,6 +936,7 @@
 <li><a href="#api-arda-rhi-iardarhicommandlist-commitbarriers-86e2d913">arda::IArdaRHICommandList::CommitBarriers <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhicommandlist-compactaccelstruct">arda::IArdaRHICommandList::CompactAccelStruct <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rhi-iardarhicommandlist-compactopacitymicromap-4d866ac1">arda::IArdaRHICommandList::CompactOpacityMicromap <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardarhicommandlist-copyaccelstruct-e4d84800">arda::IArdaRHICommandList::CopyAccelStruct <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rhi-iardarhicommandlist-copybuffer-a543715e">arda::IArdaRHICommandList::CopyBuffer <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhicommandlist-copybufferdevicetohost-034ed7d3">arda::IArdaRHICommandList::CopyBufferDeviceToHost <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhicommandlist-copybufferdevicetohostasync-2cdef6fb">arda::IArdaRHICommandList::CopyBufferDeviceToHostAsync <span class="api-kind">method</span></a></li>
@@ -992,6 +994,7 @@
 <li><a href="#api-arda-rhi-iardarhidevice-bindaccelstructmemory-7ed7fa25">arda::IArdaRHIDevice::BindAccelStructMemory <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rhi-iardarhidevice-bindbuffermemory-a2ab8a09">arda::IArdaRHIDevice::BindBufferMemory <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rhi-iardarhidevice-bindtexturememory-784afaa1">arda::IArdaRHIDevice::BindTextureMemory <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardarhidevice-capturediagnosticsnapshot-714e4fa8">arda::IArdaRHIDevice::CaptureDiagnosticSnapshot <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhidevice-checkfeaturesupport">arda::IArdaRHIDevice::CheckFeatureSupport <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhidevice-commitreservedresource">arda::IArdaRHIDevice::CommitReservedResource <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhidevice-commitshadertable">arda::IArdaRHIDevice::CommitShaderTable <span class="api-kind">method</span></a></li>
@@ -1058,6 +1061,7 @@
 <li><a href="#api-arda-rhi-iardarhidevice-polltimerquery-4b588c58">arda::IArdaRHIDevice::PollTimerQuery <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhidevice-querybuffermemoryrequirements-48a3cebc">arda::IArdaRHIDevice::QueryBufferMemoryRequirements <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rhi-iardarhidevice-querycustompresentsupport-2d9754fe">arda::IArdaRHIDevice::QueryCustomPresentSupport <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardarhidevice-queryformatsupport-d3e518ba">arda::IArdaRHIDevice::QueryFormatSupport <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rhi-iardarhidevice-queryshaderbundlesupport-96197c98">arda::IArdaRHIDevice::QueryShaderBundleSupport <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-rhi-iardarhidevice-querystreamsourcesupport-ee0dd1dc">arda::IArdaRHIDevice::QueryStreamSourceSupport <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhidevice-querystreamingbudget">arda::IArdaRHIDevice::QueryStreamingBudget <span class="api-kind">method</span></a></li>
@@ -1096,6 +1100,7 @@
 <li><a href="#api-arda-iardarhiproviderdevice-canreusebuffer-18ba04f9">arda::IArdaRHIProviderDevice::CanReuseBuffer <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhiproviderdevice-canreusebufferforqueue-7c8495f2">arda::IArdaRHIProviderDevice::CanReuseBufferForQueue <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhiproviderdevice-canreusetexture-2d123463">arda::IArdaRHIProviderDevice::CanReuseTexture <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardarhiproviderdevice-capturediagnosticsnapshot-eaa8b418">arda::IArdaRHIProviderDevice::CaptureDiagnosticSnapshot <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhiproviderdevice-commitreservedresource-6977a80a">arda::IArdaRHIProviderDevice::CommitReservedResource <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhiproviderdevice-commitshadertable-3f7946ea">arda::IArdaRHIProviderDevice::CommitShaderTable <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhiproviderdevice-createaccelstruct-d5e0a515">arda::IArdaRHIProviderDevice::CreateAccelStruct <span class="api-kind">method</span></a></li>
@@ -1146,6 +1151,7 @@
 <li><a href="#api-arda-iardarhiproviderdevice-pollsubmission-92ffdb62">arda::IArdaRHIProviderDevice::PollSubmission <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhiproviderdevice-polltimerquery-625263a7">arda::IArdaRHIProviderDevice::PollTimerQuery <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhiproviderdevice-querybuffermemoryrequirements-e87e31a6">arda::IArdaRHIProviderDevice::QueryBufferMemoryRequirements <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-iardarhiproviderdevice-queryformatsupport-625f21c0">arda::IArdaRHIProviderDevice::QueryFormatSupport <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhiproviderdevice-querystreamingbudget-763ebaa3">arda::IArdaRHIProviderDevice::QueryStreamingBudget <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhiproviderdevice-querytexturememoryrequirements-8ca6d8dd">arda::IArdaRHIProviderDevice::QueryTextureMemoryRequirements <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-iardarhiproviderdevice-queuewait-b756438c">arda::IArdaRHIProviderDevice::QueueWait <span class="api-kind">method</span></a></li>
@@ -1265,6 +1271,7 @@
 <li><a href="#api-arda-rhi-iardarhiunorderedaccessview-3deb7c6f">arda::IArdaRHIUnorderedAccessView <span class="api-kind">class</span></a></li>
 <li><a href="#api-arda-iardarhiworkgraphpipeline">arda::IArdaRHIWorkGraphPipeline <span class="api-kind">class</span></a></li>
 <li><a href="#api-arda-rhi-tardarhiref-b3e2cfff">arda::TArdaRHIRef <span class="api-kind">class</span></a></li>
+<li><a href="#api-arda-ardarhimaxdiagnosticentries-9ad98742">arda::ArdaRHIMaxDiagnosticEntries <span class="api-kind">constant</span></a></li>
 <li><a href="#api-arda-fardacudagraphcache-fardacudagraphcache-3e3676f5">arda::FArdaCudaGraphCache::FArdaCudaGraphCache <span class="api-kind">constructor</span></a></li>
 <li><a href="#api-arda-rhi-tardarhiref-tardarhiref-c070b830">arda::TArdaRHIRef::TArdaRHIRef <span class="api-kind">constructor</span></a></li>
 <li><a href="#api-arda-rhi-tardarhiref-tardarhiref-b398cda5">arda::TArdaRHIRef::TArdaRHIRef <span class="api-kind">constructor</span></a></li>
@@ -1391,6 +1398,7 @@
 <li><a href="#api-arda-rhi-validate-a89292eb">arda::Validate <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-rhi-validate-8691d7a5">arda::Validate <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-rhi-validate-0dad5b15">arda::Validate <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-validate-9ca97d1c">arda::Validate <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-validateardacudabuffer-dcddcda3">arda::ValidateArdaCudaBuffer <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-validateardacudakernelbatch-4faaf91a">arda::ValidateArdaCudaKernelBatch <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-validateardacudakernels-a5864f6f">arda::ValidateArdaCudaKernels <span class="api-kind">function</span></a></li>
@@ -1514,6 +1522,19 @@
 <li><a href="#api-arda-rhi-fardarhicomputepipelinedesc-mpersistentcachekey-51a84fcf">arda::FArdaRHIComputePipelineDesc::mPersistentCacheKey <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhicomputestate-mbindings-5e3458b1">arda::FArdaRHIComputeState::mBindings <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhicomputestate-mpipeline-aa37706e">arda::FArdaRHIComputeState::mPipeline <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-madaptername-f220bbd5">arda::FArdaRHIDiagnosticSnapshot::mAdapterName <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-mbackendname-7c73bc3a">arda::FArdaRHIDiagnosticSnapshot::mBackendName <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-mbreadcrumbs-028196da">arda::FArdaRHIDiagnosticSnapshot::mBreadcrumbs <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-mdevicestatus-66ef4e70">arda::FArdaRHIDiagnosticSnapshot::mDeviceStatus <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-mdriverversion-36f4c3bc">arda::FArdaRHIDiagnosticSnapshot::mDriverVersion <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-mfaults-d29ab267">arda::FArdaRHIDiagnosticSnapshot::mFaults <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-mmessages-816f1eb8">arda::FArdaRHIDiagnosticSnapshot::mMessages <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-mnativeerrorcode-aca09dd5">arda::FArdaRHIDiagnosticSnapshot::mNativeErrorCode <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-mqueues-e70322e5">arda::FArdaRHIDiagnosticSnapshot::mQueues <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-mbnativefaultdataavailable-2d8abadb">arda::FArdaRHIDiagnosticSnapshot::mbNativeFaultDataAvailable <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-mbtruncated-e607fe16">arda::FArdaRHIDiagnosticSnapshot::mbTruncated <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhifaultdiagnostic-maddress-a8442cb4">arda::FArdaRHIFaultDiagnostic::mAddress <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhifaultdiagnostic-mdescription-19002d41">arda::FArdaRHIFaultDiagnostic::mDescription <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiframebufferdesc-mcolorattachments-166a95b4">arda::FArdaRHIFramebufferDesc::mColorAttachments <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiframebufferdesc-mdebugname-f969edaa">arda::FArdaRHIFramebufferDesc::mDebugName <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiframebufferdesc-mdepthattachment-b4959bcf">arda::FArdaRHIFramebufferDesc::mDepthAttachment <span class="api-kind">member variable</span></a></li>
@@ -1589,6 +1610,10 @@
 <li><a href="#api-arda-rhi-fardarhiopacitymicromapusagecount-mcount-8b0f3a52">arda::FArdaRHIOpacityMicromapUsageCount::mCount <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiopacitymicromapusagecount-mformat-fbb027cf">arda::FArdaRHIOpacityMicromapUsageCount::mFormat <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiopacitymicromapusagecount-msubdivisionlevel-9ff10d24">arda::FArdaRHIOpacityMicromapUsageCount::mSubdivisionLevel <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiqueuediagnostic-mlastcompleted-2c8a1fa9">arda::FArdaRHIQueueDiagnostic::mLastCompleted <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiqueuediagnostic-mlastsubmitted-89f713b7">arda::FArdaRHIQueueDiagnostic::mLastSubmitted <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiqueuediagnostic-mqueue-323c9707">arda::FArdaRHIQueueDiagnostic::mQueue <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiqueuediagnostic-mbcompletedvalueknown-7f3af9b9">arda::FArdaRHIQueueDiagnostic::mbCompletedValueKnown <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiraytracinggeometrydesc-mflags-d6a126e1">arda::FArdaRHIRayTracingGeometryDesc::mFlags <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiraytracinggeometrydesc-mindexbuffer-d9619150">arda::FArdaRHIRayTracingGeometryDesc::mIndexBuffer <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiraytracinggeometrydesc-mindexcount-5dab14a2">arda::FArdaRHIRayTracingGeometryDesc::mIndexCount <span class="api-kind">member variable</span></a></li>
@@ -1826,6 +1851,8 @@
 <li><a href="#api-arda-fardarhibuffertilemapping">arda::FArdaRHIBufferTileMapping <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhicomputepipelinedesc-698735b5">arda::FArdaRHIComputePipelineDesc <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhicomputestate-e1f56cfa">arda::FArdaRHIComputeState <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardarhidiagnosticsnapshot-b3c772c0">arda::FArdaRHIDiagnosticSnapshot <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardarhifaultdiagnostic-a3a047d2">arda::FArdaRHIFaultDiagnostic <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiframebufferdesc-eedce2f9">arda::FArdaRHIFramebufferDesc <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiframebuffertarget-a58e5532">arda::FArdaRHIFramebufferTarget <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhigraphicspipelinedesc-e352046e">arda::FArdaRHIGraphicsPipelineDesc <span class="api-kind">struct</span></a></li>
@@ -1837,6 +1864,7 @@
 <li><a href="#api-arda-rhi-fardarhimeshletstate-1509c015">arda::FArdaRHIMeshletState <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiopacitymicromapdesc-f7ce8bf2">arda::FArdaRHIOpacityMicromapDesc <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiopacitymicromapusagecount-652cd60b">arda::FArdaRHIOpacityMicromapUsageCount <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardarhiqueuediagnostic-6fca1013">arda::FArdaRHIQueueDiagnostic <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiraytracinggeometrydesc-b330f0c8">arda::FArdaRHIRayTracingGeometryDesc <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiraytracinghitgroupdesc-88ad601c">arda::FArdaRHIRayTracingHitGroupDesc <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiraytracinginstancedesc-39d67eac">arda::FArdaRHIRayTracingInstanceDesc <span class="api-kind">struct</span></a></li>
@@ -2079,6 +2107,7 @@
 <li><a href="#api-arda-rhi-eardarhiheaptype-readback-51a51aeb">arda::EArdaRHIHeapType::Readback <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhiheaptype-upload-8bdf057f">arda::EArdaRHIHeapType::Upload <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-eardarhimeshshadertier-meshandamplificationshaders-2006f81a">arda::EArdaRHIMeshShaderTier::MeshAndAmplificationShaders <span class="api-kind">enumerator</span></a></li>
+<li><a href="#api-arda-eardarhimeshshadertier-meshshadersonly-33522de2">arda::EArdaRHIMeshShaderTier::MeshShadersOnly <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-eardarhimeshshadertier-none-9276078d">arda::EArdaRHIMeshShaderTier::None <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhinativeownership-borrowed-50d58ef5">arda::EArdaRHINativeOwnership::Borrowed <span class="api-kind">enumerator</span></a></li>
 <li><a href="#api-arda-rhi-eardarhinativeownership-transferred-f76d1e2a">arda::EArdaRHINativeOwnership::Transferred <span class="api-kind">enumerator</span></a></li>
@@ -2217,7 +2246,9 @@
 <li><a href="#api-arda-rhi-getardarhiformatinfo-6387cf5e">arda::GetArdaRHIFormatInfo <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-getardarhiformatplanecount-b18155e4">arda::GetArdaRHIFormatPlaneCount <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-getardarhiqueueindex-1c30667b">arda::GetArdaRHIQueueIndex <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-getardarhitexturebufferfootprint-34db2ee4">arda::GetArdaRHITextureBufferFootprint <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-getardarhitexturemipextent-5682a136">arda::GetArdaRHITextureMipExtent <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-getardarhivertexformatalignment-fc4d02b0">arda::GetArdaRHIVertexFormatAlignment <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-rhi-hasanyflags-82c55209">arda::HasAnyFlags <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-rhi-hasanyflags-59f8c1d4">arda::HasAnyFlags <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-rhi-hasanyflags-da2b626c">arda::HasAnyFlags <span class="api-kind">function</span></a></li>
@@ -2240,6 +2271,8 @@
 <li><a href="#api-arda-rhi-hashvalue-dda68551">arda::HashValue <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-isardarhiformatknown-63eb8305">arda::IsArdaRHIFormatKnown <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-isardarhiraytracingshaderstage-ad69a256">arda::IsArdaRHIRayTracingShaderStage <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-isardarhitextureviewformatcompatible-2b1f0724">arda::IsArdaRHITextureViewFormatCompatible <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-resolveardarhiframebufferattachment-408dc801">arda::ResolveArdaRHIFramebufferAttachment <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-resolveardarhitexturecopyextent-6c622bd2">arda::ResolveArdaRHITextureCopyExtent <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-rhi-validate-ef3e9349">arda::Validate <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-rhi-validate-129fddb8">arda::Validate <span class="api-kind">function</span></a></li>
@@ -2249,6 +2282,8 @@
 <li><a href="#api-arda-rhi-validate-90ed40c8">arda::Validate <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-validateardarhitexturebuffercopy-31643e1a">arda::ValidateArdaRHITextureBufferCopy <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-validateardarhitextureresolve-32075b12">arda::ValidateArdaRHITextureResolve <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-validateresourcecapabilities-8f5df282">arda::ValidateResourceCapabilities <span class="api-kind">function</span></a></li>
+<li><a href="#api-arda-validateresourcecapabilities-d3d08ad9">arda::ValidateResourceCapabilities <span class="api-kind">function</span></a></li>
 <li><a href="#api-arda-rhi-fardarhibindinglayoutdesc-mdebugname-f969edaa">arda::FArdaRHIBindingLayoutDesc::mDebugName <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhibindinglayoutdesc-mitems-6cb49913">arda::FArdaRHIBindingLayoutDesc::mItems <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhibindinglayoutdesc-mregisterspace-23fae859">arda::FArdaRHIBindingLayoutDesc::mRegisterSpace <span class="api-kind">member variable</span></a></li>
@@ -2288,6 +2323,7 @@
 <li><a href="#api-arda-fardarhibuffertransitiondesc-mbqueueownershiptransfer-a033b233">arda::FArdaRHIBufferTransitionDesc::mbQueueOwnershipTransfer <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mdescriptors">arda::FArdaRHICapabilities::mDescriptors <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mheapallocationalignment-f1a4ec17">arda::FArdaRHICapabilities::mHeapAllocationAlignment <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhicapabilities-mlimits-22ec6cc3">arda::FArdaRHICapabilities::mLimits <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mmachinelearning">arda::FArdaRHICapabilities::mMachineLearning <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mmeshshadertier">arda::FArdaRHICapabilities::mMeshShaderTier <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mqueues">arda::FArdaRHICapabilities::mQueues <span class="api-kind">member variable</span></a></li>
@@ -2296,7 +2332,9 @@
 <li><a href="#api-arda-fardarhicapabilities-msamplerfeedbacktier">arda::FArdaRHICapabilities::mSamplerFeedbackTier <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mworkgraphtier">arda::FArdaRHICapabilities::mWorkGraphTier <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mbcustompresent">arda::FArdaRHICapabilities::mbCustomPresent <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhicapabilities-mbformatsupportreported-16eaf570">arda::FArdaRHICapabilities::mbFormatSupportReported <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mbgeometryshaders-8f32fa5f">arda::FArdaRHICapabilities::mbGeometryShaders <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhicapabilities-mbindirectfirstinstance-2f8dbdf6">arda::FArdaRHICapabilities::mbIndirectFirstInstance <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mbqueries-0e79f55a">arda::FArdaRHICapabilities::mbQueries <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mbresourcecollections">arda::FArdaRHICapabilities::mbResourceCollections <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-mbshaderbundledispatch">arda::FArdaRHICapabilities::mbShaderBundleDispatch <span class="api-kind">member variable</span></a></li>
@@ -2322,6 +2360,26 @@
 <li><a href="#api-arda-fardarhidescriptorcapabilities-mbupdateafterbind">arda::FArdaRHIDescriptorCapabilities::mbUpdateAfterBind <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhidescriptorcapabilities-mbupdateunusedwhilepending">arda::FArdaRHIDescriptorCapabilities::mbUpdateUnusedWhilePending <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhidescriptorcapabilities-mbvariabledescriptorcount">arda::FArdaRHIDescriptorCapabilities::mbVariableDescriptorCount <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxbuffersize-fdfe4930">arda::FArdaRHIDeviceLimits::mMaxBufferSize <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxcolorattachments-cae339a2">arda::FArdaRHIDeviceLimits::mMaxColorAttachments <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxcomputeworkgroupcount-025cc631">arda::FArdaRHIDeviceLimits::mMaxComputeWorkGroupCount <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxcomputeworkgroupinvocations-d5a5855e">arda::FArdaRHIDeviceLimits::mMaxComputeWorkGroupInvocations <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxcomputeworkgroupsize-693c7af0">arda::FArdaRHIDeviceLimits::mMaxComputeWorkGroupSize <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxstoragebufferrange-a09b1eca">arda::FArdaRHIDeviceLimits::mMaxStorageBufferRange <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxtexture1d-86a9cc36">arda::FArdaRHIDeviceLimits::mMaxTexture1D <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxtexture2d-7047c4b7">arda::FArdaRHIDeviceLimits::mMaxTexture2D <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxtexture3d-d380f772">arda::FArdaRHIDeviceLimits::mMaxTexture3D <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxtexturearraylayers-f5728463">arda::FArdaRHIDeviceLimits::mMaxTextureArrayLayers <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxtexturecube-91fca383">arda::FArdaRHIDeviceLimits::mMaxTextureCube <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxuniformbufferrange-fd76abb5">arda::FArdaRHIDeviceLimits::mMaxUniformBufferRange <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxvertexattributes-dde74a66">arda::FArdaRHIDeviceLimits::mMaxVertexAttributes <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxvertexbindings-f58c7dda">arda::FArdaRHIDeviceLimits::mMaxVertexBindings <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxvertexstride-61f05fa8">arda::FArdaRHIDeviceLimits::mMaxVertexStride <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxviewportdimensions-7f56528c">arda::FArdaRHIDeviceLimits::mMaxViewportDimensions <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mmaxviewports-9bd15b50">arda::FArdaRHIDeviceLimits::mMaxViewports <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mminstoragebufferoffsetalignment-5c6ddc1c">arda::FArdaRHIDeviceLimits::mMinStorageBufferOffsetAlignment <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mminuniformbufferoffsetalignment-9d51960a">arda::FArdaRHIDeviceLimits::mMinUniformBufferOffsetAlignment <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-mviewportbounds-64a2db31">arda::FArdaRHIDeviceLimits::mViewportBounds <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhidrawarguments-minstancecount-adb29897">arda::FArdaRHIDrawArguments::mInstanceCount <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhidrawarguments-mstartindex-bdb40188">arda::FArdaRHIDrawArguments::mStartIndex <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhidrawarguments-mstartinstance-7edcf7dd">arda::FArdaRHIDrawArguments::mStartInstance <span class="api-kind">member variable</span></a></li>
@@ -2367,6 +2425,7 @@
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequirehardwareraytracing">arda::FArdaRHIFeatureRequirements::mbRequireHardwareRayTracing <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequireheaps-37e14151">arda::FArdaRHIFeatureRequirements::mbRequireHeaps <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequireindirectcommands-1c0cb945">arda::FArdaRHIFeatureRequirements::mbRequireIndirectCommands <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhifeaturerequirements-mbrequireindirectfirstinstance-02361bd4">arda::FArdaRHIFeatureRequirements::mbRequireIndirectFirstInstance <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequireindirectraydispatch">arda::FArdaRHIFeatureRequirements::mbRequireIndirectRayDispatch <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequireindirecttoplevelbuild-42957834">arda::FArdaRHIFeatureRequirements::mbRequireIndirectTopLevelBuild <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements-mbrequireinlinerayqueries-044a19e0">arda::FArdaRHIFeatureRequirements::mbRequireInlineRayQueries <span class="api-kind">member variable</span></a></li>
@@ -2415,6 +2474,23 @@
 <li><a href="#api-arda-rhi-fardarhiformatinfo-mbdepth-ea214ce9">arda::FArdaRHIFormatInfo::mbDepth <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiformatinfo-mbinteger-28775a85">arda::FArdaRHIFormatInfo::mbInteger <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiformatinfo-mbstencil-76bc51d5">arda::FArdaRHIFormatInfo::mbStencil <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mnativeformat-e213d026">arda::FArdaRHIFormatSupport::mNativeFormat <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-msamplecounts-a57992ea">arda::FArdaRHIFormatSupport::mSampleCounts <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbblendable-6099da76">arda::FArdaRHIFormatSupport::mbBlendable <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbbuffershaderresource-721b9a01">arda::FArdaRHIFormatSupport::mbBufferShaderResource <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbbufferstorage-4852d31b">arda::FArdaRHIFormatSupport::mbBufferStorage <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbcolorattachment-e217b34c">arda::FArdaRHIFormatSupport::mbColorAttachment <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbdepthstencilattachment-5f20be7e">arda::FArdaRHIFormatSupport::mbDepthStencilAttachment <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbfilterable-9205d5df">arda::FArdaRHIFormatSupport::mbFilterable <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbshaderresource-cc52df18">arda::FArdaRHIFormatSupport::mbShaderResource <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbstorage-18c8fc2e">arda::FArdaRHIFormatSupport::mbStorage <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbstorageload-45ab9d75">arda::FArdaRHIFormatSupport::mbStorageLoad <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbstoragestore-88b49d35">arda::FArdaRHIFormatSupport::mbStorageStore <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbtexture1d-fd1ce135">arda::FArdaRHIFormatSupport::mbTexture1D <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbtexture2d-cf4703a3">arda::FArdaRHIFormatSupport::mbTexture2D <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbtexture3d-f345b02f">arda::FArdaRHIFormatSupport::mbTexture3D <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbtexturecube-242bb102">arda::FArdaRHIFormatSupport::mbTextureCube <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-mbvertexbuffer-0c7338ad">arda::FArdaRHIFormatSupport::mbVertexBuffer <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiframebufferattachment-mformat-6f5ad088">arda::FArdaRHIFramebufferAttachment::mFormat <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiframebufferattachment-msubresources-28a02151">arda::FArdaRHIFramebufferAttachment::mSubresources <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiframebufferattachment-mbreadonly-3d1949d7">arda::FArdaRHIFramebufferAttachment::mbReadOnly <span class="api-kind">member variable</span></a></li>
@@ -2539,6 +2615,11 @@
 <li><a href="#api-arda-rhi-fardarhisubresourcetiling-mheightintiles-2d67a941">arda::FArdaRHISubresourceTiling::mHeightInTiles <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhisubresourcetiling-mstarttileindex-44b3f70c">arda::FArdaRHISubresourceTiling::mStartTileIndex <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-rhi-fardarhisubresourcetiling-mwidthintiles-35f3572d">arda::FArdaRHISubresourceTiling::mWidthInTiles <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhitexturebufferfootprint-mbytesize-62e37917">arda::FArdaRHITextureBufferFootprint::mByteSize <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhitexturebufferfootprint-mextent-ccab58d8">arda::FArdaRHITextureBufferFootprint::mExtent <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhitexturebufferfootprint-mlayout-be86bf47">arda::FArdaRHITextureBufferFootprint::mLayout <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhitexturebufferfootprint-mrowbytes-7af92180">arda::FArdaRHITextureBufferFootprint::mRowBytes <span class="api-kind">member variable</span></a></li>
+<li><a href="#api-arda-fardarhitexturebufferfootprint-mrowcount-46ff0456">arda::FArdaRHITextureBufferFootprint::mRowCount <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhitexturebufferlayout-mbyteoffset-ea3dc2c3">arda::FArdaRHITextureBufferLayout::mByteOffset <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhitexturebufferlayout-mrowpitch-f824ee63">arda::FArdaRHITextureBufferLayout::mRowPitch <span class="api-kind">member variable</span></a></li>
 <li><a href="#api-arda-fardarhitexturecopyextent-mdepth-02b0e101">arda::FArdaRHITextureCopyExtent::mDepth <span class="api-kind">member variable</span></a></li>
@@ -2622,6 +2703,7 @@
 <li><a href="#api-arda-fardarhicapabilities-evaluate-8ea63efe">arda::FArdaRHICapabilities::Evaluate <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-finalizecompatibilityflags">arda::FArdaRHICapabilities::FinalizeCompatibilityFlags <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardarhicapabilities-isqueuesupported-91c5c25f">arda::FArdaRHICapabilities::IsQueueSupported <span class="api-kind">method</span></a></li>
+<li><a href="#api-arda-fardarhicapabilities-supportsmeshshadertier-d96d34ea">arda::FArdaRHICapabilities::SupportsMeshShaderTier <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardarhifeaturesupportreport-issupported">arda::FArdaRHIFeatureSupportReport::IsSupported <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardarhifeaturesupportreport-tostatus">arda::FArdaRHIFeatureSupportReport::ToStatus <span class="api-kind">method</span></a></li>
 <li><a href="#api-arda-fardarhiqueuecapabilities-getfamily-d3d3c06e">arda::FArdaRHIQueueCapabilities::GetFamily <span class="api-kind">method</span></a></li>
@@ -2689,10 +2771,12 @@
 <li><a href="#api-arda-rhi-fardarhicolor-41ee238f">arda::FArdaRHIColor <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhidepthstencilstate-a62567b9">arda::FArdaRHIDepthStencilState <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-fardarhidescriptorcapabilities">arda::FArdaRHIDescriptorCapabilities <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardarhidevicelimits-5433ed57">arda::FArdaRHIDeviceLimits <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhidrawarguments-755341a9">arda::FArdaRHIDrawArguments <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-fardarhifeaturerequirements">arda::FArdaRHIFeatureRequirements <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-fardarhifeaturesupportreport">arda::FArdaRHIFeatureSupportReport <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiformatinfo-4d16c4a8">arda::FArdaRHIFormatInfo <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardarhiformatsupport-1483e8e4">arda::FArdaRHIFormatSupport <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhiframebufferattachment-2841e639">arda::FArdaRHIFramebufferAttachment <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-fardarhimachinelearningcapabilities">arda::FArdaRHIMachineLearningCapabilities <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhimemoryrequirements-3825a11e">arda::FArdaRHIMemoryRequirements <span class="api-kind">struct</span></a></li>
@@ -2712,6 +2796,7 @@
 <li><a href="#api-arda-rhi-fardarhishaderdesc-647dc39c">arda::FArdaRHIShaderDesc <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhistatus-a19f9625">arda::FArdaRHIStatus <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhisubresourcetiling-db59c8e1">arda::FArdaRHISubresourceTiling <span class="api-kind">struct</span></a></li>
+<li><a href="#api-arda-fardarhitexturebufferfootprint-779d38bd">arda::FArdaRHITextureBufferFootprint <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-fardarhitexturebufferlayout-1180d1e7">arda::FArdaRHITextureBufferLayout <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-fardarhitexturecopyextent-31d7cec6">arda::FArdaRHITextureCopyExtent <span class="api-kind">struct</span></a></li>
 <li><a href="#api-arda-rhi-fardarhitexturedesc-719fb8a3">arda::FArdaRHITextureDesc <span class="api-kind">struct</span></a></li>
@@ -9197,6 +9282,14 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-iardaprovidercommandlist-copyaccelstruct-9c9e8cae" tabindex="-1"><h5>arda::IArdaProviderCommandList::CopyAccelStruct</h5><pre><code>virtual FArdaRHIStatus CopyAccelStruct(const FArdaProviderObjectRef&amp;, const FArdaProviderObjectRef&amp;)</code></pre><p>Native same-kind acceleration-structure clone; facade validates source state and capacity.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-iardaprovidercommandlist-copybuffer-1bb372e1" tabindex="-1"><h5>arda::IArdaProviderCommandList::CopyBuffer</h5><pre><code>virtual FArdaRHIStatus CopyBuffer(const FArdaProviderObjectRef&amp; Destination, uint64_t DestinationOffset, const FArdaProviderObjectRef&amp; Source, uint64_t SourceOffset, uint64_t Size) = 0</code></pre><p>Performs copy buffer through the public backend and RHI contract.</p>
 <p>Performs copy buffer through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
@@ -9813,12 +9906,12 @@
 <dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-close-0ffddad9" tabindex="-1"><h5>arda::IArdaRHICommandList::Close</h5><pre><code>virtual FArdaRHIStatus Close() = 0</code></pre><p>Performs the close operation.</p>
-<p>Performs the close operation.  This controls the recording lifecycle: Open begins recording, Close finalizes it for submission, and Reset discards a previous closed recording before reuse. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects.</p>
+<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-close-0ffddad9" tabindex="-1"><h5>arda::IArdaRHICommandList::Close</h5><pre><code>virtual FArdaRHIStatus Close() = 0</code></pre><p>Finalizes an open recording and returns any retained recording error. A successful close permits submission but proves neither GPU execution nor completion.</p>
 <dl>
-<dt>Returns</dt><dd>A status describing whether the operation succeeded.</dd>
-<dt>Errors</dt><dd>Failure is returned as EArdaRHIResult and diagnostic text; callers must inspect the status.</dd>
-<dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
+<dt>Returns</dt><dd>The first latched recording error, or the native close status.</dd>
+<dt>Ownership</dt><dd>Closing preserves objects referenced by the recording; submission establishes their pending lifetime.</dd>
+<dt>Errors</dt><dd>Closing a non-open list returns InvalidState. Invalid void work and native binding failures prevent successful submission until Open or Reset succeeds.</dd>
+<dt>Threading</dt><dd>Externally synchronize access to this command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhicommandlist-commitbarriers-86e2d913" tabindex="-1"><h5>arda::IArdaRHICommandList::CommitBarriers</h5><pre><code>virtual void CommitBarriers() = 0</code></pre><p>Performs the commit barriers operation.</p>
@@ -9845,6 +9938,14 @@
 <dt>Ownership</dt><dd>Both references are non-owning call arguments; recorded native work retains the resources through submission.</dd>
 <dt>Errors</dt><dd>Returns Unsupported, WrongDevice, InvalidArgument, InvalidState, or BackendFailure as appropriate.</dd>
 <dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardarhicommandlist-copyaccelstruct-e4d84800" tabindex="-1"><h5>arda::IArdaRHICommandList::CopyAccelStruct</h5><pre><code>virtual FArdaRHIStatus CopyAccelStruct(IArdaRHIAccelStruct&amp;, IArdaRHIAccelStruct&amp;)</code></pre><p>Clones a built BLAS or TLAS into a distinct same-kind destination with matching build flags and at least the source result allocation size. Preserves built/updated/compacted state; referenced BLAS addresses are unchanged. Requires a graphics or compute command list.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhicommandlist-copybuffer-a543715e" tabindex="-1"><h5>arda::IArdaRHICommandList::CopyBuffer</h5><pre><code>virtual FArdaRHIStatus CopyBuffer(IArdaRHIBuffer&amp; Destination, uint64_t DestinationOffset, IArdaRHIBuffer&amp; Source, uint64_t SourceOffset, uint64_t Size) = 0</code></pre><p>Performs the copy buffer operation.</p>
@@ -9959,14 +10060,15 @@
 <dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-dispatch-bd749b8e" tabindex="-1"><h5>arda::IArdaRHICommandList::Dispatch</h5><pre><code>virtual void Dispatch(uint32_t GroupsX, uint32_t GroupsY = 1, uint32_t GroupsZ = 1) = 0</code></pre><p>Performs the dispatch operation.</p>
-<p>Performs the dispatch operation.  This records GPU work using the currently bound compatible pipeline, bindings, and state on an open command list. Implementations must provide this pure virtual operation with the declared result and lifetime semantics.</p>
+<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-dispatch-bd749b8e" tabindex="-1"><h5>arda::IArdaRHICommandList::Dispatch</h5><pre><code>virtual void Dispatch(uint32_t GroupsX, uint32_t GroupsY = 1, uint32_t GroupsZ = 1) = 0</code></pre><p>Dispatches the most recently bound compute pipeline on an open graphics or compute list. Group counts must fit the reported device limits. Any zero axis performs no work after state and limit validation.</p>
 <dl>
-<dt>Parameter</dt><dd>uint32_t GroupsX</dd>
-<dt>Parameter</dt><dd>uint32_t GroupsY = 1</dd>
-<dt>Parameter</dt><dd>uint32_t GroupsZ = 1</dd>
-<dt>Returns</dt><dd>No value.</dd>
-<dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
+<dt>GroupsX</dt><dd>Number of workgroups on the X axis.</dd>
+<dt>GroupsY</dt><dd>Number of workgroups on the Y axis.</dd>
+<dt>GroupsZ</dt><dd>Number of workgroups on the Z axis.</dd>
+<dt>Returns</dt><dd>No immediate result; inspect Close before submitting the recording.</dd>
+<dt>Ownership</dt><dd>Previously bound resources remain retained by the recording; no caller storage is transferred.</dd>
+<dt>Errors</dt><dd>Invalid work records no native dispatch and latches an error returned by Close and submission until Open or Reset succeeds. Later binds do not repair it.</dd>
+<dt>Threading</dt><dd>Externally synchronize command-list recording.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-iardarhicommandlist-dispatchcuda-69460b3b" tabindex="-1"><h5>arda::IArdaRHICommandList::DispatchCuda</h5><pre><code>virtual FArdaRHIStatus DispatchCuda(const FArdaCudaDispatch&amp;)</code></pre><p>Records one precompiled CUDA kernel on an open list; ExecuteCommandList submits the work. Bindings must belong to this device and already have qualified CUDA representations. Providers insert memory dependencies and retain bindings/native entries until completion. D3D12 CiG accepts graphics lists; Vulkan and ContextSwitch accept graphics/compute lists. Copy lists are rejected. ContextSwitch and Vulkan CiG record deferred segments joined by GPU fence/semaphore handoffs at submission, without per-kernel CPU waits. Final graphics completion proves CUDA completion. CUDA lists are single-use until reset. Execution failures are not retried as graphics work.</p>
@@ -10041,22 +10143,22 @@
 <dt>Threading</dt><dd>Device calls and command-list recording follow the synchronization contract of the owning interface.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-draw-472d77cb" tabindex="-1"><h5>arda::IArdaRHICommandList::Draw</h5><pre><code>virtual void Draw(const FArdaRHIDrawArguments&amp; Arguments) = 0</code></pre><p>Performs the draw operation.</p>
-<p>Performs the draw operation.  This records GPU work using the currently bound compatible pipeline, bindings, and state on an open command list. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. The operation does not mutate the observable state of the object through this interface.</p>
+<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-draw-472d77cb" tabindex="-1"><h5>arda::IArdaRHICommandList::Draw</h5><pre><code>virtual void Draw(const FArdaRHIDrawArguments&amp; Arguments) = 0</code></pre><p>Draws with the most recently bound graphics pipeline in this recording generation. Requires an open graphics list. Known vertex/instance fetch ranges are checked before recording; zero vertices or instances perform no work after validation.</p>
 <dl>
-<dt>Parameter</dt><dd>const FArdaRHIDrawArguments&amp; Arguments</dd>
-<dt>Returns</dt><dd>No value.</dd>
-<dt>Ownership</dt><dd>Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.</dd>
-<dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
+<dt>Args</dt><dd>Vertex and instance counts plus start offsets.</dd>
+<dt>Returns</dt><dd>No immediate result; inspect Close before submitting the recording.</dd>
+<dt>Ownership</dt><dd>Previously bound resources remain retained by the recording; this call transfers no caller storage.</dd>
+<dt>Errors</dt><dd>Invalid work records no native draw and latches an error returned by Close and submission until Open or Reset succeeds.</dd>
+<dt>Threading</dt><dd>Externally synchronize command-list recording.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-drawindexed-62dcf937" tabindex="-1"><h5>arda::IArdaRHICommandList::DrawIndexed</h5><pre><code>virtual void DrawIndexed(const FArdaRHIDrawArguments&amp; Arguments) = 0</code></pre><p>Performs the draw indexed operation.</p>
-<p>Performs the draw indexed operation.  This records GPU work using the currently bound compatible pipeline, bindings, and state on an open command list. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. The operation does not mutate the observable state of the object through this interface.</p>
+<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-drawindexed-62dcf937" tabindex="-1"><h5>arda::IArdaRHICommandList::DrawIndexed</h5><pre><code>virtual void DrawIndexed(const FArdaRHIDrawArguments&amp; Arguments) = 0</code></pre><p>Draws indexed geometry with the most recently bound graphics pipeline on an open graphics list. Requires an aligned R16UInt or R32UInt index buffer and an in-bounds index range. GPU index values and base-vertex accesses remain the caller&#x27;s responsibility. Zero indices or instances perform no work after validation.</p>
 <dl>
-<dt>Parameter</dt><dd>const FArdaRHIDrawArguments&amp; Arguments</dd>
-<dt>Returns</dt><dd>No value.</dd>
-<dt>Ownership</dt><dd>Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.</dd>
-<dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
+<dt>Args</dt><dd>Index and instance counts plus index, base-vertex and instance offsets.</dd>
+<dt>Returns</dt><dd>No immediate result; inspect Close before submitting the recording.</dd>
+<dt>Ownership</dt><dd>Bound index/vertex resources remain retained by the recording; this call transfers no caller storage.</dd>
+<dt>Errors</dt><dd>Invalid work records no native draw and latches an error returned by Close and submission until Open or Reset succeeds.</dd>
+<dt>Threading</dt><dd>Externally synchronize command-list recording.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhicommandlist-drawindexedindirect" tabindex="-1"><h5>arda::IArdaRHICommandList::DrawIndexedIndirect</h5><pre><code>virtual FArdaRHIStatus DrawIndexedIndirect(IArdaRHIBuffer&amp; Arguments, uint64_t Offset = 0, uint32_t DrawCount = 1, uint32_t Stride = 0) = 0</code></pre><p>Executes indexed draw arguments from a GPU buffer.</p>
@@ -10115,12 +10217,12 @@
 <dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-open-4d45e66c" tabindex="-1"><h5>arda::IArdaRHICommandList::Open</h5><pre><code>virtual FArdaRHIStatus Open() = 0</code></pre><p>Performs the open operation.</p>
-<p>Performs the open operation.  This controls the recording lifecycle: Open begins recording, Close finalizes it for submission, and Reset discards a previous closed recording before reuse. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects.</p>
+<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-open-4d45e66c" tabindex="-1"><h5>arda::IArdaRHICommandList::Open</h5><pre><code>virtual FArdaRHIStatus Open() = 0</code></pre><p>Begins a new recording generation and clears prior binding state and latched errors on success. Pending native recording storage remains retained until its submission retires.</p>
 <dl>
-<dt>Returns</dt><dd>A status describing whether the operation succeeded.</dd>
-<dt>Errors</dt><dd>Failure is returned as EArdaRHIResult and diagnostic text; callers must inspect the status.</dd>
-<dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
+<dt>Returns</dt><dd>The native open status; a failed open does not clear the facade&#x27;s prior error.</dd>
+<dt>Ownership</dt><dd>The command list retains its device and owns the new recording; earlier submitted storage has independent retirement ownership.</dd>
+<dt>Errors</dt><dd>Native failure leaves this operation unsuccessful. Only a successful Open or Reset clears a recording error.</dd>
+<dt>Threading</dt><dd>Externally synchronize access to this command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-iardarhicommandlist-queryaccelstructstate" tabindex="-1"><h5>arda::IArdaRHICommandList::QueryAccelStructState</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHIResourceStateSnapshot&gt; QueryAccelStructState(IArdaRHIAccelStruct&amp;) const</code></pre><p>Observes facade, backend, and native AS state.</p>
@@ -10166,12 +10268,12 @@
 <dt>Threading</dt><dd>Command-list recording is externally synchronized; queue submission establishes GPU ordering.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-reset-31e55aa7" tabindex="-1"><h5>arda::IArdaRHICommandList::Reset</h5><pre><code>virtual FArdaRHIStatus Reset() = 0</code></pre><p>Reopens a closed command list and discards its previous recording.</p>
-<p>Reopens a closed command list and discards its previous recording.  This controls the recording lifecycle: Open begins recording, Close finalizes it for submission, and Reset discards a previous closed recording before reuse. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects.</p>
+<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-reset-31e55aa7" tabindex="-1"><h5>arda::IArdaRHICommandList::Reset</h5><pre><code>virtual FArdaRHIStatus Reset() = 0</code></pre><p>Discards the previous recording and opens a clean recording generation on success. All pipeline state must be rebound. Pending native storage is retained independently instead of reset while the GPU can use it.</p>
 <dl>
-<dt>Returns</dt><dd>A status describing whether the operation succeeded.</dd>
-<dt>Errors</dt><dd>Failure is returned as EArdaRHIResult and diagnostic text; callers must inspect the status.</dd>
-<dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
+<dt>Returns</dt><dd>The native reset status; failure does not clear the prior facade error.</dd>
+<dt>Ownership</dt><dd>The command list owns the fresh recording; submitted generations retain their own native storage and resources.</dd>
+<dt>Errors</dt><dd>Only successful Reset or Open clears latched recording failures.</dd>
+<dt>Threading</dt><dd>Externally synchronize access to this command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhicommandlist-resolvetexture" tabindex="-1"><h5>arda::IArdaRHICommandList::ResolveTexture</h5><pre><code>virtual FArdaRHIStatus ResolveTexture(IArdaRHITexture&amp; Destination, const FArdaRHITextureSlice&amp; DestinationSlice, IArdaRHITexture&amp; Source, const FArdaRHITextureSlice&amp; SourceSlice) = 0</code></pre><p>Resolves a multisampled subresource into a single-sample destination.</p>
@@ -10216,34 +10318,31 @@
 <dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-setcomputestate-b43b4184" tabindex="-1"><h5>arda::IArdaRHICommandList::SetComputeState</h5><pre><code>virtual FArdaRHIStatus SetComputeState(const FArdaRHIComputeState&amp; State) = 0</code></pre><p>Performs the set compute state operation.</p>
-<p>Performs the set compute state operation.  This participates in explicit or automatic resource-state tracking; barriers must be committed in an order compatible with subsequent GPU access. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects. The operation does not mutate the observable state of the object through this interface.</p>
+<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-setcomputestate-b43b4184" tabindex="-1"><h5>arda::IArdaRHICommandList::SetComputeState</h5><pre><code>virtual FArdaRHIStatus SetComputeState(const FArdaRHIComputeState&amp; State) = 0</code></pre><p>Binds a compute pipeline and its complete descriptor state on an open graphics or compute list. Each descriptor-bearing layout requires one matching set; declaration order controls native binding. Omitted push-only sets are reused within the recording.</p>
 <dl>
-<dt>Parameter</dt><dd>const FArdaRHIComputeState&amp; State</dd>
-<dt>Returns</dt><dd>A status describing whether the operation succeeded.</dd>
-<dt>Ownership</dt><dd>Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.</dd>
-<dt>Errors</dt><dd>Failure is returned as EArdaRHIResult and diagnostic text; callers must inspect the status.</dd>
-<dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
+<dt>State</dt><dd>Compute pipeline and binding sets for subsequent dispatches.</dd>
+<dt>Returns</dt><dd>Success only after native binding succeeds.</dd>
+<dt>Ownership</dt><dd>Pipeline handles, binding resources and immutable descriptor generations are retained for recording and accepted GPU work.</dd>
+<dt>Errors</dt><dd>Facade rejection preserves the previous binding. Native failure latches the recording as failed. A later bind cannot repair an already latched error; successful Open or Reset is required.</dd>
+<dt>Threading</dt><dd>Externally synchronize command-list recording and mutable descriptor-table updates.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-setgraphicsstate-c7eb13f7" tabindex="-1"><h5>arda::IArdaRHICommandList::SetGraphicsState</h5><pre><code>virtual FArdaRHIStatus SetGraphicsState(const FArdaRHIGraphicsState&amp; State) = 0</code></pre><p>Performs the set graphics state operation.</p>
-<p>Performs the set graphics state operation.  This participates in explicit or automatic resource-state tracking; barriers must be committed in an order compatible with subsequent GPU access. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects. The operation does not mutate the observable state of the object through this interface.</p>
+<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-setgraphicsstate-c7eb13f7" tabindex="-1"><h5>arda::IArdaRHICommandList::SetGraphicsState</h5><pre><code>virtual FArdaRHIStatus SetGraphicsState(const FArdaRHIGraphicsState&amp; State) = 0</code></pre><p>Binds graphics pipeline, framebuffer, descriptors, vertex/index streams and raster regions on an open graphics list. Formats, sample counts, selected attachment ranges, viewport/scissor limits and vertex/index usage, alignment and bounds must agree. Descriptor-bearing layouts require one matching binding set; sets are normalized into declared layout order. Omitted push-only sets are reused within the recording.</p>
 <dl>
-<dt>Parameter</dt><dd>const FArdaRHIGraphicsState&amp; State</dd>
-<dt>Returns</dt><dd>A status describing whether the operation succeeded.</dd>
-<dt>Ownership</dt><dd>Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.</dd>
-<dt>Errors</dt><dd>Failure is returned as EArdaRHIResult and diagnostic text; callers must inspect the status.</dd>
-<dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
+<dt>State</dt><dd>Complete graphics state for subsequent draws.</dd>
+<dt>Returns</dt><dd>Success after the native bind succeeds, otherwise its admission or native failure status.</dd>
+<dt>Ownership</dt><dd>State handles and immutable descriptor generations are retained for the recording and accepted GPU work.</dd>
+<dt>Errors</dt><dd>Facade rejection preserves the previous binding. Native bind failure latches a failed recording because partial driver state cannot be rolled back; reset before submission.</dd>
+<dt>Threading</dt><dd>Externally synchronize command-list recording and mutable descriptor-table updates.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-setmeshletstate-a4521e99" tabindex="-1"><h5>arda::IArdaRHICommandList::SetMeshletState</h5><pre><code>virtual FArdaRHIStatus SetMeshletState(const FArdaRHIMeshletState&amp; State) = 0</code></pre><p>Performs the set meshlet state operation.</p>
-<p>Performs the set meshlet state operation.  This participates in explicit or automatic resource-state tracking; barriers must be committed in an order compatible with subsequent GPU access. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects. The operation does not mutate the observable state of the object through this interface.</p>
+<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-setmeshletstate-a4521e99" tabindex="-1"><h5>arda::IArdaRHICommandList::SetMeshletState</h5><pre><code>virtual FArdaRHIStatus SetMeshletState(const FArdaRHIMeshletState&amp; State) = 0</code></pre><p>Binds a mesh pipeline, compatible framebuffer, raster regions and required descriptor sets on an open graphics list.</p>
 <dl>
-<dt>Parameter</dt><dd>const FArdaRHIMeshletState&amp; State</dd>
-<dt>Returns</dt><dd>A status describing whether the operation succeeded.</dd>
-<dt>Ownership</dt><dd>Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.</dd>
-<dt>Errors</dt><dd>Failure is returned as EArdaRHIResult and diagnostic text; callers must inspect the status.</dd>
-<dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
+<dt>State</dt><dd>Complete mesh state for subsequent mesh dispatches.</dd>
+<dt>Returns</dt><dd>The facade admission or native binding status.</dd>
+<dt>Ownership</dt><dd>Referenced objects and captured descriptor generations remain retained for recording and accepted GPU work.</dd>
+<dt>Errors</dt><dd>Unsupported stages or incompatible state are rejected before native work. Native bind failure latches the recording until successful Open or Reset.</dd>
+<dt>Threading</dt><dd>Externally synchronize command-list recording.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhicommandlist-setpushconstants-a2afbe8a" tabindex="-1"><h5>arda::IArdaRHICommandList::SetPushConstants</h5><pre><code>virtual void SetPushConstants(const void* Data, size_t Size) = 0</code></pre><p>Broadcasts bytes to the bound pipeline&#x27;s push blocks. Data must be nonnull and Size must be positive, divisible by four and no larger than any bound push block. Invalid updates record no native command and cause Close() and submission to return InvalidArgument until a successful Reset()/Open(). Previous valid constants remain unchanged. These checks apply independently of native GPU validation.</p>
@@ -10256,14 +10355,13 @@
 <dt>Threading</dt><dd>Externally synchronize command-list recording and do not update a closed or submitted recording.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-setraytracingstate-ed9e7a1c" tabindex="-1"><h5>arda::IArdaRHICommandList::SetRayTracingState</h5><pre><code>virtual FArdaRHIStatus SetRayTracingState(const FArdaRHIRayTracingState&amp; State) = 0</code></pre><p>Performs the set ray tracing state operation.</p>
-<p>Performs the set ray tracing state operation.  This participates in explicit or automatic resource-state tracking; barriers must be committed in an order compatible with subsequent GPU access. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects. The operation does not mutate the observable state of the object through this interface.</p>
+<section class="api-entry" id="api-arda-rhi-iardarhicommandlist-setraytracingstate-ed9e7a1c" tabindex="-1"><h5>arda::IArdaRHICommandList::SetRayTracingState</h5><pre><code>virtual FArdaRHIStatus SetRayTracingState(const FArdaRHIRayTracingState&amp; State) = 0</code></pre><p>Binds a committed shader-table generation and its required global descriptor sets on an open graphics or compute list.</p>
 <dl>
-<dt>Parameter</dt><dd>const FArdaRHIRayTracingState&amp; State</dd>
-<dt>Returns</dt><dd>A status describing whether the operation succeeded.</dd>
-<dt>Ownership</dt><dd>Pointer and reference arguments are non-owning unless the declaration explicitly states otherwise.</dd>
-<dt>Errors</dt><dd>Failure is returned as EArdaRHIResult and diagnostic text; callers must inspect the status.</dd>
-<dt>Threading</dt><dd>A command list is externally synchronized while recording; queue execution establishes GPU ordering, not host-side thread safety.</dd>
+<dt>State</dt><dd>Shader table and global bindings for subsequent ray dispatches.</dd>
+<dt>Returns</dt><dd>The facade admission or native binding status.</dd>
+<dt>Ownership</dt><dd>The bound immutable shader-table and descriptor generations remain retained even if the mutable table is later recommitted.</dd>
+<dt>Errors</dt><dd>Missing or incompatible state is rejected before binding; native binding failure latches the recording until successful Open or Reset.</dd>
+<dt>Threading</dt><dd>Externally synchronize command-list recording and shader-table mutation.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhicommandlist-setsamplerfeedbacktexturestate-a55dedc0" tabindex="-1"><h5>arda::IArdaRHICommandList::SetSamplerFeedbackTextureState</h5><pre><code>virtual FArdaRHIStatus SetSamplerFeedbackTextureState(IArdaRHISamplerFeedbackTexture&amp; Texture, EArdaRHIResourceState State) = 0</code></pre><p>Performs the set sampler feedback texture state operation.</p>
@@ -10416,6 +10514,14 @@
 <dt>Threading</dt><dd>Device calls require external coordination where they mutate resources, queues, descriptor tables, or process-visible synchronization state.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-iardarhidevice-capturediagnosticsnapshot-714e4fa8" tabindex="-1"><h5>arda::IArdaRHIDevice::CaptureDiagnosticSnapshot</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHIDiagnosticSnapshot&gt; CaptureDiagnosticSnapshot() const</code></pre><p>Captures bounded native device status, queue progress, recent markers and available fault data. Does not submit or wait for GPU work; unavailable native fault facilities are explicitly reported. Snapshot strings and records are owned by the result. Serialize shutdown with this call.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-iardarhidevice-checkfeaturesupport" tabindex="-1"><h5>arda::IArdaRHIDevice::CheckFeatureSupport</h5><pre><code>[[nodiscard]] FArdaRHIFeatureSupportReport CheckFeatureSupport(const FArdaRHIFeatureRequirements&amp;) const</code></pre><p>Evaluates future-module requirements.</p>
 <dl>
 <dt>Returns</dt><dd>See the exact signature and status/result contract.</dd>
@@ -10424,12 +10530,15 @@
 <dt>Threading</dt><dd>Device calls and command-list recording follow the synchronization contract of the owning interface.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhidevice-commitreservedresource" tabindex="-1"><h5>arda::IArdaRHIDevice::CommitReservedResource</h5><pre><code>virtual FArdaRHIStatus CommitReservedResource(const FArdaRHIResourceRef&amp;, uint64_t, EArdaRHIQueueType)</code></pre><p>Commits a prefix of a reserved resource.</p>
+<section class="api-entry" id="api-arda-iardarhidevice-commitreservedresource" tabindex="-1"><h5>arda::IArdaRHIDevice::CommitReservedResource</h5><pre><code>virtual FArdaRHIStatus CommitReservedResource(const FArdaRHIResourceRef&amp; Resource, uint64_t ByteCount, EArdaRHIQueueType Queue = EArdaRHIQueueType::Copy)</code></pre><p>Grows or shrinks a reserved resource&#x27;s committed prefix while preserving still-mapped bytes. Clamp to resource capacity before tile alignment, so UINT64_MAX requests full capacity. Growth fills only missing ranges; shrinking unmaps the suffix. Recommitted, previously unmapped bytes are undefined. Vulkan returns Unsupported for a nonzero opaque image prefix while spatial tiles remain mapped; fully unbind with zero bytes before switching modes. Buffers and explicit opaque mip tails remain interoperable.</p>
 <dl>
-<dt>Returns</dt><dd>See the exact signature and status/result contract.</dd>
-<dt>Ownership</dt><dd>References are intrusive owning handles unless the signature or detailed contract states that they are borrowed.</dd>
-<dt>Errors</dt><dd>Unsupported capabilities and invalid arguments are reported through FArdaRHIStatus or TArdaRHIResult.</dd>
-<dt>Threading</dt><dd>Device calls and command-list recording follow the synchronization contract of the owning interface.</dd>
+<dt>Resource</dt><dd>Reserved texture or buffer to commit.</dd>
+<dt>ByteCount</dt><dd>Desired prefix byte count; zero fully unbinds and UINT64_MAX requests full capacity.</dd>
+<dt>Queue</dt><dd>Queue on which mapping changes are ordered.</dd>
+<dt>Returns</dt><dd>Admission or native mapping/wait status.</dd>
+<dt>Ownership</dt><dd>Live mapped ranges retain backing; old and replacement owners survive accepted pending operations until completion or device-loss proof.</dd>
+<dt>Errors</dt><dd>Pre-submit failure preserves mappings. A post-acceptance wait/signal error returns failure while retaining the accepted mapping; GC/idle retries retirement. Unproven final-shutdown work is quarantined.</dd>
+<dt>Threading</dt><dd>Serialize mapping changes and synchronize all other-queue accesses before remapping.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-iardarhidevice-commitshadertable" tabindex="-1"><h5>arda::IArdaRHIDevice::CommitShaderTable</h5><pre><code>virtual FArdaRHIStatus CommitShaderTable(const FArdaRHIShaderTableRef&amp;)</code></pre><p>Makes pending SBT records visible to dispatch.</p>
@@ -11051,6 +11160,14 @@
 <dt>Threading</dt><dd>Device calls require external coordination where they mutate resources, queues, descriptor tables, or process-visible synchronization state.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-iardarhidevice-queryformatsupport-d3e518ba" tabindex="-1"><h5>arda::IArdaRHIDevice::QueryFormatSupport</h5><pre><code>[[nodiscard]] virtual FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat) const noexcept</code></pre><p>Returns native per-format facts without creating resources; zero facts mean unavailable/unreported.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhidevice-queryshaderbundlesupport-96197c98" tabindex="-1"><h5>arda::IArdaRHIDevice::QueryShaderBundleSupport</h5><pre><code>[[nodiscard]] virtual FArdaRHIStatus QueryShaderBundleSupport() const = 0</code></pre><p>Performs the query shader bundle support operation.</p>
 <p>Performs the query shader bundle support operation.  The operation is device-scoped; resource arguments must belong to this device unless the API explicitly imports a native object. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects. The operation does not mutate the observable state of the object through this interface.</p>
 <dl>
@@ -11067,12 +11184,12 @@
 <dt>Threading</dt><dd>Device calls require external coordination where they mutate resources, queues, descriptor tables, or process-visible synchronization state.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhidevice-querystreamingbudget" tabindex="-1"><h5>arda::IArdaRHIDevice::QueryStreamingBudget</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHIStreamingBudget&gt; QueryStreamingBudget(bool)</code></pre><p>Returns GPU memory budget telemetry.</p>
+<section class="api-entry" id="api-arda-iardarhidevice-querystreamingbudget" tabindex="-1"><h5>arda::IArdaRHIDevice::QueryStreamingBudget</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHIStreamingBudget&gt; QueryStreamingBudget(bool = true) const</code></pre><p>Returns current native streaming budget telemetry. The Boolean selects local memory when true (the default), or non-local memory when false. These observations can change immediately.</p>
 <dl>
-<dt>Returns</dt><dd>See the exact signature and status/result contract.</dd>
-<dt>Ownership</dt><dd>References are intrusive owning handles unless the signature or detailed contract states that they are borrowed.</dd>
-<dt>Errors</dt><dd>Unsupported capabilities and invalid arguments are reported through FArdaRHIStatus or TArdaRHIResult.</dd>
-<dt>Threading</dt><dd>Device calls and command-list recording follow the synchronization contract of the owning interface.</dd>
+<dt>Returns</dt><dd>An owned budget snapshot and its query status.</dd>
+<dt>Ownership</dt><dd>The returned snapshot owns its values and retains no native allocations.</dd>
+<dt>Errors</dt><dd>Unsupported providers return Unsupported; native query failures return their status.</dd>
+<dt>Threading</dt><dd>Coordinate with device shutdown; this query establishes no GPU ordering.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-iardarhidevice-querytexturememoryrequirements-566087c2" tabindex="-1"><h5>arda::IArdaRHIDevice::QueryTextureMemoryRequirements</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHIMemoryRequirements&gt; QueryTextureMemoryRequirements( const FArdaRHITextureDesc&amp; Desc) = 0</code></pre><p>Queries texture allocation requirements without allocating or binding GPU memory. The backend may create a temporary unbound native resource. Creation flags, including virtual, sparse, and CUDA interoperability flags, are taken from the descriptor.</p>
@@ -11243,12 +11360,12 @@
 <dt>Threading</dt><dd>Device calls require external coordination where they mutate resources, queues, descriptor tables, or process-visible synchronization state.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhidevice-trimgpuallocator-28300a15" tabindex="-1"><h5>arda::IArdaRHIDevice::TrimGpuAllocator</h5><pre><code>virtual void TrimGpuAllocator()</code></pre><p>Releases idle cached storage. Pending GPU dependencies and active leases remain retained.</p>
+<section class="api-entry" id="api-arda-iardarhidevice-trimgpuallocator-28300a15" tabindex="-1"><h5>arda::IArdaRHIDevice::TrimGpuAllocator</h5><pre><code>virtual void TrimGpuAllocator()</code></pre><p>Releases idle cached storage after polling native retirement. Active leases and unproven GPU work remain retained.</p>
 <dl>
-<dt>Returns</dt><dd>See the declared result and status contract.</dd>
-<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
-<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
-<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Returns</dt><dd>No immediate result; query allocator and lifetime statistics to observe released storage.</dd>
+<dt>Ownership</dt><dd>Only idle cache ownership is released; active and pending resource ownership is preserved.</dd>
+<dt>Errors</dt><dd>This call returns no status and does not establish GPU completion. Unproven retirement remains pending.</dd>
+<dt>Threading</dt><dd>Coordinate with device shutdown; allocator collection synchronizes its internal state.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhidevice-unmapstagingtexture-8f65b22f" tabindex="-1"><h5>arda::IArdaRHIDevice::UnmapStagingTexture</h5><pre><code>virtual FArdaRHIStatus UnmapStagingTexture(const FArdaRHIStagingTextureRef&amp; Texture) = 0</code></pre><p>Performs the unmap staging texture operation.</p>
@@ -11261,12 +11378,15 @@
 <dt>Threading</dt><dd>Device calls require external coordination where they mutate resources, queues, descriptor tables, or process-visible synchronization state.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-iardarhidevice-updatebuffertilemappings" tabindex="-1"><h5>arda::IArdaRHIDevice::UpdateBufferTileMappings</h5><pre><code>virtual FArdaRHIStatus UpdateBufferTileMappings(const FArdaRHIBufferRef&amp;, const eastl::vector&lt;FArdaRHIBufferTileMapping&gt;&amp;, EArdaRHIQueueType)</code></pre><p>Maps or unmaps sparse/reserved buffer tiles.</p>
+<section class="api-entry" id="api-arda-iardarhidevice-updatebuffertilemappings" tabindex="-1"><h5>arda::IArdaRHIDevice::UpdateBufferTileMappings</h5><pre><code>virtual FArdaRHIStatus UpdateBufferTileMappings(const FArdaRHIBufferRef&amp; Buffer, const eastl::vector&lt;FArdaRHIBufferTileMapping&gt;&amp; Mappings, EArdaRHIQueueType Queue = EArdaRHIQueueType::Copy)</code></pre><p>Updates sparse buffer mappings, splitting prior range ownership on partial replacement or unmap.</p>
 <dl>
-<dt>Returns</dt><dd>See the exact signature and status/result contract.</dd>
-<dt>Ownership</dt><dd>References are intrusive owning handles unless the signature or detailed contract states that they are borrowed.</dd>
-<dt>Errors</dt><dd>Unsupported capabilities and invalid arguments are reported through FArdaRHIStatus or TArdaRHIResult.</dd>
-<dt>Threading</dt><dd>Device calls and command-list recording follow the synchronization contract of the owning interface.</dd>
+<dt>Buffer</dt><dd>Reserved buffer whose mappings are changed.</dd>
+<dt>Mappings</dt><dd>Buffer tile ranges and optional backing heaps.</dd>
+<dt>Queue</dt><dd>Queue on which mapping changes are ordered.</dd>
+<dt>Returns</dt><dd>Admission or native mapping/wait status.</dd>
+<dt>Ownership</dt><dd>Live mappings and accepted pending work retain their backing heaps until retirement proof.</dd>
+<dt>Errors</dt><dd>Pre-submit rejection preserves prior mappings. A recoverable wait/signal failure can follow native acceptance; GC/idle retries retirement without freeing live backing.</dd>
+<dt>Threading</dt><dd>Serialize mapping changes and order all other-queue accesses before remapping.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-iardarhidevice-updateresourcecollection" tabindex="-1"><h5>arda::IArdaRHIDevice::UpdateResourceCollection</h5><pre><code>virtual FArdaRHIStatus UpdateResourceCollection(const FArdaRHIResourceCollectionRef&amp;, uint32_t, const FArdaRHIResourceCollectionItem&amp;)</code></pre><p>Replaces one mutable collection member.</p>
@@ -11277,16 +11397,15 @@
 <dt>Threading</dt><dd>Device calls and command-list recording follow the synchronization contract of the owning interface.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-rhi-iardarhidevice-updatetexturetilemappings-a7663c27" tabindex="-1"><h5>arda::IArdaRHIDevice::UpdateTextureTileMappings</h5><pre><code>virtual FArdaRHIStatus UpdateTextureTileMappings(const FArdaRHITextureRef&amp; Texture, const eastl::vector&lt;FArdaRHITextureTileMapping&gt;&amp; Mappings, EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) = 0</code></pre><p>Performs the update texture tile mappings operation.</p>
-<p>Performs the update texture tile mappings operation.  This is an explicit-memory or tiled-resource operation; alignment, capacity, ownership, feature support, and same-device constraints are validated. Implementations must provide this pure virtual operation with the declared result and lifetime semantics. Callers must inspect the returned status before relying on side effects. The operation does not mutate the observable state of the object through this interface.</p>
+<section class="api-entry" id="api-arda-rhi-iardarhidevice-updatetexturetilemappings-a7663c27" tabindex="-1"><h5>arda::IArdaRHIDevice::UpdateTextureTileMappings</h5><pre><code>virtual FArdaRHIStatus UpdateTextureTileMappings(const FArdaRHITextureRef&amp; Texture, const eastl::vector&lt;FArdaRHITextureTileMapping&gt;&amp; Mappings, EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics) = 0</code></pre><p>Updates sparse texture mappings, retaining replaced backing until native retirement is proven. Synchronize other-queue accesses before remapping. Vulkan rejects overlapping ranges within one batch and spatial tiles while an opaque prefix is active. CommitReservedResource with zero bytes fully unbinds before a mode switch; explicit opaque mip-tail ranges remain interoperable.</p>
 <dl>
-<dt>Parameter</dt><dd>const FArdaRHITextureRef&amp; Texture</dd>
-<dt>Parameter</dt><dd>const eastl::vector&lt;FArdaRHITextureTileMapping&gt;&amp; Mappings</dd>
-<dt>Parameter</dt><dd>EArdaRHIQueueType Queue = EArdaRHIQueueType::Graphics</dd>
-<dt>Returns</dt><dd>A status describing whether the operation succeeded.</dd>
-<dt>Ownership</dt><dd>Intrusive owning references retain resources with AddRef and release them with Release.</dd>
-<dt>Errors</dt><dd>Failure is returned as EArdaRHIResult and diagnostic text; callers must inspect the status.</dd>
-<dt>Threading</dt><dd>Device calls require external coordination where they mutate resources, queues, descriptor tables, or process-visible synchronization state.</dd>
+<dt>Texture</dt><dd>Reserved texture whose mappings are changed.</dd>
+<dt>Mappings</dt><dd>Tile ranges, heap offsets and optional backing heaps; an absent heap unmaps the range.</dd>
+<dt>Queue</dt><dd>Queue on which mapping changes are ordered.</dd>
+<dt>Returns</dt><dd>Admission or native mapping/wait status.</dd>
+<dt>Ownership</dt><dd>Live ranges retain their heaps; accepted operations retain previous and replacement backing until retirement proof.</dd>
+<dt>Errors</dt><dd>Pre-submit rejection preserves prior mappings. A recoverable wait/signal failure can follow native acceptance; accepted state remains owned and GC/idle retries retirement.</dd>
+<dt>Threading</dt><dd>Serialize mapping changes and order all other-queue accesses before remapping.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDevice.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-iardarhidevice-waiteventquery-6fe23c02" tabindex="-1"><h5>arda::IArdaRHIDevice::WaitEventQuery</h5><pre><code>virtual FArdaRHIStatus WaitEventQuery(const FArdaRHIEventQueryRef&amp; Query) = 0</code></pre><p>Performs the wait event query operation.</p>
@@ -11387,6 +11506,14 @@
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-iardarhiproviderdevice-canreusetexture-2d123463" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CanReuseTexture</h5><pre><code>[[nodiscard]] virtual bool CanReuseTexture(const FArdaProviderObjectRef&amp;, const FArdaRHITextureDesc&amp;) const noexcept</code></pre><p>Tests native image state and ownership before an idle object is leased again. Providers without an explicit state-safe reuse implementation opt out by default.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-capturediagnosticsnapshot-eaa8b418" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::CaptureDiagnosticSnapshot</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHIDiagnosticSnapshot&gt; CaptureDiagnosticSnapshot() const</code></pre><p>Captures bounded native diagnostics without GPU submission or waits.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -11827,6 +11954,14 @@
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-iardarhiproviderdevice-querybuffermemoryrequirements-e87e31a6" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::QueryBufferMemoryRequirements</h5><pre><code>[[nodiscard]] virtual TArdaRHIResult&lt;FArdaRHIMemoryRequirements&gt; QueryBufferMemoryRequirements( const FArdaRHIBufferDesc&amp;)</code></pre><p>Queries exact descriptor requirements without allocating or binding GPU memory.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIProvider.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-iardarhiproviderdevice-queryformatsupport-625f21c0" tabindex="-1"><h5>arda::IArdaRHIProviderDevice::QueryFormatSupport</h5><pre><code>[[nodiscard]] virtual FArdaRHIFormatSupport QueryFormatSupport(EArdaRHIFormat) const noexcept</code></pre><p>Queries independent native format facts; unknown/unsupported formats return an empty report.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -12623,6 +12758,15 @@
 <dl>
 <dt>Ownership</dt><dd>Intrusive owning references retain resources with AddRef and release them with Release.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIFwd.h</dd>
+</dl></section>
+</section>
+<section class="api-kind-group"><h4>constant</h4>
+<section class="api-entry" id="api-arda-ardarhimaxdiagnosticentries-9ad98742" tabindex="-1"><h5>arda::ArdaRHIMaxDiagnosticEntries</h5><pre><code>inline constexpr uint32_t ArdaRHIMaxDiagnosticEntries = 64</code></pre><p>Maximum entries retained in each diagnostic list; excess native records are reported as truncated.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>constructor</h4>
@@ -13528,6 +13672,14 @@
 <dt>Errors</dt><dd>Failure is returned as EArdaRHIResult and diagnostic text; callers must inspect the status.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-validate-9ca97d1c" tabindex="-1"><h5>arda::Validate</h5><pre><code>[[nodiscard]] FArdaRHIStatus Validate(const FArdaRHIFramebufferDesc&amp; Value)</code></pre><p>Validates attachment usage, format, ranges, and matching sample counts. Different attachment extents are permitted; native rendering uses their common minimum extent. Device ownership/limits are separate.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-validateardacudabuffer-dcddcda3" tabindex="-1"><h5>arda::ValidateArdaCudaBuffer</h5><pre><code>[[nodiscard]] FArdaRHIStatus ValidateArdaCudaBuffer(const FArdaRHIBufferDesc&amp; Desc)</code></pre><p>Admits dedicated device-local buffers; rejects sparse, placed, versioned, CPU-visible and AS storage.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
@@ -14376,6 +14528,97 @@
 <dt>Ownership</dt><dd>Intrusive owning references retain resources with AddRef and release them with Release.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-madaptername-f220bbd5" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot::mAdapterName</h5><pre><code>eastl::string mAdapterName</code></pre><p>Native adapter description.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-mbackendname-7c73bc3a" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot::mBackendName</h5><pre><code>eastl::string mBackendName</code></pre><p>Stable provider name such as native-d3d12 or native-vulkan.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-mbreadcrumbs-028196da" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot::mBreadcrumbs</h5><pre><code>eastl::vector&lt;eastl::string&gt; mBreadcrumbs</code></pre><p>Recent submitted markers and available native crash breadcrumbs; descriptions identify their provenance.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-mdevicestatus-66ef4e70" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot::mDeviceStatus</h5><pre><code>EArdaRHIResult mDeviceStatus = EArdaRHIResult::Success</code></pre><p>Best-effort device status; Success means no reported error at capture time.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-mdriverversion-36f4c3bc" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot::mDriverVersion</h5><pre><code>eastl::string mDriverVersion</code></pre><p>Native driver version when available, otherwise empty.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-mfaults-d29ab267" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot::mFaults</h5><pre><code>eastl::vector&lt;FArdaRHIFaultDiagnostic&gt; mFaults</code></pre><p>Native address faults when the driver exposes them.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-mmessages-816f1eb8" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot::mMessages</h5><pre><code>eastl::vector&lt;eastl::string&gt; mMessages</code></pre><p>Native diagnostic details and unavailable-data explanations.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-mnativeerrorcode-aca09dd5" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot::mNativeErrorCode</h5><pre><code>int64_t mNativeErrorCode = 0</code></pre><p>Provider-specific HRESULT or VkResult associated with the observed failure.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-mqueues-e70322e5" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot::mQueues</h5><pre><code>eastl::vector&lt;FArdaRHIQueueDiagnostic&gt; mQueues</code></pre><p>Native progress for supported queues.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-mbnativefaultdataavailable-2d8abadb" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot::mbNativeFaultDataAvailable</h5><pre><code>bool mbNativeFaultDataAvailable = false</code></pre><p>Whether native DRED/device-fault data was obtained, independent of marker availability.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-mbtruncated-e607fe16" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot::mbTruncated</h5><pre><code>bool mbTruncated = false</code></pre><p>True if an entry limit or bounded string length omitted diagnostic data.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhifaultdiagnostic-maddress-a8442cb4" tabindex="-1"><h5>arda::FArdaRHIFaultDiagnostic::mAddress</h5><pre><code>uint64_t mAddress = 0</code></pre><p>Native GPU virtual address, or zero for a fault without an address.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhifaultdiagnostic-mdescription-19002d41" tabindex="-1"><h5>arda::FArdaRHIFaultDiagnostic::mDescription</h5><pre><code>eastl::string mDescription</code></pre><p>Native fault category, address precision or object description.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-rhi-fardarhiframebufferdesc-mcolorattachments-166a95b4" tabindex="-1"><h5>arda::FArdaRHIFramebufferDesc::mColorAttachments</h5><pre><code>eastl::vector&lt;FArdaRHIFramebufferTarget&gt; mColorAttachments;</code></pre><p>Stores the color attachments.</p>
 <p>Stores the color attachments. The field is caller-populated public state with the type and array extent shown in the source signature.</p>
 <dl>
@@ -14800,6 +15043,34 @@
 <p>Subdivision level for this usage. The public declaration initializes this field to 0.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiqueuediagnostic-mlastcompleted-2c8a1fa9" tabindex="-1"><h5>arda::FArdaRHIQueueDiagnostic::mLastCompleted</h5><pre><code>uint64_t mLastCompleted = 0</code></pre><p>Last observed completed value; meaningful only when mbCompletedValueKnown is true.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiqueuediagnostic-mlastsubmitted-89f713b7" tabindex="-1"><h5>arda::FArdaRHIQueueDiagnostic::mLastSubmitted</h5><pre><code>uint64_t mLastSubmitted = 0</code></pre><p>Most recently submitted native queue timeline/fence value, zero before any work.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiqueuediagnostic-mqueue-323c9707" tabindex="-1"><h5>arda::FArdaRHIQueueDiagnostic::mQueue</h5><pre><code>EArdaRHIQueueType mQueue = EArdaRHIQueueType::Graphics</code></pre><p>Queue whose submission counters are reported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiqueuediagnostic-mbcompletedvalueknown-7f3af9b9" tabindex="-1"><h5>arda::FArdaRHIQueueDiagnostic::mbCompletedValueKnown</h5><pre><code>bool mbCompletedValueKnown = false</code></pre><p>False when native completion could not be queried, including a removed device.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-fardarhiraytracinggeometrydesc-mflags-d6a126e1" tabindex="-1"><h5>arda::FArdaRHIRayTracingGeometryDesc::mFlags</h5><pre><code>EArdaRHIRayTracingGeometryFlags mFlags = EArdaRHIRayTracingGeometryFlags::None;</code></pre><p>Stores the flags.</p>
 <p>Stores the flags. The public declaration initializes this field to EArdaRHIRayTracingGeometryFlags::None.</p>
@@ -16467,6 +16738,20 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardarhidiagnosticsnapshot-b3c772c0" tabindex="-1"><h5>arda::FArdaRHIDiagnosticSnapshot</h5><pre><code>struct FArdaRHIDiagnosticSnapshot</code></pre><p>Best-effort diagnostic evidence with bounded owned strings and lists. Capturing a snapshot performs no GPU submission or wait and does not recreate the device. Unsupported native crash facilities leave mbNativeFaultDataAvailable false; that is not a clean-health proof. Queue counters and markers are observations, not synchronization primitives or a coherent global GPU stop.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhifaultdiagnostic-a3a047d2" tabindex="-1"><h5>arda::FArdaRHIFaultDiagnostic</h5><pre><code>struct FArdaRHIFaultDiagnostic</code></pre><p>One native page-fault/address record; interpretation is described by the backend.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-rhi-fardarhiframebufferdesc-eedce2f9" tabindex="-1"><h5>arda::FArdaRHIFramebufferDesc</h5><pre><code>struct FArdaRHIFramebufferDesc</code></pre><p>Describes framebuffer desc.</p>
 <p>Describes framebuffer desc. The inventory includes every directly declared public member while excluding private and protected implementation state.</p>
 <dl>
@@ -16523,6 +16808,13 @@
 <p>Describes opacity micromap usage count. The inventory includes every directly declared public member while excluding private and protected implementation state.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIResources.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiqueuediagnostic-6fca1013" tabindex="-1"><h5>arda::FArdaRHIQueueDiagnostic</h5><pre><code>struct FArdaRHIQueueDiagnostic</code></pre><p>Queue progress observed without submitting or waiting for GPU work.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHIDiagnostics.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-fardarhiraytracinggeometrydesc-b330f0c8" tabindex="-1"><h5>arda::FArdaRHIRayTracingGeometryDesc</h5><pre><code>struct FArdaRHIRayTracingGeometryDesc</code></pre><p>Describes ray tracing geometry desc.</p>
 <p>Describes ray tracing geometry desc. The inventory includes every directly declared public member while excluding private and protected implementation state.</p>
@@ -17888,7 +18180,14 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
-<section class="api-entry" id="api-arda-eardarhimeshshadertier-meshandamplificationshaders-2006f81a" tabindex="-1"><h5>arda::EArdaRHIMeshShaderTier::MeshAndAmplificationShaders</h5><pre><code>MeshAndAmplificationShaders</code></pre><p>Mesh and optional amplification shader stages are available.</p>
+<section class="api-entry" id="api-arda-eardarhimeshshadertier-meshandamplificationshaders-2006f81a" tabindex="-1"><h5>arda::EArdaRHIMeshShaderTier::MeshAndAmplificationShaders</h5><pre><code>MeshAndAmplificationShaders</code></pre><p>Both mesh and amplification shader stages are available.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-eardarhimeshshadertier-meshshadersonly-33522de2" tabindex="-1"><h5>arda::EArdaRHIMeshShaderTier::MeshShadersOnly</h5><pre><code>MeshShadersOnly</code></pre><p>Mesh shaders are available without amplification shaders; numeric values are not tier ordering.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
@@ -18691,10 +18990,26 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-getardarhitexturebufferfootprint-34db2ee4" tabindex="-1"><h5>arda::GetArdaRHITextureBufferFootprint</h5><pre><code>[[nodiscard]] TArdaRHIResult&lt;FArdaRHITextureBufferFootprint&gt; GetArdaRHITextureBufferFootprint( const FArdaRHITextureDesc&amp; TextureDesc, const FArdaRHITextureSlice&amp; Slice) noexcept</code></pre><p>Resolves a portable buffer footprint for a typed, single-sample, uncompressed color region. Row pitch aligns to 256 bytes and whole texels, including formats with twelve-byte texels. Explicit extents must fit the mip; sentinel extents select its remaining region.</p>
+<dl>
+<dt>Returns</dt><dd>A validated footprint, or an error for unsupported regions or overflowing sizes.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-getardarhitexturemipextent-5682a136" tabindex="-1"><h5>arda::GetArdaRHITextureMipExtent</h5><pre><code>[[nodiscard]] uint32_t GetArdaRHITextureMipExtent(uint32_t BaseExtent, uint32_t MipLevel) noexcept</code></pre><p>Performs get arda r h i texture mip extent through the public backend and RHI contract.</p>
 <p>Performs get arda r h i texture mip extent through the public backend and RHI contract. The signature is generated from the current public header.</p>
 <dl>
 <dt>Returns</dt><dd>One dimension of a texture at the requested mip level.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-getardarhivertexformatalignment-fc4d02b0" tabindex="-1"><h5>arda::GetArdaRHIVertexFormatAlignment</h5><pre><code>[[nodiscard]] uint32_t GetArdaRHIVertexFormatAlignment(EArdaRHIFormat Format) noexcept</code></pre><p>Vertex element/stride byte alignment: component size, or packed element size. Returns zero for unknown, depth/stencil, and compressed formats. Native vertex-format support remains a separate per-device query.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
@@ -18887,6 +19202,22 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-isardarhitextureviewformatcompatible-2b1f0724" tabindex="-1"><h5>arda::IsArdaRHITextureViewFormatCompatible</h5><pre><code>[[nodiscard]] bool IsArdaRHITextureViewFormatCompatible(const FArdaRHITextureDesc&amp; Texture, EArdaRHIFormat ViewFormat) noexcept</code></pre><p>Unknown inherits the texture format; other reinterpretations require Typeless and the same format family.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-resolveardarhiframebufferattachment-408dc801" tabindex="-1"><h5>arda::ResolveArdaRHIFramebufferAttachment</h5><pre><code>[[nodiscard]] FArdaRHIStatus ResolveArdaRHIFramebufferAttachment(const FArdaRHITextureDesc&amp; Texture, const FArdaRHIFramebufferAttachment&amp; Attachment, bool bDepthAttachment, FArdaRHIFramebufferAttachment&amp; Out) noexcept</code></pre><p>Validates and resolves an attachment&#x27;s format and subresource selection. The default mip sentinel selects one mip at the base; default array and plane counts select all remaining layers/aspects. Explicit stencil-only attachments are unsupported. Ownership and device limits are checked by the facade.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-resolveardarhitexturecopyextent-6c622bd2" tabindex="-1"><h5>arda::ResolveArdaRHITextureCopyExtent</h5><pre><code>[[nodiscard]] FArdaRHIStatus ResolveArdaRHITextureCopyExtent(const FArdaRHITextureDesc&amp; DestinationDesc, const FArdaRHITextureSlice&amp; DestinationSlice, const FArdaRHITextureDesc&amp; SourceDesc, const FArdaRHITextureSlice&amp; SourceSlice, FArdaRHITextureCopyExtent&amp; OutExtent) noexcept</code></pre><p>Validates matching texture slices and resolves sentinel source extents.</p>
 <dl>
 <dt>Returns</dt><dd>Success and a concrete non-empty copy extent, or a validation error.</dd>
@@ -18964,6 +19295,22 @@
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-validateresourcecapabilities-8f5df282" tabindex="-1"><h5>arda::ValidateResourceCapabilities</h5><pre><code>[[nodiscard]] FArdaRHIStatus ValidateResourceCapabilities(const FArdaRHITextureDesc&amp; Desc, const FArdaRHICapabilities&amp; Capabilities, const FArdaRHIFormatSupport&amp; FormatSupport) noexcept</code></pre><p>Validates portable shape plus reported device limits and format uses; unreported limits are not inferred.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-validateresourcecapabilities-d3d08ad9" tabindex="-1"><h5>arda::ValidateResourceCapabilities</h5><pre><code>[[nodiscard]] FArdaRHIStatus ValidateResourceCapabilities(const FArdaRHIBufferDesc&amp; Desc, const FArdaRHICapabilities&amp; Capabilities, const FArdaRHIFormatSupport&amp; FormatSupport) noexcept</code></pre><p>Validates allocation admission; uniform/storage binding-range limits apply to views, not whole buffers.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
 </dl></section>
 </section>
 <section class="api-kind-group"><h4>member variable</h4>
@@ -19193,6 +19540,13 @@
 <dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardarhicapabilities-mlimits-22ec6cc3" tabindex="-1"><h5>arda::FArdaRHICapabilities::mLimits</h5><pre><code>FArdaRHIDeviceLimits mLimits</code></pre><p>Native resource and work-dispatch limits used by common admission checks.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-fardarhicapabilities-mmachinelearning" tabindex="-1"><h5>arda::FArdaRHICapabilities::mMachineLearning</h5><pre><code>FArdaRHIMachineLearningCapabilities mMachineLearning;</code></pre><p>Compute and numeric abilities used by ML module admission.</p>
 <dl>
 <dt>Ownership</dt><dd>References are intrusive owning handles unless the signature or detailed contract states that they are borrowed.</dd>
@@ -19241,7 +19595,21 @@
 <dt>Threading</dt><dd>Device calls and command-list recording follow the synchronization contract of the owning interface.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardarhicapabilities-mbformatsupportreported-16eaf570" tabindex="-1"><h5>arda::FArdaRHICapabilities::mbFormatSupportReported</h5><pre><code>bool mbFormatSupportReported = false</code></pre><p>QueryFormatSupport returns authoritative native format facts, including unsupported formats.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-fardarhicapabilities-mbgeometryshaders-8f32fa5f" tabindex="-1"><h5>arda::FArdaRHICapabilities::mbGeometryShaders</h5><pre><code>bool mbGeometryShaders = false</code></pre><p>The graphics pipeline admits the enabled geometry shader stage.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhicapabilities-mbindirectfirstinstance-2f8dbdf6" tabindex="-1"><h5>arda::FArdaRHICapabilities::mbIndirectFirstInstance</h5><pre><code>bool mbIndirectFirstInstance = false</code></pre><p>Indirect draw arguments may contain a nonzero first-instance value.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
@@ -19392,6 +19760,146 @@
 <dl>
 <dt>Ownership</dt><dd>References are intrusive owning handles unless the signature or detailed contract states that they are borrowed.</dd>
 <dt>Threading</dt><dd>Device calls and command-list recording follow the synchronization contract of the owning interface.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxbuffersize-fdfe4930" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxBufferSize</h5><pre><code>uint64_t mMaxBufferSize = 0</code></pre><p>Maximum native buffer allocation size in bytes.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxcolorattachments-cae339a2" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxColorAttachments</h5><pre><code>uint32_t mMaxColorAttachments = 0</code></pre><p>Maximum simultaneous color attachments.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxcomputeworkgroupcount-025cc631" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxComputeWorkGroupCount</h5><pre><code>uint32_t mMaxComputeWorkGroupCount[3]{}</code></pre><p>Maximum dispatched work-group count on the X, Y, and Z axes.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxcomputeworkgroupinvocations-d5a5855e" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxComputeWorkGroupInvocations</h5><pre><code>uint32_t mMaxComputeWorkGroupInvocations = 0</code></pre><p>Maximum invocations in one shader work group.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxcomputeworkgroupsize-693c7af0" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxComputeWorkGroupSize</h5><pre><code>uint32_t mMaxComputeWorkGroupSize[3]{}</code></pre><p>Maximum shader work-group size on the X, Y, and Z axes.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxstoragebufferrange-a09b1eca" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxStorageBufferRange</h5><pre><code>uint64_t mMaxStorageBufferRange = 0</code></pre><p>Maximum bytes addressed by one storage-buffer binding.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxtexture1d-86a9cc36" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxTexture1D</h5><pre><code>uint32_t mMaxTexture1D = 0</code></pre><p>Maximum width of a one-dimensional texture.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxtexture2d-7047c4b7" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxTexture2D</h5><pre><code>uint32_t mMaxTexture2D = 0</code></pre><p>Maximum width or height of a two-dimensional texture.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxtexture3d-d380f772" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxTexture3D</h5><pre><code>uint32_t mMaxTexture3D = 0</code></pre><p>Maximum width, height, or depth of a volume texture.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxtexturearraylayers-f5728463" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxTextureArrayLayers</h5><pre><code>uint32_t mMaxTextureArrayLayers = 0</code></pre><p>Maximum array layers, counting each cube face as one layer.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxtexturecube-91fca383" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxTextureCube</h5><pre><code>uint32_t mMaxTextureCube = 0</code></pre><p>Maximum width or height of a cube face.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxuniformbufferrange-fd76abb5" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxUniformBufferRange</h5><pre><code>uint64_t mMaxUniformBufferRange = 0</code></pre><p>Maximum bytes addressed by one uniform-buffer binding.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxvertexattributes-dde74a66" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxVertexAttributes</h5><pre><code>uint32_t mMaxVertexAttributes = 0</code></pre><p>Maximum vertex attributes in one input layout.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxvertexbindings-f58c7dda" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxVertexBindings</h5><pre><code>uint32_t mMaxVertexBindings = 0</code></pre><p>Maximum vertex buffer binding slots.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxvertexstride-61f05fa8" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxVertexStride</h5><pre><code>uint32_t mMaxVertexStride = 0</code></pre><p>Maximum vertex element stride in bytes.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxviewportdimensions-7f56528c" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxViewportDimensions</h5><pre><code>uint32_t mMaxViewportDimensions[2]{}</code></pre><p>Maximum viewport width and height; zero means unreported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mmaxviewports-9bd15b50" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMaxViewports</h5><pre><code>uint32_t mMaxViewports = 0</code></pre><p>Maximum simultaneous viewports and scissors.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mminstoragebufferoffsetalignment-5c6ddc1c" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMinStorageBufferOffsetAlignment</h5><pre><code>uint64_t mMinStorageBufferOffsetAlignment = 0</code></pre><p>Required storage-buffer binding offset alignment in bytes.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mminuniformbufferoffsetalignment-9d51960a" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mMinUniformBufferOffsetAlignment</h5><pre><code>uint64_t mMinUniformBufferOffsetAlignment = 0</code></pre><p>Required uniform-buffer binding offset alignment in bytes.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-mviewportbounds-64a2db31" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits::mViewportBounds</h5><pre><code>float mViewportBounds[2]{}</code></pre><p>Minimum and maximum viewport coordinates, including the far edge; a zero pair is unreported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-fardarhidrawarguments-minstancecount-adb29897" tabindex="-1"><h5>arda::FArdaRHIDrawArguments::mInstanceCount</h5><pre><code>uint32_t mInstanceCount = 1;</code></pre><p>Number of instances to draw.</p>
@@ -19684,6 +20192,13 @@
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-fardarhifeaturerequirements-mbrequireindirectcommands-1c0cb945" tabindex="-1"><h5>arda::FArdaRHIFeatureRequirements::mbRequireIndirectCommands</h5><pre><code>bool mbRequireIndirectCommands = false</code></pre><p>Draw/dispatch arguments supplied by GPU buffers must be supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhifeaturerequirements-mbrequireindirectfirstinstance-02361bd4" tabindex="-1"><h5>arda::FArdaRHIFeatureRequirements::mbRequireIndirectFirstInstance</h5><pre><code>bool mbRequireIndirectFirstInstance = false</code></pre><p>Indirect arguments must support a nonzero first-instance value.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
 <dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
@@ -20003,6 +20518,125 @@
 <p>Stores the stencil. The public declaration initializes this field to false.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mnativeformat-e213d026" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mNativeFormat</h5><pre><code>uint64_t mNativeFormat = 0</code></pre><p>Native API format identifier, or zero when the format has no supported native mapping.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-msamplecounts-a57992ea" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mSampleCounts</h5><pre><code>uint32_t mSampleCounts = 0</code></pre><p>Supported texture sample counts: each count is its own bit (1 | 2 | 4 ...); zero means none.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbblendable-6099da76" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbBlendable</h5><pre><code>bool mbBlendable = false</code></pre><p>Color attachment blending is supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbbuffershaderresource-721b9a01" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbBufferShaderResource</h5><pre><code>bool mbBufferShaderResource = false</code></pre><p>Typed buffer shader-resource views are supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbbufferstorage-4852d31b" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbBufferStorage</h5><pre><code>bool mbBufferStorage = false</code></pre><p>Typed buffer unordered-access/storage views are supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbcolorattachment-e217b34c" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbColorAttachment</h5><pre><code>bool mbColorAttachment = false</code></pre><p>Color render-target attachments are supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbdepthstencilattachment-5f20be7e" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbDepthStencilAttachment</h5><pre><code>bool mbDepthStencilAttachment = false</code></pre><p>Depth/stencil attachments are supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbfilterable-9205d5df" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbFilterable</h5><pre><code>bool mbFilterable = false</code></pre><p>Sampled textures support linear filtering.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbshaderresource-cc52df18" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbShaderResource</h5><pre><code>bool mbShaderResource = false</code></pre><p>Texture shader-resource views and shader reads are supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbstorage-18c8fc2e" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbStorage</h5><pre><code>bool mbStorage = false</code></pre><p>Typed storage-image/unordered-access texture views are supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbstorageload-45ab9d75" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbStorageLoad</h5><pre><code>bool mbStorageLoad = false</code></pre><p>Typed storage texture loads are supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbstoragestore-88b49d35" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbStorageStore</h5><pre><code>bool mbStorageStore = false</code></pre><p>Typed storage texture stores are supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbtexture1d-fd1ce135" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbTexture1D</h5><pre><code>bool mbTexture1D = false</code></pre><p>One-dimensional textures can use this format.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbtexture2d-cf4703a3" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbTexture2D</h5><pre><code>bool mbTexture2D = false</code></pre><p>Two-dimensional textures can use this format.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbtexture3d-f345b02f" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbTexture3D</h5><pre><code>bool mbTexture3D = false</code></pre><p>Volume textures can use this format.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbtexturecube-242bb102" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbTextureCube</h5><pre><code>bool mbTextureCube = false</code></pre><p>Cube textures can use this format.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-mbvertexbuffer-0c7338ad" tabindex="-1"><h5>arda::FArdaRHIFormatSupport::mbVertexBuffer</h5><pre><code>bool mbVertexBuffer = false</code></pre><p>Vertex input attributes are supported.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-fardarhiframebufferattachment-mformat-6f5ad088" tabindex="-1"><h5>arda::FArdaRHIFramebufferAttachment::mFormat</h5><pre><code>EArdaRHIFormat mFormat = EArdaRHIFormat::Unknown;</code></pre><p>Stores the format.</p>
 <p>Stores the format. The public declaration initializes this field to EArdaRHIFormat::Unknown.</p>
@@ -20724,6 +21358,41 @@
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardarhitexturebufferfootprint-mbytesize-62e37917" tabindex="-1"><h5>arda::FArdaRHITextureBufferFootprint::mByteSize</h5><pre><code>uint64_t mByteSize = 0</code></pre><p>Minimum allocation size, excluding padding after the final row.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhitexturebufferfootprint-mextent-ccab58d8" tabindex="-1"><h5>arda::FArdaRHITextureBufferFootprint::mExtent</h5><pre><code>FArdaRHITextureCopyExtent mExtent</code></pre><p>Concrete copied extent in texels.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhitexturebufferfootprint-mlayout-be86bf47" tabindex="-1"><h5>arda::FArdaRHITextureBufferFootprint::mLayout</h5><pre><code>FArdaRHITextureBufferLayout mLayout</code></pre><p>Zero-based buffer layout, aligned for both D3D12 and Vulkan copies.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhitexturebufferfootprint-mrowbytes-7af92180" tabindex="-1"><h5>arda::FArdaRHITextureBufferFootprint::mRowBytes</h5><pre><code>uint64_t mRowBytes = 0</code></pre><p>Number of meaningful bytes in each row, excluding padding.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhitexturebufferfootprint-mrowcount-46ff0456" tabindex="-1"><h5>arda::FArdaRHITextureBufferFootprint::mRowCount</h5><pre><code>uint64_t mRowCount = 0</code></pre><p>Total rows across all depth slices in the region.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-fardarhitexturebufferlayout-mbyteoffset-ea3dc2c3" tabindex="-1"><h5>arda::FArdaRHITextureBufferLayout::mByteOffset</h5><pre><code>uint64_t mByteOffset = 0</code></pre><p>Offset of the first texel, aligned to 512 bytes and divisible by the texel size.</p>
 <dl>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -21194,6 +21863,14 @@
 </dl></section>
 <section class="api-entry" id="api-arda-fardarhicapabilities-isqueuesupported-91c5c25f" tabindex="-1"><h5>arda::FArdaRHICapabilities::IsQueueSupported</h5><pre><code>[[nodiscard]] bool IsQueueSupported(EArdaRHIQueueType Queue) const noexcept</code></pre><p>Performs is queue supported through the public backend and RHI contract.</p>
 <p>Performs is queue supported through the public backend and RHI contract. The signature is generated from the current public header.</p>
+<dl>
+<dt>Returns</dt><dd>See the declared result and status contract.</dd>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhicapabilities-supportsmeshshadertier-d96d34ea" tabindex="-1"><h5>arda::FArdaRHICapabilities::SupportsMeshShaderTier</h5><pre><code>[[nodiscard]] bool SupportsMeshShaderTier(EArdaRHIMeshShaderTier Required) const noexcept</code></pre><p>Tests stage support without relying on the ABI-preserved mesh-tier numeric values.</p>
 <dl>
 <dt>Returns</dt><dd>See the declared result and status contract.</dd>
 <dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
@@ -21723,6 +22400,13 @@
 <dt>Threading</dt><dd>Device calls and command-list recording follow the synchronization contract of the owning interface.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
 </dl></section>
+<section class="api-entry" id="api-arda-fardarhidevicelimits-5433ed57" tabindex="-1"><h5>arda::FArdaRHIDeviceLimits</h5><pre><code>struct FArdaRHIDeviceLimits</code></pre><p>Immutable device limits. Zero means unreported, rather than an unlimited or supported operation.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
+</dl></section>
 <section class="api-entry" id="api-arda-rhi-fardarhidrawarguments-755341a9" tabindex="-1"><h5>arda::FArdaRHIDrawArguments</h5><pre><code>struct FArdaRHIDrawArguments</code></pre><p>Describes draw arguments.</p>
 <p>Describes draw arguments. The inventory includes every directly declared public member while excluding private and protected implementation state.</p>
 <dl>
@@ -21744,6 +22428,13 @@
 <p>Describes format info. The inventory includes every directly declared public member while excluding private and protected implementation state.</p>
 <dl>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhiformatsupport-1483e8e4" tabindex="-1"><h5>arda::FArdaRHIFormatSupport</h5><pre><code>struct FArdaRHIFormatSupport</code></pre><p>Device support for a typed format. Facts are independent; combined shape/usage admission remains native.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHICapabilities.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-rhi-fardarhiframebufferattachment-2841e639" tabindex="-1"><h5>arda::FArdaRHIFramebufferAttachment</h5><pre><code>struct FArdaRHIFramebufferAttachment</code></pre><p>Describes framebuffer attachment.</p>
 <p>Describes framebuffer attachment. The inventory includes every directly declared public member while excluding private and protected implementation state.</p>
@@ -21847,6 +22538,13 @@
 <section class="api-entry" id="api-arda-rhi-fardarhisubresourcetiling-db59c8e1" tabindex="-1"><h5>arda::FArdaRHISubresourceTiling</h5><pre><code>struct FArdaRHISubresourceTiling</code></pre><p>Describes subresource tiling.</p>
 <p>Describes subresource tiling. The inventory includes every directly declared public member while excluding private and protected implementation state.</p>
 <dl>
+<dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
+</dl></section>
+<section class="api-entry" id="api-arda-fardarhitexturebufferfootprint-779d38bd" tabindex="-1"><h5>arda::FArdaRHITextureBufferFootprint</h5><pre><code>struct FArdaRHITextureBufferFootprint</code></pre><p>Portable pitched buffer footprint for one texture region.</p>
+<dl>
+<dt>Ownership</dt><dd>Owning handles retain their object; pointer and reference parameters are borrowed unless stated otherwise.</dd>
+<dt>Errors</dt><dd>Failures and unsupported operations use the declared FArdaRHIStatus or TArdaRHIResult contract.</dd>
+<dt>Threading</dt><dd>Calls follow the synchronization rules of the owning provider device or command list.</dd>
 <dt>Source</dt><dd>Source/ArdaInfra/ArdaBackend/Public/RHI/ArdaRHITypes.h</dd>
 </dl></section>
 <section class="api-entry" id="api-arda-fardarhitexturebufferlayout-1180d1e7" tabindex="-1"><h5>arda::FArdaRHITextureBufferLayout</h5><pre><code>struct FArdaRHITextureBufferLayout</code></pre><p>Pitched layout of one texture region in a buffer, without format conversion. Rows are contiguous within each depth slice; the slice pitch is row pitch times region height.</p>

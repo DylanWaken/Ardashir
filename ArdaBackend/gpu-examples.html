@@ -56,7 +56,7 @@
         ArdaBackend
       </nav>
       <article><header class="page-header"><p class="eyebrow">Executable examples and capability admission</p><h1>Complete GPU examples</h1><p>Read the source-backed workloads behind the resource and capability recipes. Code is regenerated from the compiled tests.</p></header>
-<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#fixture">Shared fixture and application replacements</a><a href="#shader-sources">Shader interfaces paired with the workloads</a><a href="#shader-artifacts">Build the exact shader variants</a><a href="#VerifyExtendedCommands">VerifyExtendedCommands</a><a href="#NativeTransientResourcesAndDescriptorsReturnToBaseline">NativeTransientResourcesAndDescriptorsReturnToBaseline</a><a href="#VerifyExplicitHeapAliasing">VerifyExplicitHeapAliasing</a><a href="#VerifyQueryExecution">VerifyQueryExecution</a><a href="#CreateExtendedShader">CreateExtendedShader</a><a href="#VerifyShaderLibraryExecution">VerifyShaderLibraryExecution</a><a href="#VerifyBindlessDescriptorTable">VerifyBindlessDescriptorTable</a><a href="#VerifyExpandedDescriptorsAndResourceCollections">VerifyExpandedDescriptorsAndResourceCollections</a><a href="#VerifyMeshPipelineCapabilityAndExecution">VerifyMeshPipelineCapabilityAndExecution</a><a href="#VerifyAccelerationStructureLifecycleAndStateParity">VerifyAccelerationStructureLifecycleAndStateParity</a><a href="#VerifyRayTracingPipelineCapabilityAndExecution">VerifyRayTracingPipelineCapabilityAndExecution</a><a href="#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a><a href="#VerifyD3D12WorkGraphExecution">VerifyD3D12WorkGraphExecution</a><a href="#VerifyShaderBundleExecution">VerifyShaderBundleExecution</a><a href="#VerifySamplerFeedbackStateParity">VerifySamplerFeedbackStateParity</a><a href="#VerifyVulkanOpacityMicromapLifecycleAndStateParity">VerifyVulkanOpacityMicromapLifecycleAndStateParity</a><a href="#VerifyRuntimeDescriptorVersions">VerifyRuntimeDescriptorVersions</a><a href="#VerifyDirectResourceAndSamplerHeapIndexing">VerifyDirectResourceAndSamplerHeapIndexing</a><a href="#VerifyQueueBreadth">VerifyQueueBreadth</a><a href="#VerifySparseResidencyAndStreamingBudget">VerifySparseResidencyAndStreamingBudget</a><a href="#VerifyStreamingBudgetExecution">VerifyStreamingBudgetExecution</a><a href="#VerifyComputeArithmetic">VerifyComputeArithmetic</a><a href="#VerifyD3D12CustomPresentExecution">VerifyD3D12CustomPresentExecution</a><a href="#VerifyCapabilityInvariants">VerifyCapabilityInvariants</a><a href="#VerifyRasterStageCapabilityAndExecution">VerifyRasterStageCapabilityAndExecution</a><a href="#VerifyResolveAndPlaneTracking">VerifyResolveAndPlaneTracking</a><a href="#VerifyPerQueueTimerExecution">VerifyPerQueueTimerExecution</a><a href="#summary">Checkpoints</a></nav>
+<nav class="toc" aria-label="On this page"><h2>On this page</h2><a href="#objectives">How to use these examples</a><a href="#fixture">Shared fixture and application replacements</a><a href="#shader-sources">Shader interfaces paired with the workloads</a><a href="#shader-artifacts">Build the exact shader variants</a><a href="#VerifyExtendedCommands">VerifyExtendedCommands</a><a href="#NativeTransientResourcesAndDescriptorsReturnToBaseline">NativeTransientResourcesAndDescriptorsReturnToBaseline</a><a href="#VerifyExplicitHeapAliasing">VerifyExplicitHeapAliasing</a><a href="#VerifyQueryExecution">VerifyQueryExecution</a><a href="#CreateExtendedShader">CreateExtendedShader</a><a href="#VerifyShaderLibraryExecution">VerifyShaderLibraryExecution</a><a href="#VerifyBindlessDescriptorTable">VerifyBindlessDescriptorTable</a><a href="#VerifyExpandedDescriptorsAndResourceCollections">VerifyExpandedDescriptorsAndResourceCollections</a><a href="#VerifyMeshPipelineCapabilityAndExecution">VerifyMeshPipelineCapabilityAndExecution</a><a href="#VerifyAccelerationStructureLifecycleAndStateParity">VerifyAccelerationStructureLifecycleAndStateParity</a><a href="#VerifyRayTracingPipelineCapabilityAndExecution">VerifyRayTracingPipelineCapabilityAndExecution</a><a href="#VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect">VerifyRayTracingSceneHitGroupsLocalArgumentsAndIndirect</a><a href="#VerifyD3D12WorkGraphExecution">VerifyD3D12WorkGraphExecution</a><a href="#VerifyShaderBundleExecution">VerifyShaderBundleExecution</a><a href="#VerifySamplerFeedbackStateParity">VerifySamplerFeedbackStateParity</a><a href="#VerifyVulkanOpacityMicromapLifecycleAndStateParity">VerifyVulkanOpacityMicromapLifecycleAndStateParity</a><a href="#VerifyRuntimeDescriptorVersions">VerifyRuntimeDescriptorVersions</a><a href="#VerifyDirectResourceAndSamplerHeapIndexing">VerifyDirectResourceAndSamplerHeapIndexing</a><a href="#VerifyQueueBreadth">VerifyQueueBreadth</a><a href="#VerifySparseResidencyAndStreamingBudget">VerifySparseResidencyAndStreamingBudget</a><a href="#VerifyStreamingBudgetExecution">VerifyStreamingBudgetExecution</a><a href="#VerifyComputeArithmetic">VerifyComputeArithmetic</a><a href="#VerifyD3D12CustomPresentExecution">VerifyD3D12CustomPresentExecution</a><a href="#VerifyCapabilityInvariants">VerifyCapabilityInvariants</a><a href="#VerifyRasterStageCapabilityAndExecution">VerifyRasterStageCapabilityAndExecution</a><a href="#VerifyResolveAndPlaneTracking">VerifyResolveAndPlaneTracking</a><a href="#VerifyResourceAdmissionFacts">VerifyResourceAdmissionFacts</a><a href="#VerifyPerQueueTimerExecution">VerifyPerQueueTimerExecution</a><a href="#summary">Checkpoints</a></nav>
 <section id="objectives"><h2>How to use these examples</h2>
 <p>Learn to select a resource, admit the exact feature it needs and order its GPU use. First read <a href="rhi.html">resource ownership and data layout</a>, <a href="commands.html">command recording and synchronization</a>, and <a href="getting-started.html">backend initialization</a>.</p>
 <p>The mental model is allocation → view/binding → recorded use → submission → completion → reuse. A <a class="term" data-term="capability" href="../glossary.html#term-capability">capability</a> admits an operation; it does not establish a resource's state, memory residency or queue ownership. Creation can still fail for invalid descriptors or exhausted memory.</p>
@@ -4147,7 +4147,9 @@ int main(int ArgumentCount, char** Arguments)
 		EXPECT_GE(MachineLearning.mSubgroupMaxSize, MachineLearning.mSubgroupMinSize);
 	}
 }</code></pre></details></section>
-<section id="VerifyRasterStageCapabilityAndExecution"><h2>VerifyRasterStageCapabilityAndExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRasterStageCapabilityAndExecution(const char* BackendName, bool bTessellation)
+<section id="VerifyRasterStageCapabilityAndExecution"><h2>VerifyRasterStageCapabilityAndExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyRasterStageCapabilityAndExecution(const char* BackendName,
+    bool bTessellation,
+    bool bIndirectFirstInstance = false)
 {
 	using namespace arda;
 
@@ -4166,8 +4168,9 @@ int main(int ArgumentCount, char** Arguments)
 	FArdaRHIDeviceRef Device = GetDevice();
 	ASSERT_TRUE(Device);
 	FArdaRHIFeatureRequirements Requirements;
-	Requirements.mbRequireGeometryShaders = !bTessellation;
+	Requirements.mbRequireGeometryShaders = !bTessellation &amp;&amp; !bIndirectFirstInstance;
 	Requirements.mbRequireTessellationShaders = bTessellation;
+	Requirements.mbRequireIndirectFirstInstance = bIndirectFirstInstance;
 	const auto Admission = Device-&gt;RequireFeatures(Requirements);
 	ASSERT_TRUE(Admission) &lt;&lt; Admission.mMessage.c_str();
 
@@ -4211,7 +4214,7 @@ int main(int ArgumentCount, char** Arguments)
 		PipelineDesc.mTopology = EArdaRHIPrimitiveTopology::PatchList;
 		PipelineDesc.mPatchControlPoints = 3;
 	}
-	else
+	else if (!bIndirectFirstInstance)
 	{
 		auto Geometry = CreateExtendedShader(*Device,
 		    BackendName,
@@ -4251,10 +4254,30 @@ int main(int ArgumentCount, char** Arguments)
 	State.mFramebuffer = Framebuffer.mValue;
 	State.mViewports = {{0, 4, 0, 4, 0, 1}};
 	State.mScissors = {{0, 4, 0, 4}};
-	ASSERT_TRUE(Commands.mValue-&gt;SetGraphicsState(State));
 	FArdaRHIDrawArguments Draw;
 	Draw.mVertexCount = 3;
-	Commands.mValue-&gt;Draw(Draw);
+	FArdaRHIBufferRef IndirectBuffer;
+	if (bIndirectFirstInstance)
+	{
+		const uint32_t Arguments[] = {3, 1, 0, 7};
+		FArdaRHIBufferDesc Desc;
+		Desc.mByteSize = sizeof(Arguments);
+		Desc.mUsage = EArdaRHIBufferUsage::Indirect;
+		const auto Buffer = Device-&gt;CreateBuffer(Desc);
+		ASSERT_TRUE(Buffer);
+		ASSERT_TRUE(Commands.mValue-&gt;WriteBuffer(*Buffer.mValue, Arguments, sizeof(Arguments)));
+		ASSERT_TRUE(Commands.mValue-&gt;SetBufferState(*Buffer.mValue, EArdaRHIResourceState::IndirectArgument));
+		IndirectBuffer = Buffer.mValue;
+	}
+	ASSERT_TRUE(Commands.mValue-&gt;SetGraphicsState(State));
+	if (IndirectBuffer)
+	{
+		ASSERT_TRUE(Commands.mValue-&gt;DrawIndirect(*IndirectBuffer));
+	}
+	else
+	{
+		Commands.mValue-&gt;Draw(Draw);
+	}
 	ASSERT_TRUE(Commands.mValue-&gt;SetTextureState(*Target.mValue, {}, EArdaRHIResourceState::CopySource));
 	Commands.mValue-&gt;CommitBarriers();
 	FArdaRHITextureSlice Slice;
@@ -4273,9 +4296,9 @@ int main(int ArgumentCount, char** Arguments)
 		const auto* Row = static_cast&lt;const uint8_t*&gt;(Mapping.mValue.mData) + Y * Mapping.mValue.mRowPitch;
 		for (uint32_t X = 0; X &lt; 4; ++X)
 		{
-			// VS emits red; GS must replace it with green, or HS+DS must produce cyan.
-			EXPECT_LE(Row[X * 4], 1u);
-			EXPECT_GE(Row[X * 4 + 1], 254u);
+			// The indirect vertex-only draw emits red; GS emits green and HS+DS emits cyan.
+			EXPECT_NEAR(Row[X * 4], bIndirectFirstInstance ? 255 : 0, 1);
+			EXPECT_NEAR(Row[X * 4 + 1], bIndirectFirstInstance ? 0 : 255, 1);
 			EXPECT_NEAR(Row[X * 4 + 2], bTessellation ? 255 : 0, 1);
 			EXPECT_EQ(Row[X * 4 + 3], 255u);
 		}
@@ -4384,6 +4407,83 @@ int main(int ArgumentCount, char** Arguments)
 		}
 	}
 	ASSERT_TRUE(Device-&gt;UnmapStagingTexture(Readback.mValue));
+	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
+}</code></pre></details></section>
+<section id="VerifyResourceAdmissionFacts"><h2>VerifyResourceAdmissionFacts</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyResourceAdmissionFacts(const char* BackendName)
+{
+	using namespace arda;
+	ShutdownBackend();
+	FArdaExtendedDiagnosticCallback Diagnostics;
+	FArdaExtendedBackendCleanup Cleanup;
+	auto Configuration = arda::MakeArdaTestBackendConfiguration();
+	Configuration.mBackendName = BackendName;
+	Configuration.mbEnableValidation = arda::ArdaTestValidationEnabled;
+	Configuration.mMessageCallback = &amp;Diagnostics;
+	Configuration.mShaderCompilationMode = EArdaShaderCompilationMode::LoadOnly;
+	ASSERT_TRUE(ConfigureBackend(Configuration));
+	ARDA_REQUIRE_BACKEND();
+	const auto Device = GetDevice();
+	ASSERT_TRUE(Device);
+	const auto&amp; Caps = Device-&gt;GetCapabilities();
+	const auto&amp; Limits = Caps.mLimits;
+	ASSERT_TRUE(Caps.mbFormatSupportReported);
+	EXPECT_GT(Limits.mMaxTexture1D, 0u);
+	EXPECT_GT(Limits.mMaxTexture2D, 0u);
+	EXPECT_GT(Limits.mMaxTexture3D, 0u);
+	EXPECT_GT(Limits.mMaxTextureCube, 0u);
+	EXPECT_GT(Limits.mMaxTextureArrayLayers, 0u);
+	EXPECT_GT(Limits.mMaxColorAttachments, 0u);
+	EXPECT_GT(Limits.mMaxViewports, 0u);
+	EXPECT_GT(Limits.mMaxVertexAttributes, 0u);
+	EXPECT_GT(Limits.mMaxVertexBindings, 0u);
+	EXPECT_GT(Limits.mMaxVertexStride, 0u);
+	EXPECT_GT(Limits.mMaxComputeWorkGroupInvocations, 0u);
+	EXPECT_GT(Limits.mMaxUniformBufferRange, 0u);
+	// D3D12 bounds storage views by element count and stride, so it reports no universal byte limit.
+	if (std::string(BackendName) == &quot;native-vulkan&quot;)
+	{
+		EXPECT_GT(Limits.mMaxStorageBufferRange, 0u);
+	}
+	EXPECT_GT(Limits.mMinUniformBufferOffsetAlignment, 0u);
+	EXPECT_GT(Limits.mMinStorageBufferOffsetAlignment, 0u);
+	for (uint32_t Axis = 0; Axis &lt; 3; ++Axis)
+	{
+		EXPECT_GT(Limits.mMaxComputeWorkGroupCount[Axis], 0u);
+		EXPECT_GT(Limits.mMaxComputeWorkGroupSize[Axis], 0u);
+	}
+	EXPECT_GT(Limits.mMaxViewportDimensions[0], 0u);
+	EXPECT_GT(Limits.mMaxViewportDimensions[1], 0u);
+	EXPECT_LT(Limits.mViewportBounds[0], Limits.mViewportBounds[1]);
+	for (const auto Format : {EArdaRHIFormat::Unknown, EArdaRHIFormat::Count, static_cast&lt;EArdaRHIFormat&gt;(255)})
+	{
+		const auto Support = Device-&gt;QueryFormatSupport(Format);
+		EXPECT_EQ(Support.mNativeFormat, 0u);
+		EXPECT_EQ(Support.mSampleCounts, 0u);
+		EXPECT_FALSE(Support.mbTexture1D || Support.mbTexture2D || Support.mbTexture3D || Support.mbTextureCube ||
+		    Support.mbShaderResource || Support.mbFilterable || Support.mbStorage || Support.mbStorageLoad ||
+		    Support.mbStorageStore || Support.mbColorAttachment || Support.mbDepthStencilAttachment ||
+		    Support.mbBlendable || Support.mbVertexBuffer || Support.mbBufferShaderResource ||
+		    Support.mbBufferStorage);
+	}
+	const auto Color = Device-&gt;QueryFormatSupport(EArdaRHIFormat::RGBA8UNorm);
+	ASSERT_NE(Color.mNativeFormat, 0u);
+	EXPECT_TRUE(Color.mbTexture2D &amp;&amp; Color.mbShaderResource &amp;&amp; Color.mbFilterable &amp;&amp; Color.mbColorAttachment);
+	EXPECT_NE(Color.mSampleCounts &amp; 1, 0u);
+	FArdaRHITextureDesc TextureDesc;
+	TextureDesc.mWidth = TextureDesc.mHeight = 4;
+	TextureDesc.mFormat = EArdaRHIFormat::RGBA8UNorm;
+	ASSERT_TRUE(Device-&gt;CreateTexture(TextureDesc));
+	if (Limits.mMaxTexture2D != UINT32_MAX)
+	{
+		TextureDesc.mWidth = Limits.mMaxTexture2D + 1;
+		EXPECT_EQ(Device-&gt;CreateTexture(TextureDesc).mStatus.mCode, EArdaRHIResult::Unsupported);
+	}
+	if (Limits.mMaxBufferSize &amp;&amp; Limits.mMaxBufferSize != UINT64_MAX)
+	{
+		FArdaRHIBufferDesc BufferDesc;
+		BufferDesc.mByteSize = Limits.mMaxBufferSize + 1;
+		EXPECT_EQ(Device-&gt;CreateBuffer(BufferDesc).mStatus.mCode, EArdaRHIResult::Unsupported);
+	}
 	EXPECT_EQ(Diagnostics.GetErrorCount(), 0u);
 }</code></pre></details></section>
 <section id="VerifyPerQueueTimerExecution"><h2>VerifyPerQueueTimerExecution</h2><p>Source: <code>Source/ArdaInfra/ArdaBackend/Tests/ArdaExtendedRHIParityTests.cpp</code>. This is the compiled test helper, including its preconditions and output checks. See the <a href="capability-recipes.html">capability recipes</a> for workload selection.</p><details><summary>Read the complete GPU example</summary><pre><code class="language-cpp">void VerifyPerQueueTimerExecution(const char* BackendName)
